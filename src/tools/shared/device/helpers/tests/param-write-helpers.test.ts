@@ -105,11 +105,7 @@ describe("setParamValueAndVerify", () => {
   it("stays silent when the value lands", () => {
     const param = registerLabeledParam();
 
-    const landed = setParamValueAndVerify(
-      paramApi(),
-      0.8,
-      'updateDevice: param "Drive"',
-    );
+    const landed = setParamValueAndVerify(paramApi(), 0.8, 'param "Drive"');
 
     expect(landed).toBe(true);
     expect(param.set).toHaveBeenCalledWith("value", 0.8);
@@ -122,15 +118,11 @@ describe("setParamValueAndVerify", () => {
 
     param.set.mockImplementation(() => undefined);
 
-    const landed = setParamValueAndVerify(
-      paramApi(),
-      99,
-      'updateDevice: param "Drive"',
-    );
+    const landed = setParamValueAndVerify(paramApi(), 99, 'param "Drive"');
 
     expect(landed).toBe(false);
     expect(capturedWarnings()).toContain(
-      'updateDevice: param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
+      'param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
     );
   });
 
@@ -140,7 +132,7 @@ describe("setParamValueAndVerify", () => {
     // every fractional write.
     const param = registerLabeledParam();
 
-    setParamValueAndVerify(paramApi(), 0.1, 'updateDevice: param "Drive"');
+    setParamValueAndVerify(paramApi(), 0.1, 'param "Drive"');
 
     expect(param.properties.value).not.toBe(0.1);
     expect(capturedWarnings()).toHaveLength(0);
@@ -163,7 +155,7 @@ describe("setParamValueAndVerify", () => {
     const landed = setParamValueAndVerify(
       paramApi(),
       0.7000124999999999,
-      'updateDevice: param "Volume"',
+      'param "Volume"',
     );
 
     expect(landed).toBe(true);
@@ -173,10 +165,10 @@ describe("setParamValueAndVerify", () => {
 
 describe("warnParamDisabled", () => {
   it("names the parameter and points at the macro", () => {
-    warnParamDisabled("updateTrack: gainDb");
+    warnParamDisabled("gainDb");
 
     expect(capturedWarnings()).toContain(
-      "updateTrack: gainDb is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
+      "gainDb is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
     );
   });
 });

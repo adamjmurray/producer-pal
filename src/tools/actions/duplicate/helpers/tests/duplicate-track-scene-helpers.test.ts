@@ -201,7 +201,7 @@ describe("duplicate-track-scene-helpers", () => {
           expect.anything(),
         );
         expect(capturedWarnings()).toContain(
-          "duplicate: could not check the new track t1 (id live_set/tracks/1) for the Producer Pal device",
+          "could not check the new track t1 (id live_set/tracks/1) for the Producer Pal device",
         );
       } finally {
         spy.mockRestore();
@@ -590,9 +590,7 @@ describe("duplicate-track-scene-helpers", () => {
           4,
           4,
         ),
-      ).rejects.toThrow(
-        'duplicate failed: scene with id "scene123" does not exist',
-      );
+      ).rejects.toThrow('scene with id "scene123" does not exist');
     });
 
     it("should throw error when scene has no sceneIndex", async () => {
@@ -608,7 +606,7 @@ describe("duplicate-track-scene-helpers", () => {
           4,
           4,
         ),
-      ).rejects.toThrow('duplicate failed: no scene index for id "scene123"');
+      ).rejects.toThrow('no scene index for id "scene123"');
     });
 
     it("should return empty clips when withoutClips is true", async () => {

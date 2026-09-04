@@ -207,7 +207,6 @@ export function registerRestApiRoutes(
 
         appendDeprecationNotices(
           mcpResponse,
-          toolName,
           toolDef.toolOptions.inputSchema,
           parsed.data,
         );
@@ -226,13 +225,11 @@ export function registerRestApiRoutes(
  * The catalog no longer lists the param, so this notice is the only signal a
  * REST caller gets that it is retired or a fallback.
  * @param response - The tool's response, appended to in place
- * @param toolName - Tool that was called
  * @param inputSchema - The tool's raw input schema
  * @param args - The validated arguments
  */
 function appendDeprecationNotices(
   response: McpResponse,
-  toolName: string,
   inputSchema: Record<string, ZodType>,
   args: Record<string, unknown>,
 ): void {
@@ -244,7 +241,7 @@ function appendDeprecationNotices(
     paramNamesSomething(args[key]),
   );
 
-  for (const text of hiddenParamWarnings(toolName, usedKeys, hidden)) {
+  for (const text of hiddenParamWarnings(usedKeys, hidden)) {
     response.content.push({ type: "text", text });
   }
 }

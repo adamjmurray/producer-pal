@@ -298,7 +298,7 @@ function refuseUnreadableCall({
 
   // A "[...]" in path and arrangementStart are two spellings of one position,
   // so there is no combined reading.
-  refuseDoubledPosition(path, arrangementStart, "createClip", "path");
+  refuseDoubledPosition(path, arrangementStart, "path");
 }
 
 /**
@@ -314,7 +314,6 @@ function resolveArrangementLocators(
   if (arrangementStart == null) return null;
 
   return resolveLocatorPositions(liveSet, arrangementStart, {
-    toolName: "createClip",
     paramName: "arrangementStart",
   });
 }

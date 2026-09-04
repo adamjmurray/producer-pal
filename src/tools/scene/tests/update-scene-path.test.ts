@@ -57,7 +57,7 @@ describe("updateScene by path", () => {
     expect(scene1.set).toHaveBeenCalledWith("name", "Second");
     expect(result).toStrictEqual({ id: "456", path: "s1" });
     expect(capturedWarnings()).toContain(
-      'updateScene: invalid path "t0" - names a track, not a scene; expected "s<index>"',
+      'invalid path "t0" - names a track, not a scene; expected "s<index>"',
     );
   });
 
@@ -65,12 +65,12 @@ describe("updateScene by path", () => {
     mockNonExistentObjects();
 
     expect(updateScene({ path: "s9", name: "Nowhere" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('updateScene: nothing at path "s9"');
+    expect(capturedWarnings()).toContain('nothing at path "s9"');
   });
 
   it("still asks for a target when neither id nor path is given", () => {
     expect(() => updateScene({ name: "Orphan" })).toThrow(
-      "updateScene failed: id or path is required",
+      "id or path is required",
     );
   });
 

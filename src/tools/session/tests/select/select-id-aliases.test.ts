@@ -106,7 +106,7 @@ describe("select id aliases", () => {
     setupSongViewMock();
 
     expect(() => select({ clipId: "id missing" })).toThrow(
-      'select failed: id "id missing" does not exist',
+      'id "id missing" does not exist',
     );
   });
 
@@ -184,7 +184,7 @@ describe("select id aliases", () => {
 
     expect(() =>
       select({ trackId: "id track_123", clipId: "id clip_123" }),
-    ).toThrow("select failed: trackId and clipId name different tracks");
+    ).toThrow("trackId and clipId name different tracks");
   });
 
   // No trackId to disagree with, so nothing caught this: both wrote a selection
@@ -205,7 +205,7 @@ describe("select id aliases", () => {
 
     expect(() =>
       select({ clipId: "id clip_123", deviceId: "id device_123" }),
-    ).toThrow("select failed: clipId and deviceId name different tracks");
+    ).toThrow("clipId and deviceId name different tracks");
   });
 
   it("takes a clip and a device on the same track", () => {
@@ -245,7 +245,7 @@ describe("select id aliases", () => {
 
     expect(() =>
       select({ sceneId: "id scene_123", clipId: "id clip_123" }),
-    ).toThrow("select failed: sceneId and clipId name different scenes");
+    ).toThrow("sceneId and clipId name different scenes");
   });
 
   it("takes a device alias on the return track named by trackId", () => {
@@ -303,7 +303,7 @@ describe("select id aliases", () => {
 
     expect(() =>
       select({ id: "id track_123", trackId: "id track_456" }),
-    ).toThrow("select failed: id and trackId name different tracks; send one");
+    ).toThrow("id and trackId name different tracks; send one");
   });
 
   it("takes the same object under two spellings", () => {

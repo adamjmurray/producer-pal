@@ -91,9 +91,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
-    expect(capturedWarnings()).toContain(
-      'updateClip: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Test");
   });
 

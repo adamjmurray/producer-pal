@@ -53,9 +53,7 @@ export function resolveArrangementPositions(
   const positions = parseArrangementStartList(arrangementStart);
 
   if (positions.length === 0) {
-    throw new Error(
-      "duplicate failed: arrangementStart has no valid bar|beat positions",
-    );
+    throw new Error("arrangementStart has no valid bar|beat positions");
   }
 
   return positions.map((pos) =>
@@ -96,23 +94,21 @@ export function validateBasicInputs(
   path?: string,
 ): void {
   if (!type) {
-    throw new Error("duplicate failed: type is required");
+    throw new Error("type is required");
   }
 
   if (!(DUPLICATE_TYPES as readonly string[]).includes(type)) {
-    throw new Error(
-      `duplicate failed: type must be one of ${DUPLICATE_TYPES.join(", ")}`,
-    );
+    throw new Error(`type must be one of ${DUPLICATE_TYPES.join(", ")}`);
   }
 
   // `id` and `path` name different objects and add up, so either will do and
   // both together are a longer source list, not a conflict.
   if (id == null && path == null) {
-    throw new Error("duplicate failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
   if (count < 1) {
-    throw new Error("duplicate failed: count must be at least 1");
+    throw new Error("count must be at least 1");
   }
 }
 
@@ -135,9 +131,7 @@ export function validateAndConfigureRouteToSource(
   }
 
   if (type !== "track") {
-    throw new Error(
-      "duplicate failed: routeToSource is only supported for type 'track'",
-    );
+    throw new Error("routeToSource is only supported for type 'track'");
   }
 
   // Emit warnings if user provided conflicting parameters
@@ -216,7 +210,7 @@ export function resolveDestinationTargets(
 
     if (sourceTrackIndex == null) {
       throw new Error(
-        `duplicate failed: no track index for clip id "${sourceClip.id}" (path=${sourceClip.path})`,
+        `no track index for clip id "${sourceClip.id}" (path=${sourceClip.path})`,
       );
     }
 
@@ -253,7 +247,7 @@ function canCopyClipToTrack(
   const track = LiveAPI.from(livePath.track(trackIndex));
 
   if (!track.exists()) {
-    console.warn(`duplicate: no track at toPath "t${trackIndex}"`);
+    console.warn(`no track at toPath "t${trackIndex}"`);
 
     return false;
   }
@@ -264,7 +258,7 @@ function canCopyClipToTrack(
 
   if (clipIsMidi !== trackIsMidi) {
     console.warn(
-      `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabelForId(clipId)} cannot be duplicated to ` +
+      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabelForId(clipId)} cannot be duplicated to ` +
         `${trackIsMidi ? "MIDI" : "audio"} track ${targetLabel(track)}`,
     );
 
@@ -284,9 +278,7 @@ export function validateDestinationParameter(
   destination: string | undefined,
 ): void {
   if (type === "track" && destination === "arrangement") {
-    throw new Error(
-      "duplicate failed: tracks cannot be duplicated to arrangement",
-    );
+    throw new Error("tracks cannot be duplicated to arrangement");
   }
 }
 

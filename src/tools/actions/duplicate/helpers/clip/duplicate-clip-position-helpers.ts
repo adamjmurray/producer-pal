@@ -325,7 +325,7 @@ function warnRecreatedCopyLimits(
 
   if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
     console.warn(
-      "duplicate: arrangementLength ignored for the re-created copies (they use the source clip's length)",
+      "arrangementLength ignored for the re-created copies (they use the source clip's length)",
     );
   }
 
@@ -333,12 +333,12 @@ function warnRecreatedCopyLimits(
     const losses = recreatedClipLosses(object);
 
     console.warn(
-      `duplicate: clip ${targetLabel(object)} was promoted to the main lane by re-creating it` +
+      `clip ${targetLabel(object)} was promoted to the main lane by re-creating it` +
         (losses ? ` (${losses})` : ""),
     );
   } else if (promotes) {
     console.warn(
-      `duplicate: promoting to the main lane re-creates the clip, so audio clip ${targetLabel(object)} with no sample file can't be promoted off its take lane; drag it in Live's UI`,
+      `promoting to the main lane re-creates the clip, so audio clip ${targetLabel(object)} with no sample file can't be promoted off its take lane; drag it in Live's UI`,
     );
   }
 
@@ -362,9 +362,7 @@ function applyTakeLaneAlias(
   // A destination this call can't use is null and names no lane, so it can't
   // block the alias for the ones around it.
   if (targets.some((target) => target?.takeLane != null)) {
-    console.warn(
-      'duplicate: takeLane ignored — "toPath" already names the take lane',
-    );
+    console.warn('takeLane ignored — "toPath" already names the take lane');
 
     return targets;
   }

@@ -186,9 +186,7 @@ describe("duplicate - drum pad", () => {
 
     expectNoCopy(rack);
     expect(result).toStrictEqual([]);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'duplicate: no device at "t0/d9/pD1"',
-    );
+    expect(consoleMock.warn).toHaveBeenCalledWith('no device at "t0/d9/pD1"');
   });
 
   it("skips a rack that isn't a Drum Rack", async () => {
@@ -384,7 +382,7 @@ describe("duplicate - drum pad", () => {
 
   it("requires a source", async () => {
     await expect(copyC1ToD1({ id: "" })).rejects.toThrow(
-      "duplicate failed: id or path is required",
+      "id or path is required",
     );
   });
 
@@ -411,9 +409,7 @@ describe("duplicate - drum pad", () => {
         path: "t0/d0/pC1/d0",
         toPath: "t0/d0/pD1",
       }),
-    ).rejects.toThrow(
-      'duplicate failed: nothing to duplicate at path "t0/d0/pC1/d0"',
-    );
+    ).rejects.toThrow('nothing to duplicate at path "t0/d0/pC1/d0"');
 
     expectNoCopy(rack);
     expect(consoleMock.warn).toHaveBeenCalledWith(

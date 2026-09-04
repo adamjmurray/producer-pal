@@ -213,10 +213,10 @@ describe("createTrack", () => {
 
   it("should throw error when count is less than 1", () => {
     expect(() => createTrack({ trackIndex: 0, count: 0 })).toThrow(
-      "createTrack failed: count must be at least 1",
+      "count must be at least 1",
     );
     expect(() => createTrack({ trackIndex: 0, count: -1 })).toThrow(
-      "createTrack failed: count must be at least 1",
+      "count must be at least 1",
     );
   });
 
@@ -392,7 +392,7 @@ describe("createTrack", () => {
       });
 
       expect(console.warn).toHaveBeenCalledWith(
-        "createTrack: trackIndex is ignored for return tracks (always added at end)",
+        "trackIndex is ignored for return tracks (always added at end)",
       );
       // Should still create the track
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");

@@ -100,13 +100,11 @@ export function deleteObject(
   const targets = namedIdParam(args.id, args.ids, "ids");
 
   if (!type) {
-    throw new Error("delete failed: type is required");
+    throw new Error("type is required");
   }
 
   if (!(DELETABLE_TYPES as readonly string[]).includes(type)) {
-    throw new Error(
-      `delete failed: type must be one of ${DELETABLE_TYPE_LIST}`,
-    );
+    throw new Error(`type must be one of ${DELETABLE_TYPE_LIST}`);
   }
 
   // Collect IDs from both sources. targets is already confirmed non-blank, so
@@ -139,7 +137,7 @@ export function deleteObject(
 
   if (namedTargets.length === 0) {
     if (!targets && !path) {
-      throw new Error("delete failed: id or path is required");
+      throw new Error("id or path is required");
     }
 
     return unwrapSingleResult(skipped);
@@ -172,7 +170,6 @@ export function deleteObject(
       ? resolved
       : resolved.filter((target) => !isRackChain(target.object)),
     type,
-    "delete",
     { skipInvalid: true },
   )
     .map((object) => ({ id: object.id, object }))
@@ -264,7 +261,7 @@ function resolvePerPath(path: string, lookup: IdPerPath): ResolvedPaths {
   const targets: DeleteTarget[] = [];
   const unresolved: string[] = [];
 
-  for (const [index, id] of lookup(path, "delete").entries()) {
+  for (const [index, id] of lookup(path).entries()) {
     const requestPath = entries[index] ?? path;
 
     if (id == null) {
@@ -292,7 +289,7 @@ function isRackChain(object: LiveAPI): boolean {
   if (object.type !== "Chain" && object.type !== "DrumChain") return false;
 
   console.warn(
-    `delete: ${targetLabel(object)} is a ${object.type}. ` +
+    `${targetLabel(object)} is a ${object.type}. ` +
       (object.type === "DrumChain"
         ? `Use type="chain" for this chain, or type="drum-pad" for the whole pad.`
         : "Deleting rack chains is not supported."),
@@ -319,7 +316,7 @@ function confirmDeleted(type: string, id: string): boolean {
 
   if (survivor.exists()) {
     console.warn(
-      `delete: ${type} ${targetLabel(survivor)} still exists, so Live did not delete it`,
+      `${type} ${targetLabel(survivor)} still exists, so Live did not delete it`,
     );
 
     return false;
@@ -339,7 +336,7 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
 
   if (Number.isNaN(sceneIndex)) {
     console.warn(
-      `delete: no scene index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
+      `no scene index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -368,7 +365,7 @@ function deleteClipObject(
   // them and there is no delete_take_lane) — the user must delete in Live's UI.
   if (isTakeLaneClip(object)) {
     console.warn(
-      `delete: cannot delete take-lane clip ${targetLabel(object)} via the API; remove it in Live's UI`,
+      `cannot delete take-lane clip ${targetLabel(object)} via the API; remove it in Live's UI`,
     );
 
     return false;
@@ -378,7 +375,7 @@ function deleteClipObject(
 
   if (!trackIndex) {
     console.warn(
-      `delete: no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
+      `no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -471,7 +468,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
   if (deviceMatches.length === 0) {
     console.warn(
-      `delete: no device index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
+      `no device index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -486,7 +483,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
   if (!parentPath) {
     console.warn(
-      `delete: no parent path for device ${targetLabel(object)} (Live path "${object.path}"), skipping`,
+      `no parent path for device ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -512,7 +509,7 @@ function deleteDrumPadObject(object: LiveAPI): boolean {
   // from a successful one.
   if (object.getChildCount("chains") > 0) {
     console.warn(
-      `delete: drum pad ${targetLabel(object)} still has chains, so Live did not clear it`,
+      `drum pad ${targetLabel(object)} still has chains, so Live did not clear it`,
     );
 
     return false;
@@ -557,7 +554,7 @@ function deleteObjectByType(
   // what the user asked for. Everything else routes through here.
   if (type !== "track" && isProducerPalDevice(object)) {
     console.warn(
-      `delete: cannot delete the Producer Pal device ${targetLabel(object)} (it is running this tool), skipping`,
+      `cannot delete the Producer Pal device ${targetLabel(object)} (it is running this tool), skipping`,
     );
 
     return false;

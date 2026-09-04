@@ -22,7 +22,7 @@ export function registerMonoPolyWriteTests(
     it("maps the enum label 'mono' to index 0", () => {
       const device = registerDevice({ mono_poly: 1 });
 
-      applySpecializedParamWrite(device, "monoPoly", "mono", "updateDevice");
+      applySpecializedParamWrite(device, "monoPoly", "mono");
 
       expect(device.set).toHaveBeenCalledWith("mono_poly", 0);
     });
@@ -30,7 +30,7 @@ export function registerMonoPolyWriteTests(
     it("maps the enum label 'poly' to index 1", () => {
       const device = registerDevice();
 
-      applySpecializedParamWrite(device, "monoPoly", "poly", "updateDevice");
+      applySpecializedParamWrite(device, "monoPoly", "poly");
 
       expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
     });
@@ -38,7 +38,7 @@ export function registerMonoPolyWriteTests(
     it("is case-insensitive on the param name", () => {
       const device = registerDevice();
 
-      applySpecializedParamWrite(device, "monopoly", "poly", "updateDevice");
+      applySpecializedParamWrite(device, "monopoly", "poly");
 
       expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
     });
@@ -46,7 +46,7 @@ export function registerMonoPolyWriteTests(
     it("warns and skips an invalid monoPoly label", () => {
       const device = registerDevice();
 
-      applySpecializedParamWrite(device, "monoPoly", "stereo", "updateDevice");
+      applySpecializedParamWrite(device, "monoPoly", "stereo");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

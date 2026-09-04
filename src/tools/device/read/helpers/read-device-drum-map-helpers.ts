@@ -129,7 +129,7 @@ function warnNoDrumMap(
   const kind = result.type == null ? "drum pad" : "drum chain";
 
   console.warn(
-    `readDevice: ${resultLabel(result)} is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
+    `${resultLabel(result)} is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
   );
 }
 

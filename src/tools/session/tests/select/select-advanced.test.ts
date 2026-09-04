@@ -286,7 +286,7 @@ describe("view", () => {
       mockNonExistentObjects();
 
       expect(() => select({ id: "id nonexistent" })).toThrow(
-        'select failed: id "id nonexistent" does not exist',
+        'id "id nonexistent" does not exist',
       );
     });
 

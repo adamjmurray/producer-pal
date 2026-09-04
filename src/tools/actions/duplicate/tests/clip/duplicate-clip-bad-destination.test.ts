@@ -84,7 +84,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       id: livePath.track(2).arrangementClip(0),
       path: "t2[3|1]",
     });
-    expect(capturedWarnings()).toContain('duplicate: no track at toPath "t99"');
+    expect(capturedWarnings()).toContain('no track at toPath "t99"');
   });
 
   it("copies nowhere, without failing, when every track is missing", async () => {

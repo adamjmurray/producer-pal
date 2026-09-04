@@ -14,34 +14,24 @@ import { type ParamEntry } from "#src/tools/device/update/device-params-schema.t
  * any device is touched, means the caller can fix the list and send it again
  * with nothing to clean up.
  * @param params - The params list as the caller sent it
- * @param toolName - Tool name for the error message
  */
-export function validateParamEntries(
-  params: ParamEntry[] | undefined,
-  toolName: string,
-): void {
+export function validateParamEntries(params: ParamEntry[] | undefined): void {
   for (const [index, entry] of (params ?? []).entries()) {
     const key = entry.name.trim();
 
     if (key === "") {
-      throw new Error(
-        `${toolName} failed: params entry ${index + 1} has an empty name`,
-      );
+      throw new Error(`params entry ${index + 1} has an empty name`);
     }
 
     if (entry.value.trim() === "") {
-      throw new Error(
-        `${toolName} failed: params entry "${key}" has an empty value`,
-      );
+      throw new Error(`params entry "${key}" has an empty value`);
     }
 
     if (
       key.includes("/") &&
       key.slice(key.lastIndexOf("/") + 1).trim() === ""
     ) {
-      throw new Error(
-        `${toolName} failed: params entry "${key}" has an empty name after "/"`,
-      );
+      throw new Error(`params entry "${key}" has an empty name after "/"`);
     }
   }
 }

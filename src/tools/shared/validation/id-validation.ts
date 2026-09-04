@@ -11,24 +11,19 @@ import { targetLabel } from "./object-path-for-api.ts";
  * Validates a single ID matches expected type
  * @param id - The ID to validate
  * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
- * @param toolName - Name of calling tool for error messages
  * @returns The LiveAPI instance for the validated ID
  * @throws If ID doesn't exist or type doesn't match
  */
-export function validateIdType(
-  id: string,
-  expectedType: string,
-  toolName: string,
-): LiveAPI {
+export function validateIdType(id: string, expectedType: string): LiveAPI {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(`${toolName} failed: id "${id}" does not exist`);
+    throw new Error(`id "${id}" does not exist`);
   }
 
   if (!isTypeMatch(object.type, expectedType)) {
     throw new Error(
-      `${toolName} failed: ${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
+      `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
     );
   }
 
@@ -43,7 +38,6 @@ interface ValidateIdTypesOptions {
  * Validates multiple IDs match expected type
  * @param ids - Array of IDs to validate
  * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
- * @param toolName - Name of calling tool for error messages
  * @param options - Validation options
  * @param options.skipInvalid - If true, log warnings and skip invalid IDs
  * @returns Array of valid LiveAPI instances
@@ -52,13 +46,11 @@ interface ValidateIdTypesOptions {
 export function validateIdTypes(
   ids: string[],
   expectedType: string,
-  toolName: string,
   options: ValidateIdTypesOptions = {},
 ): LiveAPI[] {
   return validateObjectTypes(
     ids.map((id) => ({ id, object: LiveAPI.from(id) })),
     expectedType,
-    toolName,
     options,
   );
 }
@@ -75,7 +67,6 @@ export interface IdentifiedObject {
  * first would otherwise pay for both.
  * @param targets - Ids paired with the objects they resolved to
  * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
- * @param toolName - Name of calling tool for error messages
  * @param options - Validation options
  * @param options.skipInvalid - If true, log warnings and skip invalid objects
  * @returns Array of valid LiveAPI instances
@@ -84,7 +75,6 @@ export interface IdentifiedObject {
 export function validateObjectTypes(
   targets: IdentifiedObject[],
   expectedType: string,
-  toolName: string,
   { skipInvalid = false }: ValidateIdTypesOptions = {},
 ): LiveAPI[] {
   const validObjects: LiveAPI[] = [];
@@ -93,22 +83,22 @@ export function validateObjectTypes(
     // Check existence
     if (!object.exists()) {
       if (skipInvalid) {
-        console.warn(`${toolName}: id "${id}" does not exist`);
+        console.warn(`id "${id}" does not exist`);
         continue;
       } else {
-        throw new Error(`${toolName} failed: id "${id}" does not exist`);
+        throw new Error(`id "${id}" does not exist`);
       }
     }
 
     if (!isTypeMatch(object.type, expectedType)) {
       if (skipInvalid) {
         console.warn(
-          `${toolName}: ${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
+          `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
         );
         continue;
       } else {
         throw new Error(
-          `${toolName} failed: ${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
+          `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
         );
       }
     }

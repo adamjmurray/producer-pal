@@ -165,13 +165,7 @@ function rack(): LiveAPI {
  * @returns The resolved target, or null when resolution warn-skips
  */
 function resolveSampleTarget(prefix: string, force = false): LiveAPI | null {
-  return resolveNestedParamTarget(
-    rack(),
-    prefix,
-    "sample",
-    "createDevice",
-    force,
-  );
+  return resolveNestedParamTarget(rack(), prefix, "sample", force);
 }
 
 /**
@@ -508,12 +502,7 @@ describe("resolveNestedParamTarget", () => {
       registerDrumChain("chain-c1", 36, ["existing-simpler"]);
       registerDevice("existing-simpler", "Simpler", "SimplerDevice");
 
-      const target = resolveNestedParamTarget(
-        rack(),
-        "pC1/d0",
-        "gainDb",
-        "updateDevice",
-      );
+      const target = resolveNestedParamTarget(rack(), "pC1/d0", "gainDb");
 
       expect(target?.id).toBe("existing-simpler");
     });
@@ -522,12 +511,7 @@ describe("resolveNestedParamTarget", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, []);
 
-      const target = resolveNestedParamTarget(
-        rack(),
-        "pC1",
-        "gainDb",
-        "updateDevice",
-      );
+      const target = resolveNestedParamTarget(rack(), "pC1", "gainDb");
 
       expectWarnedNull(target, "resolves to a chain");
     });
@@ -536,12 +520,7 @@ describe("resolveNestedParamTarget", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, []);
 
-      const target = resolveNestedParamTarget(
-        rack(),
-        "pC1/d0",
-        "gainDb",
-        "updateDevice",
-      );
+      const target = resolveNestedParamTarget(rack(), "pC1/d0", "gainDb");
 
       expectWarnedNull(target, "no device at");
     });
@@ -558,12 +537,7 @@ describe("resolveNestedParamTarget", () => {
       });
       registerDevice("reg-dev", "Operator");
 
-      const target = resolveNestedParamTarget(
-        rack(),
-        "c0/d0",
-        "sample",
-        "updateDevice",
-      );
+      const target = resolveNestedParamTarget(rack(), "c0/d0", "sample");
 
       expect(target?.id).toBe("reg-dev");
     });

@@ -53,14 +53,12 @@ const PARAMETER_TAIL = / parameters \d+$/;
  * DeviceParameter resolution. Entries with an empty name or value are skipped.
  * @param device - LiveAPI device object to update
  * @param params - Array of {name, value} param entries
- * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @returns The params the writes landed on
  */
 export function setParamValues(
   device: LiveAPI,
   params: ParamEntry[],
-  toolName: string = "updateDevice",
   force = false,
 ): WrittenParam[] {
   const results: WrittenParam[] = [];
@@ -80,12 +78,10 @@ export function setParamValues(
     // multi-param update. Warn and move on, consistent with update tools'
     // warn-and-skip contract.
     try {
-      results.push(
-        ...setOneParam(device, key, rawValue, toolName, force, deviceName),
-      );
+      results.push(...setOneParam(device, key, rawValue, force, deviceName));
     } catch (e) {
       console.warn(
-        `${toolName}: failed to set param "${key}" on ${targetLabel(device)}: ${errorMessage(e)}`,
+        `failed to set param "${key}" on ${targetLabel(device)}: ${errorMessage(e)}`,
       );
     }
   }
@@ -100,7 +96,6 @@ export function setParamValues(
  * @param device - LiveAPI device object to update
  * @param key - Trimmed param name (may be a "/"-path or a slash-named param)
  * @param rawValue - Trimmed value
- * @param toolName - Calling tool name for warning prefix
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param deviceName - The device's class_display_name
  * @returns The params the writes landed on
@@ -109,7 +104,6 @@ function setOneParam(
   device: LiveAPI,
   key: string,
   rawValue: string,
-  toolName: string,
   force: boolean,
   deviceName: string | undefined,
 ): WrittenParam[] {
@@ -123,7 +117,7 @@ function setOneParam(
   if (key.includes("/")) {
     const matches = resolveParamsByName(device, key);
 
-    if (warnIfAmbiguousName(matches, key, toolName, device)) return [];
+    if (warnIfAmbiguousName(matches, key, device)) return [];
 
     const namedParam = matches[0];
 
@@ -132,7 +126,6 @@ function setOneParam(
         setParamValue(
           namedParam,
           normalizeParamValue(rawValue, deviceName, key),
-          toolName,
           rawValue,
           device,
           deviceName,
@@ -140,30 +133,28 @@ function setOneParam(
       );
     }
 
-    return applyNestedParam(device, key, rawValue, toolName, force);
+    return applyNestedParam(device, key, rawValue, force);
   }
 
   const inputValue = normalizeParamValue(rawValue, deviceName, key);
 
   // A specialized pseudo-param (e.g. Simpler's `sample`) is not a
   // DeviceParameter, so there is no value to read back.
-  if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
+  if (applySpecializedParamWrite(device, key, inputValue)) {
     return [];
   }
 
   const matches = resolveParamsByName(device, key);
 
-  if (warnIfAmbiguousName(matches, key, toolName, device)) return [];
+  if (warnIfAmbiguousName(matches, key, device)) return [];
 
   const named = matches[0];
-  const param = named?.exists()
-    ? named
-    : resolveParamById(key, device, toolName);
+  const param = named?.exists() ? named : resolveParamById(key, device);
 
   if (param == null) return [];
 
   return toEntries(
-    setParamValue(param, inputValue, toolName, rawValue, device, deviceName),
+    setParamValue(param, inputValue, rawValue, device, deviceName),
   );
 }
 
@@ -184,14 +175,9 @@ function setOneParam(
  * nested device's param on purpose.
  * @param key - The trimmed param name
  * @param device - The device the call addressed
- * @param toolName - Calling tool name for warning prefix
  * @returns The parameter, or null after warning
  */
-function resolveParamById(
-  key: string,
-  device: LiveAPI,
-  toolName: string,
-): LiveAPI | null {
+function resolveParamById(key: string, device: LiveAPI): LiveAPI | null {
   const object = /^\d+$/.test(key) ? LiveAPI.from(key) : null;
 
   if (object?.exists() && object.type === "DeviceParameter") {
@@ -202,15 +188,13 @@ function resolveParamById(
     if (ownerPath === device.path) return object;
 
     console.warn(
-      `${toolName}: param id ${key} is on ${extractDevicePath(ownerPath) ?? "another object"}, not ${targetLabel(device)}, so it was not written`,
+      `param id ${key} is on ${extractDevicePath(ownerPath) ?? "another object"}, not ${targetLabel(device)}, so it was not written`,
     );
 
     return null;
   }
 
-  console.warn(
-    `${toolName}: param "${key}" not found on ${targetLabel(device)}`,
-  );
+  console.warn(`param "${key}" not found on ${targetLabel(device)}`);
 
   return null;
 }
@@ -233,7 +217,6 @@ function toEntries(result: WrittenParam | null): WrittenParam[] {
  * @param device - The device the path prefix is relative to (e.g. a Drum Rack)
  * @param key - Full path-prefixed param name (e.g. "pC1/sample")
  * @param rawValue - Trimmed value to write
- * @param toolName - Calling tool name for warning prefix
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @returns The params the writes landed on
  */
@@ -241,7 +224,6 @@ function applyNestedParam(
   device: LiveAPI,
   key: string,
   rawValue: string,
-  toolName: string,
   force: boolean,
 ): WrittenParam[] {
   const slashIndex = key.lastIndexOf("/");
@@ -249,13 +231,7 @@ function applyNestedParam(
   // Refused up front, so there is a name after the last "/".
   const paramName = key.slice(slashIndex + 1).trim();
 
-  const target = resolveNestedParamTarget(
-    device,
-    prefix,
-    paramName,
-    toolName,
-    force,
-  );
+  const target = resolveNestedParamTarget(device, prefix, paramName, force);
 
   if (!target) return [];
 
@@ -264,7 +240,6 @@ function applyNestedParam(
   return setParamValues(
     target,
     [{ name: paramName, value: rawValue }],
-    toolName,
     force,
   ).map((result) => ({ ...result, name: `${prefix}/${result.name}` }));
 }
@@ -273,7 +248,6 @@ function applyNestedParam(
  * Set a parameter value with type-appropriate handling
  * @param param - Parameter to set
  * @param inputValue - Value to set
- * @param toolName - Calling tool name for warning prefix
  * @param writtenText - The value as the caller wrote it, unit and all
  * @param device - The device the param belongs to, for the warning
  * @param deviceName - The device's class_display_name
@@ -282,7 +256,6 @@ function applyNestedParam(
 function setParamValue(
   param: LiveAPI,
   inputValue: string | number,
-  toolName: string,
   writtenText: string,
   device: LiveAPI,
   deviceName: string | undefined,
@@ -290,7 +263,7 @@ function setParamValue(
   const paramName = param.getProperty("name") as string;
   // The device carries the path — a param has none of its own — and the param
   // carries the two handles a retry can use, its name and its id.
-  const label = `${toolName}: ${targetLabel(device)} param "${paramName}" (id ${param.id})`;
+  const label = `${targetLabel(device)} param "${paramName}" (id ${param.id})`;
 
   if (!isParamEnabled(param)) {
     warnParamDisabled(label);

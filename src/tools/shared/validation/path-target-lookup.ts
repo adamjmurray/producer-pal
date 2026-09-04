@@ -33,16 +33,14 @@ import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexe
 /**
  * Resolves track path(s) to the ids of the tracks they name.
  * @param paths - Comma-separated track paths (e.g. "t0,rt1,mt")
- * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @returns One track id per path entry, null where a path named none
  */
 export function trackIdPerPath(
   paths: string,
-  tool: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, tool, label, (path, entry) =>
+  return idPerPath(paths, label, (path, entry) =>
     trackAtPath(path, entry, label),
   );
 }
@@ -50,16 +48,14 @@ export function trackIdPerPath(
 /**
  * Resolves scene path(s) to the ids of the scenes they name.
  * @param paths - Comma-separated scene paths (e.g. "s0,s3")
- * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @returns One scene id per path entry, null where a path named none
  */
 export function sceneIdPerPath(
   paths: string,
-  tool: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, tool, label, (path, entry) =>
+  return idPerPath(paths, label, (path, entry) =>
     sceneAtPath(path, entry, label),
   );
 }
@@ -68,19 +64,13 @@ export function sceneIdPerPath(
  * The track a single path names, for a read that has nothing to return when
  * the path is bad and so throws instead of warning.
  * @param entry - One track path (e.g. "t0", "rt1", "mt")
- * @param tool - Tool name, for the error
  * @param label - Param name the path came from, for the error
  * @returns The track it names
  */
-export function trackApiAtPath(
-  entry: string,
-  tool: string,
-  label = "path",
-): LiveAPI {
+export function trackApiAtPath(entry: string, label = "path"): LiveAPI {
   return existing(
     trackAtPath(parseObjectPath(entry, label), entry, label),
     entry,
-    tool,
     label,
   );
 }
@@ -88,19 +78,13 @@ export function trackApiAtPath(
 /**
  * The scene a single path names. Throws like {@link trackApiAtPath}.
  * @param entry - One scene path (e.g. "s3")
- * @param tool - Tool name, for the error
  * @param label - Param name the path came from, for the error
  * @returns The scene it names
  */
-export function sceneApiAtPath(
-  entry: string,
-  tool: string,
-  label = "path",
-): LiveAPI {
+export function sceneApiAtPath(entry: string, label = "path"): LiveAPI {
   return existing(
     sceneAtPath(parseObjectPath(entry, label), entry, label),
     entry,
-    tool,
     label,
   );
 }
@@ -153,18 +137,12 @@ function sceneAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
  * Passes an object through, or throws when the path named nothing.
  * @param object - What the path resolved to
  * @param entry - The path as written, for the error
- * @param tool - Tool name, for the error
  * @param label - Param name the path came from, for the error
  * @returns The object
  */
-function existing(
-  object: LiveAPI,
-  entry: string,
-  tool: string,
-  label: string,
-): LiveAPI {
+function existing(object: LiveAPI, entry: string, label: string): LiveAPI {
   if (!object.exists()) {
-    throw new Error(`${tool}: nothing at ${label} "${entry}"`);
+    throw new Error(`nothing at ${label} "${entry}"`);
   }
 
   return object;
@@ -174,14 +152,12 @@ function existing(
  * Resolves each entry through a type-specific lookup, keeping one slot per
  * path so a caller pairing paths against another list keeps its positions.
  * @param paths - The raw path param
- * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @param resolve - Turns a parsed path into the object it names, or throws
  * @returns One id per path entry, null where a path named none
  */
 function idPerPath(
   paths: string,
-  tool: string,
   label: string,
   resolve: (path: ObjectPath, entry: string) => LiveAPI,
 ): Array<string | null> {
@@ -196,9 +172,9 @@ function idPerPath(
         continue;
       }
 
-      console.warn(`${tool}: nothing at ${label} "${entry}"`);
+      console.warn(`nothing at ${label} "${entry}"`);
     } catch (error) {
-      console.warn(`${tool}: ${errorMessage(error)}`);
+      console.warn(errorMessage(error));
     }
 
     ids.push(null);

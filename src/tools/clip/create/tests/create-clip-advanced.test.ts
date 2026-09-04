@@ -226,7 +226,7 @@ describe("createClip - advanced features", () => {
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
       selectMockRef.get().mockImplementationOnce(() => {
-        throw new Error('select failed: id "gone" does not exist');
+        throw new Error('id "gone" does not exist');
       });
 
       const result = await createClip({ slot: "0/0", focus: true });

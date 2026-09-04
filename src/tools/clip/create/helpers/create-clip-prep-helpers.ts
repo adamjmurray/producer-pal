@@ -147,7 +147,7 @@ export function resolveCreateClipTakeLanes(
   // Lanes are permanent (Live has no delete), so pick the whole call's
   // destinations before creating a lane on any of it — otherwise a cap failure
   // on the last destination strands empty lanes on all the earlier ones.
-  const fitting = takeLaneTargetsThatFit(arrangementPositions, "createClip");
+  const fitting = takeLaneTargetsThatFit(arrangementPositions);
 
   // Resolve once per destination rather than once per clip — otherwise a single
   // "l+" covering three arrangementStarts gets three fresh lanes.
@@ -165,7 +165,7 @@ export function resolveCreateClipTakeLanes(
 
     lanes.set(key, lane);
     console.warn(
-      `createClip: targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
+      `targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
     );
   }
 

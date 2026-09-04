@@ -61,7 +61,7 @@ export function resolveClip(
   slotValidated = false,
 ): ResolveClipResult {
   if (clipId != null) {
-    return { found: true, clip: validateIdType(clipId, "clip", "readClip") };
+    return { found: true, clip: validateIdType(clipId, "clip") };
   }
 
   // Go straight for the clip. A clip that answers proves its track and scene
@@ -301,7 +301,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   // takes.
   if (path != null && slot != null) {
     throw new Error(
-      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+      "path and slot both name a clip; use path alone (slot is deprecated)",
     );
   }
 
@@ -309,7 +309,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
     // The aliases are a fallback for a caller that did not use path.
     if (args.trackIndex != null || args.sceneIndex != null) {
       console.warn(
-        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+        'trackIndex/sceneIndex ignored — "path" already names the clip',
       );
     }
 
@@ -379,9 +379,7 @@ function assertClipIdAtSlot(
   const atPath = livePath.track(trackIndex).clipSlot(sceneIndex).clip();
 
   if (named.path !== atPath) {
-    throw new Error(
-      `readClip failed: ${param} and id name different clips; use one`,
-    );
+    throw new Error(`${param} and id name different clips; use one`);
   }
 }
 
@@ -397,21 +395,16 @@ function arrangementClipIdAt(
   clipId: string | null,
 ): string {
   const source = requireCompletePosition(parsed, "path");
-  const clip = arrangementClipAtPosition(source, {
-    toolName: "readClip",
-    paramName: "path",
-  });
+  const clip = arrangementClipAtPosition(source, "path");
 
   if (clip == null) {
-    throw new Error(
-      `readClip failed: no clip at path "${formatObjectPath(parsed)}"`,
-    );
+    throw new Error(`no clip at path "${formatObjectPath(parsed)}"`);
   }
 
   // Naming the same clip twice over is not a conflict; naming two is.
   if (clipId != null && clipId !== clip.id) {
     throw new Error(
-      `readClip failed: id "${clipId}" and path "${formatObjectPath(parsed)}" name different clips`,
+      `id "${clipId}" and path "${formatObjectPath(parsed)}" name different clips`,
     );
   }
 

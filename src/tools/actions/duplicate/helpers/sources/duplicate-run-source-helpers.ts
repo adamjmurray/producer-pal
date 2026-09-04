@@ -156,7 +156,7 @@ function runOneChainSource(
  * @returns The object to copy
  */
 function sourceObject(source: SourceShare, type: string): LiveAPI {
-  return validateIdType(source.id, type, "duplicate");
+  return validateIdType(source.id, type);
 }
 
 /**
@@ -204,7 +204,7 @@ function duplicateDrumPadToPaths(
   // Unlike a device, a pad has no natural "next" slot to default to — the next
   // MIDI note is as likely to be occupied as empty — so the caller must say.
   if (paths.length === 0) {
-    throw new Error("duplicate failed: toPath is required for drum pads");
+    throw new Error("toPath is required for drum pads");
   }
 
   claimLabels(labels, paths.length);
@@ -323,9 +323,7 @@ function duplicateTrackOrSceneToSession(
     const trackIndex = object.trackIndex;
 
     if (trackIndex == null) {
-      throw new Error(
-        `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
-      );
+      throw new Error(`no track index for id "${id}" (path="${object.path}")`);
     }
 
     const actualTrackIndex = trackIndex + i;
@@ -346,9 +344,7 @@ function duplicateTrackOrSceneToSession(
   const sceneIndex = object.sceneIndex;
 
   if (sceneIndex == null) {
-    throw new Error(
-      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-    );
+    throw new Error(`no scene index for id "${id}" (path="${object.path}")`);
   }
 
   const actualSceneIndex = sceneIndex + i;

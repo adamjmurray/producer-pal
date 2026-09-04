@@ -47,9 +47,7 @@ describe("readScene by path", () => {
   it("throws when the path names nothing", () => {
     mockNonExistentObjects();
 
-    expect(() => readScene({ path: "s9" })).toThrow(
-      'readScene: nothing at path "s9"',
-    );
+    expect(() => readScene({ path: "s9" })).toThrow('nothing at path "s9"');
   });
 
   it("throws when the path names something else", () => {
@@ -63,7 +61,7 @@ describe("readScene by path", () => {
     ["sceneIndex", { sceneIndex: 0 }],
   ])("refuses a path sent with %s", (_name, other) => {
     expect(() => readScene({ path: "s1", ...other })).toThrow(
-      "readScene: path names the scene on its own",
+      "path names the scene on its own",
     );
   });
 });

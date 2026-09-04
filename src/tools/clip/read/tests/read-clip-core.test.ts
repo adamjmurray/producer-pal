@@ -604,14 +604,8 @@ describe("readClip", () => {
   // The message names path, not the deprecated slot: a caller who sent neither
   // can't see slot, so pointing at it is advice they can't act on.
   it("throws an error when neither id nor path are provided", () => {
-    expect(() => readClip({})).toThrow(
-      "readClip failed: id or path is required",
-    );
-    expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "readClip failed: id or path is required",
-    );
-    expect(() => readClip({ sceneIndex: 1 })).toThrow(
-      "readClip failed: id or path is required",
-    );
+    expect(() => readClip({})).toThrow("id or path is required");
+    expect(() => readClip({ trackIndex: 1 })).toThrow("id or path is required");
+    expect(() => readClip({ sceneIndex: 1 })).toThrow("id or path is required");
   });
 });

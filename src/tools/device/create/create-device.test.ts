@@ -90,7 +90,7 @@ describe("createDevice", () => {
           path: "t0",
           deviceName: "NotARealDevice",
         }),
-      ).toThrow(/createDevice failed: invalid deviceName "NotARealDevice"/);
+      ).toThrow(/invalid deviceName "NotARealDevice"/);
     });
 
     it("should include valid devices in error message", () => {
@@ -184,7 +184,7 @@ describe("createDevice", () => {
   describe("path validation", () => {
     it("should throw error when deviceName provided but path missing", () => {
       expect(() => createDevice({ deviceName: "Compressor" })).toThrow(
-        "createDevice failed: path is required when creating a device",
+        "path is required when creating a device",
       );
     });
   });
@@ -453,9 +453,7 @@ describe("createDevice", () => {
             path: "t0/d0/c0",
             deviceName: "Compressor",
           }),
-        ).toThrow(
-          'createDevice failed: container at path "t0/d0/c0" does not exist',
-        );
+        ).toThrow('container at path "t0/d0/c0" does not exist');
 
         liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
       });
@@ -622,7 +620,7 @@ describe("createDevice", () => {
 
       expect(() =>
         createDevice({ path: "t99", deviceName: "Compressor" }),
-      ).toThrow("createDevice failed");
+      ).toThrow('container at path "t99" does not exist');
     });
   });
 

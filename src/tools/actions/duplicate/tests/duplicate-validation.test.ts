@@ -22,32 +22,32 @@ describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", async () => {
     await expect(
       duplicate({ id: "some-id" } as { type: string; id: string }),
-    ).rejects.toThrow("duplicate failed: type is required");
+    ).rejects.toThrow("type is required");
   });
 
   it("should throw an error when id is missing", async () => {
     await expect(
       duplicate({ type: "track" } as { type: string; id: string }),
-    ).rejects.toThrow("duplicate failed: id or path is required");
+    ).rejects.toThrow("id or path is required");
   });
 
   it("should throw an error when type is invalid", async () => {
     await expect(duplicate({ type: "invalid", id: "some-id" })).rejects.toThrow(
-      "duplicate failed: type must be one of track, scene, clip",
+      "type must be one of track, scene, clip",
     );
   });
 
   it("should throw an error when count is less than 1", async () => {
     await expect(
       duplicate({ type: "track", id: "some-id", count: 0 }),
-    ).rejects.toThrow("duplicate failed: count must be at least 1");
+    ).rejects.toThrow("count must be at least 1");
   });
 
   it("should throw an error when the object doesn't exist", async () => {
     mockNonExistentObjects();
     await expect(
       duplicate({ type: "track", id: "nonexistent" }),
-    ).rejects.toThrow('duplicate failed: id "nonexistent" does not exist');
+    ).rejects.toThrow('id "nonexistent" does not exist');
   });
 
   it("should throw an error when track has arrangement params", async () => {
@@ -58,9 +58,7 @@ describe("duplicate - input validation", () => {
         id: "track1",
         arrangementStart: "1|1|1",
       }),
-    ).rejects.toThrow(
-      "duplicate failed: tracks cannot be duplicated to arrangement",
-    );
+    ).rejects.toThrow("tracks cannot be duplicated to arrangement");
   });
 
   it("should allow type 'track' without arrangement params", async () => {
@@ -110,7 +108,7 @@ describe("duplicate - the ids alias", () => {
 
     await expect(
       duplicate({ type: "track", id: "track1,nope" }),
-    ).rejects.toThrow('duplicate failed: id "nope" does not exist');
+    ).rejects.toThrow('id "nope" does not exist');
     expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
   });
 });
@@ -140,7 +138,7 @@ describe("duplicate - clip session validation", () => {
         id: "clip1",
         toSlot: ",",
       }),
-    ).rejects.toThrow("duplicate failed: clip requires toPath");
+    ).rejects.toThrow("clip requires toPath");
   });
 
   // Every other inapplicable param on this tool warns; these two used to be
@@ -277,7 +275,7 @@ describe("duplicate - track/scene index validation", () => {
     });
 
     await expect(duplicate({ type: "track", id: "track1" })).rejects.toThrow(
-      'duplicate failed: no track index for id "track1"',
+      'no track index for id "track1"',
     );
   });
 
@@ -291,7 +289,7 @@ describe("duplicate - track/scene index validation", () => {
 
     it("should throw for session duplication", async () => {
       await expect(duplicate({ type: "scene", id: "scene1" })).rejects.toThrow(
-        'duplicate failed: no scene index for id "scene1"',
+        'no scene index for id "scene1"',
       );
     });
 
@@ -302,7 +300,7 @@ describe("duplicate - track/scene index validation", () => {
           id: "scene1",
           arrangementStart: "1|1",
         }),
-      ).rejects.toThrow('duplicate failed: no scene index for id "scene1"');
+      ).rejects.toThrow('no scene index for id "scene1"');
     });
   });
 });

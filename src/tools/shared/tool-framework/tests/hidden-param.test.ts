@@ -164,11 +164,9 @@ describe("hiddenParamWarnings", () => {
     }),
   });
 
-  it("names the tool, the retired param, and the replacement", () => {
-    expect(
-      hiddenParamWarnings("ppal-duplicate", ["slot"], hidden),
-    ).toStrictEqual([
-      'WARNING: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
+  it("names the retired param and its replacement", () => {
+    expect(hiddenParamWarnings(["slot"], hidden)).toStrictEqual([
+      'WARNING: param "slot" is deprecated and will be removed; use "path" instead',
     ]);
   });
 
@@ -177,7 +175,6 @@ describe("hiddenParamWarnings", () => {
   it("shows the replacement's example when the deprecation has one", () => {
     expect(
       hiddenParamWarnings(
-        "ppal-duplicate",
         ["locator"],
         collectHiddenParams({
           locator: deprecatedParam(z.string().optional(), {
@@ -187,7 +184,7 @@ describe("hiddenParamWarnings", () => {
         }),
       ),
     ).toStrictEqual([
-      'WARNING: ppal-duplicate param "locator" is deprecated and will be removed; use "toPath" instead (e.g. toPath: "t2[loc:Verse]")',
+      'WARNING: param "locator" is deprecated and will be removed; use "toPath" instead (e.g. toPath: "t2[loc:Verse]")',
     ]);
   });
 
@@ -195,27 +192,22 @@ describe("hiddenParamWarnings", () => {
   // correction rather than two near-identical lines.
   it("groups aliases by the param they fold into", () => {
     expect(
-      hiddenParamWarnings(
-        "ppal-create-clip",
-        ["trackIndex", "sceneIndex"],
-        hidden,
-      ),
+      hiddenParamWarnings(["trackIndex", "sceneIndex"], hidden),
     ).toStrictEqual([
-      'WARNING: ppal-create-clip accepts "trackIndex", "sceneIndex" as a fallback; the parameter is "path" (e.g. path: "t0/s1")',
+      'WARNING: "trackIndex", "sceneIndex" accepted as a fallback; the parameter is "path" (e.g. path: "t0/s1")',
     ]);
   });
 
   it("omits the example when the alias has none", () => {
     expect(
       hiddenParamWarnings(
-        "ppal-select",
         ["trackIndex"],
         collectHiddenParams({
           trackIndex: aliasParam(z.number().optional(), { canonical: "path" }),
         }),
       ),
     ).toStrictEqual([
-      'WARNING: ppal-select accepts "trackIndex" as a fallback; the parameter is "path"',
+      'WARNING: "trackIndex" accepted as a fallback; the parameter is "path"',
     ]);
   });
 
@@ -234,30 +226,26 @@ describe("hiddenParamWarnings", () => {
     });
 
     expect(
-      hiddenParamWarnings("ppal-select", ["trackId", "sceneId"], independent),
+      hiddenParamWarnings(["trackId", "sceneId"], independent),
     ).toStrictEqual([
-      'WARNING: ppal-select accepts "trackId", "sceneId" as fallbacks; "id" names one object, so keep them as they are for several',
+      'WARNING: "trackId", "sceneId" accepted as fallbacks; "id" names one object, so keep them as they are for several',
     ]);
 
     // One alias really is collapsible, so that advice still stands.
-    expect(
-      hiddenParamWarnings("ppal-select", ["trackId"], independent),
-    ).toStrictEqual([
-      'WARNING: ppal-select accepts "trackId" as a fallback; the parameter is "id"',
+    expect(hiddenParamWarnings(["trackId"], independent)).toStrictEqual([
+      'WARNING: "trackId" accepted as a fallback; the parameter is "id"',
     ]);
   });
 
   it("says nothing when no hidden param was sent", () => {
-    expect(hiddenParamWarnings("ppal-duplicate", [], hidden)).toStrictEqual([]);
+    expect(hiddenParamWarnings([], hidden)).toStrictEqual([]);
   });
 
   // Both callers filter Object.keys(hidden), but the signature takes any key
   // list, and a visible param has nothing to correct.
   it("skips a key that isn't hidden", () => {
-    expect(
-      hiddenParamWarnings("ppal-duplicate", ["name", "slot"], hidden),
-    ).toStrictEqual([
-      'WARNING: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
+    expect(hiddenParamWarnings(["name", "slot"], hidden)).toStrictEqual([
+      'WARNING: param "slot" is deprecated and will be removed; use "path" instead',
     ]);
   });
 });
@@ -295,7 +283,7 @@ describe("defineTool with hidden params", () => {
       const texts = result.content.map((c) => c.text);
 
       expect(texts).toContain(
-        'WARNING: test-tool param "toSlot" is deprecated and will be removed; use "toPath" instead',
+        'WARNING: param "toSlot" is deprecated and will be removed; use "toPath" instead',
       );
       expect(texts.join("\n")).not.toContain("ignored unexpected argument");
     });
@@ -306,7 +294,7 @@ describe("defineTool with hidden params", () => {
 
     return handler(mockServer)({ id: "1", toTrack: 2 }).then((result) => {
       expect(result.content.map((c) => c.text)).toContain(
-        'WARNING: test-tool accepts "toTrack" as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
+        'WARNING: "toTrack" accepted as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
       );
     });
   });
@@ -340,7 +328,7 @@ describe("defineTool with hidden params", () => {
 
     return handler(mockServer)({ id: "1", bogus: 1 }).then((result) => {
       expect(result.content.map((c) => c.text)).toContain(
-        "WARNING: test-tool ignored unexpected argument(s): bogus",
+        "WARNING: ignored unexpected argument(s): bogus",
       );
     });
   });

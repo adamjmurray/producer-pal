@@ -449,7 +449,7 @@ describe("parsedToolResult", () => {
     expect(
       parsedToolResult(
         call(
-          "Error executing tool 'ppal-create-clip': createClip failed: slot or arrangementStart is required",
+          "Error executing tool 'ppal-create-clip': slot or arrangementStart is required",
         ),
       ),
     ).toBeNull();
@@ -483,7 +483,7 @@ describe("lastSuccessfulToolCall", () => {
     name: "ppal-create-clip",
     args: { trackIndex: 3, sceneIndex: "0" },
     result:
-      "Error executing tool 'ppal-create-clip': createClip failed: slot or arrangementStart is required",
+      "Error executing tool 'ppal-create-clip': slot or arrangementStart is required",
   };
 
   const succeeded: ToolCall = {

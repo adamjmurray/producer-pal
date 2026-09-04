@@ -102,14 +102,12 @@ export const simplerSpec: SpecializedDeviceSpec = {
     {
       name: "sample",
       read: readSamplePath,
-      write: (device, value, toolName) =>
-        setSimplerSample(device, String(value), toolName),
+      write: (device, value) => setSimplerSample(device, String(value)),
     },
     {
       name: "gainDb",
       read: readSimplerGain,
-      write: (device, value, toolName) =>
-        setSimplerGain(device, Number(value), toolName),
+      write: (device, value) => setSimplerGain(device, Number(value)),
     },
     enumParam("playbackMode", "playback_mode", PLAYBACK_MODES),
     enumParam(
@@ -120,15 +118,15 @@ export const simplerSpec: SpecializedDeviceSpec = {
     {
       name: "retrigger",
       read: (device) => readBoolProp(device, "retrigger"),
-      write: (device, value, toolName) =>
-        writeBoolProp(device, "retrigger", value, toolName, "retrigger"),
+      write: (device, value) =>
+        writeBoolProp(device, "retrigger", value, "retrigger"),
     },
     {
       name: "voices",
       options: VOICES,
       read: readVoices,
-      write: (device, value, toolName) =>
-        writeIntFromSet(device, "voices", value, VOICES, toolName, "voices"),
+      write: (device, value) =>
+        writeIntFromSet(device, "voices", value, VOICES, "voices"),
     },
     // Read-only state.
     {
@@ -164,11 +162,11 @@ export const simplerSpec: SpecializedDeviceSpec = {
       description: "Halve the warp tempo (Sample tab ÷2)",
     },
     warpAs: {
-      handler: (device, args, toolName) => {
+      handler: (device, args) => {
         const beats = Number(args[0]);
 
         if (!Number.isFinite(beats)) {
-          console.warn(`${toolName}: warpAs requires a numeric beats argument`);
+          console.warn(`warpAs requires a numeric beats argument`);
 
           return;
         }

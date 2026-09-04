@@ -94,7 +94,7 @@ describe("updateDevice - display-value search", () => {
 
     expect(expectValueSet(param)).toBe(1);
     expect(capturedWarnings()).toContain(
-      'updateDevice: t0/d0 (id dev1) param "Drive" (id db-param) only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value.',
+      't0/d0 (id dev1) param "Drive" (id db-param) only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value.',
     );
   });
 
@@ -278,7 +278,7 @@ describe("updateDevice - a request Live silently drops", () => {
 
     expect(param.properties.value).toBe(1);
     expect(capturedWarnings()).toContain(
-      'updateDevice: t0/d0 (id dev1) param "Vintage" (id word-param) was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
+      't0/d0 (id dev1) param "Vintage" (id word-param) was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
     );
   });
 
@@ -359,7 +359,7 @@ describe("updateDevice - a word at the max end of the range", () => {
     updateDevice({ id: "dev1", params: [{ name: "Release", value: "3" }] });
 
     expect(capturedWarnings()).toContain(
-      'updateDevice: t0/d0 (id dev1) param "Release" (id sentinel-param) only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value.',
+      't0/d0 (id dev1) param "Release" (id sentinel-param) only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value.',
     );
   });
 });

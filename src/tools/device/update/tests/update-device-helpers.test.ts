@@ -197,7 +197,7 @@ describe("updateMacroCount", () => {
     updateMacroCount(deviceApi, 8);
 
     expect(capturedWarnings()).toContain(
-      "updateDevice: macro count only available on rack devices; skipping t0/d0 (id non-rack)",
+      "macro count only available on rack devices; skipping t0/d0 (id non-rack)",
     );
     expect(nonRackDevice.call).not.toHaveBeenCalled();
   });

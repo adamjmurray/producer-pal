@@ -23,11 +23,7 @@ describe("trackIdPerPath", () => {
     registerMockObject("rt0", { path: livePath.returnTrack(0) });
     registerMockObject("mt", { path: livePath.masterTrack() });
 
-    expect(trackIdPerPath("t0, rt0, mt", "tool")).toStrictEqual([
-      "t0",
-      "rt0",
-      "mt",
-    ]);
+    expect(trackIdPerPath("t0, rt0, mt")).toStrictEqual(["t0", "rt0", "mt"]);
   });
 
   // Every kind a path can name gets its own noun, so the model is told what it
@@ -40,31 +36,31 @@ describe("trackIdPerPath", () => {
     ["t0/d1", "a device"],
     ["t0[5|1]", "an arrangement clip"],
   ])("says %s names %s, not a track", (path, noun) => {
-    expect(trackIdPerPath(path, "tool")).toStrictEqual([null]);
+    expect(trackIdPerPath(path)).toStrictEqual([null]);
     expect(capturedWarnings()).toContain(
-      `tool: invalid path "${path}" - names ${noun}, not a track; expected "t<index>", "rt<index>", or "mt"`,
+      `invalid path "${path}" - names ${noun}, not a track; expected "t<index>", "rt<index>", or "mt"`,
     );
   });
 
   it("keeps a bad entry's place so the good ones stay put", () => {
-    expect(trackIdPerPath("s1,t0", "tool")).toStrictEqual([null, "t0"]);
+    expect(trackIdPerPath("s1,t0")).toStrictEqual([null, "t0"]);
   });
 
   it("refuses a hole in the list", () => {
     // Nothing can line up against a list whose length is a guess, so this is
     // refused before anything runs — the same as a hole in `id`.
-    expect(() => trackIdPerPath("t0,,t1", "tool")).toThrow(/empty entry/);
+    expect(() => trackIdPerPath("t0,,t1")).toThrow(/empty entry/);
   });
 
   it("ignores one trailing comma", () => {
-    expect(trackIdPerPath("t0,", "tool")).toStrictEqual(["t0"]);
+    expect(trackIdPerPath("t0,")).toStrictEqual(["t0"]);
   });
   // A "+" root would otherwise be described by the default arm as "a track",
   // making the message read "names a track, not a track".
   it("says a path names something to create, not a track", () => {
-    expect(trackIdPerPath("s+", "tool")).toStrictEqual([null]);
+    expect(trackIdPerPath("s+")).toStrictEqual([null]);
     expect(capturedWarnings()).toContain(
-      'tool: invalid path "s+" - names a new scene, not a track; expected "t<index>", "rt<index>", or "mt"',
+      'invalid path "s+" - names a new scene, not a track; expected "t<index>", "rt<index>", or "mt"',
     );
   });
 });
@@ -78,7 +74,7 @@ describe("sceneIdPerPath", () => {
   it("names the scene at each path, in order", () => {
     registerMockObject("s2", { path: livePath.scene(2) });
 
-    expect(sceneIdPerPath("s0,s2", "tool")).toStrictEqual(["s0", "s2"]);
+    expect(sceneIdPerPath("s0,s2")).toStrictEqual(["s0", "s2"]);
   });
 
   it.each([
@@ -87,9 +83,9 @@ describe("sceneIdPerPath", () => {
     ["mt", "a track"],
     ["t0/s1", "a clip slot"],
   ])("says %s names %s, not a scene", (path, noun) => {
-    expect(sceneIdPerPath(path, "tool")).toStrictEqual([null]);
+    expect(sceneIdPerPath(path)).toStrictEqual([null]);
     expect(capturedWarnings()).toContain(
-      `tool: invalid path "${path}" - names ${noun}, not a scene; expected "s<index>"`,
+      `invalid path "${path}" - names ${noun}, not a scene; expected "s<index>"`,
     );
   });
 });

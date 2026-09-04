@@ -46,7 +46,7 @@ describe("createClip - audio clips", () => {
           notes: "C3 1|1",
         }),
       ).rejects.toThrow(
-        "createClip failed: cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
+        "cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
       );
     });
   });
@@ -347,7 +347,7 @@ describe("createClip - audio clips", () => {
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).rejects.toThrow("createClip failed: track 99 does not exist");
+      ).rejects.toThrow("track 99 does not exist");
     });
 
     it("should emit warning and return empty array when audio clip creation fails", async () => {

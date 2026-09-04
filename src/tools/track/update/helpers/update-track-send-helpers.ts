@@ -90,9 +90,7 @@ export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
-    console.warn(
-      `updateTrack: track ${targetLabel(track)} has no mixer device`,
-    );
+    console.warn(`track ${targetLabel(track)} has no mixer device`);
 
     return;
   }
@@ -100,7 +98,7 @@ export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
   const sends = mixer.getChildren("sends");
 
   if (sends.length === 0) {
-    console.warn(`updateTrack: track ${targetLabel(track)} has no sends`);
+    console.warn(`track ${targetLabel(track)} has no sends`);
 
     return;
   }
@@ -109,7 +107,7 @@ export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
 
   if (target == null) {
     console.warn(
-      `updateTrack: track ${targetLabel(track)} has no send for return "${send.return}"`,
+      `track ${targetLabel(track)} has no send for return "${send.return}"`,
     );
 
     return;
@@ -119,7 +117,7 @@ export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
     target,
     "display_value",
     send.gainDb,
-    `updateTrack: track ${targetLabel(track)} send "${send.name}"`,
+    `track ${targetLabel(track)} send "${send.name}"`,
   );
 }
 
@@ -164,7 +162,7 @@ function matchReturn(
         ? `Available: ${returns.names.join(", ")}`
         : "the Live Set has no return tracks";
 
-    console.warn(`updateTrack: ${problem} (${available})`);
+    console.warn(`${problem} (${available})`);
 
     return null;
   }

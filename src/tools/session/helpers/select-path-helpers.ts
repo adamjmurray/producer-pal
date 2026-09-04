@@ -126,7 +126,7 @@ function targetFromParams({
   // replaces, so refuse instead of picking.
   if (slot != null || devicePath != null) {
     throw new Error(
-      "select failed: path and slot/devicePath both name a target; use path alone (the others are deprecated)",
+      "path and slot/devicePath both name a target; use path alone (the others are deprecated)",
     );
   }
 
@@ -291,9 +291,7 @@ function assertSameObject(id: string, path: PathLike | null): void {
  * @returns The error to throw
  */
 function pathConflict(name: string): Error {
-  return new Error(
-    `select failed: path and ${name} name different targets; use path alone`,
-  );
+  return new Error(`path and ${name} name different targets; use path alone`);
 }
 
 /**

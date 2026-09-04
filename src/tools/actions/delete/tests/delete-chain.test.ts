@@ -136,7 +136,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: path "t0/d0/pC1" names a whole drum pad; use type="drum-pad", ' +
+      'path "t0/d0/pC1" names a whole drum pad; use type="drum-pad", ' +
         'or name one layer like "t0/d0/pC1/c0"',
     );
   });
@@ -158,7 +158,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      "delete: chain t0/d0/c0 (id rack-chain) is not on a drum pad. Live has no way to " +
+      "chain t0/d0/c0 (id rack-chain) is not on a drum pad. Live has no way to " +
         `delete a rack chain, and only a drum pad's chains can be removed.`,
     );
   });
@@ -195,7 +195,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      "delete: chain t0/d0/pC1/c0 (id chain-0) needs a free drum pad to move to, and its " +
+      "chain t0/d0/pC1/c0 (id chain-0) needs a free drum pad to move to, and its " +
         "Drum Rack has none — a rack nested in a drum pad has no pads at all. " +
         "Live offers no other way to remove it; delete its devices to empty " +
         "the pad, or move it with update-device's toPath.",
@@ -225,7 +225,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      "delete: Live did not remove chain t0/d0/pC1/c0 (id chain-0), so it was left as is",
+      "Live did not remove chain t0/d0/pC1/c0 (id chain-0), so it was left as is",
     );
   });
 
@@ -245,7 +245,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: path "t0/d1" resolves to device, not chain',
+      'path "t0/d1" resolves to device, not chain',
     );
   });
 
@@ -263,7 +263,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: chain at path "t0/d0/c9" does not exist',
+      'chain at path "t0/d0/c9" does not exist',
     );
   });
 
@@ -280,7 +280,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: chain at path "t0/d0/pC1/c9" does not exist',
+      'chain at path "t0/d0/pC1/c9" does not exist',
     );
   });
 });

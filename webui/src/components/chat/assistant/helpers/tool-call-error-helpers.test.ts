@@ -50,20 +50,18 @@ describe("extractErrorSummary", () => {
   describe("Error executing tool prefix", () => {
     it("strips tool error prefix from JSON-stringified error", () => {
       const result = JSON.stringify(
-        "Error executing tool 'ppal-read-track': readTrack: trackIndex 99 does not exist",
+        "Error executing tool 'ppal-read-track': trackIndex 99 does not exist",
       );
 
-      expect(extractErrorSummary(result)).toBe(
-        "readTrack: trackIndex 99 does not exist",
-      );
+      expect(extractErrorSummary(result)).toBe("trackIndex 99 does not exist");
     });
 
     it("strips tool error prefix from plain string", () => {
       expect(
         extractErrorSummary(
-          "Error executing tool 'ppal-read-track': readTrack: trackIndex 99 does not exist",
+          "Error executing tool 'ppal-read-track': trackIndex 99 does not exist",
         ),
-      ).toBe("readTrack: trackIndex 99 does not exist");
+      ).toBe("trackIndex 99 does not exist");
     });
   });
 

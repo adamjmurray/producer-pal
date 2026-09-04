@@ -320,7 +320,7 @@ describe("updateTrack - mixer properties", () => {
 
     expect(volumeParam1.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("updateTrack: gainDb is disabled"),
+      expect.stringContaining("gainDb is disabled"),
     );
   });
 });

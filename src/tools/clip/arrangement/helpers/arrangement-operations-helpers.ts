@@ -102,9 +102,7 @@ export function handleArrangementLengthening({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(
-      `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
-    );
+    throw new Error(`could not determine trackIndex for clip ${clip.id}`);
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
@@ -317,9 +315,7 @@ export function handleArrangementShortening({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(
-      `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
-    );
+    throw new Error(`could not determine trackIndex for clip ${clip.id}`);
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));

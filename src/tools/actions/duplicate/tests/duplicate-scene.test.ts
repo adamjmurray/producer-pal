@@ -294,7 +294,7 @@ describe("duplicate - scene duplication", () => {
       await expect(
         duplicate({ type: "scene", id: "scene1", toPath: "t0[5|1]" }),
       ).rejects.toThrow(
-        'duplicate failed: toPath "t0[5|1]" names a lane, but a scene copies ' +
+        'toPath "t0[5|1]" names a lane, but a scene copies ' +
           'across every track; name the position alone, as "[5|1]"',
       );
     });

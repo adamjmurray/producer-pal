@@ -82,10 +82,10 @@ export function updateScene(
   const named = { id, ids, path, paths };
 
   if (targetCount(named) === 0) {
-    throw new Error("updateScene failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
-  validateTempo(tempo, "updateScene", -1);
+  validateTempo(tempo, -1);
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
@@ -95,7 +95,7 @@ export function updateScene(
     { param: "color", value: color },
   ]);
 
-  const sceneIds = targetIds(named, "updateScene", sceneIdPerPath);
+  const sceneIds = targetIds(named, sceneIdPerPath);
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
@@ -122,7 +122,7 @@ export function updateScene(
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
     // onto the wrong scene.
-    const [scene] = validateIdTypes([sceneId], "scene", "updateScene", {
+    const [scene] = validateIdTypes([sceneId], "scene", {
       skipInvalid: true,
     });
 

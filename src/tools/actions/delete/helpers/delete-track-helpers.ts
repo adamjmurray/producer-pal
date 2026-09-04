@@ -27,7 +27,7 @@ export function deleteTrackObject(
   // reads like something went wrong inside us.
   if (object.path === String(livePath.masterTrack())) {
     console.warn(
-      `delete: Live has no way to delete the main track ${targetLabel(object)}, skipping`,
+      `Live has no way to delete the main track ${targetLabel(object)}, skipping`,
     );
 
     return false;
@@ -50,7 +50,7 @@ export function deleteTrackObject(
 
   if (Number.isNaN(trackIndex)) {
     console.warn(
-      `delete: no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
+      `no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -60,7 +60,7 @@ export function deleteTrackObject(
 
   if (trackIndex === hostTrackIndex) {
     console.warn(
-      `delete: cannot delete track ${targetLabel(object)}, which hosts the Producer Pal device, skipping`,
+      `cannot delete track ${targetLabel(object)}, which hosts the Producer Pal device, skipping`,
     );
 
     return false;

@@ -158,7 +158,7 @@ export async function duplicate(
   // check every source before the first one is made.
   if (sources.length > 1) {
     for (const source of sources) {
-      validateIdType(source.id, type, "duplicate");
+      validateIdType(source.id, type);
     }
   }
 
@@ -269,7 +269,6 @@ function resolveArrangementStart(
   if (positions == null) return undefined;
 
   return resolveLocatorPositions(LiveAPI.from(livePath.liveSet), positions, {
-    toolName: "duplicate",
     paramName: "arrangementStart",
   });
 }
@@ -327,18 +326,18 @@ function foldSceneDestination(
     return { toPath, arrangementStart };
   }
 
-  refuseDoubledPosition(toPath, arrangementStart, "duplicate", "toPath");
+  refuseDoubledPosition(toPath, arrangementStart, "toPath");
 
   const entries = resolveDestinationPositions(
     parseClipDestinationList(toPath, "toPath"),
-    { toolName: "duplicate", paramName: "toPath" },
+    { paramName: "toPath" },
   );
 
   for (const entry of entries) {
     if (entry.lane == null) continue;
 
     throw new Error(
-      `duplicate failed: toPath "${toPath?.trim()}" names a lane, but a scene ` +
+      `toPath "${toPath?.trim()}" names a lane, but a scene ` +
         `copies across every track; name the position alone, as "[5|1]"`,
     );
   }
@@ -369,7 +368,7 @@ function namesArrangementPosition(
 ): boolean {
   if (type !== "clip") return hasArrangementPosition(arrangementStart);
 
-  refuseDoubledPosition(toPath, arrangementStart, "duplicate", "toPath");
+  refuseDoubledPosition(toPath, arrangementStart, "toPath");
 
   return (
     hasArrangementPosition(arrangementStart) || pathCarriesPosition(toPath)
@@ -392,9 +391,7 @@ function foldLocatorParam(
   // Never pick one: the two params name the same position, so a caller who sent
   // both told us two different things about it.
   if (arrangementStart != null && arrangementStart.trim() !== "") {
-    throw new Error(
-      "duplicate failed: arrangementStart and locator are mutually exclusive",
-    );
+    throw new Error("arrangementStart and locator are mutually exclusive");
   }
 
   return locator

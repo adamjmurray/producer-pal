@@ -180,7 +180,7 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual([
       null,
     ]);
-    expect(capturedWarnings()).toContain('duplicate: no track at toPath "t99"');
+    expect(capturedWarnings()).toContain('no track at toPath "t99"');
   });
 
   it("marks a track a MIDI clip can't go to", () => {
@@ -194,7 +194,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "duplicate: MIDI clip t3[1|1] (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
+      "MIDI clip t3[1|1] (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
     );
   });
 
@@ -207,7 +207,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "duplicate: audio clip t4[1|1] (id src_clip) cannot be duplicated to MIDI track t8 (id dest_track_8)",
+      "audio clip t4[1|1] (id src_clip) cannot be duplicated to MIDI track t8 (id dest_track_8)",
     );
   });
 
@@ -223,7 +223,7 @@ describe("resolveDestinationTargets", () => {
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
     ).toStrictEqual([mainLane(7), null]);
     expect(capturedWarnings()).toContain(
-      "duplicate: MIDI clip t3[1|1] (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
+      "MIDI clip t3[1|1] (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
     );
   });
 });

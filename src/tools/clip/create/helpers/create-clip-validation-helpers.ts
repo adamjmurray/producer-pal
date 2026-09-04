@@ -20,7 +20,7 @@ export function validatePositions(destinations: ClipDestinations): void {
     destinations.arrangementPositions.length === 0
   ) {
     throw new Error(
-      'createClip failed: path is required — "t0/s1" for a clip slot, or "t0[5|1]" for the arrangement',
+      'path is required — "t0/s1" for a clip slot, or "t0[5|1]" for the arrangement',
     );
   }
 }
@@ -45,7 +45,7 @@ export function validateDestinationTracks(
     const track = LiveAPI.from(livePath.track(trackIndex));
 
     if (!track.exists()) {
-      throw new Error(`createClip failed: track ${trackIndex} does not exist`);
+      throw new Error(`track ${trackIndex} does not exist`);
     }
 
     tracks.set(trackIndex, track);
@@ -66,7 +66,7 @@ export function validateCreateClipParams(
   // Cannot specify both sampleFile and notes
   if (sampleFile && notes) {
     throw new Error(
-      "createClip failed: cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
+      "cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
     );
   }
 }
@@ -166,7 +166,7 @@ export function handleAutoPlayback(
 
       if (!scene.exists()) {
         throw new Error(
-          `createClip auto="play-scene" failed: no scene at "s${firstSlot.sceneIndex}"`,
+          `auto="play-scene" failed: no scene at "s${firstSlot.sceneIndex}"`,
         );
       }
 
@@ -188,7 +188,7 @@ export function handleAutoPlayback(
 
     default:
       throw new Error(
-        `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
+        `unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
       );
   }
 }

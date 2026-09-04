@@ -73,13 +73,11 @@ export function pathCarriesPosition(value: string | null | undefined): boolean {
  * so the model can retry with one of them dropped.
  * @param rawPath - The destination path param as the caller sent it
  * @param arrangementStart - The position param as the caller sent it
- * @param tool - Tool name, for the message
  * @param label - The destination param's name
  */
 export function refuseDoubledPosition(
   rawPath: string | null | undefined,
   arrangementStart: string | null | undefined,
-  tool: string,
   label: string,
 ): void {
   if (!pathCarriesPosition(rawPath) || !paramNamesSomething(arrangementStart)) {
@@ -87,7 +85,7 @@ export function refuseDoubledPosition(
   }
 
   throw new Error(
-    `${tool} failed: ${label} "${rawPath?.trim()}" and arrangementStart both ` +
-      `name a song position; use one`,
+    `${label} "${rawPath?.trim()}" and arrangementStart both name a song ` +
+      `position; use one`,
   );
 }

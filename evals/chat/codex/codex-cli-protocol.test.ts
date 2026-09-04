@@ -297,7 +297,7 @@ describe("parseCodexStream", () => {
             { type: "text", text: '{"id":"device1"}' },
             {
               type: "text",
-              text: 'WARNING: updateDevice: setModulation target "Flt 1 Freq" — parameter not found',
+              text: 'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
             },
           ],
         },
@@ -310,7 +310,7 @@ describe("parseCodexStream", () => {
         args: {},
         result: '{"id":"device1"}',
         warnings: [
-          'WARNING: updateDevice: setModulation target "Flt 1 Freq" — parameter not found',
+          'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
         ],
       },
     ]);
@@ -351,7 +351,7 @@ describe("parseCodexStream", () => {
           content: [
             {
               type: "text",
-              text: "Error executing tool 'ppal-read-track': readTrack: trackIndex 999 does not exist",
+              text: "Error executing tool 'ppal-read-track': trackIndex 999 does not exist",
             },
           ],
         },
@@ -361,7 +361,7 @@ describe("parseCodexStream", () => {
     });
 
     expect(parseCodexStream(stdout).toolCalls[0]?.result).toBe(
-      "Error executing tool 'ppal-read-track': readTrack: trackIndex 999 does not exist",
+      "Error executing tool 'ppal-read-track': trackIndex 999 does not exist",
     );
   });
 

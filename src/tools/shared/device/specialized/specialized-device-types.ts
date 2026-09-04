@@ -45,7 +45,7 @@ export interface PseudoParam {
    * Apply a new value. Follow update-tool conventions: warn-and-skip on
    * invalid input rather than throwing.
    */
-  write?: (device: LiveAPI, value: string | number, toolName: string) => void;
+  write?: (device: LiveAPI, value: string | number) => void;
 }
 
 /** A parsed `actions` entry: a name plus positional literal args. */
@@ -58,7 +58,6 @@ export interface ParsedAction {
 export type ActionHandler = (
   device: LiveAPI,
   args: Array<string | number>,
-  toolName: string,
 ) => void;
 
 /**

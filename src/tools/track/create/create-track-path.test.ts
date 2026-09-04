@@ -90,7 +90,7 @@ describe("createTrack by path", () => {
 
   it("refuses a path sent with trackIndex", () => {
     expect(() => createTrack({ path: "t+", trackIndex: 1 })).toThrow(
-      "createTrack: path says where the track goes - don't send trackIndex with it",
+      "path says where the track goes - don't send trackIndex with it",
     );
   });
 
@@ -108,7 +108,7 @@ describe("createTrack by path", () => {
     createTrack({ type: "return", name: "Old Way" });
 
     expect(console.warn).toHaveBeenCalledWith(
-      'createTrack: type "return" is deprecated and will be removed; use path "rt+" instead',
+      'type "return" is deprecated and will be removed; use path "rt+" instead',
     );
   });
 });

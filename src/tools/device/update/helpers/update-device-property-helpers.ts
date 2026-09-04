@@ -87,10 +87,10 @@ export function updateDeviceProperties(
   // values are read at the end instead: an A/B swap, a variation recall or a
   // specialized action below rewrites them.
   const paramResults =
-    params != null ? setParamValues(target, params, "updateDevice", force) : [];
+    params != null ? setParamValues(target, params, force) : [];
 
   if (actions != null) {
-    applySpecializedActions(target, actions, "updateDevice");
+    applySpecializedActions(target, actions);
   }
 
   if (abCompare != null) {

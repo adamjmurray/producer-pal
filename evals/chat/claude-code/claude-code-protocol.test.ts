@@ -218,7 +218,7 @@ describe("parseClaudeCodeStream", () => {
                 { type: "text", text: '{"id":"device1"}' },
                 {
                   type: "text",
-                  text: 'WARNING: updateDevice: setModulation source "LFO 9" is invalid',
+                  text: 'WARNING: setModulation source "LFO 9" is invalid',
                 },
               ],
             },
@@ -232,9 +232,7 @@ describe("parseClaudeCodeStream", () => {
         name: "ppal-update-device",
         args: {},
         result: '{"id":"device1"}',
-        warnings: [
-          'WARNING: updateDevice: setModulation source "LFO 9" is invalid',
-        ],
+        warnings: ['WARNING: setModulation source "LFO 9" is invalid'],
       },
     ]);
   });

@@ -48,9 +48,7 @@ export function resolveDuplicateTakeLanes(
 
   if (laneTargets.length === 0) {
     if (paramNamesSomething(takeLaneName)) {
-      console.warn(
-        "duplicate: takeLaneName ignored: no destination names a take lane",
-      );
+      console.warn("takeLaneName ignored: no destination names a take lane");
     }
 
     return new Map();
@@ -60,7 +58,7 @@ export function resolveDuplicateTakeLanes(
   // never had one) can't go on a lane at all.
   if (!canRecreateClip(sourceClip)) {
     console.warn(
-      `duplicate: audio clip ${targetLabel(sourceClip)} has no sample file to rebuild it from, so it was not duplicated to a take lane`,
+      `audio clip ${targetLabel(sourceClip)} has no sample file to rebuild it from, so it was not duplicated to a take lane`,
     );
 
     return new Map();
@@ -71,7 +69,7 @@ export function resolveDuplicateTakeLanes(
 
   // Resolve once per destination rather than once per copy — otherwise a single
   // "l+" covering three arrangementStarts gets three fresh lanes.
-  for (const destination of takeLaneTargetsThatFit(laneTargets, "duplicate")) {
+  for (const destination of takeLaneTargetsThatFit(laneTargets)) {
     const { trackIndex, takeLane: target } = destination;
     const key = takeLaneKey(destination);
 
@@ -85,7 +83,7 @@ export function resolveDuplicateTakeLanes(
 
     lanes.set(key, { lane, laneIndex });
     console.warn(
-      `duplicate: created on take lane "t${trackIndex}/l${laneIndex}"` +
+      `created on take lane "t${trackIndex}/l${laneIndex}"` +
         (losses ? ` (${losses})` : "") +
         ". Expand the take-lanes arrow on the track header in Live to see it.",
     );

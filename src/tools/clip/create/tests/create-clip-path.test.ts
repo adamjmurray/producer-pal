@@ -147,10 +147,10 @@ describe("createClip path param", () => {
 
     await expect(
       createClip({ path: "t99/s0", notes: "C3 1|1" }),
-    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    ).rejects.toThrow("track 99 does not exist");
     await expect(
       createClip({ path: "t99", arrangementStart: "1|1", notes: "C3 1|1" }),
-    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    ).rejects.toThrow("track 99 does not exist");
   });
 
   // A take lane names one place, unlike a bare track — but still not a spot on
@@ -159,12 +159,12 @@ describe("createClip path param", () => {
     await expect(
       createClip({ path: "t0/l+", notes: "C3 1|1" }),
     ).rejects.toThrow(
-      'createClip failed: path "t0/l+" names no position; ' +
+      'path "t0/l+" names no position; ' +
         'add one, as "t0/l+[5|1]"; take lanes hold arrangement clips',
     );
     await expect(
       createClip({ path: "t0/l1", notes: "C3 1|1" }),
-    ).rejects.toThrow('createClip failed: path "t0/l1" names no position;');
+    ).rejects.toThrow('path "t0/l1" names no position;');
   });
 
   // A model writes the word instead of leaving the param out. Counting it as a
@@ -183,7 +183,7 @@ describe("createClip path param", () => {
 
   it("refuses path and slot together rather than picking one", async () => {
     await expect(createClip({ path: "t0/s0", slot: "1/1" })).rejects.toThrow(
-      "createClip failed: path and slot both name a destination",
+      "path and slot both name a destination",
     );
   });
 });
@@ -239,7 +239,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
 
   it("rejects a sceneIndex with no track", async () => {
     await expect(createClip({ sceneIndex: 2 })).rejects.toThrow(
-      'createClip failed: sceneIndex 2 has no track; use path "t<track>/s2"',
+      'sceneIndex 2 has no track; use path "t<track>/s2"',
     );
   });
 
@@ -350,7 +350,7 @@ describe("createClip path coordinate", () => {
     await expect(
       createClip({ path: "t0[5|1]", arrangementStart: "9|1", notes: "C3 1|1" }),
     ).rejects.toThrow(
-      'createClip failed: path "t0[5|1]" and arrangementStart both name a ' +
+      'path "t0[5|1]" and arrangementStart both name a ' +
         "song position; use one",
     );
   });
@@ -363,7 +363,7 @@ describe("createClip path coordinate", () => {
 
     await expect(
       createClip({ path: "t0[5|1],t1", notes: "C3 1|1" }),
-    ).rejects.toThrow('createClip failed: path "t1" names no position;');
+    ).rejects.toThrow('path "t1" names no position;');
   });
 
   it("still creates a session clip beside a coordinate", async () => {

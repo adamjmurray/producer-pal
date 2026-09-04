@@ -38,7 +38,6 @@ export function readEnumByIndex(
  * @param property - Live API property holding the int index
  * @param value - Incoming value (a label string)
  * @param labels - User-facing labels in internal-index order
- * @param toolName - Calling tool name for warning prefix
  * @param paramName - Pseudo-param name for warning text
  */
 export function writeEnumByIndex(
@@ -46,7 +45,6 @@ export function writeEnumByIndex(
   property: string,
   value: string | number,
   labels: readonly string[],
-  toolName: string,
   paramName: string,
 ): void {
   const target = String(value).trim().toLowerCase();
@@ -54,7 +52,7 @@ export function writeEnumByIndex(
 
   if (index < 0) {
     console.warn(
-      `${toolName}: "${value}" is not a valid ${paramName}. Options: ${labels.join(", ")}`,
+      `"${value}" is not a valid ${paramName}. Options: ${labels.join(", ")}`,
     );
 
     return;
@@ -83,8 +81,8 @@ export function enumParam(
     name,
     options: labels,
     read: (device) => readEnumByIndex(device, property, labels),
-    write: (device, value, toolName) =>
-      writeEnumByIndex(device, property, value, labels, toolName, name),
+    write: (device, value) =>
+      writeEnumByIndex(device, property, value, labels, name),
   };
 }
 
@@ -128,21 +126,19 @@ export function coerceBool(value: string | number): boolean | null {
  * @param device - LiveAPI device object
  * @param property - Live API property name
  * @param value - Incoming value
- * @param toolName - Calling tool name for warning prefix
  * @param paramName - Pseudo-param name for warning text
  */
 export function writeBoolProp(
   device: LiveAPI,
   property: string,
   value: string | number,
-  toolName: string,
   paramName: string,
 ): void {
   const bool = coerceBool(value);
 
   if (bool == null) {
     console.warn(
-      `${toolName}: "${value}" is not a valid ${paramName} (expected true/false)`,
+      `"${value}" is not a valid ${paramName} (expected true/false)`,
     );
 
     return;
@@ -171,7 +167,6 @@ export function coerceInt(value: string | number): number | null {
  * @param value - Incoming value
  * @param min - Minimum allowed (inclusive)
  * @param max - Maximum allowed (inclusive)
- * @param toolName - Calling tool name for warning prefix
  * @param paramName - Pseudo-param name for warning text
  */
 export function writeIntInRange(
@@ -180,14 +175,13 @@ export function writeIntInRange(
   value: string | number,
   min: number,
   max: number,
-  toolName: string,
   paramName: string,
 ): void {
   const int = coerceInt(value);
 
   if (int == null || int < min || int > max) {
     console.warn(
-      `${toolName}: ${paramName} must be an integer ${min}-${max} (got "${value}")`,
+      `${paramName} must be an integer ${min}-${max} (got "${value}")`,
     );
 
     return;
@@ -203,7 +197,6 @@ export function writeIntInRange(
  * @param property - Live API property name (an int index when `asIndex`)
  * @param value - Incoming value
  * @param allowed - Allowed values in catalog order
- * @param toolName - Calling tool name for warning prefix
  * @param paramName - Pseudo-param name for warning text
  * @param asIndex - When true, write the catalog index instead of the value
  */
@@ -212,7 +205,6 @@ export function writeIntFromSet(
   property: string,
   value: string | number,
   allowed: readonly number[],
-  toolName: string,
   paramName: string,
   asIndex = false,
 ): void {
@@ -221,7 +213,7 @@ export function writeIntFromSet(
 
   if (pos < 0) {
     console.warn(
-      `${toolName}: ${paramName} must be one of ${allowed.join(", ")} (got "${value}")`,
+      `${paramName} must be one of ${allowed.join(", ")} (got "${value}")`,
     );
 
     return;

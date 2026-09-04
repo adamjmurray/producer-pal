@@ -93,7 +93,7 @@ function trackPathLabel(category: TrackCategory, trackIndex?: number): string {
  */
 function requireTarget(api: LiveAPI, kind: string, path: string): void {
   if (!api.exists()) {
-    throw new Error(`select failed: no ${kind} at "${path}"`);
+    throw new Error(`no ${kind} at "${path}"`);
   }
 }
 

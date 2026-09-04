@@ -55,7 +55,6 @@ interface DrumPadSlot {
  * @param rack - The device being created/updated (the path prefix is relative to it)
  * @param prefix - The path segments before the param name (e.g. "pC1")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
- * @param toolName - Calling tool name for warning prefix
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
  * @returns The target device, or null (after warning) when none can be targeted
  */
@@ -63,14 +62,13 @@ export function resolveNestedParamTarget(
   rack: LiveAPI,
   prefix: string,
   paramName: string,
-  toolName: string,
   force = false,
 ): LiveAPI | null {
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
   if (segments.length === 0) {
     console.warn(
-      `${toolName}: param "${prefix}/${paramName}" has no path before the param name`,
+      `param "${prefix}/${paramName}" has no path before the param name`,
     );
 
     return null;
@@ -83,21 +81,21 @@ export function resolveNestedParamTarget(
 
   // Pad-property model: a `sample` write to a drum pad.
   if (slot) {
-    return resolveDrumPadSampleTarget(rack, slot, toolName, force);
+    return resolveDrumPadSampleTarget(rack, slot, force);
   }
 
   // General case: read-only navigation to an existing device.
   const { target, targetType } = navigateRemainingSegments(rack, segments);
 
   if (!target?.exists()) {
-    console.warn(`${toolName}: no device at "${pathPrefix(rack)}/${prefix}"`);
+    console.warn(`no device at "${pathPrefix(rack)}/${prefix}"`);
 
     return null;
   }
 
   if (targetType !== "device") {
     console.warn(
-      `${toolName}: "${pathPrefix(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
+      `"${pathPrefix(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
     );
 
     return null;
@@ -175,20 +173,18 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
  * sample. The pad's chain auto-creates when missing.
  * @param rack - Drum Rack device
  * @param slot - Parsed drum pad slot
- * @param toolName - Calling tool name for warning prefix
  * @param force - Allow the instrument-to-Simpler swap
  * @returns The Simpler to write the sample to, or null (after warning)
  */
 function resolveDrumPadSampleTarget(
   rack: LiveAPI,
   slot: DrumPadSlot,
-  toolName: string,
   force: boolean,
 ): LiveAPI | null {
   const { padNote, chainIndex, chainNamed, deviceIndex } = slot;
   const padLabel = `${pathPrefix(rack)}/p${padNote}`;
 
-  if (!chainNamed && warnAmbiguousLayer(rack, padNote, padLabel, toolName)) {
+  if (!chainNamed && warnAmbiguousLayer(rack, padNote, padLabel)) {
     return null;
   }
 
@@ -196,9 +192,7 @@ function resolveDrumPadSampleTarget(
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 
   if (!chain?.exists()) {
-    console.warn(
-      `${toolName}: could not resolve or create drum pad "${padLabel}"`,
-    );
+    console.warn(`could not resolve or create drum pad "${padLabel}"`);
 
     return null;
   }
@@ -207,7 +201,7 @@ function resolveDrumPadSampleTarget(
 
   // Nothing to hold the sample yet, so a `dN` names nothing to disagree with.
   if (!instrument) {
-    return createSimplerInChain(chain, toolName);
+    return createSimplerInChain(chain);
   }
 
   if (deviceIndex != null && deviceIndex !== instrument.index) {
@@ -216,7 +210,7 @@ function resolveDrumPadSampleTarget(
       : `p${padNote}/sample`;
 
     console.warn(
-      `${toolName}: sample write SKIPPED on pad ${padLabel} — d${deviceIndex} ` +
+      `sample write SKIPPED on pad ${padLabel} — d${deviceIndex} ` +
         `is not its instrument, which is at d${instrument.index}. Drop the ` +
         `device segment to find the instrument wherever it sits: "${retry}".`,
     );
@@ -247,7 +241,7 @@ function resolveDrumPadSampleTarget(
 
   if (!force) {
     console.warn(
-      `${toolName}: sample write SKIPPED on pad ${padLabel} — it holds ` +
+      `sample write SKIPPED on pad ${padLabel} — it holds ` +
         `${description}, whose sample the Live API can't set. Honoring the ` +
         `write REPLACES it with a Simpler, losing all its settings. Ask the ` +
         `user before passing force:true. To keep it: load the sample on ` +
@@ -264,10 +258,10 @@ function resolveDrumPadSampleTarget(
   // again after its insert; this one keeps the invariant true in between.
   invalidateDevicePathCache();
   console.warn(
-    `${toolName}: force:true — replaced ${description} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
+    `force:true — replaced ${description} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
   );
 
-  return createSimplerInChain(chain, toolName);
+  return createSimplerInChain(chain);
 }
 
 /**
@@ -288,14 +282,12 @@ function article(name: string): string {
  * @param rack - Drum Rack device
  * @param padNote - The pad's note, as the caller spelled it
  * @param padLabel - The pad's full path, for naming it in the warning
- * @param toolName - Calling tool name for warning prefix
  * @returns Whether the write was skipped
  */
 function warnAmbiguousLayer(
   rack: LiveAPI,
   padNote: string,
   padLabel: string,
-  toolName: string,
 ): boolean {
   const layers = resolveDrumPadGroup(rack.path, padNote)?.chains.length ?? 0;
 
@@ -309,7 +301,7 @@ function warnAmbiguousLayer(
   ).join(", ");
 
   console.warn(
-    `${toolName}: sample write SKIPPED on pad ${padLabel} — it has ${layers} ` +
+    `sample write SKIPPED on pad ${padLabel} — it has ${layers} ` +
       `layers, so which one to load is ambiguous. Name one: ${retries}.`,
   );
 
@@ -342,13 +334,9 @@ function findChainInstrument(
  * re-sorts a chain by device type, so the Simpler lands after any MIDI effects
  * and before any audio effects on its own.
  * @param chain - Chain LiveAPI object
- * @param toolName - Calling tool name for warning prefix
  * @returns The created Simpler, or null (after warning) on failure
  */
-function createSimplerInChain(
-  chain: LiveAPI,
-  toolName: string,
-): LiveAPI | null {
+function createSimplerInChain(chain: LiveAPI): LiveAPI | null {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
     | undefined;
@@ -360,7 +348,7 @@ function createSimplerInChain(
   const id = rawId ? String(rawId) : null;
 
   if (!id) {
-    console.warn(`${toolName}: failed to create a Simpler on the drum pad`);
+    console.warn(`failed to create a Simpler on the drum pad`);
 
     return null;
   }

@@ -56,7 +56,7 @@ describe("createScene by path", () => {
 
   it("refuses a path sent with sceneIndex", () => {
     expect(() => createScene({ path: "s1", sceneIndex: 0 })).toThrow(
-      "createScene: path says where the scene goes - don't send sceneIndex with it",
+      "path says where the scene goes - don't send sceneIndex with it",
     );
   });
 });

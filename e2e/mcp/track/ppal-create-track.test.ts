@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -110,7 +111,7 @@ describe("ppal-create-track", () => {
 
     expect(data.path).toMatch(/^rt\d+$/);
     expect(warnings).toStrictEqual([
-      'WARNING: createTrack: type "return" is deprecated and will be removed; use path "rt+" instead',
+      'WARNING: type "return" is deprecated and will be removed; use path "rt+" instead',
     ]);
   });
 

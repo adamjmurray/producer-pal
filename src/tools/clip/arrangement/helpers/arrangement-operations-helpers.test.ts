@@ -42,7 +42,7 @@ describe("arrangement-operations-helpers", () => {
           currentEndTime: 8,
           context: {},
         }),
-      ).toThrow("updateClip failed: could not determine trackIndex for clip");
+      ).toThrow("could not determine trackIndex for clip");
     });
 
     it("should tile clip when currentArrangementLength > totalContentLength for looped clips", () => {
@@ -338,7 +338,7 @@ describe("arrangement-operations-helpers", () => {
           currentEndTime: 8,
           context: { silenceWavPath: "/test.wav" },
         }),
-      ).toThrow("updateClip failed: could not determine trackIndex for clip");
+      ).toThrow("could not determine trackIndex for clip");
     });
 
     it("should shorten audio clip using createAudioClipInSession", () => {

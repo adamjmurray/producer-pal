@@ -37,6 +37,9 @@
 // request in flight (a Max setter, or async work that outlived its response) has
 // no response to land on, so it goes to the Max console instead of contaminating
 // someone else's.
+//
+// A warning never names the tool that raised it. It rides in the tool_result for
+// one tool_use, so the conversation already says which call it came from.
 
 /** Warnings collected for one in-flight request. */
 export interface WarningCapture {

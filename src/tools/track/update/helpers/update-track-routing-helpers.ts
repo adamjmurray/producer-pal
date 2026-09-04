@@ -44,7 +44,7 @@ export function applyRoutingProperties(
 
     if (isGroup || category !== "regular") {
       console.warn(
-        `updateTrack: input routing is only available on regular non-group tracks; skipping track ${targetLabel(track)}`,
+        `input routing is only available on regular non-group tracks; skipping track ${targetLabel(track)}`,
       );
     } else {
       setRouting(track, "input_routing_type", inputRoutingType);
@@ -106,7 +106,7 @@ function resolveRoutingIdentifier(
       const ids = matches.map((routing) => routing.identifier).join(", ");
 
       console.warn(
-        `updateTrack: track ${targetLabel(track)} has ${matches.length} ${property} options named "${value}"; using the first — send the identifier (${ids}) to pick another`,
+        `track ${targetLabel(track)} has ${matches.length} ${property} options named "${value}"; using the first — send the identifier (${ids}) to pick another`,
       );
     }
 
@@ -122,7 +122,7 @@ function resolveRoutingIdentifier(
   const names = available.map((routing) => routing.display_name).join(", ");
 
   console.warn(
-    `updateTrack: track ${targetLabel(track)} has no ${property} named "${value}"; available: ${names || "none"}`,
+    `track ${targetLabel(track)} has no ${property} named "${value}"; available: ${names || "none"}`,
   );
 
   return null;

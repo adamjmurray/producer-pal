@@ -87,7 +87,7 @@ describe("deleteObject by track and scene path", () => {
       type: "scene",
       deleted: false,
     });
-    expect(capturedWarnings()).toContain('delete: nothing at path "s9"');
+    expect(capturedWarnings()).toContain('nothing at path "s9"');
   });
 
   it("reports a path that names the wrong kind of object", () => {
@@ -97,7 +97,7 @@ describe("deleteObject by track and scene path", () => {
       deleted: false,
     });
     expect(capturedWarnings()).toContain(
-      'delete: invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
+      'invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
     );
   });
 
@@ -115,7 +115,7 @@ describe("deleteObject by track and scene path", () => {
     });
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContain(
-      "delete: Live has no way to delete the main track mt (id main), skipping",
+      "Live has no way to delete the main track mt (id main), skipping",
     );
   });
 });

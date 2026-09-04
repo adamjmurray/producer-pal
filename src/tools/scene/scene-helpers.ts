@@ -76,7 +76,7 @@ export function resolveCreateSceneIndex(
 
   if (sceneIndex != null) {
     throw new Error(
-      "createScene: path says where the scene goes - don't send sceneIndex with it",
+      "path says where the scene goes - don't send sceneIndex with it",
     );
   }
 

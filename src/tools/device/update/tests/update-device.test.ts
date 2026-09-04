@@ -70,9 +70,7 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(capturedWarnings()).toContain(
-      'updateDevice: target not found at id "999"',
-    );
+    expect(capturedWarnings()).toContain('target not found at id "999"');
     expect(result).toStrictEqual([
       { id: "123", path: "t0/d0" },
       { id: "456", path: "t0/d1" },
@@ -164,7 +162,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: param "999" not found on t0/d0 (id 123)',
+        'param "999" not found on t0/d0 (id 123)',
       );
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
@@ -175,13 +173,13 @@ describe("updateDevice", () => {
     it("should refuse an entry with an empty name", () => {
       expect(() =>
         updateDevice({ id: "123", params: [{ name: "  ", value: "0.5" }] }),
-      ).toThrow("updateDevice failed: params entry 1 has an empty name");
+      ).toThrow("params entry 1 has an empty name");
     });
 
     it("should refuse an entry with an empty value", () => {
       expect(() =>
         updateDevice({ id: "123", params: [{ name: "789", value: "  " }] }),
-      ).toThrow('updateDevice failed: params entry "789" has an empty value');
+      ).toThrow('params entry "789" has an empty value');
     });
   });
 
@@ -222,7 +220,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: t0/d0 (id 123) param "Warp Mode" (id 791): "InvalidValue" is not valid. ' +
+        't0/d0 (id 123) param "Warp Mode" (id 791): "InvalidValue" is not valid. ' +
           "Options: Repitch, Fade, Jump",
       );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
@@ -268,7 +266,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: t0/d0 (id 123) param "Warp Mode" (id 791): "1" is not valid. ' +
+        't0/d0 (id 123) param "Warp Mode" (id 791): "1" is not valid. ' +
           "Options: Repitch, Fade, Jump",
       );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
@@ -394,7 +392,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: t0/d0 (id 123) param "Pan" (id 792): "hard-left" is not a valid pan ' +
+        't0/d0 (id 123) param "Pan" (id 792): "hard-left" is not a valid pan ' +
           'value (use -1 to 1, or "50L"/"50R"/"C")',
       );
       expect(param792.set).not.toHaveBeenCalled();
@@ -429,7 +427,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'macroCount' not applicable to Device t0/d1 (id 456)",
+        "'macroCount' not applicable to Device t0/d1 (id 456)",
       );
       expect(device456.call).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
@@ -474,7 +472,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: macro count on t0/d0 (id 123) rounded from 7 to 8 (macros come in pairs)",
+        "macro count on t0/d0 (id 123) rounded from 7 to 8 (macros come in pairs)",
       );
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("add_macro");
@@ -504,7 +502,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: A/B Compare not available on t0/d1 (id 456)",
+        "A/B Compare not available on t0/d1 (id 456)",
       );
       expect(device456.set).not.toHaveBeenCalled();
       expect(device456.call).not.toHaveBeenCalled();
@@ -626,9 +624,7 @@ describe("updateDevice", () => {
       });
 
       // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
-      expect(capturedWarnings()).toContain(
-        "updateDevice: cannot move Chain t0/d0 (id 123)",
-      );
+      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
       expect(liveSet.call).not.toHaveBeenCalledWith(
         "move_device",
         expect.anything(),
@@ -649,9 +645,7 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
-      expect(capturedWarnings()).toContain(
-        "updateDevice: cannot move Chain t0/d0 (id 123)",
-      );
+      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
@@ -709,7 +703,7 @@ describe("updateDevice", () => {
       const result = updateDevice({ id: "999", name: "Nope" });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: cannot update Track objects: t3 (id 999)",
+        "cannot update Track objects: t3 (id 999)",
       );
       // Nothing is written to an unsupported object, and it drops from results.
       expect(result).toStrictEqual([]);

@@ -50,12 +50,12 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     trackIndex == null &&
     category !== "master"
   ) {
-    throw new Error("readTrack failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
   if (path != null && (trackId != null || trackIndex != null)) {
     throw new Error(
-      "readTrack: path names the track on its own - don't send id or trackIndex with it",
+      "path names the track on its own - don't send id or trackIndex with it",
     );
   }
 
@@ -63,8 +63,8 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     // An id has to be checked; a path already said what kind of thing it names
     const track =
       trackId != null
-        ? validateIdType(trackId, "track", "readTrack")
-        : trackApiAtPath(path as string, "readTrack");
+        ? validateIdType(trackId, "track")
+        : trackApiAtPath(path as string);
 
     return {
       track,

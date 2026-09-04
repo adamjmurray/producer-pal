@@ -67,9 +67,7 @@ export async function duplicateSceneToArrangementAtPositions(
   const sceneIndex = object.sceneIndex;
 
   if (sceneIndex == null) {
-    throw new Error(
-      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-    );
+    throw new Error(`no scene index for id "${id}" (path="${object.path}")`);
   }
 
   // When single position + count > 1, expand to sequential positions

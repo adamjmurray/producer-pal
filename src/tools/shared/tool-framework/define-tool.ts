@@ -143,17 +143,13 @@ export function defineTool(
 
         // Append warning for extra keys so LLMs learn correct usage
         if (extraKeys.length > 0) {
-          const warning = `${WARNING_PREFIX}${name} ignored unexpected argument(s): ${extraKeys.join(", ")}`;
+          const warning = `${WARNING_PREFIX}ignored unexpected argument(s): ${extraKeys.join(", ")}`;
 
           result.content.push({ type: "text", text: warning });
         }
 
         // The value was honored; this only steers the caller to the real name.
-        for (const text of hiddenParamWarnings(
-          name,
-          usedHidden,
-          hiddenParams,
-        )) {
+        for (const text of hiddenParamWarnings(usedHidden, hiddenParams)) {
           result.content.push({ type: "text", text });
         }
 

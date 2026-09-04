@@ -303,9 +303,7 @@ describe("duplicate - a list of sources", () => {
 
       await expect(
         duplicate({ type: "clip", path: "t9/s0", toPath: "t2/s0" }),
-      ).rejects.toThrow(
-        'duplicate failed: nothing to duplicate at path "t9/s0"',
-      );
+      ).rejects.toThrow('nothing to duplicate at path "t9/s0"');
     });
   });
 

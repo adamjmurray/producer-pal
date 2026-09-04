@@ -41,9 +41,7 @@ export function withTempTrackCopy<T>(
   const sourceTrackIndex = extractRegularTrackIndex(sourcePath);
 
   if (sourceTrackIndex == null) {
-    throw new Error(
-      `duplicate failed: cannot duplicate ${what}s on return and main tracks`,
-    );
+    throw new Error(`cannot duplicate ${what}s on return and main tracks`);
   }
 
   const withinTrack = extractPathWithinTrack(sourcePath, what);
@@ -92,9 +90,7 @@ export function extractPathWithinTrack(path: string, what: string): string {
   );
 
   if (!match) {
-    throw new Error(
-      `duplicate failed: cannot extract ${what} path from "${path}"`,
-    );
+    throw new Error(`cannot extract ${what} path from "${path}"`);
   }
 
   return match[1] as string;

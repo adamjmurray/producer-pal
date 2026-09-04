@@ -198,9 +198,7 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      expect(() => select({ trackIndex: 99 })).toThrow(
-        'select failed: no track at "t99"',
-      );
+      expect(() => select({ trackIndex: 99 })).toThrow('no track at "t99"');
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_track",
         expect.anything(),
@@ -268,9 +266,7 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      expect(() => select({ sceneIndex: 99 })).toThrow(
-        'select failed: no scene at "s99"',
-      );
+      expect(() => select({ sceneIndex: 99 })).toThrow('no scene at "s99"');
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_scene",
         expect.anything(),

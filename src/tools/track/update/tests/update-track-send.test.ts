@@ -155,7 +155,7 @@ describe("updateTrack - send properties", () => {
     ["sendReturn", { sendReturn: "A" }],
   ])("refuses the call when only %s is provided", (_label, args) => {
     expect(() => updateTrack({ id: "123", ...args })).toThrow(
-      "updateTrack failed: sendGainDb and sendReturn must both be specified",
+      "sendGainDb and sendReturn must both be specified",
     );
     expect(send1.set).not.toHaveBeenCalled();
     expect(send2.set).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe("updateTrack - send properties", () => {
     updateTrack({ id: "123", sendGainDb: -12, sendReturn: "ZZZ" });
 
     expect(capturedWarnings()).toContain(
-      'updateTrack: sendReturn "ZZZ" names no return track, so sendGainDb was ' +
+      'sendReturn "ZZZ" names no return track, so sendGainDb was ' +
         "not written (Available: A-Reverb, B-Delay)",
     );
   });
@@ -238,7 +238,7 @@ describe("updateTrack - send properties", () => {
     updateTrack({ id: "123", sendGainDb: -12, sendReturn: "A" });
 
     expect(capturedWarnings()).toContain(
-      'updateTrack: sendReturn "A" names no return track, so sendGainDb was ' +
+      'sendReturn "A" names no return track, so sendGainDb was ' +
         "not written (the Live Set has no return tracks)",
     );
   });
@@ -295,7 +295,7 @@ describe("updateTrack - send properties", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateTrack: sends entry "ZZZ" names no return track, so its gainDb ' +
+        'sends entry "ZZZ" names no return track, so its gainDb ' +
           "was not written (Available: A-Reverb, B-Delay)",
       );
       expect(send1.set).not.toHaveBeenCalled();

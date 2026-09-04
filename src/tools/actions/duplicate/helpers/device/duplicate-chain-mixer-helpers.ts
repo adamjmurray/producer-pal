@@ -89,7 +89,7 @@ function carriedSends(
     const tail = dropped.length === 1 ? "that send was" : "those sends were";
 
     console.warn(
-      `duplicate: the destination rack has no return chain named ${named}, ` +
+      `the destination rack has no return chain named ${named}, ` +
         `so ${tail} not copied`,
     );
   }

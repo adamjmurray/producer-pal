@@ -111,11 +111,7 @@ describe("setSimplerSample", () => {
   it("calls replace_sample on Simpler with the file path", () => {
     const device = registerSimpler();
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "/tmp/kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav");
 
     expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
@@ -126,7 +122,6 @@ describe("setSimplerSample", () => {
     setSimplerSample(
       LiveAPI.from("id simpler-1"),
       "/tmp/My Samples/kick drum.wav",
-      "updateDevice",
     );
 
     expect(device.call).toHaveBeenCalledWith(
@@ -138,11 +133,11 @@ describe("setSimplerSample", () => {
   it("warns and skips on non-Simpler devices, naming the device class", () => {
     const device = registerOperator();
 
-    setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav", "updateDevice");
+    setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav");
 
     expectSampleSkipped(
       device,
-      "updateDevice: 'sample' only applies to Simpler devices (got Operator)",
+      "'sample' only applies to Simpler devices (got Operator)",
     );
   });
 
@@ -151,13 +146,9 @@ describe("setSimplerSample", () => {
 
     registerLiveApp("12.3.8");
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "/tmp/kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav");
 
-    expectSampleSkipped(device, "updateDevice: 'sample' requires Live 12.4");
+    expectSampleSkipped(device, "'sample' requires Live 12.4");
   });
 
   it("loads the sample on a Live newer than 12.4", () => {
@@ -165,11 +156,7 @@ describe("setSimplerSample", () => {
 
     registerLiveApp("13.0");
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "/tmp/kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav");
 
     expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
@@ -177,11 +164,7 @@ describe("setSimplerSample", () => {
   it("warns and skips on Simpler in multi-sample mode", () => {
     const device = registerSimpler({ multiSampleMode: 1 });
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "/tmp/kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav");
 
     expectSampleSkipped(device, "multi-sample mode");
   });
@@ -189,7 +172,7 @@ describe("setSimplerSample", () => {
   it("warns and skips when the path is empty or whitespace", () => {
     const device = registerSimpler();
 
-    setSimplerSample(LiveAPI.from("id simpler-1"), "   ", "updateDevice");
+    setSimplerSample(LiveAPI.from("id simpler-1"), "   ");
 
     expectSampleSkipped(device, "non-empty file path");
   });
@@ -197,11 +180,7 @@ describe("setSimplerSample", () => {
   it("warns and skips when the path is not absolute", () => {
     const device = registerSimpler();
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "relative/kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "relative/kick.wav");
 
     expectSampleSkipped(device, "absolute file path");
   });
@@ -211,11 +190,7 @@ describe("setSimplerSample", () => {
     // inside a relative path must NOT read as absolute.
     const device = registerSimpler();
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "relative/C:/kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "relative/C:/kick.wav");
 
     expectSampleSkipped(device, "absolute file path");
   });
@@ -223,11 +198,7 @@ describe("setSimplerSample", () => {
   it("trims surrounding whitespace before passing the path to Live", () => {
     const device = registerSimpler();
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "  /tmp/kick.wav  ",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "  /tmp/kick.wav  ");
 
     expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
@@ -235,25 +206,11 @@ describe("setSimplerSample", () => {
   it("accepts Windows-style drive-letter paths", () => {
     const device = registerSimpler();
 
-    setSimplerSample(
-      LiveAPI.from("id simpler-1"),
-      "C:\\samples\\kick.wav",
-      "updateDevice",
-    );
+    setSimplerSample(LiveAPI.from("id simpler-1"), "C:\\samples\\kick.wav");
 
     expect(device.call).toHaveBeenCalledWith(
       "replace_sample",
       "C:\\samples\\kick.wav",
-    );
-  });
-
-  it("uses the toolName parameter as warning prefix", () => {
-    registerOperator();
-
-    setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav", "createDevice");
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("createDevice:"),
     );
   });
 });
@@ -310,7 +267,7 @@ describe("setSimplerGain", () => {
   it("sets the loaded sample's gain, converting dB to linear", () => {
     const sample = registerSimplerWithSample();
 
-    setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
+    setSimplerGain(LiveAPI.from("id simpler-1"), 0);
 
     expect(sample.set).toHaveBeenCalledWith("gain", dbToLiveGain(0));
   });
@@ -318,11 +275,7 @@ describe("setSimplerGain", () => {
   it("warns and skips on a non-numeric value", () => {
     const sample = registerSimplerWithSample();
 
-    setSimplerGain(
-      LiveAPI.from("id simpler-1"),
-      Number("oops"),
-      "updateDevice",
-    );
+    setSimplerGain(LiveAPI.from("id simpler-1"), Number("oops"));
 
     expect(sample.set).not.toHaveBeenCalledWith("gain", expect.anything());
     expect(capturedWarnings()).toContainEqual(
@@ -333,7 +286,7 @@ describe("setSimplerGain", () => {
   it("warns and skips on non-Simpler devices", () => {
     const device = registerOperator();
 
-    setSimplerGain(LiveAPI.from("id op-1"), 0, "updateDevice");
+    setSimplerGain(LiveAPI.from("id op-1"), 0);
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -344,7 +297,7 @@ describe("setSimplerGain", () => {
   it("warns and skips on Simpler in multi-sample mode", () => {
     const device = registerSimpler({ multiSampleMode: 1 });
 
-    setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
+    setSimplerGain(LiveAPI.from("id simpler-1"), 0);
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -360,7 +313,7 @@ describe("setSimplerGain", () => {
   it("warns and skips when no sample is loaded", () => {
     const device = registerSimpler();
 
-    setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
+    setSimplerGain(LiveAPI.from("id simpler-1"), 0);
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(

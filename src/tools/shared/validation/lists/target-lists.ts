@@ -28,7 +28,7 @@ export interface TargetParams {
 }
 
 /** Resolves a path list to one id per entry, null where a path named none. */
-export type IdPerPath = (paths: string, tool: string) => Array<string | null>;
+export type IdPerPath = (paths: string) => Array<string | null>;
 
 /**
  * How many objects a call names, without looking any of them up. Lists are
@@ -47,13 +47,11 @@ export function targetCount(args: TargetParams): number {
  * The ids a call names, ids first, keeping one slot per entry so a caller
  * pairing them against another list keeps its positions.
  * @param args - The call's id/ids and path/paths params
- * @param tool - Tool name, for warnings
  * @param idPerPath - Resolves the path list for this kind of object
  * @returns One id per target, null where a path named nothing
  */
 export function targetIds(
   args: TargetParams,
-  tool: string,
   idPerPath: IdPerPath,
 ): Array<string | null> {
   const named = namedIdParam(args.id, args.ids, "ids");
@@ -64,6 +62,6 @@ export function targetIds(
   // that the ids the caller asked for dropped out.
   return [
     ...targetEntries(named, "id"),
-    ...(paths == null ? [] : idPerPath(paths, tool)),
+    ...(paths == null ? [] : idPerPath(paths)),
   ];
 }

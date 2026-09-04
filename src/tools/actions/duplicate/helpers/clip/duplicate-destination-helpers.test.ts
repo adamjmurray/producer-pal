@@ -47,7 +47,7 @@ describe("resolveClipDestinations", () => {
       const warn = vi.spyOn(console, "warn");
 
       expect(() => resolveClipDestinations(undefined, ",", false)).toThrow(
-        "duplicate failed: clip requires toPath",
+        "clip requires toPath",
       );
       expect(warn).toHaveBeenCalledWith('toSlot "," names nothing');
     });
@@ -78,7 +78,7 @@ describe("resolveClipDestinations", () => {
     // toSlot: "" alongside a real toPath still honor the toPath.
     it("reads a blank destination param as omitted", () => {
       expect(() => resolveClipDestinations(undefined, "  ", false)).toThrow(
-        "duplicate failed: clip requires toPath",
+        "clip requires toPath",
       );
 
       expect(resolveClipDestinations("t2/s1", "  ", false)).toStrictEqual({
@@ -207,7 +207,7 @@ describe("resolveClipDestinations", () => {
     // Honoring one and dropping the other is the silent-destination bug toPath
     // exists to end, so neither wins.
     expect(() => resolveClipDestinations("t2/s1", "3/0", false)).toThrow(
-      "duplicate failed: toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
     );
   });
 
@@ -219,7 +219,7 @@ describe("resolveClipDestinations", () => {
 
   it("throws when nothing names a destination", () => {
     expect(() => resolveClipDestinations(undefined, undefined, false)).toThrow(
-      'duplicate failed: clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
+      'clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
   });
 

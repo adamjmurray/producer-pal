@@ -141,7 +141,7 @@ describe("playback ids that names no clip", () => {
   it("refuses the action when a coerced-null ids is all there is", () => {
     expect(() =>
       playback({ action: "play-session-clips", id: "null" }),
-    ).toThrow("playback failed: id or path is required for action");
+    ).toThrow("id or path is required for action");
   });
 
   // A scene path is still refused, but for its shape rather than for sitting
@@ -188,11 +188,9 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "play-session-clips", id: "scene3" }),
-    ).toThrow(
-      'playback failed: id "scene3" named no clip for action "play-session-clips"',
-    );
+    ).toThrow('id "scene3" named no clip for action "play-session-clips"');
     expect(warn).toHaveBeenCalledWith(
-      "playback: s3 (id scene3) is not a clip (found Scene)",
+      "s3 (id scene3) is not a clip (found Scene)",
     );
   });
 
@@ -201,9 +199,7 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "stop-session-clips", id: "scene3" }),
-    ).toThrow(
-      'playback failed: id "scene3" named no clip for action "stop-session-clips"',
-    );
+    ).toThrow('id "scene3" named no clip for action "stop-session-clips"');
   });
 
   // Nothing warned on this one at all: the entries were dropped before any id
@@ -238,20 +234,20 @@ describe("playback slots that names no position", () => {
 
   it("refuses play-scene rather than crashing on the empty list", () => {
     expect(() => playback({ action: "play-scene", slots: "," })).toThrow(
-      'playback failed: path "s<scene>" or a scene id is required',
+      'path "s<scene>" or a scene id is required',
     );
   });
 
   it("refuses play-session-clips rather than reporting a launch", () => {
     expect(() =>
       playback({ action: "play-session-clips", slots: "," }),
-    ).toThrow("playback failed: id or path is required");
+    ).toThrow("id or path is required");
   });
 
   it("refuses stop-session-clips the same way", () => {
     expect(() =>
       playback({ action: "stop-session-clips", slots: "," }),
-    ).toThrow("playback failed: id or path is required");
+    ).toThrow("id or path is required");
   });
 
   it("lets ids carry the call when slots names nothing", () => {

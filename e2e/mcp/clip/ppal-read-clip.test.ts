@@ -53,7 +53,6 @@ describe("ppal-read-clip", () => {
     });
     const byIdClip = parseAliasedToolResult<ReadClipResult>(
       byIdResult,
-      "ppal-read-clip",
       "clipId",
       "id",
     );

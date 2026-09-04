@@ -10,10 +10,7 @@
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  songPositionToBeats,
-  type SongPositionLabels,
-} from "#src/tools/shared/locator/song-position.ts";
+import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 import {
   type CompleteArrangementPosition,
   type ExistingArrangementLane,
@@ -25,15 +22,15 @@ import { isTakeLaneClip } from "./take-lane-helpers.ts";
 /**
  * The arrangement clip starting at a complete path's position.
  * @param path - A song position and the lane it sits on
- * @param labels - How to name the position in its own errors
+ * @param paramName - The param the path came from, for its own errors
  * @returns The clip starting there, or null when none does
  */
 export function arrangementClipAtPosition(
   path: CompleteArrangementPosition,
-  labels: SongPositionLabels,
+  paramName: string,
 ): LiveAPI | null {
   const liveSet = LiveAPI.from(livePath.liveSet);
-  const startBeats = positionBeats(liveSet, path, labels);
+  const startBeats = positionBeats(liveSet, path, paramName);
 
   return (
     clipsOnLane(path.lane).find(
@@ -49,33 +46,32 @@ export function arrangementClipAtPosition(
 /**
  * The position's beats, with a bad locator reported as a problem with the path
  * that carries it. The position doesn't frame its own reason: this names the
- * entry it came from, and a caller that prefixes its warnings with the tool
- * would otherwise say the tool twice.
+ * entry it came from.
+ *
+ * `reframed` below is load-bearing — don't drop it. The reason comes back as
+ * the middle of `invalid <param> "<path>" - …`, which already names the param,
+ * so the position's own "for <param>" suffix would say it twice.
  * @param liveSet - The live_set LiveAPI object
  * @param path - The complete arrangement path
- * @param labels - How to name the position in errors
+ * @param paramName - The param the path came from, for errors
  * @returns The position in Ableton beats
  */
 function positionBeats(
   liveSet: LiveAPI,
   path: CompleteArrangementPosition,
-  labels: SongPositionLabels,
+  paramName: string,
 ): number {
   try {
     return songPositionToBeats(liveSet, path.position, {
-      toolName: "",
-      paramName: labels.paramName,
+      paramName,
+      reframed: true,
       timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
       timeSigDenominator: liveSet.getProperty(
         "signature_denominator",
       ) as number,
     });
   } catch (error) {
-    throw pathError(
-      labels.paramName,
-      formatObjectPath(path),
-      errorMessage(error),
-    );
+    throw pathError(paramName, formatObjectPath(path), errorMessage(error));
   }
 }
 

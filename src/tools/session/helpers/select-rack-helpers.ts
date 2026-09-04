@@ -60,7 +60,7 @@ export function resolveRackTarget(
   const chain = LiveAPI.from(resolved.liveApiPath);
 
   if (!chain.exists()) {
-    throw new Error(`select failed: no chain at "${path}"`);
+    throw new Error(`no chain at "${path}"`);
   }
 
   return chain;
@@ -130,7 +130,7 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
     );
 
     if (target == null) {
-      throw new Error(`select failed: nothing at "${path}"`);
+      throw new Error(`nothing at "${path}"`);
     }
 
     return target;
@@ -145,7 +145,7 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
 
   if (chain == null) {
     throw new Error(
-      `select failed: no drum pad at "${path}"${nestedDrumRackHint(resolved.liveApiPath, note)}`,
+      `no drum pad at "${path}"${nestedDrumRackHint(resolved.liveApiPath, note)}`,
     );
   }
 

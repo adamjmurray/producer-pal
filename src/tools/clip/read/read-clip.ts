@@ -122,7 +122,7 @@ export function readClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error("readClip failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
   // Resolve clip from ID or location

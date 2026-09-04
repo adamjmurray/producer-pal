@@ -194,7 +194,7 @@ describe("duplicate - track duplication", () => {
     );
     // ...and the removal is reported to the user.
     expect(capturedWarnings()).toContain(
-      "duplicate: removed the Producer Pal device from the new track t1 (id live_set/tracks/1) - it cannot be duplicated",
+      "removed the Producer Pal device from the new track t1 (id live_set/tracks/1) - it cannot be duplicated",
     );
   });
 
@@ -222,9 +222,7 @@ describe("duplicate - track duplication", () => {
     it("should throw an error when routeToSource is used with non-track type", async () => {
       await expect(
         duplicate({ type: "scene", id: "scene1", routeToSource: true }),
-      ).rejects.toThrow(
-        "duplicate failed: routeToSource is only supported for type 'track'",
-      );
+      ).rejects.toThrow("routeToSource is only supported for type 'track'");
     });
 
     it("should configure routing when routeToSource is true", async () => {

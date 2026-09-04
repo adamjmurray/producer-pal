@@ -224,9 +224,7 @@ export function warnUnusedTakeLane(
       `${unusable} ignored: only supported when duplicating clips (type "${type}")`,
     );
   } else if (destination === "session") {
-    warn(
-      `duplicate: ${unusable} ignored for session destination (arrangement-only)`,
-    );
+    warn(`${unusable} ignored for session destination (arrangement-only)`);
   }
 }
 
@@ -350,12 +348,10 @@ export type FittingTakeLaneTarget<T extends ArrangementTrack> = T & {
  * A destination that doesn't fit is dropped rather than failing the call, so
  * the destinations alongside it — main lane included — still land.
  * @param targets - Every destination in the call, in resolve order
- * @param tool - Tool name for the warnings
  * @returns The take-lane destinations that fit, in the order given
  */
 export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
   targets: T[],
-  tool: string,
 ): FittingTakeLaneTarget<T>[] {
   const counts = new Map<number, number>();
   const resolved = new Set<string>();
@@ -387,7 +383,7 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
     if (laneIndex + 1 > MAX_TAKE_LANES) {
       dropped.add(key);
       console.warn(
-        `${tool}: skipping "${takeLaneLabel(fits)}" — ` +
+        `skipping "${takeLaneLabel(fits)}" — ` +
           takeLaneCapacityMessage(laneIndex, takeLane),
       );
       continue;

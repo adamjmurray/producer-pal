@@ -223,7 +223,7 @@ export const demoMessages: UIMessage[] = [
         name: TOOL_READ_TRACK,
         args: { path: "t99" },
         result: JSON.stringify(
-          "Error executing tool 'ppal-read-track': readTrack: nothing at path \"t99\"",
+          "Error executing tool 'ppal-read-track': nothing at path \"t99\"",
         ),
         isError: true,
       },
@@ -290,7 +290,7 @@ export const demoMessages: UIMessage[] = [
         args: { path: "t0", invalidParam: "test" },
         result: toolResult(
           { selectedTrack: { id: "1", path: "t0", type: "midi" } },
-          "WARNING: ppal-select ignored unexpected argument(s): invalidParam",
+          "WARNING: ignored unexpected argument(s): invalidParam",
         ),
       },
     ],

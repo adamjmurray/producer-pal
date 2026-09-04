@@ -291,7 +291,7 @@ describe("createClip - session view", () => {
     setupLiveSet();
 
     await expect(createClip({ slot: "99/0", notes: "C3 1|1" })).rejects.toThrow(
-      "createClip failed: track 99 does not exist",
+      "track 99 does not exist",
     );
   });
 
@@ -309,7 +309,7 @@ describe("createClip - session view", () => {
         notes: "C3 1|1",
         auto: "play-scene",
       }),
-    ).rejects.toThrow('createClip auto="play-scene" failed: no scene at "s0"');
+    ).rejects.toThrow('auto="play-scene" failed: no scene at "s0"');
   });
 
   it("should throw error for invalid auto value", async () => {
@@ -324,7 +324,7 @@ describe("createClip - session view", () => {
         slot: "0/0",
         auto: "invalid-value",
       }),
-    ).rejects.toThrow('createClip failed: unknown auto value "invalid-value"');
+    ).rejects.toThrow('unknown auto value "invalid-value"');
   });
 
   it("should create multiple clips at specified scene indices", async () => {

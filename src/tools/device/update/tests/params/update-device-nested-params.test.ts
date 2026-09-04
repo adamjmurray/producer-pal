@@ -101,9 +101,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
         path: "t0/d0",
         params: [{ name: "pC1/d0/", value: "/snare.wav" }],
       }),
-    ).toThrow(
-      'updateDevice failed: params entry "pC1/d0/" has an empty name after "/"',
-    );
+    ).toThrow('params entry "pC1/d0/" has an empty name after "/"');
   });
 
   it("sets a real slash-named param (Dry/Wet) by name, not as a path", () => {

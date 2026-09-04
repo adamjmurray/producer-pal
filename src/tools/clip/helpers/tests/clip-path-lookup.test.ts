@@ -64,14 +64,11 @@ describe("clipIdsAtPaths", () => {
     registerClipAt(0, 1, "clip_a");
     registerClipAt(2, 3, "clip_b");
 
-    expect(clipIdsAtPaths("t0/s1,t2/s3", "updateClip")).toStrictEqual([
-      "clip_a",
-      "clip_b",
-    ]);
+    expect(clipIdsAtPaths("t0/s1,t2/s3")).toStrictEqual(["clip_a", "clip_b"]);
   });
 
   it("returns nothing for an empty param", () => {
-    expect(clipIdsAtPaths("", "updateClip")).toStrictEqual([]);
+    expect(clipIdsAtPaths("")).toStrictEqual([]);
   });
 
   // One bad entry costs its own clip, not the whole batch — the same deal ids
@@ -81,10 +78,8 @@ describe("clipIdsAtPaths", () => {
 
     registerClipAt(2, 3, "clip_b");
 
-    expect(clipIdsAtPaths("t0/s1,t2/s3", "updateClip")).toStrictEqual([
-      "clip_b",
-    ]);
-    expect(warn).toHaveBeenCalledWith('updateClip: no clip at path "t0/s1"');
+    expect(clipIdsAtPaths("t0/s1,t2/s3")).toStrictEqual(["clip_b"]);
+    expect(warn).toHaveBeenCalledWith('no clip at path "t0/s1"');
   });
 
   // A bare track names every clip in its arrangement, so it is refused as a
@@ -94,9 +89,9 @@ describe("clipIdsAtPaths", () => {
 
     registerClipAt(2, 3, "clip_b");
 
-    expect(clipIdsAtPaths("t0,t2/s3", "delete")).toStrictEqual(["clip_b"]);
+    expect(clipIdsAtPaths("t0,t2/s3")).toStrictEqual(["clip_b"]);
     expect(warn).toHaveBeenCalledWith(
-      'delete: invalid path "t0" - a track\'s arrangement holds many clips; ' +
+      'invalid path "t0" - a track\'s arrangement holds many clips; ' +
         'name the one to act on by where it starts, as "t0[5|1]"',
     );
   });
@@ -105,7 +100,7 @@ describe("clipIdsAtPaths", () => {
   it("resolves a complete arrangement path to the clip starting there", () => {
     registerArrangementClipAt(0, 16, "clip_arr");
 
-    expect(clipIdsAtPaths("t0[5|1]", "updateClip")).toStrictEqual(["clip_arr"]);
+    expect(clipIdsAtPaths("t0[5|1]")).toStrictEqual(["clip_arr"]);
   });
 
   it("warns and skips an arrangement path where no clip starts", () => {
@@ -113,15 +108,15 @@ describe("clipIdsAtPaths", () => {
 
     registerArrangementClipAt(0, 16, "clip_arr");
 
-    expect(clipIdsAtPaths("t0[9|1]", "updateClip")).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledWith('updateClip: no clip at path "t0[9|1]"');
+    expect(clipIdsAtPaths("t0[9|1]")).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledWith('no clip at path "t0[9|1]"');
   });
 
   it("refuses a param that names no clip at all", () => {
     // A list that names nothing is malformed structure, so it is refused
     // before anything runs — the same as `id: ","`. Nothing is lost by
     // throwing: the caller drops the stray comma and retries.
-    expect(() => clipIdsAtPaths(",", "updateClip")).toThrow(
+    expect(() => clipIdsAtPaths(",")).toThrow(
       'invalid path "," - it names nothing',
     );
   });
@@ -129,11 +124,9 @@ describe("clipIdsAtPaths", () => {
   it("names the caller's param in warnings", () => {
     const warn = vi.spyOn(console, "warn");
 
-    clipIdsAtPaths("t0/s1", "updateClip", "clipPath");
+    clipIdsAtPaths("t0/s1", "clipPath");
 
-    expect(warn).toHaveBeenCalledWith(
-      'updateClip: no clip at clipPath "t0/s1"',
-    );
+    expect(warn).toHaveBeenCalledWith('no clip at clipPath "t0/s1"');
   });
 });
 
@@ -157,9 +150,9 @@ describe("clipIdPerPath", () => {
       liveSetProps: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    expect(clipIdPerPath("t0[loc:Bridge]", "updateClip")).toStrictEqual([null]);
+    expect(clipIdPerPath("t0[loc:Bridge]")).toStrictEqual([null]);
     expect(warn).toHaveBeenCalledWith(
-      'updateClip: invalid path "t0[loc:Bridge]" - ' +
+      'invalid path "t0[loc:Bridge]" - ' +
         'no locator found with name "Bridge"',
     );
   });
@@ -168,7 +161,7 @@ describe("clipIdPerPath", () => {
     registerClipAt(1, 1, "clip_slot");
     registerArrangementClipAt(0, 16, "clip_arr");
 
-    expect(clipIdPerPath("t0[5|1],t0,t1/s1", "updateClip")).toStrictEqual([
+    expect(clipIdPerPath("t0[5|1],t0,t1/s1")).toStrictEqual([
       "clip_arr",
       null,
       "clip_slot",

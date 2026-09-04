@@ -18,7 +18,7 @@ import {
   type ExistingArrangementLane,
 } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 
-const LABELS = { toolName: "updateClip", paramName: "path" };
+const PARAM_NAME = "path";
 const MAIN_LANE: ExistingArrangementLane = { kind: "track", trackIndex: 0 };
 const TAKE_LANE: ExistingArrangementLane = {
   kind: "take-lane",
@@ -95,18 +95,18 @@ describe("arrangementClipAtPosition", () => {
     registerMainLaneClip("clip_main", startTime);
     registerTrackClips("clip_main");
 
-    expect(arrangementClipAtPosition(at(MAIN_LANE, "5|1"), LABELS)?.id).toBe(
-      "clip_main",
-    );
+    expect(
+      arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,
+    ).toBe("clip_main");
   });
 
   it("finds the clip on the take lane the path names", () => {
     registerTakeLaneClip("clip_take", 16);
     registerTrackClips();
 
-    expect(arrangementClipAtPosition(at(TAKE_LANE, "5|1"), LABELS)?.id).toBe(
-      "clip_take",
-    );
+    expect(
+      arrangementClipAtPosition(at(TAKE_LANE, "5|1"), PARAM_NAME)?.id,
+    ).toBe("clip_take");
   });
 
   it("resolves a locator position", () => {
@@ -117,7 +117,7 @@ describe("arrangementClipAtPosition", () => {
     registerTrackClips("clip_main");
 
     expect(
-      arrangementClipAtPosition(at(MAIN_LANE, "loc:Verse"), LABELS)?.id,
+      arrangementClipAtPosition(at(MAIN_LANE, "loc:Verse"), PARAM_NAME)?.id,
     ).toBe("clip_main");
   });
 
@@ -125,7 +125,9 @@ describe("arrangementClipAtPosition", () => {
     registerMainLaneClip("clip_main", 16);
     registerTrackClips("clip_main");
 
-    expect(arrangementClipAtPosition(at(MAIN_LANE, "9|1"), LABELS)).toBeNull();
+    expect(
+      arrangementClipAtPosition(at(MAIN_LANE, "9|1"), PARAM_NAME),
+    ).toBeNull();
   });
 
   // "starts at", not "covers": a clip running from 3|1 through bar 6 is not the
@@ -137,7 +139,9 @@ describe("arrangementClipAtPosition", () => {
     });
     registerTrackClips("clip_long");
 
-    expect(arrangementClipAtPosition(at(MAIN_LANE, "5|1"), LABELS)).toBeNull();
+    expect(
+      arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME),
+    ).toBeNull();
   });
 
   // The lane is part of the address. Whether Live's own track-level
@@ -147,9 +151,11 @@ describe("arrangementClipAtPosition", () => {
     registerTakeLaneClip("clip_take", 16);
     registerTrackClips("clip_take");
 
-    expect(arrangementClipAtPosition(at(MAIN_LANE, "5|1"), LABELS)).toBeNull();
-    expect(arrangementClipAtPosition(at(TAKE_LANE, "5|1"), LABELS)?.id).toBe(
-      "clip_take",
-    );
+    expect(
+      arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME),
+    ).toBeNull();
+    expect(
+      arrangementClipAtPosition(at(TAKE_LANE, "5|1"), PARAM_NAME)?.id,
+    ).toBe("clip_take");
   });
 });

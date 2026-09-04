@@ -49,17 +49,13 @@ describe("updateClip - Basic operations", () => {
   it("refuses an invalid quantizePitch before touching a clip", async () => {
     await expect(
       updateClip({ id: "clip1", quantize: 1, quantizePitch: "invalid" }),
-    ).rejects.toThrow(
-      'updateClip failed: invalid note name "invalid" for quantizePitch',
-    );
+    ).rejects.toThrow('invalid note name "invalid" for quantizePitch');
   });
 
   it("should refuse the call when neither id nor path is given", async () => {
-    await expect(updateClip({})).rejects.toThrow(
-      "updateClip failed: id or path is required",
-    );
+    await expect(updateClip({})).rejects.toThrow("id or path is required");
     await expect(updateClip({ name: "Test" })).rejects.toThrow(
-      "updateClip failed: id or path is required",
+      "id or path is required",
     );
   });
 
@@ -126,9 +122,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain(
-      'updateClip: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   // Saves a read-then-update round trip: a caller that knows where the clip is
@@ -169,7 +163,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
 
-    expect(capturedWarnings()).toContain('updateClip: no clip at path "t9/s9"');
+    expect(capturedWarnings()).toContain('no clip at path "t9/s9"');
     expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
   });
 

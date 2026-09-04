@@ -165,7 +165,7 @@ describe("duplicate-helpers", () => {
       };
 
       expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
-        "getMinimalClipInfo failed: could not determine trackIndex for clip",
+        "could not determine trackIndex for clip",
       );
     });
 
@@ -179,7 +179,7 @@ describe("duplicate-helpers", () => {
       };
 
       expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
-        "getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip",
+        "could not determine trackIndex/sceneIndex for clip",
       );
     });
   });
@@ -210,7 +210,7 @@ describe("duplicate-helpers", () => {
 
     it("throws error for zero length", () => {
       expect(() => parseArrangementLength("0bar", 4, 4)).toThrow(
-        "duplicate failed: arrangementLength must be positive",
+        "arrangementLength must be positive",
       );
     });
 
@@ -333,7 +333,7 @@ describe("duplicate-helpers", () => {
       });
 
       expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
-        "duplicate failed: no clip slot at t0/s0",
+        "no clip slot at t0/s0",
       );
     });
 
@@ -344,9 +344,7 @@ describe("duplicate-helpers", () => {
         destExists: true,
       });
 
-      expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
-        "duplicate failed: no clip at t0/s0",
-      );
+      expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow("no clip at t0/s0");
     });
 
     it("warns and skips when the destination clip slot does not exist", () => {
@@ -375,9 +373,7 @@ describe("duplicate-helpers", () => {
 
       await expect(
         duplicateClipToArrangement("nonexistent", 0),
-      ).rejects.toThrow(
-        'duplicate failed: no clip exists for clipId "nonexistent"',
-      );
+      ).rejects.toThrow('no clip exists for clipId "nonexistent"');
     });
 
     it("throws error when clip has no track index", async () => {
@@ -388,7 +384,7 @@ describe("duplicate-helpers", () => {
         });
 
       await expect(duplicateClipToArrangement("clip1", 0)).rejects.toThrow(
-        'duplicate failed: no track index for clipId "clip1"',
+        'no track index for clipId "clip1"',
       );
     });
   });

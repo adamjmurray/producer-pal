@@ -85,7 +85,7 @@ describe("playback path param", () => {
   it("refuses path and the deprecated slots together", () => {
     expect(() =>
       playback({ action: "play-session-clips", path: "t0/s1", slots: "0/1" }),
-    ).toThrow("playback failed: path and slots both name clips");
+    ).toThrow("path and slots both name clips");
   });
 
   // The same check, on a slots that named nothing. A comma is not a second
@@ -116,7 +116,7 @@ describe("playback path param", () => {
   // ordinary disagreement error covers it and says which entry named which.
   it("refuses a scene path alongside a position in another scene", () => {
     expect(() => playback({ action: "play-scene", path: "s3,t0/s1" })).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 3 from path "s3", scene 1 from path "t0/s1"',
     );
   });
@@ -150,7 +150,7 @@ describe("playback path param", () => {
     expect(() =>
       playback({ action: "play-scene", path: "s3", sceneIndex: 1 }),
     ).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 3 from path "s3", scene 1 from sceneIndex 1',
     );
   });

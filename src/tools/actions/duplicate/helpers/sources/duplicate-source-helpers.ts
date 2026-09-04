@@ -218,7 +218,7 @@ function sourceIds(
   id: string | undefined,
   path: string | undefined,
 ): string[] {
-  const resolved = targetIds({ id, path }, "duplicate", idPerPathForType(type));
+  const resolved = targetIds({ id, path }, idPerPathForType(type));
   const paths = pathEntries(path, "path");
   const idCount = resolved.length - paths.length;
   const missing = resolved.flatMap((entry, i) =>
@@ -227,7 +227,7 @@ function sourceIds(
 
   if (missing.length > 0) {
     throw new Error(
-      `duplicate failed: nothing to duplicate at path ${missing
+      `nothing to duplicate at path ${missing
         .map((entry) => `"${entry}"`)
         .join(", ")}`,
     );
@@ -261,7 +261,7 @@ function shareDestinations(
 
   if (entries.length < sources) {
     console.warn(
-      `duplicate: ${label} names ${entries.length} destination(s) for ${sources} sources, ` +
+      `${label} names ${entries.length} destination(s) for ${sources} sources, ` +
         `and each needs its own — the last ${sources - entries.length} source(s) were skipped`,
     );
 
@@ -273,7 +273,7 @@ function shareDestinations(
 
   if (spare > 0) {
     console.warn(
-      `duplicate: the last ${spare} ${label} destination(s) went unused — ` +
+      `the last ${spare} ${label} destination(s) went unused — ` +
         `${sources} sources take ${each} each`,
     );
   }

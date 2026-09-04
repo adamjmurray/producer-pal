@@ -43,7 +43,7 @@ export function resolveCreateTrackTarget({
     // replaced it rather than refusing a call that works.
     if (type === "return") {
       console.warn(
-        'createTrack: type "return" is deprecated and will be removed; use path "rt+" instead',
+        'type "return" is deprecated and will be removed; use path "rt+" instead',
       );
     }
 
@@ -52,7 +52,7 @@ export function resolveCreateTrackTarget({
 
   if (trackIndex != null) {
     throw new Error(
-      "createTrack: path says where the track goes - don't send trackIndex with it",
+      "path says where the track goes - don't send trackIndex with it",
     );
   }
 

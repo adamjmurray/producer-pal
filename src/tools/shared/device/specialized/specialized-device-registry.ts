@@ -76,14 +76,12 @@ export function getSpecForDevice(
  * @param device - LiveAPI device object
  * @param key - Param name from the `params` input
  * @param value - Coerced value
- * @param toolName - Calling tool name for warning prefix
  * @returns true if the key matched a pseudo-param (handled or warned)
  */
 export function applySpecializedParamWrite(
   device: LiveAPI,
   key: string,
   value: string | number,
-  toolName: string,
 ): boolean {
   const spec = getSpecForDevice(device);
 
@@ -98,12 +96,12 @@ export function applySpecializedParamWrite(
   }
 
   if (!param.write) {
-    console.warn(`${toolName}: "${param.name}" is read-only`);
+    console.warn(`"${param.name}" is read-only`);
 
     return true;
   }
 
-  param.write(device, value, toolName);
+  param.write(device, value);
 
   return true;
 }
@@ -146,12 +144,10 @@ export function readSpecializedParams(
  * malformed actions warn-and-skip.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
- * @param toolName - Calling tool name for warning prefix
  */
 export function applySpecializedActions(
   device: LiveAPI,
   actions: string[],
-  toolName: string,
 ): void {
   const spec = getSpecForDevice(device);
 
@@ -159,20 +155,18 @@ export function applySpecializedActions(
     const parsed = parseAction(raw);
 
     if (!parsed) {
-      console.warn(`${toolName}: could not parse action "${raw}"`);
+      console.warn(`could not parse action "${raw}"`);
       continue;
     }
 
     const action = findAction(spec, parsed.name);
 
     if (!action) {
-      console.warn(
-        `${toolName}: unknown action "${parsed.name}" for this device`,
-      );
+      console.warn(`unknown action "${parsed.name}" for this device`);
       continue;
     }
 
-    action.handler(device, parsed.args, toolName);
+    action.handler(device, parsed.args);
   }
 }
 

@@ -82,7 +82,7 @@ export function resolveClipDestinations(
   // toPath replaces, so refuse instead of picking.
   if (toPath != null && toSlot != null) {
     throw new Error(
-      "duplicate failed: toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
     );
   }
 
@@ -92,7 +92,7 @@ export function resolveClipDestinations(
 
   const entries = resolveDestinationPositions(
     parseClipDestinationList(toPath, "toPath"),
-    { toolName: "duplicate", paramName: "toPath" },
+    { paramName: "toPath" },
   );
 
   if (hasArrangementParams) {
@@ -101,7 +101,7 @@ export function resolveClipDestinations(
 
   if (entries.length === 0) {
     throw new Error(
-      'duplicate failed: clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
+      'clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
   }
 
@@ -215,7 +215,7 @@ function legacySlotDestinations(
   // failing the call, the way toPath does for the same conflict.
   if (hasArrangementParams) {
     console.warn(
-      "duplicate: arrangementStart ignored — toSlot names a clip slot; " +
+      "arrangementStart ignored — toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
@@ -296,7 +296,7 @@ function arrangementDestinations(
   // clip slot has no room for one, so a slot-only toPath names no position.
   if (arrangementTargets.every((target) => target == null)) {
     console.warn(
-      `duplicate: arrangementStart ignored — toPath "${named}" names a clip slot; ` +
+      `arrangementStart ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 
@@ -309,7 +309,7 @@ function arrangementDestinations(
   }
 
   console.warn(
-    `duplicate: toPath "${named}" ignored — ` +
+    `toPath "${named}" ignored — ` +
       (fromPath
         ? "the other toPath entries name arrangement positions"
         : "arrangementStart makes this an arrangement duplicate"),
@@ -334,7 +334,7 @@ function noPositionError(lane: ClipPath): Error {
   const named = formatObjectPath(lane);
 
   return new Error(
-    `duplicate failed: toPath "${named}" names no position; add one, as "${named}[5|1]"`,
+    `toPath "${named}" names no position; add one, as "${named}[5|1]"`,
   );
 }
 
@@ -352,7 +352,7 @@ function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
     // outright, so it needs a position there rather than a scene.
     if (path.kind !== "slot") {
       throw new Error(
-        `duplicate failed: toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
+        `toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
           `a position for its arrangement, as "${formatObjectPath(path)}[5|1]", or use ` +
           `"t${path.trackIndex}/s<scene>" for a clip slot`,
       );

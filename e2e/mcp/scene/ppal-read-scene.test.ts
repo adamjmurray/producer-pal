@@ -62,7 +62,6 @@ describe("ppal-read-scene", () => {
         name: "ppal-read-scene",
         arguments: { sceneId: scene.id },
       }),
-      "ppal-read-scene",
       "sceneId",
       "id",
     );
@@ -138,9 +137,7 @@ describe("ppal-read-scene", () => {
     });
 
     expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      'readScene: nothing at path "s999"',
-    );
+    expect(getToolErrorMessage(result)).toContain('nothing at path "s999"');
   });
 });
 

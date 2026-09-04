@@ -101,7 +101,7 @@ describe("captureScene", () => {
     registerMockObject("live_set/view/selected_scene", { path: "" });
 
     expect(() => captureScene()).toThrow(
-      "capture-scene failed: couldn't determine selected scene index",
+      "couldn't determine selected scene index",
     );
   });
 

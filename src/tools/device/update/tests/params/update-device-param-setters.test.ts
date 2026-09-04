@@ -333,7 +333,7 @@ describe("updateDevice - param value conversion", () => {
       updateDevice({ id: "dev1", params: [{ name: "1", value: "5" }] });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: param "1" not found on t0/d0 (id dev1)',
+        'param "1" not found on t0/d0 (id dev1)',
       );
       expect(liveSet.set).not.toHaveBeenCalled();
     });
@@ -359,7 +359,7 @@ describe("updateDevice - param value conversion", () => {
       updateDevice({ id: "dev1", params: [{ name: "143", value: "-12" }] });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: param id 143 is on t10/d0, not t0/d0 (id dev1), " +
+        "param id 143 is on t10/d0, not t0/d0 (id dev1), " +
           "so it was not written",
       );
     });

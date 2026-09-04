@@ -177,7 +177,7 @@ export function updateTrackSelection({
   const result: TrackSelectionResult = {};
 
   if (trackId != null) {
-    const trackAPI = validateIdType(trackId, "track", "select");
+    const trackAPI = validateIdType(trackId, "track");
     const liveApiTrackId = toLiveApiId(trackAPI.id);
 
     songView.setProperty("selected_track", liveApiTrackId);
@@ -212,7 +212,7 @@ export function updateSceneSelection({
   const result: SceneSelectionResult = {};
 
   if (sceneId != null) {
-    const sceneAPI = validateIdType(sceneId, "scene", "select");
+    const sceneAPI = validateIdType(sceneId, "scene");
     const liveApiSceneId = toLiveApiId(sceneAPI.id);
 
     songView.setProperty("selected_scene", liveApiSceneId);
@@ -245,7 +245,7 @@ export function updateDeviceSelection({
   devicePathParam,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
-    const deviceAPI = validateIdType(deviceId, "device", "select");
+    const deviceAPI = validateIdType(deviceId, "device");
 
     songView.call("select_device", toLiveApiId(deviceId));
 
@@ -283,7 +283,7 @@ export function applyPluginEditorWindow(
 ): boolean {
   if (device == null) {
     console.warn(
-      "select: openPluginWindow requires a plug-in device — specify id or path",
+      "openPluginWindow requires a plug-in device — specify id or path",
     );
 
     return false;
@@ -291,7 +291,7 @@ export function applyPluginEditorWindow(
 
   if (device.type !== "PluginDevice") {
     console.warn(
-      `select: openPluginWindow ignored — ${targetLabel(device)} is a ${device.type}, not a plug-in (VST/AU)`,
+      `openPluginWindow ignored — ${targetLabel(device)} is a ${device.type}, not a plug-in (VST/AU)`,
     );
 
     return false;
@@ -407,7 +407,7 @@ export function updateClipSelection({
   clipId,
   requestedView,
 }: UpdateClipSelectionOptions): void {
-  const clipAPI = validateIdType(clipId, "clip", "select");
+  const clipAPI = validateIdType(clipId, "clip");
   const isSessionClip =
     clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null;
   const requiredView = isSessionClip ? "session" : "arrangement";

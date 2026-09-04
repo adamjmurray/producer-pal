@@ -82,7 +82,7 @@ function validateTrackCreation(
   effectiveTrackIndex: number,
 ): void {
   if (count < 1) {
-    throw new Error("createTrack failed: count must be at least 1");
+    throw new Error("count must be at least 1");
   }
 
   // The count alone must not exceed the cap, in ANY mode. The index-reach check
@@ -91,13 +91,13 @@ function validateTrackCreation(
   // number of tracks (e.g. count: 9999).
   if (count > MAX_AUTO_CREATED_TRACKS) {
     throw new Error(
-      `createTrack failed: creating ${count} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
+      `creating ${count} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
     );
   }
 
   if (type === "return" && trackIndex != null) {
     console.warn(
-      "createTrack: trackIndex is ignored for return tracks (always added at end)",
+      "trackIndex is ignored for return tracks (always added at end)",
     );
   }
 
@@ -107,7 +107,7 @@ function validateTrackCreation(
     effectiveTrackIndex + count > MAX_AUTO_CREATED_TRACKS
   ) {
     throw new Error(
-      `createTrack failed: creating ${count} tracks at index ${effectiveTrackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
+      `creating ${count} tracks at index ${effectiveTrackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
     );
   }
 }

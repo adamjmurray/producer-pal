@@ -59,12 +59,7 @@ describe("Roar pseudo-params", () => {
     it("maps the enum label to its index", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(
-        device,
-        "routingMode",
-        "delay",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "routingMode", "delay");
 
       expect(device.set).toHaveBeenCalledWith("routing_mode_index", 6);
     });
@@ -72,12 +67,7 @@ describe("Roar pseudo-params", () => {
     it("is case-insensitive on the param name", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(
-        device,
-        "routingmode",
-        "parallel",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "routingmode", "parallel");
 
       expect(device.set).toHaveBeenCalledWith("routing_mode_index", 2);
     });
@@ -85,12 +75,7 @@ describe("Roar pseudo-params", () => {
     it("warns and skips an invalid routing mode", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(
-        device,
-        "routingMode",
-        "bogus",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "routingMode", "bogus");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -103,7 +88,7 @@ describe("Roar pseudo-params", () => {
     it("writes 1 for true", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(device, "envListen", "true", "updateDevice");
+      applySpecializedParamWrite(device, "envListen", "true");
 
       expect(device.set).toHaveBeenCalledWith("env_listen", 1);
     });
@@ -111,7 +96,7 @@ describe("Roar pseudo-params", () => {
     it("writes 0 for false", () => {
       const device = registerRoar({ env_listen: 1 });
 
-      applySpecializedParamWrite(device, "envListen", "off", "updateDevice");
+      applySpecializedParamWrite(device, "envListen", "off");
 
       expect(device.set).toHaveBeenCalledWith("env_listen", 0);
     });
@@ -119,7 +104,7 @@ describe("Roar pseudo-params", () => {
     it("warns naming envListen and skips uninterpretable input", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(device, "envListen", "maybe", "updateDevice");
+      applySpecializedParamWrite(device, "envListen", "maybe");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

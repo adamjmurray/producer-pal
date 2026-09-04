@@ -160,7 +160,7 @@ export async function updateClip(
   );
 
   if (requestedIds.length === 0) {
-    throw new Error("updateClip failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
   refuseUnreadableCall(timeSignature, quantizePitch, toPath, arrangementStart);
@@ -304,7 +304,7 @@ function resolveClipTargets(
     },
   ]);
 
-  return targetIds(targets, "updateClip", clipIdPerPath);
+  return targetIds(targets, clipIdPerPath);
 }
 
 /**
@@ -323,9 +323,7 @@ function validateWholeCallParams(
   if (timeSignature != null) parseTimeSignature(timeSignature);
 
   if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
-    throw new Error(
-      `updateClip failed: invalid note name "${quantizePitch}" for quantizePitch`,
-    );
+    throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
   }
 }
 
@@ -418,7 +416,7 @@ function refuseUnreadableCall(
   arrangementStart: string | undefined,
 ): void {
   validateWholeCallParams(timeSignature, quantizePitch);
-  refuseDoubledPosition(toPath, arrangementStart, "updateClip", "toPath");
+  refuseDoubledPosition(toPath, arrangementStart, "toPath");
 }
 
 /**

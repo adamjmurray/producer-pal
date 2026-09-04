@@ -98,11 +98,9 @@ describe("updateTrack", () => {
   });
 
   it("should refuse the call when id is missing", () => {
-    expect(() => updateTrack({})).toThrow(
-      "updateTrack failed: id or path is required",
-    );
+    expect(() => updateTrack({})).toThrow("id or path is required");
     expect(() => updateTrack({ name: "Test" })).toThrow(
-      "updateTrack failed: id or path is required",
+      "id or path is required",
     );
   });
 
@@ -122,9 +120,7 @@ describe("updateTrack", () => {
     const result = updateTrack({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain(
-      'updateTrack: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
@@ -133,9 +129,7 @@ describe("updateTrack", () => {
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123", path: "t0" });
-    expect(capturedWarnings()).toContain(
-      'updateTrack: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
     expect(track123.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -159,9 +153,7 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(track456.set).toHaveBeenCalledWith("name", "C");
     expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain(
-      'updateTrack: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it

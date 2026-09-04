@@ -40,7 +40,6 @@ describe("ppal-read-track", () => {
     });
     const byId = parseAliasedToolResult<ReadTrackResult>(
       byIdResult,
-      "ppal-read-track",
       "trackId",
       "id",
     );
@@ -128,7 +127,7 @@ describe("ppal-read-track", () => {
 
     expect(isToolError(nonExistentResult)).toBe(true);
     expect(getToolErrorMessage(nonExistentResult)).toContain(
-      'readTrack: nothing at path "t999"',
+      'nothing at path "t999"',
     );
 
     // Test 10: Verify first 4 tracks are MIDI type (Drums, Bass, Keys, Lead)

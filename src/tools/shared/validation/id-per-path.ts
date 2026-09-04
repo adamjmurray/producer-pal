@@ -38,9 +38,7 @@ const SET_LOOKUPS: Record<string, IdPerPath> = {
  * @returns A lookup giving one id per path entry, null where a path named none
  */
 export function idPerPathForType(type: string): IdPerPath {
-  return (
-    SET_LOOKUPS[type] ?? ((paths, tool) => chainIdPerPath(paths, tool, type))
-  );
+  return SET_LOOKUPS[type] ?? ((paths) => chainIdPerPath(paths, type));
 }
 
 // --- Helpers below main exports ---
@@ -49,22 +47,17 @@ export function idPerPathForType(type: string): IdPerPath {
  * Resolves the paths of a type that lives in a device chain — a device, a drum
  * pad, or a chain.
  * @param paths - Comma-separated paths
- * @param tool - Tool name, for warnings
  * @param type - The target type ("device", "drum-pad", or "chain")
  * @returns One id per path entry, null where a path named none
  */
-function chainIdPerPath(
-  paths: string,
-  tool: string,
-  type: string,
-): Array<string | null> {
+function chainIdPerPath(paths: string, type: string): Array<string | null> {
   const ids: Array<string | null> = [];
 
   for (const entry of pathEntries(paths)) {
     try {
-      ids.push(resolvePathToId(resolvePathToLiveApi(entry), entry, type, tool));
+      ids.push(resolvePathToId(resolvePathToLiveApi(entry), entry, type));
     } catch (e) {
-      console.warn(`${tool}: ${errorMessage(e)}`);
+      console.warn(errorMessage(e));
       ids.push(null);
     }
   }
@@ -77,24 +70,22 @@ function chainIdPerPath(
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
  * @param type - The target type ("device", "drum-pad", or "chain")
- * @param tool - Tool name, for warnings
  * @returns The resolved ID or null
  */
 function resolvePathToId(
   resolved: ResolvedPath,
   targetPath: string,
   type: string,
-  tool: string,
 ): string | null {
   if (type === "drum-pad") {
-    return resolveDrumPadPathToId(resolved, targetPath, tool);
+    return resolveDrumPadPathToId(resolved, targetPath);
   }
 
   if (type === "chain") {
-    return resolveChainPathToId(resolved, targetPath, tool);
+    return resolveChainPathToId(resolved, targetPath);
   }
 
-  return resolveDevicePathToId(resolved, targetPath, tool);
+  return resolveDevicePathToId(resolved, targetPath);
 }
 
 /**
@@ -104,17 +95,15 @@ function resolvePathToId(
  * than the caller asked.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
- * @param tool - Tool name, for warnings
  * @returns The pad's ID, or null when the path doesn't name one
  */
 function resolveDrumPadPathToId(
   resolved: ResolvedPath,
   targetPath: string,
-  tool: string,
 ): string | null {
   if (resolved.targetType !== "drum-pad") {
     console.warn(
-      `${tool}: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
+      `path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
     );
 
     return null;
@@ -126,8 +115,8 @@ function resolveDrumPadPathToId(
   if (resolved.remainingSegments.length > 0) {
     console.warn(
       resolved.remainingSegments.some((segment) => segment.startsWith("p"))
-        ? `${tool}: path "${targetPath}" names a pad of a nested Drum Rack, which has no pad objects — name a chain or a device inside it instead`
-        : `${tool}: path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
+        ? `path "${targetPath}" names a pad of a nested Drum Rack, which has no pad objects — name a chain or a device inside it instead`
+        : `path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
     );
 
     return null;
@@ -138,7 +127,7 @@ function resolveDrumPadPathToId(
   const pad = findDrumPad(resolved.liveApiPath, resolved.drumPadNote as string);
 
   if (!pad) {
-    console.warn(`${tool}: drum-pad at path "${targetPath}" does not exist`);
+    console.warn(`drum-pad at path "${targetPath}" does not exist`);
 
     return null;
   }
@@ -151,16 +140,14 @@ function resolveDrumPadPathToId(
  * ("t0/d0/pC1/c1"), a rack chain ("t0/d0/c1"), or a rack return chain.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
- * @param tool - Tool name, for warnings
  * @returns The chain's ID, or null when the path doesn't name one
  */
 function resolveChainPathToId(
   resolved: ResolvedPath,
   targetPath: string,
-  tool: string,
 ): string | null {
   if (resolved.targetType === "drum-pad") {
-    return resolveDrumChainPathToId(resolved, targetPath, tool);
+    return resolveDrumChainPathToId(resolved, targetPath);
   }
 
   if (
@@ -168,7 +155,7 @@ function resolveChainPathToId(
     resolved.targetType !== "return-chain"
   ) {
     console.warn(
-      `${tool}: path "${targetPath}" resolves to ${resolved.targetType}, not chain`,
+      `path "${targetPath}" resolves to ${resolved.targetType}, not chain`,
     );
 
     return null;
@@ -177,7 +164,7 @@ function resolveChainPathToId(
   const chain = LiveAPI.from(resolved.liveApiPath);
 
   if (!chain.exists()) {
-    console.warn(`${tool}: chain at path "${targetPath}" does not exist`);
+    console.warn(`chain at path "${targetPath}" does not exist`);
 
     return null;
   }
@@ -190,17 +177,15 @@ function resolveChainPathToId(
  * the whole pad, so it takes the drum-pad type rather than this one.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
- * @param tool - Tool name, for warnings
  * @returns The chain's ID, or null when the path doesn't name one
  */
 function resolveDrumChainPathToId(
   resolved: ResolvedPath,
   targetPath: string,
-  tool: string,
 ): string | null {
   if (resolved.remainingSegments.length === 0) {
     console.warn(
-      `${tool}: path "${targetPath}" names a whole drum pad; use ` +
+      `path "${targetPath}" names a whole drum pad; use ` +
         `type="drum-pad", or name one layer like "${targetPath}/c0"`,
     );
 
@@ -214,7 +199,7 @@ function resolveDrumChainPathToId(
   );
 
   if (!result.target || result.targetType !== "chain") {
-    console.warn(`${tool}: chain at path "${targetPath}" does not exist`);
+    console.warn(`chain at path "${targetPath}" does not exist`);
 
     return null;
   }
@@ -226,20 +211,18 @@ function resolveDrumChainPathToId(
  * Resolves a path to the device it names, including a device inside a drum pad.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
- * @param tool - Tool name, for warnings
  * @returns The device's ID, or null when the path doesn't name one
  */
 function resolveDevicePathToId(
   resolved: ResolvedPath,
   targetPath: string,
-  tool: string,
 ): string | null {
   // Direct device path (not through drum pad)
   if (resolved.targetType === "device") {
     const target = LiveAPI.from(resolved.liveApiPath);
 
     if (!target.exists()) {
-      console.warn(`${tool}: device at path "${targetPath}" does not exist`);
+      console.warn(`device at path "${targetPath}" does not exist`);
 
       return null;
     }
@@ -265,7 +248,7 @@ function resolveDevicePathToId(
     );
 
     if (!result.target || result.targetType !== "device") {
-      console.warn(`${tool}: device at path "${targetPath}" does not exist`);
+      console.warn(`device at path "${targetPath}" does not exist`);
 
       return null;
     }
@@ -274,7 +257,7 @@ function resolveDevicePathToId(
   }
 
   console.warn(
-    `${tool}: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
+    `path "${targetPath}" resolves to ${resolved.targetType}, not device`,
   );
 
   return null;

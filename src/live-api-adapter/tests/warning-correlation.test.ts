@@ -178,12 +178,15 @@ describe("warning correlation", () => {
   // re-assert too. Without that, a warning raised while the request unwinds
   // rides out on whichever request started in the gap.
   it("keeps a failing request's unwind warnings on its own response", async () => {
-    // Fires exactly once, in the failing request's finally — the only warning
-    // this test cares about routing.
     // Stands in for whatever warns while a request unwinds — in a debug build
     // that is the LiveAPI build stats, reported from handleRequest's finally.
+    // Each call warns its own text: with both saying the same thing, one warning
+    // copied onto both responses would read the same as one landing on each.
+    let unwind = 0;
+
     vi.mocked(reportLiveApiBuildStats).mockImplementation(() => {
-      warn("unwinding");
+      unwind++;
+      warn(`unwinding ${unwind}`);
     });
     vi.mocked(createClip).mockImplementation(async () => {
       await requestNode("any-route");
@@ -206,8 +209,16 @@ describe("warning correlation", () => {
     // req-other runs start to finish inside the gap, so it has taken the
     // capture and given it back by the time the failing one unwinds. Without a
     // resume in the catch, the failing request's own warning reaches nobody.
-    expect(warningsSentFor("req-other")).toStrictEqual(["unwinding"]);
-    expect(warningsSentFor("req-failing")).toStrictEqual(["unwinding"]);
+    const otherWarnings = warningsSentFor("req-other") ?? [];
+    const failingWarnings = warningsSentFor("req-failing") ?? [];
+
+    expect(otherWarnings).toHaveLength(1);
+    expect(failingWarnings).toHaveLength(1);
+    // Two distinct warnings were raised and each landed once — neither request
+    // took the other's, and neither warning was duplicated across both.
+    expect(new Set([...otherWarnings, ...failingWarnings])).toStrictEqual(
+      new Set(["unwinding 1", "unwinding 2"]),
+    );
   });
 
   it("sends no warnings for a request that raised none", async () => {

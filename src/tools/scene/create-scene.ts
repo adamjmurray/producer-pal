@@ -79,7 +79,7 @@ export function createScene(
   const liveSet = LiveAPI.from(livePath.liveSet);
   const sceneIndex = resolveCreateSceneIndex(path, sceneIndexParam, liveSet);
 
-  validateTempo(tempo, "createScene", -1);
+  validateTempo(tempo, -1);
 
   // Handle capture mode
   if (capture) {
@@ -171,16 +171,16 @@ function validateCreateSceneArgs(
   count: number,
 ): void {
   if (sceneIndex == null) {
-    throw new Error("createScene failed: path is required");
+    throw new Error("path is required");
   }
 
   if (count < 1) {
-    throw new Error("createScene failed: count must be at least 1");
+    throw new Error("count must be at least 1");
   }
 
   if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
     throw new Error(
-      `createScene failed: creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+      `creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
     );
   }
 }

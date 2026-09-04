@@ -103,17 +103,15 @@ function readSidechainSourceTrackId(device: LiveAPI): string | null {
  * Warns and skips when the track doesn't exist or isn't a valid sidechain source.
  * @param device - LiveAPI device object
  * @param value - Track id string, "null", or ""
- * @param toolName - Calling tool name for warning prefix
  */
 function writeSidechainSourceTrackId(
   device: LiveAPI,
   value: string | number,
-  toolName: string,
 ): void {
   const strValue = String(value).trim();
 
   if (strValue === "" || strValue === "null") {
-    clearSidechainSource(device, toolName);
+    clearSidechainSource(device);
 
     return;
   }
@@ -122,7 +120,7 @@ function writeSidechainSourceTrackId(
 
   if (!track.exists()) {
     console.warn(
-      `${toolName}: sidechainSourceTrackId — track id "${strValue}" does not exist`,
+      `sidechainSourceTrackId — track id "${strValue}" does not exist`,
     );
 
     return;
@@ -134,7 +132,7 @@ function writeSidechainSourceTrackId(
 
   if (entry == null) {
     console.warn(
-      `${toolName}: track "${trackName}" ${targetLabel(track)} cannot be a sidechain source — it has no audio-bearing devices`,
+      `track "${trackName}" ${targetLabel(track)} cannot be a sidechain source — it has no audio-bearing devices`,
     );
 
     return;
@@ -149,15 +147,14 @@ function writeSidechainSourceTrackId(
  * Clear the sidechain source to "No Input". Warns and skips if "No Input" is
  * not in the available types list.
  * @param device - LiveAPI device object
- * @param toolName - Calling tool name for warning prefix
  */
-function clearSidechainSource(device: LiveAPI, toolName: string): void {
+function clearSidechainSource(device: LiveAPI): void {
   const available = readAvailableTypes(device);
   const noInput = available.find((e) => e.display_name === NO_INPUT_LABEL);
 
   if (noInput == null) {
     console.warn(
-      `${toolName}: sidechainSourceTrackId — "No Input" entry not found in available routing types`,
+      `sidechainSourceTrackId — "No Input" entry not found in available routing types`,
     );
 
     return;
@@ -188,13 +185,8 @@ function readSidechainChannel(device: LiveAPI): string | null {
  * channel list (identifiers are not stable across source changes).
  * @param device - LiveAPI device object
  * @param value - Channel name (e.g. "Pre FX")
- * @param toolName - Calling tool name for warning prefix
  */
-function writeSidechainChannel(
-  device: LiveAPI,
-  value: string | number,
-  toolName: string,
-): void {
+function writeSidechainChannel(device: LiveAPI, value: string | number): void {
   const channelName = String(value).trim();
   const available = readAvailableChannels(device);
   const entry = available.find((e) => e.display_name === channelName);
@@ -203,7 +195,7 @@ function writeSidechainChannel(
     const names = available.map((e) => e.display_name).join(", ");
 
     console.warn(
-      `${toolName}: "${channelName}" is not a valid sidechainChannel. Available: ${names}`,
+      `"${channelName}" is not a valid sidechainChannel. Available: ${names}`,
     );
 
     return;

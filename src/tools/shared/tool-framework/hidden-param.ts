@@ -128,13 +128,14 @@ export function collectHiddenParams(
  * Builds the warnings shown when a caller sends hidden params. Deprecations get
  * a line each; aliases are grouped by the param they fold into, so a model that
  * sent two halves of one destination reads one correction rather than two.
- * @param toolName - Tool the params belong to
+ *
+ * No warning names the tool: it rides in the tool_result for one tool_use, so
+ * the conversation already says which call it belongs to.
  * @param usedKeys - Hidden params the caller actually sent, in schema order
  * @param hidden - Hidden-param info keyed by param name
  * @returns Warning texts, empty when nothing hidden was sent
  */
 export function hiddenParamWarnings(
-  toolName: string,
   usedKeys: string[],
   hidden: Record<string, HiddenParamInfo>,
 ): string[] {
@@ -151,7 +152,7 @@ export function hiddenParamWarnings(
 
     if (info.kind === "deprecated") {
       warnings.push(
-        `${WARNING_PREFIX}${toolName} param "${key}" is deprecated and will be removed; ` +
+        `${WARNING_PREFIX}param "${key}" is deprecated and will be removed; ` +
           `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, info.example)}`,
       );
       continue;
@@ -175,13 +176,13 @@ export function hiddenParamWarnings(
     // model to send them as one canonical value would break the call.
     if (independent && keys.length > 1) {
       warnings.push(
-        `${WARNING_PREFIX}${toolName} accepts ${names} as fallbacks; "${canonical}" names one object, so keep them as they are for several`,
+        `${WARNING_PREFIX}${names} accepted as fallbacks; "${canonical}" names one object, so keep them as they are for several`,
       );
       continue;
     }
 
     warnings.push(
-      `${WARNING_PREFIX}${toolName} accepts ${names} as a fallback; the parameter is "${canonical}"${hint}`,
+      `${WARNING_PREFIX}${names} accepted as a fallback; the parameter is "${canonical}"${hint}`,
     );
   }
 

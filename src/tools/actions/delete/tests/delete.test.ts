@@ -183,9 +183,7 @@ describe("deleteObject", () => {
       type: "clip",
       deleted: false,
     });
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'delete: no clip at path "t0/s9"',
-    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith('no clip at path "t0/s9"');
   });
 
   it("should warn and skip take-lane clips (cannot delete via API)", () => {
@@ -217,7 +215,7 @@ describe("deleteObject", () => {
   });
 
   it("should throw an error when neither id nor path is provided", () => {
-    const expectedError = "delete failed: id or path is required";
+    const expectedError = "id or path is required";
 
     expect(() => deleteObject({ id: undefined, type: "clip" })).toThrow(
       expectedError,
@@ -225,7 +223,7 @@ describe("deleteObject", () => {
   });
 
   it("should throw an error when type arg is missing", () => {
-    const expectedError = "delete failed: type is required";
+    const expectedError = "type is required";
 
     expect(() =>
       deleteObject({ id: "clip_1" } as unknown as Parameters<
@@ -236,7 +234,7 @@ describe("deleteObject", () => {
 
   it("should throw an error when type arg is invalid", () => {
     const expectedError =
-      'delete failed: type must be one of "track", "scene", "clip", "device", "drum-pad", "chain"';
+      'type must be one of "track", "scene", "clip", "device", "drum-pad", "chain"';
 
     expect(() => deleteObject({ id: "clip_1", type: "invalid" })).toThrow(
       expectedError,
@@ -251,9 +249,7 @@ describe("deleteObject", () => {
     const result = deleteObject({ id: "999", type: "track" });
 
     expect(result).toStrictEqual({ id: "999", type: "track", deleted: false });
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'delete: id "999" does not exist',
-    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith('id "999" does not exist');
   });
 
   it("should log warning when object is wrong type", () => {
@@ -272,7 +268,7 @@ describe("deleteObject", () => {
       deleted: false,
     });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      "delete: s0 (id scene_1) is not a track (found Scene)",
+      "s0 (id scene_1) is not a track (found Scene)",
     );
   });
 
@@ -300,7 +296,7 @@ describe("deleteObject", () => {
       { id: "nonexistent", type: "track", deleted: false },
     ]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'delete: id "nonexistent" does not exist',
+      'id "nonexistent" does not exist',
     );
   });
 
@@ -320,10 +316,10 @@ describe("deleteObject", () => {
     ]);
     expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'delete: id "nonexistent1" does not exist',
+      'id "nonexistent1" does not exist',
     );
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'delete: id "nonexistent2" does not exist',
+      'id "nonexistent2" does not exist',
     );
   });
 

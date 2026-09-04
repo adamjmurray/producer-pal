@@ -150,7 +150,7 @@ describe("duplicate - a toPath coordinate", () => {
         arrangementStart: "5|1",
       }),
     ).rejects.toThrow(
-      'duplicate failed: toPath "t2[3|1]" and arrangementStart both name a ' +
+      'toPath "t2[3|1]" and arrangementStart both name a ' +
         "song position; use one",
     );
   });
@@ -162,8 +162,6 @@ describe("duplicate - a toPath coordinate", () => {
 
     await expect(
       duplicate({ type: "clip", id: "clip1", toPath: "t2[3|1],t3" }),
-    ).rejects.toThrow(
-      'duplicate failed: toPath "t3" names no position; add one, as "t3[5|1]"',
-    );
+    ).rejects.toThrow('toPath "t3" names no position; add one, as "t3[5|1]"');
   });
 });

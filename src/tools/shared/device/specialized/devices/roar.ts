@@ -39,8 +39,8 @@ export const roarSpec: SpecializedDeviceSpec = {
     {
       name: "envListen",
       read: (device) => readBoolProp(device, "env_listen"),
-      write: (device, value, toolName) =>
-        writeBoolProp(device, "env_listen", value, toolName, "envListen"),
+      write: (device, value) =>
+        writeBoolProp(device, "env_listen", value, "envListen"),
     },
   ],
 };

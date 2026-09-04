@@ -193,21 +193,19 @@ export function parseToolResultWithWarnings<T>(
  * one live check each — folded into a test that already reads the same object
  * the canonical way, rather than a suite of its own.
  * @param result - Raw tool result
- * @param toolName - Tool that was called
  * @param alias - The alias param the call used
  * @param canonical - The param it folds onto
  * @returns The parsed result
  */
 export function parseAliasedToolResult<T>(
   result: unknown,
-  toolName: string,
   alias: string,
   canonical: string,
 ): T {
   const { data, warnings } = parseToolResultWithWarnings<T>(result);
 
   expect(warnings).toStrictEqual([
-    `WARNING: ${toolName} accepts "${alias}" as a fallback; the parameter is "${canonical}"`,
+    `WARNING: "${alias}" accepted as a fallback; the parameter is "${canonical}"`,
   ]);
 
   return data;

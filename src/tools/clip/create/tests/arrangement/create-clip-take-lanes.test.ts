@@ -415,7 +415,7 @@ describe("createClip take lane paths", () => {
     // Only t1's clip was made, so the result collapses to that one object.
     expect(result.path).toBe("t1[1|1]");
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('createClip: skipping "t0/l+"'),
+      expect.stringContaining('skipping "t0/l+"'),
     );
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('take lane "t0/l+" was skipped'),
@@ -545,7 +545,7 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
 
     expect([...result.keys()]).toStrictEqual(["t0/l7"]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('createClip: skipping "t0/l+"'),
+      expect.stringContaining('skipping "t0/l+"'),
     );
   });
 });

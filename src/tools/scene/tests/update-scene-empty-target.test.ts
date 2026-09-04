@@ -21,9 +21,7 @@ describe("updateScene when id names nothing", () => {
   // A blank value reads as omitted, so this lands on the missing-target
   // refusal rather than the names-nothing one.
   it("still reports a whitespace-only id as missing", () => {
-    expect(() => updateScene({ id: "   " })).toThrow(
-      "updateScene failed: id or path is required",
-    );
+    expect(() => updateScene({ id: "   " })).toThrow("id or path is required");
   });
 });
 

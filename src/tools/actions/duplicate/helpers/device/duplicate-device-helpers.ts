@@ -116,7 +116,7 @@ function duplicateDevice(
   // before it ever reaches the destination.
   if (isProducerPalDevice(device)) {
     console.warn(
-      `duplicate: cannot duplicate the Producer Pal device ${targetLabel(device)}, skipping`,
+      `cannot duplicate the Producer Pal device ${targetLabel(device)}, skipping`,
     );
 
     return null;
@@ -134,7 +134,7 @@ function duplicateDevice(
 
       if (!tempDevice.exists()) {
         throw new Error(
-          `duplicate failed: device not found in duplicated track at path "${tempPath}"`,
+          `device not found in duplicated track at path "${tempPath}"`,
         );
       }
 
@@ -161,7 +161,7 @@ function duplicateDevice(
 
       if (outcome === "no-destination") {
         console.warn(
-          `duplicate: ${sourceLabel} not copied — no destination at toPath "${destination}"`,
+          `${sourceLabel} not copied — no destination at toPath "${destination}"`,
         );
 
         return null;
@@ -169,7 +169,7 @@ function duplicateDevice(
 
       if (outcome === "refused") {
         console.warn(
-          `duplicate: the copy of ${sourceLabel} could not be moved to "${destination}"`,
+          `the copy of ${sourceLabel} could not be moved to "${destination}"`,
         );
 
         return null;

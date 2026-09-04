@@ -19,9 +19,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice with path parameter", () => {
   it("should throw error when neither id nor path is provided", () => {
-    expect(() => updateDevice({})).toThrow(
-      "updateDevice failed: id or path is required",
-    );
+    expect(() => updateDevice({})).toThrow("id or path is required");
   });
 
   // Both spellings are published, so a model picking one nulls the other.
@@ -463,7 +461,7 @@ describe("updateDevice with path parameter", () => {
   describe("path validation", () => {
     it("should throw error for empty path (treated as no path)", () => {
       expect(() => updateDevice({ path: "", name: "Test" })).toThrow(
-        "updateDevice failed: id or path is required",
+        "id or path is required",
       );
     });
 
@@ -479,7 +477,7 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "zzz", name: "Test" });
 
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("updateDevice:"),
+        expect.stringContaining('invalid path "zzz"'),
       );
       expect(result).toStrictEqual([]);
     });

@@ -122,7 +122,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ path: "t1[9|1]" })).toThrow(
-      'readClip failed: no clip at path "t1[9|1]"',
+      'no clip at path "t1[9|1]"',
     );
   });
 
@@ -197,7 +197,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ path: "t1/s1", slot: "2/3" })).toThrow(
-      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+      "path and slot both name a clip; use path alone (slot is deprecated)",
     );
   });
 
@@ -219,7 +219,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ path: "t1/s1", id: "stale" })).toThrow(
-      "readClip failed: path and id name different clips; use one",
+      "path and id name different clips; use one",
     );
   });
 
@@ -254,7 +254,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ ...location, id: "stale" })).toThrow(
-      `readClip failed: ${param} and id name different clips; use one`,
+      `${param} and id name different clips; use one`,
     );
   });
 
@@ -323,7 +323,7 @@ describe("readClip path param", () => {
       "From path",
     );
     expect(warn).toHaveBeenCalledWith(
-      'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+      'trackIndex/sceneIndex ignored — "path" already names the clip',
     );
   });
 });

@@ -90,7 +90,7 @@ function duplicateChain(
   // than quietly producing a normal chain the caller didn't ask for.
   if (/ return_chains \d+$/.test(chain.path)) {
     console.warn(
-      `duplicate: ${targetLabel(chain)} is a rack return chain, which cannot be ` +
+      `${targetLabel(chain)} is a rack return chain, which cannot be ` +
         "copied — the Live API has no way to create one, so they can only be " +
         "added in Live",
     );
@@ -178,7 +178,7 @@ function resolveDestinationRack(
   // A chain goes into a rack, so a toPath naming anything else — a track, a
   // chain, a plain device — has no chain slot to offer.
   if (object == null) {
-    console.warn(`duplicate: no destination rack at toPath "${toPath}"`);
+    console.warn(`no destination rack at toPath "${toPath}"`);
 
     return null;
   }
@@ -188,7 +188,7 @@ function resolveDestinationRack(
 
   if (destinationClass !== sourceClass) {
     console.warn(
-      `duplicate: cannot copy a chain from ${targetLabel(sourceRack)} (a ${sourceClass}) ` +
+      `cannot copy a chain from ${targetLabel(sourceRack)} (a ${sourceClass}) ` +
         `into "${toPath}" (a ${destinationClass}) — a rack only holds chains of its own kind`,
     );
 
@@ -239,7 +239,7 @@ function insertChain(rack: LiveAPI): LiveAPI | null {
 
   if (!Array.isArray(result) || result[0] !== "id") {
     console.warn(
-      `duplicate: could not create a chain in "${targetLabel(rack)}", skipping`,
+      `could not create a chain in "${targetLabel(rack)}", skipping`,
     );
 
     return null;
@@ -269,7 +269,7 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
 
   if (destinationChainPath == null) {
     console.warn(
-      "duplicate: the new chain has no addressable path, so its devices were " +
+      "the new chain has no addressable path, so its devices were " +
         "not copied",
     );
 
@@ -293,7 +293,7 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
 
       if (outcome !== "moved") {
         console.warn(
-          `duplicate: ${pathPrefix(chain)}/d${index} could not be copied into the new chain`,
+          `${pathPrefix(chain)}/d${index} could not be copied into the new chain`,
         );
 
         break;
@@ -311,7 +311,7 @@ function warnIfMacrosLeftBehind(sourceRack: LiveAPI): void {
   if (sourceRack.getProperty("has_macro_mappings") !== 1) return;
 
   console.warn(
-    `duplicate: the source rack ${targetLabel(sourceRack)} has macro mappings, and ` +
+    `the source rack ${targetLabel(sourceRack)} has macro mappings, and ` +
       "they do not come with a copied chain — re-map the copy's devices in Live " +
       "if you need them",
   );

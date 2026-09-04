@@ -220,7 +220,7 @@ describe("updateClip - a toPath coordinate", () => {
     await expect(
       updateClip({ id: "100", toPath: "t1[5|1]", arrangementStart: "9|1" }),
     ).rejects.toThrow(
-      'updateClip failed: toPath "t1[5|1]" and arrangementStart both name a ' +
+      'toPath "t1[5|1]" and arrangementStart both name a ' +
         "song position; use one",
     );
 

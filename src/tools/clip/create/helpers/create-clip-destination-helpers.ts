@@ -99,7 +99,7 @@ export function resolveCreateClipDestinations(
   // path replaces, so refuse instead of picking.
   if (path != null && slot != null) {
     throw new Error(
-      "createClip failed: path and slot both name a destination; use path alone (slot is deprecated)",
+      "path and slot both name a destination; use path alone (slot is deprecated)",
     );
   }
 
@@ -136,7 +136,7 @@ function splitPathDestinations(
   // other went unused rather than guessing which was meant.
   if (params.trackIndex != null || params.sceneIndex != null) {
     console.warn(
-      'createClip: trackIndex/sceneIndex ignored — "path" already names the destination',
+      'trackIndex/sceneIndex ignored — "path" already names the destination',
     );
   }
 
@@ -150,7 +150,6 @@ function splitPathDestinations(
   }));
 
   for (const { lane, position } of resolveDestinationPositions(entries, {
-    toolName: "createClip",
     paramName: "path",
   })) {
     if (lane.kind === "slot") {
@@ -207,23 +206,17 @@ function applyTakeLaneAlias(
   // Warn-and-ignore without validating the value: an LLM passing garbage on a
   // request with nowhere to put a lane shouldn't lose the whole call to it.
   if (tracks.length === 0) {
-    console.warn(
-      "createClip: takeLane ignored for session clips (arrangement-only)",
-    );
+    console.warn("takeLane ignored for session clips (arrangement-only)");
 
     return tracks;
   }
 
   if (clipSlotCount > 0) {
-    console.warn(
-      "createClip: takeLane ignored for session clips (arrangement-only)",
-    );
+    console.warn("takeLane ignored for session clips (arrangement-only)");
   }
 
   if (tracks.some((track) => track.takeLane != null)) {
-    console.warn(
-      'createClip: takeLane ignored — "path" already names the take lane',
-    );
+    console.warn('takeLane ignored — "path" already names the take lane');
 
     return tracks;
   }
@@ -258,7 +251,7 @@ function legacyDestinations(
 
   if (trackIndex == null) {
     throw new Error(
-      `createClip failed: sceneIndex ${sceneIndex} has no track; use path "t<track>/s${sceneIndex}"`,
+      `sceneIndex ${sceneIndex} has no track; use path "t<track>/s${sceneIndex}"`,
     );
   }
 
@@ -267,7 +260,7 @@ function legacyDestinations(
     // destinations, so the guess is the redundant one.
     if (slot != null) {
       console.warn(
-        'createClip: trackIndex/sceneIndex ignored — "slot" already names the session destination',
+        'trackIndex/sceneIndex ignored — "slot" already names the session destination',
       );
 
       return { clipSlots, tracks: [] };
@@ -280,7 +273,7 @@ function legacyDestinations(
   // it. Without one it named nothing the clip slots didn't already.
   if (!hasArrangementStarts && clipSlots.length > 0) {
     console.warn(
-      `createClip: trackIndex ignored — an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
+      `trackIndex ignored — an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
     );
 
     return { clipSlots, tracks: [] };
@@ -312,7 +305,7 @@ function pairTracksWithStarts(
   if (tracks.length === 0) {
     if (arrangementStarts.length > 0) {
       throw new Error(
-        'createClip failed: arrangementStart needs a track; name both in path (e.g. path: "t0[5|1]")',
+        'arrangementStart needs a track; name both in path (e.g. path: "t0[5|1]")',
       );
     }
 
@@ -369,7 +362,5 @@ function noPosition(track: ArrangementTrack): never {
       ? `add one, as "${lane}[5|1]", or use "t${trackIndex}/s<scene>" for a clip slot`
       : `add one, as "${lane}[5|1]"; take lanes hold arrangement clips`;
 
-  throw new Error(
-    `createClip failed: path "${lane}" names no position; ${fix}`,
-  );
+  throw new Error(`path "${lane}" names no position; ${fix}`);
 }

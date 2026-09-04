@@ -50,9 +50,7 @@ export function captureScene({
   );
 
   if (Number.isNaN(selectedSceneIndex)) {
-    throw new Error(
-      `capture-scene failed: couldn't determine selected scene index`,
-    );
+    throw new Error(`couldn't determine selected scene index`);
   }
 
   liveSet.call("capture_and_insert_scene");

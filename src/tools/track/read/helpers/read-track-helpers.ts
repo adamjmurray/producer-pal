@@ -227,7 +227,7 @@ export function handleNonExistentTrack(
 ): never {
   const indexType = category === "return" ? "returnTrackIndex" : "trackIndex";
 
-  throw new Error(`readTrack: ${indexType} ${trackIndex} does not exist`);
+  throw new Error(`${indexType} ${trackIndex} does not exist`);
 }
 
 /**

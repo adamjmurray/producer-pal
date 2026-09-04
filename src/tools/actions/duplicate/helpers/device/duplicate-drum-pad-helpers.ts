@@ -45,7 +45,7 @@ export function resolveSourcePad(pad: LiveAPI): PadTarget | null {
   // caller named. Make them say which pad.
   if (pad.type !== "DrumPad") {
     console.warn(
-      `duplicate: ${targetLabel(pad)} is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
+      `${targetLabel(pad)} is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
     );
 
     return null;
@@ -78,7 +78,7 @@ export function duplicateDrumPad(
 
   if (source.rackPath !== destination.rackPath) {
     console.warn(
-      `duplicate: a drum-pad copy stays within one rack, but the source pad and toPath "${toPath}" are in different racks`,
+      `a drum-pad copy stays within one rack, but the source pad and toPath "${toPath}" are in different racks`,
     );
 
     return null;
@@ -89,7 +89,7 @@ export function duplicateDrumPad(
   // copy that never happened. A repeated toPath entry is all it takes.
   if (source.midi === destination.midi) {
     console.warn(
-      `duplicate: drum pad ${midiToNoteName(source.midi)} can't be copied onto itself, so toPath "${toPath}" was skipped`,
+      `drum pad ${midiToNoteName(source.midi)} can't be copied onto itself, so toPath "${toPath}" was skipped`,
     );
 
     return null;
@@ -105,7 +105,7 @@ export function duplicateDrumPad(
 
   if (sourcePad == null || sourcePad.getChildCount("chains") === 0) {
     console.warn(
-      `duplicate: drum pad ${midiToNoteName(source.midi)} is empty, nothing to copy`,
+      `drum pad ${midiToNoteName(source.midi)} is empty, nothing to copy`,
     );
 
     return null;
@@ -131,7 +131,7 @@ export function duplicateDrumPad(
 function canCopyPads(rack: LiveAPI): boolean {
   if (rack.getProperty("can_have_drum_pads") !== 1) {
     console.warn(
-      `duplicate: the source pad's device ${targetLabel(rack)} is not a Drum Rack`,
+      `the source pad's device ${targetLabel(rack)} is not a Drum Rack`,
     );
 
     return false;
@@ -139,7 +139,7 @@ function canCopyPads(rack: LiveAPI): boolean {
 
   if (rack.getProperty("has_drum_pads") !== 1) {
     console.warn(
-      `duplicate: Drum Rack ${targetLabel(rack)} has no pads (a Drum Rack nested in a drum pad never does), so there is nothing to copy between`,
+      `Drum Rack ${targetLabel(rack)} has no pads (a Drum Rack nested in a drum pad never does), so there is nothing to copy between`,
     );
 
     return false;
@@ -160,7 +160,7 @@ function resolvePadTarget(path: string, label: string): PadTarget | null {
   try {
     resolved = resolvePathToLiveApi(path, label);
   } catch (e) {
-    console.warn(`duplicate: ${errorMessage(e)}`);
+    console.warn(errorMessage(e));
 
     return null;
   }
@@ -171,7 +171,7 @@ function resolvePadTarget(path: string, label: string): PadTarget | null {
   // saying so rather than claiming the path names no pad at all.
   if (resolved.targetType !== "drum-pad") {
     console.warn(
-      `duplicate: ${label} "${path}" does not name a drum pad (expected something like "t0/d0/pC1")`,
+      `${label} "${path}" does not name a drum pad (expected something like "t0/d0/pC1")`,
     );
 
     return null;
@@ -180,8 +180,8 @@ function resolvePadTarget(path: string, label: string): PadTarget | null {
   if (resolved.remainingSegments.length > 0) {
     console.warn(
       resolved.remainingSegments.some((segment) => segment.startsWith("p"))
-        ? `duplicate: ${label} "${path}" names a pad of a nested Drum Rack, which can't be copied`
-        : `duplicate: ${label} "${path}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
+        ? `${label} "${path}" names a pad of a nested Drum Rack, which can't be copied`
+        : `${label} "${path}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
     );
 
     return null;
@@ -191,7 +191,7 @@ function resolvePadTarget(path: string, label: string): PadTarget | null {
 
   if (midi == null) {
     console.warn(
-      `duplicate: ${label} "${path}" names the catch-all pad, which has no pad to copy`,
+      `${label} "${path}" names the catch-all pad, which has no pad to copy`,
     );
 
     return null;
@@ -200,7 +200,7 @@ function resolvePadTarget(path: string, label: string): PadTarget | null {
   // A path parses fine against a track or device index that holds nothing. An
   // id can't: the pad proves its own rack.
   if (!LiveAPI.from(resolved.liveApiPath).exists()) {
-    console.warn(`duplicate: no device at "${path}"`);
+    console.warn(`no device at "${path}"`);
 
     return null;
   }
@@ -228,7 +228,7 @@ function finishPadCopy(
   const chainIds = pad?.getChildIds("chains") ?? [];
 
   if (pad == null || chainIds.length <= chainsBefore) {
-    console.warn(`duplicate: copying onto drum pad "${toPath}" had no effect`);
+    console.warn(`copying onto drum pad "${toPath}" had no effect`);
 
     return null;
   }
@@ -237,7 +237,7 @@ function finishPadCopy(
   // occupied pad. Say so, because the pad now plays both.
   if (chainsBefore > 0) {
     console.warn(
-      `duplicate: drum pad ${targetLabel(pad)} already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
+      `drum pad ${targetLabel(pad)} already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
     );
   }
 

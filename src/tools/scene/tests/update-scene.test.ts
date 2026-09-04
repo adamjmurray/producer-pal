@@ -121,8 +121,7 @@ describe("updateScene", () => {
   // touched instead.
   it.each([0, 1000])("refuses an out-of-range tempo of %i", (tempo) => {
     expect(() => updateScene({ id: "123", tempo })).toThrow(
-      "updateScene failed: tempo must be between 20.0 and 999.0 BPM " +
-        "(or -1 to disable)",
+      "tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
     );
     expect(scene1.set).not.toHaveBeenCalled();
   });
@@ -161,11 +160,9 @@ describe("updateScene", () => {
   });
 
   it("should refuse the call when id is missing", () => {
-    expect(() => updateScene({})).toThrow(
-      "updateScene failed: id or path is required",
-    );
+    expect(() => updateScene({})).toThrow("id or path is required");
     expect(() => updateScene({ name: "Test" })).toThrow(
-      "updateScene failed: id or path is required",
+      "id or path is required",
     );
   });
 
@@ -185,9 +182,7 @@ describe("updateScene", () => {
     const result = updateScene({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain(
-      'updateScene: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
@@ -196,9 +191,7 @@ describe("updateScene", () => {
     const result = updateScene({ id: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123", path: "s0" });
-    expect(capturedWarnings()).toContain(
-      'updateScene: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
     expect(scene1.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -222,9 +215,7 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(scene2.set).toHaveBeenCalledWith("name", "C");
     expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain(
-      'updateScene: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   it("should throw error for invalid time signature format", () => {

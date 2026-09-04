@@ -114,7 +114,6 @@ describe("ppal-delete", () => {
     const track = await createTrack({ name: "Track to Delete" });
     const deleted = parseAliasedToolResult<DeleteResult>(
       await del({ ids: track.id, type: "track" }),
-      "ppal-delete",
       "ids",
       "id",
     );
@@ -376,7 +375,6 @@ describe("ppal-delete", () => {
     // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1
     const deleted = parseAliasedToolResult<DeleteResult>(
       await del({ paths: "t0/d0/pC1", type: "drum-pad" }),
-      "ppal-delete",
       "paths",
       "path",
     );

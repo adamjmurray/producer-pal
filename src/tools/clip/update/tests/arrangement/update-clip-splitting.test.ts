@@ -278,7 +278,7 @@ describe("updateClip - loc: song positions", () => {
     await expect(
       updateClip({ id: CLIP_ID, arrangementSplit: "loc:Bridge" }, {}),
     ).rejects.toThrow(
-      'updateClip failed: no locator found with name "Bridge" for arrangementSplit',
+      'no locator found with name "Bridge" for arrangementSplit',
     );
   });
 
@@ -288,7 +288,7 @@ describe("updateClip - loc: song positions", () => {
     await expect(
       updateClip({ id: CLIP_ID, arrangementStart: "loc:Bridge" }, {}),
     ).rejects.toThrow(
-      'updateClip failed: no locator found with name "Bridge" for arrangementStart',
+      'no locator found with name "Bridge" for arrangementStart',
     );
   });
 

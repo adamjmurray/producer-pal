@@ -229,12 +229,7 @@ describe("Drift pseudo-params", () => {
     it("maps a valid source label to its index", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "filterMod1Source",
-        "LFO",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "filterMod1Source", "LFO");
 
       expect(device.set).toHaveBeenCalledWith(
         "mod_matrix_filter_source_1_index",
@@ -245,7 +240,7 @@ describe("Drift pseudo-params", () => {
     it("maps the last source label 'Slide' to index 7", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "mod3Source", "Slide", "updateDevice");
+      applySpecializedParamWrite(device, "mod3Source", "Slide");
 
       expect(device.set).toHaveBeenCalledWith("mod_matrix_source_3_index", 7);
     });
@@ -253,12 +248,7 @@ describe("Drift pseudo-params", () => {
     it("is case-insensitive on the param name", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "filtermod1source",
-        "Env 2",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "filtermod1source", "Env 2");
 
       expect(device.set).toHaveBeenCalledWith(
         "mod_matrix_filter_source_1_index",
@@ -269,12 +259,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips an invalid source label", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "lfoSource",
-        "BogusSource",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "lfoSource", "BogusSource");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -287,7 +272,7 @@ describe("Drift pseudo-params", () => {
     it("maps 'None' to index 0 (disables slot)", () => {
       const device = registerDrift({ mod_matrix_target_1_index: 6 });
 
-      applySpecializedParamWrite(device, "mod1Target", "None", "updateDevice");
+      applySpecializedParamWrite(device, "mod1Target", "None");
 
       expect(device.set).toHaveBeenCalledWith("mod_matrix_target_1_index", 0);
     });
@@ -295,12 +280,7 @@ describe("Drift pseudo-params", () => {
     it("maps 'LP Frequency' to index 6", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "mod2Target",
-        "LP Frequency",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "mod2Target", "LP Frequency");
 
       expect(device.set).toHaveBeenCalledWith("mod_matrix_target_2_index", 6);
     });
@@ -308,12 +288,7 @@ describe("Drift pseudo-params", () => {
     it("maps 'Main Volume' to index 11", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "mod3Target",
-        "Main Volume",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "mod3Target", "Main Volume");
 
       expect(device.set).toHaveBeenCalledWith("mod_matrix_target_3_index", 11);
     });
@@ -321,12 +296,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips an invalid target label", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "mod1Target",
-        "BogusTarget",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "mod1Target", "BogusTarget");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -339,7 +309,7 @@ describe("Drift pseudo-params", () => {
     it("maps 'Poly' to index 0", () => {
       const device = registerDrift({ voice_mode_index: 2 });
 
-      applySpecializedParamWrite(device, "voiceMode", "Poly", "updateDevice");
+      applySpecializedParamWrite(device, "voiceMode", "Poly");
 
       expect(device.set).toHaveBeenCalledWith("voice_mode_index", 0);
     });
@@ -347,7 +317,7 @@ describe("Drift pseudo-params", () => {
     it("maps 'Unison' to index 3", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceMode", "Unison", "updateDevice");
+      applySpecializedParamWrite(device, "voiceMode", "Unison");
 
       expect(device.set).toHaveBeenCalledWith("voice_mode_index", 3);
     });
@@ -355,7 +325,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips an invalid voiceMode label", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceMode", "Quad", "updateDevice");
+      applySpecializedParamWrite(device, "voiceMode", "Quad");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -374,7 +344,7 @@ describe("Drift pseudo-params", () => {
     ])("maps voiceCount %i to index %i", (count, index) => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceCount", count, "updateDevice");
+      applySpecializedParamWrite(device, "voiceCount", count);
 
       expect(device.set).toHaveBeenCalledWith("voice_count_index", index);
     });
@@ -382,7 +352,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips a value not in the allowed set", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceCount", 12, "updateDevice");
+      applySpecializedParamWrite(device, "voiceCount", 12);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -393,7 +363,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips a non-integer value", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceCount", 8.5, "updateDevice");
+      applySpecializedParamWrite(device, "voiceCount", 8.5);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -406,7 +376,7 @@ describe("Drift pseudo-params", () => {
     it("sets pitch_bend_range for a valid integer", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 12, "updateDevice");
+      applySpecializedParamWrite(device, "pitchBendRange", 12);
 
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 12);
     });
@@ -414,7 +384,7 @@ describe("Drift pseudo-params", () => {
     it("sets pitch_bend_range when value is a numeric string", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", "7", "updateDevice");
+      applySpecializedParamWrite(device, "pitchBendRange", "7");
 
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 7);
     });
@@ -422,7 +392,7 @@ describe("Drift pseudo-params", () => {
     it("sets the boundary value 0", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 0, "updateDevice");
+      applySpecializedParamWrite(device, "pitchBendRange", 0);
 
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 0);
     });
@@ -432,7 +402,7 @@ describe("Drift pseudo-params", () => {
       // pre-validate rather than pass the value through.
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 13, "updateDevice");
+      applySpecializedParamWrite(device, "pitchBendRange", 13);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -443,12 +413,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips a non-integer value", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "pitchBendRange",
-        "1.5",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "pitchBendRange", "1.5");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -459,12 +424,7 @@ describe("Drift pseudo-params", () => {
     it("warns and skips a non-numeric string", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(
-        device,
-        "pitchBendRange",
-        "lots",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "pitchBendRange", "lots");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

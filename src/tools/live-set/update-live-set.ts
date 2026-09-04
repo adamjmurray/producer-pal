@@ -94,7 +94,7 @@ export async function updateLiveSet(
   const parsedTimeSignature =
     timeSignature != null ? parseTimeSignature(timeSignature) : null;
 
-  validateTempo(tempo, "updateLiveSet");
+  validateTempo(tempo);
 
   if (tempo != null) {
     applyTempo(liveSet, tempo, result);

@@ -125,7 +125,7 @@ describe("deleteObject when Live refuses the delete", () => {
       deleted: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      `delete: ${type} ${path} (id ${id}) still exists, so Live did not delete it`,
+      `${type} ${path} (id ${id}) still exists, so Live did not delete it`,
     );
   });
 

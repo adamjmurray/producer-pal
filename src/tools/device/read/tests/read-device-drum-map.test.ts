@@ -106,7 +106,7 @@ function setupInstrumentRackWithKit(): void {
 }
 
 const PAD_WARNING =
-  "readDevice: t1/d0/pC1 (id pad-36) is a drum pad and has no drum map of its own — read its drum rack for the kit's map";
+  "t1/d0/pC1 (id pad-36) is a drum pad and has no drum map of its own — read its drum rack for the kit's map";
 
 describe("readDevice drum-map by target kind", () => {
   it('reads a drum pad with include: ["*"] instead of crashing', () => {
@@ -162,7 +162,7 @@ describe("readDevice drum-map by target kind", () => {
 
     expect(result.drumMap).toBeUndefined();
     expect(capturedWarnings()).toContain(
-      "readDevice: t1/d0/pC1/c0 (id chain-1) is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
+      "t1/d0/pC1/c0 (id chain-1) is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
     );
   });
 

@@ -190,9 +190,7 @@ export function foldLocatorParams(
     // Never pick one: the two params name the same position, so a caller who
     // sent both told us two different things about it.
     if (folded[position] != null) {
-      throw new Error(
-        `playback failed: ${position} cannot be used with ${legacy}`,
-      );
+      throw new Error(`${position} cannot be used with ${legacy}`);
     }
 
     folded[position] = `loc:${locator}`;
@@ -220,7 +218,6 @@ export function resolveStartTime(
   if (startTime == null) return undefined;
 
   const startTimeBeats = songPositionToBeats(liveSet, startTime, {
-    toolName: "playback",
     paramName: "startTime",
     timeSigNumerator,
     timeSigDenominator,
@@ -249,7 +246,6 @@ export function resolveLoopStart(
   if (loopStart == null) return undefined;
 
   const loopStartBeats = songPositionToBeats(liveSet, loopStart, {
-    toolName: "playback",
     paramName: "loopStart",
     timeSigNumerator,
     timeSigDenominator,
@@ -279,7 +275,6 @@ export function resolveLoopEnd(
   if (loopEnd == null) return;
 
   const loopEndBeats = songPositionToBeats(liveSet, loopEnd, {
-    toolName: "playback",
     paramName: "loopEnd",
     timeSigNumerator,
     timeSigDenominator,
@@ -368,16 +363,14 @@ export function handlePlayScene(
 ): PlaybackState {
   if (sceneIndex == null) {
     throw new Error(
-      `playback failed: path "s<scene>" or a scene id is required for action "play-scene"`,
+      `path "s<scene>" or a scene id is required for action "play-scene"`,
     );
   }
 
   const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
   if (!scene.exists()) {
-    throw new Error(
-      `playback failed: scene at index ${sceneIndex} does not exist`,
-    );
+    throw new Error(`scene at index ${sceneIndex} does not exist`);
   }
 
   scene.call("fire");

@@ -144,18 +144,16 @@ export function updateDevice(
   path = namedPathParam(path, paths);
 
   if (ids == null && path == null) {
-    throw new Error("updateDevice failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
-  validateSendPair(sendGainDb, sendReturn, "updateDevice");
-  validateParamEntries(params, "updateDevice");
+  validateSendPair(sendGainDb, sendReturn);
+  validateParamEntries(params);
 
   // One value for the whole call, so a per-target skip would repeat itself
   // down the list. Refused before any target is touched.
   if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
-    throw new Error(
-      `updateDevice failed: invalid note name "${mappedPitch}" for mappedPitch`,
-    );
+    throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
   }
 
   let result: Record<string, unknown> | Record<string, unknown>[] | null;
@@ -281,7 +279,7 @@ function updateMultipleTargets(
       kind === "id" ? resolveIdToTarget(value) : resolvePathToTargetSafe(value);
 
     if (!resolved) {
-      console.warn(`updateDevice: target not found at ${kind} "${value}"`);
+      console.warn(`target not found at ${kind} "${value}"`);
       continue;
     }
 
@@ -344,7 +342,7 @@ function resolvePathToTargetSafe(path: string): ResolvedTarget | null {
   try {
     return resolvePathToTarget(path);
   } catch (e) {
-    console.warn(`updateDevice: ${errorMessage(e)}`);
+    console.warn(errorMessage(e));
 
     return null;
   }
@@ -429,9 +427,7 @@ function updateTarget(
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
-    console.warn(
-      `updateDevice: cannot update ${type} objects: ${targetLabel(target)}`,
-    );
+    console.warn(`cannot update ${type} objects: ${targetLabel(target)}`);
 
     return null;
   }
@@ -440,7 +436,7 @@ function updateTarget(
   if (options.toPath != null) {
     if (isProducerPalDevice(target)) {
       console.warn(
-        `updateDevice: cannot move the Producer Pal device ${targetLabel(target)}, skipping the move`,
+        `cannot move the Producer Pal device ${targetLabel(target)}, skipping the move`,
       );
     } else if (isDeviceType(type)) {
       const outcome = moveDeviceToPath(target, options.toPath);
@@ -451,13 +447,13 @@ function updateTarget(
         console.warn(`move target at path "${options.toPath}" does not exist`);
       } else if (outcome === "refused") {
         console.warn(
-          `updateDevice: ${targetLabel(target)} was not moved to "${options.toPath}"`,
+          `${targetLabel(target)} was not moved to "${options.toPath}"`,
         );
       }
     } else if (type === "DrumChain") {
       moveDrumChainToPath(target, options.toPath, false);
     } else {
-      console.warn(`updateDevice: cannot move ${type} ${targetLabel(target)}`);
+      console.warn(`cannot move ${type} ${targetLabel(target)}`);
     }
   }
 

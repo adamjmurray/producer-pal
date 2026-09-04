@@ -58,22 +58,21 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     {
       name: "midiGate",
       read: (device) => readBoolProp(device, "midi_gate"),
-      write: (device, value, toolName) =>
-        writeBoolProp(device, "midi_gate", value, toolName, "midiGate"),
+      write: (device, value) =>
+        writeBoolProp(device, "midi_gate", value, "midiGate"),
     },
     enumParam("monoPoly", "mono_poly", MONO_POLY_LABELS),
     {
       name: "pitchBendRange",
       options: "0-24",
       read: readPitchBendRange,
-      write: (device, value, toolName) =>
+      write: (device, value) =>
         writeIntInRange(
           device,
           "pitch_bend_range",
           value,
           0,
           24,
-          toolName,
           "pitchBendRange",
         ),
     },
@@ -83,13 +82,12 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
       name: "polyphony",
       options: POLYPHONY_COUNTS,
       read: readPolyphony,
-      write: (device, value, toolName) =>
+      write: (device, value) =>
         writeIntFromSet(
           device,
           "polyphony",
           value,
           POLYPHONY_COUNTS,
-          toolName,
           "polyphony",
           true,
         ),

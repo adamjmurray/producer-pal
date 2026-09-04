@@ -104,12 +104,7 @@ describe("ppal-select", () => {
       name: "ppal-select",
       arguments: { trackId: `id ${trackId}` },
     });
-    const byId = parseAliasedToolResult<SelectResult>(
-      result,
-      "ppal-select",
-      "trackId",
-      "id",
-    );
+    const byId = parseAliasedToolResult<SelectResult>(result, "trackId", "id");
 
     expect(byId.selectedTrack!.id).toBe(trackId);
   });
@@ -137,7 +132,7 @@ describe("ppal-select", () => {
     // Aliases onto one canonical are named in a single steer, and that steer
     // says the value was honored — which is only true now both are.
     expect(warnings).toStrictEqual([
-      'WARNING: ppal-select accepts "trackId", "sceneId" as fallbacks; "id" names one object, so keep them as they are for several',
+      'WARNING: "trackId", "sceneId" accepted as fallbacks; "id" names one object, so keep them as they are for several',
     ]);
 
     const state = await select({});

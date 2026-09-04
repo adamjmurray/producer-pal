@@ -40,7 +40,7 @@ export function moveDrumChainToPath(
   // silently — say so instead of reporting a no-op as a move.
   if (targetNote === "*") {
     console.warn(
-      `updateDevice: cannot move a drum chain to the catch-all pad "${toPath}" — ` +
+      `cannot move a drum chain to the catch-all pad "${toPath}" — ` +
         `Live has no way to set a chain to "all notes"`,
     );
 
@@ -93,7 +93,7 @@ function warnIfDestinationOccupied(
   const label = pathTargetLabel(findDrumPadByNote(rack, targetInNote), toPath);
 
   console.warn(
-    `updateDevice: drum pad ${label} already had ${occupants} chain(s), ` +
+    `drum pad ${label} already had ${occupants} chain(s), ` +
       `so the move layers on top of them rather than replacing them`,
   );
 }

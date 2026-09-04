@@ -34,13 +34,13 @@ function applyStereoPan(
     const panning = mixer.child("panning");
 
     if (panning.exists()) {
-      setParamIfEnabled(panning, "value", pan, "updateTrack: pan");
+      setParamIfEnabled(panning, "value", pan, "pan");
     }
   }
 
   if (leftPan != null || rightPan != null) {
     console.warn(
-      `updateTrack: track ${targetLabel(track)} is in stereo panning mode, so leftPan/rightPan ` +
+      `track ${targetLabel(track)} is in stereo panning mode, so leftPan/rightPan ` +
         "had no effect; set panningMode to 'split', or use pan",
     );
   }
@@ -65,7 +65,7 @@ function applySplitPan(
     const leftSplit = mixer.child("left_split_stereo");
 
     if (leftSplit.exists()) {
-      setParamIfEnabled(leftSplit, "value", leftPan, "updateTrack: leftPan");
+      setParamIfEnabled(leftSplit, "value", leftPan, "leftPan");
     }
   }
 
@@ -73,13 +73,13 @@ function applySplitPan(
     const rightSplit = mixer.child("right_split_stereo");
 
     if (rightSplit.exists()) {
-      setParamIfEnabled(rightSplit, "value", rightPan, "updateTrack: rightPan");
+      setParamIfEnabled(rightSplit, "value", rightPan, "rightPan");
     }
   }
 
   if (pan != null) {
     console.warn(
-      `updateTrack: track ${targetLabel(track)} is in split panning mode, so pan had no ` +
+      `track ${targetLabel(track)} is in split panning mode, so pan had no ` +
         "effect; set panningMode to 'stereo', or use leftPan/rightPan",
     );
   }
@@ -107,7 +107,7 @@ export function applyMixerProperties(
     const volume = mixer.child("volume");
 
     if (volume.exists()) {
-      setParamIfEnabled(volume, "display_value", gainDb, "updateTrack: gainDb");
+      setParamIfEnabled(volume, "display_value", gainDb, "gainDb");
     }
   }
 

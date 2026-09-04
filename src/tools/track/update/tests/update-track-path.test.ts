@@ -72,7 +72,7 @@ describe("updateTrack by path", () => {
     expect(track1.set).toHaveBeenCalledWith("name", "Second");
     expect(result).toStrictEqual({ id: "456", path: "t1" });
     expect(capturedWarnings()).toContain(
-      'updateTrack: invalid path "s0" - names a scene, not a track; expected "t<index>", "rt<index>", or "mt"',
+      'invalid path "s0" - names a scene, not a track; expected "t<index>", "rt<index>", or "mt"',
     );
   });
 
@@ -80,12 +80,12 @@ describe("updateTrack by path", () => {
     mockNonExistentObjects();
 
     expect(updateTrack({ path: "t9", name: "Nowhere" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('updateTrack: nothing at path "t9"');
+    expect(capturedWarnings()).toContain('nothing at path "t9"');
   });
 
   it("still asks for a target when neither id nor path is given", () => {
     expect(() => updateTrack({ name: "Orphan" })).toThrow(
-      "updateTrack failed: id or path is required",
+      "id or path is required",
     );
   });
 

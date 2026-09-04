@@ -95,12 +95,7 @@ describe("EQ Eight pseudo-params", () => {
     it("maps stereo label to index 0", () => {
       const device = registerEqEight({ global_mode: 2 });
 
-      applySpecializedParamWrite(
-        device,
-        "globalMode",
-        "stereo",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "globalMode", "stereo");
 
       expect(device.set).toHaveBeenCalledWith("global_mode", 0);
     });
@@ -108,7 +103,7 @@ describe("EQ Eight pseudo-params", () => {
     it("maps L/R label to index 1", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "globalMode", "L/R", "updateDevice");
+      applySpecializedParamWrite(device, "globalMode", "L/R");
 
       expect(device.set).toHaveBeenCalledWith("global_mode", 1);
     });
@@ -116,7 +111,7 @@ describe("EQ Eight pseudo-params", () => {
     it("maps M/S label to index 2", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "globalMode", "M/S", "updateDevice");
+      applySpecializedParamWrite(device, "globalMode", "M/S");
 
       expect(device.set).toHaveBeenCalledWith("global_mode", 2);
     });
@@ -124,7 +119,7 @@ describe("EQ Eight pseudo-params", () => {
     it("warns and skips an invalid globalMode", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "globalMode", "bogus", "updateDevice");
+      applySpecializedParamWrite(device, "globalMode", "bogus");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -135,12 +130,7 @@ describe("EQ Eight pseudo-params", () => {
     it("is case-insensitive on the param name", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(
-        device,
-        "globalmode",
-        "stereo",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "globalmode", "stereo");
 
       expect(device.set).toHaveBeenCalledWith("global_mode", 0);
     });
@@ -150,7 +140,7 @@ describe("EQ Eight pseudo-params", () => {
     it("writes 1 for true", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "oversample", "true", "updateDevice");
+      applySpecializedParamWrite(device, "oversample", "true");
 
       expect(device.set).toHaveBeenCalledWith("oversample", 1);
     });
@@ -158,7 +148,7 @@ describe("EQ Eight pseudo-params", () => {
     it("writes 0 for false", () => {
       const device = registerEqEight({ oversample: 1 });
 
-      applySpecializedParamWrite(device, "oversample", "false", "updateDevice");
+      applySpecializedParamWrite(device, "oversample", "false");
 
       expect(device.set).toHaveBeenCalledWith("oversample", 0);
     });
@@ -166,7 +156,7 @@ describe("EQ Eight pseudo-params", () => {
     it("warns naming oversample and skips uninterpretable input", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "oversample", "maybe", "updateDevice");
+      applySpecializedParamWrite(device, "oversample", "maybe");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

@@ -69,7 +69,7 @@ describe("updateLiveSet", () => {
   // property is written, the way a malformed timeSignature already was.
   it.each([10, 1000])("refuses an out-of-range tempo of %i", async (tempo) => {
     await expect(updateLiveSet({ tempo })).rejects.toThrow(
-      "updateLiveSet failed: tempo must be between 20.0 and 999.0 BPM",
+      "tempo must be between 20.0 and 999.0 BPM",
     );
     expect(liveSet.set).not.toHaveBeenCalled();
   });

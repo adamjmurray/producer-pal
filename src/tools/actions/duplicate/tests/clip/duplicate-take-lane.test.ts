@@ -357,7 +357,7 @@ describe("duplicate take lane", () => {
     // throw (from the not-exists guard), not some other downstream error.
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        "duplicate: failed to create take-lane copy of clip t0[1|1] (id src_clip) at beat 0: failed to create Arrangement clip",
+        "failed to create take-lane copy of clip t0[1|1] (id src_clip) at beat 0: failed to create Arrangement clip",
       ),
     );
   });
@@ -580,7 +580,7 @@ describe("duplicate take lane", () => {
 
     expect(ok.call).toHaveBeenCalledWith("create_take_lane");
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('duplicate: skipping "t2/l+"'),
+      expect.stringContaining('skipping "t2/l+"'),
     );
   });
 
@@ -603,7 +603,7 @@ describe("duplicate take lane", () => {
       lookupMockObject(undefined, livePath.track(1).takeLane(7))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('duplicate: skipping "t1/l+"'),
+      expect.stringContaining('skipping "t1/l+"'),
     );
   });
 

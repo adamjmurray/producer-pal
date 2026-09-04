@@ -149,7 +149,7 @@ describe("createClip - arrangement view", () => {
         trackIndex: 99,
         arrangementStart: "3|1",
       }),
-    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    ).rejects.toThrow("track 99 does not exist");
   });
 
   it("should emit warning and return empty array when arrangement clip creation fails", async () => {
@@ -179,7 +179,7 @@ describe("createClip - arrangement view", () => {
         arrangementStart: "1|1",
         notes: "C4 1|1",
       }),
-    ).rejects.toThrow("createClip failed: arrangementStart needs a track");
+    ).rejects.toThrow("arrangementStart needs a track");
   });
 
   // A real position beside a slot-only path is refused; one that names nothing
@@ -340,7 +340,7 @@ describe("createClip - loc: on arrangementStart", () => {
         notes: "C3 1|1",
       }),
     ).rejects.toThrow(
-      'createClip failed: no locator found with name "Bridge" for arrangementStart',
+      'no locator found with name "Bridge" for arrangementStart',
     );
   });
 

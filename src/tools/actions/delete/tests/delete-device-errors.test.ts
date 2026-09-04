@@ -44,7 +44,7 @@ describe("deleteObject device path error cases", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: device at path "t0/d0/pC1/c0/d0" does not exist',
+      'device at path "t0/d0/pC1/c0/d0" does not exist',
     );
   });
 
@@ -71,7 +71,7 @@ describe("deleteObject device path error cases", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: path "t0/d0/c0" resolves to chain, not device',
+      'path "t0/d0/c0" resolves to chain, not device',
     );
   });
 
@@ -89,7 +89,7 @@ describe("deleteObject device path error cases", () => {
     });
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        'delete: invalid path "t0/d0/p" - "p" is not a device, chain, or drum pad',
+        'invalid path "t0/d0/p" - "p" is not a device, chain, or drum pad',
       ),
     );
   });
@@ -112,7 +112,7 @@ describe("deleteObject device path error cases", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: no parent path for device id orphan-device (Live path "devices 0"), skipping',
+      'no parent path for device id orphan-device (Live path "devices 0"), skipping',
     );
   });
 
@@ -130,7 +130,7 @@ describe("deleteObject device path error cases", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: device at path "t0/d0" does not exist',
+      'device at path "t0/d0" does not exist',
     );
   });
 });

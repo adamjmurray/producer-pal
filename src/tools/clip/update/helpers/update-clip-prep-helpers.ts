@@ -143,7 +143,6 @@ function resolveSongLocators(
     value == null
       ? undefined
       : resolveLocatorPositions(liveSet, value, {
-          toolName: "updateClip",
           paramName,
         });
 

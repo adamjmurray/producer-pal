@@ -148,7 +148,6 @@ export function findLocatorsByName(
  * @param options - Locator identifier options
  * @param options.locatorId - Locator ID to find
  * @param options.locatorName - Locator name to find
- * @param toolName - Name of the tool for error messages
  * @param context - Optional context for error messages (e.g., "for start")
  * @returns Time in beats
  * @throws If locator is not found
@@ -156,7 +155,6 @@ export function findLocatorsByName(
 export function resolveLocatorToBeats(
   liveSet: LiveAPI,
   { locatorId, locatorName }: ResolveLocatorOptions,
-  toolName: string,
   context?: string,
 ): number {
   const contextSuffix = context ? ` ${context}` : "";
@@ -165,9 +163,7 @@ export function resolveLocatorToBeats(
     const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(
-        locatorFailure(toolName, `locator not found: ${locatorId}`),
-      );
+      throw new Error(`locator not found: ${locatorId}`);
     }
 
     return found.locator.getProperty("time") as number;
@@ -178,10 +174,7 @@ export function resolveLocatorToBeats(
 
     if (matches.length === 0) {
       throw new Error(
-        locatorFailure(
-          toolName,
-          `no locator found with name "${locatorName}"${contextSuffix}`,
-        ),
+        `no locator found with name "${locatorName}"${contextSuffix}`,
       );
     }
 
@@ -189,21 +182,7 @@ export function resolveLocatorToBeats(
     return assertDefined(matches[0], "first matching locator").time;
   }
 
-  throw new Error(
-    locatorFailure(toolName, "locatorId or locatorName is required"),
-  );
-}
-
-/**
- * Frames a lookup failure with the tool that asked, unless the caller said it
- * will frame the reason itself — a reason quoted inside another message must
- * not name the tool a second time.
- * @param toolName - The tool, or "" to leave the reason bare
- * @param reason - What went wrong
- * @returns The message to throw
- */
-function locatorFailure(toolName: string, reason: string): string {
-  return toolName === "" ? reason : `${toolName} failed: ${reason}`;
+  throw new Error("locatorId or locatorName is required");
 }
 
 /**
@@ -213,14 +192,12 @@ function locatorFailure(toolName: string, reason: string): string {
  * @param options - Locator identifier options
  * @param options.locatorId - Comma-separated locator ID(s) to find
  * @param options.locatorName - Comma-separated locator name(s) to find
- * @param toolName - Name of the tool for error messages
  * @returns Array of times in beats
  * @throws If any locator is not found
  */
 export function resolveLocatorListToBeats(
   liveSet: LiveAPI,
   { locatorId, locatorName }: ResolveLocatorOptions,
-  toolName: string,
 ): number[] {
   if (locatorId != null) {
     const ids = targetEntries(locatorId, "locatorId");
@@ -229,7 +206,7 @@ export function resolveLocatorListToBeats(
       const found = findLocator(liveSet, { locatorId: id });
 
       if (!found) {
-        throw new Error(`${toolName} failed: locator not found: ${id}`);
+        throw new Error(`locator not found: ${id}`);
       }
 
       return found.locator.getProperty("time") as number;
@@ -243,16 +220,14 @@ export function resolveLocatorListToBeats(
       const matches = findLocatorsByName(liveSet, name);
 
       if (matches.length === 0) {
-        throw new Error(
-          `${toolName} failed: no locator found with name "${name}"`,
-        );
+        throw new Error(`no locator found with name "${name}"`);
       }
 
       return assertDefined(matches[0], "first matching locator").time;
     });
   }
 
-  throw new Error(`${toolName} failed: locatorId or locatorName is required`);
+  throw new Error("locatorId or locatorName is required");
 }
 
 const LOCATOR_ID_PATTERN = /^locator-\d+$/;
@@ -271,29 +246,17 @@ export function isLocatorId(value: string): boolean {
  * Auto-detects whether the value is a locator ID (locator-N) or a name.
  * @param liveSet - The live_set LiveAPI object
  * @param locatorRef - Locator ID or name
- * @param toolName - Name of the tool for error messages
  * @param context - Optional context for error messages
  * @returns Time in beats
  */
 export function resolveLocatorRefToBeats(
   liveSet: LiveAPI,
   locatorRef: string,
-  toolName: string,
   context?: string,
 ): number {
   return isLocatorId(locatorRef)
-    ? resolveLocatorToBeats(
-        liveSet,
-        { locatorId: locatorRef },
-        toolName,
-        context,
-      )
-    : resolveLocatorToBeats(
-        liveSet,
-        { locatorName: locatorRef },
-        toolName,
-        context,
-      );
+    ? resolveLocatorToBeats(liveSet, { locatorId: locatorRef }, context)
+    : resolveLocatorToBeats(liveSet, { locatorName: locatorRef }, context);
 }
 
 /**

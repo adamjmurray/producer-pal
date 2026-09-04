@@ -227,7 +227,7 @@ describe("select inside a rack", () => {
     setupSongViewMock();
 
     expect(() => select({ id: pad.id, deviceId: "id other-device" })).toThrow(
-      "select failed: deviceId and id name different devices",
+      "deviceId and id name different devices",
     );
   });
 
@@ -342,7 +342,7 @@ describe("select inside a rack", () => {
     setupSongViewMock();
 
     expect(() => select({ path: "t0/d0/pC1/c9" })).toThrow(
-      'select failed: nothing at "t0/d0/pC1/c9"',
+      'nothing at "t0/d0/pC1/c9"',
     );
   });
 
@@ -351,7 +351,7 @@ describe("select inside a rack", () => {
     setupSongViewMock();
 
     expect(() => select({ path: "t0/d0/pD1" })).toThrow(
-      'select failed: no drum pad at "t0/d0/pD1"',
+      'no drum pad at "t0/d0/pD1"',
     );
   });
 
@@ -386,7 +386,7 @@ describe("select inside a rack", () => {
     setupSongViewMock();
 
     expect(() => select({ path: "t0/d0/pC1" })).toThrow(
-      'select failed: no drum pad at "t0/d0/pC1" — the drum rack is nested; try "t0/d0/c0/d1/pC1"',
+      'no drum pad at "t0/d0/pC1" — the drum rack is nested; try "t0/d0/c0/d1/pC1"',
     );
   });
 
@@ -396,7 +396,7 @@ describe("select inside a rack", () => {
     setupSongViewMock();
 
     expect(() => select({ path: "t0/d0/c9" })).toThrow(
-      'select failed: no chain at "t0/d0/c9"',
+      'no chain at "t0/d0/c9"',
     );
   });
 });

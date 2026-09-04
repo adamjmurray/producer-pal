@@ -40,14 +40,12 @@ export function resolveParamsByName(device: LiveAPI, name: string): LiveAPI[] {
  * read-device.
  * @param matches - The params the name resolved to
  * @param name - The name as the caller wrote it
- * @param toolName - Calling tool name for warning prefix
  * @param device - The device the name was looked up on
  * @returns True if the name was ambiguous and nothing should be written
  */
 export function warnIfAmbiguousName(
   matches: LiveAPI[],
   name: string,
-  toolName: string,
   device: LiveAPI,
 ): boolean {
   if (matches.length < 2) return false;
@@ -60,7 +58,7 @@ export function warnIfAmbiguousName(
     .join(", ");
 
   console.warn(
-    `${toolName}: param "${name}" names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. Write by id to pick one.`,
+    `param "${name}" names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. Write by id to pick one.`,
   );
 
   return true;

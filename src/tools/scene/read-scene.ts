@@ -79,12 +79,12 @@ export function readScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error("readScene failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
   if (scenePath != null && (sceneId != null || sceneIndex != null)) {
     throw new Error(
-      "readScene: path names the scene on its own - don't send id or sceneIndex with it",
+      "path names the scene on its own - don't send id or sceneIndex with it",
     );
   }
 
@@ -101,8 +101,8 @@ export function readScene(
     // Validate an id names a scene; a path says so by its own spelling
     scene =
       sceneId != null
-        ? validateIdType(sceneId, "scene", "readScene")
-        : sceneApiAtPath(scenePath as string, "readScene");
+        ? validateIdType(sceneId, "scene")
+        : sceneApiAtPath(scenePath as string);
 
     // Determine scene index from the scene's Live path
     resolvedSceneIndex = scene.sceneIndex;
@@ -112,7 +112,7 @@ export function readScene(
   }
 
   if (!scene.exists()) {
-    throw new Error(`readScene: sceneIndex ${sceneIndex} does not exist`);
+    throw new Error(`sceneIndex ${sceneIndex} does not exist`);
   }
 
   const isTempoEnabled = (scene.getProperty("tempo_enabled") as number) > 0;

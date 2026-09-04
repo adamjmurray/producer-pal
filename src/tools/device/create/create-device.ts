@@ -67,7 +67,7 @@ function validateDeviceName(deviceName: string): void {
     `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
 
   throw new Error(
-    `createDevice failed: invalid deviceName "${deviceName}". Valid devices - ${validList}`,
+    `invalid deviceName "${deviceName}". Valid devices - ${validList}`,
   );
 }
 
@@ -94,12 +94,10 @@ export function createDevice(
   validateDeviceName(deviceName);
 
   if (path == null || path.trim() === "") {
-    throw new Error(
-      "createDevice failed: path is required when creating a device",
-    );
+    throw new Error("path is required when creating a device");
   }
 
-  validateParamEntries(params, "createDevice");
+  validateParamEntries(params);
 
   validateListLengths([
     { param: "path", value: path },
@@ -168,7 +166,7 @@ function validateInsertionOrder(paths: string[], deviceName: string): void {
 
     if (stale != null) {
       throw new Error(
-        `createDevice failed: path entry "${p}" is spelled through "${stale.display}", ` +
+        `path entry "${p}" is spelled through "${stale.display}", ` +
           `which an earlier entry renumbers by inserting into it. Make these calls ` +
           `separately, or name where the device should land after that insert.`,
       );
@@ -250,7 +248,7 @@ function createDevicesAtPaths(
       }
 
       if (params != null) {
-        const written = setParamValues(device, params, "createDevice");
+        const written = setParamValues(device, params);
 
         if (written.length > 0) result.params = refreshParamValues(written);
       }
@@ -266,7 +264,7 @@ function createDevicesAtPaths(
 
   if (results.length === 0) {
     throw new Error(
-      `createDevice failed: could not create "${deviceName}" at any of the specified paths`,
+      `could not create "${deviceName}" at any of the specified paths`,
     );
   }
 
@@ -286,9 +284,7 @@ function createDeviceAtPath(
   const { container, position } = resolveInsertionPath(path);
 
   if (!container?.exists()) {
-    throw new Error(
-      `createDevice failed: container at path "${path}" does not exist`,
-    );
+    throw new Error(`container at path "${path}" does not exist`);
   }
 
   // Live rejects any position past the end of the chain, including position 0
@@ -298,7 +294,7 @@ function createDeviceAtPath(
 
   if (pastEnd) {
     console.warn(
-      `createDevice: path "${path}" is past the end of the device chain ` +
+      `path "${path}" is past the end of the device chain ` +
         `(${deviceCount} device${deviceCount === 1 ? "" : "s"}), appending "${deviceName}" instead`,
     );
   }
@@ -330,7 +326,7 @@ function createDeviceAtPath(
     const positionDesc = position != null ? `position ${position}` : "end";
 
     throw new Error(
-      `createDevice failed: could not insert "${deviceName}" at ${positionDesc} in path "${path}"`,
+      `could not insert "${deviceName}" at ${positionDesc} in path "${path}"`,
     );
   }
 

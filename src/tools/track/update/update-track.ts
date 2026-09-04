@@ -102,7 +102,7 @@ function applyMonitoringState(
 
   if (!canBeArmed) {
     console.warn(
-      `updateTrack: monitoringState is only available on armable tracks; skipping track ${targetLabel(track)}`,
+      `monitoringState is only available on armable tracks; skipping track ${targetLabel(track)}`,
     );
 
     return;
@@ -116,7 +116,7 @@ function applyMonitoringState(
 
   if (monitoringValue == null) {
     console.warn(
-      `updateTrack: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
+      `invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
     );
 
     return;
@@ -191,10 +191,10 @@ export function updateTrack(
   const named = { id, ids, path, paths };
 
   if (targetCount(named) === 0) {
-    throw new Error("updateTrack failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
-  validateSendPair(sendGainDb, sendReturn, "updateTrack");
+  validateSendPair(sendGainDb, sendReturn);
 
   // Resolved once: the return tracks belong to the Live Set, so a per-track
   // lookup would repeat one warning down the list.
@@ -208,7 +208,7 @@ export function updateTrack(
     { param: "color", value: color },
   ]);
 
-  const trackIds = targetIds(named, "updateTrack", trackIdPerPath);
+  const trackIds = targetIds(named, trackIdPerPath);
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
@@ -228,7 +228,7 @@ export function updateTrack(
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
     // onto the wrong track.
-    const [track] = validateIdTypes([trackId], "track", "updateTrack", {
+    const [track] = validateIdTypes([trackId], "track", {
       skipInvalid: true,
     });
 

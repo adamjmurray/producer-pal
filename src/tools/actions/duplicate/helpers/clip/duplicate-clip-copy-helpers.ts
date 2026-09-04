@@ -128,7 +128,7 @@ function recreateCopy(
     );
   } catch (error) {
     console.warn(
-      `duplicate: failed to create ${kind} copy of clip ${targetLabel(options.object)} at beat ${options.startBeats}: ${errorMessage(error)}`,
+      `failed to create ${kind} copy of clip ${targetLabel(options.object)} at beat ${options.startBeats}: ${errorMessage(error)}`,
     );
 
     return null;

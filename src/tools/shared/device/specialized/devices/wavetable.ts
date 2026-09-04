@@ -115,7 +115,7 @@ function buildOscParams(
 
       return list[index];
     },
-    write: (device, value, toolName) => {
+    write: (device, value) => {
       const list = device.getPropertyList(
         "oscillator_wavetable_categories",
       ) as string[];
@@ -123,7 +123,7 @@ function buildOscParams(
 
       if (index < 0) {
         console.warn(
-          `${toolName}: "${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`,
+          `"${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`,
         );
 
         return;
@@ -141,13 +141,13 @@ function buildOscParams(
 
       return list[index];
     },
-    write: (device, value, toolName) => {
+    write: (device, value) => {
       const list = device.getPropertyList(oscListProp) as string[];
       const index = list.indexOf(String(value));
 
       if (index < 0) {
         console.warn(
-          `${toolName}: "${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`,
+          `"${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`,
         );
 
         return;
@@ -197,13 +197,12 @@ export const wavetableSpec: SpecializedDeviceSpec = {
       name: "polyVoices",
       options: POLY_VOICES,
       read: readPolyVoices,
-      write: (device, value, toolName) =>
+      write: (device, value) =>
         writeIntFromSet(
           device,
           "poly_voices",
           value,
           POLY_VOICES,
-          toolName,
           "polyVoices",
           true,
         ),
@@ -213,14 +212,13 @@ export const wavetableSpec: SpecializedDeviceSpec = {
       name: "unisonVoiceCount",
       options: "2-8",
       read: readUnisonVoiceCount,
-      write: (device, value, toolName) =>
+      write: (device, value) =>
         writeIntInRange(
           device,
           "unison_voice_count",
           value,
           2,
           8,
-          toolName,
           "unisonVoiceCount",
         ),
     },

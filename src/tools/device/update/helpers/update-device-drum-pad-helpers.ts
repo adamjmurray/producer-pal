@@ -73,7 +73,7 @@ export function updateDrumPadGroup(
   // write landed would be a lie.
   if (chains.length === 0) {
     console.warn(
-      `updateDevice: drum pad ${padLabel} has no chains, so there is nothing ` +
+      `drum pad ${padLabel} has no chains, so there is nothing ` +
         `to update — Live ignores writes to an empty pad`,
     );
 
@@ -183,7 +183,7 @@ function dropPerLayerProps(
     .join(", ");
 
   console.warn(
-    `updateDevice: ${padLabel} has ${chains.length} layers, so per-layer ` +
+    `${padLabel} has ${chains.length} layers, so per-layer ` +
       `settings (${skipped.join(", ")}) were skipped. ` +
       `Set them on ${chainPaths}.`,
   );

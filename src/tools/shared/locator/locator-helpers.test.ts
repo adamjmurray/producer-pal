@@ -95,8 +95,8 @@ describe("locator-helpers", () => {
       } as unknown as LiveAPI;
 
       expect(() => {
-        resolveLocatorToBeats(mockLiveSet, {}, "ppal-playback");
-      }).toThrow("ppal-playback failed: locatorId or locatorName is required");
+        resolveLocatorToBeats(mockLiveSet, {});
+      }).toThrow("locatorId or locatorName is required");
     });
 
     it("throws when locator ID not found", () => {
@@ -105,12 +105,8 @@ describe("locator-helpers", () => {
       } as unknown as LiveAPI;
 
       expect(() => {
-        resolveLocatorToBeats(
-          mockLiveSet,
-          { locatorId: "locator-5" },
-          "ppal-playback",
-        );
-      }).toThrow("ppal-playback failed: locator not found: locator-5");
+        resolveLocatorToBeats(mockLiveSet, { locatorId: "locator-5" });
+      }).toThrow("locator not found: locator-5");
     });
 
     it("resolves locator by ID", () => {
@@ -125,11 +121,9 @@ describe("locator-helpers", () => {
         getChildIds: vi.fn().mockReturnValue(["id locator1"]),
       } as unknown as LiveAPI;
 
-      const result = resolveLocatorToBeats(
-        mockLiveSet,
-        { locatorId: "locator-0" },
-        "ppal-playback",
-      );
+      const result = resolveLocatorToBeats(mockLiveSet, {
+        locatorId: "locator-0",
+      });
 
       expect(result).toBe(32);
     });
@@ -147,11 +141,9 @@ describe("locator-helpers", () => {
         getChildIds: vi.fn().mockReturnValue(["id locator1"]),
       } as unknown as LiveAPI;
 
-      const result = resolveLocatorToBeats(
-        mockLiveSet,
-        { locatorName: "Bridge" },
-        "ppal-playback",
-      );
+      const result = resolveLocatorToBeats(mockLiveSet, {
+        locatorName: "Bridge",
+      });
 
       expect(result).toBe(64);
     });
@@ -170,14 +162,8 @@ describe("locator-helpers", () => {
       } as unknown as LiveAPI;
 
       expect(() => {
-        resolveLocatorToBeats(
-          mockLiveSet,
-          { locatorName: "NonExistent" },
-          "ppal-playback",
-        );
-      }).toThrow(
-        'ppal-playback failed: no locator found with name "NonExistent"',
-      );
+        resolveLocatorToBeats(mockLiveSet, { locatorName: "NonExistent" });
+      }).toThrow('no locator found with name "NonExistent"');
     });
 
     it("appends the context suffix to the name-not-found message", () => {
@@ -185,15 +171,8 @@ describe("locator-helpers", () => {
 
       // The " ${context}" suffix (leading space) must be preserved verbatim.
       expect(() => {
-        resolveLocatorToBeats(
-          liveSet,
-          { locatorName: "Missing" },
-          "ppal-playback",
-          "for start",
-        );
-      }).toThrow(
-        'ppal-playback failed: no locator found with name "Missing" for start',
-      );
+        resolveLocatorToBeats(liveSet, { locatorName: "Missing" }, "for start");
+      }).toThrow('no locator found with name "Missing" for start');
     });
   });
 
@@ -208,11 +187,9 @@ describe("locator-helpers", () => {
         getChildIds: vi.fn().mockReturnValue(["id locator1"]),
       } as unknown as LiveAPI;
 
-      const result = resolveLocatorListToBeats(
-        mockLiveSet,
-        { locatorId: "locator-0" },
-        "duplicate",
-      );
+      const result = resolveLocatorListToBeats(mockLiveSet, {
+        locatorId: "locator-0",
+      });
 
       expect(result).toStrictEqual([16]);
     });
@@ -235,11 +212,9 @@ describe("locator-helpers", () => {
         getChildIds: vi.fn().mockReturnValue(["id loc0", "id loc1", "id loc2"]),
       } as unknown as LiveAPI;
 
-      const result = resolveLocatorListToBeats(
-        mockLiveSet,
-        { locatorId: "locator-0, locator-2" },
-        "duplicate",
-      );
+      const result = resolveLocatorListToBeats(mockLiveSet, {
+        locatorId: "locator-0, locator-2",
+      });
 
       expect(result).toStrictEqual([0, 32]);
     });
@@ -252,7 +227,7 @@ describe("locator-helpers", () => {
       });
 
       expect(
-        resolveLocatorListToBeats(liveSet, { locatorName: "Verse" }, "dup"),
+        resolveLocatorListToBeats(liveSet, { locatorName: "Verse" }),
       ).toStrictEqual([8]);
     });
 
@@ -263,11 +238,7 @@ describe("locator-helpers", () => {
       );
 
       expect(
-        resolveLocatorListToBeats(
-          liveSet,
-          { locatorName: "Verse, Chorus" },
-          "dup",
-        ),
+        resolveLocatorListToBeats(liveSet, { locatorName: "Verse, Chorus" }),
       ).toStrictEqual([8, 24]);
     });
 
@@ -275,12 +246,10 @@ describe("locator-helpers", () => {
       const liveSet = setupMockLocators({ id: "loc0", time: 0 });
 
       expect(() => {
-        resolveLocatorListToBeats(
-          liveSet,
-          { locatorId: "locator-0, locator-5" },
-          "duplicate",
-        );
-      }).toThrow("duplicate failed: locator not found: locator-5");
+        resolveLocatorListToBeats(liveSet, {
+          locatorId: "locator-0, locator-5",
+        });
+      }).toThrow("locator not found: locator-5");
     });
 
     it("throws when a locator name is not found", () => {
@@ -291,12 +260,10 @@ describe("locator-helpers", () => {
       });
 
       expect(() => {
-        resolveLocatorListToBeats(
-          liveSet,
-          { locatorName: "Verse, NonExistent" },
-          "duplicate",
-        );
-      }).toThrow('duplicate failed: no locator found with name "NonExistent"');
+        resolveLocatorListToBeats(liveSet, {
+          locatorName: "Verse, NonExistent",
+        });
+      }).toThrow('no locator found with name "NonExistent"');
     });
 
     it("throws when neither locatorId nor locatorName provided", () => {
@@ -305,8 +272,8 @@ describe("locator-helpers", () => {
       } as unknown as LiveAPI;
 
       expect(() => {
-        resolveLocatorListToBeats(mockLiveSet, {}, "duplicate");
-      }).toThrow("duplicate failed: locatorId or locatorName is required");
+        resolveLocatorListToBeats(mockLiveSet, {});
+      }).toThrow("locatorId or locatorName is required");
     });
   });
 
@@ -333,9 +300,7 @@ describe("locator-helpers", () => {
     it("resolves by ID when value matches locator ID pattern", () => {
       const liveSet = setupMockLocators({ id: "locator1", time: 32 });
 
-      expect(resolveLocatorRefToBeats(liveSet, "locator-0", "test-tool")).toBe(
-        32,
-      );
+      expect(resolveLocatorRefToBeats(liveSet, "locator-0")).toBe(32);
     });
 
     it("resolves by name when value does not match locator ID pattern", () => {
@@ -345,15 +310,15 @@ describe("locator-helpers", () => {
         time: 64,
       });
 
-      expect(resolveLocatorRefToBeats(liveSet, "Bridge", "test-tool")).toBe(64);
+      expect(resolveLocatorRefToBeats(liveSet, "Bridge")).toBe(64);
     });
 
     it("throws when locator not found", () => {
       const liveSet = setupMockLocators();
 
       expect(() => {
-        resolveLocatorRefToBeats(liveSet, "locator-99", "test-tool");
-      }).toThrow("test-tool failed: locator not found: locator-99");
+        resolveLocatorRefToBeats(liveSet, "locator-99");
+      }).toThrow("locator not found: locator-99");
     });
   });
 });

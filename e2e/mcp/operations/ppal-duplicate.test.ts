@@ -49,7 +49,6 @@ describe("ppal-duplicate", () => {
     });
     const dupTrack = parseAliasedToolResult<DuplicateTrackResult>(
       dupTrackResult,
-      "ppal-duplicate",
       "ids",
       "id",
     );

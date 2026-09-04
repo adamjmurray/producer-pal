@@ -24,7 +24,7 @@ const CHAIN_TAIL = / chains \d+$/;
 export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
   if (chain.type !== "DrumChain" || !CHAIN_TAIL.test(chain.path)) {
     console.warn(
-      `delete: chain ${targetLabel(chain)} is not on a drum pad. Live has no way to delete ` +
+      `chain ${targetLabel(chain)} is not on a drum pad. Live has no way to delete ` +
         `a rack chain, and only a drum pad's chains can be removed.`,
     );
 
@@ -36,7 +36,7 @@ export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
 
   if (scratchPad == null) {
     console.warn(
-      `delete: chain ${targetLabel(chain)} needs a free drum pad to move to, and its ` +
+      `chain ${targetLabel(chain)} needs a free drum pad to move to, and its ` +
         `Drum Rack has none — a rack nested in a drum pad has no pads at all. ` +
         `Live offers no other way to remove it; delete its devices to empty ` +
         `the pad, or move it with update-device's toPath.`,
@@ -61,7 +61,7 @@ export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
   survivor.set("in_note", originalInNote);
 
   console.warn(
-    `delete: Live did not remove chain ${targetLabel(survivor)}, so it was left as is`,
+    `Live did not remove chain ${targetLabel(survivor)}, so it was left as is`,
   );
 
   return false;

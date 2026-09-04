@@ -84,21 +84,21 @@ describe("applySpecializedParamWrite", () => {
   it("returns false for a generic device", () => {
     const device = registerDevice("Operator");
 
-    expect(applySpecializedParamWrite(device, "foo", 1, "t")).toBe(false);
+    expect(applySpecializedParamWrite(device, "foo", 1)).toBe(false);
   });
 
   it("returns false for an unknown key on a specialized device", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    expect(applySpecializedParamWrite(device, "notAParam", 1, "t")).toBe(false);
+    expect(applySpecializedParamWrite(device, "notAParam", 1)).toBe(false);
   });
 
   it("returns true and applies a recognized pseudo-param", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    expect(
-      applySpecializedParamWrite(device, "routingMode", "serial", "t"),
-    ).toBe(true);
+    expect(applySpecializedParamWrite(device, "routingMode", "serial")).toBe(
+      true,
+    );
     expect(device.set).toHaveBeenCalledWith("routing_mode_index", 1);
   });
 });
@@ -141,7 +141,7 @@ describe("applySpecializedActions", () => {
     });
     const device = LiveAPI.from("id simpler-1");
 
-    applySpecializedActions(device, ["reverse"], "updateDevice");
+    applySpecializedActions(device, ["reverse"]);
 
     expect(device.call).toHaveBeenCalledWith("reverse");
   });
@@ -149,7 +149,7 @@ describe("applySpecializedActions", () => {
   it("warns on an unparseable action", () => {
     const device = registerDevice("Simpler");
 
-    applySpecializedActions(device, ["1bad("], "updateDevice");
+    applySpecializedActions(device, ["1bad("]);
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("could not parse action"),
@@ -159,7 +159,7 @@ describe("applySpecializedActions", () => {
   it("warns on an unknown action for the device", () => {
     const device = registerDevice("Simpler");
 
-    applySpecializedActions(device, ["doesNotExist"], "updateDevice");
+    applySpecializedActions(device, ["doesNotExist"]);
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("unknown action"),
@@ -169,7 +169,7 @@ describe("applySpecializedActions", () => {
   it("warns on an action for a generic device (no spec)", () => {
     const device = registerDevice("Operator");
 
-    applySpecializedActions(device, ["reverse"], "updateDevice");
+    applySpecializedActions(device, ["reverse"]);
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("unknown action"),
@@ -179,7 +179,7 @@ describe("applySpecializedActions", () => {
   it("warns on an action for a device whose spec defines none", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    applySpecializedActions(device, ["reverse"], "updateDevice");
+    applySpecializedActions(device, ["reverse"]);
 
     expect(device.call).not.toHaveBeenCalledWith("reverse");
     expect(capturedWarnings()).toContainEqual(

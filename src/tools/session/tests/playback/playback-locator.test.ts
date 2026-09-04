@@ -72,21 +72,19 @@ describe("playback - song positions", () => {
     it("should throw when the prefix names no locator", () => {
       expect(() =>
         playback({ action: "play-arrangement", startTime: "loc:" }),
-      ).toThrow('playback failed: startTime "loc:" names no locator');
+      ).toThrow('startTime "loc:" names no locator');
     });
 
     it("should throw if the locator id is not found", () => {
       expect(() =>
         playback({ action: "play-arrangement", startTime: "loc:locator-99" }),
-      ).toThrow("playback failed: locator not found: locator-99");
+      ).toThrow("locator not found: locator-99");
     });
 
     it("should throw if the locator name is not found", () => {
       expect(() =>
         playback({ action: "play-arrangement", startTime: "loc:NonExistent" }),
-      ).toThrow(
-        'playback failed: no locator found with name "NonExistent" for startTime',
-      );
+      ).toThrow('no locator found with name "NonExistent" for startTime');
     });
 
     it("should not sniff a bare name as a locator", () => {
@@ -135,7 +133,7 @@ describe("playback - song positions", () => {
           loop: true,
           loopStart: "loc:locator-99",
         }),
-      ).toThrow("playback failed: locator not found: locator-99");
+      ).toThrow("locator not found: locator-99");
     });
 
     it("should throw if the loopEnd locator is not found", () => {
@@ -145,9 +143,7 @@ describe("playback - song positions", () => {
           loop: true,
           loopEnd: "loc:NonExistent",
         }),
-      ).toThrow(
-        'playback failed: no locator found with name "NonExistent" for loopEnd',
-      );
+      ).toThrow('no locator found with name "NonExistent" for loopEnd');
     });
   });
 
@@ -198,7 +194,7 @@ describe("playback - song positions", () => {
           startTime: "1|1",
           startLocator: "locator-0",
         }),
-      ).toThrow("playback failed: startTime cannot be used with startLocator");
+      ).toThrow("startTime cannot be used with startLocator");
     });
 
     it("should not allow loopStart with loopStartLocator", () => {
@@ -208,9 +204,7 @@ describe("playback - song positions", () => {
           loopStart: "1|1",
           loopStartLocator: "locator-0",
         }),
-      ).toThrow(
-        "playback failed: loopStart cannot be used with loopStartLocator",
-      );
+      ).toThrow("loopStart cannot be used with loopStartLocator");
     });
 
     it("should not allow loopEnd with loopEndLocator", () => {
@@ -220,7 +214,7 @@ describe("playback - song positions", () => {
           loopEnd: "10|1",
           loopEndLocator: "Chorus",
         }),
-      ).toThrow("playback failed: loopEnd cannot be used with loopEndLocator");
+      ).toThrow("loopEnd cannot be used with loopEndLocator");
     });
   });
 

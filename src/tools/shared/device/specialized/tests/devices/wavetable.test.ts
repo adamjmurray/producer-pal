@@ -109,12 +109,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes filterRouting enum to index", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "filterRouting",
-      "split",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "filterRouting", "split");
 
     expect(device.set).toHaveBeenCalledWith("filter_routing", 2);
   });
@@ -122,12 +117,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("warns and skips invalid filterRouting", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "filterRouting",
-      "bogus",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "filterRouting", "bogus");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -138,7 +128,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes monoPoly poly to index 1", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "monoPoly", "poly", "updateDevice");
+    applySpecializedParamWrite(device, "monoPoly", "poly");
 
     expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
   });
@@ -146,7 +136,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("warns and skips invalid monoPoly", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "monoPoly", "stereo", "updateDevice");
+    applySpecializedParamWrite(device, "monoPoly", "stereo");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -158,13 +148,13 @@ describe("Wavetable pseudo-params — write", () => {
     const device = registerWavetable();
 
     // 16 voices is the last catalog entry → index 7.
-    applySpecializedParamWrite(device, "polyVoices", 16, "updateDevice");
+    applySpecializedParamWrite(device, "polyVoices", 16);
     expect(device.set).toHaveBeenCalledWith("poly_voices", 7);
 
     // 5 voices → index 3.
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "polyVoices", 5, "updateDevice");
+    applySpecializedParamWrite(device, "polyVoices", 5);
     expect(device.set).toHaveBeenCalledWith("poly_voices", 3);
   });
 
@@ -172,7 +162,7 @@ describe("Wavetable pseudo-params — write", () => {
     const device = registerWavetable();
 
     // 10 is a plausible-looking count but not a valid Wavetable option.
-    applySpecializedParamWrite(device, "polyVoices", 10, "updateDevice");
+    applySpecializedParamWrite(device, "polyVoices", 10);
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -183,12 +173,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes unisonMode enum to index", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "unisonMode",
-      "phase-sync",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "unisonMode", "phase-sync");
 
     expect(device.set).toHaveBeenCalledWith("unison_mode", 4);
   });
@@ -196,7 +181,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("warns and skips invalid unisonMode", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "unisonMode", "unknown", "updateDevice");
+    applySpecializedParamWrite(device, "unisonMode", "unknown");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -207,7 +192,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes unisonVoiceCount as a raw count within range", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "unisonVoiceCount", 8, "updateDevice");
+    applySpecializedParamWrite(device, "unisonVoiceCount", 8);
 
     expect(device.set).toHaveBeenCalledWith("unison_voice_count", 8);
   });
@@ -215,12 +200,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("warns and skips non-integer unisonVoiceCount", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "unisonVoiceCount",
-      "abc",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "unisonVoiceCount", "abc");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -231,20 +211,15 @@ describe("Wavetable pseudo-params — write", () => {
   it("maps osc engine labels to indices and warns on an invalid label", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Engine", "Modern", "updateDevice");
-    applySpecializedParamWrite(device, "osc2Engine", "Fm", "updateDevice");
+    applySpecializedParamWrite(device, "osc1Engine", "Modern");
+    applySpecializedParamWrite(device, "osc2Engine", "Fm");
 
     expect(device.set).toHaveBeenCalledWith("oscillator_1_effect_mode", 3);
     expect(device.set).toHaveBeenCalledWith("oscillator_2_effect_mode", 1);
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(
-      device,
-      "osc1Engine",
-      "Wavefold",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc1Engine", "Wavefold");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -255,7 +230,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes osc1Category by name and warns on invalid", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Category", "Pads", "updateDevice");
+    applySpecializedParamWrite(device, "osc1Category", "Pads");
 
     expect(device.set).toHaveBeenCalledWith(
       "oscillator_1_wavetable_category",
@@ -264,12 +239,7 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(
-      device,
-      "osc1Category",
-      "Unknown",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc1Category", "Unknown");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -280,7 +250,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes osc2Category by name and warns on invalid", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc2Category", "Bass", "updateDevice");
+    applySpecializedParamWrite(device, "osc2Category", "Bass");
 
     expect(device.set).toHaveBeenCalledWith(
       "oscillator_2_wavetable_category",
@@ -289,12 +259,7 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(
-      device,
-      "osc2Category",
-      "NoSuch",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc2Category", "NoSuch");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -305,23 +270,13 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes osc1Wavetable by name and warns on invalid", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "osc1Wavetable",
-      "Pulse",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc1Wavetable", "Pulse");
 
     expect(device.set).toHaveBeenCalledWith("oscillator_1_wavetable_index", 2);
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(
-      device,
-      "osc1Wavetable",
-      "No Wave",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc1Wavetable", "No Wave");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -332,23 +287,13 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes osc2Wavetable by name and warns on invalid", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "osc2Wavetable",
-      "Triangle",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc2Wavetable", "Triangle");
 
     expect(device.set).toHaveBeenCalledWith("oscillator_2_wavetable_index", 1);
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(
-      device,
-      "osc2Wavetable",
-      "No Wave",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc2Wavetable", "No Wave");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -362,12 +307,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes the first category in the list (index 0)", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "osc1Category",
-      "Basic Shapes",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc1Category", "Basic Shapes");
 
     expect(device.set).toHaveBeenCalledWith(
       "oscillator_1_wavetable_category",
@@ -378,12 +318,7 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes the first wavetable in the list (index 0)", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(
-      device,
-      "osc1Wavetable",
-      "Saw Dual 1",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "osc1Wavetable", "Saw Dual 1");
 
     expect(device.set).toHaveBeenCalledWith("oscillator_1_wavetable_index", 0);
   });
@@ -391,8 +326,8 @@ describe("Wavetable pseudo-params — write", () => {
   it("lists the available categories and wavetables when a name is unknown", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Category", "Nope", "updateDevice");
-    applySpecializedParamWrite(device, "osc1Wavetable", "Nope", "updateDevice");
+    applySpecializedParamWrite(device, "osc1Category", "Nope");
+    applySpecializedParamWrite(device, "osc1Wavetable", "Nope");
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
@@ -417,11 +352,9 @@ describe("Wavetable actions — setModulation", () => {
       buildModMethods(["Osc 1 Pos", "Filter Freq"]),
     );
 
-    applySpecializedActions(
-      device,
-      ["setModulation('FILTER freq', lfo 1, 0.5)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "setModulation('FILTER freq', lfo 1, 0.5)",
+    ]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 1, 3, 0.5);
   });
@@ -446,11 +379,7 @@ describe("Wavetable actions — setModulation", () => {
       },
     );
 
-    applySpecializedActions(
-      device,
-      ["setModulation('Osc 1 Pos', 1, 0.25)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["setModulation('Osc 1 Pos', 1, 0.25)"]);
 
     expect(device.call).toHaveBeenCalledWith(
       "add_parameter_to_modulation_matrix",
@@ -471,11 +400,7 @@ describe("Wavetable actions — setModulation", () => {
   ])("warns and skips setModulation when %s", (_, target, mod, msg) => {
     const device = registerWavetable({}, buildModMethods([], {}, mod as 0 | 1));
 
-    applySpecializedActions(
-      device,
-      [`setModulation('${target}', 0, 0.5)`],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [`setModulation('${target}', 0, 0.5)`]);
 
     expectModulationNotSet(device, msg);
   });
@@ -488,7 +413,7 @@ describe("Wavetable actions — setModulation", () => {
   ])("warns and skips invalid setModulation: %s", (_, args, msg) => {
     const device = registerWavetable({}, buildModMethods(["Volume"]));
 
-    applySpecializedActions(device, [`setModulation${args}`], "updateDevice");
+    applySpecializedActions(device, [`setModulation${args}`]);
     expectModulationNotSet(device, msg);
   });
 });
@@ -497,11 +422,7 @@ describe("Wavetable actions — clearModulation", () => {
   it("calls set_modulation_value with 0 when target is present", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      ["clearModulation('Osc 1 Pos', 2)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["clearModulation('Osc 1 Pos', 2)"]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 2, 0);
   });
@@ -509,11 +430,7 @@ describe("Wavetable actions — clearModulation", () => {
   it("warns and skips when target is not in matrix", () => {
     const device = registerWavetable({}, buildModMethods([]));
 
-    applySpecializedActions(
-      device,
-      ["clearModulation('Missing', 0)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["clearModulation('Missing', 0)"]);
 
     expectModulationNotSet(device, "Missing");
   });
@@ -521,11 +438,7 @@ describe("Wavetable actions — clearModulation", () => {
   it("warns on a source index out of range", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      ["clearModulation('Osc 1 Pos', 13)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["clearModulation('Osc 1 Pos', 13)"]);
 
     expectModulationNotSet(device, "clearModulation source");
   });
@@ -535,11 +448,7 @@ describe("Wavetable actions — addModulationTarget", () => {
   it("calls add_parameter_to_modulation_matrix for a known param", () => {
     const device = registerWavetable({}, buildModMethods([]));
 
-    applySpecializedActions(
-      device,
-      ["addModulationTarget('Osc 1 Pos')"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["addModulationTarget('Osc 1 Pos')"]);
 
     expect(device.call).toHaveBeenCalledWith(
       "add_parameter_to_modulation_matrix",
@@ -559,11 +468,7 @@ describe("Wavetable actions — addModulationTarget", () => {
         buildModMethods([], {}, mod as 0 | 1),
       );
 
-      applySpecializedActions(
-        device,
-        [`addModulationTarget('${name}')`],
-        "updateDevice",
-      );
+      applySpecializedActions(device, [`addModulationTarget('${name}')`]);
 
       expect(device.call).not.toHaveBeenCalledWith(
         "add_parameter_to_modulation_matrix",
@@ -582,7 +487,7 @@ describe("Wavetable actions — argument validation", () => {
   ])("warns when %s has too few arguments", (action, message) => {
     const device = registerWavetable({}, buildModMethods(["Volume"]));
 
-    applySpecializedActions(device, [action], "updateDevice");
+    applySpecializedActions(device, [action]);
 
     expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
   });
@@ -592,11 +497,7 @@ describe("Wavetable actions — argument validation", () => {
     // so the re-resolve still fails → "could not add to matrix".
     const device = registerWavetable({}, buildModMethods([]));
 
-    applySpecializedActions(
-      device,
-      ["setModulation('Volume', 0, 0.5)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["setModulation('Volume', 0, 0.5)"]);
 
     expect(device.call).toHaveBeenCalledWith(
       "add_parameter_to_modulation_matrix",

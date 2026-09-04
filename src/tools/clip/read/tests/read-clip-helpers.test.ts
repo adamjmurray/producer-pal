@@ -37,16 +37,14 @@ describe("resolveClip", () => {
     clearMockRegistry();
   });
 
-  it("includes the tool name in the validation error for a non-clip id", () => {
-    // clipId resolves to a Track, not a Clip. The thrown message must be tagged
-    // with the "readClip" tool name.
+  it("says what a non-clip id actually named", () => {
     registerMockObject("faketrack", {
       path: livePath.track(7),
       type: "Track",
     });
 
     expect(() => resolveClip("id faketrack", null, null)).toThrow(
-      /readClip failed/,
+      "is not a clip (found Track)",
     );
   });
 });

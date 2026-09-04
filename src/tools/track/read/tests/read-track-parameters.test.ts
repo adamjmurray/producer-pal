@@ -147,13 +147,13 @@ describe("readTrack", () => {
 
       expect(() => {
         readTrack({ id: "nonexistent" });
-      }).toThrow('readTrack failed: id "nonexistent" does not exist');
+      }).toThrow('id "nonexistent" does not exist');
     });
 
     it("throws error when neither id nor trackIndex provided", () => {
       expect(() => {
         readTrack({});
-      }).toThrow("readTrack failed: id or path is required");
+      }).toThrow("id or path is required");
     });
 
     it("ignores trackType when id is provided", () => {
@@ -239,9 +239,7 @@ describe("readTrack", () => {
     it("throws when the path names nothing", () => {
       mockNonExistentObjects();
 
-      expect(() => readTrack({ path: "t9" })).toThrow(
-        'readTrack: nothing at path "t9"',
-      );
+      expect(() => readTrack({ path: "t9" })).toThrow('nothing at path "t9"');
     });
 
     it("throws when the path names something else", () => {
@@ -255,7 +253,7 @@ describe("readTrack", () => {
       ["trackIndex", { trackIndex: 0 }],
     ])("refuses a path sent with %s", (_name, other) => {
       expect(() => readTrack({ path: "t0", ...other })).toThrow(
-        "readTrack: path names the track on its own",
+        "path names the track on its own",
       );
     });
 

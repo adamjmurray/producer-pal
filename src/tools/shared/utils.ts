@@ -425,17 +425,13 @@ export function findReturnIndex(
  * been touched yet.
  * @param sendGainDb - Send level in dB, if given
  * @param sendReturn - The return the level applies to, if given
- * @param toolName - Tool name for the error message
  */
 export function validateSendPair(
   sendGainDb: number | undefined,
   sendReturn: string | undefined,
-  toolName: string,
 ): void {
   if ((sendGainDb != null) !== (sendReturn != null)) {
-    throw new Error(
-      `${toolName} failed: sendGainDb and sendReturn must both be specified`,
-    );
+    throw new Error("sendGainDb and sendReturn must both be specified");
   }
 }
 
@@ -450,13 +446,11 @@ const MAX_TEMPO = 999;
  * message once per scene and still let the names and colors land. Mirrors the
  * up-front parseTimeSignature call beside it.
  * @param tempo - Tempo in BPM, if given
- * @param toolName - Tool name for the error message
  * @param disableValue - Value meaning "turn tempo off", exempt from the range
  *   check. Scenes have one; the live set does not.
  */
 export function validateTempo(
   tempo: number | null | undefined,
-  toolName: string,
   disableValue?: number,
 ): void {
   if (tempo == null || tempo === disableValue) return;
@@ -466,8 +460,7 @@ export function validateTempo(
       disableValue == null ? "" : ` (or ${disableValue} to disable)`;
 
     throw new Error(
-      `${toolName} failed: tempo must be between ${MIN_TEMPO}.0 and ` +
-        `${MAX_TEMPO}.0 BPM${disableHint}`,
+      `tempo must be between ${MIN_TEMPO}.0 and ${MAX_TEMPO}.0 BPM${disableHint}`,
     );
   }
 }

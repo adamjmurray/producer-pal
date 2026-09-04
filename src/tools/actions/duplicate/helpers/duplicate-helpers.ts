@@ -49,7 +49,7 @@ export function parseArrangementLength(
 
     if (arrangementLengthBeats <= 0) {
       throw new Error(
-        `duplicate failed: arrangementLength must be positive, got "${arrangementLength}"`,
+        `arrangementLength must be positive, got "${arrangementLength}"`,
       );
     }
 
@@ -58,7 +58,7 @@ export function parseArrangementLength(
     const msg = errorMessage(error);
 
     if (msg.includes("Invalid duration format")) {
-      throw new Error(`duplicate failed: ${msg}`, { cause: error });
+      throw new Error(msg, { cause: error });
     }
 
     throw error;
@@ -87,7 +87,7 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
   if (isArrangementClip) {
     if (clip.trackIndex == null) {
       throw new Error(
-        `getMinimalClipInfo failed: could not determine trackIndex for clip (path="${clip.path}")`,
+        `could not determine trackIndex for clip (path="${clip.path}")`,
       );
     }
 
@@ -100,7 +100,7 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
 
   if (trackIndex == null || sceneIndex == null) {
     throw new Error(
-      `getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
+      `could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
     );
   }
 
@@ -306,14 +306,14 @@ export async function duplicateClipToArrangement(
   const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {
-    throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
+    throw new Error(`no clip exists for clipId "${clipId}"`);
   }
 
   const trackIndex = destTrackIndex ?? clip.trackIndex;
 
   if (trackIndex == null) {
     throw new Error(
-      `duplicate failed: no track index for clipId "${clipId}" (path=${clip.path})`,
+      `no track index for clipId "${clipId}" (path=${clip.path})`,
     );
   }
 

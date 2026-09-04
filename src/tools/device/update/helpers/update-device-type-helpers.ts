@@ -62,6 +62,6 @@ export function warnIfSet(
   if (value == null || (Array.isArray(value) && value.length === 0)) return;
 
   console.warn(
-    `updateDevice: '${paramName}' not applicable to ${type} ${targetLabel(target)}`,
+    `'${paramName}' not applicable to ${type} ${targetLabel(target)}`,
   );
 }

@@ -116,7 +116,7 @@ export function resolveIdParam(id: string): ResolveIdResult {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(`select failed: id "${id}" does not exist`);
+    throw new Error(`id "${id}" does not exist`);
   }
 
   const type = object.type;
@@ -133,7 +133,7 @@ export function resolveIdParam(id: string): ResolveIdResult {
     return { rackTargetId: id, detectedType: "rack-target" };
   }
 
-  throw new Error(`select failed: id "${id}" has unsupported type "${type}"`);
+  throw new Error(`id "${id}" has unsupported type "${type}"`);
 }
 
 /**
@@ -332,6 +332,6 @@ function assertSameObject(
  */
 function idConflict(first: NamedId, second: NamedId, kind: string): Error {
   return new Error(
-    `select failed: ${first.label} and ${second.label} name different ${kind}; send one`,
+    `${first.label} and ${second.label} name different ${kind}; send one`,
   );
 }

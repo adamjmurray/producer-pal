@@ -242,11 +242,11 @@ describe("duplicate - locators as arrangement positions", () => {
     // The message names arrangementStart, the param the caller sent — the
     // locator that resolves it is not a param of its own any more.
     it.each<[string, string, string]>([
-      ["id", "loc:locator-5", "duplicate failed: locator not found: locator-5"],
+      ["id", "loc:locator-5", "locator not found: locator-5"],
       [
         "name",
         "loc:NonExistent",
-        'duplicate failed: no locator found with name "NonExistent" for arrangementStart',
+        'no locator found with name "NonExistent" for arrangementStart',
       ],
     ])("throws for a locator %s that names nothing", async (_l, start, msg) => {
       setupErrorHandlingMocks();
@@ -326,9 +326,7 @@ describe("duplicate - locators as arrangement positions", () => {
           arrangementStart: "5|1",
           locator,
         }),
-      ).rejects.toThrow(
-        "duplicate failed: arrangementStart and locator are mutually exclusive",
-      );
+      ).rejects.toThrow("arrangementStart and locator are mutually exclusive");
     });
 
     // A device has no arrangement position, so neither param is read and there
@@ -386,9 +384,7 @@ describe("duplicate - locators as arrangement positions", () => {
 
       await expect(
         duplicate({ type: "clip", id: "clip1", locator }),
-      ).rejects.toThrow(
-        'duplicate failed: arrangementStart "loc:" names no locator',
-      );
+      ).rejects.toThrow('arrangementStart "loc:" names no locator');
 
       expect(track0.call).not.toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",

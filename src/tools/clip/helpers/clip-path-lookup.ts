@@ -26,16 +26,11 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
  * matching how these tools skip an id that doesn't resolve — one bad entry
  * costs its own clip, not the whole batch. A hole in the list itself throws.
  * @param paths - Comma-separated clip locations (e.g. "t0/s1,t2[5|1]")
- * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @returns The clip ids, in path order
  */
-export function clipIdsAtPaths(
-  paths: string,
-  tool: string,
-  label = "path",
-): string[] {
-  return clipIdPerPath(paths, tool, label).filter((id) => id != null);
+export function clipIdsAtPaths(paths: string, label = "path"): string[] {
+  return clipIdPerPath(paths, label).filter((id) => id != null);
 }
 
 /**
@@ -43,13 +38,11 @@ export function clipIdsAtPaths(
  * clip. Callers that line paths up against another list — move destinations —
  * need the positions to hold even when an entry resolves to nothing.
  * @param paths - Comma-separated clip locations (e.g. "t0/s1,t2[5|1]")
- * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @returns One clip id per path entry, in path order
  */
 export function clipIdPerPath(
   paths: string,
-  tool: string,
   label = "path",
 ): Array<string | null> {
   const ids: Array<string | null> = [];
@@ -60,16 +53,16 @@ export function clipIdPerPath(
         parseObjectPath(entry, label),
         label,
       );
-      const clip = clipAtSource(source, tool, label);
+      const clip = clipAtSource(source, label);
 
       if (clip != null && clip.exists()) {
         ids.push(clip.id);
         continue;
       }
 
-      console.warn(`${tool}: no clip at ${label} "${entry}"`);
+      console.warn(`no clip at ${label} "${entry}"`);
     } catch (error) {
-      console.warn(`${tool}: ${errorMessage(error)}`);
+      console.warn(errorMessage(error));
     }
 
     ids.push(null);
@@ -83,23 +76,15 @@ export function clipIdPerPath(
 /**
  * The clip at one location, whichever kind of location it is.
  * @param source - A parsed slot or arrangement position
- * @param tool - Tool name, for the position's own errors
  * @param label - Param name the path came from
  * @returns The clip, or null when nothing is there
  */
-function clipAtSource(
-  source: ClipSourcePath,
-  tool: string,
-  label: string,
-): LiveAPI | null {
+function clipAtSource(source: ClipSourcePath, label: string): LiveAPI | null {
   if (source.kind === "slot") {
     return LiveAPI.from(
       livePath.track(source.trackIndex).clipSlot(source.sceneIndex).clip(),
     );
   }
 
-  return arrangementClipAtPosition(source, {
-    toolName: tool,
-    paramName: label,
-  });
+  return arrangementClipAtPosition(source, label);
 }

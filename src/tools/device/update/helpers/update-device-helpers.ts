@@ -183,7 +183,7 @@ export function updateMacroVariation(
 
   if (!canHaveChains) {
     console.warn(
-      `updateDevice: macro variations only available on rack devices; skipping ${targetLabel(device)}`,
+      `macro variations only available on rack devices; skipping ${targetLabel(device)}`,
     );
 
     return;
@@ -214,16 +214,14 @@ function validateMacroVariationParams(
 ): boolean {
   if (index != null && action == null) {
     console.warn(
-      "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
+      "macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
 
     return false;
   }
 
   if ((action === "load" || action === "delete") && index == null) {
-    console.warn(
-      `updateDevice: macroVariation '${action}' requires macroVariationIndex`,
-    );
+    console.warn(`macroVariation '${action}' requires macroVariationIndex`);
 
     return false;
   }
@@ -246,12 +244,12 @@ function warnIfIndexIgnored(
 
   if (action === "create") {
     console.warn(
-      "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
+      "macroVariationIndex ignored for 'create' (variations always appended)",
     );
   } else if (action === "revert") {
-    console.warn("updateDevice: macroVariationIndex ignored for 'revert'");
+    console.warn("macroVariationIndex ignored for 'revert'");
   } else if (action === "randomize") {
-    console.warn("updateDevice: macroVariationIndex ignored for 'randomize'");
+    console.warn("macroVariationIndex ignored for 'randomize'");
   }
 }
 
@@ -275,7 +273,7 @@ function setVariationIndex(
 
   if (index >= variationCount) {
     console.warn(
-      `updateDevice: variation index ${index} out of range on ${targetLabel(device)} (${variationCount} available)`,
+      `variation index ${index} out of range on ${targetLabel(device)} (${variationCount} available)`,
     );
 
     return false;
@@ -329,7 +327,7 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
 
   if (!canHaveChains) {
     console.warn(
-      `updateDevice: macro count only available on rack devices; skipping ${targetLabel(device)}`,
+      `macro count only available on rack devices; skipping ${targetLabel(device)}`,
     );
 
     return;
@@ -341,7 +339,7 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
   if (targetCount % 2 !== 0) {
     effectiveTarget = Math.min(targetCount + 1, 16);
     console.warn(
-      `updateDevice: macro count on ${targetLabel(device)} rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
+      `macro count on ${targetLabel(device)} rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
     );
   }
 
@@ -373,9 +371,7 @@ export function updateABCompare(device: LiveAPI, action: string): void {
   const canCompareAB = device.getProperty("can_compare_ab");
 
   if (!canCompareAB) {
-    console.warn(
-      `updateDevice: A/B Compare not available on ${targetLabel(device)}`,
-    );
+    console.warn(`A/B Compare not available on ${targetLabel(device)}`);
 
     return;
   }

@@ -229,7 +229,7 @@ export function resolveRequestedClips(
 
     // One id at a time so the "does not exist" warnings stay in one place and
     // the survivor keeps the position it was named at.
-    const clip = validateIdTypes([id], "clip", "updateClip", {
+    const clip = validateIdTypes([id], "clip", {
       skipInvalid: true,
     })[0];
 
@@ -458,7 +458,6 @@ function pathDestinations(toPath: string): Array<ClipDestinationPath | null> {
   });
 
   return resolveDestinationPositions(parsed, {
-    toolName: "updateClip",
     paramName: "toPath",
   });
 }

@@ -155,9 +155,7 @@ export function resolveClipSlotPositions(
   action: string,
 ): ClipSlotPosition[] {
   if (ids == null && slotPositions == null) {
-    throw new Error(
-      `playback failed: id or path is required for action "${action}"`,
-    );
+    throw new Error(`id or path is required for action "${action}"`);
   }
 
   const positions = dedupeSlotPositions([
@@ -170,9 +168,7 @@ export function resolveClipSlotPositions(
   // zero clips" — so the tool fired nothing and reported playing: true. Each id
   // already warned why it was skipped; this says the call has no target left.
   if (positions.length === 0) {
-    throw new Error(
-      `playback failed: id "${ids}" named no clip for action "${action}"`,
-    );
+    throw new Error(`id "${ids}" named no clip for action "${action}"`);
   }
 
   return positions;
@@ -188,7 +184,7 @@ export function resolveClipSlotPositions(
  * @returns One position per id that named a session clip
  */
 function idSlotPositions(ids: string, action: string): ClipSlotPosition[] {
-  const clips = validateIdTypes(targetEntries(ids, "id"), "clip", "playback", {
+  const clips = validateIdTypes(targetEntries(ids, "id"), "clip", {
     skipInvalid: true,
   });
 
@@ -197,7 +193,7 @@ function idSlotPositions(ids: string, action: string): ClipSlotPosition[] {
 
     if (trackIndex == null || sceneIndex == null) {
       throw new Error(
-        `playback ${action} action failed: could not determine track/scene for clipId=${clip.id}`,
+        `${action} action failed: could not determine track/scene for clipId=${clip.id}`,
       );
     }
 
@@ -243,7 +239,7 @@ function readPathParam(
 
   if (named != null && legacy != null) {
     throw new Error(
-      "playback failed: path and slots both name clips; use path alone (slots is deprecated)",
+      "path and slots both name clips; use path alone (slots is deprecated)",
     );
   }
 
@@ -374,9 +370,7 @@ function resolveSceneTarget(
       .map(([scene, source]) => `scene ${scene} from ${source}`)
       .join(", ");
 
-    throw new Error(
-      `playback failed: action "${PLAY_SCENE}" plays one scene, but got ${named}`,
-    );
+    throw new Error(`action "${PLAY_SCENE}" plays one scene, but got ${named}`);
   }
 
   return refs[0]?.scene ?? null;
@@ -398,7 +392,7 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
     const object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      console.warn(`playback: id "${id}" does not exist`);
+      console.warn(`id "${id}" does not exist`);
       continue;
     }
 
@@ -407,7 +401,7 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
     // caller who was asked for a clip id.
     if (object.sceneIndex == null) {
       console.warn(
-        `playback: ${targetLabel(object)} is in no scene (found ${object.type}); ` +
+        `${targetLabel(object)} is in no scene (found ${object.type}); ` +
           `action "${PLAY_SCENE}" takes a scene id or a session clip id`,
       );
       continue;

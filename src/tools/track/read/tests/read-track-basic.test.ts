@@ -100,7 +100,7 @@ describe("readTrack", () => {
     registerMockObject("0", { path: livePath.track(99), type: "Track" });
 
     expect(() => readTrack({ trackIndex: 99 })).toThrow(
-      "readTrack: trackIndex 99 does not exist",
+      "trackIndex 99 does not exist",
     );
   });
 

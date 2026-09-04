@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -113,7 +114,7 @@ describe("readScene", () => {
     });
 
     expect(() => readScene({ sceneIndex: 99 })).toThrow(
-      "readScene: sceneIndex 99 does not exist",
+      "sceneIndex 99 does not exist",
     );
   });
 
@@ -422,13 +423,13 @@ describe("readScene", () => {
 
       expect(() => {
         readScene({ id: "nonexistent" });
-      }).toThrow('readScene failed: id "nonexistent" does not exist');
+      }).toThrow('id "nonexistent" does not exist');
     });
 
     it("throws error when neither id nor sceneIndex provided", () => {
       expect(() => {
         readScene({});
-      }).toThrow("readScene failed: id or path is required");
+      }).toThrow("id or path is required");
     });
 
     it("prioritizes id over sceneIndex when both provided", () => {

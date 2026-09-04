@@ -129,12 +129,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "t1",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "t1");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_type",
@@ -146,12 +141,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "t2",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "t2");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_type",
@@ -170,12 +160,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
 
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "t3",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "t3");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -187,12 +172,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "null",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "null");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_type",
@@ -204,12 +184,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_type",
@@ -223,12 +198,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "   ",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "   ");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_type",
@@ -241,12 +211,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     mockNonExistentObjects();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "999",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "999");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -260,12 +225,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
       availableTypes: [DRIFT_ENTRY, AUDIO_FX_ENTRY],
     });
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainSourceTrackId",
-      "null",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainSourceTrackId", "null");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -323,12 +283,7 @@ describe("Compressor sidechainChannel write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "Post FX",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "Post FX");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_channel",
@@ -340,12 +295,7 @@ describe("Compressor sidechainChannel write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "Pre FX",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "Pre FX");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_channel",
@@ -357,12 +307,7 @@ describe("Compressor sidechainChannel write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "Post Mixer",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "Post Mixer");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_channel",
@@ -374,12 +319,7 @@ describe("Compressor sidechainChannel write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "  Post FX  ",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "  Post FX  ");
 
     expect(device.set).toHaveBeenCalledWith(
       "input_routing_channel",
@@ -391,12 +331,7 @@ describe("Compressor sidechainChannel write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "Bogus Channel",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "Bogus Channel");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -408,12 +343,7 @@ describe("Compressor sidechainChannel write", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "Unknown",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "Unknown");
 
     // The full channel catalog, comma-separated.
     expect(capturedWarnings()).toContainEqual(
@@ -435,12 +365,7 @@ describe("Compressor sidechainChannel write", () => {
     });
     const device = LiveAPI.from("id comp-1");
 
-    applySpecializedParamWrite(
-      device,
-      "sidechainChannel",
-      "Post FX",
-      "updateDevice",
-    );
+    applySpecializedParamWrite(device, "sidechainChannel", "Post FX");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(

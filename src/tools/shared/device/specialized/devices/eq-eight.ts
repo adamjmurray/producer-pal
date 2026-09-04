@@ -31,8 +31,8 @@ export const eqEightSpec: SpecializedDeviceSpec = {
     {
       name: "oversample",
       read: (device) => readBoolProp(device, "oversample"),
-      write: (device, value, toolName) =>
-        writeBoolProp(device, "oversample", value, toolName, "oversample"),
+      write: (device, value) =>
+        writeBoolProp(device, "oversample", value, "oversample"),
     },
   ],
 };

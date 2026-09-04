@@ -288,7 +288,7 @@ describe("readTrack", () => {
 
         expect(() =>
           readTrack({ trackIndex: 99, trackType: "return" }),
-        ).toThrow("readTrack: returnTrackIndex 99 does not exist");
+        ).toThrow("returnTrackIndex 99 does not exist");
       });
 
       it("includes routing properties for return tracks when requested", () => {
@@ -375,7 +375,7 @@ describe("readTrack", () => {
         });
 
         expect(() => readTrack({ trackIndex: 0, trackType: "master" })).toThrow(
-          "readTrack: trackIndex null does not exist",
+          "trackIndex null does not exist",
         );
       });
 

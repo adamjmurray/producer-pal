@@ -76,7 +76,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
       // Live drops writes to an empty pad, so there is nothing to report.
       expect(capturedWarnings()).toContain(
-        "updateDevice: drum pad t0/d0/pC1 (id 790) has no chains, so there is " +
+        "drum pad t0/d0/pC1 (id 790) has no chains, so there is " +
           "nothing to update — Live ignores writes to an empty pad",
       );
       expect(drumPad.set).not.toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'mute' not applicable to RackDevice id 123",
+        "'mute' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -136,7 +136,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'color' not applicable to RackDevice id 123",
+        "'color' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -160,7 +160,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'chokeGroup' not applicable to Chain id 456",
+        "'chokeGroup' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -172,7 +172,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'chokeGroup' not applicable to RackDevice id 123",
+        "'chokeGroup' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -203,9 +203,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should refuse an invalid note name in mappedPitch", () => {
       expect(() =>
         updateDevice({ id: "789", mappedPitch: "InvalidNote" }),
-      ).toThrow(
-        'updateDevice failed: invalid note name "InvalidNote" for mappedPitch',
-      );
+      ).toThrow('invalid note name "InvalidNote" for mappedPitch');
       expect(drumChain.set).not.toHaveBeenCalled();
     });
 
@@ -216,7 +214,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'mappedPitch' not applicable to Chain id 456",
+        "'mappedPitch' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -232,7 +230,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'params' not applicable to Chain id 456",
+        "'params' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -241,7 +239,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       const result = updateDevice({ id: "456", params: [] });
 
       expect(capturedWarnings()).not.toContain(
-        "updateDevice: 'params' not applicable to Chain id 456",
+        "'params' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -273,7 +271,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         updateDevice({ id: id, ...args });
 
         expect(capturedWarnings()).toContain(
-          `updateDevice: '${label}' not applicable to ${type} id ${id}`,
+          `'${label}' not applicable to ${type} id ${id}`,
         );
       },
     );
@@ -287,7 +285,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       updateDevice({ id: "456", ...args });
 
       expect(capturedWarnings()).toContain(
-        `updateDevice: '${label}' not applicable to Chain id 456`,
+        `'${label}' not applicable to Chain id 456`,
       );
     });
 
@@ -295,7 +293,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       updateDevice({ id: "123", mute: true });
 
       expect(capturedWarnings()).not.toContain(
-        "updateDevice: A/B Compare not available on this device",
+        "A/B Compare not available on this device",
       );
     });
 
@@ -435,7 +433,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
 
   it("refuses the call when sendReturn is the only mixer param given", () => {
     expect(() => updateDevice({ id: "chain-0", sendReturn: "a" })).toThrow(
-      "updateDevice failed: sendGainDb and sendReturn must both be specified",
+      "sendGainDb and sendReturn must both be specified",
     );
     expect(send.set).not.toHaveBeenCalled();
   });
@@ -473,7 +471,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         "sends",
       ]) {
         expect(capturedWarnings()).toContain(
-          `updateDevice: '${name}' not applicable to ${type} id target-1`,
+          `'${name}' not applicable to ${type} id target-1`,
         );
       }
     },

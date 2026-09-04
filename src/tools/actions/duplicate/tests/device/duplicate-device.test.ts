@@ -311,7 +311,7 @@ describe("duplicate - device duplication", () => {
 
     expect(result).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'duplicate: t0/d0 (id device1) not copied — no destination at toPath "t99"',
+      't0/d0 (id device1) not copied — no destination at toPath "t99"',
     );
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
@@ -338,7 +338,7 @@ describe("duplicate - device duplication", () => {
 
     expect(result).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'duplicate: the copy of t0/d0 (id device1) could not be moved to "t2/d0"',
+      'the copy of t0/d0 (id device1) could not be moved to "t2/d0"',
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });

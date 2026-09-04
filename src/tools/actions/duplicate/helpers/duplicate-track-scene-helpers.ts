@@ -80,13 +80,13 @@ function removeHostTrackDevice(
           Number.parseInt(deviceIndexMatch[1] ?? ""),
         );
         console.warn(
-          `duplicate: removed the Producer Pal device from the new track ${targetLabel(newTrack)} - it cannot be duplicated`,
+          `removed the Producer Pal device from the new track ${targetLabel(newTrack)} - it cannot be duplicated`,
         );
       }
     } catch {
       // If we can't access this_device, just continue without removing anything
       console.warn(
-        `duplicate: could not check the new track ${targetLabel(newTrack)} for the Producer Pal device`,
+        `could not check the new track ${targetLabel(newTrack)} for the Producer Pal device`,
       );
     }
   }
@@ -357,16 +357,14 @@ export async function duplicateSceneToArrangement(
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
-    throw new Error(
-      `duplicate failed: scene with id "${sceneId}" does not exist`,
-    );
+    throw new Error(`scene with id "${sceneId}" does not exist`);
   }
 
   const sceneIndex = scene.sceneIndex;
 
   if (sceneIndex == null) {
     throw new Error(
-      `duplicate failed: no scene index for id "${sceneId}" (path="${scene.path}")`,
+      `no scene index for id "${sceneId}" (path="${scene.path}")`,
     );
   }
 

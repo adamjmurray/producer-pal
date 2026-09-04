@@ -143,7 +143,7 @@ describe("select edge cases", () => {
       });
 
       expect(() => select({ devicePath: "t0/d99" })).toThrow(
-        'select failed: no device at "t0/d99"',
+        'no device at "t0/d99"',
       );
       expect(songView.call).not.toHaveBeenCalledWith(
         "select_device",

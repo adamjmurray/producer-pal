@@ -344,13 +344,10 @@ describe("takeLaneTargetsThatFit", () => {
     // after those 8 permanent lanes already exist.
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: 7 },
-        { trackIndex: 0, takeLane: "new" },
-      ],
-      "duplicate",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: 7 },
+      { trackIndex: 0, takeLane: "new" },
+    ]);
 
     expect(fitting).toStrictEqual([{ trackIndex: 0, takeLane: 7 }]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
@@ -362,13 +359,10 @@ describe("takeLaneTargetsThatFit", () => {
     registerTakeLaneTrack({ trackIndex: 0, initialLanes: MAX_TAKE_LANES });
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: "new" },
-        { trackIndex: 1, takeLane: "new" },
-      ],
-      "duplicate",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 1, takeLane: "new" },
+    ]);
 
     expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: "new" }]);
   });
@@ -376,18 +370,15 @@ describe("takeLaneTargetsThatFit", () => {
   it("warns once for a repeated destination that does not fit", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
-        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
-      ],
-      "createClip",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+    ]);
 
     expect(fitting).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledTimes(1);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'createClip: skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
+      'skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
     );
   });
 
@@ -400,7 +391,7 @@ describe("takeLaneTargetsThatFit", () => {
       { trackIndex: 0, takeLane: 7 },
     ];
 
-    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
+    expect(takeLaneTargetsThatFit(targets)).toStrictEqual(targets);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
@@ -412,7 +403,7 @@ describe("takeLaneTargetsThatFit", () => {
       { trackIndex: 0, takeLane: "new" },
     ];
 
-    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
+    expect(takeLaneTargetsThatFit(targets)).toStrictEqual(targets);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
@@ -420,14 +411,11 @@ describe("takeLaneTargetsThatFit", () => {
     registerTakeLaneTrack({ trackIndex: 0, initialLanes: 4 });
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 4 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: 7 },
-        { trackIndex: 1, takeLane: "new" },
-        { trackIndex: 0, takeLane: null },
-      ],
-      "duplicate",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: 7 },
+      { trackIndex: 1, takeLane: "new" },
+      { trackIndex: 0, takeLane: null },
+    ]);
 
     expect(fitting).toStrictEqual([
       { trackIndex: 0, takeLane: 7 },

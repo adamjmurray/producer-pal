@@ -103,17 +103,13 @@ export function findParamChild(
  * resolveSourceIndex.
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
- * @param toolName - Calling tool name for warning prefix
  */
 export function setModulationAction(
   device: LiveAPI,
   args: Array<string | number>,
-  toolName: string,
 ): void {
   if (args.length < 3) {
-    console.warn(
-      `${toolName}: setModulation requires 3 arguments (target, source, amount)`,
-    );
+    console.warn(`setModulation requires 3 arguments (target, source, amount)`);
 
     return;
   }
@@ -123,7 +119,7 @@ export function setModulationAction(
 
   if (s < 0) {
     console.warn(
-      `${toolName}: setModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
+      `setModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
     );
 
     return;
@@ -133,7 +129,7 @@ export function setModulationAction(
 
   if (!Number.isFinite(a)) {
     console.warn(
-      `${toolName}: setModulation amount must be a finite number (got "${String(args[2])}")`,
+      `setModulation amount must be a finite number (got "${String(args[2])}")`,
     );
 
     return;
@@ -142,14 +138,12 @@ export function setModulationAction(
   // Enforce documented -1..1 contract. Live may clamp internally, but writing
   // an out-of-range amount means the request didn't say what the caller meant.
   if (Math.abs(a) > 1) {
-    console.warn(
-      `${toolName}: setModulation amount must be in -1..1 (got ${a})`,
-    );
+    console.warn(`setModulation amount must be in -1..1 (got ${a})`);
 
     return;
   }
 
-  const targetIndex = ensureModulationTarget(device, target, toolName);
+  const targetIndex = ensureModulationTarget(device, target);
 
   if (targetIndex < 0) {
     return;
@@ -165,17 +159,13 @@ export function setModulationAction(
  * Args: [target: string, source: int 0-12]
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
- * @param toolName - Calling tool name for warning prefix
  */
 export function clearModulationAction(
   device: LiveAPI,
   args: Array<string | number>,
-  toolName: string,
 ): void {
   if (args.length < 2) {
-    console.warn(
-      `${toolName}: clearModulation requires 2 arguments (target, source)`,
-    );
+    console.warn(`clearModulation requires 2 arguments (target, source)`);
 
     return;
   }
@@ -185,7 +175,7 @@ export function clearModulationAction(
 
   if (s < 0) {
     console.warn(
-      `${toolName}: clearModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
+      `clearModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
     );
 
     return;
@@ -195,7 +185,7 @@ export function clearModulationAction(
 
   if (targetIndex < 0) {
     console.warn(
-      `${toolName}: clearModulation target "${target}" is not in the modulation matrix`,
+      `clearModulation target "${target}" is not in the modulation matrix`,
     );
 
     return;
@@ -210,17 +200,13 @@ export function clearModulationAction(
  * Args: [parameterName: string]
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
- * @param toolName - Calling tool name for warning prefix
  */
 export function addModulationTargetAction(
   device: LiveAPI,
   args: Array<string | number>,
-  toolName: string,
 ): void {
   if (args.length === 0) {
-    console.warn(
-      `${toolName}: addModulationTarget requires 1 argument (parameterName)`,
-    );
+    console.warn(`addModulationTarget requires 1 argument (parameterName)`);
 
     return;
   }
@@ -229,16 +215,14 @@ export function addModulationTargetAction(
   const param = findParamChild(device, name);
 
   if (param == null) {
-    console.warn(
-      `${toolName}: addModulationTarget "${name}" — parameter not found`,
-    );
+    console.warn(`addModulationTarget "${name}" — parameter not found`);
 
     return;
   }
 
   if (!isParameterModulatable(device, param)) {
     console.warn(
-      `${toolName}: addModulationTarget "${name}" — parameter is not modulatable`,
+      `addModulationTarget "${name}" — parameter is not modulatable`,
     );
 
     return;
@@ -306,14 +290,9 @@ function resolveSourceIndex(value: string | number): number {
  * needed. Returns the resolved target index, or -1 on failure.
  * @param device - LiveAPI device object
  * @param target - Parameter name
- * @param toolName - Calling tool for warning prefix
  * @returns Resolved target index, or -1
  */
-function ensureModulationTarget(
-  device: LiveAPI,
-  target: string,
-  toolName: string,
-): number {
+function ensureModulationTarget(device: LiveAPI, target: string): number {
   let targetIndex = resolveTargetIndex(device, target);
 
   if (targetIndex >= 0) {
@@ -324,16 +303,14 @@ function ensureModulationTarget(
   const param = findParamChild(device, target);
 
   if (param == null) {
-    console.warn(
-      `${toolName}: setModulation target "${target}" — parameter not found`,
-    );
+    console.warn(`setModulation target "${target}" — parameter not found`);
 
     return -1;
   }
 
   if (!isParameterModulatable(device, param)) {
     console.warn(
-      `${toolName}: setModulation target "${target}" — parameter is not modulatable`,
+      `setModulation target "${target}" — parameter is not modulatable`,
     );
 
     return -1;
@@ -343,9 +320,7 @@ function ensureModulationTarget(
   targetIndex = resolveTargetIndex(device, target);
 
   if (targetIndex < 0) {
-    console.warn(
-      `${toolName}: setModulation target "${target}" — could not add to matrix`,
-    );
+    console.warn(`setModulation target "${target}" — could not add to matrix`);
   }
 
   return targetIndex;

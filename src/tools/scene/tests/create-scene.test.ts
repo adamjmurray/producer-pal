@@ -133,8 +133,7 @@ describe("createScene", () => {
   // leave a run of empty scenes behind.
   it("refuses an out-of-range tempo before creating anything", () => {
     expect(() => createScene({ sceneIndex: 0, tempo: 0 })).toThrow(
-      "createScene failed: tempo must be between 20.0 and 999.0 BPM " +
-        "(or -1 to disable)",
+      "tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
     );
     expect(liveSet.call).not.toHaveBeenCalled();
   });
@@ -157,20 +156,16 @@ describe("createScene", () => {
   });
 
   it("should throw error when sceneIndex is missing", () => {
-    expect(() => createScene({})).toThrow(
-      "createScene failed: path is required",
-    );
-    expect(() => createScene({ count: 2 })).toThrow(
-      "createScene failed: path is required",
-    );
+    expect(() => createScene({})).toThrow("path is required");
+    expect(() => createScene({ count: 2 })).toThrow("path is required");
   });
 
   it("should throw error when count is less than 1", () => {
     expect(() => createScene({ sceneIndex: 0, count: 0 })).toThrow(
-      "createScene failed: count must be at least 1",
+      "count must be at least 1",
     );
     expect(() => createScene({ sceneIndex: 0, count: -1 })).toThrow(
-      "createScene failed: count must be at least 1",
+      "count must be at least 1",
     );
   });
 

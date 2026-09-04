@@ -96,7 +96,7 @@ describe("createDevice params", () => {
       });
     });
 
-    it("prefixes param warnings with createDevice, not updateDevice", async () => {
+    it("warns when a param names nothing on the new device", async () => {
       const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
       vi.mocked(mockConsole.warn).mockClear();
@@ -111,8 +111,7 @@ describe("createDevice params", () => {
 
       const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
 
-      expect(calls).toMatch(/createDevice: param "nonexistent" not found/);
-      expect(calls).not.toMatch(/updateDevice:/);
+      expect(calls).toMatch(/param "nonexistent" not found/);
     });
 
     // Refused before the device is created, so a bad params list doesn't leave
@@ -126,9 +125,7 @@ describe("createDevice params", () => {
           path: "t0",
           params: [{ name: "Volume", value: "" }],
         }),
-      ).toThrow(
-        'createDevice failed: params entry "Volume" has an empty value',
-      );
+      ).toThrow('params entry "Volume" has an empty value');
     });
 
     it("does not call replace_sample on a non-Simpler when sample is in params", () => {

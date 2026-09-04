@@ -139,12 +139,8 @@ describe("select path param", () => {
     mockNonExistentObjects();
     const songView = setupSongViewMock();
 
-    expect(() => select({ path: "t99" })).toThrow(
-      'select failed: no track at "t99"',
-    );
-    expect(() => select({ trackIndex: 99 })).toThrow(
-      'select failed: no track at "t99"',
-    );
+    expect(() => select({ path: "t99" })).toThrow('no track at "t99"');
+    expect(() => select({ trackIndex: 99 })).toThrow('no track at "t99"');
     expect(songView.set).not.toHaveBeenCalledWith(
       "selected_track",
       expect.anything(),
@@ -155,15 +151,11 @@ describe("select path param", () => {
     mockNonExistentObjects();
     setupSongViewMock();
 
-    expect(() => select({ path: "rt9" })).toThrow(
-      'select failed: no track at "rt9"',
-    );
+    expect(() => select({ path: "rt9" })).toThrow('no track at "rt9"');
     expect(() => select({ trackType: "return", trackIndex: 9 })).toThrow(
-      'select failed: no track at "rt9"',
+      'no track at "rt9"',
     );
-    expect(() => select({ path: "mt" })).toThrow(
-      'select failed: no track at "mt"',
-    );
+    expect(() => select({ path: "mt" })).toThrow('no track at "mt"');
   });
 
   // The "+" roots name a place to create something, which select never does.
@@ -180,12 +172,8 @@ describe("select path param", () => {
     mockNonExistentObjects();
     const songView = setupSongViewMock();
 
-    expect(() => select({ path: "s99" })).toThrow(
-      'select failed: no scene at "s99"',
-    );
-    expect(() => select({ sceneIndex: 99 })).toThrow(
-      'select failed: no scene at "s99"',
-    );
+    expect(() => select({ path: "s99" })).toThrow('no scene at "s99"');
+    expect(() => select({ sceneIndex: 99 })).toThrow('no scene at "s99"');
     expect(songView.set).not.toHaveBeenCalledWith(
       "selected_scene",
       expect.anything(),
@@ -200,32 +188,22 @@ describe("select path param", () => {
     setupSongViewMock();
     setupAppViewMock();
 
-    expect(() => select({ path: "t9/s0" })).toThrow(
-      'select failed: no track at "t9"',
-    );
-    expect(() => select({ path: "t0/s99" })).toThrow(
-      'select failed: no scene at "s99"',
-    );
-    expect(() => select({ slot: "9/0" })).toThrow(
-      'select failed: no track at "t9"',
-    );
+    expect(() => select({ path: "t9/s0" })).toThrow('no track at "t9"');
+    expect(() => select({ path: "t0/s99" })).toThrow('no scene at "s99"');
+    expect(() => select({ slot: "9/0" })).toThrow('no track at "t9"');
 
     // Live keeps a clip slot per scene on every track, so a track and scene
     // that both exist should have one — but say so rather than no-op if not.
-    expect(() => select({ path: "t0/s0" })).toThrow(
-      'select failed: no clip slot at "t0/s0"',
-    );
+    expect(() => select({ path: "t0/s0" })).toThrow('no clip slot at "t0/s0"');
   });
 
   it("refuses a device that isn't there, path or param", () => {
     mockNonExistentObjects();
     setupSongViewMock();
 
-    expect(() => select({ path: "t0/d9" })).toThrow(
-      'select failed: no device at "t0/d9"',
-    );
+    expect(() => select({ path: "t0/d9" })).toThrow('no device at "t0/d9"');
     expect(() => select({ devicePath: "t0/d9" })).toThrow(
-      'select failed: no device at "t0/d9"',
+      'no device at "t0/d9"',
     );
   });
 
@@ -238,7 +216,7 @@ describe("select path param", () => {
     const appView = setupAppViewMock();
 
     expect(() => select({ view: "session", path: "s99" })).toThrow(
-      'select failed: no scene at "s99"',
+      'no scene at "s99"',
     );
     expect(appView.call).not.toHaveBeenCalledWith(
       "show_view",
@@ -294,16 +272,16 @@ describe("select path param", () => {
 
   it("refuses a path that disagrees with the param it duplicates", () => {
     expect(() => select({ path: "t2", trackIndex: 3 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
     expect(() => select({ path: "rt0", trackType: "master" })).toThrow(
-      "select failed: path and trackType name different targets",
+      "path and trackType name different targets",
     );
     expect(() => select({ path: "rt0", trackType: "regular" })).toThrow(
-      "select failed: path and trackType name different targets",
+      "path and trackType name different targets",
     );
     expect(() => select({ path: "s3", sceneIndex: 4 })).toThrow(
-      "select failed: path and sceneIndex name different targets",
+      "path and sceneIndex name different targets",
     );
   });
 
@@ -312,26 +290,26 @@ describe("select path param", () => {
   // one track and highlight something on another.
   it("refuses a slot or device path that disagrees with a track or scene param", () => {
     expect(() => select({ path: "t0/s3", trackIndex: 5 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
     expect(() => select({ path: "t0/s3", sceneIndex: 7 })).toThrow(
-      "select failed: path and sceneIndex name different targets",
+      "path and sceneIndex name different targets",
     );
     expect(() => select({ path: "t0/s3", trackType: "return" })).toThrow(
-      "select failed: path and trackType name different targets",
+      "path and trackType name different targets",
     );
     expect(() => select({ path: "t0/d1", trackIndex: 5 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
     expect(() => select({ path: "rt0/d1", trackType: "master" })).toThrow(
-      "select failed: path and trackType name different targets",
+      "path and trackType name different targets",
     );
     expect(() => select({ path: "t0/d0/pC1", trackIndex: 5 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
     // The master track has no index, so any explicit one names another track.
     expect(() => select({ path: "mt/d0", trackIndex: 5 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
   });
 
@@ -366,10 +344,10 @@ describe("select path param", () => {
   // device went on return track 0.
   it("refuses a return path against a bare trackIndex", () => {
     expect(() => select({ path: "rt0/d1", trackIndex: 0 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
     expect(() => select({ path: "rt0/d0/pC1", trackIndex: 0 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
   });
 
@@ -379,10 +357,10 @@ describe("select path param", () => {
   // and selected return track 0.
   it("refuses a bare return or master path against a bare trackIndex", () => {
     expect(() => select({ path: "rt0", trackIndex: 0 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
     expect(() => select({ path: "mt", trackIndex: 0 })).toThrow(
-      "select failed: path and trackIndex name different targets",
+      "path and trackIndex name different targets",
     );
   });
 
@@ -398,7 +376,7 @@ describe("select path param", () => {
     registerIdConflictObjects();
 
     expect(() => select({ id, path })).toThrow(
-      "select failed: path and id name different targets",
+      "path and id name different targets",
     );
   });
 
@@ -417,7 +395,7 @@ describe("select path param", () => {
     registerIdConflictObjects();
 
     expect(() => select({ id, path })).toThrow(
-      "select failed: path and id name different targets",
+      "path and id name different targets",
     );
   });
 
@@ -474,10 +452,10 @@ describe("select path param", () => {
 
   it("refuses path alongside a param it replaced", () => {
     expect(() => select({ path: "t0/s1", slot: "0/1" })).toThrow(
-      "select failed: path and slot/devicePath both name a target",
+      "path and slot/devicePath both name a target",
     );
     expect(() => select({ path: "t0/d1", devicePath: "t0/d1" })).toThrow(
-      "select failed: path and slot/devicePath both name a target",
+      "path and slot/devicePath both name a target",
     );
   });
 

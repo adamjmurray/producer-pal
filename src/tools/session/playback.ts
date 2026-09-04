@@ -113,7 +113,7 @@ export function playback(
   _context: Partial<ToolContext> = {},
 ): PlaybackResult {
   if (!action) {
-    throw new Error("playback failed: action is required");
+    throw new Error("action is required");
   }
 
   const {
@@ -306,7 +306,7 @@ function handlePlaySessionClips(
 
     if (!clipSlot.exists()) {
       throw new Error(
-        `playback ${action} action failed: no clip slot at ${slotPath(trackIndex, sceneIndex)}`,
+        `${action} action failed: no clip slot at ${slotPath(trackIndex, sceneIndex)}`,
       );
     }
 
@@ -353,7 +353,7 @@ function handleStopSessionClips(
 
     if (!track.exists()) {
       throw new Error(
-        `playback ${action} action failed: track at index ${trackIndex} does not exist`,
+        `${action} action failed: track at index ${trackIndex} does not exist`,
       );
     }
 
@@ -415,6 +415,6 @@ function handlePlaybackAction(
       };
 
     default:
-      throw new Error(`playback failed: unknown action "${action}"`);
+      throw new Error(`unknown action "${action}"`);
   }
 }

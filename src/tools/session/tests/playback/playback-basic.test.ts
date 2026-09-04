@@ -33,12 +33,12 @@ describe("transport", () => {
   });
 
   it("should throw an error when action is missing", () => {
-    expect(() => playback({})).toThrow("playback failed: action is required");
+    expect(() => playback({})).toThrow("action is required");
   });
 
   it("should throw an error for unknown action", () => {
     expect(() => playback({ action: "invalid-action" })).toThrow(
-      "playback failed: unknown action",
+      "unknown action",
     );
   });
 
@@ -249,7 +249,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'playback failed: id or path is required for action "play-session-clips"',
+      'id or path is required for action "play-session-clips"',
     );
   });
 
@@ -261,10 +261,10 @@ describe("transport", () => {
     expect(() =>
       playback({ action: "play-session-clips", id: "nonexistent_clip" }),
     ).toThrow(
-      'playback failed: id "nonexistent_clip" named no clip for action "play-session-clips"',
+      'id "nonexistent_clip" named no clip for action "play-session-clips"',
     );
     expect(capturedWarnings()).toContain(
-      'playback: id "nonexistent_clip" does not exist',
+      'id "nonexistent_clip" does not exist',
     );
   });
 
@@ -280,9 +280,7 @@ describe("transport", () => {
         action: "play-session-clips",
         id: "clip1",
       }),
-    ).toThrow(
-      "playback play-session-clips action failed: no clip slot at t99/s0",
-    );
+    ).toThrow("play-session-clips action failed: no clip slot at t99/s0");
   });
 
   it("should handle play-scene action", () => {
@@ -308,7 +306,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for play-scene", () => {
     expect(() => playback({ action: "play-scene" })).toThrow(
-      'playback failed: path "s<scene>" or a scene id is required for action "play-scene"',
+      'path "s<scene>" or a scene id is required for action "play-scene"',
     );
   });
 
@@ -319,7 +317,7 @@ describe("transport", () => {
       .mockReturnValue(false);
 
     expect(() => playback({ action: "play-scene", sceneIndex: 999 })).toThrow(
-      "playback failed: scene at index 999 does not exist",
+      "scene at index 999 does not exist",
     );
 
     existsSpy.mockRestore();
@@ -379,7 +377,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
     expect(() => playback({ action: "stop-session-clips" })).toThrow(
-      'playback failed: id or path is required for action "stop-session-clips"',
+      'id or path is required for action "stop-session-clips"',
     );
   });
 
@@ -389,10 +387,10 @@ describe("transport", () => {
     expect(() =>
       playback({ action: "stop-session-clips", id: "nonexistent_clip" }),
     ).toThrow(
-      'playback failed: id "nonexistent_clip" named no clip for action "stop-session-clips"',
+      'id "nonexistent_clip" named no clip for action "stop-session-clips"',
     );
     expect(capturedWarnings()).toContain(
-      'playback: id "nonexistent_clip" does not exist',
+      'id "nonexistent_clip" does not exist',
     );
   });
 
@@ -405,7 +403,7 @@ describe("transport", () => {
         id: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: could not determine track/scene for clipId=clip1",
+      "play-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -418,7 +416,7 @@ describe("transport", () => {
         id: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: could not determine track/scene for clipId=clip1",
+      "stop-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -435,7 +433,7 @@ describe("transport", () => {
         id: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: track at index 99 does not exist",
+      "stop-session-clips action failed: track at index 99 does not exist",
     );
   });
 
@@ -619,9 +617,7 @@ describe("transport", () => {
         action: "play-session-clips",
         slots: "99/0",
       }),
-    ).toThrow(
-      "playback play-session-clips action failed: no clip slot at t99/s0",
-    );
+    ).toThrow("play-session-clips action failed: no clip slot at t99/s0");
   });
 
   it("should throw error when track does not exist for stop-session-clips via slots", () => {
@@ -634,7 +630,7 @@ describe("transport", () => {
         slots: "99/0",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: track at index 99 does not exist",
+      "stop-session-clips action failed: track at index 99 does not exist",
     );
   });
 });

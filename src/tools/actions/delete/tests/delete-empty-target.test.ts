@@ -34,13 +34,13 @@ describe("deleteObject when id or path names nothing", () => {
   // the existing required-param error still fires instead of a warning.
   it("still throws when id is whitespace-only", () => {
     expect(() => deleteObject({ id: "   ", type: "track" })).toThrow(
-      "delete failed: id or path is required",
+      "id or path is required",
     );
   });
 
   it("still throws when id is a single empty string", () => {
     expect(() => deleteObject({ id: "", type: "track" })).toThrow(
-      "delete failed: id or path is required",
+      "id or path is required",
     );
   });
 });

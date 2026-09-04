@@ -111,7 +111,7 @@ describe("updateDevice - bare drum pad paths", () => {
     updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" });
 
     expect(capturedWarnings()).toContain(
-      "updateDevice: t0/d0/pC1 (id pad-36) has 2 layers, so per-layer settings " +
+      "t0/d0/pC1 (id pad-36) has 2 layers, so per-layer settings " +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
         "t0/d0/pC1/c1.",
     );
@@ -156,7 +156,7 @@ describe("updateDevice - bare drum pad paths", () => {
     // Live drops the write — set returns 1 and the read-back stays 0 — so a
     // result here would say a mute happened that didn't.
     expect(capturedWarnings()).toContain(
-      "updateDevice: drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
+      "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
         "to update — Live ignores writes to an empty pad",
     );
     expect(pad?.set).not.toHaveBeenCalled();
@@ -171,7 +171,7 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(
       capturedWarnings().filter((warning) =>
         warning.startsWith(
-          "updateDevice: 'macroCount' not applicable to DrumChain t0/d0/pC1/c0 (id ",
+          "'macroCount' not applicable to DrumChain t0/d0/pC1/c0 (id ",
         ),
       ),
     ).toHaveLength(1);

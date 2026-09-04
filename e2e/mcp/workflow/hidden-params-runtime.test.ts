@@ -98,7 +98,7 @@ function hiddenByTool(): Record<string, Record<string, HiddenParamInfo>> {
  * The warnings the framework produces for a call. Aliases that fold onto the
  * same param are grouped into one line, so this is built from every hidden
  * param the call actually sent, not from the one under test.
- * @param tool - Tool name
+ * @param tool - Tool name, for the hidden-param lookup
  * @param args - The arguments the call sent
  * @returns The expected warning texts
  */
@@ -109,7 +109,7 @@ function expectedWarnings(
   const hidden = hiddenByTool()[tool] ?? {};
   const used = Object.keys(hidden).filter((key) => key in args);
 
-  return hiddenParamWarnings(tool, used, hidden);
+  return hiddenParamWarnings(used, hidden);
 }
 
 async function call(
