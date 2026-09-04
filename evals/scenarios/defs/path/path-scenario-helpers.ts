@@ -205,11 +205,11 @@ export function assertAddressedById(options: {
  * The opening of a "did the model spell the path right?" clip scenario:
  * connect, create a clip in turn 1, and grade the `path` it wrote.
  *
- * @param expected - Accepted path(s); the first is the canonical one
+ * @param expected - Accepted path(s) or a shape
  * @returns The leading assertions, to spread into a scenario
  */
 export function assertClipCreatedAtPath(
-  expected: string | string[],
+  expected: string | string[] | RegExp,
 ): EvalAssertion[] {
   return [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
