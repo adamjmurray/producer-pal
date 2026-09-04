@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { deleteTrackObject } from "./helpers/delete-track-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
@@ -31,15 +32,6 @@ interface ResolvedPaths {
   /** Paths that named nothing deletable. The warning says why. */
   unresolved: string[];
 }
-
-const DELETABLE_TYPES = [
-  "track",
-  "scene",
-  "clip",
-  "device",
-  "drum-pad",
-  "chain",
-];
 
 const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
   ", ",
@@ -87,7 +79,7 @@ export function deleteObject(
     throw new Error("delete failed: type is required");
   }
 
-  if (!DELETABLE_TYPES.includes(type)) {
+  if (!(DELETABLE_TYPES as readonly string[]).includes(type)) {
     throw new Error(
       `delete failed: type must be one of ${DELETABLE_TYPE_LIST}`,
     );

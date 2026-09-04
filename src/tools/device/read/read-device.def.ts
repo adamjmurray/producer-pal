@@ -19,7 +19,10 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
   },
 
   inputSchema: {
-    id: z.coerce.string().optional().describe("device or drum pad ID to read"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("device or drum pad ID to read. provide this or path"),
 
     deviceId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",

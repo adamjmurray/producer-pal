@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -36,7 +37,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
-      .enum(["track", "scene", "clip", "device", "drum-pad", "chain"])
+      .enum(DELETABLE_TYPES)
       .describe(
         "type of objects to delete; 'chain' removes one chain from a Drum Rack pad",
       ),
