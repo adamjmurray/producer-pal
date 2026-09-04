@@ -5,6 +5,10 @@
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type MatchedSend,
+  dedupeSendsByReturn,
+} from "#src/tools/shared/sends/send-list-helpers.ts";
 import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
 import { setParamIfEnabled } from "./param-write-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -408,12 +412,8 @@ function applyChainSend(
 }
 
 /**
- * Write a `sends` list and report only the entries that still hold.
- *
- * A send holds one value, so two entries naming the same return both write and
- * the later one wins. The warning is what a caller sees, so it has to name the
- * level that survived the whole call, not the one that lost to the next write —
- * which is why the collisions are announced after the loop, not inside it.
+ * Write a `sends` list and report only the entries that still hold. Two entries
+ * naming the same return both write, and the later one wins.
  * @param chain - Chain or DrumChain LiveAPI object
  * @param mixer - The chain's mixer device
  * @param sends - The `sends` list, as the caller sent it
@@ -428,37 +428,20 @@ function applySendList(
   scalarSend: number | null,
   applied: ChainMixerParams,
 ): ChainSend[] {
-  const byReturn = new Map<number, ChainSend>();
-  const collided = new Set<number>();
+  const matched: MatchedSend<ChainSend>[] = [];
 
   for (const send of sends ?? []) {
     const index = applyChainSend(chain, mixer, send.gainDb, send.return);
 
-    if (index == null) continue;
-
-    if (byReturn.has(index) || index === scalarSend) {
-      collided.add(index);
-    }
-
-    byReturn.set(index, send);
+    if (index != null) matched.push({ index, send });
   }
 
-  for (const index of collided) {
-    const winner = byReturn.get(index) as ChainSend;
-    const held = `"${winner.return}" ended up at ${winner.gainDb} dB`;
-
-    if (index === scalarSend) {
-      // The scalar pair wrote first and the list overwrote it, so the pair no
-      // longer describes the send — stop reporting a value it doesn't have.
-      console.warn(`sends overrides sendGainDb/sendReturn: ${held}`);
-      delete applied.sendGainDb;
-      delete applied.sendReturn;
-    } else {
-      console.warn(`sends names one return more than once: ${held}`);
-    }
-  }
-
-  return [...byReturn.values()];
+  return dedupeSendsByReturn(matched, scalarSend, () => {
+    // The scalar pair wrote first and the list overwrote it, so the pair no
+    // longer describes the send — stop reporting a value it doesn't have.
+    delete applied.sendGainDb;
+    delete applied.sendReturn;
+  });
 }
 
 /**

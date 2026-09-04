@@ -15,9 +15,10 @@ import { applyMixerProperties } from "./helpers/update-track-mixer-helpers.ts";
 import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
 import {
   applyTrackSend,
-  resolveTrackSend,
+  resolveTrackSends,
 } from "./helpers/update-track-send-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import {
   unwrapSingleResult,
   validateSendPair,
@@ -74,6 +75,7 @@ interface UpdateTrackArgs {
   monitoringState?: string;
   sendGainDb?: number;
   sendReturn?: string;
+  sends?: SendEntry[];
 }
 
 interface UpdateTrackResult {
@@ -151,6 +153,7 @@ function applyMonitoringState(
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
+ * @param args.sends - Optional [{return, gainDb}] list, to set several at once
  * @param _context - Internal context object (unused)
  * @returns Single track object or array of track objects
  */
@@ -181,6 +184,7 @@ export function updateTrack(
     monitoringState,
     sendGainDb,
     sendReturn,
+    sends,
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
@@ -194,7 +198,7 @@ export function updateTrack(
 
   // Resolved once: the return tracks belong to the Live Set, so a per-track
   // lookup would repeat one warning down the list.
-  const send = resolveTrackSend(sendGainDb, sendReturn);
+  const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
@@ -278,7 +282,7 @@ export function updateTrack(
     // Handle monitoring state
     applyMonitoringState(track, monitoringState);
 
-    if (send != null) {
+    for (const send of resolvedSends) {
       applyTrackSend(track, send);
     }
 

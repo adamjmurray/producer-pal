@@ -10,6 +10,7 @@ import {
   aliasParam,
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
@@ -119,6 +120,11 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     sendReturn: param(z.coerce.string().optional(), {
       default:
         'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A")',
+      smallModel: null,
+    }),
+    sends: param(sendsInputSchema, {
+      default:
+        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, or letter. Use instead of sendGainDb + sendReturn, which set one",
       smallModel: null,
     }),
   },

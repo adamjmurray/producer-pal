@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
+import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -133,21 +134,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"); requires sendGainDb',
       smallModel: null,
     }),
-    sends: param(
-      z
-        .array(
-          z.object({
-            return: z.coerce.string(),
-            gainDb: z.coerce.number().min(-70).max(0),
-          }),
-        )
-        .optional(),
-      {
-        default:
-          "set several of a chain's sends at once: [{return, gainDb}], where return is a rack return chain's id, exact name, or letter — the `return`/`returnId` read-device reports. Use instead of sendGainDb + sendReturn, which set one",
-        smallModel: null,
-      },
-    ),
+    sends: param(sendsInputSchema, {
+      default:
+        "set several of a chain's sends at once: [{return, gainDb}], where return is a rack return chain's id, exact name, or letter — the `return`/`returnId` read-device reports. Use instead of sendGainDb + sendReturn, which set one",
+      smallModel: null,
+    }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",
       smallModel: null,

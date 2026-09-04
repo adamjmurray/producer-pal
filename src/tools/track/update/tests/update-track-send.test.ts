@@ -264,6 +264,89 @@ describe("updateTrack - send properties", () => {
     expect(send3.set).toHaveBeenCalledWith("display_value", -6);
   });
 
+  describe("sends list", () => {
+    it("sets several sends in one call", () => {
+      updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "B-Delay", gainDb: -12 },
+        ],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("sets the same sends on every track in the list", () => {
+      updateTrack({ id: "123,456", sends: [{ return: "A", gainDb: -6 }] });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(send3.set).toHaveBeenCalledWith("display_value", -6);
+    });
+
+    it("skips the entry whose return matches nothing and keeps the rest", () => {
+      updateTrack({
+        id: "123",
+        sends: [
+          { return: "ZZZ", gainDb: -6 },
+          { return: "B", gainDb: -12 },
+        ],
+      });
+
+      expect(capturedWarnings()).toContain(
+        'updateTrack: sends entry "ZZZ" names no return track, so its gainDb ' +
+          "was not written (Available: A-Reverb, B-Delay)",
+      );
+      expect(send1.set).not.toHaveBeenCalled();
+      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("honors the scalar pair alongside a list naming another return", () => {
+      updateTrack({
+        id: "123",
+        sendGainDb: -6,
+        sendReturn: "A",
+        sends: [{ return: "B", gainDb: -12 }],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("lets the list override the scalar pair on the same return", () => {
+      // A send holds one value, so the caller has to be told which one held.
+      updateTrack({
+        id: "123",
+        sendGainDb: -6,
+        sendReturn: "A",
+        sends: [{ return: "A-Reverb", gainDb: -12 }],
+      });
+
+      expect(capturedWarnings()).toContain(
+        'sends overrides sendGainDb/sendReturn: "A-Reverb" ended up at -12 dB',
+      );
+      expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+      expect(send1.set).not.toHaveBeenCalledWith("display_value", -6);
+    });
+
+    it("keeps the last entry when two name the same return", () => {
+      updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "A-Reverb", gainDb: -12 },
+        ],
+      });
+
+      expect(capturedWarnings()).toContain(
+        'sends names one return more than once: "A-Reverb" ended up at -12 dB',
+      );
+      expect(send1.set).toHaveBeenCalledTimes(1);
+      expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+    });
+  });
+
   it("should combine send update with other properties", () => {
     updateTrack({
       id: "123",
@@ -274,6 +357,17 @@ describe("updateTrack - send properties", () => {
 
     expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
     expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+  });
+
+  it("does not read the return tracks when no send was asked for", () => {
+    const liveSet = registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: { return_tracks: children("return_A", "return_B") },
+    });
+
+    updateTrack({ id: "123", name: "Test Track" });
+
+    expect(liveSet.get).not.toHaveBeenCalledWith("return_tracks");
   });
 
   it("should not set send when neither param is provided", () => {
