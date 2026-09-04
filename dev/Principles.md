@@ -7,30 +7,51 @@
    address positions within objects. When multiple path strings can resolve to
    the same object, the result uses the same spelling as the input.
 
-2. Relocation: Any object that can exist at different paths always supports
-   moving and duplicating to a different location. When the API does not support
-   duplicating or moving, a new object is created in the target location with
-   warnings about anything that could not be recreated exactly. When the API
-   does not directly support moving, it is done by duplicating and deleting.
-   When the API does not support deleting, an empty disabled object is left
-   behind with a warning.
-
-3. Multi-operation: Every tool that could possibly operate on multiple objects
+2. Multi-operation: Every tool that could possibly operate on multiple objects
    supports it by allowing a single value or a comma-separated list in any
    relevant args, which are always named in the singular. Lists pair 1:1 with
    their targets, so all lists must be the same length. Single values are
-   allowed with lists and apply to all.
+   allowed with lists and apply to all. A call that named N targets returns N
+   entries in the order they were named, and a target that couldn't be done gets
+   an entry saying so rather than being dropped. A single target returns its
+   entry unwrapped: small models are steered away from multi-operation, and an
+   array where they asked for one object is a point of confusion.
 
-4. Errors and warnings: A call that can't do anything, can't be interpreted
+3. Relocation: Any object that can exist at different paths always supports
+   moving and duplicating to a different location. When the API does not support
+   duplicating or moving, a new object is created in the target location with
+   the result entry reporting anything that could not be recreated exactly. When
+   the API does not directly support moving, it is done by duplicating and
+   deleting. When the API does not support deleting, an empty disabled object is
+   left behind with an explanation in the result entry.
+
+4. Partial completion: A call that can do part of what was asked does what it
+   can and skips the rest, rather than refusing the whole. Skips are reported in
+   the result. A call that can't do anything, can't be interpreted
    unambiguously, or can't be partially done without cleanup throws an error
-   before it starts. A call that can do part of what was asked does what it can,
-   skips the rest, and warns about what was skipped. Every error and warning
-   names its object by both path and id, or by path alone where there is no id.
-   An operation that changes other objects' paths says so via warning.
+   before it starts, having changed nothing.
 
-5. Destruction: An operation that would destroy something the caller didn't name
-   is skipped with a warning pointing to the `force` arg that performs it
-   anyway.
+5. Observability: A result says what the call changed. Every property the call
+   tries to change is reported with the new value from the actual object, so a
+   value the API snapped, clamped, rounded, or silently refused is visible with
+   a reason when it's not self-explanatory. Properties the call didn't touch are
+   not returned to save tokens. A successful call never returns a result that
+   reads as "nothing happened."
+
+6. Warnings: A warning is only for what no result can carry: a whole-call arg
+   that couldn't be applied, an effect on objects the caller didn't name (such
+   as changing another object's path), a deprecated arg spelling. Anything about
+   a target belongs in that target's result, not a warning.
+
+7. Destruction: An operation that would destroy something the caller didn't name
+   is skipped, and its entry points to the `force` arg that performs it anyway.
+
+8. Vocabulary: Everything a tool returns (results, errors, and warnings) uses
+   only names the caller could have written: the tool and param names the schema
+   published, and the spellings the call supplied. Internal function names,
+   internal field names, and a normalized path the caller didn't use must never
+   appear. Every object it names is named by both `path` and `id`, or by `path`
+   alone where there is no id.
 
 ---
 
