@@ -119,7 +119,7 @@ describe("isGeminiRealtimeModelId", () => {
   });
 
   it("does not match standard Gemini chat ids", () => {
-    expect(isGeminiRealtimeModelId("gemini-3.7-flash")).toBe(false);
+    expect(isGeminiRealtimeModelId("gemini-3.8-flash")).toBe(false);
     expect(isGeminiRealtimeModelId("gemini-3.1-pro-preview")).toBe(false);
   });
 
@@ -156,7 +156,7 @@ describe("resolveRealtimeModel", () => {
   it("falls back to the Gemini realtime model under the gemini provider", () => {
     // A non-realtime Gemini selection still resolves to a Gemini voice model,
     // not the OpenAI default.
-    expect(resolveRealtimeModel("gemini", "gemini-3.7-flash")).toBe(
+    expect(resolveRealtimeModel("gemini", "gemini-3.8-flash")).toBe(
       GEMINI_REALTIME_MODEL,
     );
     expect(resolveRealtimeModel("gemini", null)).toBe(GEMINI_REALTIME_MODEL);
@@ -169,7 +169,7 @@ describe("realtimeProvider", () => {
     expect(realtimeProvider("gemini", GEMINI_REALTIME_MODEL)).toBe("gemini");
     expect(realtimeProvider("openai", "gpt-5.5")).toBeNull();
     expect(realtimeProvider("anthropic", "claude-sonnet-4-6")).toBeNull();
-    expect(realtimeProvider("gemini", "gemini-3.7-flash")).toBeNull();
+    expect(realtimeProvider("gemini", "gemini-3.8-flash")).toBeNull();
   });
 });
 
