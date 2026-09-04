@@ -142,12 +142,17 @@ as a failed turn rather than let a meaningless score through. It fires on the
 full toolset today; `--tools` a subset, or use another provider. No env var
 raises the limit (`MAX_MCP_OUTPUT_TOKENS` is a different cap and does not).
 
-Eight tools fit, and that has been enough for a path scenario:
+Nineteen of the twenty-one published tools fit; all twenty-one does not. Drop
+`library` and `context` and a path scenario runs:
 
 ```bash
 scripts/eval -t path-uncommon-roots -m claude-code/haiku \
-  --tools connect,select,read-live-set,read-track,read-device,update-track,create-track,create-scene
+  --tools connect,select,read-live-set,read-track,read-clip,read-scene,read-device,create-clip,create-track,create-scene,create-device,update-clip,update-track,update-device,update-scene,update-live-set,duplicate,delete
 ```
+
+The cap is on the size of the biggest result, not the tool count, so measure it
+again after the Skills grow: run `connect-to-ableton` with the subset you want
+and see whether the transport rejects the turn.
 
 Give a subset every tool the scenario's RECOVERY path needs, not just the ones
 it grades. Leaving `read-device` out of that list is what a model uses to find a
