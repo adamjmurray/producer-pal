@@ -23,12 +23,10 @@ export type TrackCategory = "regular" | "return" | "master";
 export interface TrackSelectionResult {
   selectedTrackId?: string;
   selectedCategory?: string;
-  selectedTrackIndex?: number;
 }
 
 export interface SceneSelectionResult {
   selectedSceneId?: string;
-  selectedSceneIndex?: number;
 }
 
 interface ValidateParametersOptions {
@@ -189,10 +187,6 @@ export function updateTrackSelection({
     if (category != null) {
       result.selectedCategory = category;
     }
-
-    if (trackIndex != null) {
-      result.selectedTrackIndex = trackIndex;
-    }
   } else if (category != null || trackIndex != null) {
     const finalCategory = category ?? "regular";
     const trackPath = buildTrackPath(category, trackIndex);
@@ -203,10 +197,6 @@ export function updateTrackSelection({
       songView.setProperty("selected_track", liveApiTrackId);
       result.selectedTrackId = liveApiTrackId;
       result.selectedCategory = finalCategory;
-
-      if (finalCategory !== "master" && trackIndex != null) {
-        result.selectedTrackIndex = trackIndex;
-      }
     }
   }
 
@@ -234,10 +224,6 @@ export function updateSceneSelection({
 
     songView.setProperty("selected_scene", liveApiSceneId);
     result.selectedSceneId = liveApiSceneId;
-
-    if (sceneIndex != null) {
-      result.selectedSceneIndex = sceneIndex;
-    }
   } else if (sceneIndex != null) {
     const finalSceneId = toLiveApiId(
       LiveAPI.from(livePath.scene(sceneIndex)).id,
@@ -245,7 +231,6 @@ export function updateSceneSelection({
 
     songView.setProperty("selected_scene", finalSceneId);
     result.selectedSceneId = finalSceneId;
-    result.selectedSceneIndex = sceneIndex;
   }
 
   return result;
