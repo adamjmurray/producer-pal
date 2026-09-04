@@ -116,7 +116,7 @@ export async function createEvalSession(
     options.provider,
     options.model ?? getDefaultModel(options.provider),
   );
-  const { tools, mcpClient } = await createMcpTools();
+  const { tools, mcpClient, erroredToolCallIds } = await createMcpTools();
   const hasTools = Object.keys(tools).length > 0;
   const messages: ModelMessage[] = [];
   let prevUsage: TokenUsage | undefined;
@@ -164,6 +164,7 @@ export async function createEvalSession(
 
       const turnResult = await processCliStream(result, {
         showUsage: options.usage,
+        erroredToolCallIds,
       });
 
       // On a stream error, result.responseMessages rejects; the error was already

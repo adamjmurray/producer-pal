@@ -75,4 +75,10 @@ export interface ToolCall {
    * swapped (the SDK emits both tool-call parts before either result).
    */
   toolCallId?: string;
+  /**
+   * The MCP `isError` flag, when the transport reports one. Grading reads this
+   * instead of guessing from the result's shape; absent means the transport
+   * said nothing and the caller falls back to the old heuristic.
+   */
+  isError?: boolean;
 }

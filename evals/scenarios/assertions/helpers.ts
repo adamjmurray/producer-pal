@@ -84,20 +84,24 @@ export function getAllToolCalls(
 /**
  * Whether a tool call came back as an error rather than a payload.
  *
+ * The MCP `isError` flag decides it when the transport reported one. Only some
+ * do, so a call without it falls back to `parsedToolResult`.
+ *
  * @param call - The tool call to check
  * @returns True when the call errored
  */
 export function toolCallFailed(call: ToolCall): boolean {
-  return parsedToolResult(call) == null;
+  return call.isError ?? parsedToolResult(call) == null;
 }
 
 /**
- * A tool call's result parsed into an object, or null when it has none — which
- * is what a tool ERROR looks like. Errors come back as prose ("Error: slot or
- * arrangementStart is required", "ERROR: user cancelled MCP tool call") and
- * successes as a JSON/compact-literal payload, so parsing to an object is what
- * separates them. Structural on purpose: matching error prose would break on a
- * reword.
+ * A tool call's result parsed into an object, or null when it has none.
+ *
+ * The fallback for `toolCallFailed` when the transport reported no `isError`:
+ * errors come back as prose ("Error: slot or arrangementStart is required",
+ * "ERROR: user cancelled MCP tool call") and successes as a JSON/compact-literal
+ * payload, so parsing to an object separates them. Structural on purpose:
+ * matching error prose would break on a reword.
  *
  * @param call - The tool call to read
  * @returns The parsed result object, or null when absent/unparseable

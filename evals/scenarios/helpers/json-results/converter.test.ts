@@ -250,6 +250,28 @@ describe("toJsonResult", () => {
     expect(result.turns[0]?.toolCalls[0]?.result).toBe(longResult);
   });
 
+  it("records isError on a failed call and omits it otherwise", () => {
+    const result = convert({
+      turns: [
+        makeTurn({
+          toolCalls: [
+            { name: "ppal-connect", args: {}, result: "boom", isError: true },
+            { name: "ppal-read-song", args: {}, result: "{}", isError: false },
+            { name: "ppal-read-track", args: {}, result: "{}" },
+          ],
+        }),
+      ],
+    });
+
+    // toStrictEqual, so an `isError: undefined` key would fail too — only the
+    // true case gets written.
+    expect(result.turns[0]?.toolCalls).toStrictEqual([
+      { name: "ppal-connect", args: {}, result: "boom", isError: true },
+      { name: "ppal-read-song", args: {}, result: "{}" },
+      { name: "ppal-read-track", args: {}, result: "{}" },
+    ]);
+  });
+
   it("strips tool results from check details matchingCalls", () => {
     const result = convert({
       assertions: [

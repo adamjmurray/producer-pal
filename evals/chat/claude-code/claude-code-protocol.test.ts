@@ -267,9 +267,12 @@ describe("parseClaudeCodeStream", () => {
       },
     ]);
 
-    expect(parseClaudeCodeStream(stdout).toolCalls[0]?.result).toBe(
-      "ERROR: no track at index 9",
-    );
+    expect(parseClaudeCodeStream(stdout).toolCalls[0]).toStrictEqual({
+      name: "ppal-create-clip",
+      args: {},
+      result: "ERROR: no track at index 9",
+      isError: true,
+    });
   });
 
   it("falls back to JSON for a result carrying no text block", () => {

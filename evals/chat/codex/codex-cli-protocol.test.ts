@@ -329,9 +329,12 @@ describe("parseCodexStream", () => {
       },
     });
 
-    expect(parseCodexStream(stdout).toolCalls[0]?.result).toBe(
-      "ERROR: connection refused",
-    );
+    expect(parseCodexStream(stdout).toolCalls[0]).toStrictEqual({
+      name: "ppal-connect",
+      args: {},
+      result: "ERROR: connection refused",
+      isError: true,
+    });
   });
 
   // Captured from a real `codex exec --json` run against the device: a tool that

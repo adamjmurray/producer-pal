@@ -263,7 +263,13 @@ function handleToolResult(
 
   recordToolResult(call, block.content);
 
-  if (block.is_error === true) call.result = `ERROR: ${call.result ?? ""}`;
+  // Only stamp true: a `tool_result` block flagged this way is the one failure
+  // shape we're sure of. Anything else leaves `isError` unset, so grading falls
+  // back to reading the result's shape rather than calling a real error a pass.
+  if (block.is_error === true) {
+    call.isError = true;
+    call.result = `ERROR: ${call.result ?? ""}`;
+  }
 
   state.error ??= persistedOutputError(call);
 

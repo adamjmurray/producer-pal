@@ -122,6 +122,8 @@ export interface JsonToolCall {
   result?: string;
   /** Relayed `WARNING:` blocks from the same result, when the tool emitted any */
   warnings?: string[];
+  /** Present only when the transport reported MCP `isError: true` */
+  isError?: boolean;
 }
 
 export interface JsonTokenUsage {

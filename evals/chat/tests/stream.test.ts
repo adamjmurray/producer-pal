@@ -7,7 +7,7 @@
  * Tests for collapseNewlines in collapse-stdout-newlines.ts
  */
 import { describe, it, expect } from "vitest";
-import { collapseNewlines } from "./shared/collapse-stdout-newlines.ts";
+import { collapseNewlines } from "../shared/collapse-stdout-newlines.ts";
 
 describe("collapseNewlines", () => {
   it("passes through text without newlines", () => {

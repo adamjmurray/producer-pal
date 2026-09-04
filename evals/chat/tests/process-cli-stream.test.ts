@@ -6,7 +6,7 @@
 import { type streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setQuietMode } from "#evals/scenarios/helpers/output-config.ts";
-import { processCliStream } from "./stream.ts";
+import { processCliStream } from "../stream.ts";
 
 type StreamPart = { type: string; [key: string]: unknown };
 
@@ -174,5 +174,68 @@ describe("processCliStream — empty-turn warning", () => {
       .join("");
 
     expect(written).toContain("base URL");
+  });
+});
+
+describe("processCliStream — MCP isError", () => {
+  beforeEach(() => setQuietMode(true));
+  afterEach(() => setQuietMode(false));
+
+  /**
+   * One tool call plus its result, matched by id.
+   *
+   * @param toolCallId - Id shared by the call and its result
+   * @returns Stream parts for a single completed tool call
+   */
+  function callAndResult(toolCallId: string): StreamPart[] {
+    return [
+      { type: "start-step" },
+      {
+        type: "tool-call",
+        toolCallId,
+        toolName: "ppal-create-clip",
+        input: { slot: "0/0" },
+      },
+      {
+        type: "tool-result",
+        toolCallId,
+        toolName: "ppal-create-clip",
+        output: "some result",
+      },
+    ];
+  }
+
+  it("stamps isError true for an id in the errored set", async () => {
+    const result = await processCliStream(fakeResult(callAndResult("call_a")), {
+      erroredToolCallIds: new Set(["call_a"]),
+    });
+
+    expect(result.toolCalls[0]?.isError).toBe(true);
+  });
+
+  it("stamps isError false for an id the set does not hold", async () => {
+    // False is as authoritative as true here: the id matched, so the MCP flag
+    // said this call succeeded — grading must not re-guess from the result.
+    const result = await processCliStream(fakeResult(callAndResult("call_a")), {
+      erroredToolCallIds: new Set(["other_call"]),
+    });
+
+    expect(result.toolCalls[0]?.isError).toBe(false);
+  });
+
+  it("leaves isError unset when no set is supplied", async () => {
+    const result = await processCliStream(fakeResult(callAndResult("call_a")));
+
+    expect(result.toolCalls[0]).not.toHaveProperty("isError");
+  });
+
+  it("leaves isError unset on the name-based fallback", async () => {
+    // An empty id falls through to name matching, which can't be trusted to
+    // identify the call the flag belongs to.
+    const result = await processCliStream(fakeResult(callAndResult("")), {
+      erroredToolCallIds: new Set([""]),
+    });
+
+    expect(result.toolCalls[0]).not.toHaveProperty("isError");
   });
 });

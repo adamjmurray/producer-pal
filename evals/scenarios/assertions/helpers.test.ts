@@ -556,6 +556,13 @@ describe("tool call filtering", () => {
     expect(toolCallFailed(ok)).toBe(false);
   });
 
+  it("trusts the MCP isError flag over the result's shape", () => {
+    // Both directions the flag exists to fix: unparseable prose the server
+    // called a success, and a clean payload the server called an error.
+    expect(toolCallFailed({ ...failed, isError: false })).toBe(false);
+    expect(toolCallFailed({ ...ok, isError: true })).toBe(true);
+  });
+
   it("getToolCalls drops the failed attempt", () => {
     expect(getToolCalls(turns)).toStrictEqual([ok]);
   });

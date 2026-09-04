@@ -250,6 +250,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
       ...(tc.result != null && { result: tc.result }),
       ...(tc.warnings != null &&
         tc.warnings.length > 0 && { warnings: tc.warnings }),
+      ...(tc.isError === true && { isError: true }),
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
