@@ -1,11 +1,13 @@
 # Principles
 
-1. Addressing: All objects can be referred to by `path` or by `id`. An object
-   being created doesn't have an `id` yet, so it can only be referenced by
-   `path`. Results report both `path` and `id`, but `path` should be omitted to
-   save tokens when it is unambiguous from the containing structure. Paths also
-   address positions within objects. When multiple path strings can resolve to
-   the same object, the result uses the same spelling as the input.
+1. Addressing: All Live API objects can be referred to by `path` or by `id`,
+   except leaf objects the tools model as properties of their container (see
+   Efficiency), which are named within their container by `id` or `name`. An
+   object being created doesn't have an `id` yet, so it can only be referenced
+   by `path`. Results report both `path` and `id`, but `path` should be omitted
+   to save tokens when it is unambiguous from the containing structure. Paths
+   also address positions within objects. When multiple path strings can resolve
+   to the same object, the result uses the same spelling as the input.
 
 2. Multi-operation: Every tool that could possibly operate on multiple objects
    supports it by allowing a single value or a comma-separated list in any
@@ -52,6 +54,14 @@
    internal field names, and a normalized path the caller didn't use must never
    appear. Every object it names is named by both `path` and `id`, or by `path`
    alone where there is no id.
+
+9. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
+   as few tokens as the other principles allow. A leaf object that is really a
+   property of its container is modeled as one, not as an object with a path: a
+   device parameter belongs to a device and carries only `id`, `name`, `value`,
+   and metadata. Validation that needs to read from the API happens at the item,
+   inside the loop, not up front, except when a partial failure would result in
+   cleanup (e.g. when duplicating a list of objects).
 
 ---
 

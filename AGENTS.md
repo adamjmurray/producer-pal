@@ -110,11 +110,11 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
 - **Tool interface behavior follows `dev/Principles.md`** — addressing,
   multi-operation, relocation, partial completion, observability, warnings,
-  destruction, vocabulary. Read it before changing a tool's inputs, outputs, or
-  failure behavior. Anything about a target goes in that target's result entry;
-  a warning is only for what no result can carry, and is appended to the
-  response as a `WARNING:` block the model reads. See ADR-0035 for the calls
-  that are refused up front instead.
+  destruction, vocabulary, efficiency. Read it before changing a tool's inputs,
+  outputs, or failure behavior. Anything about a target goes in that target's
+  result entry; a warning is only for what no result can carry, and is appended
+  to the response as a `WARNING:` block the model reads. See ADR-0035 for the
+  calls that are refused up front instead.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no

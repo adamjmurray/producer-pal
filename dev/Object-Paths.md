@@ -363,11 +363,16 @@ spelling wherever `path` is). Two shapes are refused rather than half-applied:
 
 ## Not paths
 
-**Device parameters**, and deliberately. A parameter is never a target — it is
-the payload of an `update-device` call whose target is the device, and the map
-form is what makes `{Cutoff: 800, Resonance: 0.3}` one call instead of two. A
-parameter path would be a second spelling with no call that needs it. Revisit if
-a tool ever makes a parameter a target in its own right.
+**Device parameters**, and deliberately. A parameter is a property of its
+device, not an object of its own (Principles, Efficiency), so it is never a
+target — it is the payload of an `update-device` call whose target is the
+device, named there by `name` or `id`.
+
+One second spelling did grow anyway: a `params` name may carry a path prefix, so
+`{name: "c0/d0/Volume"}` on `t1/d0` writes a nested device's param. It is
+load-bearing for a drum pad `sample` write, whose target device does not exist
+yet and so can't be addressed as a path. Whether the general form should survive
+is open.
 
 **Locators as objects.** `loc:` names a point in time. Creating, deleting and
 renaming a locator stays on `update-live-set`'s own params — that is object
