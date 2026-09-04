@@ -4,10 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import {
-  parseCommaSeparatedIndices,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+import { targetEntries } from "#src/tools/shared/utils.ts";
 
 export interface ClipSlotPosition {
   trackIndex: number;
@@ -60,25 +57,6 @@ export function parseSlotList(
 
     return parseSlotParts(parts[0] as string, parts[1] as string, label, entry);
   });
-}
-
-/**
- * Parses a comma-separated string of scene indices into an array of integers
- * @param input - Comma-separated scene indices (e.g., "0" or "0,2,5")
- * @returns Array of scene indices
- */
-export function parseSceneIndexList(input?: string | null): number[] {
-  const indices = parseCommaSeparatedIndices(input);
-
-  for (const num of indices) {
-    if (num < 0) {
-      throw new Error(
-        `invalid sceneIndex "${num}" - must be a non-negative integer`,
-      );
-    }
-  }
-
-  return indices;
 }
 
 /**

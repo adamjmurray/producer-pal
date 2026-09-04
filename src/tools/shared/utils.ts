@@ -235,30 +235,6 @@ export function entriesFrom(
 }
 
 /**
- * Parses a comma-separated string of indices into an array of integers
- * @param indices - Comma-separated string of indices (e.g., "0, 1, 2")
- * @returns Array of integer indices
- * @throws If any index is not a valid integer
- */
-export function parseCommaSeparatedIndices(indices?: string | null): number[] {
-  if (indices == null) return [];
-
-  return indices
-    .split(",")
-    .map((index) => index.trim())
-    .filter((index) => index.length > 0)
-    .map((index) => {
-      const parsed = Number.parseInt(index);
-
-      if (Number.isNaN(parsed)) {
-        throw new Error(`Invalid index "${index}" - must be a valid integer`);
-      }
-
-      return parsed;
-    });
-}
-
-/**
  * Parses a comma-separated string of values into an array of floats, filtering invalid values
  * @param values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
  * @returns Array of valid float values (NaN values are filtered out)
