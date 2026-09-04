@@ -305,7 +305,7 @@ describe("transformAnthropicRequest", () => {
     });
 
     it("leaves omitted thinking alone for always-on (Fable) models", async () => {
-      const parsed = await transform({ model: "claude-fable-5" });
+      const parsed = await transform({ model: "claude-fable-5-1" });
 
       expect(parsed.thinking).toBeUndefined();
     });

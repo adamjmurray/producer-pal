@@ -22,7 +22,7 @@ import {
 describe("config-builders", () => {
   describe("isAlwaysOnThinkingModel", () => {
     it("is true for Fable and Mythos models", () => {
-      expect(isAlwaysOnThinkingModel("claude-fable-5")).toBe(true);
+      expect(isAlwaysOnThinkingModel("claude-fable-5-1")).toBe(true);
       expect(isAlwaysOnThinkingModel("claude-mythos-5")).toBe(true);
     });
 
