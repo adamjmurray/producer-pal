@@ -531,9 +531,7 @@ async function handleRequest(
       const message =
         toolError instanceof Error ? toolError.message : String(toolError);
 
-      result = formatErrorResponse(
-        `Error executing tool '${tool}': ${message}`,
-      );
+      result = formatErrorResponse(`Error: ${message}`);
     } finally {
       // Must run before endWarningCapture(), or the numbers land on the next
       // request's warnings. A failed call still built objects, hence the

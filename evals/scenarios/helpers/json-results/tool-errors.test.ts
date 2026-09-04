@@ -52,7 +52,7 @@ describe("collectToolErrors", () => {
         {
           name: "ppal-create-clip",
           args: {},
-          result: "Error executing tool 'ppal-create-clip': bad notes",
+          result: "Error: bad notes",
         },
         { name: "ppal-create-clip", args: {}, result: '{"id":1}' },
       ]),
@@ -65,7 +65,7 @@ describe("collectToolErrors", () => {
         {
           turnIndex: 1,
           name: "ppal-create-clip",
-          message: "Error executing tool 'ppal-create-clip': bad notes",
+          message: "Error: bad notes",
         },
       ],
     });

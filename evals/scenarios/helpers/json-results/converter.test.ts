@@ -388,7 +388,7 @@ describe("toJsonResult", () => {
               {
                 name: "ppal-create-clip",
                 args: {},
-                result: "Error executing tool 'ppal-create-clip': bad notes",
+                result: "Error: bad notes",
               },
               { name: "ppal-create-clip", args: {}, result: '{"id":"1"}' },
             ],
@@ -403,7 +403,7 @@ describe("toJsonResult", () => {
           {
             turnIndex: 0,
             name: "ppal-create-clip",
-            message: "Error executing tool 'ppal-create-clip': bad notes",
+            message: "Error: bad notes",
           },
         ],
       });

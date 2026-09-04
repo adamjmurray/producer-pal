@@ -139,6 +139,21 @@ describe("ppal-read-scene", () => {
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain('nothing at path "s999"');
   });
+
+  // isError already flags the failure, and the response is paired with the call
+  // that made it, so the message names the reason and not the tool.
+  it("reports the failure reason without naming the tool", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-scene",
+      arguments: {},
+    });
+
+    expect(isToolError(result)).toBe(true);
+    const message = getToolErrorMessage(result);
+
+    expect(message).not.toContain("executing tool");
+    expect(message).toBe("Error: id or path is required");
+  });
 });
 
 interface LiveSetResult {

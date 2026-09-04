@@ -27,7 +27,7 @@ const failedCall = (
 ): ToolCall => ({
   name,
   args,
-  result: `Error executing tool '${name}': nope`,
+  result: "Error: nope",
 });
 
 const createTurn = (toolCalls: ToolCall[], turnIndex = 0): EvalTurnResult => ({

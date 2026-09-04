@@ -93,11 +93,11 @@ export function toolCallFailed(call: ToolCall): boolean {
 
 /**
  * A tool call's result parsed into an object, or null when it has none — which
- * is what a tool ERROR looks like. Errors come back as prose ("Error executing
- * tool 'ppal-create-clip': …", "ERROR: user cancelled MCP tool call"), and
- * every success is a JSON/compact-literal payload, so parsing to an object is
- * what separates the two. Structural on purpose: matching error prose would
- * break the moment a message is reworded.
+ * is what a tool ERROR looks like. Errors come back as prose ("Error: slot or
+ * arrangementStart is required", "ERROR: user cancelled MCP tool call") and
+ * successes as a JSON/compact-literal payload, so parsing to an object is what
+ * separates them. Structural on purpose: matching error prose would break on a
+ * reword.
  *
  * @param call - The tool call to read
  * @returns The parsed result object, or null when absent/unparseable

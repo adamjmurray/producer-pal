@@ -351,7 +351,7 @@ describe("parseCodexStream", () => {
           content: [
             {
               type: "text",
-              text: "Error executing tool 'ppal-read-track': trackIndex 999 does not exist",
+              text: "Error: trackIndex 999 does not exist",
             },
           ],
         },
@@ -361,7 +361,7 @@ describe("parseCodexStream", () => {
     });
 
     expect(parseCodexStream(stdout).toolCalls[0]?.result).toBe(
-      "Error executing tool 'ppal-read-track': trackIndex 999 does not exist",
+      "Error: trackIndex 999 does not exist",
     );
   });
 

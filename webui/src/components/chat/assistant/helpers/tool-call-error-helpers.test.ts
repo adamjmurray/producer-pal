@@ -47,21 +47,21 @@ describe("extractErrorSummary", () => {
     });
   });
 
-  describe("Error executing tool prefix", () => {
-    it("strips tool error prefix from JSON-stringified error", () => {
-      const result = JSON.stringify(
-        "Error executing tool 'ppal-read-track': trackIndex 99 does not exist",
-      );
+  describe("Error prefix", () => {
+    it("strips the error prefix from a JSON-stringified error", () => {
+      const result = JSON.stringify("Error: trackIndex 99 does not exist");
 
       expect(extractErrorSummary(result)).toBe("trackIndex 99 does not exist");
     });
 
-    it("strips tool error prefix from plain string", () => {
-      expect(
-        extractErrorSummary(
-          "Error executing tool 'ppal-read-track': trackIndex 99 does not exist",
-        ),
-      ).toBe("trackIndex 99 does not exist");
+    it("strips the error prefix from a plain string", () => {
+      expect(extractErrorSummary("Error: trackIndex 99 does not exist")).toBe(
+        "trackIndex 99 does not exist",
+      );
+    });
+
+    it("keeps a colon in the reason itself", () => {
+      expect(extractErrorSummary("Error: bad note: C99")).toBe("bad note: C99");
     });
   });
 

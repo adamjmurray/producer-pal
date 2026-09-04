@@ -222,9 +222,7 @@ export const demoMessages: UIMessage[] = [
       {
         name: TOOL_READ_TRACK,
         args: { path: "t99" },
-        result: JSON.stringify(
-          "Error executing tool 'ppal-read-track': nothing at path \"t99\"",
-        ),
+        result: JSON.stringify('Error: nothing at path "t99"'),
         isError: true,
       },
     ],

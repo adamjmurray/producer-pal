@@ -49,14 +49,19 @@ const { requestNode } =
 const { mcp_request, node_response } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 
+interface McpResponsePayload {
+  content?: { type: string; text: string }[];
+  isError?: boolean;
+  warnings?: string[];
+}
+
 /**
- * The warnings a request's `mcp_response` carried — the `warnings` sidecar in
- * its JSON payload.
+ * The `mcp_response` payload a request sent back out outlet 0.
  *
  * @param requestId - The request whose response to read
- * @returns The warning strings, or null if that request never responded
+ * @returns The parsed payload, or null if that request never responded
  */
-function warningsSentFor(requestId: string): string[] | null {
+function responseFor(requestId: string): McpResponsePayload | null {
   const call = vi
     .mocked(outlet)
     .mock.calls.find(
@@ -65,9 +70,22 @@ function warningsSentFor(requestId: string): string[] | null {
 
   if (call == null) return null;
 
-  const json = reassembleChunks(call.slice(3));
+  return JSON.parse(reassembleChunks(call.slice(3))) as McpResponsePayload;
+}
 
-  return (JSON.parse(json) as { warnings?: string[] }).warnings ?? [];
+/**
+ * The warnings a request's `mcp_response` carried — the `warnings` sidecar in
+ * its JSON payload.
+ *
+ * @param requestId - The request whose response to read
+ * @returns The warning strings, or null if that request never responded
+ */
+function warningsSentFor(requestId: string): string[] | null {
+  const response = responseFor(requestId);
+
+  if (response == null) return null;
+
+  return response.warnings ?? [];
 }
 
 /**
@@ -262,5 +280,45 @@ describe("warning correlation", () => {
     await mcp_request("req-after-stray", "ppal-read-track", "{}");
 
     expect(warningsSentFor("req-after-stray")).toStrictEqual(["mine"]);
+  });
+});
+
+// A failing tool's message goes back as `Error: <thrown message>`. The tool name
+// is deliberately left out: the response is already paired with its tool call in
+// the conversation, so naming the tool again only spends context. Exact equality
+// on purpose, so any later change to the prefix fails here. These sit in this
+// file for the mcp_request harness above; the folder is at its item limit, so
+// they can't have a file of their own.
+describe("tool error response shape", () => {
+  it("prefixes the thrown message with `Error: `", async () => {
+    vi.mocked(readTrack).mockImplementation(() => {
+      throw new Error("Track 3 does not exist");
+    });
+
+    await mcp_request("req-thrown-error", "ppal-read-track", "{}");
+
+    const response = responseFor("req-thrown-error");
+
+    expect(response?.isError).toBe(true);
+    expect(response?.content).toStrictEqual([
+      { type: "text", text: "Error: Track 3 does not exist" },
+    ]);
+  });
+
+  it("stringifies a non-Error thrown value behind the same prefix", async () => {
+    // A rejection, not a throw, so the test doesn't have to throw a literal.
+    // Both reach the catch as a non-Error value.
+    vi.mocked(readTrack).mockImplementation(
+      () => Promise.reject("plain string failure") as never,
+    );
+
+    await mcp_request("req-thrown-string", "ppal-read-track", "{}");
+
+    const response = responseFor("req-thrown-string");
+
+    expect(response?.isError).toBe(true);
+    expect(response?.content).toStrictEqual([
+      { type: "text", text: "Error: plain string failure" },
+    ]);
   });
 });

@@ -447,11 +447,7 @@ describe("parsedToolResult", () => {
 
   it("returns null for a tool error", () => {
     expect(
-      parsedToolResult(
-        call(
-          "Error executing tool 'ppal-create-clip': slot or arrangementStart is required",
-        ),
-      ),
+      parsedToolResult(call("Error: slot or arrangementStart is required")),
     ).toBeNull();
   });
 
@@ -482,8 +478,7 @@ describe("lastSuccessfulToolCall", () => {
   const errored: ToolCall = {
     name: "ppal-create-clip",
     args: { trackIndex: 3, sceneIndex: "0" },
-    result:
-      "Error executing tool 'ppal-create-clip': slot or arrangementStart is required",
+    result: "Error: slot or arrangementStart is required",
   };
 
   const succeeded: ToolCall = {
@@ -544,7 +539,7 @@ describe("tool call filtering", () => {
   const failed: ToolCall = {
     name: "ppal-create-clip",
     args: {},
-    result: "Error executing tool 'ppal-create-clip': bad notes",
+    result: "Error: bad notes",
   };
   const turns: EvalTurnResult[] = [
     {
