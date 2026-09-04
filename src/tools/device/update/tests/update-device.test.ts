@@ -190,6 +190,7 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param791 = registerMockObject("791", {
+        type: "DeviceParameter",
         properties: {
           name: "Warp Mode",
           original_name: "Warp Mode",
@@ -234,6 +235,7 @@ describe("updateDevice", () => {
       // garbage raw value (2.9999… instead of index 2). It must resolve to the
       // index of the "4" label.
       const numericLabelParam = registerMockObject("793", {
+        type: "DeviceParameter",
         properties: {
           name: "Retrigger",
           original_name: "Retrigger",
@@ -308,6 +310,7 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param792 = registerMockObject("792", {
+        type: "DeviceParameter",
         properties: {
           name: "Pan",
           original_name: "Pan",
@@ -362,6 +365,7 @@ describe("updateDevice", () => {
       // clamped full-RIGHT value. Each must parse back to its signed -1..1
       // position via the param's own display max.
       const panDir = registerMockObject("793", {
+        type: "DeviceParameter",
         properties: { is_quantized: 0, value: 0, min: -1, max: 1 },
         methods: {
           str_for_value: (v: unknown) =>

@@ -123,6 +123,7 @@ describe("updateDevice - a name that matches more than one param", () => {
     // Corpus really does expose two params called "Width": a filter bandwidth
     // and a stereo width.
     bandwidth = registerMockObject("94", {
+      type: "DeviceParameter",
       properties: {
         name: "Width",
         original_name: "Width",
@@ -135,6 +136,7 @@ describe("updateDevice - a name that matches more than one param", () => {
     });
 
     stereoWidth = registerMockObject("95", {
+      type: "DeviceParameter",
       properties: {
         name: "Width",
         original_name: "Width",

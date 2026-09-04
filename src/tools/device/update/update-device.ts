@@ -41,7 +41,7 @@ import {
   stripReturnChainLetter,
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
-import { validateParamEntries } from "./update-device-param-setters.ts";
+import { validateParamEntries } from "./helpers/param-entry-validation.ts";
 import { type ParamValueResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {

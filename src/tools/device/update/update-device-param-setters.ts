@@ -151,8 +151,7 @@ function setOneParam(
 
   if (warnIfAmbiguousName(matches, key, toolName, device)) return [];
 
-  // A purely numeric key is an absolute Live API param id.
-  const param = matches[0] ?? (/^\d+$/.test(key) ? LiveAPI.from(key) : null);
+  const param = matches[0] ?? resolveParamById(key);
 
   if (!param?.exists()) {
     console.warn(
@@ -165,6 +164,24 @@ function setOneParam(
   return toEntries(
     setParamValue(param, inputValue, toolName, rawValue, device, deviceName),
   );
+}
+
+/**
+ * Resolve a purely numeric param key as an absolute Live API object id.
+ *
+ * Every object id resolves, so the type is checked: a non-parameter reads as a
+ * plain enabled parameter with no range (Live answers nothing rather than
+ * failing), and the tool would report a write it never made against a name read
+ * off some unrelated object.
+ * @param key - The trimmed param name
+ * @returns The parameter, or null when the key is not a parameter's id
+ */
+function resolveParamById(key: string): LiveAPI | null {
+  if (!/^\d+$/.test(key)) return null;
+
+  const object = LiveAPI.from(key);
+
+  return object.exists() && object.type === "DeviceParameter" ? object : null;
 }
 
 /**
@@ -499,45 +516,4 @@ function findDivisionRawValue(
   }
 
   return null;
-}
-
-/**
- * Refuse a params list with an entry the setter can't read.
- *
- * An entry with no name, no value, or nothing after its last "/" names no
- * parameter, so there is nothing to write. This is the shape a hole in a
- * comma-separated list already gets refused for — and refusing here, before
- * any device is touched, means the caller can fix the list and send it again
- * with nothing to clean up.
- * @param params - The params list as the caller sent it
- * @param toolName - Tool name for the error message
- */
-export function validateParamEntries(
-  params: ParamEntry[] | undefined,
-  toolName: string,
-): void {
-  for (const [index, entry] of (params ?? []).entries()) {
-    const key = entry.name.trim();
-
-    if (key === "") {
-      throw new Error(
-        `${toolName} failed: params entry ${index + 1} has an empty name`,
-      );
-    }
-
-    if (entry.value.trim() === "") {
-      throw new Error(
-        `${toolName} failed: params entry "${key}" has an empty value`,
-      );
-    }
-
-    if (
-      key.includes("/") &&
-      key.slice(key.lastIndexOf("/") + 1).trim() === ""
-    ) {
-      throw new Error(
-        `${toolName} failed: params entry "${key}" has an empty name after "/"`,
-      );
-    }
-  }
 }

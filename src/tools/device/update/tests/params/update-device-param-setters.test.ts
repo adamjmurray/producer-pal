@@ -298,6 +298,7 @@ describe("updateDevice - param value conversion", () => {
         properties: { parameters: children() },
       });
       param = registerMockObject("42", {
+        type: "DeviceParameter",
         properties: {
           name: "Volume",
           original_name: "Volume",
@@ -316,6 +317,24 @@ describe("updateDevice - param value conversion", () => {
       updateDevice({ id: "dev1", params: [{ name: "42", value: "0.8" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    });
+
+    it("refuses an id that names something other than a parameter", () => {
+      // Every object id resolves, and a non-parameter reads back as an
+      // enabled param with no range, so the write would be reported as landing
+      // on a name read off an unrelated object.
+      const liveSet = registerMockObject("1", {
+        path: livePath.liveSet,
+        type: "Song",
+        properties: { name: "my-set" },
+      });
+
+      updateDevice({ id: "dev1", params: [{ name: "1", value: "5" }] });
+
+      expect(capturedWarnings()).toContain(
+        'updateDevice: param "1" not found on t0/d0 (id dev1)',
+      );
+      expect(liveSet.set).not.toHaveBeenCalled();
     });
   });
 

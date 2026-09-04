@@ -70,6 +70,7 @@ export function registerParamMock(id: string): RegisteredMockObject {
   const name = `Param ${id}`;
 
   return registerMockObject(id, {
+    type: "DeviceParameter",
     properties: {
       name,
       original_name: name,
