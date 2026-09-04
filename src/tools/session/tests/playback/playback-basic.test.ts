@@ -43,7 +43,9 @@ describe("transport", () => {
   });
 
   it("should handle play-arrangement action", () => {
-    liveSet = setupPlaybackLiveSet();
+    // start_time mirrors the value this call sets (the mock's set() doesn't
+    // feed back into get), so the reported startTime is the actual state.
+    liveSet = setupPlaybackLiveSet({ start_time: 16 });
 
     const result = playback({
       action: "play-arrangement",
@@ -55,6 +57,7 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "5|1",
+      startTime: "5|1",
     });
   });
 
@@ -458,6 +461,7 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: false,
       currentTime: "1|1",
+      startTime: "1|1",
     });
   });
 

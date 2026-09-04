@@ -32,7 +32,7 @@ export const toolDefPlayback = defineTool("ppal-playback", {
       ])
       .describe(
         `play-arrangement: from startTime
-update-arrangement: set playhead/loop without playing
+update-arrangement: set startTime (where play begins) and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s)
 stop-session-clips: by id(s) or path(s)

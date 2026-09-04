@@ -84,6 +84,10 @@ export function getLiveSetProperty(prop: string): unknown[] | null {
       return [4];
     case "signature_denominator":
       return [4];
+    // Every real Live Set answers this, and a mock that doesn't reports the
+    // arrangement start position as "NaN|NaN".
+    case "start_time":
+      return [0];
     default:
       return null;
   }

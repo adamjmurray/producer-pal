@@ -15,7 +15,7 @@ interface LoopState {
   end: string;
 }
 
-/** The params that address the arrangement timeline: the playhead and the loop. */
+/** The params that address the arrangement timeline: the start position and the loop. */
 export interface ArrangementParams {
   startTime?: string;
   loop?: boolean;
@@ -45,7 +45,7 @@ const ARRANGEMENT_ACTIONS = new Set(["play-arrangement", "update-arrangement"]);
  *
  * These are written to the Live Set before the action runs, so a session action
  * used to apply them anyway: "play scene 3 from bar 5" fired the scene and moved
- * the arrangement playhead, without a word. The scene had nothing to do with the
+ * the arrangement start position, without a word. The scene had nothing to do with the
  * arrangement, so the caller got a change to their Live Set they never asked for.
  * @param action - The playback action, which decides whether they apply
  * @param params - The timeline params as the caller sent them
@@ -64,7 +64,7 @@ export function resolveArrangementParams<
     console.warn(
       `${sent.join("/")} ignored: action "${action}" doesn't take arrangement ` +
         `timeline params; use "play-arrangement" or "update-arrangement" for ` +
-        `the playhead and loop`,
+        `the start position and loop`,
     );
   }
 
@@ -97,6 +97,73 @@ export function getCurrentLoopState(
   );
 
   return { startBeats, start, end };
+}
+
+/**
+ * Write the arrangement timeline: the start position and the loop.
+ * @param liveSet - The live_set LiveAPI object
+ * @param timeline - The timeline params, with locators already folded in
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns The start position in beats, or undefined when none was given
+ */
+export function applyArrangementTimeline(
+  liveSet: LiveAPI,
+  timeline: ArrangementParams,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number | undefined {
+  const startTimeBeats = resolveStartTime(
+    liveSet,
+    timeline,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  if (timeline.loop != null) {
+    liveSet.set("loop", timeline.loop);
+  }
+
+  const loopStartBeats = resolveLoopStart(
+    liveSet,
+    timeline,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  resolveLoopEnd(
+    liveSet,
+    timeline,
+    loopStartBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  return startTimeBeats;
+}
+
+/**
+ * Read the arrangement start position back after the action, so a value Live
+ * snapped is what the caller sees. Actions that didn't write it don't report it.
+ * @param liveSet - The live_set LiveAPI object
+ * @param state - The playback state the action returned
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns The start position in bar|beat, or undefined when the call left it alone
+ */
+export function readStartTime(
+  liveSet: LiveAPI,
+  state: PlaybackState,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): string | undefined {
+  if (!state.wroteStartTime) return undefined;
+
+  return abletonBeatsToBarBeat(
+    liveSet.getProperty("start_time") as number,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 }
 
 /**
@@ -135,7 +202,8 @@ export function foldLocatorParams(
 }
 
 /**
- * Resolve the arrangement start position and move the playhead there.
+ * Resolve the arrangement start position and write it. This is where the next
+ * play begins, which is not the same thing as the playhead.
  * @param liveSet - The live_set LiveAPI object
  * @param params - The timeline params
  * @param params.startTime - Song position, bar|beat or `loc:<name>`
@@ -244,6 +312,15 @@ export interface PlaybackState {
   isPlaying: boolean;
   currentTimeBeats: number;
   /**
+   * True when the action wrote the arrangement start position, so the result
+   * reports it. Actions that didn't touch it don't report it.
+   *
+   * The session handlers build a fresh state and drop this, which is only safe
+   * because resolveArrangementParams strips the timeline params for them. An
+   * arrangement action routed through one would have to carry it.
+   */
+  wroteStartTime?: boolean;
+  /**
    * Set by play-scene only. The scene can be named by a scene id or by a clip
    * in it, so the caller doesn't always know which one fired.
    */
@@ -275,6 +352,7 @@ export function handlePlayArrangement(
   return {
     isPlaying: true,
     currentTimeBeats: resolvedStartTimeBeats ?? 0,
+    wroteStartTime: true,
   };
 }
 

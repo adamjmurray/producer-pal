@@ -67,7 +67,7 @@ describe("playback arrangement params on a session action", () => {
     expect(warn).toHaveBeenCalledWith(
       `startTime ignored: action "${action}" doesn't take arrangement ` +
         `timeline params; use "play-arrangement" or "update-arrangement" for ` +
-        `the playhead and loop`,
+        `the start position and loop`,
     );
   });
 

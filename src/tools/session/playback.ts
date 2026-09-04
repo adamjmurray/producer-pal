@@ -7,14 +7,13 @@ import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
+  applyArrangementTimeline,
   foldLocatorParams,
   getCurrentLoopState,
   handlePlayArrangement,
   handlePlayScene,
+  readStartTime,
   resolveArrangementParams,
-  resolveLoopEnd,
-  resolveLoopStart,
-  resolveStartTime,
   type FiredScene,
   type PlaybackState,
 } from "./helpers/playback-helpers.ts";
@@ -55,6 +54,7 @@ interface PlaybackArgs {
 interface PlaybackResult {
   playing: boolean;
   currentTime: string;
+  startTime?: string;
   sceneIndex?: number;
   sceneName?: string;
   arrangementLoop?: { start: string; end: string };
@@ -63,6 +63,7 @@ interface PlaybackResult {
 interface BuildPlaybackResultParams {
   isPlaying: boolean;
   currentTime: string;
+  startTime?: string;
   scene?: FiredScene;
   loop?: boolean;
   currentLoopStart: string;
@@ -153,31 +154,10 @@ export function playback(
     "signature_denominator",
   ) as number;
 
-  // Resolve start time from bar|beat or locator
-  const startTimeBeats = resolveStartTime(
+  // Write the start position and loop before the action runs
+  const startTimeBeats = applyArrangementTimeline(
     liveSet,
     timeline,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  if (timeline.loop != null) {
-    liveSet.set("loop", timeline.loop);
-  }
-
-  // Resolve loop start from bar|beat or locator
-  const loopStartBeats = resolveLoopStart(
-    liveSet,
-    timeline,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  // Resolve loop end from bar|beat or locator
-  resolveLoopEnd(
-    liveSet,
-    timeline,
-    loopStartBeats,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -196,7 +176,7 @@ export function playback(
       ids: namedIds,
       slotPositions,
     },
-    { isPlaying, currentTimeBeats },
+    { isPlaying, currentTimeBeats, wroteStartTime: startTimeBeats != null },
   );
 
   isPlaying = playbackState.isPlaying;
@@ -205,6 +185,15 @@ export function playback(
   // Convert beats back to bar|beat for the response
   const currentTime = abletonBeatsToBarBeat(
     currentTimeBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
+
+  // Where the next play begins, reported separately from currentTime, which
+  // is the playhead.
+  const startTimePosition = readStartTime(
+    liveSet,
+    playbackState,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -221,6 +210,7 @@ export function playback(
   return buildPlaybackResult({
     isPlaying,
     currentTime,
+    startTime: startTimePosition,
     scene: playbackState.scene,
     loop: timeline.loop,
     currentLoopStart: currentLoop.start,
@@ -249,6 +239,7 @@ function handleFocus(action: string, focus?: boolean): void {
  * @param params - Result parameters
  * @param params.isPlaying - Whether playback is active
  * @param params.currentTime - Current time in bar|beat format
+ * @param params.startTime - Arrangement start position, when the call set it
  * @param params.scene - The scene play-scene fired, when the action fired one
  * @param params.loop - Loop enabled state
  * @param params.currentLoopStart - Current loop start (post-set actual value)
@@ -259,6 +250,7 @@ function handleFocus(action: string, focus?: boolean): void {
 function buildPlaybackResult({
   isPlaying,
   currentTime,
+  startTime,
   scene,
   loop,
   currentLoopStart,
@@ -268,6 +260,7 @@ function buildPlaybackResult({
   const result: PlaybackResult = {
     playing: isPlaying,
     currentTime,
+    ...(startTime != null && { startTime }),
     // Which scene fired, since a scene id or a clip in it can name it
     ...(scene && { sceneIndex: scene.sceneIndex, sceneName: scene.sceneName }),
   };
@@ -418,6 +411,7 @@ function handlePlaybackAction(
       return {
         isPlaying: false,
         currentTimeBeats: 0,
+        wroteStartTime: true,
       };
 
     default:

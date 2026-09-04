@@ -22,6 +22,7 @@ describe("playback - song positions", () => {
     beforeEach(() => {
       liveSet = setupCuePointMocks({
         cuePoints: [...VERSE_CHORUS_CUE_POINTS],
+        liveSet: { startTime: 16 },
       });
     });
 
@@ -33,7 +34,11 @@ describe("playback - song positions", () => {
 
       expectLiveSetProperty(liveSet, "start_time", 16);
       expect(liveSet.call).toHaveBeenCalledWith("start_playing");
-      expect(result).toStrictEqual({ playing: true, currentTime: "5|1" });
+      expect(result).toStrictEqual({
+        playing: true,
+        currentTime: "5|1",
+        startTime: "5|1",
+      });
     });
 
     it("should start playback from a locator name", () => {
@@ -97,7 +102,7 @@ describe("playback - song positions", () => {
     beforeEach(() => {
       liveSet = setupCuePointMocks({
         cuePoints: [...VERSE_CHORUS_CUE_POINTS],
-        liveSet: { loopStart: 16, loopLength: 16 },
+        liveSet: { startTime: 16, loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -152,7 +157,7 @@ describe("playback - song positions", () => {
     beforeEach(() => {
       liveSet = setupCuePointMocks({
         cuePoints: [...VERSE_CHORUS_CUE_POINTS],
-        liveSet: { loopStart: 16, loopLength: 16 },
+        liveSet: { startTime: 16, loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -163,7 +168,11 @@ describe("playback - song positions", () => {
       });
 
       expectLiveSetProperty(liveSet, "start_time", 16);
-      expect(result).toStrictEqual({ playing: true, currentTime: "5|1" });
+      expect(result).toStrictEqual({
+        playing: true,
+        currentTime: "5|1",
+        startTime: "5|1",
+      });
     });
 
     it("should fold loopStartLocator and loopEndLocator into the loop", () => {
@@ -225,7 +234,7 @@ describe("playback - song positions", () => {
           { id: "cue2", time: 16, name: "Verse" },
           { id: "cue3", time: 32, name: "Chorus" },
         ],
-        liveSet: { loopStart: 16, loopLength: 16 },
+        liveSet: { startTime: 16, loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -245,6 +254,7 @@ describe("playback - song positions", () => {
       expect(result).toStrictEqual({
         playing: true,
         currentTime: "5|1",
+        startTime: "5|1",
         arrangementLoop: { start: "5|1", end: "9|1" },
       });
     });

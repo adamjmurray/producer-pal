@@ -15,6 +15,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 interface LiveSetConfig {
   numerator?: number;
   denominator?: number;
+  startTime?: number;
   loop?: number;
   loopStart?: number;
   loopLength?: number;
@@ -111,6 +112,7 @@ export function setupCuePointMocks({
   const {
     numerator = 4,
     denominator = 4,
+    startTime = 0,
     loop = 0,
     loopStart = 0,
     loopLength = 4,
@@ -122,6 +124,7 @@ export function setupCuePointMocks({
     liveSetProps: {
       signature_numerator: numerator,
       signature_denominator: denominator,
+      start_time: startTime,
       loop,
       loop_start: loopStart,
       loop_length: loopLength,
