@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type ReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { trackApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
@@ -15,7 +16,8 @@ export interface ReadTrackArgs {
   /** Hidden alias for id */
   trackId?: string;
   trackType?: string;
-  returnTrackNames?: string[];
+  /** The Live Set's return tracks, when the caller already read them */
+  returnTracks?: ReturnTrackInfo[];
   include?: string[];
   /**
    * Session clips on this track, when the caller already knows. A Live Set read

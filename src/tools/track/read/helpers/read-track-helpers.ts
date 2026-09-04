@@ -15,6 +15,10 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
+  readReturnTrackInfo,
+  type ReturnTrackInfo,
+} from "#src/tools/shared/sends/return-track-info.ts";
+import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
@@ -38,6 +42,8 @@ export interface ReadTakeLaneResult {
 interface SendInfo {
   gainDb: unknown;
   return: string;
+  /** Omitted when no return track lines up with this send */
+  returnId?: string;
 }
 
 interface MixerResult {
@@ -354,12 +360,12 @@ export function addProducerPalHostInfo(
 /**
  * Read mixer device properties (gain, panning, and sends)
  * @param track - Track object
- * @param returnTrackNames - Array of return track names for sends
+ * @param returnTracks - The Live Set's return tracks, when the caller already read them
  * @returns Object with gain, pan, and sends properties, or empty if mixer doesn't exist
  */
 export function readMixerProperties(
   track: LiveAPI,
-  returnTrackNames?: string[],
+  returnTracks?: ReturnTrackInfo[],
 ): MixerResult {
   const mixer = track.child("mixer_device");
 
@@ -409,31 +415,25 @@ export function readMixerProperties(
   const sends = mixer.getChildren("sends");
 
   if (sends.length > 0) {
-    // Fetch return track names if not provided
-    let names = returnTrackNames;
-
-    if (!names) {
-      const liveSet = LiveAPI.from(livePath.liveSet);
-      const returnTrackIds = liveSet.getChildIds("return_tracks");
-
-      names = returnTrackIds.map((_, idx) => {
-        const rt = LiveAPI.from(livePath.returnTrack(idx));
-
-        return rt.getProperty("name") as string;
-      });
-    }
+    const returns = returnTracks ?? readReturnTrackInfo();
 
     // Warn if send count doesn't match return track count
-    if (sends.length !== names.length) {
+    if (sends.length !== returns.length) {
       console.warn(
-        `Send count (${sends.length}) on track ${targetLabel(track)} doesn't match return track count (${names.length})`,
+        `Send count (${sends.length}) on track ${targetLabel(track)} doesn't match return track count (${returns.length})`,
       );
     }
 
-    result.sends = sends.map((send, i) => ({
-      gainDb: send.getProperty("display_value"),
-      return: names[i] ?? `Return ${i + 1}`,
-    }));
+    result.sends = sends.map((send, i) => {
+      const info = returns[i];
+
+      return {
+        gainDb: send.getProperty("display_value"),
+        return: info?.name ?? `Return ${i + 1}`,
+        // Names collide and get renamed, so the id is what a write quotes back.
+        ...(info == null ? {} : { returnId: info.id }),
+      };
+    });
   }
 
   return result;

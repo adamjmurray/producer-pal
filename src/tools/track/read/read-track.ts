@@ -11,6 +11,7 @@ import {
   findDrumRack,
   getDrumMap,
 } from "#src/tools/shared/device/device-reader.ts";
+import { type ReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import {
   expandWildcardIncludes,
   parseIncludeArray,
@@ -51,7 +52,7 @@ interface ReadTrackGenericArgs {
   trackIndex: number | null;
   category?: string;
   include?: string[];
-  returnTrackNames?: string[];
+  returnTracks?: ReturnTrackInfo[];
   notation?: Notation;
   /** See ReadTrackArgs.sessionClipCount */
   sessionClipCount?: number;
@@ -99,7 +100,7 @@ export function readTrack(
     trackIndex: category === "master" ? null : trackIndex,
     category,
     include: args.include,
-    returnTrackNames: args.returnTrackNames,
+    returnTracks: args.returnTracks,
     notation: context.notation,
     sessionClipCount: args.sessionClipCount,
   });
@@ -274,7 +275,7 @@ function addDrumMapFromDevices(
  * @param args.trackIndex - Track index (null for master track)
  * @param args.category - Track category: "regular", "return", or "master"
  * @param args.include - Array of data to include in the response
- * @param args.returnTrackNames - Array of return track names for sends
+ * @param args.returnTracks - The Live Set's return tracks, when the caller already read them
  * @param args.notation - Active notation; controls whether drum-map keys are drum names
  * @param args.sessionClipCount - Session clips on this track, when the caller already counted them
  * @returns Track information including clips, devices, routing, and state
@@ -284,7 +285,7 @@ export function readTrackGeneric({
   trackIndex,
   category = "regular",
   include,
-  returnTrackNames,
+  returnTracks,
   notation,
   sessionClipCount,
 }: ReadTrackGenericArgs): Record<string, unknown> {
@@ -332,7 +333,7 @@ export function readTrackGeneric({
 
   // Add mixer properties if requested
   if (includeMixer) {
-    Object.assign(result, readMixerProperties(track, returnTrackNames));
+    Object.assign(result, readMixerProperties(track, returnTracks));
   }
 
   if (groupId) {

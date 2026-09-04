@@ -220,6 +220,46 @@ describe("ppal-read-track", () => {
     expect(unasked?.warping).toBeUndefined();
     expect(unasked?.warpMode).toBeUndefined();
   });
+
+  it("reports each send's return track id alongside its name", async () => {
+    // The id is the only thing that tells two same-named returns apart, and
+    // update-track's sends/sendReturn accept it. Only real Live proves the id
+    // the read reports is the return track's own.
+    const liveSet = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: { include: ["tracks"] },
+      }),
+    );
+    const returnTracks = liveSet.returnTracks!;
+
+    expect(returnTracks.length).toBeGreaterThan(0);
+
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "t0", include: ["mixer"] },
+      }),
+    );
+
+    // A return track has sends of its own, so it goes through the same read.
+    const returnTrack = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "rt0", include: ["mixer"] },
+      }),
+    );
+
+    // Sends are index-aligned with the Live Set's return tracks.
+    for (const read of [track, returnTrack]) {
+      expect(read.sends).toHaveLength(returnTracks.length);
+
+      for (const [i, send] of read.sends!.entries()) {
+        expect(send.return).toBe(returnTracks[i]!.name);
+        expect(send.returnId).toBe(returnTracks[i]!.id);
+      }
+    }
+  });
 });
 
 interface LiveSetResult {
@@ -229,6 +269,7 @@ interface LiveSetResult {
     type: string;
     path: string;
   }>;
+  returnTracks?: Array<{ id: string; name: string }>;
 }
 
 interface ReadTrackResult {
@@ -254,6 +295,6 @@ interface ReadTrackResult {
   drumMap?: Record<string, string> | null;
   gainDb?: number;
   pan?: number;
-  sends?: Array<{ name: string; gainDb: number }>;
+  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
   outputRoutingType?: { name: string; outputId: string };
 }

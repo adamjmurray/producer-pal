@@ -124,7 +124,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     sends: param(sendsInputSchema, {
       default:
-        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, or letter. Use instead of sendGainDb + sendReturn, which set one",
+        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, or letter — the `return`/`returnId` read-track reports. Use instead of sendGainDb + sendReturn, which set one",
       smallModel: null,
     }),
   },

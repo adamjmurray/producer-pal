@@ -12,15 +12,24 @@ import {
 } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
+const RETURN_TRACKS = [
+  { name: "Reverb", id: "return1" },
+  { name: "Delay", id: "return2" },
+];
+
 function expectSendsWithReverbAndSecond(
   result: Record<string, unknown>,
-  secondReturn: string,
+  second: Record<string, unknown>,
 ): void {
   const sends = result.sends as Record<string, unknown>[];
 
   expect(sends).toHaveLength(2);
-  expect(sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
-  expect(sends[1]).toStrictEqual({ gainDb: -6.0, return: secondReturn });
+  expect(sends[0]).toStrictEqual({
+    gainDb: -12.5,
+    return: "Reverb",
+    returnId: "return1",
+  });
+  expect(sends[1]).toStrictEqual({ gainDb: -6.0, ...second });
 }
 
 describe("readTrack - mixer properties", () => {
@@ -251,7 +260,7 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("rightPan");
   });
 
-  it("includes sends with return track names when requested", () => {
+  it("includes sends with return track names and ids when requested", () => {
     setupTrackMixerMocks({
       sendIds: ["send_1", "send_2"],
       sendValues: [-12.5, -6.0],
@@ -260,11 +269,59 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({
       trackIndex: 0,
       include: ["mixer"],
-      returnTrackNames: ["Reverb", "Delay"],
+      returnTracks: RETURN_TRACKS,
     });
 
     expect(result).toHaveProperty("sends");
-    expectSendsWithReverbAndSecond(result, "Delay");
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  it("includes sends on a return track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.returnTrack(1)),
+      trackId: "return2",
+      trackProperties: { has_midi_input: 0, name: "Delay" },
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readTrack({
+      trackIndex: 1,
+      trackType: "return",
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  // Live's main track has no sends, so this only proves the return track list
+  // reaches the master read path.
+  it("includes sends on the main track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.masterTrack()),
+      trackId: "master",
+      trackProperties: { has_midi_input: 0, name: "Master" },
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readTrack({
+      trackType: "master",
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
   });
 
   it("does not include sends property when track has no sends", () => {
@@ -276,13 +333,13 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({
       trackIndex: 0,
       include: ["mixer"],
-      returnTrackNames: ["Reverb"],
+      returnTracks: RETURN_TRACKS.slice(0, 1),
     });
 
     expect(result).not.toHaveProperty("sends");
   });
 
-  it("fetches return track names if not provided", () => {
+  it("fetches return tracks if not provided", () => {
     setupTrackMixerMocks({
       sendIds: ["send_1"],
       sendValues: [-10.0],
@@ -301,6 +358,7 @@ describe("readTrack - mixer properties", () => {
     expect(sends[0]).toStrictEqual({
       gainDb: -10.0,
       return: "FetchedReverb",
+      returnId: "return1",
     });
   });
 
@@ -315,13 +373,14 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({
       trackIndex: 0,
       include: ["mixer"],
-      returnTrackNames: ["Reverb"],
+      returnTracks: RETURN_TRACKS.slice(0, 1),
     });
 
     expect(consoleSpy).toHaveBeenCalledWith(
       "Send count (2) on track t0 (id track1) doesn't match return track count (1)",
     );
-    expectSendsWithReverbAndSecond(result, "Return 2");
+    // No return track lines up with the second send, so it carries no returnId
+    expectSendsWithReverbAndSecond(result, { return: "Return 2" });
 
     consoleSpy.mockRestore();
   });
