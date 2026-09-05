@@ -54,7 +54,9 @@ const SKIPPED_DIRECTORIES = new Set([
 const INSTALLATION_PAGES = "installation";
 const INSTALLATION_ONLY_PARTIALS = new Set([
   "_partials/agent-skill-callout.md",
+  "_partials/download-device.md",
   "_partials/live-requirement.md",
+  "_partials/live-version.md",
   "_partials/scripting-tip.md",
 ]);
 

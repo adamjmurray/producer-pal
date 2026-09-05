@@ -21,7 +21,7 @@ import {
 } from "#src/test/helpers/test-file-classification.ts";
 
 // The source/test line is drawn in a dozen places that cannot import one
-// another: .oxlintrc.json, five jscpd configs, vitest.config.ts, the meta-test
+// another: .oxlintrc.json, the jscpd configs, vitest.config.ts, the meta-test
 // file finders, and dev/Testing.md. They drifted apart once already, leaving
 // files that were tests for one budget and source for another. These tests hold
 // every one of them in step with src/test/helpers/test-file-classification.ts.
@@ -45,6 +45,12 @@ const JSCPD_SOURCE_CONFIGS = [
 // from the list above, asserted below so the omission cannot pass for an
 // oversight the way this whole class of gap did before.
 const JSCPD_UNSPLIT_CONFIG = "config/.jscpd-e2e.json";
+
+// Prose, not code, so the source/test split means nothing to it: it scans the
+// markdown every other config ignores, which is what keeps a doc from being
+// measured twice. Listed here so its absence from the two lists above reads as
+// the deliberate choice it is.
+const JSCPD_MARKDOWN_CONFIG = "config/.jscpd-docs.json";
 
 // Path shapes that name test files, however the glob spells them. A hyphen can
 // open one of these names but never close it, so a source glob ending
@@ -173,6 +179,42 @@ describe("test file classification", () => {
       ).toStrictEqual(TEST_FILE_GLOBS);
     },
   );
+
+  it("should classify every jscpd config", () => {
+    const classified = [
+      ...JSCPD_SOURCE_CONFIGS,
+      JSCPD_TESTS_CONFIG,
+      JSCPD_UNSPLIT_CONFIG,
+      JSCPD_MARKDOWN_CONFIG,
+    ];
+
+    expect(
+      fs
+        .readdirSync(path.join(projectRoot, "config"))
+        .filter((name) => name.startsWith(".jscpd") && name.endsWith(".json"))
+        .map((name) => `config/${name}`)
+        .toSorted(),
+    ).toStrictEqual(classified.toSorted());
+  });
+
+  it("should measure markdown in exactly one scan", () => {
+    expect(readJson<{ pattern: string }>(JSCPD_MARKDOWN_CONFIG).pattern).toBe(
+      "**/*.md",
+    );
+
+    const others = [
+      ...JSCPD_SOURCE_CONFIGS,
+      JSCPD_TESTS_CONFIG,
+      JSCPD_UNSPLIT_CONFIG,
+    ];
+
+    expect(
+      others.filter(
+        (config) =>
+          !readJson<{ ignore: string[] }>(config).ignore.includes("**/*.md"),
+      ),
+    ).toStrictEqual([]);
+  });
 
   it("should hold the e2e scan to one threshold over the whole tree", () => {
     const { ignore } = readJson<{ ignore: string[] }>(JSCPD_UNSPLIT_CONFIG);

@@ -31,7 +31,9 @@ step.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
   split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
-  whole tree at one threshold.
+  whole tree at one threshold. Markdown is out of scope for all of them:
+  `config/.jscpd-docs.json` scans the repo's prose in one pass, so a doc is
+  measured once and never against a code threshold.
 - **Coverage**: test files are excluded.
 - **Suppression budgets**: counted against the `…Tests` tree in
   `src/test/lint-suppression-limits.test.ts`, so no test file goes unbudgeted.

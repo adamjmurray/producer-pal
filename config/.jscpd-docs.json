@@ -1,0 +1,18 @@
+{
+  "threshold": 0.8,
+  "reporters": ["console"],
+  "ignorePattern": ["```[\\s\\S]*?```"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.claude/**",
+    "**/coverage/**",
+    "**/dist/**",
+    "**/docs/_generated/**",
+    "**/docs/public/markdown/**",
+    "**/docs/.vitepress/cache/**",
+    "**/docs/.vitepress/dist/**",
+    "**/examples/**"
+  ],
+  "pattern": "**/*.md",
+  "path": [".."]
+}
