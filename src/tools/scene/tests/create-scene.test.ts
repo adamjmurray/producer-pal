@@ -406,6 +406,14 @@ describe("createScene", () => {
       });
     });
 
+    it("should refuse a malformed color before capturing anything", () => {
+      expect(() =>
+        createScene({ capture: true, color: "not-a-hex-color" }),
+      ).toThrow('invalid color "not-a-hex-color" - expected "#RRGGBB"');
+
+      expect(captureLiveSet.call).not.toHaveBeenCalled();
+    });
+
     it("should apply additional properties after capture", () => {
       const result = createScene({
         capture: true,

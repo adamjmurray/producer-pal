@@ -17,7 +17,9 @@ import {
   parseToolResult,
   parseToolResultWithWarnings,
   createTestDevice,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
@@ -527,12 +529,14 @@ describe("ppal-duplicate", () => {
     expect(readDupDevice2.type).toContain("Compressor");
   });
 
-  // A malformed color only reaches Live after the clip itself was created —
-  // canRecreateClip and Live's own create guard already rule out "nothing
-  // landed" by this point — so a real, incomplete clip is left at the
-  // destination. The report has to say that instead of claiming the copy
-  // failed outright.
-  it("reports an incomplete copy instead of a failure when the color write fails", async () => {
+  // A malformed color is refused before the copy is planned, so nothing is
+  // created and no clip is touched. This replaced a test that used a bad color
+  // to force a partial re-create: that was the only known way in from outside,
+  // and probing found no other (a deleted sample is refused earlier, a pickup
+  // note and an all-digit name are both accepted, and a name long enough to
+  // upset Live doesn't survive the MCP transport). The partial-re-create
+  // reporting keeps its unit coverage.
+  it("refuses a malformed color before copying anything", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -552,22 +556,27 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        toPath: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s2`,
         color: "not-a-hex-color",
       },
     });
 
-    // The incomplete clip isn't reported as a landed copy: it stays out of
-    // the result the same way a full refusal does.
-    expect(parseToolResultWithWarnings<object[]>(result).data).toStrictEqual(
-      [],
-    );
-    expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("left an incomplete take-lane copy at beat"),
-    );
-    expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("Invalid color format"),
-    );
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("invalid color");
+    expect(getToolErrorMessage(result)).toContain("#RRGGBB");
+
+    await sleep(100);
+
+    // Nothing landed at the destination the refused copy named — reading it
+    // back warns that the slot is empty, which is the point.
+    const destination = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s2` },
+    });
+
+    expect(
+      parseToolResultWithWarnings<ReadClipResult>(destination).data.id,
+    ).toBeNull();
   });
 });
 

@@ -13,9 +13,16 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 describe("color-utils", () => {
   describe("parseColors", () => {
     it("returns null when the value covers every item", () => {
-      expect(parseColors("#FF0000,#00FF00", 1, "clip")).toBeNull();
       expect(parseColors("#FF0000", 3, "clip")).toBeNull();
       expect(parseColors(undefined, 3, "clip")).toBeNull();
+    });
+
+    it("refuses a comma-bearing value when count is 1 (nothing to split it against)", () => {
+      // splitList never splits for a single item, so the whole string is
+      // checked as one color and fails the #RRGGBB format.
+      expect(() => parseColors("#FF0000,#00FF00", 1, "clip")).toThrow(
+        'invalid color "#FF0000,#00FF00" - expected "#RRGGBB"',
+      );
     });
 
     it("splits and trims a list", () => {
@@ -47,6 +54,24 @@ describe("color-utils", () => {
 
       expect(console.warn).toHaveBeenCalledWith(
         "color: 3 colors for 2 tracks; the extra colors went unused",
+      );
+    });
+
+    it("refuses a single value that isn't #RRGGBB", () => {
+      expect(() => parseColors("not-a-hex-color", 3, "clip")).toThrow(
+        'invalid color "not-a-hex-color" - expected "#RRGGBB"',
+      );
+    });
+
+    it("refuses a malformed entry inside a list", () => {
+      expect(() =>
+        parseColors("#FF0000,not-a-hex-color,#0000FF", 3, "clip"),
+      ).toThrow('invalid color "not-a-hex-color" - expected "#RRGGBB"');
+    });
+
+    it("refuses a short-hand 3-digit hex", () => {
+      expect(() => parseColors("#F00", 1, "track")).toThrow(
+        'invalid color "#F00" - expected "#RRGGBB"',
       );
     });
   });

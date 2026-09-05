@@ -10,6 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
@@ -182,6 +184,31 @@ describe("ppal-create-scene", () => {
 
     // Created: 2 batch + 2 multiName + 2 csv = 6
     expect(finalSceneCount).toBeGreaterThan(initialSceneCount);
+  });
+
+  // capture mode reached setColor only after capture_and_insert_scene had
+  // already turned the playing clips into a real scene, so a bad color left one
+  // behind. Only real Live inserts the scene, so only e2e can catch it.
+  it("refuses a malformed color before capturing a scene", async () => {
+    const before = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({ name: "ppal-read-live-set", arguments: {} }),
+    );
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { capture: true, name: "Refused", color: "red" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("invalid color");
+
+    await sleep(100);
+
+    const after = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({ name: "ppal-read-live-set", arguments: {} }),
+    );
+
+    expect(after.sceneCount).toBe(before.sceneCount);
   });
 
   it("captures playing session clips into a new scene", async () => {

@@ -500,7 +500,8 @@ describe("createTrack", () => {
     });
 
     it("should throw error when count is 1 and color contains commas", () => {
-      // When count=1, commas are not parsed, so the invalid color format throws
+      // When count=1, commas are not parsed, so the whole string is checked as
+      // one color and fails the #RRGGBB format.
       expect(() =>
         createTrack({
           trackIndex: 0,
@@ -508,7 +509,7 @@ describe("createTrack", () => {
           name: "Track",
           color: "#FF0000,#00FF00",
         }),
-      ).toThrow('Invalid color format: must be "#RRGGBB"');
+      ).toThrow('invalid color "#FF0000,#00FF00" - expected "#RRGGBB"');
     });
 
     it("should trim whitespace around comma-separated colors", () => {

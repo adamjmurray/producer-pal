@@ -83,6 +83,10 @@ export function createScene(
 
   // Handle capture mode
   if (capture) {
+    // A malformed color would otherwise only surface inside setColor, after
+    // captureScene has already captured the playing clips into a real scene.
+    parseColors(color, 1, "scene");
+
     // The index is Live's answer to where the capture landed; it stays out of
     // the result, where `path` already says it.
     const { sceneIndex: capturedIndex, ...result } = captureScene({
