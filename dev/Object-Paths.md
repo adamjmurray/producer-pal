@@ -3,13 +3,11 @@
 A path names a location in the Live Set: `t0/s3` is a session clip slot, `t0/d1`
 a device. One grammar serves every tool that needs to say _where_.
 
-Status: this describes the **end state**. Everything except the `[...]`
-coordinate and `loc:` ships today; see
-[dev/plans/Path-Standardization.md](plans/Path-Standardization.md) for what's
-built and what's left, and treat this file as the reference an implementation is
-checked against. The rejected alternatives are in
-[ADR-0025](decisions/0025-object-path-grammar.md) and
-[ADR-0037](decisions/0037-arrangement-time-is-part-of-the-path.md).
+Status: this describes the **end state** — everything except the `[...]`
+coordinate and `loc:` ships today. Treat it as the reference an implementation
+is checked against;
+[dev/plans/Path-Standardization.md](plans/Path-Standardization.md) tracks what's
+left.
 
 ## Why a path exists
 
@@ -118,10 +116,8 @@ typo'd bar|beat, into a silent name lookup.
 This is what the `[...]` coordinate holds, and what `playback`'s `startTime`,
 `loopStart` and `loopEnd`, `update-clip`'s `arrangementSplit`, and
 `arrangementStart` on `create-clip`, `update-clip` and `duplicate` take
-directly. The pairs that used to spell the second half as its own param —
-`startLocator`, `loopStartLocator`, `loopEndLocator`, `duplicate`'s `locator` —
-are retired: still accepted, no longer published, folded onto the position they
-belonged to.
+directly. The params that used to spell the second half separately are retired
+into it — see Tolerance below.
 
 **Song timeline only.** `create-clip`'s `start` and `firstStart` are
 clip-relative and must not accept `loc:`.
@@ -230,20 +226,20 @@ Four tiers, in order of preference.
 
 1. **Hidden params.** `slot`, `slots`, `toSlot`, `devicePath`, `takeLane` are
    deprecated — accepted, warned, going away, and so is every param a single
-   spelling replaced. `startLocator`, `loopStartLocator` and `loopEndLocator`
-   fold into the position they belonged to, as `loc:<what the caller sent>`. So
-   does every index param the path replaced: `trackType` and `trackIndex` on
-   `read-track` and `select`, `sceneIndex` on `read-scene`, `select` and
-   `create-scene`, and `trackIndex` on `create-track`. `create-track`'s
-   `type: "return"` goes the same way, trimmed out of the published enum but
-   still accepted — `rt+` asks for one now. `arrangementStart` on `create-clip`,
-   `update-clip` and `duplicate` joins them once the coordinate ships — a
-   deprecation with a long runway, not a permanent alias: it is a name we
-   coined, so a model that never reads it in the Skills has no reason to emit
-   it, and the runway is for people scripting Live. `trackIndex` and
-   `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
-   migration: models reach for them unprompted, and catching the guess beats a
-   round trip. See
+   spelling replaced. `startLocator`, `loopStartLocator`, `loopEndLocator` and
+   `duplicate`'s `locator` fold into the position they belonged to, as
+   `loc:<what the caller sent>`. So does every index param the path replaced:
+   `trackType` and `trackIndex` on `read-track` and `select`, `sceneIndex` on
+   `read-scene`, `select` and `create-scene`, and `trackIndex` on
+   `create-track`. `create-track`'s `type: "return"` goes the same way, trimmed
+   out of the published enum but still accepted — `rt+` asks for one now.
+   `arrangementStart` on `create-clip`, `update-clip` and `duplicate` joins them
+   once the coordinate ships — a deprecation with a long runway, not a permanent
+   alias: it is a name we coined, so a model that never reads it in the Skills
+   has no reason to emit it, and the runway is for people scripting Live.
+   `trackIndex` and `sceneIndex` on the _clip_ tools are permanent aliases, not
+   part of that migration: models reach for them unprompted, and catching the
+   guess beats a round trip. See
    [hidden-param.ts](../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
@@ -253,12 +249,11 @@ Four tiers, in order of preference.
 3. **Surplus segments narrow.** A path carrying more than the action needs is
    narrowed rather than refused: `ppal-playback`'s `play-scene` reads `t0/s1` as
    scene 1, because launching a scene fires every track and the track is spare.
-   Silently — the caller already named the scene, so there is nothing to report.
-   Only surplus bends. A path _missing_ what the action needs still errors,
-   because there is nothing to recover, and it stays an error even where the
-   reverse recovery looks symmetric: `play-session-clips` with `s3` is refused,
-   since firing clips one at a time is a different Live call than launching the
-   scene.
+   Silently — the caller already named the scene, so there's nothing to report.
+   Only surplus bends. A path _missing_ what the action needs errors, even where
+   the reverse recovery looks symmetric: `play-session-clips` with `s3` is
+   refused, since firing clips one at a time is a different Live call than
+   launching the scene.
 4. **Never pick one.** Honoring one param and dropping the other is the silent
    wrong-target bug this grammar exists to prevent. What to do instead depends
    on what the param names:
@@ -327,32 +322,30 @@ and a device or chain copy's `toPath` all do this.
 
 An update echoes whichever spelling still names where the object is. Only a
 device move replaces the address the call reached the object by, and only once
-Live confirms the device arrived — a refused move, a skipped Producer Pal
-device, and a drum chain's pad re-map all keep the addressing spelling. The
-re-map leaves the chain's path stale, but harmlessly: a container spelled
-through a pad always resolves to a chain, and a chain's parent is the rack, so
-the check below never matches and the path is re-derived from the new `in_note`.
-A target named only by `id` spelled no container, so its path stays derived —
-what a result owes a call that supplied no spelling is a separate question,
-still open.
+Live confirms it arrived — a refused move, a skipped Producer Pal device, and a
+drum chain's pad re-map all keep the addressing spelling. The re-map leaves the
+chain's path stale, but harmlessly: a container spelled through a pad always
+resolves to a chain, and a chain's parent is the rack, so the check below never
+matches and the path is re-derived from the new `in_note`. A target named only
+by `id` spelled no container, so its path stays derived; what a result owes a
+call that supplied no spelling is still open.
 
 Echoing only ever replaces the container the call actually named. A chain copy
 whose destination rack is spelled rack-relative (`toPath: "t0/d0/c2/d0"`) still
 gets pad-relative ancestors in its result, because the conversion happens on the
 way out of `objectPathForApi` and there is no pad spelling to echo in its place.
 
-`pathField` does the substitution, and takes the resolved container along with
-its spelling so it can check the spelling really names the object's parent
-before trusting it (`insertionContainerPath` trims a trailing `d<n>` off an
-insertion path to get the spelling; a path naming the object itself drops its
-last segment instead). Two things about that check are load-bearing. The
-container has to be resolved from the spelling: one taken off the object proves
-nothing. And it has to be identity, not containment, in either direction —
-`pC1/c1` minus its last segment is `pC1`, which resolves to the pad's _first_
-layer, so a descendant test accepts a sibling chain, and an ancestor test would
-graft the object's segments onto its grandparent. Only a parent written through
-a pad is substituted: every other path has one spelling, and the derived path is
-read from the object itself.
+`pathField` does the substitution. It takes the resolved container as well as
+its spelling, so it can check that the spelling really names the object's parent
+before trusting it. Two things about that check are load-bearing: the container
+must be resolved **from the spelling**, since one taken off the object proves
+nothing, and the test must be **identity, not containment**, in either
+direction. `pC1/c1` minus its last segment is `pC1`, which resolves to the pad's
+_first_ layer — so a descendant test accepts a sibling chain, and an ancestor
+test grafts the object's segments onto its grandparent.
+
+Only a parent written through a pad is substituted. Every other path has one
+spelling, and the derived path is read off the object.
 
 A **drum pad** result needs none of this. A Drum Rack nested inside a drum pad
 has no pads of its own, so a rack with pads is always reachable without a pad
@@ -381,10 +374,9 @@ the id stands alone.
 One helper owns this —
 [`targetLabel`](../src/tools/shared/validation/object-path-for-api.ts) and its
 variants, over `objectPathForApi`. A message that builds a path by hand is a
-bug: it will drift the first time the grammar changes. That is also the check on
-the coordinate work — once `objectPathForApi` spells `t0[5|1]`, every warning
-gets it for free, so a large sweep means messages aren't going through the
-helper.
+bug: it drifts the first time the grammar changes. That's also the check on the
+coordinate work — once `objectPathForApi` spells `t0[5|1]` every warning gets it
+free, so a large sweep means messages aren't going through the helper.
 
 Name the path and show the fix, never restate a requirement in index terms.
 
@@ -406,7 +398,7 @@ spelling wherever `path` is). Two shapes are refused rather than half-applied:
 ## Not paths
 
 **Device parameters**, and deliberately. A parameter is a property of its
-device, not an object of its own (Principles, Efficiency), so it is never a
+device, not an object of its own (Principles, Addressing), so it is never a
 target — it is the payload of an `update-device` call whose target is the
 device, named there by `name` or `id`.
 
@@ -421,15 +413,6 @@ renaming a locator stays on `update-live-set`'s own params — that is object
 management, and it raises questions the coordinate doesn't answer (how do you
 address one that doesn't exist yet?).
 
-Three of ADR-0025's calls have since gone the other way.
-[ADR-0036](decisions/0036-paths-address-tracks-and-scenes.md) reversed the first
-two: it kept tracks and scenes off the grammar, which broke once write results
-started reporting `path` — a result handed back `t0` and no tool took it — and
-it left out new-track and new-scene positions on the grounds that they create a
-location rather than address one, which `t+`, `rt+` and `s+` are exactly.
-[ADR-0037](decisions/0037-arrangement-time-is-part-of-the-path.md) reversed the
-third: arrangement clips were addressed by id alone and locators sat outside the
-grammar, so a warning about an arrangement clip named the lane and called it the
-clip's path. `a<n>` stays rejected — the index into a track's arrangement clip
-list is unstable and means nothing to a user. Time is what a user already thinks
-in.
+**`a<n>`**, an index into a track's arrangement clip list. It's unstable and
+means nothing to a user. Time is what a user already thinks in, and that's what
+the `[...]` coordinate spells.
