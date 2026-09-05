@@ -107,8 +107,8 @@ function clipsInBarRange(
 
 /**
  * Parse an arrangementLength duration string to absolute Ableton beats (4/4).
- * Reuses the canonical parser so it handles every output shape: "Nbar",
- * "n<fraction>", "Nbar+n<fraction>", and off-grid bare beats.
+ * Reuses the canonical parser so it handles every output shape: "<count>bar",
+ * "n<fraction>", "<count>bar+n<fraction>", and off-grid bare beats.
  * @param length - Arrangement length duration string (e.g. "1bar", "n/2")
  * @returns Length in Ableton beats (quarter notes)
  */

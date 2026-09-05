@@ -40,7 +40,7 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
-repeat(offset, [copies]); // echo matched notes forward by `offset` (a note value or Nbar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
+repeat(offset, [copies]); // echo matched notes forward by `offset` (a note value or <count>bar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
 split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
 merge(); // span ALL same-pitch matched notes into one sustained note (default)
 merge(0); // glue only touching/overlapping same-pitch notes
@@ -85,8 +85,8 @@ taught it the feature was unsupported, so it hand-wrote the result instead.
       triplet), `n3/8` (dotted quarter), `n/1` (whole note)
     - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
       any meter.
-  - **Bar-length cycle** (`Nbar`): meter-aware bars, e.g. `cos(1bar)` (1 bar) or
-    `cos(4bar)` (4 bars).
+  - **Bar-length cycle** (`<count>bar`): meter-aware bars, e.g. `cos(1bar)` (1
+    bar) or `cos(4bar)` (4 bars).
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
     - A bare number is treated as a period in beats

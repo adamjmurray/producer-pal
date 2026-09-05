@@ -9,7 +9,7 @@
  * Create / read / update a MIDI clip's `length` (and `arrangementLength`) with
  * representative durations and verify the read-back string matches: `n/4`,
  * `n/8`, dotted `n/4d` (the plain-fraction input `n3/8` canonicalizes to it on
- * read-back), `1bar+n/4`, and whole-bar `Nbar`. (Audio-clip lengths are
+ * read-back), `1bar+n/4`, and whole-bar `<count>bar`. (Audio-clip lengths are
  * covered separately once the audio path is exercised; off-grid lengths
  * are a serializer concern unit-tested in barbeat-time-durations.test.ts.)
  *

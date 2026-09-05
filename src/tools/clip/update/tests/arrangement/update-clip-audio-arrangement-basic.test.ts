@@ -53,7 +53,7 @@ function warpedAudioOpts(
  * @param sourceEndTime - End time for the source clip
  * @param name - Clip name
  * @param fileBoundary - File content boundary for session tiling mock
- * @param arrangementLength - Target arrangement length ([Nbar+]n<fraction> notation)
+ * @param arrangementLength - Target arrangement length ([<count>bar+]n<fraction> notation)
  * @returns clip mock, updateClip result, mockCreate spy, and clipSlot mock
  */
 async function runWarpedAudioLengthening(

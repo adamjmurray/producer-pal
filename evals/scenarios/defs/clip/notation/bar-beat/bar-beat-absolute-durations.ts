@@ -115,7 +115,7 @@ export const barBeatTriplets: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -155,7 +155,7 @@ export const barBeatMeterFill: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -200,7 +200,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -241,7 +241,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,

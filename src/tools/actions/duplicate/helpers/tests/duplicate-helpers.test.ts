@@ -185,13 +185,13 @@ describe("duplicate-helpers", () => {
   });
 
   describe("parseArrangementLength", () => {
-    it("parses Nbar duration to beats", () => {
+    it("parses <count>bar duration to beats", () => {
       const result = parseArrangementLength("4bar", 4, 4);
 
       expect(result).toBe(16); // 4 bars in 4/4 = 16 beats
     });
 
-    it("parses Nbar+n<fraction> durations", () => {
+    it("parses <count>bar+n<fraction> durations", () => {
       const result = parseArrangementLength("2bar+n5/8", 4, 4);
 
       expect(result).toBe(10.5); // 2 bars (8 beats) + n5/8 whole note (2.5 beats)

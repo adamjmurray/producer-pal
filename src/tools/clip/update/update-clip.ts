@@ -85,12 +85,12 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
  * @param args.color - Optional clip color (CSS format: hex)
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
+ * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: start/length/firstStart set the loop region first (select the portion to double; duplicate_loop inserts the copy, so content past the region is pushed later, not deleted), preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
- * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: Nbar, n<fraction>, or Nbar+n<fraction>
+ * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: <count>bar, n<fraction>, or <count>bar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
  * @param args.toPath - Where to move the clip: a clip slot ("t2/s3"), a track's arrangement lane ("t2"), or a take lane on it ("t2/l0", "t2/l+")
  * @param args.arrangementSplit - Comma-separated song-timeline bar|beat positions to split clips at

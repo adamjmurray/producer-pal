@@ -23,7 +23,7 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 // Deprecation is the other way a param leaves the published schema, and it
 // applies in every mode — so both axes run here.
 //
-// Three carve-outs, none of them a param name, blanked out of the text before
+// Four carve-outs, none of them a param name, blanked out of the text before
 // matching so a bare "set slot to ..." or a real reference to the retired
 // `locator` param still gets caught:
 //
@@ -34,6 +34,9 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 //   `split()` — the note-count transform op. update-clip deprecated a `split`
 //     param, and dodging the word left the op unnamed where models pick one.
 //     The parens are the whole distinction: a param is never written with them.
+//   `<count>` — the placeholder in the `<count>bar` duration form, which
+//     duplicate publishes while deprecating a `count` param. Angle brackets
+//     mark a placeholder, and a param is never written inside them.
 //
 // Every other surviving description is clean under a plain word-boundary match,
 // including the removed params whose names are also ordinary English (`count`,
@@ -118,6 +121,24 @@ describe("published param references", () => {
       danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
     ).toStrictEqual([
       "fake (barbeat): tool description names removed param `split`",
+    ]);
+  });
+
+  it("allows `<count>bar` on a tool that deprecated `count`", () => {
+    const def = slotDef("duration: <count>bar (e.g., '4bar')", "count");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([]);
+  });
+
+  it("still catches a bare `count` next to the allowed placeholder", () => {
+    const def = slotDef("<count>bar durations, and a count of copies", "count");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([
+      "fake (barbeat): tool description names removed param `count`",
     ]);
   });
 
@@ -206,5 +227,6 @@ function searchable(text: string): string {
   return text
     .replaceAll(/\bclip slots?\b/gi, "")
     .replaceAll(/\bloc:<[^>]*>/gi, "")
-    .replaceAll(/\bsplit\(\)/gi, "");
+    .replaceAll(/\bsplit\(\)/gi, "")
+    .replaceAll(/<count>/gi, "");
 }

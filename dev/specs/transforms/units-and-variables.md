@@ -75,18 +75,18 @@ The denominator is required (`n1`, `n0.5` are parse errors); same rule as in
 bar|beat notation. A bare fraction (`1/4`) is plain arithmetic (beats), not a
 note value.
 
-### Bar Durations (`Nbar`)
+### Bar Durations (`<count>bar`)
 
-For meter-aware durations and periods, use `Nbar` — the same token as the
+For meter-aware durations and periods, use `<count>bar` — the same token as the
 `create-clip`/`update-clip` length fields. A bar is the number of musical beats
-in one bar (the time-signature numerator), so `Nbar` evaluates to N times the
-beats-per-bar count:
+in one bar (the time-signature numerator), so `<count>bar` evaluates to N times
+the beats-per-bar count:
 
 - `1bar` = one bar (4 musical beats in 4/4, 6 in 6/8, 3 in 3/4)
 - `4bar` = four bars
 
-`Nbar` composes in any expression and combines with `n<fraction>` exactly as in
-authoring:
+`<count>bar` composes in any expression and combines with `n<fraction>` exactly
+as in authoring:
 
 ```
 timing += 1bar; // shift every note one bar later
@@ -95,18 +95,18 @@ duration = 1bar + n/4; // a bar plus a quarter
 velocity += 20 * cos(1bar, sync); // a bar-length cycle
 ```
 
-`Nbar` is the meter-aware half of the duration vocabulary; `n<fraction>` is the
-meter-invariant half. They are uniform across authoring, length fields, and
-transforms.
+`<count>bar` is the meter-aware half of the duration vocabulary; `n<fraction>`
+is the meter-invariant half. They are uniform across authoring, length fields,
+and transforms.
 
 The `n` sigil marks a denominator-bearing note value, so an `n`-prefixed bar
 (`n1bar`, `n/1bar`, `n3/4bar`) is invalid on every duration surface. Because
 models reach for it by analogy with the other note values, it raises a targeted
-error ("bar durations don't use the `n` prefix — write Nbar"), not the generic
-format error.
+error ("bar durations don't use the `n` prefix — write <count>bar"), not the
+generic format error.
 
 A plural `bars` (`2bars`, `2bars+n/4`) is accepted as an input-tolerance alias
-of `Nbar` everywhere; serialized output is always singular (`2bar`).
+of `<count>bar` everywhere; serialized output is always singular (`2bar`).
 
 ### Note Property Units
 
@@ -176,8 +176,8 @@ Access clip and bar context in expressions:
   have no arrangement origin)
 - `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
   longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
-  6/8). Prefer the `Nbar` literal: `1bar` == `clip.barDuration` and `4bar` ==
-  `clip.barDuration * 4`, and it composes in any expression
+  6/8). Prefer the `<count>bar` literal: `1bar` == `clip.barDuration` and `4bar`
+  == `clip.barDuration * 4`, and it composes in any expression
   (`note.start % 1bar`), so it fully subsumes the variable while staying uniform
   with the length/duration fields.
 

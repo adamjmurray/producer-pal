@@ -103,7 +103,7 @@ argument forms differ in geometry:
   warning. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count — it
   warns and is skipped rather than coercing to its MIDI number (a pitch literal
   nested in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
-- **noteValue** form (a note value or `Nbar`, e.g. `ratchet(n/16)`,
+- **noteValue** form (a note value or `<count>bar`, e.g. `ratchet(n/16)`,
   `ratchet(1bar)`): cuts the note on the ABSOLUTE grid of that size (multiples
   of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
   true grid ratchet, not an equal division. A note that starts and/or ends
@@ -133,10 +133,10 @@ the parent's pitch, velocity, probability, and deviation, and its duration is
 unchanged — `repeat` translates notes, it does not stretch them.
 
 - **offset** (first argument, required): a **note value** (`n/8`, `n/4`, …) or a
-  bar duration (`Nbar`). This is the only dialect accepted here — a bare number,
-  a pitch, or any other expression warns and the op is skipped. The offset must
-  be greater than 0. It is meter-aware: `1bar` resolves through the clip's
-  beats-per-bar (one bar in 6/8 is three Ableton beats).
+  bar duration (`<count>bar`). This is the only dialect accepted here — a bare
+  number, a pitch, or any other expression warns and the op is skipped. The
+  offset must be greater than 0. It is meter-aware: `1bar` resolves through the
+  clip's beats-per-bar (one bar in 6/8 is three Ableton beats).
 - **copies** (second argument, optional, default 1): the number of echoes to
   add. Rounded to the nearest integer; a count below 1 warns and is skipped (0
   echoes is a no-op). Counts above the per-note cap (64) are clamped with a

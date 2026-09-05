@@ -63,7 +63,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or Nbar+n<fraction> (e.g., '1bar+n/4'); clip meter",
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
@@ -85,7 +85,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration(s), comma-separated: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+        "duration(s), comma-separated: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
           "One length applies to every clip; a list pairs 1:1 with id/path in order. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),

@@ -289,7 +289,7 @@ function evaluateAudioExpression(
     );
   }
 
-  // Bar duration (Nbar) — N bars in musical beats. Uses the clip's real
+  // Bar duration (<count>bar) — N bars in musical beats. Uses the clip's real
   // beats-per-bar when known, else assumes 4/4 (same as the nDuration fallback).
   if (node.type === "barDuration") {
     return node.bars * (clipContext?.barDuration ?? 4);
@@ -331,7 +331,7 @@ function evaluateAudioExpression(
   };
 
   // Use position=0 for audio context (clip-level transform). Pass the clip's
-  // real meter so synced waveform periods (n<frac>) and any Nbar/timeRange math
+  // real meter so synced waveform periods (n<frac>) and any <count>bar/timeRange math
   // resolve in the same musical-beats frame as clip.barDuration/clip.position;
   // the default one-bar timeRange is the clip's beats-per-bar. All default to
   // 4/4 when no clip context is available.

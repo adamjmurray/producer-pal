@@ -409,7 +409,7 @@ shorthand "shorthand assignment"
       return { parameter: "probability", operator: "set", expression: value };
     }
   / left:barDuration sign:("+" / "-") right:nDuration {
-      // Mixed `Nbar±n<frac>` shorthand (e.g. `1bar+n/4`, or `1bar-n/16` = almost
+      // Mixed `<count>bar±n<frac>` shorthand (e.g. `1bar+n/4`, or `1bar-n/16` = almost
       // a full bar), matching the bar|beat authoring token. Must precede the
       // bare `barDuration` branch so the ±n tail is consumed here, not stranded.
       // Desugars to the same add/subtract(barDuration, nDuration) node the full
@@ -759,16 +759,16 @@ nDuration "absolute duration value"
 
 // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
 // the `n` sigil marks a note-value fraction (denominator required); bars are the
-// bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
+// bare `<count>bar` form. Matched only to raise a targeted "did you mean <count>bar" error.
 badBarDuration
   = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
-    throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
+    throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write <count>bar (e.g. ${last}bar).`);
   }
 
-// Meter-aware bar duration (`Nbar`): N bars = N * beats-per-bar musical beats
+// Meter-aware bar duration (`<count>bar`): N bars = N * beats-per-bar musical beats
 // (the same value as `N * clip.barDuration`). Matches the authoring/length-field
-// `Nbar` token so the duration vocabulary is uniform across grammars. The mixed
-// form `Nbar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
+// `<count>bar` token so the duration vocabulary is uniform across grammars. The mixed
+// form `<count>bar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
 // as `barDuration(1) + nDuration(1/4)`), so this rule matches only the bar token.
 barDuration "bar duration value"
   = bars:oneOrMoreInt "bar" "s"? {

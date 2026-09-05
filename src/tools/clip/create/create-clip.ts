@@ -57,7 +57,7 @@ export interface CreateClipArgs {
   timeSignature?: string | null;
   /** Bar|beat position where loop/clip region begins */
   start?: string | null;
-  /** Clip length: Nbar, n<fraction> note value, or Nbar+n<fraction> */
+  /** Clip length: <count>bar, n<fraction> note value, or <count>bar+n<fraction> */
   length?: string | null;
   /** Bar|beat position for initial playback start */
   firstStart?: string | null;
@@ -98,7 +98,7 @@ export interface CreateClipArgs {
  * @param args.color - Color in #RRGGBB hex format
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Clip length: Nbar, n<fraction> note value, or Nbar+n<fraction>
+ * @param args.length - Clip length: <count>bar, n<fraction> note value, or <count>bar+n<fraction>
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.warping - Audio warp state, or null to keep Live's own choice

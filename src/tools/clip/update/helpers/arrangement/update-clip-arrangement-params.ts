@@ -55,7 +55,7 @@ const LENGTH_LABELS: PairLabels = {
  * in play: a coordinate beside arrangementStart is refused before any of this
  * runs.
  * @param arrangementStart - Bar|beat position(s), comma-separated
- * @param arrangementLength - Duration(s) (`Nbar`, `n<fraction>`, or `Nbar+n<fraction>`), comma-separated
+ * @param arrangementLength - Duration(s) (`<count>bar`, `n<fraction>`, or `<count>bar+n<fraction>`), comma-separated
  * @param clipCount - How many clips the call named, before any are dropped
  * @param pathPositions - The position a toPath coordinate named, per clip
  * @returns Start and length beats per clip

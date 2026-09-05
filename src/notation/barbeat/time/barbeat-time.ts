@@ -325,9 +325,9 @@ export function validateBarBeatPosition(barBeat: string): void {
  *
  * Output shapes:
  *  - `0bar` (zero duration)
- *  - `Nbar` (multiple of one bar)
+ *  - `<count>bar` (multiple of one bar)
  *  - `n<fraction>` (sub-bar, e.g. `n/4`)
- *  - `Nbar+n<fraction>` (mixed, e.g. `1bar+n/4`)
+ *  - `<count>bar+n<fraction>` (mixed, e.g. `1bar+n/4`)
  *  - `n<beats>/4` (off-grid, e.g. `n1.9638/4`) — the whole value as a
  *    decimal-numerator note value, fixed precision
  * @param abletonBeats - Ableton beats (quarter notes)
@@ -393,11 +393,11 @@ export function abletonBeatsToDuration(
  * Convert a duration string to Ableton beats (quarter notes).
  *
  * Accepted shapes:
- *  - `Nbar` — N bars (meter-aware; `bar` is its own type marker)
+ *  - `<count>bar` — N bars (meter-aware; `bar` is its own type marker)
  *  - `n<fraction>` — note value. The numerator may be an integer (`n3/8` = three
  *    eighths; defaults to 1, so `n/4` == `n1/4`) or a decimal (`n1.9638/4` =
  *    1.9638 quarters), the off-grid escape `abletonBeatsToDuration` emits.
- *  - `Nbar±n<fraction>` — bars plus or minus a sub-bar note value (e.g.
+ *  - `<count>bar±n<fraction>` — bars plus or minus a sub-bar note value (e.g.
  *    `1bar+n/4`, or `1bar-n/16` = "almost a full bar"); the tail numerator may
  *    likewise be a decimal.
  *
@@ -436,29 +436,29 @@ export function durationToAbletonBeats(
 
   if (!match) {
     // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error
-    // models reach for. Give the targeted "did you mean Nbar" steer rather than
+    // models reach for. Give the targeted "did you mean <count>bar" steer rather than
     // the generic format error. Mirrors the badBarDuration rule in both grammars.
     const barNPrefix = duration.match(/^n(?:\d*\/)?(\d+)bars?$/);
 
     if (barNPrefix) {
       throw new Error(
-        `"${duration}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${barNPrefix[1]}bar).`,
+        `"${duration}" is invalid: bar durations don't use the "n" prefix — write <count>bar (e.g. ${barNPrefix[1]}bar).`,
       );
     }
 
     throw new Error(
-      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar±n<fraction>" (e.g. "1bar+n/4", "1bar-n/16"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
+      `Invalid duration format: "${duration}". Expected "<count>bar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "<count>bar±n<fraction>" (e.g. "1bar+n/4", "1bar-n/16"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
     );
   }
 
   const bars = match[1] != null ? Number.parseInt(match[1]) : 0;
   const divisionByZero = `Invalid duration: division by zero in "${duration}"`;
   // Whole-note fraction → quarter notes (Ableton beats), so scale = 4. The tail
-  // is absent for a pure `Nbar` (fractionBeats stays 0).
+  // is absent for a pure `<count>bar` (fractionBeats stays 0).
   let fractionBeats = 0;
 
   if (match[4] != null) {
-    // Nbar±n<fraction> mixed form (sign in match[2], numerator in match[3],
+    // <count>bar±n<fraction> mixed form (sign in match[2], numerator in match[3],
     // denominator in match[4], optional d/t suffix in match[5]). A minus tail
     // subtracts the note value from the bar component, so `1bar-n/16` resolves to
     // "almost a full bar"; a `d`/`t` suffix scales the note value (`1bar+n/4d`).

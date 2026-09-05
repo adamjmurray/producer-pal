@@ -24,7 +24,7 @@ import { evaluateExpression } from "./transform-evaluator-helpers.ts";
  *   - repeat(n/8)     → original + 1 echo an eighth note later
  *   - repeat(n/8, 2)  → original + 2 copies at +1 and +2 eighth notes
  *   - repeat(1bar, 3) → original + 3 copies, each a further bar on
- * `offset` (first arg, required) is a note value (n/X) or bar duration (Nbar),
+ * `offset` (first arg, required) is a note value (n/X) or bar duration (<count>bar),
  * greater than 0. `copies` (second arg, optional, default 1) is the number of
  * echoes (>= 1, clamped to MAX_NOTE_PIECES). Invalid args warn-and-skip (notes
  * pass through unchanged), consistent with update-tool error handling.

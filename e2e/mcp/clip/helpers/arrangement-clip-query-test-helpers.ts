@@ -124,7 +124,7 @@ export function lengthBeats(clip: ReadClipResult | undefined): number {
 
 /**
  * Parse a duration string to absolute beats (4/4). Handles every output shape:
- * "Nbar", "n<fraction>", "Nbar+n<fraction>", and off-grid bare beats.
+ * "<count>bar", "n<fraction>", "<count>bar+n<fraction>", and off-grid bare beats.
  * @param duration - Duration string (e.g. "4bar")
  * @returns Length in Ableton beats
  */

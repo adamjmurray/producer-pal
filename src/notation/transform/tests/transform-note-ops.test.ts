@@ -475,8 +475,8 @@ describe("note-count operations (ratchet/merge)", () => {
         expectMergeWarnsAndSkips("merge(2)", "note value");
       });
 
-      it("warns and skips a bar-value tolerance (Nbar not accepted)", () => {
-        expectMergeWarnsAndSkips("merge(1bar)", "Nbar");
+      it("warns and skips a bar-value tolerance (<count>bar not accepted)", () => {
+        expectMergeWarnsAndSkips("merge(1bar)", "<count>bar");
       });
 
       it("warns about extra arguments and uses the first", () => {

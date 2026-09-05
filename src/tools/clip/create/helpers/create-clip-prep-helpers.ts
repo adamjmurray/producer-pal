@@ -34,7 +34,7 @@ export interface ClipTimingParams {
   start: string | null;
   /** First playback start in bar|beat format, or null */
   firstStart: string | null;
-  /** Clip length (Nbar, n<fraction>, or Nbar+n<fraction>), or null */
+  /** Clip length (<count>bar, n<fraction>, or <count>bar+n<fraction>), or null */
   length: string | null;
   /** Whether the clip is looping */
   looping: boolean | null;

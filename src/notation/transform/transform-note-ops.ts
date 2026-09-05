@@ -350,7 +350,7 @@ function gridCutsWithin(start: number, end: number, grid: number): number[] {
 // Message for an unusable merge() gap-tolerance argument (anything other than a
 // note value or literal 0). Shown once, then the merge is skipped.
 const MERGE_TOLERANCE_SKIP_MESSAGE =
-  "merge() gap tolerance must be a note value like n/16, or 0 for touching notes (Nbar and other numbers are not accepted); skipping";
+  "merge() gap tolerance must be a note value like n/16, or 0 for touching notes (<count>bar and other numbers are not accepted); skipping";
 
 /**
  * Merge matched notes: collapse same-pitch notes into sustained notes. The
@@ -407,7 +407,7 @@ function mergeNotes(
  * Resolve the optional merge gap-tolerance argument to an edge-to-edge gap in
  * Ableton beats: no arg spans all (Infinity), literal `0` merges only touching/
  * overlapping notes, and a note value becomes that many Ableton beats. Any other
- * argument (a non-zero bare number, `Nbar`, a pitch literal, an expression)
+ * argument (a non-zero bare number, `<count>bar`, a pitch literal, an expression)
  * warns and returns null so the caller skips the merge.
  * @param op - The merge operation
  * @param numerator - Time signature numerator

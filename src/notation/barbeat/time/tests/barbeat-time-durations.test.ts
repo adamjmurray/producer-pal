@@ -43,7 +43,7 @@ describe("abletonBeatsToDuration", () => {
       expect(abletonBeatsToDuration(1.5, 4, 4)).toBe("n/4d"); // dotted quarter (sugared, was n3/8)
     });
 
-    it("emits Nbar+n<fraction> for mixed durations", () => {
+    it("emits <count>bar+n<fraction> for mixed durations", () => {
       expect(abletonBeatsToDuration(5, 4, 4)).toBe("1bar+n/4");
       expect(abletonBeatsToDuration(6, 4, 4)).toBe("1bar+n/2");
       expect(abletonBeatsToDuration(7, 4, 4)).toBe("1bar+n/2d"); // dotted half (sugared, was 1bar+n3/4)
@@ -111,7 +111,7 @@ describe("abletonBeatsToDuration", () => {
     });
 
     it("emits the whole value as n<beats>/4 when the off-grid part spans bars", () => {
-      // bars present, but the remainder is off-grid → no Nbar+<note-value>
+      // bars present, but the remainder is off-grid → no <count>bar+<note-value>
       // form exists, so the entire value is emitted as one n<beats>/4 escape.
       expect(abletonBeatsToDuration(5.987654, 4, 4)).toBe("n5.9877/4");
     });
@@ -138,7 +138,7 @@ describe("abletonBeatsToDuration", () => {
 });
 
 describe("durationToAbletonBeats", () => {
-  describe("Nbar form", () => {
+  describe("<count>bar form", () => {
     it("parses bar-only durations in 4/4", () => {
       expect(durationToAbletonBeats("0bar", 4, 4)).toBe(0);
       expect(durationToAbletonBeats("1bar", 4, 4)).toBe(4);
@@ -208,12 +208,12 @@ describe("durationToAbletonBeats", () => {
       expect(durationToAbletonBeats("n1.5/8", 4, 4)).toBeCloseTo(0.75, 6);
     });
 
-    it("accepts a decimal numerator in the Nbar+n tail", () => {
+    it("accepts a decimal numerator in the <count>bar+n tail", () => {
       expect(durationToAbletonBeats("1bar+n0.5/4", 4, 4)).toBeCloseTo(4.5, 6);
     });
   });
 
-  describe("Nbar+n<fraction> mixed form", () => {
+  describe("<count>bar+n<fraction> mixed form", () => {
     it("parses mixed durations", () => {
       expect(durationToAbletonBeats("1bar+n1/4", 4, 4)).toBe(5);
       expect(durationToAbletonBeats("1bar+n1/8", 4, 4)).toBe(4.5);
@@ -264,9 +264,9 @@ describe("durationToAbletonBeats", () => {
     );
   });
 
-  it("rejects n-prefixed bar forms with a targeted Nbar steer", () => {
+  it("rejects n-prefixed bar forms with a targeted <count>bar steer", () => {
     // Convergent model hallucination (`n1bar` to fill a bar): the `n` sigil is
-    // only for denominator-bearing note values, bars are the bare `Nbar` form.
+    // only for denominator-bearing note values, bars are the bare `<count>bar` form.
     for (const bad of ["n1bar", "n/1bar", "n3/4bar"]) {
       expect(() => durationToAbletonBeats(bad, 4, 4)).toThrow(
         /bar durations don't use the "n" prefix/,
@@ -274,7 +274,7 @@ describe("durationToAbletonBeats", () => {
     }
 
     expect(() => durationToAbletonBeats("n2bar", 4, 4)).toThrow(
-      /write Nbar \(e\.g\. 2bar\)/,
+      /write <count>bar \(e\.g\. 2bar\)/,
     );
   });
 

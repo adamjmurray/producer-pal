@@ -100,7 +100,7 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
-  it("parses inline bar durations (Nbar, meter-aware)", () => {
+  it("parses inline bar durations (<count>bar, meter-aware)", () => {
     expect(parser.parse("1bar C3 2bar D3")).toStrictEqual([
       { bars: 1, duration: 0 },
       { pitch: 60 },
@@ -109,7 +109,7 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
-  it("parses inline mixed bar+note-value durations (Nbar+nA/B)", () => {
+  it("parses inline mixed bar+note-value durations (<count>bar+nA/B)", () => {
     expect(parser.parse("1bar+n3/4 C3 2bar+n/8 D3")).toStrictEqual([
       { bars: 1, duration: 3 / 4 },
       { pitch: 60 },
@@ -118,7 +118,7 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
-  it("parses minus-tail bar durations (Nbar-nA/B, almost a full bar)", () => {
+  it("parses minus-tail bar durations (<count>bar-nA/B, almost a full bar)", () => {
     // The tail sign subtracts the note value, so the stored `duration` fraction
     // is negative; the interpreter resolves `1bar-n/16` to "a bar minus a 16th".
     expect(parser.parse("1bar-n/16 C3 2bar-n3/8 D3")).toStrictEqual([
@@ -129,9 +129,9 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
-  it("rejects the n-prefixed bar form with a targeted Nbar steer", () => {
+  it("rejects the n-prefixed bar form with a targeted <count>bar steer", () => {
     // `n1bar`/`n/1bar`/`n3/4bar` are a convergent model hallucination — bars are
-    // the bare `Nbar` form, the `n` sigil is only for note-value fractions.
+    // the bare `<count>bar` form, the `n` sigil is only for note-value fractions.
     for (const bad of ["n1bar C3", "n/1bar C3", "n3/4bar C3"]) {
       expect(() => parser.parse(bad)).toThrow(
         /bar durations don't use the "n" prefix/,
@@ -140,7 +140,7 @@ describe("BarBeatScript Parser - duration", () => {
 
     // The suggested correction echoes the bar count.
     expect(() => parser.parse("n2bar C3")).toThrow(
-      /write Nbar \(e\.g\. 2bar\)/,
+      /write <count>bar \(e\.g\. 2bar\)/,
     );
   });
 

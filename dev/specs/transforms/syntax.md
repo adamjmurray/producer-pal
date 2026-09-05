@@ -194,8 +194,8 @@ applies.
   `v80-120`)
 - `pN` sets probability · `p+N` / `p-N` adjusts probability (no range form — the
   notes layer has none either, so `p` stays single-valued for parity)
-- `n/4` (or `Nbar`, `Nbar±n/4`, e.g. `1bar-n/16`) sets duration to that note
-  value
+- `n/4` (or `<count>bar`, `<count>bar±n/4`, e.g. `1bar-n/16`) sets duration to
+  that note value
 - `C4` (a bare pitch) moves/remaps matched notes to that pitch
 
 Each desugars to the same `{ parameter, operator, expression }` as the full

@@ -29,7 +29,7 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
- * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
+ * Parse arrangementLength from `[<count>bar+]n<fraction>` duration format to absolute beats
  * @param arrangementLength - Duration string (e.g. "2bar" for exactly two bars)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -275,7 +275,7 @@ async function lengthenClipAndCollectInfo(
  * @param destTrackIndex - Track to place the copy on (may differ from the source's)
  * @param name - Optional name for the duplicated clip(s)
  * @param color - Optional color for the duplicated clip(s)
- * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
+ * @param arrangementLength - Optional length (<count>bar, n<fraction>, or <count>bar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
  * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
  * @param context - Context object with silenceWavPath

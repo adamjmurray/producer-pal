@@ -34,7 +34,7 @@ type Element =
   | { bar: number, beat: number | RepeatPattern }                    // Time position
   | { velocity: number }                                             // Single velocity (0-127)
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
-  | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for Nbar / Nbar+nA/B
+  | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for <count>bar / <count>bar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
   | { stream: { param: "pitch", values: { pitch: number }[][] } }    // Pattern bracket (pitch): each value is a chord (length-1 for a bare pitch)
   | { stream: { param: "velocity", values: ({ velocity: number } | { velocityMin: number, velocityMax: number })[] } } // Pattern bracket (velocity)
@@ -52,7 +52,7 @@ type RepeatPattern = {
   start: number,      // Starting beat position (meter-relative)
   times: number,      // Number of repetitions (integer)
   step: number | null, // Step size as a fraction of a whole note (null when @step omitted)
-  stepBars?: number   // Meter-aware bar component of the step (present only for @Nbar forms)
+  stepBars?: number   // Meter-aware bar component of the step (present only for @<count>bar forms)
 }
 ```
 

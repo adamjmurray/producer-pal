@@ -389,7 +389,7 @@ guidance.
 ### Note Values
 
 The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
-`n<beats>/4` escape, and `Nbar` forms) is parsed at six independent sites:
+`n<beats>/4` escape, and `<count>bar` forms) is parsed at six independent sites:
 
 - the `barbeat-grammar.peggy` rules (authoring),
 - the `transform-grammar.peggy` rules (transform expressions and time-range
