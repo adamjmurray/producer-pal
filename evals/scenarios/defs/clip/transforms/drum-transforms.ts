@@ -66,7 +66,7 @@ export const drumTransforms: EvalScenario = {
     "Find the drum clip in the first scene and read the notes",
     "Add a crescendo to the hats in the last two beats of the last bar: very quiet to max volume. Do it in as few tokens as you can.",
     "Apply a velocity LFO to the hats before the crescendo",
-    "Slightly randomize the snare velocities. Lock a value into each hit so it plays back the same way every time.",
+    "Use a transform to slightly randomize the snare velocities. Lock a value into each hit so it plays back the same way every time.",
   ],
 
   assertions: [
