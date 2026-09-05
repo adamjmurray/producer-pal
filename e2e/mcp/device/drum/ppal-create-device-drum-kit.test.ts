@@ -186,6 +186,13 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     } else {
       expect(gainEntry?.value).toBeUndefined();
     }
+
+    // "pC1/d0/gainDb" is the general path-prefixed form, not the `sample`
+    // shortcut — it still works, but is deprecated in favor of addressing the
+    // Simpler by its own path.
+    expect(warnings.join("\n")).toContain(
+      `params name "pC1/d0/gainDb" is deprecated and will be removed; use path "${rack}/pC1/d0" with name "gainDb"`,
+    );
   });
 
   it("update-device path-prefixed params set a sample on an existing rack", async () => {

@@ -30,6 +30,64 @@ interface DrumPadSlot {
 }
 
 /**
+ * Whether a path-prefixed param name is the drum-pad `sample` shortcut — the
+ * only path-prefixed param form that isn't deprecated. Every other prefixed
+ * name is redundant with addressing the nested device by its own `path`; the
+ * pad shortcut isn't, because the Simpler a sample write needs may not exist
+ * yet to have a path.
+ * @param prefix - The path segments before the param name, as the caller wrote them
+ * @param paramName - The trailing param name
+ * @returns Whether the prefix names a drum pad slot for a `sample` write
+ */
+export function isDrumPadSampleShortcut(
+  prefix: string,
+  paramName: string,
+): boolean {
+  if (paramName.toLowerCase() !== SAMPLE_PARAM) return false;
+
+  const segments = prefix.split("/").filter((segment) => segment.length > 0);
+
+  return segments.length > 0 && parseDrumPadSlot(segments) != null;
+}
+
+/** The shape of a leading path segment: `c<n>`, `rc<n>`, `d<n>`, or `p<note>`/`p*`. */
+const PATH_SEGMENT = /^(?:c\d+|rc\d+|d\d+|p.+)$/;
+
+/**
+ * Splits a path-prefixed param name into the path it names and the name after
+ * it, walking from the LEFT: as many leading segments as look like path
+ * segments, with everything left over — however many more "/" it has — as the
+ * name.
+ *
+ * This deliberately splits differently from resolution, which takes
+ * everything after the LAST "/" as the name — right for the `sample`
+ * shortcut, but wrong for a slash-named param (e.g. Dry/Wet) reached through a
+ * prefix: that split lands on prefix "c0/d0/Dry" + name "Wet", which
+ * navigates into nothing. Resolution stays as-is regardless — the form is
+ * being retired — but the deprecation warning built from this split names a
+ * path that actually resolves, so a model that follows it doesn't make a
+ * second failing call.
+ * @param key - Full path-prefixed param name, as the caller wrote it
+ * @returns The leading path and the name after it
+ */
+export function splitForAdvice(key: string): { path: string; name: string } {
+  const segments = key.split("/");
+  let index = 0;
+
+  while (
+    index < segments.length - 1 &&
+    PATH_SEGMENT.test(segments[index] ?? "")
+  ) {
+    index++;
+  }
+
+  return {
+    path: segments.slice(0, index).join("/"),
+    name: segments.slice(index).join("/"),
+  };
+}
+
+/**
  * Resolve a path-prefixed pseudo-param (e.g. `pC1/sample`) to the device the
  * param should be written to, relative to the rack being created/updated. The
  * caller splits the param name into a path `prefix` and the trailing

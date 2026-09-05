@@ -158,6 +158,129 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     );
     expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
   });
+
+  it("warns that a general path-prefixed param is deprecated, but still writes it", () => {
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: ["id", "reg-chain"], can_have_drum_pads: 1 },
+    });
+    registerMockObject("reg-chain", {
+      type: "Chain",
+      properties: { devices: ["id", "reg-dev"] },
+    });
+    registerMockObject("reg-dev", {
+      type: "Device",
+      properties: {
+        class_display_name: "Operator",
+        parameters: children("reg-param"),
+      },
+    });
+    const param = registerMockObject("reg-param", {
+      properties: {
+        name: "Volume",
+        original_name: "Volume",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 1,
+      },
+      methods: {
+        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
+      },
+    });
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "c0/d0/Volume", value: "50" }],
+    });
+
+    expect(capturedWarnings()).toContainEqual(
+      'params name "c0/d0/Volume" is deprecated and will be removed; ' +
+        'use path "t0/d0/c0/d0" with name "Volume"',
+    );
+    expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
+  });
+
+  it("does not warn for the drum-pad sample shortcut", () => {
+    registerDrumRackWithC1();
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
+    });
+
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("is deprecated"),
+    );
+  });
+
+  it("advises the working replacement for a slash-named param, even though resolution fails outright", () => {
+    // A slash-named param (e.g. Dry/Wet) reached through a path prefix is a
+    // known bug: resolution splits on the last "/", so "c0/d0/Dry/Wet" becomes
+    // prefix "c0/d0/Dry" + name "Wet", which navigates into nothing. The
+    // deprecation warning's advice is built by a DIFFERENT split (from the
+    // left, splitForAdvice) so it still names a path and name that work,
+    // even though this particular write can't succeed either way.
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: ["id", "reg-chain"], can_have_drum_pads: 1 },
+    });
+    registerMockObject("reg-chain", {
+      // An explicit path, not just a place in the rack's chains list: the
+      // follow-up call below addresses it by path, which looks the object up
+      // by that literal path rather than walking the chains/devices lists.
+      path: livePath.track(0).device(0).chain(0),
+      type: "Chain",
+      properties: { devices: ["id", "reg-dev"] },
+    });
+    registerMockObject("reg-dev", {
+      path: livePath.track(0).device(0).chain(0).device(0),
+      type: "Device",
+      properties: {
+        class_display_name: "Reverb",
+        parameters: children("drywet-param"),
+      },
+    });
+    const param = registerMockObject("drywet-param", {
+      properties: {
+        name: "Dry/Wet",
+        original_name: "Dry/Wet",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 1,
+      },
+      methods: {
+        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
+      },
+    });
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "c0/d0/Dry/Wet", value: "50" }],
+    });
+
+    const warnings = capturedWarnings();
+
+    expect(warnings).toContainEqual(
+      'params name "c0/d0/Dry/Wet" is deprecated and will be removed; ' +
+        'use path "t0/d0/c0/d0" with name "Dry/Wet"',
+    );
+    expect(warnings).toContainEqual(
+      expect.stringContaining('no device at "t0/d0/c0/d0/Dry"'),
+    );
+
+    // Proof the advice itself works: the suggested path and name reach the
+    // same param directly.
+    updateDevice({
+      path: "t0/d0/c0/d0",
+      params: [{ name: "Dry/Wet", value: "50" }],
+    });
+
+    expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
+  });
 });
 
 describe("updateDevice - pad instrument guard", () => {

@@ -15,7 +15,11 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { resolveNestedParamTarget } from "../nested-param-target.ts";
+import {
+  isDrumPadSampleShortcut,
+  resolveNestedParamTarget,
+  splitForAdvice,
+} from "../nested-param-target.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
@@ -188,6 +192,57 @@ function expectNoDeviceInserted(chain: RegisteredMockObject): void {
     expect.anything(),
   );
 }
+
+describe("isDrumPadSampleShortcut", () => {
+  it("is true for a sample write on a pad, with or without chain/device segments", () => {
+    expect(isDrumPadSampleShortcut("pC1", "sample")).toBe(true);
+    expect(isDrumPadSampleShortcut("pC1/c1", "sample")).toBe(true);
+    expect(isDrumPadSampleShortcut("pC1/c1/d0", "sample")).toBe(true);
+    expect(isDrumPadSampleShortcut("pC1", "Sample")).toBe(true);
+  });
+
+  it("is false for a param name other than sample", () => {
+    expect(isDrumPadSampleShortcut("pC1", "gainDb")).toBe(false);
+  });
+
+  it("is false for a prefix that isn't a drum pad", () => {
+    expect(isDrumPadSampleShortcut("c0/d0", "sample")).toBe(false);
+  });
+
+  it("is false for an empty prefix", () => {
+    expect(isDrumPadSampleShortcut("", "sample")).toBe(false);
+  });
+
+  it("is false for nesting past the pad shortcut's own grammar", () => {
+    expect(isDrumPadSampleShortcut("pC1/d0/c0", "sample")).toBe(false);
+  });
+});
+
+describe("splitForAdvice", () => {
+  it("matches the resolution split when the param name has no '/'", () => {
+    expect(splitForAdvice("c0/d0/Volume")).toStrictEqual({
+      path: "c0/d0",
+      name: "Volume",
+    });
+    expect(splitForAdvice("pC1/d0/gainDb")).toStrictEqual({
+      path: "pC1/d0",
+      name: "gainDb",
+    });
+  });
+
+  it("keeps a slash-named param whole instead of splitting off its last word", () => {
+    expect(splitForAdvice("c0/d0/Dry/Wet")).toStrictEqual({
+      path: "c0/d0",
+      name: "Dry/Wet",
+    });
+  });
+
+  it("never consumes the last segment as path, even if it looks like one", () => {
+    // "d0" matches the path-segment shape, but it's the whole remainder after
+    // "c0" — nothing is left to be a name if it's also consumed as path.
+    expect(splitForAdvice("c0/d0")).toStrictEqual({ path: "c0", name: "d0" });
+  });
+});
 
 describe("resolveNestedParamTarget", () => {
   beforeEach(() => {

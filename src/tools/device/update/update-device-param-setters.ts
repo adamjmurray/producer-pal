@@ -21,7 +21,11 @@ import {
   strForValue,
   unitForLabels,
 } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
-import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import {
+  isDrumPadSampleShortcut,
+  resolveNestedParamTarget,
+  splitForAdvice,
+} from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
 import {
@@ -35,7 +39,10 @@ import {
   warnParamDisabled,
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  pathPrefix,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
 import {
   resolveParamsByName,
@@ -241,6 +248,11 @@ function toEntries(result: WrittenParam | null): WrittenParam[] {
  * the param name, written via a single-entry recursion through setParamValues so
  * all value interpretation (enum, note, numeric, specialized pseudo-params) is
  * reused.
+ *
+ * Every form but the drum-pad `sample` shortcut is deprecated: the nested
+ * device it names is reachable by its own `path` instead. That warning fires
+ * before resolution is attempted, so it still reaches a prefix that resolves
+ * to nothing.
  * @param device - The device the path prefix is relative to (e.g. a Drum Rack)
  * @param key - Full path-prefixed param name (e.g. "pC1/sample")
  * @param rawValue - Trimmed value to write
@@ -257,6 +269,18 @@ function applyNestedParam(
   const prefix = key.slice(0, slashIndex);
   // Refused up front, so there is a name after the last "/".
   const paramName = key.slice(slashIndex + 1).trim();
+
+  if (!isDrumPadSampleShortcut(prefix, paramName)) {
+    // Advice is split from the LEFT (see splitForAdvice), independent of the
+    // resolution split above: a slash-named param like Dry/Wet needs the
+    // whole "Dry/Wet" as its name, not just "Wet", or the path this names
+    // wouldn't resolve either.
+    const advice = splitForAdvice(key);
+
+    console.warn(
+      `params name "${key}" is deprecated and will be removed; use path "${pathPrefix(device)}/${advice.path}" with name "${advice.name}"`,
+    );
+  }
 
   const target = resolveNestedParamTarget(device, prefix, paramName, force);
 
