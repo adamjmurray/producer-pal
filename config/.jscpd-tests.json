@@ -1,5 +1,5 @@
 {
-  "threshold": 0.7,
+  "threshold": 0.5,
   "reporters": ["console"],
   "ignorePattern": ["(?m)^vi\\.mock\\(.*(?:\\n(?:[ \\t].*)?)*\\n[)};]+$"],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
