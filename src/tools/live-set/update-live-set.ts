@@ -107,7 +107,7 @@ export async function updateLiveSet(
   }
 
   if (scale != null) {
-    applyScale(liveSet, scale, result);
+    const respelledRoot = applyScale(liveSet, scale, result);
 
     // applyScale warns and skips invalid input without setting result.scale.
     // result.scale === "" means the scale was DISABLED (not applied), so the
@@ -116,11 +116,21 @@ export async function updateLiveSet(
     if (result.scale != null) {
       result.$meta ??= [];
 
-      (result.$meta as string[]).push(
+      const meta = result.$meta as string[];
+
+      meta.push(
         result.scale === ""
           ? "Scale disabled for selected clips and defaults for new clips."
           : "Scale applied to selected clips and defaults for new clips.",
       );
+
+      // Without this, a model that asked for F# sees Gb come back and retries,
+      // thinking the write failed.
+      if (respelledRoot != null) {
+        meta.push(
+          `Scale roots are spelled with flats, so ${respelledRoot.requestedRoot} comes back as ${respelledRoot.storedRoot} — same scale, set correctly.`,
+        );
+      }
     }
   }
 

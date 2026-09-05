@@ -406,10 +406,11 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "", result);
+      const respelled = applyScale(mockLiveSet, "", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 0);
       expect(result.scale).toBe("");
+      expect(respelled).toBeNull();
     });
 
     it("should warn and skip without throwing for an invalid scale string", () => {
@@ -443,22 +444,27 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "F# Minor", result);
+      const respelled = applyScale(mockLiveSet, "F# Minor", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
       expect(result.scale).toBe("Gb Minor");
+      expect(respelled).toStrictEqual({
+        requestedRoot: "F#",
+        storedRoot: "Gb",
+      });
     });
 
     it("should handle flat root notes", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "Bb Dorian", result);
+      const respelled = applyScale(mockLiveSet, "Bb Dorian", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
       expect(result.scale).toBe("Bb Dorian");
+      expect(respelled).toBeNull();
     });
 
     it("falls back to the requested spelling when Live reports no usable root", () => {
@@ -470,9 +476,10 @@ describe("update-live-set-helpers", () => {
       } as unknown as LiveAPI;
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "C Major", result);
+      const respelled = applyScale(mockLiveSet, "C Major", result);
 
       expect(result.scale).toBe("C Major");
+      expect(respelled).toBeNull();
     });
 
     it("should warn and return when pitchClassToNumber returns null", () => {

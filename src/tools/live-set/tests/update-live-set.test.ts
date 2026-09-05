@@ -16,6 +16,9 @@ const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
 const scaleDisabledNote =
   "Scale disabled for selected clips and defaults for new clips.";
+const scaleRespellNote =
+  "Scale roots are spelled with flats, so F# comes back as Gb — " +
+  "same scale, set correctly.";
 
 describe("updateLiveSet", () => {
   let liveSet: RegisteredMockObject;
@@ -195,6 +198,30 @@ describe("updateLiveSet", () => {
     const natural = await updateLiveSet({ scale: "C Major" });
 
     expect(natural.scale).toBe("C Major");
+  });
+
+  it("explains the respelling only when the root comes back differently", async () => {
+    // Weak models read a changed value as a failed write and retry, so the
+    // respelled case has to say the write succeeded.
+    const sharp = await updateLiveSet({ scale: "F# Dorian" });
+
+    expect(sharp.$meta).toStrictEqual([scaleChangeNote, scaleRespellNote]);
+
+    const flat = await updateLiveSet({ scale: "Db Major" });
+
+    expect(flat.$meta).toStrictEqual([scaleChangeNote]);
+
+    const natural = await updateLiveSet({ scale: "C Major" });
+
+    expect(natural.$meta).toStrictEqual([scaleChangeNote]);
+
+    const disabled = await updateLiveSet({ scale: "" });
+
+    expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
+
+    const invalid = await updateLiveSet({ scale: "H Major" });
+
+    expect(invalid.$meta).toBeUndefined();
   });
 
   it("should handle case insensitive scale input and normalize the output", async () => {

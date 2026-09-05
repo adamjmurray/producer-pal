@@ -218,17 +218,19 @@ export function applyTempo(
  * @param scale - Scale string (e.g., "C Major") or empty string to disable
  * @param result - Result object to update
  * @param result.scale - Scale property to set
+ * @returns Both root spellings when the root is reported under a different name
+ *   than the caller asked for (F# -> Gb), otherwise null
  */
 export function applyScale(
   liveSet: LiveAPI,
   scale: string,
   result: { scale?: string },
-): void {
+): { requestedRoot: string; storedRoot: string } | null {
   if (scale === "") {
     liveSet.set("scale_mode", 0);
     result.scale = "";
 
-    return;
+    return null;
   }
 
   // Warn and skip on an invalid scale rather than throwing, so other updates in
@@ -241,7 +243,7 @@ export function applyScale(
   } catch (error) {
     console.warn(error instanceof Error ? error.message : String(error));
 
-    return;
+    return null;
   }
 
   const { scaleRoot, scaleName } = parsed;
@@ -250,7 +252,7 @@ export function applyScale(
   if (scaleRootNumber == null) {
     console.warn(`invalid scale root: ${scaleRoot}`);
 
-    return;
+    return null;
   }
 
   liveSet.set("root_note", scaleRootNumber);
@@ -265,4 +267,8 @@ export function applyScale(
   const storedName = liveSet.getProperty("scale_name");
 
   result.scale = `${storedRoot} ${String(storedName)}`;
+
+  return storedRoot === scaleRoot
+    ? null
+    : { requestedRoot: scaleRoot, storedRoot };
 }

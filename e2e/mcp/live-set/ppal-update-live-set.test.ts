@@ -162,7 +162,14 @@ describe("ppal-update-live-set", () => {
       arguments: { scale: "F# Dorian" },
     });
 
-    expect(parseToolResult<UpdateResult>(update).scale).toBe("Gb Dorian");
+    const updated = parseToolResult<UpdateResult>(update);
+
+    expect(updated.scale).toBe("Gb Dorian");
+    // Without this note a model reads the changed spelling as a failed write.
+    expect(updated.$meta).toContain(
+      "Scale roots are spelled with flats, so F# comes back as Gb — " +
+        "same scale, set correctly.",
+    );
 
     await sleep(100);
     const after = await ctx.client!.callTool({
@@ -341,6 +348,7 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string[];
+  $meta?: string[];
   locator?: {
     operation: string;
     id?: string;
