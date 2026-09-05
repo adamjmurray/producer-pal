@@ -5,19 +5,20 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 
-/** The clips a call lands on one lane at one position. */
+/** The clips a call lands on one track at one position. */
 export interface MoveGroup {
   trackIndex: number;
   count: number;
 }
 
 /**
- * The group a moved clip belongs to: the lane it lands on and the position it
- * lands at. Clips only overwrite each other when both match, so this is the
- * grouping both the overwrite warning and the non-survivor optimization use.
+ * The group a moved clip belongs to: the track it lands on and the position it
+ * lands at. There is no lane in the key. The non-survivor optimization leaves
+ * every take-lane route out, but the tally does not, so a take-lane landing is
+ * counted against the track's group and can name a stack that isn't one.
  * @param trackIndex - The track the clip lands on
  * @param startBeats - The position it lands at, in beats
- * @returns A key for that lane and position
+ * @returns A key for that track and position
  */
 export function moveGroupKey(trackIndex: number, startBeats: number): string {
   return `${trackIndex}@${startBeats}`;

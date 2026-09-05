@@ -116,6 +116,35 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(source.id);
   });
 
+  // The "same position" warning counts what landed. Both of these were refused,
+  // so nothing stacked and nothing may be warned about.
+  it("doesn't count refused clips as a stack at one position", async () => {
+    const first = await createClip("49|1", "Refused One");
+    const second = await createClip("53|1", "Refused Two");
+
+    const { warnings } = await updateClip(
+      ctx.client!,
+      `${first.id},${second.id}`,
+      { toPath: `t${AUDIO_TRACK}[57|1]` },
+    );
+
+    // Both of them, not just one: a single refusal leaves a lone landing,
+    // which wouldn't have warned about a stack even before the count was true.
+    for (const clip of [first, second]) {
+      expect(warnings.join(" ")).toContain(
+        `clip ${clip.path} (id ${clip.id}) was not moved: track ${AUDIO_TRACK} is audio`,
+      );
+    }
+
+    expect(warnings.join(" ")).not.toContain("moved to the same position");
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "49|1"))?.id,
+    ).toBe(first.id);
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "53|1"))?.id,
+    ).toBe(second.id);
+  });
+
   it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {
     const source = await createClip("29|1", "Lane Bound", `/l+`);
 

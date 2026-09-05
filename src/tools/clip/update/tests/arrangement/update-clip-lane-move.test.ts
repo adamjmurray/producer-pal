@@ -14,6 +14,11 @@ import {
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
+import {
+  emitArrangementWarnings,
+  moveGroupKey,
+  type MoveGroup,
+} from "../../helpers/arrangement/update-clip-move-groups.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const SOURCE_TRACK = 0;
@@ -27,12 +32,50 @@ const SOURCE = `t${SOURCE_TRACK}[3|1] (id ${SOURCE_ID})`;
 /** Same, for the tests whose source sits on a take lane. */
 const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0[3|1] (id ${SOURCE_ID})`;
 const DUPLICATED_ID = "456";
+/** Never registered, so it resolves to a clip that doesn't exist. */
+const PHANTOM_ID = "789";
+/** Every move in this file lands, or tries to land, on this one group. */
+const GROUP = moveGroupKey(DEST_TRACK, 32);
+
+/**
+ * What the tally counted for the group every move here aims at.
+ * @param groups - The tally a batch of moves shared
+ * @returns The count, or 0 when nothing was counted there
+ */
+function landedCount(groups: Map<string, MoveGroup>): number {
+  return groups.get(GROUP)?.count ?? 0;
+}
+
 const TAKE_LANE_SOURCE = livePath
   .track(SOURCE_TRACK)
   .takeLane(0)
   .arrangementClip(0);
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
+
+/** Every way placeMovedClip turns a move down before it writes anything. */
+const REFUSALS: Array<[string, MoveOptions, string]> = [
+  [
+    "a MIDI clip aimed at an audio track",
+    { destHasMidiInput: 0 },
+    `track ${DEST_TRACK} is audio`,
+  ],
+  [
+    "an audio clip with no sample, aimed at a take lane",
+    {
+      isMidi: 0,
+      destHasMidiInput: 0,
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      initialLanes: 1,
+    },
+    "it's an audio clip with no sample file",
+  ],
+  [
+    "a take lane past the per-track limit",
+    { destination: { trackIndex: DEST_TRACK, takeLane: 8 } },
+    'take lane "l8" is out of range',
+  ],
+];
 
 interface MoveOptions {
   /** Path of the source clip; a take-lane path makes it an unmovable source */
@@ -48,6 +91,10 @@ interface MoveOptions {
   destination?: ArrangementTrack | null;
   /** Shared across calls to exercise an `l=` reusing an earlier `l+`'s lane */
   appendedLanes?: Map<string, number>;
+  /** Shared across calls, to see what a batch counted on one track */
+  movedClipGroups?: Map<string, MoveGroup>;
+  /** Answer the duplicate with an id that doesn't exist, as Live can */
+  duplicateFails?: boolean;
 }
 
 /**
@@ -111,6 +158,10 @@ function runMove(opts: MoveOptions = {}): string | null {
     undefined,
     livePath.track(DEST_TRACK),
   )!.methods.duplicate_clip_to_arrangement = () => {
+    // Live answers a silently-declined duplicate with an id that resolves to
+    // nothing, AFTER the target range has already been cleared for it.
+    if (opts.duplicateFails) return ["id", PHANTOM_ID];
+
     registerMockObject(DUPLICATED_ID, {
       path: livePath.track(DEST_TRACK).arrangementClip(0),
       type: "Clip",
@@ -123,7 +174,7 @@ function runMove(opts: MoveOptions = {}): string | null {
     clip: LiveAPI.from(`id ${SOURCE_ID}`),
     arrangementStartBeats,
     destination,
-    movedClipGroups: new Map(),
+    movedClipGroups: opts.movedClipGroups ?? new Map(),
     appendedLanes: opts.appendedLanes ?? new Map(),
     isMidiClip: isMidi === 1,
     context: mockContext,
@@ -136,7 +187,8 @@ describe("moving an arrangement clip to another lane", () => {
   });
 
   it("duplicates onto the destination track and deletes the original", () => {
-    const result = runMove();
+    const movedClipGroups = new Map<string, MoveGroup>();
+    const result = runMove({ movedClipGroups });
 
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
@@ -150,6 +202,7 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(DUPLICATED_ID);
+    expect(landedCount(movedClipGroups)).toBe(1);
   });
 
   // Omitting arrangementStart means "same place, other lane".
@@ -227,37 +280,9 @@ describe("moving an arrangement clip to another lane", () => {
 
   // Every refusal keeps the clip where it is, so the rest of the update still
   // lands and nothing is deleted without a copy in place.
-  it.each([
-    [
-      "a MIDI clip aimed at an audio track",
-      { destHasMidiInput: 0 },
-      `track ${DEST_TRACK} is audio`,
-    ],
-    [
-      "an audio clip with no sample, aimed at a take lane",
-      {
-        isMidi: 0,
-        destHasMidiInput: 0,
-        destination: {
-          trackIndex: DEST_TRACK,
-          takeLane: 0,
-        } as ArrangementTrack,
-        initialLanes: 1,
-      },
-      "it's an audio clip with no sample file",
-    ],
-    [
-      "a take lane past the per-track limit",
-      {
-        destination: {
-          trackIndex: DEST_TRACK,
-          takeLane: 8,
-        } as ArrangementTrack,
-      },
-      'take lane "l8" is out of range',
-    ],
-  ])("refuses %s", (_label, opts: MoveOptions, expected) => {
-    const result = runMove(opts);
+  it.each(REFUSALS)("refuses %s", (_label, opts, expected) => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+    const result = runMove({ ...opts, movedClipGroups });
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(`clip ${SOURCE} was not moved: ${expected}`),
@@ -266,6 +291,61 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(SOURCE_ID);
+    // These three all return before the placement writes anything, so nothing
+    // was overwritten and nothing is counted.
+    expect(landedCount(movedClipGroups)).toBe(0);
+  });
+
+  // The count is what the "same position" warning says out loud, so a refused
+  // clip must not turn a single landing into a stack of two.
+  it.each(REFUSALS)(
+    "doesn't stack a clip that landed with %s",
+    (_label, opts) => {
+      const movedClipGroups = new Map<string, MoveGroup>();
+
+      // The refusal first: the second call re-registers the destination track,
+      // so the landing move gets one that takes it.
+      runMove({ ...opts, movedClipGroups });
+      runMove({ movedClipGroups });
+      emitArrangementWarnings(movedClipGroups);
+
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("moved to the same position"),
+      );
+      expect(landedCount(movedClipGroups)).toBe(1);
+    },
+  );
+
+  // The opposite case: Live clears the target range BEFORE the duplicate that
+  // then silently declines, so the clip that "wasn't moved" has already
+  // destroyed whatever stood there. That is the overwrite the warning is for.
+  it("counts a placement that cleared the target and then failed", () => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+    const result = runMove({ duplicateFails: true, movedClipGroups });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        `failed to duplicate clip ${SOURCE} - original preserved`,
+      ),
+    );
+    // The source is kept, since no copy landed to replace it.
+    expect(result).toBe(SOURCE_ID);
+    expect(
+      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
+    ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
+    expect(landedCount(movedClipGroups)).toBe(1);
+  });
+
+  it("counts a failed placement toward the stack warning", () => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+
+    runMove({ movedClipGroups });
+    runMove({ duplicateFails: true, movedClipGroups });
+    emitArrangementWarnings(movedClipGroups);
+
+    expect(capturedWarnings()).toContainEqual(
+      `2 clips on t${DEST_TRACK} moved to the same position - later clips will overwrite earlier ones`,
+    );
   });
 });
 

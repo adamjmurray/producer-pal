@@ -102,12 +102,16 @@ export function handleArrangementStartOperation({
   const targetBeats =
     arrangementStartBeats ?? (clip.getProperty("start_time") as number);
 
-  // Counted against the lane AND position the clips land on: that pair is what
-  // the "same position" warning names, and what actually overwrites.
-  tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
-
   // Non-survivor: just clear it, don't bother moving (it would be overwritten)
   if (isNonSurvivor) {
+    // Counted even though nothing is placed: a clip is a non-survivor because
+    // a later clip in this call lands on this same track and position. That
+    // holds only because computeNonSurvivorClipIds excludes the routes
+    // placeMovedClip refuses, running the same clipCopyBlocker check with the
+    // same arguments. Mark a clip whose survivor is then refused and it is
+    // destroyed with nothing naming it.
+    tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
+
     if (clip.exists()) {
       removeMovedSource(clip, sourceTrack);
     } else {
@@ -129,13 +133,24 @@ export function handleArrangementStartOperation({
     appendedLanes,
   });
 
+  // Refused before the placement touched anything, and already warned. It
+  // overwrote nothing, so it stays out of the tally.
+  if (newClip == null) {
+    return clip.id;
+  }
+
+  // Counted against the track and position the placement wrote to — the pair
+  // the "same position" warning names. Counted after the placement ran, never
+  // before: a refusal above wrote nothing, while a placement that ran and then
+  // failed still counts, because it cleared the target range before the copy
+  // that never appeared.
+  tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
+
   // Verify duplicate succeeded before deleting original
-  if (newClip == null || !newClip.exists()) {
-    if (newClip != null) {
-      console.warn(
-        `failed to duplicate clip ${targetLabel(clip)} - original preserved`,
-      );
-    }
+  if (!newClip.exists()) {
+    console.warn(
+      `failed to duplicate clip ${targetLabel(clip)} - original preserved`,
+    );
 
     return clip.id;
   }
