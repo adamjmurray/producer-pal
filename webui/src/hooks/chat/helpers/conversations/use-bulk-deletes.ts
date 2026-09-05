@@ -9,6 +9,7 @@ import {
   type ConversationRecord,
   deleteAllConversations as dbDeleteAllConversations,
   deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
+  loadConversation,
 } from "#webui/lib/conversation-db";
 
 /** The useConversations state the bulk deletes read and write. */
@@ -54,15 +55,27 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     dropUndoable,
   } = params;
 
+  /**
+   * Run one bulk-delete sweep.
+   * @param sweepsLive - Whether the live conversation is in scope for this
+   * sweep, asked once before the wipe to decide the protective mark below.
+   * What actually happens to the live conversation is read back from the DB
+   * afterward rather than asked again: a bookmark toggled while the mark is
+   * up can't reach metaRef, so a re-derived answer would get it wrong.
+   * @param survivesSweep - Whether a record outlives this sweep. The undo
+   * banner never auto-expires, so a pending undo for a record the sweep would
+   * have taken anyway is dropped rather than left offering to put it back.
+   * @param removeRows - Clears the matching rows from the DB
+   */
   const sweep = useCallback(
     async (
-      clearsLive: () => boolean,
+      sweepsLive: () => boolean,
       survivesSweep: (record: ConversationRecord) => boolean,
       removeRows: () => Promise<void>,
     ): Promise<void> => {
       let undoMark: (() => void) | null = null;
 
-      if (clearsLive()) {
+      if (sweepsLive()) {
         dropPendingFork();
         undoMark = store.markDeleted();
       }
@@ -81,10 +94,29 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
       // irreversible, so a sweep that threw must not take it down with it.
       dropUndoable((record) => !survivesSweep(record));
 
-      // Asked again, not reused: the user can switch conversations while the
-      // sweep runs, and whether the view goes with it is a question about the
-      // conversation that is live now.
-      if (clearsLive()) {
+      // Ground truth for whichever conversation is live now, not a re-derived
+      // predicate — see sweepsLive's doc above for why.
+      const liveId = store.liveId();
+      let liveRowSurvived: boolean;
+
+      try {
+        liveRowSurvived = (await loadConversation(liveId)) != null;
+      } catch (error) {
+        // Rows are already gone or kept — this only failed to confirm which.
+        // Leaving a live view alone on an unproven guess is safer than
+        // clearing it on one, so treat the failure as "survived". The cost:
+        // undoMark restores a slot markDeleted() tore down, so the next
+        // autosave can write the just-deleted row right back.
+        console.error(
+          "Failed to confirm live conversation survived the sweep",
+          error,
+        );
+        liveRowSurvived = true;
+      }
+
+      if (liveRowSurvived) {
+        undoMark?.();
+      } else {
         clearConversation();
         store.reset();
       }
@@ -109,12 +141,12 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     // chat is implicitly unbookmarked so it's swept too. A bookmarked one
     // survives, so its save must still land — hence the conditional mark but
     // the unconditional drain.
-    const clearsLive = (): boolean =>
+    const sweepsLive = (): boolean =>
       store.activeId() == null || !store.metaRef.current?.bookmarked;
 
     // Bookmarked records survive this sweep, so their undos stay offerable.
     return sweep(
-      clearsLive,
+      sweepsLive,
       (record) => record.bookmarked,
       dbDeleteUnbookmarkedConversations,
     );

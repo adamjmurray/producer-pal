@@ -578,3 +578,59 @@ describe("useConversations delete vs. switch", () => {
     restore();
   });
 });
+
+// A sweep's mark blocks patchActiveMeta, so a bookmark toggled while the sweep
+// is in flight lands in the DB but can't reach metaRef — the sweep's own
+// re-derived "did it clear the live conversation" question would get that
+// wrong. It has to check the DB instead.
+describe("useConversations delete vs. bookmark", () => {
+  beforeEach(resetConversationsTestState);
+
+  it("does not tear down or wipe a live conversation bookmarked mid-sweep", async () => {
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "keep me now");
+    const liveId = result.current.activeConversationId!;
+
+    const { release, restore } = gateNextDelete(
+      "deleteUnbookmarkedConversations",
+    );
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      await result.current.toggleBookmark(liveId);
+      release();
+      await sweeping;
+    });
+
+    expect(result.current.activeConversationId).toBe(liveId);
+
+    const reloaded = await loadConversation(liveId);
+
+    expect(reloaded?.bookmarked).toBe(true);
+    restore();
+  });
+
+  it("leaves the live conversation alone when the survival check fails", async () => {
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "keep me");
+    const liveId = result.current.activeConversationId!;
+
+    // Only the sweep's own survival check sees this: it's the next call to
+    // loadConversation once the conversation above has already saved.
+    const spy = vi
+      .spyOn(conversationDb, "loadConversation")
+      .mockRejectedValueOnce(new Error("simulated DB failure"));
+
+    // The row really is unbookmarked, so the sweep genuinely removes it —
+    // only confirming that failed. A failed check must not be treated as
+    // proof the live conversation was swept.
+    await act(() => result.current.deleteUnbookmarkedConversations());
+
+    expect(result.current.activeConversationId).toBe(liveId);
+    expect(result.current.conversations).toStrictEqual([]);
+    spy.mockRestore();
+  });
+});
