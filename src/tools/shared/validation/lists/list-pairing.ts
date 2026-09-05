@@ -94,6 +94,10 @@ export function valueForIndex(
 
 /**
  * Pair a list of parsed values with the items, broadcasting a lone value.
+ *
+ * Only the length decides, so `values` must hold one entry per entry the caller
+ * wrote, nulls included. Filtering or deduping before this collapses a real
+ * list into a broadcast and loses the warning.
  * @param values - The parsed values, in call order
  * @param count - How many items the call acts on
  * @param labels - What to call the param and its entries in a warning
@@ -104,9 +108,13 @@ export function pairValues<T>(
   count: number,
   labels: PairLabels,
 ): Array<T | null> {
-  const single = values.length === 1 ? (values[0] ?? null) : null;
+  // A lone value covers every item even when it's null. Warning here would
+  // blame the count for a value that something else already refused.
+  if (values.length === 1) {
+    const single = values[0] ?? null;
 
-  if (single != null) return Array.from({ length: count }, () => single);
+    return Array.from({ length: count }, () => single);
+  }
 
   return pairExact(values, count, labels);
 }

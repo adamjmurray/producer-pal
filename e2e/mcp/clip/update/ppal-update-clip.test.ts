@@ -437,6 +437,20 @@ describe("ppal-update-clip", () => {
     expect(stayed.name).toBe("Renamed Anyway");
   });
 
+  // One toPath covers both clips, so nothing about the count was wrong: the
+  // only complaint should be the destination itself.
+  it("does not blame the count when the one toPath is unparseable", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { path: "t0/s0,t1/s0", toPath: "t0/d0" },
+    });
+    const warnings = getToolWarnings(result).join(" ");
+
+    expect(isToolError(result)).toBe(false);
+    expect(warnings).toContain("device paths hold no clips");
+    expect(warnings).not.toContain("destination for");
+  });
+
   it("still honors the deprecated toSlot, and says so", async () => {
     const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s6`, {
       notes: "C3 1|1",

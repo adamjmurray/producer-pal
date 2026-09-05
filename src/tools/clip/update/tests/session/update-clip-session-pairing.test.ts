@@ -253,6 +253,22 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     );
   });
 
+  // One destination covers both clips, so the count was never mismatched: the
+  // only thing wrong is the destination itself.
+  it("does not blame the count when the one destination is unparseable", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ path: "t0/s0,t1/s1", toPath: "t0/d0" });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("device paths hold no clips"),
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("destination for"),
+    );
+  });
+
   it("still accepts a clip's own slot as a destination", async () => {
     setupMidiClipMock(mocks.clip123);
     registerSlots([[0, 0, 1]]);

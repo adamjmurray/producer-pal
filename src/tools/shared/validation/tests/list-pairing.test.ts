@@ -111,8 +111,28 @@ describe("list-pairing", () => {
       );
     });
 
-    it("treats a lone null as no value at all", () => {
+    // A lone value that didn't parse is still one value for every item, so the
+    // count was never wrong and a count warning would be a second, false story.
+    it("broadcasts a lone null without warning", async () => {
+      const console = await freshConsole();
+
       expect(pairValues([null], 2, LABELS)).toStrictEqual([null, null]);
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+
+    // Only the length decides: two entries are a list even when neither parsed,
+    // and a list of two for three items really is the wrong length.
+    it("still warns for a wrong-length list of nulls", async () => {
+      const console = await freshConsole();
+
+      expect(pairValues([null, null], 3, LABELS)).toStrictEqual([
+        null,
+        null,
+        null,
+      ]);
+      expect(console.warn).toHaveBeenCalledWith(
+        "toPath: 2 destinations for 3 clips; the clips past the last destination were not moved",
+      );
     });
   });
 
