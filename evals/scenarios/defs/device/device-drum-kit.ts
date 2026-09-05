@@ -10,7 +10,7 @@
  * Requires Ableton (agentic — drives a live model against Live).
  *
  * The kit grammar is a single create-device with `deviceName: "Drum Rack"` and
- * `params` whose names are pad-path prefixed — `{name: "pC1/d0/sample", value:
+ * `params` whose names are pad-path prefixed — `{name: "pC1/sample", value:
  * "<abs file path>"}` loads a sample into pad C1, auto-creating that pad's
  * Simpler. The capability is "one call, many pads", NOT pad-by-pad add-device
  * loops. The eval samples folder ships `drums/kick.aiff` + `sample.aiff`, so the
@@ -26,8 +26,15 @@ import { getToolCalls } from "../../assertions/index.ts";
 import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
 
-/** Pad-path sample param name, e.g. `pC1/d0/sample` or `pC#1/c0/d0/sample`. */
-const PAD_SAMPLE_PARAM = /^p\S+\/(c0\/)?d0\/sample$/i;
+/**
+ * A pad-path sample param. The published spelling is the short `pC1/sample`,
+ * which is what both device defs show and what models write; the chain and
+ * device segments are optional (`pC1/d0/sample`, `pC#1/c0/d0/sample`). All of
+ * them reach the same Simpler — `ppal-create-device-drum-kit` proves the short
+ * and long forms in one call against real Live — so grading only the long form
+ * failed the exact call the tool description asks for.
+ */
+const PAD_SAMPLE_PARAM = /^p[^/]+(?:\/c\d+)?(?:\/d\d+)?\/sample$/i;
 
 export const deviceDrumKit: EvalScenario = {
   id: "device-drum-kit",

@@ -96,7 +96,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       default:
         "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1); " +
         "'t2[5|1]' = that spot on track 2's arrangement, and '[5|1]' the same spot on the source clip's " +
-        "own track (a position is bar|beat or loc:<locator name or id>; an arrangement track must match " +
+        "own track (a position is bar|beat or loc:<locator name or id> — 't2[loc:Chorus]' names a " +
+        "section instead of counting bars; an arrangement track must match " +
         "the clip's MIDI/audio type); 't2/l0' = its first take lane, 't2/l+' appends a fresh one, and " +
         "'t2/l=' reuses the one the 'l+' before it appended, for a stack of takes on one new lane; " +
         "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
