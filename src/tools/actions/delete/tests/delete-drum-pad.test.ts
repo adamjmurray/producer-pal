@@ -242,9 +242,10 @@ describe("deleteObject drum-pad refusals", () => {
       type: "drum-pad",
     });
 
+    // Results come back in the order named: the rejected chain id first.
     expect(result).toStrictEqual([
-      { id: padId, path: "t0/d0/pC1", type: "drum-pad", deleted: true },
       { id: "drum-chain-1", type: "drum-pad", deleted: false },
+      { id: padId, path: "t0/d0/pC1", type: "drum-pad", deleted: true },
     ]);
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
   });

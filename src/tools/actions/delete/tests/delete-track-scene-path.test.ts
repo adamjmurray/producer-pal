@@ -72,10 +72,11 @@ describe("deleteObject by track and scene path", () => {
 
     const result = deleteObject({ id: "track_1", path: "t1", type: "track" });
 
-    // Highest index first, so the earlier delete doesn't shift the later one.
+    // Deletes highest index first so the earlier delete doesn't shift the
+    // later one, but results come back in the order named: id before path.
     expect(result).toStrictEqual([
-      { id: "track_2", deletedPath: "t1", type: "track", deleted: true },
       { id: "track_1", deletedPath: "t0", type: "track", deleted: true },
+      { id: "track_2", deletedPath: "t1", type: "track", deleted: true },
     ]);
   });
 

@@ -68,10 +68,11 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_track", 1);
     expect(liveSet.call).toHaveBeenNthCalledWith(3, "delete_track", 0);
 
+    // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "track_2", deletedPath: "t2", type: "track", deleted: true },
-      { id: "track_1", deletedPath: "t1", type: "track", deleted: true },
       { id: "track_0", deletedPath: "t0", type: "track", deleted: true },
+      { id: "track_1", deletedPath: "t1", type: "track", deleted: true },
+      { id: "track_2", deletedPath: "t2", type: "track", deleted: true },
     ]);
   });
 
@@ -101,9 +102,10 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_scene", 2);
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_scene", 0);
 
+    // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "scene_2", deletedPath: "s2", type: "scene", deleted: true },
       { id: "scene_0", deletedPath: "s0", type: "scene", deleted: true },
+      { id: "scene_2", deletedPath: "s2", type: "scene", deleted: true },
     ]);
   });
 
@@ -290,14 +292,42 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 2);
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 0);
 
+    // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "track_2", deletedPath: "t2", type: "track", deleted: true },
       { id: "track_0", deletedPath: "t0", type: "track", deleted: true },
       { id: "nonexistent", type: "track", deleted: false },
+      { id: "track_2", deletedPath: "t2", type: "track", deleted: true },
     ]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'id "nonexistent" does not exist',
     );
+  });
+
+  it("orders results by named position across ids and paths, regardless of deletion order or outcome", () => {
+    setupTrackMocks({
+      track_a: String(livePath.track(0)),
+      track_b: String(livePath.track(2)),
+    });
+    mockNonExistentObjects();
+
+    const result = deleteObject({
+      id: "track_a, missing_id",
+      path: "t2, t99",
+      type: "track",
+    });
+
+    // Deletes by position, highest index first: track_b (t2) before track_a (t0).
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_track", 2);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_track", 0);
+
+    // Results stay in the order named: ids first, then paths — a success, a
+    // rejected id, a success, and an unresolved path.
+    expect(result).toStrictEqual([
+      { id: "track_a", deletedPath: "t0", type: "track", deleted: true },
+      { id: "missing_id", type: "track", deleted: false },
+      { id: "track_b", deletedPath: "t2", type: "track", deleted: true },
+      { path: "t99", type: "track", deleted: false },
+    ]);
   });
 
   it("should return empty array when all IDs are invalid", () => {
@@ -385,8 +415,8 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids, type: "track" });
 
     expect(result).toStrictEqual([
-      { id: "track_1", deletedPath: "t1", type: "track", deleted: true },
       { id: "track_0", deletedPath: "t0", type: "track", deleted: true },
+      { id: "track_1", deletedPath: "t1", type: "track", deleted: true },
     ]);
   });
 
@@ -518,9 +548,10 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_return_track", 2);
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_return_track", 0);
 
+    // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "return_2", deletedPath: "rt2", type: "track", deleted: true },
       { id: "return_0", deletedPath: "rt0", type: "track", deleted: true },
+      { id: "return_2", deletedPath: "rt2", type: "track", deleted: true },
     ]);
   });
 

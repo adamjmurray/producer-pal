@@ -96,11 +96,10 @@ describe("deleteObject device deletion", () => {
 
     const result = deleteObject({ ids, type: "device" });
 
-    // Results come back in deletion order (highest track index first), matching
-    // how track/scene deletes already report their results.
+    // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "device_2", deletedPath: "t1/d1", type: "device", deleted: true },
       { id: "device_1", deletedPath: "t0/d0", type: "device", deleted: true },
+      { id: "device_2", deletedPath: "t1/d1", type: "device", deleted: true },
     ]);
     expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -130,9 +129,10 @@ describe("deleteObject device deletion", () => {
     expect(parent?.call).toHaveBeenNthCalledWith(1, "delete_device", 1);
     expect(parent?.call).toHaveBeenNthCalledWith(2, "delete_device", 0);
 
+    // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "device_0_1", deletedPath: "t0/d1", type: "device", deleted: true },
       { id: "device_0_0", deletedPath: "t0/d0", type: "device", deleted: true },
+      { id: "device_0_1", deletedPath: "t0/d1", type: "device", deleted: true },
     ]);
   });
 
@@ -299,8 +299,9 @@ describe("deleteObject device deletion", () => {
       expect(chain1?.call).toHaveBeenCalledTimes(1);
       expect(chain1?.call).toHaveBeenCalledWith("delete_device", 0);
 
-      // All three deleted (result order is deletion order, asserted above via
-      // call order; here we only care that every target succeeded).
+      // All three deleted. Deletion order is asserted above via call order;
+      // result order follows the ids as named, so arrayContaining is enough
+      // here.
       expect(result).toStrictEqual(
         expect.arrayContaining([
           {
@@ -430,10 +431,11 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "t0/d0, t1/d1", type: "device" });
 
-      // Deletion order: highest track index first.
+      // Results come back in path order, not the deletion order (which is
+      // highest track index first).
       expect(result).toStrictEqual([
-        { id: "dev_1_1", deletedPath: "t1/d1", type: "device", deleted: true },
         { id: "dev_0_0", deletedPath: "t0/d0", type: "device", deleted: true },
+        { id: "dev_1_1", deletedPath: "t1/d1", type: "device", deleted: true },
       ]);
     });
 
