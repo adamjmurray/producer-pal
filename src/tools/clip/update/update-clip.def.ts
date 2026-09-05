@@ -37,19 +37,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     path: param(z.coerce.string().optional(), {
       default:
-        "clip slot(s) to update instead of id, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
-      smallModel: "clip slot to update instead of id (e.g., 't0/s1')",
+        "clip(s) to update instead of id, comma-separated: a clip slot 't<track>/s<scene>', " +
+        "or an arrangement clip by where it starts 't<track>[<position>]' (e.g., 't0/s1' or 't0[5|1],t2/s3')",
+      smallModel:
+        "clip to update instead of id: 't0/s1', or 't0[5|1]' in the arrangement",
     }),
 
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated for each (extras keep existing name)",
+      default: "name for all, or comma-separated one per clip, in order",
       smallModel: "clip name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the clips)",
+      default: "#RRGGBB for all, or comma-separated one per clip, in order",
       smallModel: "#RRGGBB",
     }),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
@@ -77,22 +77,22 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "bar|beat playback start (looping clips, when different from start; clip meter)",
       smallModel: null,
     }),
-    arrangementStart: z
-      .string()
-      .optional()
-      .describe(
-        "bar|beat position (song meter) to move arrangement clip (arrangement clips only)",
-      ),
+    arrangementStart: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+      example: "[5|1]",
+    }),
     arrangementLength: z
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+        "duration(s), comma-separated: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+          "One length applies to every clip; a list pairs 1:1 with id/path in order. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
     arrangementSplit: param(z.string().optional(), {
       default:
-        `comma-separated bar|beat positions to cut clips at, on the song timeline like arrangementStart (e.g., '9|1, 17|1') - max ${MAX_SPLIT_POINTS} points. ` +
+        `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
+        "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
         "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
       smallModel: null,
     }),
@@ -103,14 +103,21 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "clip slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
-          "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
-          "id/path, in order - destinations don't cycle, so name one slot per clip",
+        "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>', " +
+          "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
+          "loc:<locator name or id>), a take lane 't<track>/l<lane>', 't<track>/l+' or " +
+          "'t<track>/l=' (the lane the 'l+' before it appended), or " +
+          "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
+          "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
+          "take lane drops its automation envelopes. One '[<position>]' moves every clip, each on its " +
+          "own lane; anything naming a lane pairs 1:1 with id/path in order, since a lane or slot " +
+          "holds one clip and the rest would land on top of it",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged
     // for callers that scripted against it; arrangementSplit is the published
-    // param and reads song-timeline positions.
+    // param and reads song-timeline positions. Never published, so naming the
+    // split() note op in the transforms description points at nothing retired.
     split: deprecatedParam(z.string().optional(), {
       replacedBy: "arrangementSplit",
     }),
@@ -159,7 +166,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
+        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation. Note-count operations (ratchet()/repeat()/split()/merge() - see Skills) change how many notes exist; prefer them over rewriting notes by hand",
       smallModel: null,
     }),
     preTransforms: param(z.string().optional(), {

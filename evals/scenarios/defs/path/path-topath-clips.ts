@@ -6,11 +6,11 @@
 /**
  * Scenario: one `toPath` for every clip destination kind.
  *
- * 2.2.0 collapsed five location params into one. This walks a single clip
- * through three destination shapes — a session slot, a track's arrangement, and
- * a fresh take lane — and checks both cycling rules on the way: a short
- * `toPath` repeats to cover a longer `arrangementStart` list, but a written
- * `l+` is always exactly one lane no matter how many copies land on it.
+ * 2.2.0 collapsed five location params into one, and 2.3.0 put the position
+ * inside it. This walks a single clip through three destination shapes — a
+ * session slot, a track's arrangement, and a fresh take lane — and checks the
+ * lane rule on the way: each written `l+` appends its own lane, so a stack of
+ * takes on ONE new lane is `l+` then `l=`.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
@@ -20,12 +20,11 @@ import {
   takeLanes,
 } from "../arrangement-helpers.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   MSG_CONNECT,
 } from "../clip/helpers/clip-scenario-helpers.ts";
 import {
   assertClipCreatedAtPath,
-  assertDestinationCounts,
   assertPathArg,
   assertSlotOccupancy,
 } from "./path-scenario-helpers.ts";
@@ -106,7 +105,7 @@ export const pathToPathClipDestinations: EvalScenario = {
   liveSet: "basic-midi-4-track",
   // No reuseLiveSet: nothing removes a take lane, so a repeat trial would
   // inherit the first one's and the lane count check would be meaningless.
-  setup: (mcpClient) => clearSessionSlots(mcpClient, ["0/0", "2/1"]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, ["0/0", "2/1"]),
 
   messages: [
     MSG_CONNECT,
@@ -129,32 +128,29 @@ export const pathToPathClipDestinations: EvalScenario = {
     }),
     assertSlotOccupancy(SLOT_DESTINATION, true),
 
-    // Destination 2: a bare track, meaning its arrangement. One destination
-    // covers two starts — the model should NOT write it twice.
+    // Destination 2: the track's arrangement at two bars, which the position
+    // inside the path makes one destination apiece.
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
+    // The shape, not the batching: one call naming both bars and two calls
+    // naming one each are equally good, and the layout check below sees where
+    // the copies actually landed.
     assertPathArg({
       turn: 3,
       tool: TOOL_DUPLICATE,
       param: "toPath",
-      expected: `t${CHORDS_TRACK_INDEX}`,
-    }),
-    // Cycling is allowed here — one destination may cover both starts — but
-    // more destinations than starts never is.
-    assertDestinationCounts({
-      turn: 3,
-      tool: TOOL_DUPLICATE,
-      against: ["arrangementStart"],
-      rule: "atMost",
+      expected: new RegExp(
+        `^t${CHORDS_TRACK_INDEX}\\[[15]\\|1\\](,t${CHORDS_TRACK_INDEX}\\[[15]\\|1\\])?$`,
+      ),
     }),
 
-    // Destination 3: a fresh take lane, twice over. One written `l+` is one
-    // lane however many copies cycle onto it.
+    // Destination 3: two takes on ONE fresh lane, which is `l+` then `l=`.
+    // Two `l+` would be two lanes, and the layout check below catches it.
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 4 },
     assertPathArg({
       turn: 4,
       tool: TOOL_DUPLICATE,
       param: "toPath",
-      expected: `t${CHORDS_TRACK_INDEX}/l+`,
+      expected: `t${CHORDS_TRACK_INDEX}/l+[${TAKE_LANE_STARTS[0]}],t${CHORDS_TRACK_INDEX}/l=[${TAKE_LANE_STARTS[1]}]`,
     }),
     assertArrangementLayout(),
 

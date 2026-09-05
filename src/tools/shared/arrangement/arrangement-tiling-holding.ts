@@ -12,7 +12,7 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   createAndDeleteTempClip,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 
 export interface HoldingClipResult {
   holdingClipId: string;

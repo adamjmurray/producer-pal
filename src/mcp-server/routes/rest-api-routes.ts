@@ -25,6 +25,7 @@ import {
   resolveRequestProfile,
   type RequestProfile,
 } from "../helpers/http/request-profile.ts";
+import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
 
@@ -36,12 +37,28 @@ interface RestApiConfig {
 }
 
 /**
+ * The tool defs available to one request. The raw Live API is opt-in — via the
+ * device Setup tab, or per-request via LIVE_API_HEADER; when off, it is fully
+ * absent (not in the catalog, not callable). When on it flows through the same
+ * tools whitelist as every other tool.
+ *
+ * @param profile - The resolved settings for this request
+ * @returns The tool defs this request may see
+ */
+function activeToolDefs(profile: RequestProfile): ToolDefFunction[] {
+  return profile.liveApiEnabled
+    ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
+    : [...STANDARD_TOOL_DEFS];
+}
+
+/**
  * Register REST API routes on the Express app
  *
- * Both endpoints resolve the same three per-request headers POST /mcp reads
- * (see resolveRequestProfile) — the toolset, the notation, and small-model mode
- * — so a REST caller can run its own profile without a POST /config changing
- * every other connected client's.
+ * Both endpoints resolve the same per-request headers POST /mcp reads (see
+ * resolveRequestProfile) — the toolset, the notation, small-model mode, and the
+ * Direct Live API opt-in — so a REST caller can run its own profile without a
+ * POST /config changing every other connected client's. The output format is
+ * the one exception: REST keeps its own `?format=` query param.
  *
  * @param app - Express application
  * @param getConfig - Returns current config (called per-request for live updates)
@@ -56,15 +73,6 @@ export function registerRestApiRoutes(
   getConfig: () => RestApiConfig,
   buildCallLiveApi: (profile: RequestProfile) => CallLiveApiFunction,
 ): void {
-  // Resolve which tool defs are available right now. The raw Live API
-  // is opt-in via the device Setup tab; when disabled, it is fully absent
-  // (not in the catalog, not callable). When enabled it flows through the
-  // same /config tools whitelist as every other tool.
-  const getActiveToolDefs = () =>
-    getConfig().liveApiEnabled
-      ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
-      : [...STANDARD_TOOL_DEFS];
-
   // Like POST /mcp (see create-express-app.ts), these endpoints are NOT
   // origin-gated the way POST /config is: the chat UI reaches them same-origin
   // from the page URL, which over LAN/tunnel is a non-localhost origin, so a
@@ -83,7 +91,7 @@ export function registerRestApiRoutes(
       smallModelMode: profile.smallModelMode,
     };
 
-    const tools = getActiveToolDefs()
+    const tools = activeToolDefs(profile)
       .filter((td) => enabledSet.has(td.toolName))
       .map((td) => {
         // Same resolution define-tool.ts registers with, deprecation filter
@@ -118,7 +126,7 @@ export function registerRestApiRoutes(
       const profile = resolveRequestProfile(req, getConfig());
       const enabledSet = new Set(profile.tools);
 
-      const toolDef = getActiveToolDefs().find(
+      const toolDef = activeToolDefs(profile).find(
         (td) => td.toolName === toolName,
       );
 
@@ -199,7 +207,6 @@ export function registerRestApiRoutes(
 
         appendDeprecationNotices(
           mcpResponse,
-          toolName,
           toolDef.toolOptions.inputSchema,
           parsed.data,
         );
@@ -218,13 +225,11 @@ export function registerRestApiRoutes(
  * The catalog no longer lists the param, so this notice is the only signal a
  * REST caller gets that it is retired or a fallback.
  * @param response - The tool's response, appended to in place
- * @param toolName - Tool that was called
  * @param inputSchema - The tool's raw input schema
  * @param args - The validated arguments
  */
 function appendDeprecationNotices(
   response: McpResponse,
-  toolName: string,
   inputSchema: Record<string, ZodType>,
   args: Record<string, unknown>,
 ): void {
@@ -236,7 +241,7 @@ function appendDeprecationNotices(
     paramNamesSomething(args[key]),
   );
 
-  for (const text of hiddenParamWarnings(toolName, usedKeys, hidden)) {
+  for (const text of hiddenParamWarnings(usedKeys, hidden)) {
     response.content.push({ type: "text", text });
   }
 }

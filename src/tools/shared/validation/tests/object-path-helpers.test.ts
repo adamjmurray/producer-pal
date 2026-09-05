@@ -9,14 +9,15 @@ import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   namedHiddenPath,
   parseObjectPathList,
-  parseSessionSlotList,
+  pathEntries,
+  parseClipSlotPathList,
   pathNamesSomething,
   requireClipPath,
   requireDeviceContainer,
   requireDevicePath,
-  requireSessionSlot,
+  requireClipSlotPath,
   trackSegmentPath,
-} from "../object-path-helpers.ts";
+} from "../helpers/object-path-helpers.ts";
 
 describe("parseObjectPathList", () => {
   it("parses a comma-separated list in order", () => {
@@ -70,18 +71,13 @@ describe("parseObjectPathList", () => {
 
   // The list is cycled against a position list, so a dropped entry moves every
   // later copy onto the wrong track instead of just making one fewer.
-  it("warns when it drops an empty entry", () => {
+  it("refuses a hole rather than shifting every later entry", () => {
     const warn = vi.spyOn(console, "warn");
 
-    expect(parseObjectPathList("t1,,t2", "toPath")).toStrictEqual([
-      { kind: "track", trackIndex: 1 },
-      { kind: "track", trackIndex: 2 },
-    ]);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('toPath "t1,,t2" has empty entries'),
+    expect(() => parseObjectPathList("t1,,t2", "toPath")).toThrow(
+      'invalid toPath "t1,,t2" - it has an empty entry.',
     );
 
-    warn.mockClear();
     parseObjectPathList("t1,t2", "toPath");
     expect(warn).not.toHaveBeenCalled();
   });
@@ -90,15 +86,11 @@ describe("parseObjectPathList", () => {
   // update-clip/delete/playback's path, which names the objects to act on. It
   // used to call every entry a destination either way.
   it("does not call a source a destination", () => {
-    const warn = vi.spyOn(console, "warn");
-
     expect(() => parseObjectPathList(",", "path")).toThrow(
       'invalid path "," - it names nothing',
     );
-
-    parseObjectPathList("t1,,t2", "path");
-    expect(warn).toHaveBeenCalledWith(
-      'path "t1,,t2" has empty entries, which were dropped; later entries shift up',
+    expect(() => parseObjectPathList("t1,,t2", "path")).toThrow(
+      'invalid path "t1,,t2" - it has an empty entry.',
     );
   });
 });
@@ -117,8 +109,8 @@ describe("requireClipPath", () => {
   it("rejects everything a clip can't occupy, in clip terms", () => {
     const cases: [string, RegExp][] = [
       ["t1/d0", /device paths hold no clips/],
-      ["rt0", /return and master tracks have no clips/],
-      ["mt", /return and master tracks have no clips/],
+      ["rt0", /return and main tracks have no clips/],
+      ["mt", /return and main tracks have no clips/],
       ["s3", /a scene alone names no track/],
     ];
 
@@ -128,6 +120,17 @@ describe("requireClipPath", () => {
         /clips go to a track \("t0"\), a take lane on it \("t0\/l0"\), or a clip slot \("t0\/s1"\)/,
       );
     }
+  });
+
+  // A "+" root parses fine but names a place, not a thing, so a clip caller
+  // has to be told that rather than falling into the return/main-track answer.
+  it("rejects a path that names something to create", () => {
+    expect(() => requireClipPath(parseObjectPath("t+"))).toThrow(
+      /a new track holds no clips/,
+    );
+    expect(() => requireClipPath(parseObjectPath("s+"))).toThrow(
+      /a new scene holds no clips/,
+    );
   });
 
   it("passes take lanes through, which are arrangement destinations", () => {
@@ -149,16 +152,16 @@ describe("requireClipPath", () => {
   });
 });
 
-describe("requireSessionSlot", () => {
+describe("requireClipSlotPath", () => {
   it("returns the track and scene a slot names", () => {
-    expect(requireSessionSlot(parseObjectPath("t7/s2"))).toStrictEqual({
+    expect(requireClipSlotPath(parseObjectPath("t7/s2"))).toStrictEqual({
       trackIndex: 7,
       sceneIndex: 2,
     });
   });
 
   it("rejects a bare track, which names no one clip", () => {
-    expect(() => requireSessionSlot(parseObjectPath("t7"))).toThrow(
+    expect(() => requireClipSlotPath(parseObjectPath("t7"))).toThrow(
       /a track has no one clip; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
     );
   });
@@ -166,29 +169,29 @@ describe("requireSessionSlot", () => {
   // Both take-lane spellings, since l+ reaches the message by a different arm.
   it("rejects a take lane, which is an arrangement position", () => {
     for (const path of ["t7/l1", "t7/l+"]) {
-      expect(() => requireSessionSlot(parseObjectPath(path))).toThrow(
+      expect(() => requireClipSlotPath(parseObjectPath(path))).toThrow(
         /take lanes hold arrangement clips; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
       );
     }
   });
 
   it("rejects a non-clip path in clip terms", () => {
-    expect(() => requireSessionSlot(parseObjectPath("t1/d0"))).toThrow(
+    expect(() => requireClipSlotPath(parseObjectPath("t1/d0"))).toThrow(
       /device paths hold no clips/,
     );
   });
 });
 
-describe("parseSessionSlotList", () => {
+describe("parseClipSlotPathList", () => {
   it("parses a comma-separated list of slots", () => {
-    expect(parseSessionSlotList("t0/s1,t2/s3")).toStrictEqual([
+    expect(parseClipSlotPathList("t0/s1,t2/s3")).toStrictEqual([
       { trackIndex: 0, sceneIndex: 1 },
       { trackIndex: 2, sceneIndex: 3 },
     ]);
   });
 
   it("throws on the first entry that isn't a slot", () => {
-    expect(() => parseSessionSlotList("t0/s1,t2")).toThrow(
+    expect(() => parseClipSlotPathList("t0/s1,t2")).toThrow(
       /a track has no one clip/,
     );
   });
@@ -245,6 +248,12 @@ describe("requireDevicePath", () => {
 
   // The bug this grammar's one parser fixes: rt0 used to fall through to the
   // device parser, which answered with a message about device indices.
+  it("rejects a path that names something to create", () => {
+    expect(() => requireDevicePath(parseObjectPath("rt+"))).toThrow(
+      /a new return track holds no devices/,
+    );
+  });
+
   it("rejects a bare track, naming the track the caller wrote", () => {
     expect(() => requireDevicePath(parseObjectPath("t0"))).toThrow(
       'invalid path "t0" - a track is not a device; add a device index (e.g. "t0/d0")',
@@ -335,5 +344,41 @@ describe("pathNamesSomething", () => {
     pathNamesSomething(",");
 
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("pathEntries - splitting around a coordinate", () => {
+  // The one lexing rule: a `[...]` holds song positions, and both separators
+  // turn up inside one — a locator name is user-typed, and a bar|beat takes
+  // `±n<fraction>` offsets.
+  it.each([
+    ["plain paths", "t0,t1", ["t0", "t1"]],
+    ["coordinates", "t0[5|1],t1[9|1]", ["t0[5|1]", "t1[9|1]"]],
+    ["a comma in a locator name", "[loc:A, B],t2", ["[loc:A, B]", "t2"]],
+    ["a slash in an offset", "t0[1|1-n/4]", ["t0[1|1-n/4]"]],
+  ])("splits %s", (_label, input, expected) => {
+    expect(pathEntries(input)).toStrictEqual(expected);
+  });
+
+  // A hole is still a hole: nothing lines up against a list whose length is a
+  // guess, brackets or not.
+  it("still refuses a hole in the list", () => {
+    expect(() => pathEntries("t0[5|1],,t1")).toThrow("it has an empty entry");
+  });
+});
+
+describe("a song position on a tool that can't take one", () => {
+  // Each says why in the caller's own terms, rather than falling through to an
+  // explanation about some other path shape.
+  it("tells a session-clip caller a coordinate names an arrangement clip", () => {
+    expect(() => requireClipSlotPath(parseObjectPath("t0[5|1]"))).toThrow(
+      "a song position names one arrangement clip, not a place to put one",
+    );
+  });
+
+  it("tells a device caller a coordinate names a clip", () => {
+    expect(() =>
+      requireDeviceContainer(parseObjectPath("t0[5|1]"), "path"),
+    ).toThrow("a song position names a clip, not a device");
   });
 });

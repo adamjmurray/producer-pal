@@ -10,7 +10,7 @@
  */
 
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { type TilingContext } from "./arrangement-tiling-helpers.ts";
+import { type TilingContext } from "./helpers/arrangement-tiling-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
@@ -26,6 +26,7 @@ import {
  * @param targetBeats - Target position in Ableton beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Tiling context with silenceWavPath for audio operations
+ * @param source - The source clip, when the caller already resolved it
  * @returns The placed clip (may be a phantom on silent failure — check exists())
  */
 export function duplicateToArrangementTarget(
@@ -34,6 +35,7 @@ export function duplicateToArrangementTarget(
   targetBeats: number,
   isMidiClip: boolean,
   context: TilingContext,
+  source: LiveAPI | null = null,
 ): LiveAPI {
   const safe = clearClipAtDuplicateTarget(
     track,
@@ -41,6 +43,7 @@ export function duplicateToArrangementTarget(
     targetBeats,
     isMidiClip,
     context,
+    source,
   );
 
   if (!safe) {

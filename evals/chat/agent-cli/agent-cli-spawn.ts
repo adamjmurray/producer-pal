@@ -13,13 +13,15 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 /** Grace period between SIGTERM and SIGKILL when a turn is cut off. */
-const SIGKILL_GRACE_MS = 2000;
+const DEFAULT_SIGKILL_GRACE_MS = 2000;
 
 export interface SpawnAgentCliOptions {
   cwd: string;
   timeoutMs?: number;
   /** Model actions the turn may complete before it is cut off. */
   stepBudget?: number;
+  /** How long a cut-off CLI gets to exit on SIGTERM before SIGKILL. */
+  sigkillGraceMs?: number;
 }
 
 /**
@@ -32,7 +34,8 @@ export interface SpawnAgentCliOptions {
  * @param transport - Transport describing the CLI
  * @param args - CLI arguments
  * @param prompt - User prompt written to stdin
- * @param options - Working directory, optional timeout, optional step budget
+ * @param options - Working directory, optional timeout, step budget, and
+ *   SIGTERM-to-SIGKILL grace period
  * @returns The CLI's JSONL stdout
  */
 export function spawnAgentCli(
@@ -43,6 +46,7 @@ export function spawnAgentCli(
 ): Promise<string> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const stepBudget = options.stepBudget ?? MAX_TOOL_STEPS;
+  const sigkillGraceMs = options.sigkillGraceMs ?? DEFAULT_SIGKILL_GRACE_MS;
   const executable = process.env[transport.binEnvVar] ?? transport.bin;
   const env = scrubAgentCliEnv(process.env, transport.strippedEnvVars);
 
@@ -68,7 +72,7 @@ export function spawnAgentCli(
      */
     const terminate = (): void => {
       child.kill("SIGTERM");
-      killTimer ??= setTimeout(() => child.kill("SIGKILL"), SIGKILL_GRACE_MS);
+      killTimer ??= setTimeout(() => child.kill("SIGKILL"), sigkillGraceMs);
     };
 
     const timer = setTimeout(() => {

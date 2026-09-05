@@ -18,14 +18,21 @@ import {
 } from "#src/tools/constants.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
+import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
+import { type ArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 import {
   namedHiddenPath,
-  requireSessionSlot,
+  requireClipSlotPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -54,7 +61,7 @@ export function resolveClip(
   slotValidated = false,
 ): ResolveClipResult {
   if (clipId != null) {
-    return { found: true, clip: validateIdType(clipId, "clip", "readClip") };
+    return { found: true, clip: validateIdType(clipId, "clip") };
   }
 
   // Go straight for the clip. A clip that answers proves its track and scene
@@ -199,7 +206,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.warn(
-      `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
+      `Failed to read warp markers for clip ${targetLabel(clip)}: ${errorMessage(error)}`,
     );
 
     return undefined;
@@ -294,7 +301,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   // takes.
   if (path != null && slot != null) {
     throw new Error(
-      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+      "path and slot both name a clip; use path alone (slot is deprecated)",
     );
   }
 
@@ -302,11 +309,23 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
     // The aliases are a fallback for a caller that did not use path.
     if (args.trackIndex != null || args.sceneIndex != null) {
       console.warn(
-        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+        'trackIndex/sceneIndex ignored — "path" already names the clip',
       );
     }
 
-    const position = requireSessionSlot(parseObjectPath(path, "path"));
+    const parsed = parseObjectPath(path, "path");
+
+    // An arrangement clip has no slot to report — the path names it outright,
+    // so it resolves to an id and read-clip goes on as if one was given.
+    if (parsed.kind === "arrangement-position") {
+      return {
+        clipId: arrangementClipIdAt(parsed, clipId),
+        trackIndex: null,
+        sceneIndex: null,
+      };
+    }
+
+    const position = requireClipSlotPath(parsed);
 
     assertClipIdAtSlot(clipId, position, "path");
 
@@ -360,8 +379,34 @@ function assertClipIdAtSlot(
   const atPath = livePath.track(trackIndex).clipSlot(sceneIndex).clip();
 
   if (named.path !== atPath) {
+    throw new Error(`${param} and id name different clips; use one`);
+  }
+}
+
+/**
+ * The id of the arrangement clip a path names, for a read that has nothing to
+ * return when the path names none and so throws rather than warning.
+ * @param parsed - A parsed `[...]` coordinate
+ * @param clipId - The id the caller also sent, if any
+ * @returns The clip's id
+ */
+function arrangementClipIdAt(
+  parsed: ArrangementPosition,
+  clipId: string | null,
+): string {
+  const source = requireCompletePosition(parsed, "path");
+  const clip = arrangementClipAtPosition(source, "path");
+
+  if (clip == null) {
+    throw new Error(`no clip at path "${formatObjectPath(parsed)}"`);
+  }
+
+  // Naming the same clip twice over is not a conflict; naming two is.
+  if (clipId != null && clipId !== clip.id) {
     throw new Error(
-      `readClip failed: ${param} and id name different clips; use one`,
+      `id "${clipId}" and path "${formatObjectPath(parsed)}" name different clips`,
     );
   }
+
+  return clip.id;
 }

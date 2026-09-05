@@ -13,6 +13,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const DEFAULT_C3_NOTE = {
   pitch: 60,
@@ -98,7 +99,7 @@ describe("updateClip - Note updates", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
   it("warns and skips notes on audio clips instead of throwing", async () => {
@@ -110,8 +111,7 @@ describe("updateClip - Note updates", () => {
       updateClip({ id: "123", notes: "C3 1|1" }),
     ).resolves.toBeDefined();
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("notes parameter ignored for audio clip"),
     );
     expect(mocks.clip123.call).not.toHaveBeenCalledWith(
@@ -160,7 +160,7 @@ describe("updateClip - Note updates", () => {
 
     expectNoteReplaceAndAddCalls(mocks.clip123);
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
   });
 
   it("merges midi-json notes onto existing notes", async () => {
@@ -205,7 +205,7 @@ describe("updateClip - Note updates", () => {
         },
       ],
     });
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("deletes an existing note with a midi-json v:0 marker", async () => {
@@ -225,7 +225,7 @@ describe("updateClip - Note updates", () => {
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [note(64, 1)],
     });
-    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
   });
 
   it("clears the clip when every note is a midi-json v:0 marker", async () => {
@@ -319,7 +319,12 @@ describe("updateClip - Note updates", () => {
     });
 
     // Notes should still exist with modified velocity
-    expect(result).toStrictEqual({ id: "123", noteCount: 2, transformed: 2 });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 2,
+      transformed: 2,
+    });
 
     // Verify add_new_notes was called with modified notes
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {

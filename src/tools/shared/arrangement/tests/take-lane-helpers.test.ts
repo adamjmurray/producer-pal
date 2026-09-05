@@ -11,11 +11,13 @@ import {
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
+  takeLaneKey,
   takeLaneLabel,
   takeLaneTargetsThatFit,
   warnUnusedTakeLane,
+  withNewLaneOrdinals,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
@@ -284,6 +286,55 @@ describe("takeLaneLabel", () => {
     expect(takeLaneLabel({ trackIndex: 2, takeLane: 5 })).toBe("t2/l5");
     expect(takeLaneLabel({ trackIndex: 2, takeLane: null })).toBe("t2");
   });
+
+  // An l= is a different thing to write than an l+, so a message about one
+  // must not tell the caller to look at the other.
+  it("spells an l= as itself", () => {
+    expect(
+      takeLaneLabel({ trackIndex: 1, takeLane: "new", sameLane: true }),
+    ).toBe("t1/l=");
+  });
+});
+
+describe("withNewLaneOrdinals", () => {
+  const newLane = (sameLane = false): ArrangementTrack => ({
+    trackIndex: 0,
+    takeLane: "new",
+    ...(sameLane && { sameLane: true }),
+  });
+
+  it("gives each written l+ its own lane and every l= the one before it", () => {
+    const numbered = withNewLaneOrdinals([
+      newLane(),
+      newLane(true),
+      newLane(),
+      newLane(true),
+    ]);
+
+    expect(numbered.map((target) => takeLaneKey(target))).toStrictEqual([
+      "t0/l+0",
+      "t0/l+0",
+      "t0/l+1",
+      "t0/l+1",
+    ]);
+  });
+
+  it("leaves a numbered lane and the main lane alone", () => {
+    const targets: ArrangementTrack[] = [
+      { trackIndex: 0, takeLane: 3 },
+      { trackIndex: 1, takeLane: null },
+    ];
+
+    expect(withNewLaneOrdinals(targets)).toStrictEqual(targets);
+  });
+
+  // Refused before anything runs: the lanes an earlier entry appended would
+  // outlive a call that failed partway through, and Live can't delete them.
+  it("refuses an l= with no l+ before it", () => {
+    expect(() => withNewLaneOrdinals([newLane(true)], "toPath")).toThrow(
+      'toPath "l=" names the lane the "l+" before it appended',
+    );
+  });
 });
 
 describe("takeLaneTargetsThatFit", () => {
@@ -293,13 +344,10 @@ describe("takeLaneTargetsThatFit", () => {
     // after those 8 permanent lanes already exist.
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: 7 },
-        { trackIndex: 0, takeLane: "new" },
-      ],
-      "duplicate",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: 7 },
+      { trackIndex: 0, takeLane: "new" },
+    ]);
 
     expect(fitting).toStrictEqual([{ trackIndex: 0, takeLane: 7 }]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
@@ -311,13 +359,10 @@ describe("takeLaneTargetsThatFit", () => {
     registerTakeLaneTrack({ trackIndex: 0, initialLanes: MAX_TAKE_LANES });
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: "new" },
-        { trackIndex: 1, takeLane: "new" },
-      ],
-      "duplicate",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 1, takeLane: "new" },
+    ]);
 
     expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: "new" }]);
   });
@@ -325,18 +370,15 @@ describe("takeLaneTargetsThatFit", () => {
   it("warns once for a repeated destination that does not fit", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
-        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
-      ],
-      "createClip",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+    ]);
 
     expect(fitting).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledTimes(1);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'createClip: skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
+      'skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
     );
   });
 
@@ -349,7 +391,7 @@ describe("takeLaneTargetsThatFit", () => {
       { trackIndex: 0, takeLane: 7 },
     ];
 
-    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
+    expect(takeLaneTargetsThatFit(targets)).toStrictEqual(targets);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
@@ -361,7 +403,7 @@ describe("takeLaneTargetsThatFit", () => {
       { trackIndex: 0, takeLane: "new" },
     ];
 
-    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
+    expect(takeLaneTargetsThatFit(targets)).toStrictEqual(targets);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
@@ -369,14 +411,11 @@ describe("takeLaneTargetsThatFit", () => {
     registerTakeLaneTrack({ trackIndex: 0, initialLanes: 4 });
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 4 });
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: 7 },
-        { trackIndex: 1, takeLane: "new" },
-        { trackIndex: 0, takeLane: null },
-      ],
-      "duplicate",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: 7 },
+      { trackIndex: 1, takeLane: "new" },
+      { trackIndex: 0, takeLane: null },
+    ]);
 
     expect(fitting).toStrictEqual([
       { trackIndex: 0, takeLane: 7 },

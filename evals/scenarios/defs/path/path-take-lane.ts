@@ -25,9 +25,14 @@ const BASS_TRACK_INDEX = 1;
 /**
  * `l0` is the first take lane. `l+` appends one, which on a track that has none
  * yet is the same lane — a defensible reading of "its first take lane", so it
- * is accepted here. `l1` is not, and neither is the main lane.
+ * is accepted here. `l1` is not, and neither is the bare main lane `t1`.
+ *
+ * The lane is what this grades, so the `[bar|beat]` start the path carries is
+ * optional: where the clip goes is the next scenario's question.
  */
-const ACCEPTED_PATHS = [`t${BASS_TRACK_INDEX}/l0`, `t${BASS_TRACK_INDEX}/l+`];
+const ACCEPTED_PATHS = new RegExp(
+  String.raw`^t${BASS_TRACK_INDEX}/(l0|l\+)(\[[^\]]*\])?$`,
+);
 
 /**
  * Summarize the track's take lanes for a failure message.

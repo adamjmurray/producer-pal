@@ -15,14 +15,17 @@ import { playback } from "#src/tools/session/playback.ts";
 import {
   expectAllClipSlotsFired,
   expectLiveSetProperty,
-  expectLoopLengthNotWritten,
+  expectReportedLoop,
+  expectLoopNotWritten,
   expectLoopOrderWarning,
   expectQuantizationFixApplied,
+  registerClipSlot,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("transport", () => {
   let liveSet: RegisteredMockObject;
@@ -32,17 +35,19 @@ describe("transport", () => {
   });
 
   it("should throw an error when action is missing", () => {
-    expect(() => playback({})).toThrow("playback failed: action is required");
+    expect(() => playback({})).toThrow("action is required");
   });
 
   it("should throw an error for unknown action", () => {
     expect(() => playback({ action: "invalid-action" })).toThrow(
-      "playback failed: unknown action",
+      "unknown action",
     );
   });
 
   it("should handle play-arrangement action", () => {
-    liveSet = setupPlaybackLiveSet();
+    // start_time mirrors the value this call sets (the mock's set() doesn't
+    // feed back into get), so the reported startTime is the actual state.
+    liveSet = setupPlaybackLiveSet({ start_time: 16 });
 
     const result = playback({
       action: "play-arrangement",
@@ -51,9 +56,11 @@ describe("transport", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
     expectLiveSetProperty(liveSet, "start_time", 16); // bar 5 = 16 beats in 4/4
+    // play-arrangement obeys the loop, so it says whether one is coming.
     expect(result).toStrictEqual({
       playing: true,
-      currentTime: "5|1",
+      startTime: "5|1",
+      loop: false,
     });
   });
 
@@ -62,7 +69,7 @@ describe("transport", () => {
     // doesn't feed back into get), so the reported loop reflects actual state.
     liveSet = setupPlaybackLiveSet({
       is_playing: 1,
-      current_song_time: 10,
+      loop: 1,
       loop_start: 8, // bar 3
       loop_length: 16, // bars 3–7
     });
@@ -82,18 +89,16 @@ describe("transport", () => {
 
     expect(result).toStrictEqual({
       playing: true,
-      currentTime: "3|3",
-      arrangementLoop: {
-        start: "3|1",
-        end: "7|1",
-      },
+      loop: true,
+      loopStart: "3|1",
+      loopEnd: "7|1",
     });
   });
 
   it("skips a non-positive loop length (loopEnd at/before loopStart) and warns", () => {
     // Regression (#26): loopStart and loopEnd are independent, so loopEnd before
     // loopStart produced a negative loop_length written straight to the Live Set.
-    liveSet = setupPlaybackLiveSet({ is_playing: 0, current_song_time: 0 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 0 });
 
     playback({
       action: "update-arrangement",
@@ -102,7 +107,7 @@ describe("transport", () => {
       loopEnd: "3|1", // beat 8 → length 8 - 24 = -16
     });
 
-    expectLoopLengthNotWritten(liveSet);
+    expectLoopNotWritten(liveSet);
     expectLoopOrderWarning();
   });
 
@@ -110,7 +115,7 @@ describe("transport", () => {
     // Boundary of the non-positive guard (<= 0, not < 0): loopEnd landing
     // exactly on loopStart is a length of 0, which is just as invalid in Live
     // as a negative length — it must warn and skip, not write loop_length: 0.
-    liveSet = setupPlaybackLiveSet({ is_playing: 0, current_song_time: 0 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 0 });
 
     playback({
       action: "update-arrangement",
@@ -119,7 +124,7 @@ describe("transport", () => {
       loopEnd: "3|1", // beat 8 → length 8 - 8 = 0
     });
 
-    expectLoopLengthNotWritten(liveSet);
+    expectLoopNotWritten(liveSet);
     expectLoopOrderWarning();
   });
 
@@ -133,7 +138,6 @@ describe("transport", () => {
       loop_start: 0,
       loop_length: 4,
       is_playing: 0,
-      current_song_time: 0,
     });
 
     const result = playback({
@@ -142,11 +146,61 @@ describe("transport", () => {
       loopEnd: "1|1", // beat 0 → length 0 - 4 = -4, rejected
     });
 
-    expectLoopLengthNotWritten(liveSet);
-    expect(result.arrangementLoop).toStrictEqual({
+    expectLoopNotWritten(liveSet);
+    expectReportedLoop(result, {
+      loop: true,
       start: "1|1",
       end: "2|1",
     });
+  });
+
+  it("turns the loop on when only its bounds are named", () => {
+    // Bounds with the loop off do nothing audible, so asking for a loop from
+    // bar 3 to bar 7 means asking for a loop.
+    liveSet = setupPlaybackLiveSet({ loop: 1, loop_start: 8, loop_length: 16 });
+
+    const result = playback({
+      action: "update-arrangement",
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
+    expectLiveSetProperty(liveSet, "loop", true);
+    expectReportedLoop(result, {
+      loop: true,
+      start: "3|1",
+      end: "7|1",
+    });
+  });
+
+  it("moves the loop points while leaving the loop off", () => {
+    // Bounds turn the loop on, but an explicit loop wins — so the points can
+    // be placed for later without starting to loop now.
+    liveSet = setupPlaybackLiveSet({ loop_start: 8, loop_length: 16 });
+
+    playback({
+      action: "update-arrangement",
+      loop: false,
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
+    expectLiveSetProperty(liveSet, "loop", false);
+    expectLiveSetProperty(liveSet, "loop_start", 8); // bar 3
+    expectLiveSetProperty(liveSet, "loop_length", 16); // bars 3-7
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says nothing about the loop when the call didn't touch it", () => {
+    liveSet = setupPlaybackLiveSet({ loop: 1, loop_start: 8, loop_length: 16 });
+
+    const result = playback({
+      action: "update-arrangement",
+      startTime: "5|1",
+    });
+
+    expect(result.loop).toBeUndefined();
+    expect(result.loopStart).toBeUndefined();
   });
 
   it("should handle different time signatures", () => {
@@ -154,6 +208,7 @@ describe("transport", () => {
       signature_numerator: 3,
       signature_denominator: 4,
       loop_length: 3,
+      start_time: 6, // bar 3 in 3/4
     });
 
     const result = playback({
@@ -162,19 +217,18 @@ describe("transport", () => {
     });
 
     expectLiveSetProperty(liveSet, "start_time", 6); // bar 3 = 6 beats in 3/4
-    expect(result.currentTime).toBe("3|1");
-    // Loop is off, so no arrangementLoop property
-    expect(result.arrangementLoop).toBeUndefined();
+    expect(result.startTime).toBe("3|1");
+    // The loop is off in the mock, and play-arrangement obeys it — so it says
+    // the loop is off, and spends no tokens on bounds that do nothing.
+    expectReportedLoop(result, { loop: false });
   });
 
   it("should handle play-session-clips action with single clip", () => {
-    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet();
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
+    const clipSlot0 = registerClipSlot(0, 0);
 
     const result = playback({
       action: "play-session-clips",
@@ -190,20 +244,17 @@ describe("transport", () => {
 
     expect(result).toStrictEqual({
       playing: true,
-      currentTime: "2|2",
     });
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still fires a clip named by the ids alias", () => {
-    setupPlaybackLiveSet({ current_song_time: 5 });
+    setupPlaybackLiveSet();
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
+    const clipSlot0 = registerClipSlot(0, 0);
 
     playback({ action: "play-session-clips", ids: "clip1" });
 
@@ -245,7 +296,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'playback failed: id or path is required for action "play-session-clips"',
+      'id or path is required for action "play-session-clips"',
     );
   });
 
@@ -257,11 +308,10 @@ describe("transport", () => {
     expect(() =>
       playback({ action: "play-session-clips", id: "nonexistent_clip" }),
     ).toThrow(
-      'playback failed: id "nonexistent_clip" named no clip for action "play-session-clips"',
+      'id "nonexistent_clip" named no clip for action "play-session-clips"',
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'playback: id "nonexistent_clip" does not exist',
+    expect(capturedWarnings()).toContain(
+      'id "nonexistent_clip" does not exist',
     );
   });
 
@@ -277,15 +327,13 @@ describe("transport", () => {
         action: "play-session-clips",
         id: "clip1",
       }),
-    ).toThrow(
-      "playback play-session-clips action failed: no clip slot at t99/s0",
-    );
+    ).toThrow("play-session-clips action failed: no clip slot at t99/s0");
   });
 
   it("should handle play-scene action", () => {
-    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet();
 
-    const scene0 = registerMockObject(livePath.scene(0), {
+    const scene0 = registerMockObject("scene0", {
       path: livePath.scene(0),
     });
 
@@ -297,15 +345,13 @@ describe("transport", () => {
     expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       playing: true,
-      currentTime: "2|2",
-      sceneIndex: 0,
-      sceneName: "Test Scene",
+      scene: { id: "scene0", path: "s0", name: "Test Scene" },
     });
   });
 
   it("should throw an error when required parameters are missing for play-scene", () => {
     expect(() => playback({ action: "play-scene" })).toThrow(
-      'playback failed: sceneIndex, path "s<scene>", or a scene id is required for action "play-scene"',
+      'path "s<scene>" or a scene id is required for action "play-scene"',
     );
   });
 
@@ -316,14 +362,14 @@ describe("transport", () => {
       .mockReturnValue(false);
 
     expect(() => playback({ action: "play-scene", sceneIndex: 999 })).toThrow(
-      "playback failed: scene at index 999 does not exist",
+      "scene at index 999 does not exist",
     );
 
     existsSpy.mockRestore();
   });
 
   it("should handle stop-session-clips action with single clip", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -339,12 +385,11 @@ describe("transport", () => {
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
-      currentTime: "2|2",
     });
   });
 
   it("should handle stop-session-clips action with multiple clips", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -376,7 +421,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
     expect(() => playback({ action: "stop-session-clips" })).toThrow(
-      'playback failed: id or path is required for action "stop-session-clips"',
+      'id or path is required for action "stop-session-clips"',
     );
   });
 
@@ -386,11 +431,10 @@ describe("transport", () => {
     expect(() =>
       playback({ action: "stop-session-clips", id: "nonexistent_clip" }),
     ).toThrow(
-      'playback failed: id "nonexistent_clip" named no clip for action "stop-session-clips"',
+      'id "nonexistent_clip" named no clip for action "stop-session-clips"',
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'playback: id "nonexistent_clip" does not exist',
+    expect(capturedWarnings()).toContain(
+      'id "nonexistent_clip" does not exist',
     );
   });
 
@@ -403,7 +447,7 @@ describe("transport", () => {
         id: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: could not determine track/scene for clipId=clip1",
+      "play-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -416,7 +460,7 @@ describe("transport", () => {
         id: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: could not determine track/scene for clipId=clip1",
+      "stop-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -433,47 +477,71 @@ describe("transport", () => {
         id: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: track at index 99 does not exist",
+      "stop-session-clips action failed: track at index 99 does not exist",
     );
   });
 
   it("should handle stop-all-clips action", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
 
     const result = playback({ action: "stop-all-session-clips" });
 
     expect(liveSet.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
-      currentTime: "2|2",
     });
   });
 
   it("should handle stop action", () => {
-    liveSet = setupPlaybackLiveSet();
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
 
     const result = playback({ action: "stop" });
 
     expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
-    expectLiveSetProperty(liveSet, "start_time", 0);
-    expect(result).toStrictEqual({
-      playing: false,
-      currentTime: "1|1",
-    });
+    // Live's own second stop would send the start position to the top, so
+    // stopping writes it back where the caller left it. Nothing changed, so
+    // nothing is reported.
+    expectLiveSetProperty(liveSet, "start_time", 32);
+    expect(result).toStrictEqual({ playing: false });
   });
 
-  it("should handle loop end calculation correctly", () => {
+  it("slides the whole loop when only loopEnd is named", () => {
+    // Like dragging the loop brace in Live: the loop keeps its length and
+    // moves, so a 4-bar loop ending at bar 9 starts at bar 5.
     liveSet = setupPlaybackLiveSet({ loop_start: 8, loop_length: 16 });
 
-    const result = playback({
-      action: "update-arrangement",
-      loopEnd: "9|1",
-    });
+    playback({ action: "update-arrangement", loopEnd: "9|1" });
 
-    // loopEnd 9|1 = 32 beats, loopStart is 8 beats, so length should be 24
-    expectLiveSetProperty(liveSet, "loop_length", 24);
-    // Loop is off in the mock, so no arrangementLoop property
-    expect(result.arrangementLoop).toBeUndefined();
+    expectLiveSetProperty(liveSet, "loop_start", 16); // bar 5
+    expectLiveSetProperty(liveSet, "loop_length", 16); // unchanged
+  });
+
+  it("turns the loop off without touching its bounds", () => {
+    liveSet = setupPlaybackLiveSet({ loop: 1, loop_start: 8, loop_length: 16 });
+
+    playback({ action: "update-arrangement", loop: false });
+
+    expectLiveSetProperty(liveSet, "loop", false);
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "loop_start",
+      expect.anything(),
+    );
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "loop_length",
+      expect.anything(),
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses a loopEnd that would slide the loop off the front", () => {
+    liveSet = setupPlaybackLiveSet({ loop_start: 8, loop_length: 16 });
+
+    playback({ action: "update-arrangement", loopEnd: "3|1" });
+
+    expectLoopNotWritten(liveSet);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("would start the loop before 1|1"),
+    );
   });
 
   it("should handle 6/8 time signature conversions", () => {
@@ -481,6 +549,7 @@ describe("transport", () => {
       signature_numerator: 6,
       signature_denominator: 8,
       loop_length: 3,
+      start_time: 3, // bar 2 in 6/8
     });
 
     const result = playback({
@@ -495,13 +564,18 @@ describe("transport", () => {
     expectLiveSetProperty(liveSet, "loop_start", 0);
     expectLiveSetProperty(liveSet, "loop_length", 6); // 2 bars = 6 Ableton beats
 
-    expect(result.currentTime).toBe("2|1");
-    // Loop is off in the mock (loop: 0), so no arrangementLoop property
-    expect(result.arrangementLoop).toBeUndefined();
+    expect(result.startTime).toBe("2|1");
+    // The mock's loop is off, but this call moved the bounds, so it reports
+    // where they landed.
+    expectReportedLoop(result, {
+      loop: false,
+      start: "1|1",
+      end: "2|1",
+    });
   });
 
-  it("should handle play-arrangement action without startTime (defaults to 0)", () => {
-    liveSet = setupPlaybackLiveSet();
+  it("plays from the start position already set when given no startTime", () => {
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
 
     const result = playback({
       action: "play-arrangement",
@@ -509,25 +583,32 @@ describe("transport", () => {
     });
 
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
-    expectLiveSetProperty(liveSet, "start_time", 0);
-    expect(result.currentTime).toBe("1|1");
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "start_time",
+      expect.anything(),
+    );
+    expect(result.startTime).toBe("9|1");
   });
 
-  it("should throw error when both id and slots are provided", () => {
-    expect(() =>
-      playback({
-        action: "play-session-clips",
-        id: "clip1",
-        slots: "0/0",
-      }),
-    ).toThrow("playback failed: id and slots are mutually exclusive");
+  // The clip actions act on a set, so both params name members of it. The
+  // deprecated spelling unions the same way the current one does.
+  it("fires the clips named by id and by slots together", () => {
+    liveSet = setupPlaybackLiveSet();
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
+    const byId = registerClipSlot(0, 1);
+    const bySlots = registerClipSlot(0, 0);
+
+    playback({ action: "play-session-clips", id: "clip1", slots: "0/0" });
+
+    expect(byId.call).toHaveBeenCalledWith("fire");
+    expect(bySlots.call).toHaveBeenCalledWith("fire");
   });
 
   it("should handle play-session-clips via slots with single slot", () => {
-    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    liveSet = setupPlaybackLiveSet();
+    const clipSlot = registerClipSlot(0, 1);
 
     const result = playback({
       action: "play-session-clips",
@@ -540,18 +621,13 @@ describe("transport", () => {
     expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
     expect(result).toStrictEqual({
       playing: true,
-      currentTime: "2|2",
     });
   });
 
   it("should handle play-session-clips via slots with multiple slots", () => {
-    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
-    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
-    const clipSlot1 = registerMockObject(livePath.track(1).clipSlot(1), {
-      path: livePath.track(1).clipSlot(1),
-    });
+    liveSet = setupPlaybackLiveSet();
+    const clipSlot0 = registerClipSlot(0, 0);
+    const clipSlot1 = registerClipSlot(1, 1);
 
     playback({
       action: "play-session-clips",
@@ -565,7 +641,7 @@ describe("transport", () => {
   });
 
   it("should handle stop-session-clips via slots", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
     const track0 = registerMockObject(livePath.track(0), {
       path: livePath.track(0),
     });
@@ -578,12 +654,11 @@ describe("transport", () => {
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true,
-      currentTime: "2|2",
     });
   });
 
   it("should deduplicate tracks when stopping via slots on same track", () => {
-    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1 });
     const track0 = registerMockObject(livePath.track(0), {
       path: livePath.track(0),
     });
@@ -606,9 +681,7 @@ describe("transport", () => {
         action: "play-session-clips",
         slots: "99/0",
       }),
-    ).toThrow(
-      "playback play-session-clips action failed: no clip slot at t99/s0",
-    );
+    ).toThrow("play-session-clips action failed: no clip slot at t99/s0");
   });
 
   it("should throw error when track does not exist for stop-session-clips via slots", () => {
@@ -621,7 +694,7 @@ describe("transport", () => {
         slots: "99/0",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: track at index 99 does not exist",
+      "stop-session-clips action failed: track at index 99 does not exist",
     );
   });
 });

@@ -15,6 +15,7 @@ import {
   registerRackChains,
   registerTrack0,
 } from "./update-device-wrap-in-rack-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Chain-creation is only exercised when the rack starts with FEWER chains than
 // devices being wrapped. The default wrap tests pre-populate the rack with
@@ -66,8 +67,7 @@ describe("updateDevice - wrapInRack chain creation", () => {
     );
 
     // A successful insert must not report a chain-creation failure.
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("failed to create chain"),
     );
 

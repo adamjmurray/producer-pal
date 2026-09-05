@@ -109,6 +109,9 @@ describe("readTrack take lanes", () => {
     expect(clip).not.toHaveProperty("view");
     expect(clip).not.toHaveProperty("type");
     expect(clip).not.toHaveProperty("trackIndex");
+    // The path stays: it says where on the lane the clip starts, which the
+    // lane's own path doesn't. start_time 0 in 4/4 is bar 1 beat 1.
+    expect(clip.path).toBe("t2/l0[1|1]");
   });
 
   it("omits the field entirely when the track has no take lanes", () => {

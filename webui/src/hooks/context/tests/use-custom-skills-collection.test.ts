@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it } from "vitest";
 import { useCustomSkillsCollection } from "#webui/hooks/context/use-custom-skills-collection";
 import { installFetchMock, jsonResponse } from "./doc-transport-test-helpers";
@@ -37,7 +38,7 @@ describe("useCustomSkillsCollection", () => {
 
     const { result } = renderHook(useCustomSkillsCollection);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("ready");
     });
 
@@ -56,7 +57,7 @@ describe("useCustomSkillsCollection", () => {
 
     const { result } = renderHook(useCustomSkillsCollection);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("ready");
     });
 

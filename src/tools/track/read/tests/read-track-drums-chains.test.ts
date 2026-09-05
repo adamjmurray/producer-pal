@@ -190,6 +190,7 @@ describe("readTrack", () => {
         C3: "Kick",
         E3: "Hi-hat",
       });
+      expect(result.drumRackPath).toBe("t0/d0");
     });
 
     it("keys the drum map by drum name when notation is stark", () => {
@@ -363,6 +364,9 @@ describe("readTrack", () => {
         C1: "Kick Dub",
         Db1: "Snare Dub",
       });
+      // The kit is two racks in, so the pad paths a model writes start here,
+      // not at the t0/d0 the track's device list shows.
+      expect(result.drumRackPath).toBe("t0/d0/c0/d0");
     });
 
     it("returns null when instrument rack has no chains", () => {

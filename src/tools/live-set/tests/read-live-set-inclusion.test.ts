@@ -76,7 +76,7 @@ describe("readLiveSet - inclusion", () => {
     expect(result).not.toHaveProperty("id");
     expect(result).not.toHaveProperty("tracks");
     expect(result).not.toHaveProperty("returnTracks");
-    expect(result).not.toHaveProperty("masterTrack");
+    expect(result).not.toHaveProperty("mainTrack");
     expect(result).not.toHaveProperty("scenes");
   });
 

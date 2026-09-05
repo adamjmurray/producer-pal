@@ -12,9 +12,11 @@ import {
 import {
   isParamEnabled,
   setParamIfEnabled,
+  setParamValueAndVerify,
   warnParamDisabled,
 } from "../param-write-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const paramPath = `${livePath.track(0).device(0)} parameters 0`;
 
@@ -69,7 +71,7 @@ describe("setParamIfEnabled", () => {
       true,
     );
     expect(param.set).toHaveBeenCalledWith("display_value", -6);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("skips the write and warns when the parameter is disabled", () => {
@@ -79,20 +81,120 @@ describe("setParamIfEnabled", () => {
       setParamIfEnabled(paramApi(), "value", 0.5, 'chain "Kick" pan'),
     ).toBe(false);
     expect(param.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('chain "Kick" pan is disabled'),
     );
   });
 });
 
+describe("setParamValueAndVerify", () => {
+  /**
+   * Register a parameter whose label is the raw value rounded to two decimals,
+   * so a write that lands and one that doesn't produce different labels.
+   * @returns The registered parameter
+   */
+  function registerLabeledParam(): RegisteredMockObject {
+    return registerMockObject("param-1", {
+      path: paramPath,
+      type: "DeviceParameter",
+      properties: { name: "Drive", value: 0.5 },
+      methods: { str_for_value: (v: unknown) => Number(v).toFixed(2) },
+    });
+  }
+
+  it("stays silent when the value lands", () => {
+    const param = registerLabeledParam();
+
+    const landed = setParamValueAndVerify(paramApi(), 0.8, 'param "Drive"');
+
+    expect(landed).toBe(true);
+    expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("warns when Live ignores the write", () => {
+    // Live drops a value outside the parameter's range without saying so.
+    const param = registerLabeledParam();
+
+    param.set.mockImplementation(() => undefined);
+
+    const landed = setParamValueAndVerify(paramApi(), 99, 'param "Drive"');
+
+    expect(landed).toBe(false);
+    expect(capturedWarnings()).toContain(
+      'param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
+  // The next two guard the mock registry's default str_for_value, which has to
+  // discriminate in both directions. A constant makes every write look like it
+  // landed; an unrounded value makes every fractional write look ignored,
+  // because the mock stores what Live stores and that is never what we wrote.
+  it("stays silent for a fractional write, without a str_for_value fixture", () => {
+    registerParam({ value: 0.5 });
+
+    const landed = setParamValueAndVerify(paramApi(), 0.1, 'param "Volume"');
+
+    expect(landed).toBe(true);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("warns when Live ignores the write, without a str_for_value fixture", () => {
+    const param = registerParam({ value: 0.5 });
+
+    param.set.mockImplementation(() => undefined);
+
+    const landed = setParamValueAndVerify(paramApi(), 99, 'param "Volume"');
+
+    expect(landed).toBe(false);
+    expect(capturedWarnings()).toContain(
+      'param "Volume" was not changed — it still reads "0.5". Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
+  it("compares labels, because the raw value read back is never the one we wrote", () => {
+    // Live rounds to six significant digits and keeps a 32-bit float, so 0.1
+    // reads back as 0.10000000149011612. Comparing raw values would warn on
+    // every fractional write.
+    const param = registerLabeledParam();
+
+    setParamValueAndVerify(paramApi(), 0.1, 'param "Drive"');
+
+    expect(param.properties.value).not.toBe(0.1);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  // Measured on Live 12.4.3 at a real display boundary on a track's volume.
+  // Predicting the stored value with Math.fround lands on the far side of the
+  // boundary and warns about a write that went in exactly as asked.
+  it("stays silent for a write that lands right on a display boundary", () => {
+    registerMockObject("param-1", {
+      path: paramPath,
+      type: "DeviceParameter",
+      properties: { name: "Volume", value: 0.5 },
+      methods: {
+        str_for_value: (v: unknown) =>
+          Number(v) < 0.7000125 ? "-6.0 dB" : "-5.999 dB",
+      },
+    });
+
+    const landed = setParamValueAndVerify(
+      paramApi(),
+      0.7000124999999999,
+      'param "Volume"',
+    );
+
+    expect(landed).toBe(true);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+});
+
 describe("warnParamDisabled", () => {
   it("names the parameter and points at the macro", () => {
-    warnParamDisabled("updateTrack: gainDb");
+    warnParamDisabled("gainDb");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateTrack: gainDb is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
+    expect(capturedWarnings()).toContain(
+      "gainDb is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
     );
   });
 });

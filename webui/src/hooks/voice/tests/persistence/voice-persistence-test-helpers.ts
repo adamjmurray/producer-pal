@@ -6,6 +6,7 @@
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, renderHook } from "@testing-library/preact";
 import { expect, vi } from "vitest";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type UseVoicePersistenceReturn,
   useVoicePersistence,
@@ -19,6 +20,8 @@ import {
 } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
+import { flushTurns } from "#webui/test-utils/dom-test-helpers";
+
 export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
 
 // Shrink the autosave debounce so tests don't sleep out the real 600ms on every
@@ -31,11 +34,11 @@ vi.mock("#webui/lib/constants/autosave", () => ({
 
 /**
  * Flush pending effects/timers inside act().
- * @param ms - Milliseconds to advance
+ * @param turns - Event-loop turns to yield
  */
-export async function waitForEffects(ms = 30): Promise<void> {
+export async function waitForEffects(turns?: number): Promise<void> {
   await act(async () => {
-    await new Promise((r) => setTimeout(r, ms));
+    await flushTurns(turns);
   });
 }
 
@@ -44,7 +47,7 @@ export async function waitForEffects(ms = 30): Promise<void> {
  * mocked to ~0, so this only has to outlast the async save itself.
  */
 export async function waitForAutosave(): Promise<void> {
-  await waitForEffects(50);
+  await waitForEffects(24);
 }
 
 /**
@@ -83,7 +86,7 @@ export async function resetConversationsDb(): Promise<void> {
 
 type VoicePersistenceOptions = Omit<
   Parameters<typeof useVoicePersistence>[0],
-  "liveHistory"
+  "liveHistory" | "undoDelete"
 >;
 
 /**
@@ -95,7 +98,14 @@ type VoicePersistenceOptions = Omit<
 export function renderVoicePersistence(
   options: VoicePersistenceOptions = {},
 ): ReturnType<typeof renderHook<UseVoicePersistenceReturn, unknown>> {
-  return renderHook(() => useVoicePersistence({ liveHistory: [], ...options }));
+  return renderHook(() =>
+    // App owns the undo stack in production; tests driving the hook mint one.
+    useVoicePersistence({
+      liveHistory: [],
+      ...options,
+      undoDelete: useUndoDelete(),
+    }),
+  );
 }
 
 export interface VoicePersistenceHistoryView {
@@ -116,7 +126,11 @@ export function renderVoicePersistenceWithHistory(
 ): VoicePersistenceHistoryView {
   const { result, rerender } = renderHook(
     ({ history }: { history: RealtimeItem[] }) =>
-      useVoicePersistence({ liveHistory: history, ...options }),
+      useVoicePersistence({
+        liveHistory: history,
+        ...options,
+        undoDelete: useUndoDelete(),
+      }),
     { initialProps: { history: [] as RealtimeItem[] } },
   );
 

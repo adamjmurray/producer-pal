@@ -7,9 +7,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 // Compressor (CompressorDevice). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/audio-effects.md.
 // Sidechain input routing via Live's standard routing-dict shape. Routing
 // identifiers are NOT Live object IDs — they're a separate Live-internal
 // namespace; translation happens by matching track names to display_names.
@@ -102,29 +103,26 @@ function readSidechainSourceTrackId(device: LiveAPI): string | null {
  * Warns and skips when the track doesn't exist or isn't a valid sidechain source.
  * @param device - LiveAPI device object
  * @param value - Track id string, "null", or ""
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the source was written, false when it was skipped
  */
 function writeSidechainSourceTrackId(
   device: LiveAPI,
   value: string | number,
-  toolName: string,
-): void {
+): boolean {
   const strValue = String(value).trim();
 
   if (strValue === "" || strValue === "null") {
-    clearSidechainSource(device, toolName);
-
-    return;
+    return clearSidechainSource(device);
   }
 
   const track = LiveAPI.from(toLiveApiId(strValue));
 
   if (!track.exists()) {
     console.warn(
-      `${toolName}: sidechainSourceTrackId — track id "${strValue}" does not exist`,
+      `sidechainSourceTrackId — track id "${strValue}" does not exist`,
     );
 
-    return;
+    return false;
   }
 
   const trackName = track.getProperty("name") as string;
@@ -133,38 +131,42 @@ function writeSidechainSourceTrackId(
 
   if (entry == null) {
     console.warn(
-      `${toolName}: Track '${trackName}' cannot be a sidechain source — it has no audio-bearing devices`,
+      `track "${trackName}" ${targetLabel(track)} cannot be a sidechain source — it has no audio-bearing devices`,
     );
 
-    return;
+    return false;
   }
 
   device.setProperty("input_routing_type", {
     identifier: Number(entry.identifier),
   });
+
+  return true;
 }
 
 /**
  * Clear the sidechain source to "No Input". Warns and skips if "No Input" is
  * not in the available types list.
  * @param device - LiveAPI device object
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the source was cleared, false when it was skipped
  */
-function clearSidechainSource(device: LiveAPI, toolName: string): void {
+function clearSidechainSource(device: LiveAPI): boolean {
   const available = readAvailableTypes(device);
   const noInput = available.find((e) => e.display_name === NO_INPUT_LABEL);
 
   if (noInput == null) {
     console.warn(
-      `${toolName}: sidechainSourceTrackId — "No Input" entry not found in available routing types`,
+      `sidechainSourceTrackId — "No Input" entry not found in available routing types`,
     );
 
-    return;
+    return false;
   }
 
   device.setProperty("input_routing_type", {
     identifier: Number(noInput.identifier),
   });
+
+  return true;
 }
 
 /**
@@ -187,13 +189,12 @@ function readSidechainChannel(device: LiveAPI): string | null {
  * channel list (identifiers are not stable across source changes).
  * @param device - LiveAPI device object
  * @param value - Channel name (e.g. "Pre FX")
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the channel was written, false when it was skipped
  */
 function writeSidechainChannel(
   device: LiveAPI,
   value: string | number,
-  toolName: string,
-): void {
+): boolean {
   const channelName = String(value).trim();
   const available = readAvailableChannels(device);
   const entry = available.find((e) => e.display_name === channelName);
@@ -202,15 +203,17 @@ function writeSidechainChannel(
     const names = available.map((e) => e.display_name).join(", ");
 
     console.warn(
-      `${toolName}: "${channelName}" is not a valid sidechainChannel. Available: ${names}`,
+      `"${channelName}" is not a valid sidechainChannel. Available: ${names}`,
     );
 
-    return;
+    return false;
   }
 
   device.setProperty("input_routing_channel", {
     identifier: Number(entry.identifier),
   });
+
+  return true;
 }
 
 /**

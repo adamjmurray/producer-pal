@@ -374,5 +374,14 @@ export function readDeviceParameters(
     });
   }
 
-  return parameters.map(includeValues ? readParameter : readParameterBasic);
+  if (!includeValues) {
+    return parameters.map(readParameterBasic);
+  }
+
+  // Read once per device: it only names the device for the recorded-unit
+  // lookup. Not `.map(readParameter)` — map passes the index as the second
+  // argument, which readParameter would read as the device name.
+  const deviceName = device.getProperty("class_display_name") as string;
+
+  return parameters.map((param) => readParameter(param, deviceName));
 }

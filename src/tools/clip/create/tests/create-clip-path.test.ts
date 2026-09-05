@@ -34,20 +34,22 @@ describe("createClip location params through the tool schema", () => {
     {},
   ).validating;
 
-  it.each([
-    ["null", null],
-    ["blank", ""],
-  ])(
-    "refuses a %s trackIndex/sceneIndex instead of filling t0/s0",
-    async (_l, v) => {
-      const raw = { trackIndex: v, sceneIndex: v };
-      const args = z.object(params).parse(unsetEmptyParams(raw, params));
+  it("refuses a null trackIndex/sceneIndex instead of filling t0/s0", async () => {
+    const raw = { trackIndex: null, sceneIndex: null };
+    const args = z.object(params).parse(unsetEmptyParams(raw, params));
 
-      expect(args.trackIndex).toBeUndefined();
-      expect(args.sceneIndex).toBeUndefined();
-      await expect(createClip(args)).rejects.toThrow("path is required");
-    },
-  );
+    expect(args.trackIndex).toBeUndefined();
+    expect(args.sceneIndex).toBeUndefined();
+    await expect(createClip(args)).rejects.toThrow("path is required");
+  });
+
+  // A blank is refused where the null is dropped: a number has no empty value,
+  // so a caller sending one meant something and the call can't guess what.
+  it("refuses a blank trackIndex outright", () => {
+    expect(() =>
+      unsetEmptyParams({ trackIndex: "", sceneIndex: "" }, params),
+    ).toThrow("trackIndex: a blank string is not a value for this param.");
+  });
 });
 
 describe("createClip path param", () => {
@@ -110,23 +112,29 @@ describe("createClip path param", () => {
     expect(result).toHaveLength(2);
   });
 
-  // Matches duplicate: the longer list sets the count, the shorter cycles.
-  it("cycles the shorter of tracks and positions", async () => {
+  // A short track list used to cycle, so two tracks against four positions
+  // silently made four clips. It pairs now: the positions with no track of
+  // their own get nothing, and the caller is told which.
+  // It never cycled — only two clips were made, for four positions asked for.
+  // Now the uneven call is refused before any of them is created.
+  it("refuses uneven tracks and positions", async () => {
     setupArrangementClipMocks();
     registerArrangementTrack(1);
 
-    const result = (await createClip({
-      path: "t0,t1",
-      arrangementStart: "1|1,2|1,3|1,4|1",
-      notes: "C3 1|1",
-    })) as object[];
-
-    expect(result).toHaveLength(4);
+    await expect(
+      createClip({
+        path: "t0,t1",
+        arrangementStart: "1|1,2|1,3|1,4|1",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "path names 2 entries but arrangementStart names 4 entries.",
+    );
   });
 
   it("rejects a destination no clip can occupy", async () => {
     await expect(createClip({ path: "rt0" })).rejects.toThrow(
-      'invalid path "rt0" - return and master tracks have no clips; ' +
+      'invalid path "rt0" - return and main tracks have no clips; ' +
         'clips go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
     );
   });
@@ -139,10 +147,10 @@ describe("createClip path param", () => {
 
     await expect(
       createClip({ path: "t99/s0", notes: "C3 1|1" }),
-    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    ).rejects.toThrow("track 99 does not exist");
     await expect(
       createClip({ path: "t99", arrangementStart: "1|1", notes: "C3 1|1" }),
-    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    ).rejects.toThrow("track 99 does not exist");
   });
 
   // A take lane names one place, unlike a bare track — but still not a spot on
@@ -151,12 +159,12 @@ describe("createClip path param", () => {
     await expect(
       createClip({ path: "t0/l+", notes: "C3 1|1" }),
     ).rejects.toThrow(
-      'createClip failed: path "t0/l+" names no position; ' +
-        "add arrangementStart; take lanes hold arrangement clips",
+      'path "t0/l+" names no position; ' +
+        'add one, as "t0/l+[5|1]"; take lanes hold arrangement clips',
     );
     await expect(
       createClip({ path: "t0/l1", notes: "C3 1|1" }),
-    ).rejects.toThrow('createClip failed: path "t0/l1" names no position;');
+    ).rejects.toThrow('path "t0/l1" names no position;');
   });
 
   // A model writes the word instead of leaving the param out. Counting it as a
@@ -175,7 +183,7 @@ describe("createClip path param", () => {
 
   it("refuses path and slot together rather than picking one", async () => {
     await expect(createClip({ path: "t0/s0", slot: "1/1" })).rejects.toThrow(
-      "createClip failed: path and slot both name a destination",
+      "path and slot both name a destination",
     );
   });
 });
@@ -231,7 +239,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
 
   it("rejects a sceneIndex with no track", async () => {
     await expect(createClip({ sceneIndex: 2 })).rejects.toThrow(
-      'createClip failed: sceneIndex 2 has no track; use path "t<track>/s2"',
+      'sceneIndex 2 has no track; use path "t<track>/s2"',
     );
   });
 
@@ -287,5 +295,90 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining("trackIndex ignored"),
     );
+  });
+});
+
+describe("createClip path coordinate", () => {
+  const CUE_POINTS = [{ id: "cue1", time: 32, name: "Chorus" }];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates an arrangement clip at the position in the path", async () => {
+    const { track } = setupArrangementClipMocks();
+
+    await createClip({ path: "t0[5|1]", notes: "C3 1|1" });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+  });
+
+  it("creates one clip per coordinate in the list", async () => {
+    setupArrangementClipMocks();
+    registerArrangementTrack(1);
+
+    const result = (await createClip({
+      path: "t0[5|1],t1[9|1]",
+      notes: "C3 1|1",
+    })) as object[];
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("resolves a locator inside the coordinate", async () => {
+    const { track } = setupArrangementClipMocks({ cuePoints: CUE_POINTS });
+
+    await createClip({ path: "t0[loc:Chorus]", notes: "C3 1|1" });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 32, 4);
+  });
+
+  // A create has no source to borrow the lane from, so half an address names
+  // nowhere to put a clip.
+  it("refuses a bare coordinate, which names no track", async () => {
+    await expect(
+      createClip({ path: "[5|1]", notes: "C3 1|1" }),
+    ).rejects.toThrow(
+      'invalid path "[5|1]" - a new clip needs a track; ' +
+        'name the lane too, as "t<track>[5|1]"',
+    );
+  });
+
+  // Two spellings of one position: honoring either is the silent wrong-target
+  // bug the grammar exists to prevent.
+  it("refuses a coordinate beside arrangementStart, naming both", async () => {
+    await expect(
+      createClip({ path: "t0[5|1]", arrangementStart: "9|1", notes: "C3 1|1" }),
+    ).rejects.toThrow(
+      'path "t0[5|1]" and arrangementStart both name a ' +
+        "song position; use one",
+    );
+  });
+
+  // A list of coordinates supplies a position per entry, so an entry without
+  // one has nothing to fall back on.
+  it("refuses a bare track sharing a list with a coordinate", async () => {
+    setupArrangementClipMocks();
+    registerArrangementTrack(1);
+
+    await expect(
+      createClip({ path: "t0[5|1],t1", notes: "C3 1|1" }),
+    ).rejects.toThrow('path "t1" names no position;');
+  });
+
+  it("still creates a session clip beside a coordinate", async () => {
+    setupArrangementClipMocks();
+    const { clipSlot } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { length: 4 },
+    });
+
+    const result = (await createClip({
+      path: "t0/s0,t0[5|1]",
+      notes: "C3 1|1",
+    })) as object[];
+
+    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(result).toHaveLength(2);
   });
 });

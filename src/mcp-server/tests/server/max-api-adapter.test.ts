@@ -6,13 +6,18 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
+import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
   type RequestOverrides,
   setTimeoutForTesting,
 } from "../../max-api-adapter.ts";
+
+// The adapter puts this in every contextJSON. Asked for rather than spelled
+// out: it sits under the OS temp dir, which differs per machine.
+const SILENCE_WAV_PATH = ensureSilenceWav();
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
 vi.mock(import("../../code-exec-protocol.ts"), () => ({
@@ -89,6 +94,22 @@ function setupPendingRequest(
 }
 
 /**
+ * Fire a request, hand Max its reply back in one chunk, and resolve it.
+ *
+ * @param mockResult - The tool result Max sends back
+ * @returns The resolved MCP response
+ */
+async function resolveWithResult(
+  mockResult: unknown,
+): Promise<Awaited<PendingRequestResult["promise"]>> {
+  const { promise, requestId } = setupPendingRequest();
+
+  handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
+
+  return await promise;
+}
+
+/**
  * Fire a `callLiveApi` call and return the parsed contextJSON Max received.
  * Re-installs `Max.outlet` as a fresh mock for each call.
  *
@@ -140,7 +161,7 @@ describe("Max API Adapter", () => {
       handleLiveApiResult(
         requestId,
         JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
-        MAX_ERROR_DELIMITER,
+        END_OF_CHUNKS,
       );
 
       const result = await promise;
@@ -188,7 +209,7 @@ describe("Max API Adapter", () => {
       handleLiveApiResult(
         requestId,
         JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
-        MAX_ERROR_DELIMITER,
+        END_OF_CHUNKS,
       );
 
       await promise;
@@ -231,7 +252,11 @@ describe("Max API Adapter", () => {
     it("should merge compactOutput override into contextJSON", async () => {
       const context = captureContextJSON({ compactOutput: false });
 
-      expect(context).toMatchObject({ compactOutput: false });
+      expect(context).toStrictEqual({
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 2,
+        compactOutput: false,
+      });
       expect(context).toHaveProperty("silenceWavPath");
       expect(context).toHaveProperty("timeoutMs");
     });
@@ -239,7 +264,10 @@ describe("Max API Adapter", () => {
     it("should override timeoutMs in contextJSON when provided", async () => {
       const context = captureContextJSON({ timeoutMs: 1234 });
 
-      expect(context).toMatchObject({ timeoutMs: 1234 });
+      expect(context).toStrictEqual({
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 1234,
+      });
     });
 
     it("should use timeoutMs override for the actual timeout deadline", async () => {
@@ -302,7 +330,8 @@ describe("Max API Adapter", () => {
         ),
         "warn",
       );
-      expect(captureContextJSON()).toMatchObject({
+      expect(captureContextJSON()).toStrictEqual({
+        silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: MAX_TIMEOUT_MS,
       });
     });
@@ -351,105 +380,50 @@ describe("Max API Adapter", () => {
       // Simulate the response
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-      );
+      handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
 
       const result = await promise;
 
       expect(result).toStrictEqual(mockResult);
     });
 
-    it("should add maxErrors to result content", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-        "Error 1",
-        "Error 2",
-      );
-
-      const result = await promise;
-
-      expect(result.content).toHaveLength(3);
-      expect(result.content[0]).toStrictEqual({
-        type: "text",
-        text: "success",
+    it("should turn the warnings sidecar into content items", async () => {
+      const result = await resolveWithResult({
+        content: [{ type: "text", text: "success" }],
+        warnings: ["Warning 1", "Warning 2"],
       });
-      expect(result.content[1]).toStrictEqual({
-        type: "text",
-        text: "WARNING: Error 1",
-      });
-      expect(result.content[2]).toStrictEqual({
-        type: "text",
-        text: "WARNING: Error 2",
+
+      expect(result).toStrictEqual({
+        content: [
+          { type: "text", text: "success" },
+          { type: "text", text: "WARNING: Warning 1" },
+          { type: "text", text: "WARNING: Warning 2" },
+        ],
       });
     });
 
-    it("should strip v8: prefix from error messages", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-        "v8: Error message",
-      );
-
-      const result = await promise;
-
-      expect(result.content).toHaveLength(2);
-      expect(result.content[1]).toStrictEqual({
-        type: "text",
-        text: "WARNING: Error message", // v8: prefix removed
+    it("should filter out empty warnings", async () => {
+      const result = await resolveWithResult({
+        content: [{ type: "text", text: "success" }],
+        warnings: ["Real warning", ""],
       });
-    });
 
-    it("should filter out empty v8: messages", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-        "v8: Real error",
-        "v8:", // Empty after stripping
-        "v8: ", // Just whitespace after stripping
-        "v8:\n", // Just newline after stripping
-      );
-
-      const result = await promise;
-
-      // Should only have original content + 1 real error (not 4 errors)
-      expect(result.content).toHaveLength(2);
-      expect(result.content[1]).toStrictEqual({
-        type: "text",
-        text: "WARNING: Real error",
-      });
+      expect(result.content).toStrictEqual([
+        { type: "text", text: "success" },
+        { type: "text", text: "WARNING: Real warning" },
+      ]);
     });
 
     it("should collapse repeats of the same warning into one, with a count", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-        "v8: ignoring 1 invalid note",
-        "v8: ignoring 1 invalid note",
-        "v8: something else",
-        "v8: ignoring 1 invalid note",
-      );
-
-      const result = await promise;
+      const result = await resolveWithResult({
+        content: [{ type: "text", text: "success" }],
+        warnings: [
+          "ignoring 1 invalid note",
+          "ignoring 1 invalid note",
+          "something else",
+          "ignoring 1 invalid note",
+        ],
+      });
 
       expect(result.content).toStrictEqual([
         { type: "text", text: "success" },
@@ -458,32 +432,12 @@ describe("Max API Adapter", () => {
       ]);
     });
 
-    it("should handle error messages without v8: prefix", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-        "Regular error without prefix",
-      );
-
-      const result = await promise;
-
-      expect(result.content).toHaveLength(2);
-      expect(result.content[1]).toStrictEqual({
-        type: "text",
-        text: "WARNING: Regular error without prefix",
-      });
-    });
-
     it("should handle unknown request ID", async () => {
       // Call with unknown request ID
       handleLiveApiResult(
         "unknown-id",
         JSON.stringify({ content: [] }),
-        MAX_ERROR_DELIMITER,
+        END_OF_CHUNKS,
       );
 
       // The logger uses console.info() which only logs when verbose mode is enabled
@@ -496,7 +450,7 @@ describe("Max API Adapter", () => {
       const { promise, requestId } = setupPendingRequest();
 
       // Call with malformed JSON - this should resolve with an error response
-      handleLiveApiResult(requestId, "{ malformed json", MAX_ERROR_DELIMITER);
+      handleLiveApiResult(requestId, "{ malformed json", END_OF_CHUNKS);
 
       const result = await promise;
 
@@ -512,11 +466,7 @@ describe("Max API Adapter", () => {
       const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
 
-      handleLiveApiResult(
-        requestId,
-        JSON.stringify(mockResult),
-        MAX_ERROR_DELIMITER,
-      );
+      handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
 
       await promise;
 
@@ -528,30 +478,22 @@ describe("Max API Adapter", () => {
 
     it("should handle chunked responses", async () => {
       const { promise, requestId } = setupPendingRequest();
-      const mockResult = { content: [{ type: "text", text: "success" }] };
+      const mockResult = {
+        content: [{ type: "text", text: "success" }],
+        warnings: ["Warning 1"],
+      };
       const jsonString = JSON.stringify(mockResult);
       const chunk1 = jsonString.slice(0, 10);
       const chunk2 = jsonString.slice(10);
 
-      handleLiveApiResult(
-        requestId,
-        chunk1,
-        chunk2,
-        MAX_ERROR_DELIMITER,
-        "Error 1",
-      );
+      handleLiveApiResult(requestId, chunk1, chunk2, END_OF_CHUNKS);
 
       const result = await promise;
 
-      expect(result.content).toHaveLength(2);
-      expect(result.content[0]).toStrictEqual({
-        type: "text",
-        text: "success",
-      });
-      expect(result.content[1]).toStrictEqual({
-        type: "text",
-        text: "WARNING: Error 1",
-      });
+      expect(result.content).toStrictEqual([
+        { type: "text", text: "success" },
+        { type: "text", text: "WARNING: Warning 1" },
+      ]);
     });
 
     it("should handle missing delimiter error", async () => {
@@ -563,7 +505,7 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0]!.text).toContain("Missing MAX_ERROR_DELIMITER");
+      expect(result.content[0]!.text).toContain("Missing END_OF_CHUNKS");
     });
   });
 

@@ -28,6 +28,14 @@ export interface McpConnection {
 export interface McpTools {
   tools: ToolSet;
   mcpClient: Client;
+  /**
+   * Ids of the tool calls whose MCP result came back with `isError: true`.
+   *
+   * Out of band because `execute` has to keep returning `result.content`
+   * unchanged — that value is serialized into the model's context, so folding
+   * the flag into it would shift every eval score.
+   */
+  erroredToolCallIds: Set<string>;
 }
 
 /** Options for {@link connectMcp} */
@@ -73,7 +81,7 @@ export async function connectMcp(
  * Each tool's execute function delegates to mcpClient.callTool().
  *
  * @param url - MCP server URL
- * @returns AI SDK tools and the underlying MCP client
+ * @returns AI SDK tools, the underlying MCP client, and the errored-call id set
  */
 export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
   const transport = new StreamableHTTPClientTransport(new URL(url));
@@ -86,6 +94,7 @@ export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
 
   const toolsResult = await mcpClient.listTools();
   const tools: ToolSet = {};
+  const erroredToolCallIds = new Set<string>();
 
   for (const t of toolsResult.tools) {
     tools[t.name] = {
@@ -93,18 +102,25 @@ export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
       inputSchema: jsonSchema(
         t.inputSchema as Parameters<typeof jsonSchema>[0],
       ),
-      execute: async (args: Record<string, unknown>) => {
+      execute: async (
+        args: Record<string, unknown>,
+        // The AI SDK's ToolExecutionOptions; only the id is needed here.
+        { toolCallId }: { toolCallId: string },
+      ) => {
         const result = await mcpClient.callTool({
           name: t.name,
           arguments: args,
         });
 
+        if (result.isError === true) erroredToolCallIds.add(toolCallId);
+
+        // Unchanged on purpose: this is what the model sees.
         return result.content;
       },
     };
   }
 
-  return { tools, mcpClient };
+  return { tools, mcpClient, erroredToolCallIds };
 }
 
 /**

@@ -3,15 +3,53 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
-import { setParamIfEnabled } from "./param-write-helpers.ts";
+import {
+  type IndexedSend,
+  type SendResult,
+  dedupeSendsByReturn,
+  readSendBack,
+  warnSendCollisions,
+} from "#src/tools/shared/sends/send-list-helpers.ts";
+import {
+  findReturnIndex,
+  roundGainDb,
+  roundPan,
+} from "#src/tools/shared/utils.ts";
+import {
+  type MixerApplied,
+  setParamAndReadBack,
+  setParamIfEnabled,
+} from "./param-write-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+
+export interface ChainSend {
+  /** Return chain id, exact name, or letter prefix */
+  return: string;
+  /** Send level in dB */
+  gainDb: number;
+}
 
 export interface ChainMixerParams {
   gainDb?: number;
   pan?: number;
   sendGainDb?: number;
   sendReturn?: string;
+  sends?: ChainSend[];
+}
+
+/** What a chain mixer write landed, read back off the chain. */
+export interface ChainMixerApplied extends MixerApplied {
+  sends?: SendResult[];
+}
+
+/** One send that was written, and the return chain it went to. */
+interface WrittenChainSend extends IndexedSend {
+  /** The return chain's id, for the result entry */
+  returnId: string;
+  /** The send parameter, ready to read back */
+  param: LiveAPI;
 }
 
 export interface ChainMixerCarry {
@@ -38,8 +76,11 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 
   const gainDb = mixer.child("volume").getProperty("display_value");
 
-  if (typeof gainDb === "number" && gainDb !== 0) {
-    info.gainDb = gainDb;
+  // Round before the check, same as pan below.
+  const roundedGainDb = typeof gainDb === "number" ? roundGainDb(gainDb) : null;
+
+  if (roundedGainDb != null && roundedGainDb !== 0) {
+    info.gainDb = roundedGainDb;
   }
 
   const pan = mixer.child("panning").getProperty("value");
@@ -60,57 +101,57 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 }
 
 /**
- * Set a chain's own gain, pan, and send level. A write Live ignores (a disabled
- * parameter, an unmatched return) warns and is left out of the result, so a
- * caller can report what landed rather than what it asked for.
+ * Set a chain's own gain, pan, and send levels. A write Live ignores (a disabled
+ * parameter, an unmatched return) warns and is left out of the result.
+ *
+ * Every reported value is read back off the chain, not echoed from the
+ * argument: Live clamps and snaps what it is given. The sendGainDb/sendReturn
+ * pair reports under `sends` alongside the list, so one send has one shape.
  * @param chain - Chain or DrumChain LiveAPI object
  * @param params - Mixer values to set
- * @returns The subset of params that were actually written
+ * @returns What landed, read back
  */
 export function applyChainMixer(
   chain: LiveAPI,
   params: ChainMixerParams,
-): ChainMixerParams {
-  const { gainDb, pan, sendGainDb, sendReturn } = params;
-  const applied: ChainMixerParams = {};
+): ChainMixerApplied {
+  const applied: ChainMixerApplied = {};
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
-    console.warn(`chain ${chain.id} has no mixer device`);
+    console.warn(`${chainLabel(chain)} has no mixer device`);
 
     return applied;
   }
 
-  if (
-    gainDb != null &&
-    setParamIfEnabled(
-      mixer.child("volume"),
-      "display_value",
-      gainDb,
-      `${chainLabel(chain)} gainDb`,
-    )
-  ) {
+  const gainDb = setParamAndReadBack(
+    mixer.child("volume"),
+    "display_value",
+    params.gainDb,
+    `${chainLabel(chain)} gainDb`,
+    roundGainDb,
+  );
+
+  if (gainDb != null) {
     applied.gainDb = gainDb;
   }
 
-  if (
-    pan != null &&
-    setParamIfEnabled(
-      mixer.child("panning"),
-      "value",
-      pan,
-      `${chainLabel(chain)} pan`,
-    )
-  ) {
+  const pan = setParamAndReadBack(
+    mixer.child("panning"),
+    "value",
+    params.pan,
+    `${chainLabel(chain)} pan`,
+    roundPan,
+  );
+
+  if (pan != null) {
     applied.pan = pan;
   }
 
-  if (
-    (sendGainDb != null || sendReturn != null) &&
-    applyChainSend(chain, mixer, sendGainDb, sendReturn)
-  ) {
-    applied.sendGainDb = sendGainDb;
-    applied.sendReturn = sendReturn;
+  const sends = applyChainSends(chain, mixer, params);
+
+  if (sends.length > 0) {
+    applied.sends = sends;
   }
 
   return applied;
@@ -146,11 +187,10 @@ export function warnIfChainMixerLeftBehind(
   const where = toChain ? "destination chain" : "destination track";
   const hint = padHint(chain, destination, isCopy);
 
-  const name = chain.getProperty("name") as string;
   const verb = isCopy ? "does not follow the copy" : "stays behind";
 
   console.warn(
-    `chain "${name}" trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
+    `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
   );
 }
 
@@ -239,12 +279,12 @@ export function carryChainMixer(
     pan: mixer.pan as number | undefined,
   });
   const sends = (mixer.sends ?? []) as { return: string; gainDb: number }[];
-  const landedSends = sends.filter(
+  const landedSends = sends.flatMap(
     (send) =>
       applyChainMixer(destination, {
         sendGainDb: send.gainDb,
         sendReturn: send.return,
-      }).sendGainDb != null,
+      }).sends ?? [],
   );
 
   // applied holds only gainDb and pan — the sends went through their own calls.
@@ -332,30 +372,23 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
 }
 
 /**
- * Set one send on a chain's mixer, matched to the rack's return chains by name
+ * Write one send on a chain's mixer, matched to the rack's return chains by
+ * name or id
  * @param chain - Chain the mixer belongs to
  * @param mixer - The chain's mixer device
- * @param sendGainDb - Send level in dB
- * @param sendReturn - Return chain id, name, or letter
- * @returns True when the level was written
+ * @param send - The send to write, with the return spelled as the caller wrote it
+ * @returns The send and the return it went to, or null when nothing was written
  */
 function applyChainSend(
   chain: LiveAPI,
   mixer: LiveAPI,
-  sendGainDb: number | undefined,
-  sendReturn: string | undefined,
-): boolean {
-  if (sendGainDb == null || sendReturn == null) {
-    console.warn("sendGainDb and sendReturn must both be specified");
-
-    return false;
-  }
-
-  const returns = returnChains(chain);
-  const names = returns.map((rc) => rc.getProperty("name") as string);
+  send: ChainSend,
+): WrittenChainSend | null {
+  const returns = returnChainInfo(chain);
+  const names = returns.map((rc) => rc.name);
   const index = findReturnIndex(
     names,
-    sendReturn,
+    send.return,
     returns.map((rc) => rc.id),
   );
 
@@ -367,48 +400,104 @@ function applyChainSend(
         ? ` (returns: ${names.join(", ")})`
         : " (rack has no return chains; they can only be added in Live)";
 
-    console.warn(`no return chain matching "${sendReturn}"${available}`);
+    console.warn(
+      `${chainLabel(chain)}: no return chain matching "${send.return}"${available}`,
+    );
 
-    return false;
+    return null;
   }
 
-  const send = mixer.getChildAt("sends", index);
+  const param = mixer.getChildAt("sends", index);
 
-  if (send == null) {
-    console.warn(`chain ${chain.id} has no send ${index}`);
+  if (param == null) {
+    console.warn(
+      `${chainLabel(chain)} has no send for return "${send.return}"`,
+    );
 
-    return false;
+    return null;
   }
 
-  return setParamIfEnabled(
-    send,
-    "display_value",
-    sendGainDb,
-    `${chainLabel(chain)} send "${names[index]}"`,
-  );
+  const info = returns[index] as { name: string; id: string };
+
+  if (
+    !setParamIfEnabled(
+      param,
+      "display_value",
+      send.gainDb,
+      `${chainLabel(chain)} send "${info.name}"`,
+    )
+  ) {
+    return null;
+  }
+
+  return { ...send, index, name: info.name, returnId: info.id, param };
 }
 
 /**
- * Name a chain for a warning, falling back to its id when it has no name
+ * Write the sendGainDb/sendReturn pair and the `sends` list, and report one
+ * entry per return, read back off the chain
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns Label like `chain "Kick"`
+ * @param mixer - The chain's mixer device
+ * @param params - Mixer values to set
+ * @returns One entry per return that landed
+ */
+function applyChainSends(
+  chain: LiveAPI,
+  mixer: LiveAPI,
+  params: ChainMixerParams,
+): SendResult[] {
+  const { sendGainDb, sendReturn } = params;
+
+  // A half pair was refused up front, so either both are set or neither is.
+  const scalar =
+    sendGainDb != null && sendReturn != null
+      ? applyChainSend(chain, mixer, { return: sendReturn, gainDb: sendGainDb })
+      : null;
+
+  // After the scalar pair, so a call using both honors both. They only collide
+  // when they name the same return, and then the list is the later word.
+  const list: WrittenChainSend[] = [];
+
+  for (const send of params.sends ?? []) {
+    const written = applyChainSend(chain, mixer, send);
+
+    if (written != null) list.push(written);
+  }
+
+  const { winners, collisions } = dedupeSendsByReturn(scalar, list);
+  const landed = new Map(
+    winners.map((send) => [
+      send.index,
+      readSendBack(send.param, send.name, send.returnId, send.gainDb),
+    ]),
+  );
+
+  // After the read-back, so a collision names the level the send ended up at
+  // rather than the one that won the argument list.
+  warnSendCollisions(collisions, landed);
+
+  return [...landed.values()];
+}
+
+/**
+ * Name a chain for a warning, adding its Live name when it has one
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @returns Label like `chain "Kick" t0/d0/c1 (id 7)`
  */
 function chainLabel(chain: LiveAPI): string {
   const name = chain.getProperty("name") as string | undefined;
+  const label = targetLabel(chain);
 
-  return name ? `chain "${name}"` : `chain ${chain.id}`;
+  return name ? `chain "${name}" ${label}` : `chain ${label}`;
 }
 
 /**
  * Read the sends that are turned up, named after the rack's return chains
  * @param chain - Chain the mixer belongs to
  * @param mixer - The chain's mixer device
- * @returns Active sends as {return, gainDb}
+ * @returns Active sends as {return, returnId, gainDb}
  */
-function readActiveSends(
-  chain: LiveAPI,
-  mixer: LiveAPI,
-): Record<string, unknown>[] {
+function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
   const active = mixer
     .getChildren("sends")
     .map((send, index) => ({ send, index }))
@@ -422,21 +511,36 @@ function readActiveSends(
     return [];
   }
 
-  const names = returnChains(chain).map(
-    (rc) => rc.getProperty("name") as string,
-  );
+  const returns = returnChainInfo(chain);
 
-  return active.map(({ send, index }) => ({
-    return: names[index] ?? `Return ${index + 1}`,
-    gainDb: send.getProperty("display_value"),
-  }));
+  return active.map(({ send, index }) => {
+    const info = returns[index];
+
+    return readSendBack(send, info?.name ?? `Return ${index + 1}`, info?.id);
+  });
 }
 
 /**
- * The return chains of the rack that owns a chain, in send order
+ * Name and id of each return chain of the rack that owns a chain, in send
+ * order. The chain list itself is memoized per request — every chain of a
+ * rack asks for the same list, and a 64-pad kit resolving it per pad doubled
+ * the cost of reading the kit. Nothing creates or deletes a return chain
+ * mid-request, so the list and its ids can't go stale under us — but `name`
+ * can: a multi-id update-device call can rename one return chain and then
+ * send to it by the new name in the same request, so it's read fresh off the
+ * memoized objects on every call instead of cached alongside them.
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns The return chains, index-aligned with the chain's sends
+ * @returns Return chain names and ids, index-aligned with the chain's sends
  */
-function returnChains(chain: LiveAPI): LiveAPI[] {
-  return LiveAPI.from(rackPath(chain)).getChildren("return_chains");
+function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
+  const path = rackPath(chain);
+
+  const chains = requestMemo(`return-chain-info ${path}`, () =>
+    LiveAPI.from(path).getChildren("return_chains"),
+  );
+
+  return chains.map((rc) => ({
+    name: rc.getProperty("name") as string,
+    id: rc.id,
+  }));
 }

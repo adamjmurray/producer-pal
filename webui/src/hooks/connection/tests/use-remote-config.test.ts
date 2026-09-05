@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
@@ -14,6 +15,44 @@ import {
   mockConfigResponse,
   setupRemoteConfigHook,
 } from "./use-remote-config-test-helpers";
+
+// Holds POST #1 pending so the caller can settle it AFTER POST #2 has run.
+// Later POSTs succeed, and every refetch answers with stale server state
+// (still reflecting POST #1's intent of true) — so if the supersede guard
+// fails, the revert writes `true` back over POST #2's optimistic `false`.
+function mockSupersededFirstPost(settlement: "failure" | "rejection"): {
+  settlePost1: () => void;
+  refetches: { count: number };
+} {
+  let settlePost1!: () => void;
+  const post1Pending = new Promise<Response>((resolve, reject) => {
+    settlePost1 =
+      settlement === "failure"
+        ? () => resolve({ ok: false, status: 500 } as Response)
+        : () => reject(new Error("connection reset"));
+  });
+
+  let postCount = 0;
+  const refetches = { count: 0 };
+
+  vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+    if ((init as RequestInit | undefined)?.method === "POST") {
+      postCount++;
+
+      return postCount === 1
+        ? post1Pending
+        : Promise.resolve({ ok: true } as Response);
+    }
+
+    refetches.count++;
+
+    return Promise.resolve(
+      mockConfigResponse({ smallModelMode: false, liveApiEnabled: true }),
+    );
+  });
+
+  return { settlePost1, refetches };
+}
 
 describe("useRemoteConfig", () => {
   beforeEach(() => {
@@ -36,7 +75,7 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(true);
     });
     expect(mockFetch).toHaveBeenCalledWith(
@@ -55,14 +94,14 @@ describe("useRemoteConfig", () => {
       { initialProps: { status: "connecting" as McpStatus } },
     );
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(true);
     });
 
     mockFetch.mockResolvedValue(mockConfigResponse({ smallModelMode: false }));
     rerender({ status: "connected" });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
@@ -78,7 +117,7 @@ describe("useRemoteConfig", () => {
       window.dispatchEvent(new Event("focus"));
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(true);
     });
   });
@@ -139,7 +178,7 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connected"));
 
     // Wait for the fetch to resolve, then verify state stayed at default
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
@@ -150,7 +189,7 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connected"));
 
     // Should stay at default, not throw
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
@@ -171,7 +210,7 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverLiveApiEnabled).toBe(true);
     });
   });
@@ -210,7 +249,7 @@ describe("useRemoteConfig", () => {
       window.dispatchEvent(new Event("focus"));
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverLiveApiEnabled).toBe(false);
     });
   });
@@ -267,35 +306,7 @@ describe("useRemoteConfig", () => {
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // POST #1 is held pending so we can fail it AFTER POST #2 has run.
-    // The refetch mock simulates stale server state (still reflecting
-    // POST #1's intent of true) — if the guard fails, the revert would
-    // write `true` back over POST #2's optimistic `false`.
-    let resolvePost1: (() => void) | null = null;
-    const post1Pending = new Promise<Response>((resolve) => {
-      resolvePost1 = () => resolve({ ok: false, status: 500 } as Response);
-    });
-
-    let postCount = 0;
-    let refetchCount = 0;
-
-    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
-      const method = (init as RequestInit | undefined)?.method;
-
-      if (method === "POST") {
-        postCount++;
-
-        if (postCount === 1) return post1Pending;
-
-        return Promise.resolve({ ok: true } as Response);
-      }
-
-      refetchCount++;
-
-      return Promise.resolve(
-        mockConfigResponse({ smallModelMode: false, liveApiEnabled: true }),
-      );
-    });
+    const { settlePost1, refetches } = mockSupersededFirstPost("failure");
 
     let post1Promise!: Promise<void>;
 
@@ -310,14 +321,49 @@ describe("useRemoteConfig", () => {
     expect(result.current.serverLiveApiEnabled).toBe(false);
 
     await act(async () => {
-      resolvePost1!();
+      settlePost1();
       await post1Promise;
     });
 
-    expect(refetchCount).toBe(0);
+    expect(refetches.count).toBe(0);
     expect(result.current.serverLiveApiEnabled).toBe(false);
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining("skipping revert"),
+    );
+  });
+
+  // Same guard as above, on the other failure channel: a POST that rejects
+  // outright (offline, connection reset) must not revert over a newer one.
+  it("skips the revert when a rejected POST has already been superseded", async () => {
+    const { result } = await setupRemoteConfigHook({
+      smallModelMode: false,
+      liveApiEnabled: false,
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { settlePost1, refetches } = mockSupersededFirstPost("rejection");
+
+    let post1Promise!: Promise<void>;
+
+    await act(() => {
+      post1Promise = result.current.postLiveApiEnabled(true);
+    });
+
+    await act(async () => {
+      await result.current.postLiveApiEnabled(false);
+    });
+
+    await act(async () => {
+      settlePost1();
+      await post1Promise;
+    });
+
+    expect(refetches.count).toBe(0);
+    expect(result.current.serverLiveApiEnabled).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("skipping revert; newer request in flight"),
+      expect.anything(),
     );
   });
 
@@ -401,7 +447,9 @@ describe("useRemoteConfig", () => {
     expect(result.current.serverNotation).toBeNull();
 
     // A response with no notation field IS an answer: fall back to the default.
-    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("barbeat"),
+    );
   });
 
   it("resolves serverNotation to the default when /config is unreachable", async () => {
@@ -411,7 +459,9 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("barbeat"),
+    );
   });
 
   it("resolves serverNotation to the default when /config returns non-OK", async () => {
@@ -423,7 +473,9 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("barbeat"),
+    );
   });
 
   it("leaves serverNotation unknown when the request was aborted", async () => {
@@ -467,7 +519,7 @@ describe("useRemoteConfig", () => {
       window.dispatchEvent(new Event("focus"));
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverNotation).toBe("barbeat");
     });
   });
@@ -520,7 +572,9 @@ describe("useRemoteConfig", () => {
 
     // Reconnect triggers the fresh fetch, which resolves first and wins.
     rerender({ status: "connected" });
-    await waitFor(() => expect(result.current.serverNotation).toBe("stark"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("stark"),
+    );
 
     // The held mount fetch now resolves with older data — it must be dropped.
     await act(async () => {

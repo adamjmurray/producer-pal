@@ -5,11 +5,12 @@
 
 import {
   VALID_PITCH_CLASS_NAMES,
+  numberToPitchClass,
   pitchClassToNumber,
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // Create lowercase versions for case-insensitive comparison
@@ -152,13 +153,10 @@ export function parseScale(scaleString: string): {
   const scaleRoot = parts[0] as string;
   const scaleNameParts = parts.slice(1);
   const scaleName = scaleNameParts.join(" ");
-  const scaleRootLower = scaleRoot.toLowerCase();
   const scaleNameLower = scaleName.toLowerCase();
+  const canonicalRoot = canonicalizeScaleRoot(scaleRoot);
 
-  const scaleRootIndex =
-    VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(scaleRootLower);
-
-  if (scaleRootIndex === -1) {
+  if (canonicalRoot == null) {
     throw new Error(
       `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
     );
@@ -173,9 +171,28 @@ export function parseScale(scaleString: string): {
   }
 
   return {
-    scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex] as string,
+    scaleRoot: canonicalRoot,
     scaleName: VALID_SCALE_NAMES[scaleNameIndex] as string,
   };
+}
+
+/**
+ * Canonicalize a scale root's spelling. A listed name keeps the user's choice of
+ * sharp or flat (F# stays F#); an enharmonic (Cb, E#) isn't listed, so it falls
+ * back to the canonical flat for the pitch it names.
+ * @param scaleRoot - Root as the user wrote it
+ * @returns The canonical spelling, or null if it names no pitch class
+ */
+function canonicalizeScaleRoot(scaleRoot: string): string | null {
+  const index = VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(
+    scaleRoot.toLowerCase(),
+  );
+
+  if (index !== -1) return VALID_PITCH_CLASS_NAMES[index] as string;
+
+  const pitchClass = pitchClassToNumber(scaleRoot);
+
+  return pitchClass == null ? null : numberToPitchClass(pitchClass);
 }
 
 /**
@@ -190,12 +207,7 @@ export function applyTempo(
   tempo: number,
   result: { tempo?: number },
 ): void {
-  if (tempo < 20 || tempo > 999) {
-    console.warn("tempo must be between 20.0 and 999.0 BPM");
-
-    return;
-  }
-
+  // Range already refused by validateTempo, before any property was written.
   liveSet.set("tempo", tempo);
   result.tempo = tempo;
 }
@@ -206,17 +218,19 @@ export function applyTempo(
  * @param scale - Scale string (e.g., "C Major") or empty string to disable
  * @param result - Result object to update
  * @param result.scale - Scale property to set
+ * @returns Both root spellings when the root is reported under a different name
+ *   than the caller asked for (F# -> Gb), otherwise null
  */
 export function applyScale(
   liveSet: LiveAPI,
   scale: string,
   result: { scale?: string },
-): void {
+): { requestedRoot: string; storedRoot: string } | null {
   if (scale === "") {
     liveSet.set("scale_mode", 0);
     result.scale = "";
 
-    return;
+    return null;
   }
 
   // Warn and skip on an invalid scale rather than throwing, so other updates in
@@ -229,7 +243,7 @@ export function applyScale(
   } catch (error) {
     console.warn(error instanceof Error ? error.message : String(error));
 
-    return;
+    return null;
   }
 
   const { scaleRoot, scaleName } = parsed;
@@ -238,11 +252,23 @@ export function applyScale(
   if (scaleRootNumber == null) {
     console.warn(`invalid scale root: ${scaleRoot}`);
 
-    return;
+    return null;
   }
 
   liveSet.set("root_note", scaleRootNumber);
   liveSet.set("scale_name", scaleName);
   liveSet.set("scale_mode", 1);
-  result.scale = `${scaleRoot} ${scaleName}`;
+
+  // Report the name Live stores, not the spelling asked for. Live keeps only a
+  // pitch class number, so every read of it comes back flat ("F#" -> "Gb") —
+  // echoing the request here would disagree with every later read.
+  const storedRoot =
+    numberToPitchClass(liveSet.getProperty("root_note") as number) ?? scaleRoot;
+  const storedName = liveSet.getProperty("scale_name");
+
+  result.scale = `${storedRoot} ${String(storedName)}`;
+
+  return storedRoot === scaleRoot
+    ? null
+    : { requestedRoot: scaleRoot, storedRoot };
 }

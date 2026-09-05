@@ -25,25 +25,26 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                  | Description                                       |
-| --------------------- | ------------------------------------------------- |
-| `-m, --model <model>` | Model to test (required, repeatable)              |
-| `-t, --test <id>`     | Run specific scenario by ID (repeatable)          |
-| `-a, --all`           | Run all scenarios                                 |
-| `--small-model`       | Enable small-model mode (basic skills + schemas)  |
-| `--json`              | JSON tool-result output (default: compact)        |
-| `--tools <list>`      | Tool subset, comma-separated (default: all)       |
-| `--live-api`          | Enable the Direct Live API tool (`ppal-live-api`) |
-| `-j, --judge <model>` | Judge model (default: `gemini-3-flash-preview`)   |
-| `-s, --skip-setup`    | Skip Live Set setup (reuse existing connection)   |
-| `--skip-judge`        | Skip the LLM-as-judge step (checks only)          |
-| `--skip-reflection`   | Skip the self-reflection turn after a failure     |
-| `--no-seed-connect`   | Let the model run the opening connect turn        |
-| `-q, --quiet`         | Suppress detailed AI and judge responses          |
-| `-r, --repeat <N>`    | Run each scenario N times (for flakiness)         |
-| `-u, --usage`         | Show token usage per turn                         |
-| `--no-save`           | Skip writing JSON result files to disk            |
-| `-l, --list`          | List available scenarios                          |
+| Flag                   | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `-m, --model <model>`  | Model to test (required, repeatable)              |
+| `-t, --test <id>`      | Run specific scenario by ID (repeatable)          |
+| `-a, --all`            | Run all scenarios                                 |
+| `--small-model`        | Enable small-model mode (basic skills + schemas)  |
+| `--json`               | JSON tool-result output (default: compact)        |
+| `--tools <list>`       | Tool subset, comma-separated (default: all)       |
+| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`) |
+| `-j, --judge <model>`  | Judge model (default: `gemini-3-flash-preview`)   |
+| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)   |
+| `--skip-judge`         | Skip the LLM-as-judge step (checks only)          |
+| `--skip-reflection`    | Skip the self-reflection turn after a failure     |
+| `--no-seed-connect`    | Let the model run the opening connect turn        |
+| `-q, --quiet`          | Suppress detailed AI and judge responses          |
+| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)         |
+| `-u, --usage`          | Show token usage per turn                         |
+| `--no-save`            | Skip writing JSON result files to disk            |
+| `-b, --base-url <url>` | Base URL for the `local` provider                 |
+| `-l, --list`           | List available scenarios                          |
 
 ### Model format
 
@@ -62,8 +63,14 @@ be inferred from the prefix:
 | `codex-code/luna`               | codex-code  |
 | `claude-code/sonnet`            | claude-code |
 | `claude-code/opus`              | claude-code |
+| `claude-code/haiku`             | claude-code |
+| `claude-code/fable`             | claude-code |
 | `openrouter/some-model`         | openrouter  |
 | `local/model-name`              | local       |
+
+Only the first `/` splits provider from model, so a model name can contain
+slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
+the `local` provider.
 
 ### Examples
 
@@ -102,8 +109,13 @@ scripts/eval -m local/qwen3-8b -t duplicate --small-model
 ```
 
 The local provider connects to `http://localhost:11434/v1` by default (Ollama).
-Override with `-b` / `--base-url` in the chat CLI, or set `LOCAL_BASE_URL` in
-`.env` for evals.
+Override with `-b` / `--base-url` — both CLIs take it — or set `LOCAL_BASE_URL`
+in `.env`. LM Studio's default port is 1234, so it always needs one of the two:
+
+```bash
+scripts/eval -m local/qwen/qwen3.8-27b -t connect-to-ableton \
+  -b http://localhost:1234/v1 --small-model
+```
 
 ### Testing subscription CLIs
 
@@ -131,6 +143,31 @@ ignored, and the eval's system instructions REPLACING the CLI's own agent prompt
 On Codex the plugin part takes its own flag, `--disable apps`.
 `--ignore-user-config` does not reach the installed apps, and they come back as
 MCP tools — a second Producer Pal among them, competing with the eval's server.
+
+**A big tool result fails the run on `claude-code`.** Past a size limit the
+claude CLI saves a tool result to a file and hands the model a 2KB preview
+instead. The model is what gets the preview, so the run would grade a model that
+never received the Skills `ppal-connect` returns. The transport treats that stub
+as a failed turn rather than let a meaningless score through. It fires on the
+full toolset today; `--tools` a subset, or use another provider. No env var
+raises the limit (`MAX_MCP_OUTPUT_TOKENS` is a different cap and does not).
+
+Nineteen of the twenty-one published tools fit; all twenty-one does not. Drop
+`library` and `context` and a path scenario runs:
+
+```bash
+scripts/eval -t path-uncommon-roots -m claude-code/haiku \
+  --tools connect,select,read-live-set,read-track,read-clip,read-scene,read-device,create-clip,create-track,create-scene,create-device,update-clip,update-track,update-device,update-scene,update-live-set,duplicate,delete
+```
+
+The cap is on the size of the biggest result, not the tool count, so measure it
+again after the Skills grow: run `connect-to-ableton` with the subset you want
+and see whether the transport rejects the turn.
+
+Give a subset every tool the scenario's RECOVERY path needs, not just the ones
+it grades. Leaving `read-device` out of that list is what a model uses to find a
+drum rack nested inside another rack, and without it the run fails on a check
+that has nothing to do with the missing tool.
 
 A looping model is bounded the same way it is on the AI SDK path. Neither CLI
 takes a step limit we can rely on, so the transports count the model's actions
@@ -184,6 +221,13 @@ environment can't satisfy a requirement — e.g. a transforms scenario under
 scenario is **skipped** (reported as `skipped`, not `fail`) so scores stay
 apples-to-apples.
 
+A run that never got started is reported as `error`, and is likewise kept out of
+pass/fail counts. That means Live would not open the Set or the config would not
+apply, so the model never took a turn — scoring it would turn an outage into a
+wall of convincing zeros. The harness retries a failed open three times, waiting
+once and then killing Live for a cold launch, and stops the whole run after
+three scenarios in a row fail to start.
+
 ```bash
 # Default environment
 scripts/eval -t connect-to-ableton -m gemini-3-flash-preview
@@ -194,6 +238,18 @@ scripts/eval -a -m local/qwen3-8b --small-model
 # A restricted toolset (scenarios needing other tools will skip)
 scripts/eval -a -m gemini-3-flash-preview --tools connect,read-track,create-clip
 ```
+
+**Know what an environment grades before you pay for the run.** `--list` takes
+the same environment flags, marks every scenario that environment would skip,
+and counts what's left:
+
+```bash
+scripts/eval --list --small-model
+# … small-model: grades 52 of 84 (regression 15/25, capability 37/59)
+```
+
+A small-model score is over a much smaller surface than the default run — read
+it as "of what a small model was given", never as comparable to a default score.
 
 ### Scenarios
 
@@ -241,11 +297,10 @@ turn.
 
 ### Scoring
 
-Each scenario has assertions that contribute to pass/fail:
+These assertions decide pass/fail:
 
 - **`tool_called`** - Verifies the right tool was called (with optional arg
-  matching)
-- **`response_contains`** - Checks for text/regex patterns in responses
+  matching). Failed calls don't count — see below.
 - **`state`** - Verifies Live Set state via MCP tool calls
 - **`custom`** - Arbitrary callback assertions on turn data
 
@@ -254,14 +309,32 @@ Plus:
 - **`llm_judge`** - LLM evaluates response quality with pass/fail + issues. It
   gates the result unless the scenario sets `judgeAdvisory: true`, which keeps
   the commentary but stops it flipping a run to fail.
+- **`response_contains`** - Text/regex patterns in the assistant's prose.
+  Reported as **Signals**, never gating: the list of acceptable synonyms is
+  unbounded and drifts with every model, so a run that made the right edit and
+  called it "turned those up" instead of "boosted" is not a regression. Pin the
+  outcome with `state` or `custom`; keep the pattern for drift signal.
 - **`token_usage`** - Tracks token efficiency against a target budget
   (informational only)
+
+**Failed tool calls.** A model that hits a tool error, fixes its arguments and
+calls again still lands the outcome, so it still passes — but the run reports
+**Tool errors** and each failed call takes 10% off its score (capped at half). A
+flat cost, not a share of the calls made: rating the share would pay a model for
+padding a run with extra successful calls. Grading reads successful calls only:
+`tool_called` counts them, and `getToolCalls` returns them. Use
+`getAllToolCalls` when the attempt itself is what's graded ("did it reach for a
+tool it shouldn't have").
+
+The **Score** shown per scenario and in the comparison table is the check pass
+rate (or the trial pass rate under `-r N`), discounted by that penalty. A clean
+run outranks a recovered one without either being marked a failure.
 
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
 When using `-r N`, the summary aggregates across trials: checks are totaled,
-efficiency is averaged, and judge shows a pass rate.
+tool errors are summed, efficiency is averaged, and judge shows a pass rate.
 
 Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
 leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
@@ -348,6 +421,8 @@ which executable is spawned (see
 - Ableton Live running with the Producer Pal Max for Live device
 - The MCP server must be responsive (eval auto-opens Live Sets and waits for the
   server)
+- **Nothing you care about open in Live.** A run opens Live Sets without saving
+  the current one, so work in progress is lost.
 - API keys configured for the providers you want to test
 - For local models: Ollama, LM Studio, or another OpenAI-compatible server
   running
@@ -367,6 +442,7 @@ export const myScenario: EvalScenario = {
   messages: ["Connect to Ableton Live", "Do something specific"],
   assertions: [
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    // Non-gating drift signal — the state check below is what grades the run.
     { type: "response_contains", pattern: /expected/i },
     {
       type: "state",
@@ -393,15 +469,16 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
   scenario, and often reads better. Keep it separate when the new case must be
   measured UNPRIMED — a reach-for probe (which API/idiom does the model pick
   unprompted?) is worthless once an earlier turn has shown it the answer.
-- **Default to no judge.** `tool_called`, `state`, and `response_contains` are
-  fast, cheap, and reproducible; a judge costs an LLM call per scenario and
-  miscounts anything musical. Add `llm_judge` only when the thing being graded
-  is the assistant's PROSE and no state check can see it — did it offer, did it
-  re-ask, did it accept a no. If deterministic checks already pin the outcome
-  and you only want the commentary, mark it `judgeAdvisory: true`.
+- **Default to no judge.** `tool_called`, `state`, and `custom` are fast, cheap,
+  and reproducible; a judge costs an LLM call per scenario and miscounts
+  anything musical. Add `llm_judge` only when the thing being graded is the
+  assistant's PROSE and no state check can see it — did it offer, did it re-ask,
+  did it accept a no. If deterministic checks already pin the outcome and you
+  only want the commentary, mark it `judgeAdvisory: true`.
 - **Grade outcomes, not paths.** Assert on the final state (e.g., "clip has
   these notes") rather than the exact sequence of tool calls. This avoids
-  penalizing models that find valid alternative approaches.
+  penalizing models that find valid alternative approaches. Grading words is the
+  same mistake one level down, which is why `response_contains` never gates.
 - **Keep messages unambiguous.** Vague prompts create flaky evals. If a scenario
   fails at 0%, suspect the prompt before the model.
 - **Regression vs capability:** Tag scenarios as `kind: "regression"` when they

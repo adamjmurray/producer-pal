@@ -21,6 +21,8 @@ interface RefusalCase {
   type: string;
   /** ID of the object that survives */
   id: string;
+  /** The path the warning names it by */
+  path: string;
   /** Registers the target plus a parent whose delete method does nothing */
   setup: () => void;
 }
@@ -30,6 +32,7 @@ const REFUSALS: RefusalCase[] = [
     name: "track",
     type: "track",
     id: "track_1",
+    path: "t1",
     setup: () => {
       setupTrackMocks({ track_1: String(livePath.track(1)) });
       registerMockObject("live_set", {
@@ -42,6 +45,7 @@ const REFUSALS: RefusalCase[] = [
     name: "return track",
     type: "track",
     id: "return_0",
+    path: "rt0",
     setup: () => {
       setupTrackMocks({ return_0: "live_set return_tracks 0" });
       registerMockObject("live_set", {
@@ -54,6 +58,7 @@ const REFUSALS: RefusalCase[] = [
     name: "scene",
     type: "scene",
     id: "scene_0",
+    path: "s0",
     setup: () => {
       setupSceneMocks({ scene_0: livePath.scene(0) });
       registerMockObject("live_set", {
@@ -66,6 +71,7 @@ const REFUSALS: RefusalCase[] = [
     name: "clip",
     type: "clip",
     id: "clip_0",
+    path: "t0/s0",
     setup: () => {
       registerMockObject("clip_0", {
         path: livePath.track(0).clipSlot(0).clip(),
@@ -81,6 +87,7 @@ const REFUSALS: RefusalCase[] = [
     name: "device",
     type: "device",
     id: "device_0",
+    path: "t0/d0",
     setup: () => {
       registerMockObject("device_0", {
         path: livePath.track(0).device(0),
@@ -107,17 +114,18 @@ describe("deleteObject when Live refuses the delete", () => {
   });
 
   it.each(REFUSALS)("reports a $name that survives the delete", (refusal) => {
-    const { type, id, setup } = refusal;
+    const { type, id, path, setup } = refusal;
 
     setup();
 
     expect(deleteObject({ id: id, type })).toStrictEqual({
       id,
+      path,
       type,
       deleted: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      `delete: ${type} "${id}" still exists, so Live did not delete it`,
+      `${type} ${path} (id ${id}) still exists, so Live did not delete it`,
     );
   });
 
@@ -127,6 +135,7 @@ describe("deleteObject when Live refuses the delete", () => {
 
     expect(deleteObject({ id: "track_1", type: "track" })).toStrictEqual({
       id: "track_1",
+      deletedPath: "t1",
       type: "track",
       deleted: true,
     });

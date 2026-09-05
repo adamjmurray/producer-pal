@@ -10,12 +10,14 @@ import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { namedParam } from "#src/tools/shared/utils.ts";
 import {
   formatObjectPath,
+  isNewObjectPath,
+  NEW_OBJECT_NOUNS,
   parseObjectPath,
-  pathError,
   type ObjectPath,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
-import { namedHiddenPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseClipSlot } from "./select-id-helpers.ts";
 import {
   buildTrackPath,
@@ -51,7 +53,7 @@ interface ImpliedTrack {
 /** The params a path can name a second time. */
 interface PathAgreementArgs {
   trackIndex?: number;
-  trackType?: "return" | "master";
+  trackType?: TrackCategory;
   sceneIndex?: number;
 }
 
@@ -124,7 +126,7 @@ function targetFromParams({
   // replaces, so refuse instead of picking.
   if (slot != null || devicePath != null) {
     throw new Error(
-      "select failed: path and slot/devicePath both name a target; use path alone (the others are deprecated)",
+      "path and slot/devicePath both name a target; use path alone (the others are deprecated)",
     );
   }
 
@@ -289,9 +291,7 @@ function assertSameObject(id: string, path: PathLike | null): void {
  * @returns The error to throw
  */
 function pathConflict(name: string): Error {
-  return new Error(
-    `select failed: path and ${name} name different targets; use path alone`,
-  );
+  return new Error(`path and ${name} name different targets; use path alone`);
 }
 
 /**
@@ -333,6 +333,14 @@ function deviceChainTarget(
  * @returns What select should select
  */
 function targetFromPath(path: ObjectPath): PathTarget {
+  if (isNewObjectPath(path)) {
+    throw pathError(
+      "path",
+      formatObjectPath(path),
+      `${NEW_OBJECT_NOUNS[path.kind]} does not exist yet; select names something that does`,
+    );
+  }
+
   switch (path.kind) {
     case "device":
       return {

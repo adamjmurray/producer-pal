@@ -136,7 +136,6 @@ describe("createClipsForLength holding area", () => {
       4,
       4,
       undefined,
-      [],
       context,
     );
 
@@ -156,13 +155,13 @@ describe("createClipsForLength holding area", () => {
       4,
       4,
       undefined,
-      [],
       context,
     );
 
     expect(track.call).toHaveBeenCalledWith("delete_clip", "id 700");
     expect(result).toStrictEqual([
-      { id: "400", path: "t0", arrangementStart: "17|1" },
+      // TARGET_START 64 in 4/4 is bar 17 beat 1
+      { id: "400", path: "t0[17|1]" },
     ]);
   });
 });
@@ -283,7 +282,6 @@ describe("createClipsForLength across a multi-position duplicate", () => {
         4,
         4,
         undefined,
-        [],
         context,
       );
     }

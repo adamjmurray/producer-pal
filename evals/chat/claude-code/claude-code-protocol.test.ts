@@ -218,7 +218,7 @@ describe("parseClaudeCodeStream", () => {
                 { type: "text", text: '{"id":"device1"}' },
                 {
                   type: "text",
-                  text: 'WARNING: updateDevice: setModulation source "LFO 9" is invalid',
+                  text: 'WARNING: setModulation source "LFO 9" is invalid',
                 },
               ],
             },
@@ -232,9 +232,7 @@ describe("parseClaudeCodeStream", () => {
         name: "ppal-update-device",
         args: {},
         result: '{"id":"device1"}',
-        warnings: [
-          'WARNING: updateDevice: setModulation source "LFO 9" is invalid',
-        ],
+        warnings: ['WARNING: setModulation source "LFO 9" is invalid'],
       },
     ]);
   });
@@ -269,9 +267,12 @@ describe("parseClaudeCodeStream", () => {
       },
     ]);
 
-    expect(parseClaudeCodeStream(stdout).toolCalls[0]?.result).toBe(
-      "ERROR: no track at index 9",
-    );
+    expect(parseClaudeCodeStream(stdout).toolCalls[0]).toStrictEqual({
+      name: "ppal-create-clip",
+      args: {},
+      result: "ERROR: no track at index 9",
+      isError: true,
+    });
   });
 
   it("falls back to JSON for a result carrying no text block", () => {
@@ -305,6 +306,45 @@ describe("parseClaudeCodeStream", () => {
 
     expect(parseClaudeCodeStream(stdout).toolCalls[0]?.result).toBe(
       JSON.stringify([{ type: "image", data: "…" }]),
+    );
+  });
+
+  it("throws when the CLI spilled a tool result to a file", () => {
+    // The stub is what the model gets, so the run would grade a model that
+    // never received the Skills ppal-connect returns.
+    const stdout = jsonl([
+      {
+        type: "assistant",
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_1",
+              name: "mcp__producer-pal__ppal-connect",
+              input: {},
+            },
+          ],
+        },
+      },
+      {
+        type: "user",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_1",
+              content:
+                "<persisted-output>\nOutput too large (49.7KB). Full output " +
+                "saved to: /tmp/x.json\n\nPreview (first 2KB):\n{connected:true",
+            },
+          ],
+        },
+      },
+      { type: "result", subtype: "success", is_error: false, result: "hi" },
+    ]);
+
+    expect(() => parseClaudeCodeStream(stdout)).toThrow(
+      /ppal-connect returned more than the claude CLI will inline/,
     );
   });
 

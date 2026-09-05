@@ -4,18 +4,25 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Renders drum-loop-1bar.wav, the e2e suites' long audio fixture: one bar of
-// 4/4 at the test Set's tempo, so a clip covering the whole sample is exactly
-// one bar and bar-aligned assertions come out as round numbers.
+// Renders the suites' bar-aligned audio fixtures, one per entry in TARGETS.
+// Each is a plain 4/4 drum pattern at its Set's tempo, so a clip covering the
+// whole sample is a whole number of bars and bar-aligned assertions come out as
+// round numbers.
 //
-// The sample.aiff fixture beside it is ~1.09 s — under one bar at 108 BPM — so
-// every audio region an e2e test can build from it is shorter than a bar. This
-// one exists to reach past that: multi-bar regions, arrangement tiling, and
-// anything that has to cross a bar line.
+//   drum-loop-1bar.wav  1 bar  @ 108 BPM  - e2e-test-set
+//   drum-loop-8bar.wav  8 bars @ 96 BPM   - arrangement-sections
 //
-// Regenerating overwrites the committed file. The frame count is asserted, so
-// changing BPM or sample rate to a combination that doesn't divide evenly fails
-// loudly rather than shifting every expectation in the suites by a fraction.
+// The sample.aiff fixture beside them is ~1.09 s — under one bar at either
+// tempo — so every audio region built from it is shorter than a bar. The 1-bar
+// file reaches past that to a single bar line; the 8-bar file reaches past THAT
+// to regions that span bars, which is what splitting and cropping an audio clip
+// need. It renders at half the sample rate because a warp fixture does not need
+// the fidelity and the file is committed.
+//
+// Regenerating overwrites the committed files. Frame counts are asserted, so
+// changing a BPM or sample rate to a combination that doesn't divide evenly
+// fails loudly rather than shifting every expectation in the suites by a
+// fraction.
 //
 // The DSP follows the ableton-audio-generator example skill
 // (examples/skills/ableton-audio-generator), whose lib writes the WAV.
@@ -30,21 +37,15 @@ import {
   writeWav,
 } from "../../../examples/skills/ableton-audio-generator/lib/audio-io.mjs";
 
-const SR = 44100;
-const BPM = 108; // the e2e-test-set tempo
 const BEATS_PER_BAR = 4;
-const OUT = join(dirname(fileURLToPath(import.meta.url)), "drum-loop-1bar.wav");
+const STEPS_PER_BAR = 16;
+const OUT_DIR = dirname(fileURLToPath(import.meta.url));
 
-const secondsPerBeat = 60 / BPM;
-const frames = (SR * BEATS_PER_BAR * 60) / BPM;
+const TARGETS = [
+  { file: "drum-loop-1bar.wav", bars: 1, bpm: 108, sampleRate: 44100 },
+  { file: "drum-loop-8bar.wav", bars: 8, bpm: 96, sampleRate: 22050 },
+];
 
-if (!Number.isInteger(frames)) {
-  throw new RangeError(
-    `${BEATS_PER_BAR} beats at ${BPM} BPM is ${frames} frames at ${SR} Hz — not a whole number, so the loop would not be exactly one bar`,
-  );
-}
-
-const sec = (s) => Math.floor(SR * s);
 const env = (i, n, k) => Math.exp((-k * i) / n);
 const noise = () => Math.random() * 2 - 1;
 
@@ -72,18 +73,19 @@ function highpass(coef) {
 
 /**
  * Kick: a sine with a fast downward pitch sweep, plus a short noise click.
+ * @param sampleRate - Frames per second to render at
  * @returns The rendered voice
  */
-function kick() {
-  const n = sec(0.34);
+function kick(sampleRate) {
+  const n = Math.floor(sampleRate * 0.34);
   const out = new Float32Array(n);
-  const clickLen = sec(0.004);
+  const clickLen = Math.floor(sampleRate * 0.004);
   let phase = 0;
 
   for (let i = 0; i < n; i++) {
     const f = 48 + (128 - 48) * Math.exp((-9 * i) / n);
 
-    phase += (2 * Math.PI * f) / SR;
+    phase += (2 * Math.PI * f) / sampleRate;
 
     let s = Math.sin(phase) * env(i, n, 5);
 
@@ -97,17 +99,18 @@ function kick() {
 
 /**
  * Snare: two detuned sine bodies under a highpassed noise buzz.
+ * @param sampleRate - Frames per second to render at
  * @returns The rendered voice
  */
-function snare() {
-  const n = sec(0.2);
+function snare(sampleRate) {
+  const n = Math.floor(sampleRate * 0.2);
   const out = new Float32Array(n);
   const hp = highpass(0.7);
 
   for (let i = 0; i < n; i++) {
     const body =
-      (Math.sin((2 * Math.PI * 185 * i) / SR) * 0.6 +
-        Math.sin((2 * Math.PI * 292 * i) / SR) * 0.4) *
+      (Math.sin((2 * Math.PI * 185 * i) / sampleRate) * 0.6 +
+        Math.sin((2 * Math.PI * 292 * i) / sampleRate) * 0.4) *
       env(i, n, 13);
 
     out[i] = 0.35 * body + 0.65 * (hp(noise()) * env(i, n, 9));
@@ -118,10 +121,11 @@ function snare() {
 
 /**
  * Closed hat: short highpassed noise with an inharmonic metallic ring.
+ * @param sampleRate - Frames per second to render at
  * @returns The rendered voice
  */
-function hat() {
-  const n = sec(0.045);
+function hat(sampleRate) {
+  const n = Math.floor(sampleRate * 0.045);
   const out = new Float32Array(n);
   const hp = highpass(0.9);
   const partials = [3140, 4230, 5510, 6900];
@@ -131,7 +135,7 @@ function hat() {
     let metal = 0;
 
     for (const f of partials) {
-      metal += Math.sign(Math.sin((2 * Math.PI * f * i) / SR));
+      metal += Math.sign(Math.sin((2 * Math.PI * f * i) / sampleRate));
     }
 
     out[i] = hp(s * 0.6 + (metal / partials.length) * 0.4) * env(i, n, 22);
@@ -140,32 +144,66 @@ function hat() {
   return normalize(out, 0.45);
 }
 
-// Sixteenth-note grid: a plain backbeat, so a listener can hear at a glance
-// where in the bar a clip's region starts.
-const STEPS_PER_BAR = 16;
-const PATTERN = [
-  { voice: kick(), steps: [0, 6, 10], gain: 1 },
-  { voice: snare(), steps: [4, 12], gain: 0.9 },
-  { voice: hat(), steps: [0, 2, 4, 6, 8, 10, 12, 14], gain: 0.55 },
-];
+/**
+ * Render one fixture and write it to disk.
+ *
+ * The same one-bar backbeat repeats for every bar, so a listener can hear at a
+ * glance where in a bar a clip's region starts. Bars are deliberately identical
+ * — nothing asserts on the audio content, and a uniform pattern is what Live's
+ * auto-warp locks onto most reliably.
+ *
+ * @param target - The file name, bar count, tempo and sample rate to render
+ * @returns The absolute path written and its frame count
+ */
+function render({ file, bars, bpm, sampleRate }) {
+  const frames = (sampleRate * bars * BEATS_PER_BAR * 60) / bpm;
 
-const mix = new Float32Array(frames);
-const framesPerStep = (SR * secondsPerBeat * BEATS_PER_BAR) / STEPS_PER_BAR;
+  if (!Number.isInteger(frames)) {
+    throw new RangeError(
+      `${bars} bar(s) at ${bpm} BPM is ${frames} frames at ${sampleRate} Hz — not a whole number, so the loop would not be a whole number of bars`,
+    );
+  }
 
-for (const { voice, steps, gain } of PATTERN) {
-  for (const step of steps) {
-    const offset = Math.round(step * framesPerStep);
+  // Sixteenth-note grid: a plain backbeat.
+  const pattern = [
+    { voice: kick(sampleRate), steps: [0, 6, 10], gain: 1 },
+    { voice: snare(sampleRate), steps: [4, 12], gain: 0.9 },
+    { voice: hat(sampleRate), steps: [0, 2, 4, 6, 8, 10, 12, 14], gain: 0.55 },
+  ];
 
-    // Voices are free to ring past the bar line; the loop is one bar, so the
-    // tail is cut rather than wrapped.
-    for (let i = 0; i < voice.length && offset + i < frames; i++) {
-      mix[offset + i] += voice[i] * gain;
+  const mix = new Float32Array(frames);
+  const framesPerStep =
+    (sampleRate * BEATS_PER_BAR * 60) / (bpm * STEPS_PER_BAR);
+
+  for (let bar = 0; bar < bars; bar++) {
+    const barOffset = Math.round(bar * STEPS_PER_BAR * framesPerStep);
+
+    for (const { voice, steps, gain } of pattern) {
+      for (const step of steps) {
+        const offset = barOffset + Math.round(step * framesPerStep);
+
+        // Voices are free to ring past the loop end; the tail is cut rather
+        // than wrapped.
+        for (let i = 0; i < voice.length && offset + i < frames; i++) {
+          mix[offset + i] += voice[i] * gain;
+        }
+      }
     }
   }
+
+  const out = join(OUT_DIR, file);
+
+  writeWav(out, declick(normalize(mix, 0.89), sampleRate), sampleRate, {
+    format: "int16",
+  });
+
+  return { out, frames };
 }
 
-writeWav(OUT, declick(normalize(mix, 0.89), SR), SR, { format: "int16" });
+for (const target of TARGETS) {
+  const { out, frames } = render(target);
 
-console.log(
-  `${OUT}\n${frames} frames @ ${SR} Hz = ${BEATS_PER_BAR} beats at ${BPM} BPM (${(frames / SR).toFixed(4)} s)`,
-);
+  console.log(
+    `${out}\n${frames} frames @ ${target.sampleRate} Hz = ${target.bars * BEATS_PER_BAR} beats at ${target.bpm} BPM (${(frames / target.sampleRate).toFixed(4)} s)`,
+  );
+}

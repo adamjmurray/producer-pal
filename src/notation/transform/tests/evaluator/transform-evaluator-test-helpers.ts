@@ -6,6 +6,15 @@ import { expect } from "vitest";
 import { type NoteContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+const TEST_NOTE_DEFAULTS: NoteEvent = {
+  pitch: 60,
+  start_time: 0,
+  duration: 1,
+  velocity: 100,
+  probability: 1,
+};
 
 /**
  * Creates a standard test note with common defaults.
@@ -17,16 +26,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 export function createTestNote(
   overrides: Partial<NoteEvent> = {},
 ): NoteEvent[] {
-  return [
-    {
-      pitch: 60,
-      start_time: 0,
-      duration: 1,
-      velocity: 100,
-      probability: 1,
-      ...overrides,
-    },
-  ];
+  return [testNote(overrides)];
 }
 
 /**
@@ -38,14 +38,18 @@ export function createTestNote(
 export function createTestNotes(
   noteOverrides: Partial<NoteEvent>[],
 ): NoteEvent[] {
-  return noteOverrides.map((overrides) => ({
-    pitch: 60,
-    start_time: 0,
-    duration: 1,
-    velocity: 100,
-    probability: 1,
-    ...overrides,
-  }));
+  return noteOverrides.map(testNote);
+}
+
+/**
+ * One note built on the shared defaults. Also the expected shape for
+ * `toStrictEqual`, so result assertions don't respell unchanged properties.
+ *
+ * @param overrides - Properties that differ from the defaults
+ * @returns The note
+ */
+export function testNote(overrides: Partial<NoteEvent> = {}): NoteEvent {
+  return { ...TEST_NOTE_DEFAULTS, ...overrides };
 }
 
 /**
@@ -92,5 +96,5 @@ export function expectTransformError(transformString: string) {
   const result = evaluateTransform(transformString, DEFAULT_CONTEXT);
 
   expect(result).toStrictEqual({});
-  expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+  expect(capturedWarnings()).not.toHaveLength(0);
 }

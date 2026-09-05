@@ -11,7 +11,7 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Meld (MeldDevice, class_name "InstrumentMeld"). Exposes its polyphony mode
 // and voice-count controls at the class level — none are reachable as
-// DeviceParameters. See dev/Specialized-Devices.md.
+// DeviceParameters. See dev/specialized-devices/instruments.md.
 //
 // selected_engine is deliberately NOT exposed — it is a UI-only display
 // selector. Both A and B engine parameters are always addressable via A * / B *
@@ -49,31 +49,15 @@ export const meldSpec: SpecializedDeviceSpec = {
       name: "polyVoices",
       options: "1-6",
       read: readPolyVoices,
-      write: (device, value, toolName) =>
-        writeIntInRange(
-          device,
-          "poly_voices",
-          value,
-          1,
-          6,
-          toolName,
-          "polyVoices",
-        ),
+      write: (device, value) =>
+        writeIntInRange(device, "poly_voices", value, 1, 6, "polyVoices"),
     },
     {
       name: "unisonVoices",
       options: "0-2",
       read: readUnisonVoices,
-      write: (device, value, toolName) =>
-        writeIntInRange(
-          device,
-          "unison_voices",
-          value,
-          0,
-          2,
-          toolName,
-          "unisonVoices",
-        ),
+      write: (device, value) =>
+        writeIntInRange(device, "unison_voices", value, 0, 2, "unisonVoices"),
     },
   ],
 };

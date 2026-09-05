@@ -29,6 +29,7 @@ import {
   setConfig,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../../mcp-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../helpers/racks-test-helpers.ts";
 
@@ -66,7 +67,7 @@ async function readDrumMap(
 ): Promise<Record<string, string> | undefined> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["drum-map"] },
+    arguments: { path: `t${trackIndex}`, include: ["drum-map"] },
   });
 
   return parseToolResult<{ drumMap?: Record<string, string> }>(result).drumMap;
@@ -86,7 +87,7 @@ async function createTrack(name: string): Promise<number> {
 
   await sleep(100);
 
-  return track.trackIndex as number;
+  return trackIndexFromPath(track.path);
 }
 
 /**
@@ -110,7 +111,7 @@ async function createClip(trackIndex: number, notes: string): Promise<void> {
 async function deleteTrack(trackIndex: number): Promise<void> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex },
+    arguments: { path: `t${trackIndex}` },
   });
   const track = parseToolResult<{ id: string }>(result);
 

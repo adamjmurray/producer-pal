@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -17,10 +18,13 @@ export { assertState } from "./state.ts";
 export { assertWithLlmJudge, type CheckSummary } from "./llm-judge.ts";
 export { assertResponseContains } from "./response.ts";
 export {
+  getAllToolCalls,
   getToolCalls,
+  isSignalAssertion,
   lastSuccessfulToolCall,
   parsedToolResult,
   partialMatch,
   normalizeCount,
   formatExpectedCount,
+  toolCallFailed,
 } from "./helpers.ts";

@@ -59,6 +59,25 @@ describe("parseObjectPath", () => {
       kind: "new-take-lane",
       trackIndex: 2,
     });
+    expect(parseObjectPath("t2/l=")).toStrictEqual({
+      kind: "same-take-lane",
+      trackIndex: 2,
+    });
+  });
+
+  it("reads the roots that name something to create", () => {
+    expect(parseObjectPath("t+")).toStrictEqual({ kind: "new-track" });
+    expect(parseObjectPath("rt+")).toStrictEqual({ kind: "new-return-track" });
+    expect(parseObjectPath("s+")).toStrictEqual({ kind: "new-scene" });
+  });
+
+  it("refuses a tail under a root that names something to create", () => {
+    expect(() => parseObjectPath("t+/s0")).toThrow(
+      'invalid path "t+/s0" - a new track has no parts yet',
+    );
+    expect(() => parseObjectPath("rt+/d0")).toThrow(
+      'invalid path "rt+/d0" - a new return track has no parts yet',
+    );
   });
 
   it("reads multi-digit indices, not just the first digit", () => {
@@ -157,6 +176,18 @@ describe("parseObjectPath", () => {
     expect(() => parseObjectPath("track0")).toThrow(/"track0" is not a track/);
   });
 
+  it("rejects a root named after an Object prototype member", () => {
+    // The "+" roots used to sit in a plain object, so looking one up answered
+    // "constructor" and "toString" from the prototype. The bogus value came
+    // back as if it were a parsed root, and the caller's input vanished from
+    // the error every consumer went on to throw.
+    for (const segment of ["constructor", "toString", "hasOwnProperty"]) {
+      expect(() => parseObjectPath(segment)).toThrow(
+        new RegExp(`"${segment}" is not a track or scene`),
+      );
+    }
+  });
+
   it("rejects a scene segment anywhere a slot can't be", () => {
     for (const path of ["rt0/s1", "mt/s1", "t0/d0/s1", "t0/s1/d0"]) {
       expect(() => parseObjectPath(path)).toThrow(
@@ -218,6 +249,19 @@ describe("parseObjectPath", () => {
         /names no drum pad; use a note name \(e\.g\. "pC1"\), or "p\*" for the catch-all pad/,
       );
     }
+  });
+
+  it("accepts an enharmonic drum pad note", () => {
+    // Pads are keyed by MIDI note, so "pE#1" names the same pad as "pF1". The
+    // segment keeps the spelling as written; the lookup resolves it later.
+    expect(parseObjectPath("t1/d0/pE#1")).toStrictEqual({
+      kind: "device",
+      root: { kind: "track", trackIndex: 1 },
+      segments: [
+        { kind: "device", index: 0 },
+        { kind: "drum-pad", note: "E#1" },
+      ],
+    });
   });
 
   // A path has to nest the way Live does, or it parses and then fails later as
@@ -313,6 +357,10 @@ describe("formatObjectPath", () => {
       "t7/s2",
       "t0/l0",
       "t2/l+",
+      "t2/l=",
+      "t+",
+      "rt+",
+      "s+",
       "t1/d0",
       "mt/d0/c1/d2",
       "rt0/d0/rc1",
@@ -330,6 +378,88 @@ describe("formatObjectPath", () => {
   it("renders a tolerated legacy value in the new spelling", () => {
     expect(formatObjectPath(parseObjectPath("0/3"))).toBe("t0/s3");
     expect(formatObjectPath(parseObjectPath("7"))).toBe("t7");
+  });
+});
+
+describe("parseObjectPath - the [song position] coordinate", () => {
+  it("hangs a position off each arrangement lane", () => {
+    expect(parseObjectPath("t0[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "track", trackIndex: 0 },
+      position: "5|1",
+    });
+    expect(parseObjectPath("t0/l1[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "take-lane", trackIndex: 0, laneIndex: 1 },
+      position: "5|1",
+    });
+    expect(parseObjectPath("t0/l+[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "new-take-lane", trackIndex: 0 },
+      position: "5|1",
+    });
+    expect(parseObjectPath("t0/l=[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "same-take-lane", trackIndex: 0 },
+      position: "5|1",
+    });
+  });
+
+  it("leaves the lane open for a bare coordinate", () => {
+    expect(parseObjectPath("[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: null,
+      position: "5|1",
+    });
+  });
+
+  // The position is kept as written: what it means is the resolver's job, and
+  // a result always spells it back as bar|beat.
+  it.each([
+    ["a locator", "loc:Verse"],
+    ["a locator id", "loc:locator-0"],
+    ["a name holding both separators", "loc:A, B/C"],
+    ["a note-value offset", "1|1-n/4"],
+  ])("keeps %s verbatim", (_label, position) => {
+    expect(parseObjectPath(`t0[${position}]`)).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "track", trackIndex: 0 },
+      position,
+    });
+  });
+
+  // Only a regular track's arrangement has a timeline to sit on.
+  it.each([
+    ["a return track", "rt0[5|1]"],
+    ["the main track", "mt[5|1]"],
+    ["a scene", "s3[5|1]"],
+    ["a clip slot", "t0/s3[5|1]"],
+    ["a device", "t0/d0[5|1]"],
+    ["a track that does not exist yet", "t+[5|1]"],
+  ])("refuses a position on %s", (_label, path) => {
+    expect(() => parseObjectPath(path)).toThrow(
+      "a song position needs an arrangement lane",
+    );
+  });
+
+  it.each([
+    ["an empty coordinate", "t0[]", 'its "[]" names no position'],
+    ["an unclosed bracket", "t0[5|1", 'its "[" is never closed'],
+    ["a stray closer", "t0 5|1]", 'it closes a "[" it never opened'],
+  ])("refuses %s", (_label, path, problem) => {
+    expect(() => parseObjectPath(path)).toThrow(problem);
+  });
+
+  it("round-trips every shape", () => {
+    for (const path of [
+      "t0[5|1]",
+      "t0/l1[5|1]",
+      "t0/l+[5|1]",
+      "t0/l=[5|1]",
+      "[loc:Verse]",
+    ]) {
+      expect(formatObjectPath(parseObjectPath(path))).toBe(path);
+    }
   });
 });
 

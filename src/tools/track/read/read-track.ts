@@ -3,25 +3,33 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
-import { getDrumMap } from "#src/tools/shared/device/device-reader.ts";
 import {
+  findDrumRack,
+  getDrumMap,
+} from "#src/tools/shared/device/device-reader.ts";
+import { type ReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
+import {
+  expandWildcardIncludes,
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { stripFields } from "#src/tools/shared/utils.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
+import {
+  resolveReadTrackTarget,
+  type ReadTrackArgs,
+} from "./helpers/read-track-target-helpers.ts";
 import {
   categorizeDevices,
   readDevicesFlat,
   type CategorizedDevices,
 } from "./helpers/read-track-device-helpers.ts";
 import {
-  addCategoryIndex,
   addOptionalBooleanProperties,
   addProducerPalHostInfo,
   addRoutingInfo,
@@ -39,28 +47,12 @@ import {
   type ReadTakeLaneResult,
 } from "./helpers/read-track-helpers.ts";
 
-interface ReadTrackArgs {
-  trackIndex?: number;
-  id?: string;
-  /** Hidden alias for id */
-  trackId?: string;
-  trackType?: string;
-  returnTrackNames?: string[];
-  include?: string[];
-  /**
-   * Session clips on this track, when the caller already knows. A Live Set read
-   * counts every clip slot for its scenes anyway, and counting again here
-   * would build the whole grid a second time.
-   */
-  sessionClipCount?: number;
-}
-
 interface ReadTrackGenericArgs {
   track: LiveAPI;
   trackIndex: number | null;
   category?: string;
   include?: string[];
-  returnTrackNames?: string[];
+  returnTracks?: ReturnTrackInfo[];
   notation?: Notation;
   /** See ReadTrackArgs.sessionClipCount */
   sessionClipCount?: number;
@@ -81,6 +73,16 @@ interface TakeLanesResult {
   takeLaneCount?: number;
 }
 
+/** What every nested clip read under a track read needs. */
+interface NestedClipReads {
+  /** Whether the reads use drum mode (see drumModeForTrack) */
+  isDrumMode: () => boolean;
+  /** Include options, already expanded (see expandWildcardIncludes) */
+  include: string[] | undefined;
+  /** Active notation for note formatting */
+  notation: Notation | undefined;
+}
+
 /**
  * Read comprehensive information about a track
  * @param args - The parameters
@@ -91,60 +93,17 @@ export function readTrack(
   args: ReadTrackArgs = {},
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
-  const { trackIndex, trackType, returnTrackNames } = args;
-  const trackId = namedIdParam(args.id, args.trackId, "trackId");
-  const category = trackType ?? "regular";
-
-  // Validate parameters
-  if (trackId == null && trackIndex == null && category !== "master") {
-    throw new Error("Either id or trackIndex must be provided");
-  }
-
-  let track: LiveAPI;
-  let resolvedTrackIndex: number | null | undefined = trackIndex;
-  let resolvedCategory = category;
-
-  if (trackId != null) {
-    // Use the id to access the track directly and validate it's a track
-    track = validateIdType(trackId, "track", "readTrack");
-    // Determine track category and index from the track's path
-    resolvedCategory = (track.category as string | undefined) ?? "regular";
-    resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
-  } else if (category === "regular") {
-    track = LiveAPI.from(livePath.track(trackIndex as number)); // validated above
-  } else if (category === "return") {
-    track = LiveAPI.from(livePath.returnTrack(trackIndex as number)); // validated above
-  } else if (category === "master") {
-    track = LiveAPI.from(livePath.masterTrack());
-  } else {
-    throw new Error(
-      `Invalid trackType: ${trackType}. Must be "return" or "master", or omit for regular tracks.`,
-    );
-  }
+  const { track, category, trackIndex } = resolveReadTrackTarget(args);
 
   return readTrackGeneric({
     track,
-    trackIndex:
-      resolvedCategory === "master" ? null : (resolvedTrackIndex ?? null),
-    category: resolvedCategory,
+    trackIndex: category === "master" ? null : trackIndex,
+    category,
     include: args.include,
-    returnTrackNames,
+    returnTracks: args.returnTracks,
     notation: context.notation,
     sessionClipCount: args.sessionClipCount,
   });
-}
-
-/**
- * Compute merged track type from MIDI flag and category
- * @param isMidiTrack - Whether the track has MIDI input
- * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", or "master"
- */
-function computeTrackType(isMidiTrack: boolean, category: string): string {
-  if (category === "return") return "return";
-  if (category === "master") return "master";
-
-  return isMidiTrack ? "midi" : "audio";
 }
 
 /**
@@ -153,9 +112,7 @@ function computeTrackType(isMidiTrack: boolean, category: string): string {
  * @param category - Track category (regular, return, or master)
  * @param trackIndex - Track index
  * @param includeSessionClips - Whether to include full session clip details
- * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
- * @param include - Include array for nested reads
- * @param notation - Active notation for nested clip note formatting
+ * @param nested - What the nested clip reads need
  * @param knownCount - Session clips on this track, when the caller already counted them
  * @returns Object with session clips data
  */
@@ -164,9 +121,7 @@ function processSessionClips(
   category: string,
   trackIndex: number | null,
   includeSessionClips: boolean,
-  isDrumMode: () => boolean,
-  include: string[] | undefined,
-  notation: Notation | undefined,
+  nested: NestedClipReads,
   knownCount: number | undefined,
 ): SessionClipsResult {
   if (category !== "regular") {
@@ -178,9 +133,9 @@ function processSessionClips(
         sessionClips: readSessionClips(
           track,
           trackIndex,
-          isDrumMode,
-          include,
-          notation,
+          nested.isDrumMode,
+          nested.include,
+          nested.notation,
         ),
       }
     : { sessionClipCount: knownCount ?? countSessionClips(track, trackIndex) };
@@ -193,9 +148,7 @@ function processSessionClips(
  * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full arrangement clip details
- * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
- * @param include - Include array for nested reads
- * @param notation - Active notation for nested clip note formatting
+ * @param nested - What the nested clip reads need
  * @returns Object with arrangementClips array or arrangementClipCount
  */
 function processArrangementClips(
@@ -203,9 +156,7 @@ function processArrangementClips(
   isGroup: boolean,
   category: string,
   includeArrangementClips: boolean,
-  isDrumMode: () => boolean,
-  include: string[] | undefined,
-  notation: Notation | undefined,
+  nested: NestedClipReads,
 ): ArrangementClipsResult {
   if (isGroup || category === "return" || category === "master") {
     return includeArrangementClips
@@ -217,9 +168,9 @@ function processArrangementClips(
     ? {
         arrangementClips: readArrangementClips(
           track,
-          isDrumMode,
-          include,
-          notation,
+          nested.isDrumMode,
+          nested.include,
+          nested.notation,
         ),
       }
     : { arrangementClipCount: countArrangementClips(track) };
@@ -234,9 +185,7 @@ function processArrangementClips(
  * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full take lane clip details
- * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
- * @param include - Include array for nested reads
- * @param notation - Active notation for nested clip note formatting
+ * @param nested - What the nested clip reads need
  * @returns Object with takeLanes array, takeLaneCount, or empty
  */
 function processTakeLanes(
@@ -245,9 +194,7 @@ function processTakeLanes(
   isGroup: boolean,
   category: string,
   includeArrangementClips: boolean,
-  isDrumMode: () => boolean,
-  include: string[] | undefined,
-  notation: Notation | undefined,
+  nested: NestedClipReads,
 ): TakeLanesResult {
   // Take lanes are arrangement-only and only exist on non-group regular tracks
   if (isGroup || category !== "regular") {
@@ -265,12 +212,35 @@ function processTakeLanes(
         takeLanes: readTakeLanes(
           track,
           trackIndex,
-          isDrumMode,
-          include,
-          notation,
+          nested.isDrumMode,
+          nested.include,
+          nested.notation,
         ),
       }
     : { takeLaneCount: count };
+}
+
+/**
+ * Gather what the session, arrangement and take-lane clip reads share: the
+ * expanded include options (see expandWildcardIncludes) and one drum-rack walk
+ * for all three reads (see drumModeForTrack).
+ * @param track - Track object
+ * @param include - Include array as read-track received it
+ * @param notation - Active notation for nested clip note formatting
+ * @returns What the nested clip reads need
+ */
+function nestedClipReads(
+  track: LiveAPI,
+  include: string[] | undefined,
+  notation: Notation | undefined,
+): NestedClipReads {
+  const expanded = expandWildcardIncludes(include, READ_TRACK_DEFAULTS);
+
+  return {
+    isDrumMode: drumModeForTrack(track, expanded),
+    include: expanded,
+    notation,
+  };
 }
 
 /**
@@ -289,10 +259,11 @@ function addDrumMapFromDevices(
     ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
     ...categorizedDevices.audioEffects,
   ];
-  const drumMap = getDrumMap(allDevices, notation);
+  const drumRack = findDrumRack(allDevices);
 
-  if (drumMap != null) {
-    result.drumMap = drumMap;
+  if (drumRack != null) {
+    result.drumMap = getDrumMap(allDevices, notation);
+    result.drumRackPath = drumRack.path;
   }
 }
 
@@ -304,7 +275,7 @@ function addDrumMapFromDevices(
  * @param args.trackIndex - Track index (null for master track)
  * @param args.category - Track category: "regular", "return", or "master"
  * @param args.include - Array of data to include in the response
- * @param args.returnTrackNames - Array of return track names for sends
+ * @param args.returnTracks - The Live Set's return tracks, when the caller already read them
  * @param args.notation - Active notation; controls whether drum-map keys are drum names
  * @param args.sessionClipCount - Session clips on this track, when the caller already counted them
  * @returns Track information including clips, devices, routing, and state
@@ -314,7 +285,7 @@ export function readTrackGeneric({
   trackIndex,
   category = "regular",
   include,
-  returnTrackNames,
+  returnTracks,
   notation,
   sessionClipCount,
 }: ReadTrackGenericArgs): Record<string, unknown> {
@@ -345,7 +316,8 @@ export function readTrackGeneric({
 
   const result: Record<string, unknown> = {
     id: track.id,
-    type: computeTrackType(isMidiTrack, category),
+    ...pathField(track),
+    ...trackTypeField(isMidiTrack, category),
     name: track.getProperty("name"),
     ...(includeColor && { color: track.getColor() }),
   };
@@ -361,17 +333,14 @@ export function readTrackGeneric({
 
   // Add mixer properties if requested
   if (includeMixer) {
-    Object.assign(result, readMixerProperties(track, returnTrackNames));
+    Object.assign(result, readMixerProperties(track, returnTracks));
   }
 
   if (groupId) {
     result.groupId = atomToString(groupId);
   }
 
-  addCategoryIndex(result, category, trackIndex);
-
-  // One drum-rack walk for all three clip reads below (see drumModeForTrack).
-  const isDrumMode = drumModeForTrack(track, include);
+  const nested = nestedClipReads(track, include, notation);
 
   // Session clips
   Object.assign(
@@ -381,9 +350,7 @@ export function readTrackGeneric({
       category,
       trackIndex,
       includeSessionClips,
-      isDrumMode,
-      include,
-      notation,
+      nested,
       sessionClipCount,
     ),
   );
@@ -396,9 +363,7 @@ export function readTrackGeneric({
       isGroup,
       category,
       includeArrangementClips,
-      isDrumMode,
-      include,
-      notation,
+      nested,
     ),
   );
 
@@ -411,9 +376,7 @@ export function readTrackGeneric({
       isGroup,
       category,
       includeArrangementClips,
-      isDrumMode,
-      include,
-      notation,
+      nested,
     ),
   );
 
@@ -453,10 +416,10 @@ export function readTrackGeneric({
   addProducerPalHostInfo(result, isProducerPalHost);
 
   // Strip fields from nested clips that are redundant with parent track
-  // context. A session clip keeps its path — "t0/s3" addresses that one clip.
-  // An arrangement clip's is just the track's own path, repeated per clip.
+  // context. Every clip keeps its path: "t0/s3" and "t0[5|1]" each address one
+  // clip, which the track's own path doesn't.
   stripFields(result.sessionClips as unknown[], "view", "type");
-  stripFields(result.arrangementClips as unknown[], "path", "view", "type");
+  stripFields(result.arrangementClips as unknown[], "view", "type");
 
   return result;
 }

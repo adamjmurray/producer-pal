@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, waitFor } from "@testing-library/preact";
+import { renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 
@@ -129,7 +130,7 @@ describe("useSaveSettingsHandler", () => {
     // Hash mutation now lives inside closeSettings's afterClose, which only
     // runs after saveSettings resolves (a failed persist must keep the modal
     // and hash untouched), so the assertion needs to wait for the microtask.
-    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    await waitForHookState(() => expect(saveSettings).toHaveBeenCalled());
     expect(window.location.hash).toBe("#conv-123");
   });
 
@@ -137,7 +138,7 @@ describe("useSaveSettingsHandler", () => {
     window.location.hash = "chat-conv-1";
     renderSave({ model: "gpt-realtime-2", savedModel: "gemini-1.5-flash" });
 
-    await waitFor(() => expect(window.location.hash).toBe(""));
+    await waitForHookState(() => expect(window.location.hash).toBe(""));
   });
 
   it("clears the URL hash when saving flips voice → chat", async () => {
@@ -145,7 +146,7 @@ describe("useSaveSettingsHandler", () => {
 
     renderSave({ model: "gemini-1.5-flash", savedModel: "gpt-realtime-2" });
 
-    await waitFor(() => expect(window.location.hash).toBe(""));
+    await waitForHookState(() => expect(window.location.hash).toBe(""));
   });
 
   it("preserves the URL hash on a mode-flip save when a foreign record is pinned", async () => {
@@ -159,7 +160,7 @@ describe("useSaveSettingsHandler", () => {
       viewingMode: "voice",
     });
 
-    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    await waitForHookState(() => expect(saveSettings).toHaveBeenCalled());
     expect(window.location.hash).toBe("#voice-conv-1");
   });
 
@@ -172,10 +173,14 @@ describe("useSaveSettingsHandler", () => {
     // The handler chains postLiveApiEnabled inside saveSettings().then(...), so
     // it lands a microtask later than the synchronous-fire pattern this test
     // used previously.
-    await waitFor(() => expect(postLiveApiEnabled).toHaveBeenCalledWith(true));
+    await waitForHookState(() =>
+      expect(postLiveApiEnabled).toHaveBeenCalledWith(true),
+    );
     // checkMcpConnection runs only after the POST resolves (the server exposes
     // ppal-live-api based on the flag, so listTools must follow the POST).
-    await waitFor(() => expect(checkMcpConnection).toHaveBeenCalledTimes(1));
+    await waitForHookState(() =>
+      expect(checkMcpConnection).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("does not post liveApiEnabled when the toggle was untouched", () => {
@@ -193,7 +198,9 @@ describe("useSaveSettingsHandler", () => {
       notationDirty: true,
     });
 
-    await waitFor(() => expect(postNotation).toHaveBeenCalledWith("midi-json"));
+    await waitForHookState(() =>
+      expect(postNotation).toHaveBeenCalledWith("midi-json"),
+    );
     // Notation doesn't change the tool list, so no reconnect is triggered.
     expect(checkMcpConnection).not.toHaveBeenCalled();
   });
@@ -203,7 +210,7 @@ describe("useSaveSettingsHandler", () => {
       notationDirty: false,
     });
 
-    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    await waitForHookState(() => expect(saveSettings).toHaveBeenCalled());
     expect(postNotation).not.toHaveBeenCalled();
   });
 
@@ -230,11 +237,13 @@ describe("useSaveSettingsHandler", () => {
     expect(postLiveApiEnabled).not.toHaveBeenCalled();
 
     resolveSave(true);
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(postSmallModelMode).toHaveBeenCalledTimes(1);
       expect(postLiveApiEnabled).toHaveBeenCalledWith(true);
     });
-    await waitFor(() => expect(checkMcpConnection).toHaveBeenCalledTimes(1));
+    await waitForHookState(() =>
+      expect(checkMcpConnection).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("skips closeSettings + post-save RPCs when saveSettings reports failure", async () => {
@@ -259,7 +268,7 @@ describe("useSaveSettingsHandler", () => {
 
     result.current();
 
-    await waitFor(() => expect(saveSettings).toHaveBeenCalledTimes(1));
+    await waitForHookState(() => expect(saveSettings).toHaveBeenCalledTimes(1));
     // Give any stray microtasks a chance to land before asserting "did not".
     await Promise.resolve();
 

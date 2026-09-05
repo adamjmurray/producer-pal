@@ -5,8 +5,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
-  lookupMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -23,11 +23,13 @@ import {
   setupAudioClipMock,
   setupMidiClipMock,
   setupUpdateClipMocks,
+  stubSplitRescan,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // applyCodeToSingleClip is mocked so the code-exec loop in update-clip.ts can be
 // driven in isolation (return value / call count) without real note execution.
@@ -42,19 +44,120 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("should warn and return empty when neither id nor path is given", async () => {
-    expect(await updateClip({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateClip: id or path is required",
-    );
+  // One pitch for every clip in the call, so a per-clip skip would repeat the
+  // same message down the list — and the per-clip wrapper would swallow it.
+  it("refuses an invalid quantizePitch before touching a clip", async () => {
+    await expect(
+      updateClip({ id: "clip1", quantize: 1, quantizePitch: "invalid" }),
+    ).rejects.toThrow('invalid note name "invalid" for quantizePitch');
+  });
 
-    vi.mocked(outlet).mockClear();
-    expect(await updateClip({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateClip: id or path is required",
+  it("should refuse the call when neither id nor path is given", async () => {
+    await expect(updateClip({})).rejects.toThrow("id or path is required");
+    await expect(updateClip({ name: "Test" })).rejects.toThrow(
+      "id or path is required",
     );
+  });
+
+  // id and path both name clips, so a path keeps the call non-empty while an
+  // id whose entries all trim away drops out unnoticed. The caller asked for
+  // those ids.
+  // The path would have carried the call, but an id that names nothing is still
+  // a malformed list — and one the caller can only have meant something by.
+  it("should refuse an empty id even when path carries the call", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    await expect(
+      updateClip({ id: ",  ,", path: "t1/s1", name: "By Path" }),
+    ).rejects.toThrow('invalid id ",  ," - it names nothing');
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
+  });
+
+  it("should refuse an empty id given on its own", async () => {
+    await expect(updateClip({ id: ",  ," })).rejects.toThrow(
+      'invalid id ",  ," - it names nothing',
+    );
+  });
+
+  // The wording truth table is target-lists.test.ts; these pin WHEN update-clip
+  // says it. A blank is an unset param (ADR-0029), so the path carries the call
+  // — but nothing in the result would say the id the caller sent was dropped.
+  it("warns when a blank id is dropped and path carries the call", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    const result = await updateClip({
+      id: "   ",
+      path: "t1/s1",
+      name: "By Path",
+    });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'blank id ignored — "path" names the clips',
+    ]);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
+  });
+
+  it("warns when a blank path is dropped and id carries the call", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", path: "   ", name: "By Id" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'blank path ignored — "id" names the clips',
+    ]);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "By Id");
+  });
+
+  it("says nothing when only one of id and path was sent", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ path: "t1/s1", name: "By Path" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says nothing when id and path both name clips", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ id: "123", path: "t1/s1", name: "Both" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // The warning claims what the call did, and a refused call did nothing. V8
+  // attaches a request's warnings to its error response too, so saying it
+  // before the refusals would tell the model that a path it never used named
+  // the clips.
+  it.each([
+    ["a list has a hole", { path: "t1/s1,,t2/s1" }, "empty entry"],
+    [
+      "a whole-call param can't be read",
+      { path: "t1/s1", timeSignature: "x" },
+      "Time signature must be in format",
+    ],
+  ])(
+    "says nothing when the call is refused because %s",
+    async (_label, args, message) => {
+      setupMidiClipMock(mocks.clip456);
+
+      await expect(updateClip({ id: "   ", ...args })).rejects.toThrow(message);
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("blank id ignored"),
+      );
+    },
+  );
+
+  // Same reason: "path names the clips" is false when it named none, and the
+  // no-clip warning already says what went wrong.
+  it("says nothing when the path it names holds no clip", async () => {
+    mockNonExistentObjects();
+
+    const result = await updateClip({ id: "   ", path: "t9/s9" });
+
+    expect(capturedWarnings()).toStrictEqual(['no clip at path "t9/s9"']);
+    expect(result).toStrictEqual([]);
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
@@ -88,7 +191,7 @@ describe("updateClip - Basic operations", () => {
       expect.any(Number),
     );
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 }); // Existing C3 + new D3
   });
 
   it("should log warning when clip ID doesn't exist", async () => {
@@ -100,10 +203,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateClip: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   // Saves a read-then-update round trip: a caller that knows where the clip is
@@ -115,7 +215,27 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ path: "t1/s1", name: "By Path" });
 
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
-    expect(result).toStrictEqual({ id: "456" });
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
+  });
+
+  // The whole address in one param: the lane and the position the clip starts
+  // at. No read first, and no arrangementStart to pair it with.
+  it("should update the arrangement clip a path names by position", async () => {
+    setupMidiClipMock(mocks.clip789, {
+      is_arrangement_clip: 1,
+      start_time: 16.0,
+    });
+    registerMockObject("track-2", {
+      path: livePath.track(2),
+      type: "Track",
+      properties: { arrangement_clips: children("789") },
+    });
+
+    // 4/4, so bar 5 is beat 16 — where clip789 starts.
+    const result = await updateClip({ path: "t2[5|1]", name: "By Position" });
+
+    expect(mocks.clip789.set).toHaveBeenCalledWith("name", "By Position");
+    expect(result).toStrictEqual({ id: "789", path: "t2[5|1]" });
   });
 
   it("should warn and skip a path with no clip, keeping the rest", async () => {
@@ -124,11 +244,8 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateClip: no clip at path "t9/s9"',
-    );
-    expect(result).toStrictEqual({ id: "456" });
+    expect(capturedWarnings()).toContain('no clip at path "t9/s9"');
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
   });
 
   it("should update a single session clip by ID", async () => {
@@ -145,7 +262,7 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16711680);
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", true);
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should update a single arrangement clip by ID", async () => {
@@ -166,7 +283,7 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip789.set).toHaveBeenCalledWith("loop_end", 6); // start (2) + length (4) = 6 Ableton beats
     expect(mocks.clip789.set).toHaveBeenCalledWith("end_marker", 6); // start (2) + length (4) = 6 Ableton beats
 
-    expect(result).toStrictEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789", path: "t2[5|1]" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", async () => {
@@ -181,7 +298,8 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Verify result is returned (view switching is a side effect)
-    expect(result).toStrictEqual({ id: "999" });
+    // start_time 32 in 4/4 is bar 9 beat 1
+    expect(result).toStrictEqual({ id: "999", path: "t3[9|1]" });
   });
 
   it("should update multiple clips by comma-separated IDs", async () => {
@@ -202,7 +320,10 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip456.set).toHaveBeenCalledWith("looping", false);
     expect(mocks.clip456.set).toHaveBeenCalledTimes(2);
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+    ]);
   });
 
   it("should update time signature when provided", async () => {
@@ -215,7 +336,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should write notes with real bar|beat parsing in 4/4 time", async () => {
@@ -241,7 +362,7 @@ describe("updateClip - Basic operations", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", async () => {
@@ -264,7 +385,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", async () => {
@@ -285,7 +406,7 @@ describe("updateClip - Basic operations", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", async () => {
@@ -301,7 +422,7 @@ describe("updateClip - Basic operations", () => {
       notes: expectedDrumPatternNotes(),
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 5 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 5 });
   });
 
   it("should throw error for invalid time signature format", async () => {
@@ -339,7 +460,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ id: "123", toSlot: "1/2" });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
@@ -351,7 +472,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ id: "123", toPath: "t1/s2" });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
@@ -366,12 +487,11 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ id: "123", toPath: "1/2" });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'toPath "1/2" is the old slot spelling; use "t1/s2"',
       ),
@@ -393,7 +513,9 @@ describe("updateClip - Basic operations", () => {
 
       const result = await updateClip({ id: "123", [param]: "," });
 
-      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(reason));
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(reason),
+      );
       expect(result).not.toHaveProperty("slot");
     },
   );
@@ -407,8 +529,7 @@ describe("updateClip - Basic operations", () => {
     // The word, written out by a model that had no destination to name.
     const result = await updateClip({ id: "123", toPath: "null" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('toPath "null" names nothing'),
     );
     expect(result).not.toHaveProperty("slot");
@@ -425,8 +546,7 @@ describe("updateClip - Basic operations", () => {
     ) as string;
     const result = await updateClip({ id: "123", toSlot });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("clip not moved"),
     );
     expect(result).not.toHaveProperty("slot");
@@ -451,10 +571,10 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ id: "123", toSlot: "1/2, 3/4" });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
+      "toSlot: 2 destinations for 1 clip; the extra destinations went unused",
     );
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
@@ -468,23 +588,20 @@ describe("updateClip - Basic operations", () => {
 
     // slots.length is exactly 1 here: the > 1 guard must stay false so no
     // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
+    expect(capturedWarnings()).not.toContain(
+      "toSlot: 2 destinations for 1 clip; the extra destinations went unused",
     );
   });
 
-  it("should include the tool name when more names than clips are provided", async () => {
+  it("should refuse more names than clips, naming both counts", async () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    await updateClip({ id: "123, 456", name: "A, B, C" });
+    await expect(
+      updateClip({ id: "123, 456", name: "A, B, C" }),
+    ).rejects.toThrow("id and path names 2 entries but name names 3 entries.");
 
-    // The "updateClip" tool-name literal must be preserved in the warning.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateClip: 3 names provided but only 2 items — ignoring extra",
-    );
+    expect(mocks.clip123.set).not.toHaveBeenCalledWith("name", "A");
   });
 
   describe("focus", () => {
@@ -546,8 +663,7 @@ describe("updateClip - Basic operations", () => {
 
     // handleWarpMarkerOperation runs only inside the warpOp != null guard; with
     // no warpBeatTime it warns, proving the guarded block executed.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "warpBeatTime required for add operation",
     );
   });
@@ -563,11 +679,10 @@ describe("updateClip - Basic operations", () => {
       "add_new_notes",
       expect.anything(),
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContain(
       "notes parameter ignored for audio clip",
     );
-    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
   });
 
   it("should warn that audio-only parameters were ignored on a MIDI clip", async () => {
@@ -575,9 +690,8 @@ describe("updateClip - Basic operations", () => {
 
     await updateClip({ id: "123", warping: false, gainDb: -6 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "gainDb, warping ignored for MIDI clips",
+    expect(capturedWarnings()).toContain(
+      "gainDb, warping ignored for MIDI clip t0/s0 (id 123)",
     );
   });
 
@@ -590,11 +704,10 @@ describe("updateClip - Basic operations", () => {
     // Loop bound is j < length: exactly one call, no extra iteration that would
     // dereference undefined and emit a "Failed to update clip" warning.
     expect(applyCodeToSingleClip).toHaveBeenCalledTimes(1);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Failed to update clip"),
     );
-    expect(result).toStrictEqual({ id: "123", noteCount: 3 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
   });
 
   it("should omit noteCount when code exec returns null", async () => {
@@ -604,7 +717,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ id: "123", code: "return notes" });
 
     // noteCount != null guard: a null result must not set the field.
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(result).not.toHaveProperty("noteCount");
   });
 
@@ -624,7 +737,8 @@ describe("updateClip - Basic operations", () => {
       destinationParam: "toPath",
       context: {},
       updatedClips: [],
-      tracksWithMovedClips: new Map(),
+      movedClipGroups: new Map(),
+      appendedLanes: new Map(),
       nonSurvivorClipIds: new Set(["123"]),
     });
 
@@ -647,39 +761,19 @@ describe("updateClip - splitting mutation coverage", () => {
     // Session clips are excluded from arrangementClips, so prepareSplitParams
     // sees an empty list and warns. The <= 0 guard must return false for them
     // (forced-true / never-false mutants would include the clip and split it).
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "arrangementSplit requires arrangement clips",
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should split an arrangement clip and return the fresh clips only", async () => {
     const clipId = "clip_1";
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // rescanSplitClips reads arrangement_clips: return one real fresh clip plus
-    // a non-existent one (id "0") that clip.exists() must filter out.
     const freshClipId = "fresh_clip";
 
-    registerMockObject(freshClipId, {
-      path: livePath.track(0).arrangementClip(2),
-      type: "Clip",
-      properties: {
-        start_time: 0.0,
-        is_midi_clip: 1,
-        is_arrangement_clip: 1,
-      },
-    });
-
-    const trackMock = lookupMockObject("track_0", livePath.track(0));
-    const origGet = trackMock?.get.getMockImplementation();
-
-    trackMock?.get.mockImplementation((prop: string) => {
-      if (prop === "arrangement_clips") return ["id", freshClipId, "id", "0"];
-
-      return origGet ? origGet(prop) : [0];
-    });
+    stubSplitRescan(freshClipId);
 
     const result = await updateClip(
       { id: clipId, arrangementSplit: "2|1" },

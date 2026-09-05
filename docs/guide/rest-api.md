@@ -1,7 +1,7 @@
 ---
 title: Ableton Live REST API
 description:
-  Producer Pal exposes a REST API for Ableton Live — control tracks, clips,
+  Producer Pal exposes a REST API for Ableton Live. Control tracks, clips,
   devices, and arrangements over plain HTTP. No MCP SDK required.
 head:
   - - meta
@@ -11,7 +11,7 @@ head:
         API, Max for Live REST API, Ableton automation API
   - - meta
     - property: og:title
-      content: Ableton Live REST API — Producer Pal
+      content: "Ableton Live REST API: Producer Pal"
   - - meta
     - property: og:description
       content:
@@ -22,7 +22,7 @@ head:
 # Ableton Live REST API
 
 Producer Pal includes a REST API for building custom scripts, automation, and
-integrations with Ableton Live using plain HTTP requests — no MCP SDK needed. It
+integrations with Ableton Live using plain HTTP requests, no MCP SDK needed. It
 also works as an alternative interface for coding agents: download this page as
 Markdown (button at the top) and give it to your agent for a complete reference.
 
@@ -32,7 +32,7 @@ is available whenever the Producer Pal Max for Live device is running.
 ::: info This is for developers
 
 Most users don't need the REST API. The normal way to use Producer Pal is
-through an AI chat client like Claude Desktop — see the
+through an AI chat client like Claude Desktop. See the
 [Installation guide](/installation) to get started.
 
 :::
@@ -67,30 +67,30 @@ Returns all enabled tools with their JSON Schema input definitions:
 POST http://localhost:3350/api/tools/{toolName}
 Content-Type: application/json
 
-{ "trackIndex": 0, "include": ["session-clips"] }
+{ "path": "t0", "include": ["session-clips"] }
 ```
 
-Returns (the default `json` format — see
+Returns (the default `json` format, see
 [Response format](#response-format-format-json-default)):
 
 ```json
 { "result": { "...": "..." }, "isError": false }
 ```
 
-- **200** with `isError: false` — tool ran successfully
-- **200** with `isError: true` — tool ran but reported an error (e.g. invalid
+- **200** with `isError: false`: tool ran successfully
+- **200** with `isError: true`: tool ran but reported an error (e.g. invalid
   path, execution error)
-- **404** — unknown or disabled tool
-- **400** — invalid input (includes validation details)
-- **504** — the tool didn't finish before the timeout (see
+- **404**: unknown or disabled tool
+- **400**: invalid input (includes validation details)
+- **504**: the tool didn't finish before the timeout (see
   [Per-request timeout](#per-request-timeout-timeoutms-n))
-- **500** — internal server error
+- **500**: internal server error
 
 ::: warning 504 and 500 use a different body shape
 
 The error responses do **not** carry `result` / `isError`. A 504 returns
-`{ "error": "...", "errorCode": "timeout" }` — check `errorCode` to distinguish
-a timeout from other failures — and a 500 returns `{ "error": "..." }`. Client
+`{ "error": "...", "errorCode": "timeout" }` (check `errorCode` to distinguish a
+timeout from other failures), and a 500 returns `{ "error": "..." }`. Client
 code that reads `body.result` unconditionally will break on exactly the case the
 `timeoutMs` parameter below invites you to hit.
 
@@ -98,29 +98,29 @@ code that reads `body.result` unconditionally will break on exactly the case the
 
 Warnings from the Live API surface as a separate `warnings` string array (or
 inline in the `result` text under `?format=compact`). The `ppal-update-*` tools
-use this when updating multiple objects — if any individual operation fails or
-is inapplicable (e.g. setting quantize on an audio clip), it emits a warning and
+use this when updating multiple objects: if any individual operation fails or is
+inapplicable (e.g. setting quantize on an audio clip), it emits a warning and
 continues with the rest.
 
 ### Response format: `?format=json` (default)
 
 The REST API defaults to **`json`**: `result` is the parsed value (object,
 array, number, string) and warnings are a separate `string[]`. This is the right
-default for HTTP integrations — no `JSON.parse` or `jq | fromjson` gymnastics.
-The device-level **JSON Output** setting (**Setup** tab) does not affect the
-REST API.
+default for HTTP integrations, with no `JSON.parse` or `jq | fromjson`
+gymnastics. The device-level **JSON Output** setting (**Setup** tab) does not
+affect the REST API.
 
 The compact JS-literal format (unquoted keys, no whitespace) is optimized for
 LLM token efficiency and is the same format MCP clients receive. It is opt-in
 for REST via `?format=compact`, where `result` is a string with warnings inline:
 
 ```bash
-# JSON (default) — result is the parsed value; warnings are a separate string array
+# JSON (default): result is the parsed value; warnings are a separate string array
 curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
   -H 'Content-Type: application/json' -d '{}'
 # → {"result":{"tempo":120,"timeSignature":"4/4",...},"isError":false}
 
-# Compact JS-literal — result is a string, warnings are inline
+# Compact JS-literal: result is a string, warnings are inline
 curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=compact' \
   -H 'Content-Type: application/json' -d '{}'
 # → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
@@ -128,24 +128,24 @@ curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=compact'
 
 With the default `json` format (or explicit `?format=json`):
 
-- **`result`** is the parsed value (object, array, number, string, etc.) — not a
+- **`result`** is the parsed value (object, array, number, string, etc.), not a
   JSON-encoded string. Access fields directly: `body.result.tempo`.
 - **`warnings`** is a `string[]` (with the `WARNING: ` prefix stripped), present
   only when the tool emitted any. In compact mode, warnings remain inline in
   `result` for backwards compatibility.
 - **`appended`** is a `string[]` of extra Markdown text blocks the server
-  attaches after the result. Currently only `ppal-connect` uses it, to deliver —
-  in order — the Producer Pal skills (notation instructions), this Live Set's
+  attaches after the result. Currently only `ppal-connect` uses it, to deliver,
+  in order, the Producer Pal skills (notation instructions), this Live Set's
   project context, your `~/.producer-pal/context.md` global context, your memory
   index, and a final next-step block. The context blocks are self-labeling
   (`Project context (this Live Set):`, `Global context (all projects):`,
-  `Memory index — …`) and only appear when you've configured them; the skills
-  and the next-step block are always present, so `appended` is never empty on
+  `Memory index. …`) and only appear when you've configured them; the skills and
+  the next-step block are always present, so `appended` is never empty on
   `ppal-connect`. The next-step block names any empty context layers and tells
   the AI what to do next, so don't assume the last element is context. In
   compact mode these blocks are joined into the `result` string instead.
 - On **error** (`isError: true`), `result` is still a plain error string
-  regardless of format — error messages are not JSON.
+  regardless of format; error messages are not JSON.
 
 Pass `?format=compact` to opt into the compact JS-literal format, or
 `?format=json` to be explicit about the default. Other values return **400**.
@@ -166,8 +166,8 @@ curl -X POST 'http://localhost:3350/api/tools/ppal-create-clip?timeoutMs=10000' 
 
 `timeoutMs` must be a positive integer up to **55000** (55 seconds). Other
 values return **400**. The cap stays under 60 seconds because that is where most
-MCP clients give up — past it you lose the partial results and warnings Producer
-Pal returns on a timeout. Combinable with `?format=`:
+MCP clients give up. Past that, you lose the partial results and warnings
+Producer Pal returns on a timeout. Combinable with `?format=`:
 
 ```
 POST /api/tools/{name}?format=json&timeoutMs=10000
@@ -175,28 +175,29 @@ POST /api/tools/{name}?format=json&timeoutMs=10000
 
 ### Per-request settings {#per-request-settings}
 
-Three headers let one client run its own profile. They work on both REST
-endpoints and on the MCP endpoint, so a script, an agent, and the
+These headers let one client run its own profile, so a script, an agent, and the
 [Chat UI](/guide/chat-ui) can each use a different notation at the same time
 without a `POST /config` changing everyone else's:
 
-| Header                            | Value                           | Overrides                                      |
-| --------------------------------- | ------------------------------- | ---------------------------------------------- |
-| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)               |
-| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode) |
-| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)        |
+| Header                            | Value                           | Overrides                                                 | Endpoints |
+| --------------------------------- | ------------------------------- | --------------------------------------------------------- | --------- |
+| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)                          | REST, MCP |
+| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode)            | REST, MCP |
+| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)                   | REST, MCP |
+| `x-producer-pal-live-api`         | `true` / `false`                | [the Direct Live API tool](/features/tools#ppal-live-api) | REST, MCP |
+| `x-producer-pal-format`           | `compact`, `json`               | the response format                                       | MCP only  |
 
 Absent or unrecognized values fall back to the device's global setting, so
 clients that send nothing are unaffected. Nothing is remembered between requests
-— **send the headers on every request**, `GET /api/tools` included, so the
+so **send the headers on every request**, `GET /api/tools` included, so the
 schemas you read match what you send.
 
 #### Notation {#per-request-notation}
 
 `x-producer-pal-notation` picks the [MIDI notation](/features/midi-notation) for
 one request. It decides the note syntax in the tool and argument descriptions
-`GET /api/tools` serves, the syntax the [Skills](/features#skills) teach, and —
-unlike the other two — how notes in your arguments are parsed and how notes in
+`GET /api/tools` serves, the syntax the [Skills](/features#skills) teach, and
+(unlike the other two) how notes in your arguments are parsed and how notes in
 the response are formatted.
 
 ```bash
@@ -230,7 +231,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-connect \
   -d '{}'
 ```
 
-Unrecognized names are ignored. `ppal-connect` itself can be withheld — nothing
+Unrecognized names are ignored. `ppal-connect` itself can be withheld; nothing
 is reserved here, unlike the `npx producer-pal` flags.
 
 #### Small model mode {#per-request-small-model-mode}
@@ -240,12 +241,30 @@ is reserved here, unlike the `npx producer-pal` flags.
 aimed at local and lightweight models; see
 [Small Model Mode](/features#small-model-mode).
 
-::: tip Output format and timeout are REST-only
+#### Direct Live API {#per-request-live-api}
 
-`?format=` and `?timeoutMs=` above have no MCP equivalent, on purpose. Query
-params aren't something MCP clients send, `/mcp` is built to return the one
-MCP-shaped response, and the timeout exists for slow machines — a fact about the
-device, not about one call. Set it on the device's **Setup** tab.
+`x-producer-pal-live-api: true` adds
+[`ppal-live-api`](/features/tools#ppal-live-api) to one request, even when the
+device's **Setup** tab toggle is off, and `false` withholds it when the toggle
+is on. It is a grant for that request only: another client on the same device
+sees the toolset it asked for, which is what you want when one agent needs raw
+Live Object Model access and another is being evaluated against the curated
+tools.
+
+`x-producer-pal-disabled-tools` still wins. A request that enables the tool here
+and names it there does not get it.
+
+#### Output format {#per-request-format}
+
+`x-producer-pal-format` is the MCP endpoint's equivalent of `?format=`, since
+query params aren't something MCP clients send. REST callers use the query
+param; it is already per-request there.
+
+::: tip The timeout is REST-only
+
+`?timeoutMs=` above has no MCP equivalent, on purpose: it exists for slow
+machines, a fact about the device, not about one call. Set it on the device's
+**Setup** tab.
 
 :::
 
@@ -259,7 +278,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
 # Read track 0 with all clips
 curl -X POST http://localhost:3350/api/tools/ppal-read-track \
   -H 'Content-Type: application/json' \
-  -d '{"trackIndex": 0, "include": ["session-clips", "arrangement-clips"]}'
+  -d '{"path": "t0", "include": ["session-clips", "arrangement-clips"]}'
 
 # List available tools
 curl http://localhost:3350/api/tools
@@ -267,13 +286,13 @@ curl http://localhost:3350/api/tools
 
 ## Sample Scripts
 
-Zero-dependency client examples — they use only built-in HTTP libraries. Copy
-and modify them for your own integrations.
+Zero-dependency client examples using only built-in HTTP libraries. Copy and
+modify them for your own integrations.
 
 ### Node.js
 
 The Node.js client doubles as the Producer Pal [Agent Skill](/guide/skills)
-script — see [The bundled script](/guide/skills#the-bundled-script) for the full
+script; see [The bundled script](/guide/skills#the-bundled-script) for the full
 source and CLI reference. It works with Claude Code, Codex CLI, Gemini CLI, and
 any other agent runtime that reads the `SKILL.md` convention.
 
@@ -286,13 +305,13 @@ any other agent runtime that reads the `SKILL.md` convention.
 Node's built-in `fetch` is undici, and the copy Node 26 vendors (8.9.0) leaves a
 request unsent on an idle keep-alive connection until your script's event loop
 wakes for something else. If that something else is your own `sleep`, the gap
-plus the stall snaps to 500ms — or 3 seconds for gaps under 3 seconds. A loop
+plus the stall snaps to 500ms, or 3 seconds for gaps under 3 seconds. A loop
 sleeping 1s between calls spends ~3s per call instead of ~25ms.
 
 It only affects scripts that sleep between requests; one-shot calls and
 back-to-back loops are fine. Either use `node:http` instead of `fetch`, or
 install a dispatcher from a version without the bug (undici fixed it in 8.10.0;
-7.x predates it — but 8.9.0 itself will not help):
+7.x predates it, but 8.9.0 itself will not help):
 
 ```js
 import { Agent, setGlobalDispatcher } from "undici";
@@ -325,7 +344,7 @@ scripting and debugging.
 
 It is opt-in: enable **Direct Live API** on the **Setup** tab of the Producer
 Pal Max for Live device, or programmatically with a `POST /config` request (from
-curl or a same-origin script — cross-origin browser writes to `/config` are
+curl or a same-origin script, since cross-origin browser writes to `/config` are
 rejected):
 
 ```bash
@@ -335,10 +354,9 @@ curl -X POST http://localhost:3350/config \
 ```
 
 The setting is global to the device (it also affects the Chat UI and any
-connected MCP clients). This is an advanced escape hatch — the higher-level
-tools are tuned for reliable results, so reach for the raw Live API only for
-custom integrations, scripting, or debugging when the standard tools aren't
-enough.
+connected MCP clients). This is an advanced escape hatch: the higher-level tools
+are tuned for reliable results, so reach for the raw Live API only for custom
+integrations, scripting, or debugging when the standard tools aren't enough.
 
 ### Request structure
 
@@ -352,18 +370,18 @@ Available operation types:
 
 | Type           | Properties used             | Description                                                                                                                                  |
 | -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array. Returns the number `1`, not an array, when the object doesn't exist |
-| `set`          | `property`, `value`         | Write a property value. Always returns 1, even when the write is rejected — read the property back to confirm it landed                      |
+| `get`          | `property`                  | Read a property's raw value; a `_list` property returns the full array. Returns the number `1`, not an array, when the object doesn't exist  |
+| `set`          | `property`, `value`         | Write a property value. Always returns 1, even when the write is rejected, so read the property back to confirm it landed                    |
 | `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                                      |
 | `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                             |
 | `goto`         | `value` (path)              | Navigate to a different object                                                                                                               |
-| `info`         | —                           | Get object info                                                                                                                              |
+| `info`         | none                        | Get object info                                                                                                                              |
 | `getcount`     | `property` (child type)     | Count the object's children in a collection. `0` when the object doesn't exist                                                               |
 | `getstring`    | `property`                  | Read a property as a string. Returns the number `1`, not a string, when the object doesn't exist                                             |
-| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get` for the full array                     |
+| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar; truncates a `_list` property to its first element, so use `get` for the full array                   |
 | `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                                         |
-| `exists`       | —                           | Check if the object exists. Producer Pal's judgment, not Live's: Live's own `valid` field reads 1 even for a bad path, so this checks the id |
-| `getColor`     | —                           | Read object color                                                                                                                            |
+| `exists`       | none                        | Check if the object exists. Producer Pal's judgment, not Live's: Live's own `valid` field reads 1 even for a bad path, so this checks the id |
+| `getColor`     | none                        | Read object color                                                                                                                            |
 | `setColor`     | `value` (hex string)        | Write object color                                                                                                                           |
 | `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property             |
 | `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method                          |
@@ -372,7 +390,7 @@ Available operation types:
 
 The last group operates on the JavaScript wrapper, not the Live object it points
 at. Despite the names, `get`/`get_property` and `call`/`call_method` are **not**
-aliases — `call get_current_beats_song_time` works, while
+aliases. `call get_current_beats_song_time` works, while
 `call_method get_current_beats_song_time` fails because that method lives on the
 Live object, not the wrapper. Only `set` and `set_property` perform the same
 write, and even they report different results.
@@ -386,7 +404,7 @@ way, and none of them raise an error. Verified against Live 12.4.3:
 - `getcount` returns `0`
 - `info` returns `"No object"`
 
-Read a bare `1` as "no object, no answer". It is not a success flag — `set`
+Read a bare `1` as "no object, no answer". It is not a success flag: `set`
 returns `1` on a perfectly valid object too, whether or not the write landed. A
 read-only property, a wrong-typed value, an unknown property and an out-of-range
 value all return `1` and change nothing. Read the property back if you need to
@@ -395,7 +413,7 @@ know whether a write took.
 Normalizing that away is most of what the Producer Pal operations add over the
 raw Live ones: `getProperty` gives `undefined`, `getChildIds` gives `[]`,
 `getColor` gives `null`, and `exists` gives `false`. Prefer `exists` over
-reading Live's own `valid` field, which reads `1` in all four cases — it
+reading Live's own `valid` field, which reads `1` in all four cases. It
 describes the wrapper object, not the target it points at.
 
 You don't need to call `set_path ""` yourself for cleanup. Live arms a path
@@ -455,7 +473,7 @@ When the **Direct Live API** toggle is off on the device Setup tab, requests to
 - The `inputSchema` in the tool list response is standard
   [JSON Schema](https://json-schema.org/), so you can use it for client-side
   validation or code generation.
-- The REST API shares the same tool configuration as MCP — tools enabled or
+- The REST API shares the same tool configuration as MCP: tools enabled or
   disabled on the device apply to both interfaces.
 - The REST API has no authentication (same as the MCP endpoint). It is designed
   for use on localhost or trusted networks only.

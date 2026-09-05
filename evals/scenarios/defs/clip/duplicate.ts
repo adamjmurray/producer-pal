@@ -15,9 +15,10 @@ import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { assertAddressedById } from "../path/path-scenario-helpers.ts";
+import { callNamesArrangementPosition } from "../arrangement-helpers.ts";
+import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   clipStateAssertion,
   MSG_CONNECT,
   TOOL_CONNECT,
@@ -55,7 +56,7 @@ export const duplicate: EvalScenario = {
 
     // 2.2.0 renamed every tool's target arg to `id`. A duplicate with no target
     // at all used to pass here.
-    assertAddressedById({ turn: 2, tool: TOOL_DUPLICATE }),
+    assertNamesTarget({ turn: 2, tool: TOOL_DUPLICATE }),
 
     // Verify track duplication uses type: "track"
     {
@@ -79,12 +80,12 @@ export const duplicate: EvalScenario = {
 
     // Turn 3: Clip duplication
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
-    assertAddressedById({ turn: 3, tool: TOOL_DUPLICATE }),
+    assertNamesTarget({ turn: 3, tool: TOOL_DUPLICATE }),
 
-    // Verify clip duplication uses type: "clip" and arrangementStart
+    // Verify clip duplication uses type: "clip" and an arrangement position
     {
       type: "custom",
-      description: "ppal-duplicate uses type 'clip' with arrangementStart",
+      description: "ppal-duplicate uses type 'clip' with a song position",
       assert: (turns) => {
         const calls = getToolCalls(turns, 3);
         const dupCall = calls.find((c) => c.name === TOOL_DUPLICATE);
@@ -97,8 +98,10 @@ export const duplicate: EvalScenario = {
           );
         }
 
-        if (!dupCall.args.arrangementStart) {
-          throw new Error("Missing arrangementStart for clip duplication");
+        if (!callNamesArrangementPosition(dupCall.args, "toPath")) {
+          throw new Error(
+            'No arrangement position (e.g. toPath "t0[5|1]") for clip duplication',
+          );
         }
 
         return true;
@@ -243,7 +246,7 @@ export const duplicateLoop: EvalScenario = {
     "Double a MIDI clip with duplicateLoop (native Clip.duplicate_loop)",
   kind: "capability",
   liveSet: "basic-midi-4-track",
-  setup: (mcpClient) => clearSessionSlots(mcpClient, [LOOP_SLOT]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, [LOOP_SLOT]),
 
   messages: [
     MSG_CONNECT,

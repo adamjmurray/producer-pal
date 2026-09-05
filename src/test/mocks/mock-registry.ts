@@ -3,51 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Mock, vi } from "vitest";
 import { clearLiveApiMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
-  MockSequence,
-  detectTypeFromPath,
-  getPropertyByType,
-} from "./mock-live-api-property-helpers.ts";
+  type RegisteredMockObject,
+  type RegisteredMockObjectOptions,
+  applyRegistrationOptions,
+  createRegistration,
+  refreshHolders,
+} from "./mock-registry-helpers.ts";
 
-export interface RegisteredMockObjectOptions {
-  /** Path for the Live API object (e.g., "live_set tracks 0") */
-  path?: PathLike;
-  /** Type override (e.g., "Track", "Clip"). Auto-detected from path if omitted. */
-  type?: LiveObjectType;
-  /** Property overrides for get() calls, keyed by property name */
-  properties?: Record<string, unknown>;
-  /** Method implementations for call() dispatch, keyed by method name */
-  methods?: Record<string, (...args: unknown[]) => unknown>;
-  /**
-   * Path to return from .path getter (overrides registered path).
-   * Used for objects like "live_set view selected_track" that should return
-   * the actual track's path instead of the view path.
-   */
-  returnPath?: string;
-}
-
-export interface RegisteredMockObject {
-  /** Instance-level vi.fn() for get() — use in assertions */
-  get: Mock;
-  /** Instance-level vi.fn() for set() — use in assertions */
-  set: Mock;
-  /** Instance-level vi.fn() for call() — use in assertions */
-  call: Mock;
-  /** The bare numeric ID (e.g., "123") */
-  id: string;
-  /** The path (e.g., "live_set tracks 0") */
-  path: string;
-  /** The Live API type (e.g., "Track") */
-  type: LiveObjectType;
-  /** Property overrides to be copied onto LiveAPI instances */
-  properties: Record<string, unknown>;
-  /** Path to return from .path getter (overrides path if set) */
-  returnPath?: string;
-}
+export type { RegisteredMockObject, RegisteredMockObjectOptions };
 
 const registryById = new Map<string, RegisteredMockObject>();
 const registryByPath = new Map<string, RegisteredMockObject>();
@@ -62,64 +28,13 @@ function normalizeId(idOrPath: string): string {
 }
 
 /**
- * Create a get() mock with property-based dispatch
- * @param id - Object ID for fallback global mock context
- * @param properties - Property overrides
- * @param type - Object type for fallback defaults
- * @param path - Object path for fallback defaults
- * @returns Configured vi.fn() mock
- */
-function createGetMock(
-  properties: Record<string, unknown>,
-  type: LiveObjectType,
-  path: string,
-): Mock {
-  const callCounts: Record<string, number> = {};
-
-  return vi.fn().mockImplementation((prop: string) => {
-    const override = properties[prop];
-
-    if (override !== undefined) {
-      if (override instanceof MockSequence) {
-        const callIndex = (callCounts[prop] ??= 0);
-
-        callCounts[prop]++;
-
-        return [override[callIndex]];
-      }
-
-      return Array.isArray(override) ? override : [override];
-    }
-
-    // Unknown props (not overridden, no type default) return [] so
-    // getProperty() yields undefined — matching real Live under
-    // noUncheckedIndexedAccess. A [0] default let under-specified tests pass
-    // by reading the index-0 fallback for a property they never registered.
-    return getPropertyByType(type, prop, path) ?? [];
-  }) as Mock;
-}
-
-/**
- * Create a call() mock with method-based dispatch
- * @param methods - Method implementations
- * @param path - The object's path, which positional deletes are relative to
- * @returns Configured vi.fn() mock
- */
-function createCallMock(
-  methods: Record<string, (...args: unknown[]) => unknown>,
-  path: string,
-): Mock {
-  return vi.fn().mockImplementation((method: string, ...args: unknown[]) => {
-    const methodImpl = methods[method];
-
-    if (methodImpl) return methodImpl(...args);
-
-    return defaultMockCall(method, args, path);
-  }) as Mock;
-}
-
-/**
- * Register a mock Live API object with instance-level mocks.
+ * Register a mock Live API object, or re-describe one already registered.
+ *
+ * Re-registering the same id updates that object **in place**, so anything
+ * still holding it sees the new state. That is how Live behaves: a held object
+ * reads through to its target, it does not answer from a snapshot. Registering
+ * a *different* id at the same path is a different object arriving there, and
+ * holders of the old one keep reading the old one.
  * @param idOrPath - Object ID (bare or "id X" format) or path
  * @param options - Mock configuration
  * @returns Registered mock object with instance-level get/set/call mocks
@@ -128,37 +43,54 @@ export function registerMockObject(
   idOrPath: PathLike,
   options: RegisteredMockObjectOptions = {},
 ): RegisteredMockObject {
-  // Re-registering mid-test is how a test says the Live Set changed underneath
-  // the code — a Save-As, a locator inserted, a device moved. Real requests get
-  // a fresh memo each time, so drop it here too rather than letting a memoized
-  // object keep answering from the registration it was built against.
+  // Real requests get a fresh memo each time, so drop it here too rather than
+  // letting a memoized object keep answering from an earlier registration.
   clearLiveApiMemo();
 
   const id = normalizeId(String(idOrPath));
-  const path = options.path != null ? String(options.path) : "";
-  const type = options.type ?? (path ? detectTypeFromPath(path) : "Device");
-  const properties = options.properties ?? {};
-  const methods = options.methods ?? {};
-  const returnPath = options.returnPath;
+  // Live's null id. Registering it means "nothing is here", so each one is its
+  // own dead end rather than one object being re-described.
+  const existing = id === "0" ? undefined : registryById.get(id);
+  const previousPath = existing?.path ?? "";
+  const mock = existing ?? createRegistration(id, options, defaultMockCall);
 
-  const mock: RegisteredMockObject = {
-    get: createGetMock(properties, type, path),
-    set: vi.fn() as Mock,
-    call: createCallMock(methods, path),
-    id,
-    path,
-    type,
-    properties,
-    returnPath,
-  };
+  if (existing) applyRegistrationOptions(existing, options);
 
   registryById.set(id, mock);
+  deletedIds.delete(id);
 
-  if (path) {
-    registryByPath.set(path, mock);
+  // Only vacate the old path if it still names this object — something else may
+  // already have been registered there.
+  if (previousPath !== mock.path && registryByPath.get(previousPath) === mock) {
+    registryByPath.delete(previousPath);
+  }
+
+  if (mock.path) {
+    registryByPath.set(mock.path, mock);
+    deletedIds.delete(mock.path.replaceAll(/\s+/g, "/"));
   }
 
   return mock;
+}
+
+/**
+ * Make a parameter keep something other than the value written to it, the way
+ * Live clamps and snaps a DeviceParameter.
+ *
+ * The set mock stores a `display_value` write verbatim, so a test that writes a
+ * level and asserts the same number back passes just as well against code that
+ * echoes the argument instead of reading it. Use this wherever the assertion is
+ * meant to prove a read-back.
+ * @param param - The registered DeviceParameter mock
+ * @param kept - What the parameter reads as after a write
+ */
+export function keepsParamValue(
+  param: RegisteredMockObject,
+  kept: unknown,
+): void {
+  param.set.mockImplementation((property: string) => {
+    param.properties[property] = kept;
+  });
 }
 
 /**
@@ -233,6 +165,13 @@ export function defaultMockCall(
       return MOCK_LIVE_VERSION;
     case "get_notes_extended":
       return JSON.stringify({ notes: [] });
+    // Rounded the same six significant digits as storedParamValue, and a
+    // number, which is what Max returns for a label with no unit. Code that
+    // checks a write compares the label asked for against the label read back,
+    // so a constant would pass every write and an unrounded value would fail
+    // every fractional one.
+    case "str_for_value":
+      return Number(Number(args[0]).toPrecision(6));
     default:
       if (_simulateDeletes) applyMockDelete(method, args, path);
 
@@ -310,14 +249,20 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
 }
 
 /**
- * Mark a registered object gone: lookups miss it and exists() goes false, the
- * way a deleted object reads in Live.
+ * Kill a registered object the way Live does.
+ *
+ * A fresh lookup misses it, but anything already holding it keeps the stale id
+ * — only its path clears and its property reads dry up. `confirmDeleted` in
+ * `tools/actions/delete/delete.ts` depends on that split.
  * @param idOrPath - The object's ID or path
  */
 function deleteMockObject(idOrPath: string): void {
   const mock = lookupMockObject(idOrPath, idOrPath);
 
   if (!mock) return;
+
+  mock.deleted = true;
+  refreshHolders(mock);
 
   // Record both forms, so the object reads as gone however it is reached: by
   // the id the caller already holds, or by a path lookup afterward.

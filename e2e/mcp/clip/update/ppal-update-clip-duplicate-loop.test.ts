@@ -30,11 +30,9 @@ import {
   sleep,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// t8 "9-MIDI" is empty in e2e-test-set.
-const emptyMidiTrack = 8;
 
 /** Create a looping MIDI clip (default 2 bars) and return its id. */
 async function createLoopingClip(
@@ -45,7 +43,7 @@ async function createLoopingClip(
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${emptyMidiTrack}/s${sceneIndex}`,
+      path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`,
       notes,
       length,
       looping: true,

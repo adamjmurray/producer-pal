@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
+import { GEM_ITEM_ID } from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
 
 describe("GeminiHistoryBuilder", () => {
   it("accumulates user + assistant transcript deltas into messages", () => {
@@ -19,12 +20,15 @@ describe("GeminiHistoryBuilder", () => {
     const items = b.toRealtimeItems();
 
     expect(items).toHaveLength(2);
-    expect(items[0]).toMatchObject({
+    expect(items[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      status: "completed",
       type: "message",
       role: "user",
       content: [{ type: "input_audio", transcript: "set the tempo to 128" }],
     });
-    expect(items[1]).toMatchObject({
+    expect(items[1]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
       type: "message",
       role: "assistant",
       status: "in_progress",
@@ -38,7 +42,13 @@ describe("GeminiHistoryBuilder", () => {
     b.addAssistantTranscript("Hi there!");
     b.completeTurn();
 
-    expect(b.toRealtimeItems()[0]).toMatchObject({ status: "completed" });
+    expect(b.toRealtimeItems()[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      role: "assistant",
+      status: "completed",
+      content: [{ type: "output_audio", transcript: "Hi there!" }],
+    });
   });
 
   it("records tool calls and fills output by id, ordered text → tool → text", () => {
@@ -56,7 +66,8 @@ describe("GeminiHistoryBuilder", () => {
       "function_call",
       "message",
     ]);
-    expect(items[1]).toMatchObject({
+    expect(items[1]).toStrictEqual({
+      itemId: "call-1",
       type: "function_call",
       name: "ppal-update-live-set",
       arguments: JSON.stringify({ tempo: 128 }),
@@ -67,7 +78,23 @@ describe("GeminiHistoryBuilder", () => {
     const b2 = new GeminiHistoryBuilder();
 
     b2.addToolCall("c", "ppal-x", {});
-    expect(b2.toRealtimeItems()[0]).toMatchObject({ status: "in_progress" });
+    expect(b2.toRealtimeItems()[0]).toStrictEqual({
+      arguments: "{}",
+      itemId: "c",
+      name: "ppal-x",
+      output: null,
+      type: "function_call",
+      status: "in_progress",
+    });
+  });
+
+  it("ignores an output for a call id it never recorded", () => {
+    const b = new GeminiHistoryBuilder();
+
+    b.addToolCall("c1", "ppal-x", {});
+    b.setToolOutput("unknown", "ok");
+
+    expect(b.toRealtimeItems()[0]).toHaveProperty("output", null);
   });
 
   it("starts a new user turn after an assistant reply (barge-in / next turn)", () => {
@@ -85,7 +112,13 @@ describe("GeminiHistoryBuilder", () => {
       "user",
     ]);
     // The interrupted assistant turn is closed when the user speaks again.
-    expect(items[1]).toMatchObject({ status: "completed" });
+    expect(items[1]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      role: "assistant",
+      status: "completed",
+      content: [{ type: "output_audio", transcript: "hi" }],
+    });
   });
 
   it("ignores empty transcript deltas", () => {
@@ -107,8 +140,12 @@ describe("GeminiHistoryBuilder", () => {
     const second = b.toRealtimeItems();
 
     expect(first[0]).not.toBe(second[0]);
-    expect(first[0]).toMatchObject({
-      content: [{ transcript: "a" }],
+    expect(first[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      role: "assistant",
+      status: "in_progress",
+      content: [{ type: "output_audio", transcript: "a" }],
     });
   });
 
@@ -125,7 +162,9 @@ describe("GeminiHistoryBuilder", () => {
     const messages = realtimeItemsToUIMessages(b.toRealtimeItems());
 
     expect(messages).toHaveLength(2);
-    expect(messages[0]).toMatchObject({
+    expect(messages[0]).toStrictEqual({
+      rawHistoryIndex: 0,
+      timestamp: 0,
       role: "user",
       parts: [{ type: "text", content: "set tempo to 128" }],
     });

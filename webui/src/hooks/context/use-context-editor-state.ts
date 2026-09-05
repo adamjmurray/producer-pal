@@ -92,8 +92,8 @@ interface ReplaceContext {
   retryTimerRef: TimerRef;
   /** How many Clear/Import writes are on the wire (see the hook's ref). */
   replacingRef: { current: number };
-  /** The live set of in-flight write promises. */
-  saves: Set<Promise<boolean>>;
+  /** Ref holding the live set of in-flight write promises. */
+  savesRef: { current: Set<Promise<boolean>> };
   setCharCount: (count: number) => void;
   setDirty: (dirty: boolean) => void;
   setEditorKey: (update: (key: number) => number) => void;
@@ -133,7 +133,7 @@ async function replaceDocument(
   let ok = false;
 
   try {
-    ok = await dispatchOrderedWrite(ctx.saves, write);
+    ok = await dispatchOrderedWrite(ctx.savesRef.current, write);
   } finally {
     ctx.replacingRef.current -= 1;
   }
@@ -282,6 +282,9 @@ export function useContextEditorState(
   // server happened to finish last. A set rather than one ref: writes can
   // overlap (a debounce flush, then a blur flush before the first echo lands),
   // and keeping only the newest would silently stop awaiting the earlier one.
+  // Nothing sweeps it on unmount, and nothing needs to: an entry can't outlive
+  // its request (the transport deadline settles every write), and the screens
+  // that own this hook are keyed, so a remount always starts from an empty set.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
   // How many Clear/Import writes are on the wire. Those two REPLACE the whole
   // document and remount the editor from the result, so a draft typed while one
@@ -495,7 +498,7 @@ export function useContextEditorState(
     debounceTimerRef,
     retryTimerRef,
     replacingRef,
-    saves: inFlightSavesRef.current,
+    savesRef: inFlightSavesRef,
     setCharCount,
     setDirty,
     setEditorKey,

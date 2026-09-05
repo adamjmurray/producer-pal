@@ -27,6 +27,7 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 
 // Import the mocked module to configure per-test behavior
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateClip - code execution", () => {
   let mocks: UpdateClipMocks;
@@ -54,7 +55,6 @@ describe("updateClip - code execution", () => {
       0,
       1,
       0,
-      undefined,
     );
 
     // applyNotesToClip should have been called (removes + adds notes)
@@ -70,7 +70,7 @@ describe("updateClip - code execution", () => {
       notes: notes.map(toLiveApiNote),
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should execute code on multiple clips, threading clip.index/clip.count", async () => {
@@ -98,7 +98,6 @@ describe("updateClip - code execution", () => {
       0,
       2,
       0,
-      undefined,
     );
     expect(executeNoteCode).toHaveBeenNthCalledWith(
       2,
@@ -108,11 +107,10 @@ describe("updateClip - code execution", () => {
       1,
       2,
       1,
-      undefined,
     );
     expect(result).toStrictEqual([
-      { id: "123", noteCount: 1 },
-      { id: "456", noteCount: 1 },
+      { id: "123", path: "t0/s0", noteCount: 1 },
+      { id: "456", path: "t1/s1", noteCount: 1 },
     ]);
   });
 
@@ -135,13 +133,14 @@ describe("updateClip - code execution", () => {
     );
 
     // Should emit a warning via console.warn (routed through outlet)
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Code execution failed for clip 123"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "Code execution failed for clip t0/s0 (id 123): SyntaxError: Unexpected token",
+      ),
     );
 
     // Should still return a result with current note count
-    expect(result).toStrictEqual({ id: "123", noteCount: 0 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 0 });
   });
 
   it("should handle mixed success/failure across multiple clips", async () => {
@@ -159,17 +158,18 @@ describe("updateClip - code execution", () => {
 
     // First clip succeeds, second clip fails
     expect(result).toStrictEqual([
-      { id: "123", noteCount: 1 },
-      { id: "456", noteCount: 0 },
+      { id: "123", path: "t0/s0", noteCount: 1 },
+      { id: "456", path: "t1/s1", noteCount: 0 },
     ]);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Code execution failed for clip 456"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "Code execution failed for clip t1/s1 (id 456): Runtime error",
+      ),
     );
   });
 
-  it("should pass arrangement clip location info to executeNoteCode", async () => {
+  it("should tell executeNoteCode an arrangement clip is in no scene", async () => {
     setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,
       start_time: 16.0,
@@ -190,7 +190,6 @@ describe("updateClip - code execution", () => {
       0,
       1,
       undefined,
-      16.0,
     );
   });
 });

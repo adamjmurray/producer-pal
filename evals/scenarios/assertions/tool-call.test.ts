@@ -1,16 +1,33 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
 import { assertToolCalled } from "./tool-call.ts";
 import { type EvalTurnResult, type ToolCallAssertion } from "../types.ts";
 
-type ToolCall = { name: string; args: Record<string, unknown> };
+type ToolCall = {
+  name: string;
+  args: Record<string, unknown>;
+  result?: string;
+};
 
+/** A call that succeeded — grading only counts calls that returned a payload. */
 const call = (name: string, args: Record<string, unknown> = {}): ToolCall => ({
   name,
   args,
+  result: "{}",
+});
+
+/** A call that came back as a tool error. */
+const failedCall = (
+  name: string,
+  args: Record<string, unknown> = {},
+): ToolCall => ({
+  name,
+  args,
+  result: "Error: nope",
 });
 
 const createTurn = (toolCalls: ToolCall[], turnIndex = 0): EvalTurnResult => ({
@@ -208,6 +225,27 @@ describe("assertToolCalled", () => {
       expect(result.message).toContain("ids: Any<String>");
       expect(result.message).toContain("StringMatching</Ab1/>");
       expect(result.message).not.toContain('"ObjectContaining"');
+    });
+  });
+
+  describe("failed calls", () => {
+    it("ignores a failed call the model then corrected", () => {
+      const result = score({ tool: "create-clip", count: 1 }, [
+        failedCall("create-clip", { notes: "bogus" }),
+        call("create-clip", { notes: "C3" }),
+      ]);
+
+      expect(result.earned).toBe(1);
+      expect(result.message).toContain("called 1 time(s)");
+    });
+
+    it("fails when every call errored", () => {
+      const result = score({ tool: "create-clip" }, [
+        failedCall("create-clip"),
+      ]);
+
+      expect(result.earned).toBe(0);
+      expect(result.message).toContain("got 0");
     });
   });
 });

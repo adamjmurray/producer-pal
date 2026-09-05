@@ -31,7 +31,7 @@ export {
   barBeatVelocityAccent,
   barBeatZipStreams,
 } from "./clip/notation/bar-beat/bar-beat-value-streams.ts";
-export { drumTransforms } from "./clip/drum-transforms.ts";
+export { drumTransforms } from "./clip/transforms/drum-transforms.ts";
 export {
   contextFollowGlobal,
   contextFollowProject,
@@ -55,9 +55,14 @@ export {
 } from "./context/context-write-layers.ts";
 export { contextWritePreserves } from "./context/context-write-preserve.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
-export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
-export { drumPadForceGuard } from "./workflow/drum-pad-force-guard.ts";
-export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
+export { deleteTargets } from "./workflow/delete-targets.ts";
+export { librarySearchFanout } from "./workflow/library-search-fanout.ts";
+export { locatorNavigation } from "./workflow/locator-navigation.ts";
+export { liveApiEscapeHatch } from "./workflow/live-api-escape-hatch.ts";
+export { mixerLanguage } from "./workflow/mixer-language.ts";
+export { deviceDrumKit } from "./device/device-drum-kit.ts";
+export { drumPadForceGuard } from "./device/drum-pad-force-guard.ts";
+export { deviceSoundDesign } from "./device/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate, duplicateLoop } from "./clip/duplicate.ts";
 export { durationArgGrammar } from "./clip/notation/duration-arg-grammar.ts";
@@ -67,9 +72,9 @@ export {
   noteOpsRatchetRoll,
   noteOpsRepeat,
   noteOpsSplit,
-} from "./clip/note-ops-roll-and-merge.ts";
-export { legatoTransforms } from "./clip/legato-transforms.ts";
-export { melodyTransforms } from "./clip/melody-transforms.ts";
+} from "./clip/transforms/note-ops-roll-and-merge.ts";
+export { legatoTransforms } from "./clip/transforms/legato-transforms.ts";
+export { melodyTransforms } from "./clip/transforms/melody-transforms.ts";
 export { rangeClearBoundaries } from "./clip/notation/range-bound-clears.ts";
 export {
   pretransformsHatFillsBaseline,
@@ -87,20 +92,30 @@ export {
   rhythmGridMatrix,
 } from "./clip/notation/notation-matrix-scenarios.ts";
 export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";
-export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
-export { whereTransforms } from "./clip/where-transforms.ts";
+export { swingAndQuantize } from "./clip/transforms/swing-and-quantize.ts";
+export { velocityShaping } from "./clip/transforms/velocity-shaping.ts";
+export { whereTransforms } from "./clip/transforms/where-transforms.ts";
 export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invariance.ts";
 export { projectContextWorkflow } from "./workflow/project-context-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";
 export { pathArrangementAddress } from "./path/path-arrangement-address.ts";
+export { pathArrangementStartsAt } from "./path/path-arrangement-starts-at.ts";
 export { pathSessionSlot } from "./path/path-session-slot.ts";
 export { pathTakeLaneFirst } from "./path/path-take-lane.ts";
 export { pathToPathClipDestinations } from "./path/path-topath-clips.ts";
 export { pathToPathDeviceAndPad } from "./path/path-topath-devices.ts";
-export { pathToPathPairing } from "./path/path-topath-pairing.ts";
+export { pathToPathPairing } from "./pairing/topath-pairing.ts";
+export {
+  arrangementDestinationPairing,
+  colorListPairing,
+  duplicateDestinationPairing,
+} from "./pairing/list-pairing.ts";
+export { pathTrackSceneAddress } from "./path/path-track-scene-address.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
-export { rackPadOps } from "./workflow/rack-pad-ops.ts";
+export { rackPadOps } from "./device/rack-pad-ops.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";
 export { updateLiveSet } from "./workflow/update-live-set.ts";
+export { pathInsertPosition } from "./path/path-insert-position.ts";
+export { pathLocatorCoordinate } from "./path/path-locator-coordinate.ts";

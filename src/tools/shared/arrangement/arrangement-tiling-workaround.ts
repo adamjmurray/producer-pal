@@ -15,7 +15,7 @@ import {
   createAndDeleteTempClip,
   EPSILON,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 
 /**
  * Verify a duplicate_clip_to_arrangement result and return the new clip's ID.
@@ -74,6 +74,7 @@ export function setArrangementDuplicateCrashWorkaround(enabled: boolean): void {
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @param source - The source clip, when the caller already resolved it
  * @returns true if it is safe to duplicate the source directly to the target;
  *   false if the source overlaps its own target (caller must handle)
  */
@@ -83,10 +84,11 @@ export function clearClipAtDuplicateTarget(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
+  source: LiveAPI | null = null,
 ): boolean {
   if (!arrangementDuplicateCrashWorkaround) return true;
 
-  const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
+  const sourceClip = source ?? LiveAPI.from(toLiveApiId(sourceClipId));
 
   if (sourceClip.getProperty("is_arrangement_clip") !== 1) return true;
 
@@ -492,6 +494,21 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
 }
 
 /**
+ * The holding-area start that clears a block ending at `blockEnd`.
+ *
+ * For a caller that stages repeatedly on one track and knows how far its own
+ * last block reached: advancing past it is always at least as far out as a
+ * fresh scan would land, so it needs no scan. Only that caller's own staging
+ * can sit past the track's real clips, which is what makes the shortcut safe —
+ * see {@link holdingAreaStartOnTrack} for why nothing else may cache a start.
+ * @param blockEnd - Right edge of the block to clear, in beats
+ * @returns Holding-area start position in beats
+ */
+export function holdingAreaStartAfter(blockEnd: number): number {
+  return blockEnd + HOLDING_AREA_GAP_BEATS;
+}
+
+/**
  * A holding-area start for `track`, read from the track as it is right now.
  *
  * Always recompute at the point of use. A holding area derived from anything
@@ -500,6 +517,10 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
  * placed a clip past that point stages the next one on top of it: the Ableton
  * crash, or an overwrite that eats what was just placed. Verified in Live — a
  * 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
+ *
+ * The one exception is a caller that tracks its own staging and advances past
+ * it with {@link holdingAreaStartAfter}. That is not a cached start — it is a
+ * larger one.
  *
  * `minStartBeats` is for a caller that will place its copy at a target: pass
  * that placement's right edge so the holding area clears it. Without it, a copy

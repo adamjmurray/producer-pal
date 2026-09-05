@@ -483,9 +483,9 @@ describe("readClip", () => {
 
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");
-    expect(result.path).toBe("t3");
-    // arrangementStart uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
-    expect(result.arrangementStart).toBe("5|1");
+    // The path's position uses the song time signature (4/4), so 16 Ableton
+    // beats is bar 5 beat 1
+    expect(result.path).toBe("t3[5|1]");
     // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1bar
     expect(result.arrangementLength).toBe("1bar");
     // But clip properties use clip time signature (6/8)
@@ -532,8 +532,9 @@ describe("readClip", () => {
 
     const result = readClip({ id: "id take_lane_clip_id" });
 
-    // take_lanes 0 is the first take lane (the main lane is excluded from the collection)
-    expect(result.path).toBe("t3/l0");
+    // take_lanes 0 is the first take lane (the main lane is excluded from the
+    // collection); start_time 0 is bar 1 beat 1
+    expect(result.path).toBe("t3/l0[1|1]");
     expect(result.view).toBe("arrangement");
   });
 
@@ -545,6 +546,8 @@ describe("readClip", () => {
 
     const result = readClip({ id: "id main_lane_clip_id" });
 
+    // The main lane has no segment of its own, so the track carries the position
+    expect(result.path).toBe("t3[1|1]");
     expect(result.view).toBe("arrangement");
   });
 
@@ -601,14 +604,8 @@ describe("readClip", () => {
   // The message names path, not the deprecated slot: a caller who sent neither
   // can't see slot, so pointing at it is advice they can't act on.
   it("throws an error when neither id nor path are provided", () => {
-    expect(() => readClip({})).toThrow(
-      "readClip failed: id or path is required",
-    );
-    expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "readClip failed: id or path is required",
-    );
-    expect(() => readClip({ sceneIndex: 1 })).toThrow(
-      "readClip failed: id or path is required",
-    );
+    expect(() => readClip({})).toThrow("id or path is required");
+    expect(() => readClip({ trackIndex: 1 })).toThrow("id or path is required");
+    expect(() => readClip({ sceneIndex: 1 })).toThrow("id or path is required");
   });
 });

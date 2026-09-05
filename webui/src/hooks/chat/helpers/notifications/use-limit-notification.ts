@@ -15,41 +15,81 @@ const AUTO_DISMISS_MS = 4000;
 /**
  * Hook managing the notification banner for conversation persistence events
  * (limit enforcement and save failures).
- * @returns Notification state, dismiss handler, and functions to show
- *   limit-enforcement results or save errors
+ * @returns Notification state, dismiss handler, functions to show
+ *   limit-enforcement results, save errors and refused saves, and a retire
+ *   handler for when the refused conversation is left
  */
 export function useLimitNotification(): {
   limitNotification: TransferNotificationData | null;
   dismissLimitNotification: () => void;
   showLimitNotification: (result: EnforceLimitResult) => void;
   showSaveError: (error: unknown) => void;
+  showSaveRefused: () => void;
+  retireSaveRefused: () => void;
 } {
   const [notification, setNotification] =
     useState<TransferNotificationData | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while the standing refusal is the banner on screen, so leaving that
+  // conversation can retire it without wiping an unrelated banner.
+  const refusedRef = useRef(false);
 
   const dismiss = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    refusedRef.current = false;
     setNotification(null);
   }, []);
 
-  const show = useCallback((result: EnforceLimitResult) => {
-    if (result.deletedCount === 0 && !result.limitReached) return;
-
+  const showTimed = useCallback((data: TransferNotificationData) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-
-    const message = result.limitReached
-      ? `Conversation limit (${MAX_CONVERSATIONS}) reached — unbookmark or delete conversations to free space`
-      : `Removed ${result.deletedCount} old conversation${result.deletedCount === 1 ? "" : "s"} (${MAX_CONVERSATIONS} limit)`;
-
-    setNotification({ message, type: "warning" });
+    refusedRef.current = false;
+    setNotification(data);
     timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
   }, []);
 
-  const showError = useCallback((error: unknown) => {
+  const show = useCallback(
+    (result: EnforceLimitResult) => {
+      if (result.deletedCount === 0 && !result.limitReached) return;
+
+      const message = result.limitReached
+        ? `Conversation limit (${MAX_CONVERSATIONS}) reached — unbookmark or delete conversations to free space`
+        : `Removed ${result.deletedCount} old conversation${result.deletedCount === 1 ? "" : "s"} (${MAX_CONVERSATIONS} limit)`;
+
+      showTimed({ message, type: "warning" });
+    },
+    [showTimed],
+  );
+
+  const showError = useCallback(
+    (error: unknown) => {
+      showTimed({ message: formatSaveErrorMessage(error), type: "error" });
+    },
+    [showTimed],
+  );
+
+  // The write was refused, not failed: the row this conversation belongs to is
+  // gone, and writing it back would resurrect something a delete took away.
+  // Nothing more will be saved to it, ever — that is a standing condition, not
+  // an event, so this banner does not auto-dismiss the way a limit warning does.
+  // A four-second flash the user blinks past leaves them typing into nothing.
+  const showRefused = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setNotification({ message: formatSaveErrorMessage(error), type: "error" });
-    timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
+    refusedRef.current = true;
+    setNotification({
+      message:
+        "This conversation is no longer in storage — it was deleted, so nothing more will be saved to it.",
+      type: "error",
+    });
+  }, []);
+
+  // The condition is about one conversation, so it ends when the user leaves
+  // it — otherwise the banner hangs over a new conversation that saves fine.
+  // Only retires the refusal: any other banner on screen is left alone.
+  const retireRefused = useCallback(() => {
+    if (!refusedRef.current) return;
+
+    refusedRef.current = false;
+    setNotification(null);
   }, []);
 
   useEffect(() => {
@@ -63,6 +103,8 @@ export function useLimitNotification(): {
     dismissLimitNotification: dismiss,
     showLimitNotification: show,
     showSaveError: showError,
+    showSaveRefused: showRefused,
+    retireSaveRefused: retireRefused,
   };
 }
 

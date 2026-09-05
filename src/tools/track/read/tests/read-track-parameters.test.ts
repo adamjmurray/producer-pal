@@ -64,9 +64,9 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "123",
+        path: "t2",
         type: "midi",
         name: "Track by ID",
-        trackIndex: 2,
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -83,8 +83,13 @@ describe("readTrack", () => {
         properties: mockTrackProperties({ name: "Track by ID" }),
       });
 
-      expect(readTrack({ trackId: "123" })).toMatchObject({
+      expect(readTrack({ trackId: "123" })).toStrictEqual({
+        arrangementClipCount: 0,
+        deviceCount: 0,
+        sessionClipCount: 0,
+        type: "midi",
         id: "123",
+        path: "t2",
         name: "Track by ID",
       });
     });
@@ -105,9 +110,8 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "456",
-        type: "return",
+        path: "rt1",
         name: "Return by ID",
-        returnTrackIndex: 1,
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -130,7 +134,7 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "789",
-        type: "master",
+        path: "mt",
         name: "Master by ID",
         sessionClipCount: 0,
         arrangementClipCount: 0,
@@ -143,13 +147,13 @@ describe("readTrack", () => {
 
       expect(() => {
         readTrack({ id: "nonexistent" });
-      }).toThrow('readTrack failed: id "nonexistent" does not exist');
+      }).toThrow('id "nonexistent" does not exist');
     });
 
     it("throws error when neither id nor trackIndex provided", () => {
       expect(() => {
         readTrack({});
-      }).toThrow("Either id or trackIndex must be provided");
+      }).toThrow("id or path is required");
     });
 
     it("ignores trackType when id is provided", () => {
@@ -165,8 +169,106 @@ describe("readTrack", () => {
       const result = readTrack({ id: "999", trackType: "return" });
 
       // Should read as regular track (from path) not return track
-      expect(result.trackIndex).toBe(0);
-      expect(result.returnTrackIndex).toBeUndefined();
+      expect(result.path).toBe("t0");
+    });
+  });
+
+  describe("path parameter", () => {
+    it("reads a regular track", () => {
+      registerMockObject("123", {
+        path: livePath.track(2),
+        type: "Track",
+        properties: mockTrackProperties({ name: "By Path" }),
+      });
+
+      expect(readTrack({ path: "t2" })).toStrictEqual({
+        id: "123",
+        path: "t2",
+        type: "midi",
+        name: "By Path",
+        sessionClipCount: 0,
+        arrangementClipCount: 0,
+        deviceCount: 0,
+      });
+    });
+
+    it("reads a return track", () => {
+      registerMockObject("456", {
+        path: livePath.returnTrack(1),
+        type: "Track",
+        properties: mockTrackProperties({
+          name: "Return by Path",
+          has_midi_input: 0,
+          can_be_armed: 0,
+        }),
+      });
+
+      expect(readTrack({ path: "rt1" })).toStrictEqual({
+        id: "456",
+        path: "rt1",
+        name: "Return by Path",
+        sessionClipCount: 0,
+        arrangementClipCount: 0,
+        deviceCount: 0,
+      });
+    });
+
+    it("reads the main track", () => {
+      registerMockObject("789", {
+        path: livePath.masterTrack(),
+        type: "Track",
+        properties: mockTrackProperties({
+          name: "Main by Path",
+          has_midi_input: 0,
+          can_be_armed: 0,
+        }),
+      });
+
+      expect(readTrack({ path: "mt" })).toStrictEqual({
+        id: "789",
+        path: "mt",
+        name: "Main by Path",
+        sessionClipCount: 0,
+        arrangementClipCount: 0,
+        deviceCount: 0,
+      });
+    });
+
+    // A read has nothing left to return, so a bad path throws rather than
+    // warning the way the write tools' lists do.
+    it("throws when the path names nothing", () => {
+      mockNonExistentObjects();
+
+      expect(() => readTrack({ path: "t9" })).toThrow('nothing at path "t9"');
+    });
+
+    it("throws when the path names something else", () => {
+      expect(() => readTrack({ path: "s0" })).toThrow(
+        'invalid path "s0" - names a scene, not a track',
+      );
+    });
+
+    it.each([
+      ["id", { id: "123" }],
+      ["trackIndex", { trackIndex: 0 }],
+    ])("refuses a path sent with %s", (_name, other) => {
+      expect(() => readTrack({ path: "t0", ...other })).toThrow(
+        "path names the track on its own",
+      );
+    });
+
+    // Same as an id: the object found says what category it is, so a trackType
+    // alongside has nothing to decide.
+    it("ignores trackType", () => {
+      registerMockObject("123", {
+        path: livePath.track(0),
+        type: "Track",
+        properties: mockTrackProperties({ name: "Regular" }),
+      });
+
+      const result = readTrack({ path: "t0", trackType: "return" });
+
+      expect(result.path).toBe("t0");
     });
   });
 

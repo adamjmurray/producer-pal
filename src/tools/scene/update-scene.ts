@@ -3,24 +3,29 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
-  namedIdParam,
-  parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
+  validateTempo,
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import {
+  targetCount,
+  targetIds,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
+import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
@@ -28,12 +33,16 @@ import {
 
 interface UpdateSceneResult {
   id: string;
+  path?: string;
 }
 
 interface UpdateSceneArgs {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
+  path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   name?: string;
   color?: string;
   tempo?: number | null;
@@ -46,6 +55,8 @@ interface UpdateSceneArgs {
  * @param args - The scene parameters
  * @param args.id - Comma-separated scene IDs to update
  * @param args.ids - Hidden alias for id
+ * @param args.path - Comma-separated scene paths to update instead of ids
+ * @param args.paths - Hidden alias for path
  * @param args.name - Name for the scenes
  * @param args.color - Color for the scenes (CSS format: hex)
  * @param args.tempo - Tempo in BPM. Pass -1 to disable.
@@ -55,25 +66,42 @@ interface UpdateSceneArgs {
  * @returns Single scene object or array of scene objects
  */
 export function updateScene(
-  { id, ids, name, color, tempo, timeSignature, focus }: UpdateSceneArgs = {},
+  {
+    id,
+    ids,
+    path,
+    paths,
+    name,
+    color,
+    tempo,
+    timeSignature,
+    focus,
+  }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
-  const targets = namedIdParam(id, ids, "ids");
+  const named = { id, ids, path, paths };
 
-  if (!targets) {
-    console.warn("updateScene: id is required");
-
-    return [];
+  if (targetCount(named) === 0) {
+    throw new Error("id or path is required");
   }
 
-  // Parse comma-separated string into array
-  const sceneIds = parseCommaSeparatedIds(targets);
+  validateTempo(tempo, -1);
+
+  // Every list in the call is checked together, before any of them is split:
+  // once one is split nothing knows whether the others are lists at all.
+  validateListLengths([
+    { param: "id and path", count: targetCount(named) },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
+
+  const sceneIds = targetIds(named, sceneIdPerPath);
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
   // mid-list — otherwise every later name/color shifts onto the wrong scene.
-  const parsedNames = parseNames(name, sceneIds.length, "updateScene");
-  const parsedColors = parseCommaSeparatedColors(color, sceneIds.length);
+  const parsedNames = parseNames(name, sceneIds.length, "scene");
+  const parsedColors = parseColors(color, sceneIds.length, "scene");
 
   // Validate timeSignature format up front so a malformed value fails before
   // any scene is mutated, instead of throwing mid-loop after partial updates.
@@ -85,17 +113,18 @@ export function updateScene(
   const updatedScenes: UpdateSceneResult[] = [];
 
   for (let i = 0; i < sceneIds.length; i++) {
+    const sceneId = sceneIds[i];
+
+    // A path that named no scene already warned; it keeps its slot so later
+    // names/colors don't shift onto the wrong scene.
+    if (sceneId == null) continue;
+
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
     // onto the wrong scene.
-    const [scene] = validateIdTypes(
-      [sceneIds[i] as string],
-      "scene",
-      "updateScene",
-      {
-        skipInvalid: true,
-      },
-    );
+    const [scene] = validateIdTypes([sceneId], "scene", {
+      skipInvalid: true,
+    });
 
     if (scene == null) continue;
 
@@ -118,6 +147,7 @@ export function updateScene(
     // Build optimistic result object
     updatedScenes.push({
       id: scene.id,
+      ...pathField(scene),
     });
   }
 

@@ -12,6 +12,7 @@ import {
   drumPadPath,
   findDrumPad,
   findDrumPadByNote,
+  nestedDrumRackHint,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
@@ -59,10 +60,22 @@ export function resolveRackTarget(
   const chain = LiveAPI.from(resolved.liveApiPath);
 
   if (!chain.exists()) {
-    throw new Error(`select failed: no chain at "${path}"`);
+    throw new Error(`no chain at "${path}"`);
   }
 
   return chain;
+}
+
+/**
+ * The rack a pad or chain sits in. Selecting either one selects this device, so
+ * it's also what a `deviceId` sent alongside has to name.
+ * @param target - A DrumPad or Chain
+ * @returns The rack device holding it
+ */
+export function rackOfTarget(target: LiveAPI): LiveAPI {
+  const tail = target.type === "DrumPad" ? PAD_TAIL : CHAIN_TAIL;
+
+  return LiveAPI.from(target.path.replace(tail, ""));
 }
 
 /**
@@ -76,9 +89,7 @@ export function selectRackTarget(
   target: LiveAPI,
 ): RackSelection {
   const isPad = target.type === "DrumPad";
-  const rack = LiveAPI.from(
-    target.path.replace(isPad ? PAD_TAIL : CHAIN_TAIL, ""),
-  );
+  const rack = rackOfTarget(target);
 
   // Selecting the rack also selects its track, and puts the pad grid on screen.
   songView.call("select_device", toLiveApiId(rack.id));
@@ -119,7 +130,7 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
     );
 
     if (target == null) {
-      throw new Error(`select failed: nothing at "${path}"`);
+      throw new Error(`nothing at "${path}"`);
     }
 
     return target;
@@ -133,7 +144,9 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
   const chain = group?.chains[0];
 
   if (chain == null) {
-    throw new Error(`select failed: no drum pad at "${path}"`);
+    throw new Error(
+      `no drum pad at "${path}"${nestedDrumRackHint(resolved.liveApiPath, note)}`,
+    );
   }
 
   return chain;

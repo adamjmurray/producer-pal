@@ -1,0 +1,32 @@
+{
+  "threshold": 0.8,
+  "reporters": ["console"],
+  "ignorePattern": ["```[\\s\\S]*?```"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/coverage/**",
+    "**/dist/**",
+    "**/docs/_generated/**",
+    "**/docs/public/markdown/**",
+    "**/docs/.vitepress/cache/**",
+    "**/docs/.vitepress/dist/**"
+  ],
+  "pattern": "**/*.md",
+  "path": [
+    "../docs",
+    "../dev",
+    "../e2e",
+    "../evals",
+    "../README.md",
+    "../AGENTS.md",
+    "../CLAUDE.md",
+    "../CONTRIBUTING.md",
+    "../DEVELOPERS.md",
+    "../GEMINI.md",
+    "../SECURITY.md",
+    "../TRADEMARK.md",
+    "../.github/pull_request_template.md",
+    "../licenses/README.md",
+    "../npm/README.md"
+  ]
+}

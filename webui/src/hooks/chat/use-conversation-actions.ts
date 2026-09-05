@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useCallback } from "preact/hooks";
+import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
 import { beginTurn } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   type ChatAdapter,
@@ -219,14 +220,15 @@ export function useConversationActions<
 
       const history =
         clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      const rawMessage = history[message.rawHistoryIndex];
-
-      if (!rawMessage) return;
-
-      const userMessage = adapter.extractUserMessage(rawMessage);
+      const rawMessage = history?.[message.rawHistoryIndex];
+      // A send that failed before the client saw it (no API key) renders the
+      // row against a history the client never got, so rawHistoryIndex points
+      // past the end. Fall back to the text on screen — what handleEdit forks
+      // from — instead of doing nothing.
+      const userMessage =
+        rawMessage == null
+          ? formatUserContent(message)
+          : adapter.extractUserMessage(rawMessage);
 
       if (!userMessage) return;
 

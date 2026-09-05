@@ -15,11 +15,13 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 import { readClipsOnTrack } from "./arrangement-lengthening-test-helpers.ts";
+import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
 
 /** The subset of a clip result these helpers read back. */
 export interface ArrangementClipResult {
   id: string;
-  arrangementStart?: string;
+  /** Where the clip is, e.g. "t0[5|1]" */
+  path?: string;
   arrangementLength?: string;
 }
 
@@ -42,18 +44,18 @@ export async function callTool(
  * Duplicate a clip to an arrangement position and let Live settle.
  * @param client - Connected MCP client
  * @param id - Source clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  * @returns The copy's metadata
  */
 export async function duplicateClipToArrangement(
   client: Client,
   id: string,
-  arrangementStart: string,
+  position: string,
 ): Promise<ArrangementClipResult> {
   const result = await callTool(client, "ppal-duplicate", {
     type: "clip",
     id,
-    arrangementStart,
+    toPath: `[${position}]`,
   });
   const clip = parseToolResult<ArrangementClipResult>(result);
 
@@ -88,7 +90,7 @@ export function clipsInBarRange(
   maxBar: number,
 ): ReadClipResult[] {
   return clips.filter((c) => {
-    const bar = Number.parseInt(c.arrangementStart?.split("|")[0] ?? "", 10);
+    const bar = Number.parseInt(arrangementStartOf(c)?.split("|")[0] ?? "", 10);
 
     return bar >= minBar && bar <= maxBar;
   });
@@ -97,14 +99,14 @@ export function clipsInBarRange(
 /**
  * Find a clip at an exact arrangement position.
  * @param clips - Array of clip results
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @returns The matching clip, if any
  */
 export function clipAt(
   clips: ReadClipResult[],
-  arrangementStart: string,
+  position: string,
 ): ReadClipResult | undefined {
-  return clips.find((c) => c.arrangementStart === arrangementStart);
+  return clips.find((c) => arrangementStartOf(c) === position);
 }
 
 /**

@@ -36,11 +36,10 @@ import {
   lengthBeats,
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const MIDI_TRACK = 8;
-const AUDIO_TRACK = 5;
 
 describe("self-overlapping arrangement clip duplicate/move", () => {
   let midi4barId: string; // 4-bar MIDI session clip
@@ -48,7 +47,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
   beforeAll(async () => {
     const midi = await callTool(ctx.client!, "ppal-create-clip", {
-      path: `t${MIDI_TRACK}/s0`,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
       notes: "C3 1|1 E3 2|1 G3 3|1 B3 4|1",
       length: "4bar",
     });
@@ -69,9 +68,9 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     const copy = await dupToArr(base.id, "6|1");
 
     expect(copy.id).toBeDefined();
-    expect(copy.arrangementStart).toBe("6|1");
+    expect(arrangementStartOf(copy)).toBe("6|1");
 
-    const clips = clipsInBarRange(await readArrClips(MIDI_TRACK), 5, 10);
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 5, 10);
 
     // Exactly two clips: the trimmed original at 5|1 and the full copy at 6|1.
     expect(clips).toHaveLength(2);
@@ -92,14 +91,14 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
     await moveArrClip(base.id, "16|1");
 
-    const clips = clipsInBarRange(await readArrClips(MIDI_TRACK), 15, 20);
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 15, 20);
 
     // A move leaves exactly one clip — the full copy at the new position.
     expect(clips).toHaveLength(1);
 
     const moved = clips[0]!;
 
-    expect(moved.arrangementStart).toBe("16|1");
+    expect(arrangementStartOf(moved)).toBe("16|1");
     expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
 
     // The relocated clip keeps its bar-4 note (full length, not truncated).
@@ -113,11 +112,11 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     const base = await dupToArr(midi4barId, "25|1");
     const copy = await dupToArr(base.id, "30|1");
 
-    const clips = clipsInBarRange(await readArrClips(MIDI_TRACK), 25, 34);
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 25, 34);
 
     expect(clips).toHaveLength(2);
     expect(lengthBeats(clipAt(clips, "25|1"))).toBeCloseTo(beats("4bar"), 5);
-    expect(lengthBeats(clipAt(clips, copy.arrangementStart!))).toBeCloseTo(
+    expect(lengthBeats(clipAt(clips, arrangementStartOf(copy)!))).toBeCloseTo(
       beats("4bar"),
       5,
     );
@@ -143,7 +142,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     // Two clips: the trimmed original at 45|1 and the full-length copy.
     expect(clips).toHaveLength(2);
 
-    const placed = clips.find((c) => c.arrangementStart !== "45|1");
+    const placed = clips.find((c) => arrangementStartOf(c) !== "45|1");
 
     // The copy keeps the source's full arrangement length and warp state — the
     // holding round-trip did not truncate or unwarp the audio.
@@ -155,28 +154,25 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 /**
  * Duplicate a clip to an arrangement position.
  * @param id - Source clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  * @returns The duplicated clip's metadata
  */
 async function dupToArr(
   id: string,
-  arrangementStart: string,
+  position: string,
 ): Promise<ArrangementClipResult> {
-  return duplicateClipToArrangement(ctx.client!, id, arrangementStart);
+  return duplicateClipToArrangement(ctx.client!, id, position);
 }
 
 /**
  * Move an arrangement clip to a new position via update-clip.
  * @param id - Arrangement clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  */
-async function moveArrClip(
-  id: string,
-  arrangementStart: string,
-): Promise<void> {
+async function moveArrClip(id: string, position: string): Promise<void> {
   await callTool(ctx.client!, "ppal-update-clip", {
     id: id,
-    arrangementStart,
+    toPath: `[${position}]`,
   });
   await sleep(100);
 }

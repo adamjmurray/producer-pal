@@ -17,7 +17,7 @@ import {
 } from "../specialized-device-types.ts";
 
 // Drift (DriftDevice, class_name "Drift"). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/instruments.md.
 // Declarative mod matrix: each slot is an int `_index` property; the value
 // lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
 // and are NOT duplicated here.
@@ -85,8 +85,8 @@ function freeSlotSourceParam(
 
       return readEnumByIndex(device, sourceProperty, SOURCES);
     },
-    write: (device, value, toolName) =>
-      writeEnumByIndex(device, sourceProperty, value, SOURCES, toolName, name),
+    write: (device, value) =>
+      writeEnumByIndex(device, sourceProperty, value, SOURCES, name),
   };
 }
 
@@ -107,19 +107,14 @@ function readVoiceCount(device: LiveAPI): number | undefined {
  * Warns and skips when the value is not in the allowed set.
  * @param device - LiveAPI device object
  * @param value - Incoming value (must be 4, 8, 16, 24, or 32)
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the value was written, false when it was skipped
  */
-function writeVoiceCount(
-  device: LiveAPI,
-  value: string | number,
-  toolName: string,
-): void {
-  writeIntFromSet(
+function writeVoiceCount(device: LiveAPI, value: string | number): boolean {
+  return writeIntFromSet(
     device,
     "voice_count_index",
     value,
     VOICE_COUNTS,
-    toolName,
     "voiceCount",
     true,
   );
@@ -203,14 +198,13 @@ export const driftSpec: SpecializedDeviceSpec = {
       name: "pitchBendRange",
       options: `${PITCH_BEND_RANGE_MIN}-${PITCH_BEND_RANGE_MAX}`,
       read: readPitchBendRange,
-      write: (device, value, toolName) =>
+      write: (device, value) =>
         writeIntInRange(
           device,
           "pitch_bend_range",
           value,
           PITCH_BEND_RANGE_MIN,
           PITCH_BEND_RANGE_MAX,
-          toolName,
           "pitchBendRange",
         ),
     },

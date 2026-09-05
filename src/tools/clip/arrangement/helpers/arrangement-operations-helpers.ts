@@ -6,7 +6,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createAudioClipInSession,
   type TilingContext,
-} from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
@@ -102,9 +102,7 @@ export function handleArrangementLengthening({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(
-      `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
-    );
+    throw new Error(`could not determine trackIndex for clip ${clip.id}`);
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
@@ -317,9 +315,7 @@ export function handleArrangementShortening({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(
-      `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
-    );
+    throw new Error(`could not determine trackIndex for clip ${clip.id}`);
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));

@@ -8,32 +8,48 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  buildClipResultObject,
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
-  clipCopyBlocker,
-  copyClipToSlot,
-} from "#src/tools/shared/copy-clip-to-slot.ts";
-import {
+  type ClipPath,
   namedHiddenPath,
   pathEntries,
   pathNamesSomething,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import {
+  requireClipDestinationPath,
+  type ClipDestinationPath,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
   formatObjectPath,
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  type ArrangementTrack,
+  type TakeLaneTarget,
+  reusesPreviousLane,
+  takeLaneFromPath,
+  withNewLaneOrdinals,
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
-import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
-
-interface SlotPosition {
-  trackIndex: number;
-  sceneIndex: number;
-}
+import { handleArrangementOperations } from "./arrangement/update-clip-arrangement-helpers.ts";
+import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
+import {
+  pairExact,
+  pairValues,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  handleArrangementToSlotMove,
+  handleClipSlotMove,
+} from "./update-clip-slot-move-helpers.ts";
+import {
+  targetLabel,
+  targetLabelForId,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * The param the caller used to name a destination, so a warning names one they
@@ -52,25 +68,56 @@ export function moveDestinationParam(
     : "toPath";
 }
 
+/** The lane fields {@link withNewLaneOrdinals} reads and writes. */
+interface ArrangementLaneEntry {
+  takeLane: TakeLaneTarget | null;
+  sameLane: boolean;
+  newLaneOrdinal?: number;
+}
+
+/** Where the clips in one call move: the lane, the position, or both. */
+export interface MoveDestinations {
+  /** The lane per named clip, null where there is nothing to move to. */
+  destinations: Array<ClipPath | null>;
+  /**
+   * The song position a `[...]` in toPath named, per clip, null where the entry
+   * carried none — that clip keeps the start it has.
+   */
+  positions: Array<string | null>;
+  /**
+   * Which written `l+` each entry lands on, so an `l=` shares the lane its
+   * `l+` appended. Undefined for every entry that names no new lane.
+   */
+  laneOrdinals: Array<number | undefined>;
+}
+
 /**
  * Resolves where each clip in the batch moves, from toPath or the deprecated
  * toSlot. Warns and returns nulls for anything update-clip can't do, so the
  * rest of the update still runs.
  *
+ * An entry may name a lane (`t2`), a position (`[5|1]`), or both — the halves
+ * are split apart here, so a bare coordinate keeps its turn in the list with no
+ * lane to move to.
+ *
  * Destinations pair 1:1 with the clips and never cycle, unlike name and color: two
  * clips can share a name, but the second one sent to a slot overwrites the
  * first — which is a move that reports success and loses a clip.
- * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3")
+ * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3", "t2[5|1]", "[5|1]")
  * @param rawToSlot - Deprecated destination slot(s) (trackIndex/sceneIndex)
  * @param clipCount - How many clips the call named, before any are dropped
- * @returns One destination per named clip, null where there is nothing to move to
+ * @returns One lane and one position per named clip
  */
 export function resolveMoveDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
   clipCount: number,
-): Array<SlotPosition | null> {
-  const none = Array.from({ length: clipCount }, () => null);
+): MoveDestinations {
+  const none = {
+    destinations: Array.from({ length: clipCount }, () => null),
+    positions: Array.from({ length: clipCount }, () => null),
+    laneOrdinals: Array.from({ length: clipCount }, () => undefined),
+  };
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedParam(rawToPath, "toPath");
@@ -93,12 +140,48 @@ export function resolveMoveDestinations(
   // empty here: namedHiddenPath drops a toSlot that names nothing, and toPath
   // refuses one when it splits its entries.
   try {
-    const destinations =
+    const entries: Array<ClipDestinationPath | null> =
       toSlot != null
-        ? parseSlotList(toSlot, "toSlot")
+        ? parseSlotList(toSlot, "toSlot").map((slot) => ({
+            lane: { kind: "slot" as const, ...slot },
+            position: null,
+          }))
         : pathDestinations(toPath as string);
+    const labels = {
+      param: toSlot == null ? "toPath" : "toSlot",
+      noun: "destination",
+      item: "clip",
+      shortfall: "were not moved",
+    };
+    // A bare "[5|1]" doesn't fully determine a location — each clip keeps its
+    // own lane — so one of them covers every clip, exactly as the
+    // arrangementStart it replaces does. A lane or a slot still pairs 1:1:
+    // those hold one clip each, and broadcasting would land every clip on the
+    // last one. See dev/Object-Paths.md, "Which lists pair and which
+    // broadcast".
+    const paired = namesNoLane(entries)
+      ? pairValues(entries, clipCount, labels)
+      : pairExact(entries, clipCount, labels);
 
-    return pairWithClips(destinations, clipCount, toSlot == null);
+    // Numbered off the paired list, which is the written one broadcast or cut
+    // to the clip count — the same order an "l=" reads "the l+ before it" in.
+    const lanes = withNewLaneOrdinals(
+      paired.map((entry): ArrangementLaneEntry | null =>
+        entry?.lane == null
+          ? null
+          : {
+              takeLane: takeLaneFromPath(entry.lane),
+              sameLane: reusesPreviousLane(entry.lane),
+            },
+      ),
+      labels.param,
+    );
+
+    return {
+      destinations: paired.map((entry) => entry?.lane ?? null),
+      positions: paired.map((entry) => entry?.position ?? null),
+      laneOrdinals: lanes.map((lane) => lane?.newLaneOrdinal),
+    };
   } catch (error) {
     console.warn(`clip not moved: ${errorMessage(error)}`);
   }
@@ -108,7 +191,11 @@ export function resolveMoveDestinations(
 
 interface RequestedClips {
   clips: LiveAPI[];
-  destinationById: Map<string, SlotPosition>;
+  destinationById: Map<string, ClipPath>;
+  /** Which written `l+` each clip's destination lands on, for an `l=`. */
+  laneOrdinalById: Map<string, number>;
+  /** Each clip's position in the call, for the params paired against it. */
+  requestedIndexById: Map<string, number>;
 }
 
 /**
@@ -121,14 +208,18 @@ interface RequestedClips {
  * and a move overwrites whatever it lands on.
  * @param requestedIds - Ids in call order, null where a path named no clip
  * @param destinations - One destination per requested entry
- * @returns The clips to update, and their destinations keyed by clip id
+ * @param laneOrdinals - One `l+` ordinal per requested entry, where it names a new lane
+ * @returns The clips to update, plus their destinations and call positions keyed by clip id
  */
 export function resolveRequestedClips(
   requestedIds: Array<string | null>,
-  destinations: Array<SlotPosition | null>,
+  destinations: Array<ClipPath | null>,
+  laneOrdinals: Array<number | undefined> = [],
 ): RequestedClips {
   const clips: LiveAPI[] = [];
-  const destinationById = new Map<string, SlotPosition>();
+  const destinationById = new Map<string, ClipPath>();
+  const laneOrdinalById = new Map<string, number>();
+  const requestedIndexById = new Map<string, number>();
   const claimedBy = new Map<string, string>();
   const seen = new Set<string>();
   let repeats = 0;
@@ -138,7 +229,7 @@ export function resolveRequestedClips(
 
     // One id at a time so the "does not exist" warnings stay in one place and
     // the survivor keeps the position it was named at.
-    const clip = validateIdTypes([id], "clip", "updateClip", {
+    const clip = validateIdTypes([id], "clip", {
       skipInvalid: true,
     })[0];
 
@@ -153,6 +244,12 @@ export function resolveRequestedClips(
 
     seen.add(clip.id);
     clips.push(clip);
+    requestedIndexById.set(clip.id, index);
+
+    const ordinal = laneOrdinals[index];
+
+    if (ordinal != null) laneOrdinalById.set(clip.id, ordinal);
+
     claimDestination(clip.id, destinations[index], {
       destinationById,
       claimedBy,
@@ -167,33 +264,52 @@ export function resolveRequestedClips(
 
   dropDestinationsHoldingBatchClips(destinationById, seen);
 
-  return { clips, destinationById };
+  return { clips, destinationById, laneOrdinalById, requestedIndexById };
 }
 
 /**
  * Gives a clip the destination named at its position, unless an earlier clip in
  * the batch is already moving there. Two clips sent to one slot means the second
  * overwrites the first, and the response then claims both are in it.
+ *
+ * Only slots are exclusive. An arrangement lane holds as many clips as fit on
+ * it, so several clips can share one — and when they do land on top of each
+ * other, the "moved to the same position" warning already says so.
  * @param clipId - The clip being given a destination
  * @param destination - Where the call named it to go, if anywhere
  * @param batch - Destinations by clip id, and the clip claiming each slot, both added to
  */
+/**
+ * Whether the call named one destination that leaves the lane to the clip.
+ * @param entries - The parsed destinations, in order
+ * @returns True for a single bare `[5|1]`
+ */
+function namesNoLane(entries: Array<ClipDestinationPath | null>): boolean {
+  return entries.length === 1 && entries[0]?.lane == null;
+}
+
 function claimDestination(
   clipId: string,
-  destination: SlotPosition | null | undefined,
+  destination: ClipPath | null | undefined,
   batch: {
-    destinationById: Map<string, SlotPosition>;
+    destinationById: Map<string, ClipPath>;
     claimedBy: Map<string, string>;
   },
 ): void {
   if (destination == null) return;
+
+  if (destination.kind !== "slot") {
+    batch.destinationById.set(clipId, destination);
+
+    return;
+  }
 
   const slot = slotPath(destination.trackIndex, destination.sceneIndex);
   const claimant = batch.claimedBy.get(slot);
 
   if (claimant != null) {
     console.warn(
-      `clip ${clipId} was not moved: clip ${claimant} is already moving to ${slot}; name one slot per clip`,
+      `clip ${targetLabelForId(clipId)} was not moved: clip ${targetLabelForId(claimant)} is already moving to ${slot}; name one slot per clip`,
     );
 
     return;
@@ -211,10 +327,15 @@ function claimDestination(
  * @param batchIds - Ids of every clip this call updates
  */
 function dropDestinationsHoldingBatchClips(
-  destinationById: Map<string, SlotPosition>,
+  destinationById: Map<string, ClipPath>,
   batchIds: Set<string>,
 ): void {
-  for (const [clipId, { trackIndex, sceneIndex }] of destinationById) {
+  for (const [clipId, destination] of destinationById) {
+    // Arrangement lanes hold many clips, so nothing there is displaced by a
+    // move landing on it — Live trims what overlaps instead of replacing it.
+    if (destination.kind !== "slot") continue;
+
+    const { trackIndex, sceneIndex } = destination;
     const occupant = LiveAPI.from(
       livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
     );
@@ -225,8 +346,8 @@ function dropDestinationsHoldingBatchClips(
     if (!batchIds.has(occupant.id)) continue;
 
     console.warn(
-      `clip ${clipId} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
-        `${occupant.id}, which this call also updates; move that clip out in its own call first`,
+      `clip ${targetLabelForId(clipId)} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
+        `${targetLabel(occupant)}, which this call also updates; move that clip out in its own call first`,
     );
     destinationById.delete(clipId);
   }
@@ -235,11 +356,15 @@ function dropDestinationsHoldingBatchClips(
 interface HandlePositionOperationsArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
-  toSlot?: SlotPosition | null;
+  destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
+  /** Which written `l+` the destination lands on, for an `l=` sharing it. */
+  newLaneOrdinal?: number;
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
+  /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
+  appendedLanes: Map<string, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -247,36 +372,43 @@ interface HandlePositionOperationsArgs {
 }
 
 /**
- * Handle clip position operations: clip slot move or arrangement operations
+ * Handle clip position operations: a move to a clip slot, or the arrangement
+ * operations — which now cover a move to another track or take lane.
  * @param args - Operation arguments
  */
 export function handlePositionOperations(
   args: HandlePositionOperationsArgs,
 ): void {
-  const { clip, toSlot, arrangementStartBeats, arrangementLengthBeats } = args;
+  const { clip, destination, arrangementStartBeats, arrangementLengthBeats } =
+    args;
   const { destinationParam } = args;
-  const isArrangementClip =
-    (clip.getProperty("is_arrangement_clip") as number) > 0;
 
-  if (toSlot != null && !isArrangementClip) {
+  if (destination?.kind === "slot") {
+    // A slot is off the arrangement timeline, so the two ask for different
+    // places at once. Arrangement destinations are the opposite: they combine
+    // with arrangementStart, which says where on the destination lane to land.
     if (arrangementStartBeats != null || arrangementLengthBeats != null) {
       console.warn(
         `${destinationParam} ignored when arrangement parameters are specified`,
       );
     } else {
-      handleSessionSlotMove({
+      const move =
+        (clip.getProperty("is_arrangement_clip") as number) > 0
+          ? handleArrangementToSlotMove
+          : handleClipSlotMove;
+
+      move({
         clip,
-        toSlot,
+        toSlot: {
+          trackIndex: destination.trackIndex,
+          sceneIndex: destination.sceneIndex,
+        },
         updatedClips: args.updatedClips,
         noteResult: args.noteResult,
       });
 
       return;
     }
-  } else if (toSlot != null && isArrangementClip) {
-    console.warn(
-      `${destinationParam} ignored for arrangement clip (id ${clip.id}): only session clips move to a slot`,
-    );
   }
 
   handleArrangementOperations({
@@ -284,7 +416,14 @@ export function handlePositionOperations(
     isAudioClip: args.isAudioClip,
     arrangementStartBeats,
     arrangementLengthBeats,
-    tracksWithMovedClips: args.tracksWithMovedClips,
+    destination: arrangementDestination(
+      clip,
+      destination,
+      destinationParam,
+      args.newLaneOrdinal,
+    ),
+    movedClipGroups: args.movedClipGroups,
+    appendedLanes: args.appendedLanes,
     context: args.context,
     updatedClips: args.updatedClips,
     noteResult: args.noteResult,
@@ -293,29 +432,23 @@ export function handlePositionOperations(
 }
 
 /**
- * Reads the clip slots off a toPath, warning about each entry that names
+ * Reads the destinations off a toPath, warning about each entry that names
  * something update-clip can't move a clip to.
  * @param toPath - Destination path(s), comma-separated
- * @returns One destination per entry, null where the entry names no slot
+ * @returns One destination per entry, null where the entry names nowhere to go
  */
-function pathDestinations(toPath: string): Array<SlotPosition | null> {
+function pathDestinations(toPath: string): Array<ClipDestinationPath | null> {
   // pathEntries refuses a toPath that names nothing, so every entry here is real.
   const entries = pathEntries(toPath, "toPath");
 
   // Per entry, so a typo costs its own move and not the whole batch. An entry
   // that names the wrong kind of place already worked this way; one that
   // doesn't parse at all used to discard every destination beside it.
-  return entries.map((entry) => {
+  const parsed = entries.map((entry) => {
     try {
-      const parsed = parseObjectPath(entry, "toPath");
-
-      if (parsed.kind === "slot") {
-        return { trackIndex: parsed.trackIndex, sceneIndex: parsed.sceneIndex };
-      }
-
-      console.warn(
-        `toPath "${formatObjectPath(parsed)}" is not a clip slot, so that clip was not moved; ` +
-          'update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track',
+      return requireClipDestinationPath(
+        parseObjectPath(entry, "toPath"),
+        "toPath",
       );
     } catch (error) {
       console.warn(`clip not moved: ${errorMessage(error)}`);
@@ -323,139 +456,45 @@ function pathDestinations(toPath: string): Array<SlotPosition | null> {
 
     return null;
   });
+
+  return resolveDestinationPositions(parsed, {
+    paramName: "toPath",
+  });
 }
 
 /**
- * Lines destinations up with the clips they apply to, warning when the counts
- * disagree — a caller that named the wrong number of slots gets told which
- * clips moved rather than watching copies land on top of each other.
- * @param destinations - Destinations, in order
- * @param clipCount - How many clips the call named, before any are dropped
- * @param isPath - Whether the destinations came from toPath (for the warning)
- * @returns Exactly clipCount destinations, padded with null
+ * Reads a destination as an arrangement lane, or null when it isn't one.
+ *
+ * A session clip can't move onto a lane: the arrangement move is copy-then-
+ * delete through `duplicate_clip_to_arrangement`, which takes an arrangement
+ * source only. Warn and leave the clip in its slot.
+ * @param clip - The clip being moved
+ * @param destination - Where the call named it to go, if anywhere
+ * @param destinationParam - The param the caller used, for the warning
+ * @param newLaneOrdinal - Which written `l+` it lands on, for an `l=` sharing it
+ * @returns The destination track and lane, or null
  */
-function pairWithClips(
-  destinations: Array<SlotPosition | null>,
-  clipCount: number,
-  isPath: boolean,
-): Array<SlotPosition | null> {
-  const label = isPath ? "toPath" : "toSlot";
+function arrangementDestination(
+  clip: LiveAPI,
+  destination: ClipPath | null | undefined,
+  destinationParam: "toPath" | "toSlot",
+  newLaneOrdinal?: number,
+): ArrangementTrack | null {
+  if (destination == null || destination.kind === "slot") return null;
 
-  if (destinations.length !== clipCount) {
-    const extra = destinations.length > clipCount;
-
+  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
     console.warn(
-      `${label} names ${destinations.length} destination(s) for ${clipCount} clip(s); ` +
-        (extra
-          ? "the extra destinations went unused"
-          : "the clips past the last destination were not moved"),
+      `${destinationParam} "${formatObjectPath(destination)}" names an arrangement lane, so session clip ` +
+        `${targetLabel(clip)} was not moved; name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
     );
+
+    return null;
   }
 
-  return Array.from(
-    { length: clipCount },
-    (_unused, i) => destinations[i] ?? null,
-  );
-}
-
-interface HandleSessionSlotMoveArgs {
-  clip: LiveAPI;
-  toSlot: SlotPosition;
-  updatedClips: ClipResult[];
-  noteResult: NoteUpdateResult | null;
-}
-
-/**
- * Move a session clip to a different clip slot
- * @param args - Operation arguments
- * @param args.clip - The session clip to move
- * @param args.toSlot - Destination slot position
- * @param args.updatedClips - Array to collect results
- * @param args.noteResult - Note update result for result
- */
-export function handleSessionSlotMove({
-  clip,
-  toSlot,
-  updatedClips,
-  noteResult,
-}: HandleSessionSlotMoveArgs): void {
-  const srcTrackIndex = clip.trackIndex;
-  const srcSceneIndex = clip.sceneIndex;
-
-  if (srcTrackIndex == null || srcSceneIndex == null) {
-    console.warn(`could not determine slot position for clip ${clip.id}`);
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
-
-    return;
-  }
-
-  // Same slot — no-op
-  if (
-    srcTrackIndex === toSlot.trackIndex &&
-    srcSceneIndex === toSlot.sceneIndex
-  ) {
-    updatedClips.push(buildClipResultObject(clip.id, noteResult, toSlot));
-
-    return;
-  }
-
-  const destClipSlot = LiveAPI.from(
-    livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex),
-  );
-
-  if (!destClipSlot.exists()) {
-    console.warn(
-      `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
-    );
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
-
-    return;
-  }
-
-  // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
-  // of failing, and the source is deleted right after — check first rather than
-  // destroying the clip and reporting it moved.
-  const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
-  const blocker = clipCopyBlocker(clipIsMidi, toSlot.trackIndex);
-
-  if (blocker != null) {
-    console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${clip.id} was not moved: ${blocker}`,
-    );
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
-
-    return;
-  }
-
-  // Read now, warn after the copy: when copyClipToSlot declines, the occupant
-  // is still there and an up-front warning contradicts the one that follows.
-  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
-
-  const sourceClipSlot = LiveAPI.from(
-    livePath.track(srcTrackIndex).clipSlot(srcSceneIndex),
-  );
-
-  // Look before deleting. duplicate_clip_to reports nothing when it declines a
-  // copy, so anything the checks above didn't catch would destroy the clip and
-  // report a move. copyClipToSlot compares the destination's clip before and
-  // after, so an occupied slot's original clip can't be mistaken for the copy.
-  const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
-
-  if (newClip == null) {
-    console.warn(
-      `clip ${clip.id} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
-    );
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
-
-    return;
-  }
-
-  if (destinationWasOccupied) {
-    console.warn(
-      `overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
-    );
-  }
-
-  sourceClipSlot.call("delete_clip");
-  updatedClips.push(buildClipResultObject(newClip.id, noteResult, toSlot));
+  return {
+    trackIndex: destination.trackIndex,
+    takeLane: takeLaneFromPath(destination),
+    ...(reusesPreviousLane(destination) && { sameLane: true }),
+    newLaneOrdinal,
+  };
 }

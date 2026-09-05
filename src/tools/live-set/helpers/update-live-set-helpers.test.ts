@@ -13,7 +13,7 @@ import {
 } from "./update-live-set-helpers.ts";
 
 vi.mock(
-  import("#src/tools/shared/arrangement/arrangement-tiling-helpers.ts"),
+  import("#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts"),
   () => ({
     createAudioClipInSession: vi.fn(),
   }),
@@ -28,8 +28,9 @@ vi.mock(import("#src/shared/pitch.ts"), async (importOriginal) => {
   };
 });
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { pitchClassToNumber } from "#src/shared/pitch.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -37,6 +38,18 @@ function mockLiveSetWithTracks(trackIds: string[] = ["track-1"]): LiveAPI {
   return {
     getProperty: vi.fn().mockReturnValue(100),
     getChildIds: vi.fn().mockReturnValue(trackIds),
+  } as unknown as LiveAPI;
+}
+
+/** A live_set mock that stores what applyScale writes and reads it back. */
+function mockLiveSetWithScaleState(): LiveAPI {
+  const stored: Record<string, unknown> = {};
+
+  return {
+    set: vi.fn((property: string, value: unknown) => {
+      stored[property] = value;
+    }),
+    getProperty: vi.fn((property: string) => stored[property]),
   } as unknown as LiveAPI;
 }
 
@@ -294,6 +307,17 @@ describe("update-live-set-helpers", () => {
       expect(result).toStrictEqual({ scaleRoot: "F#", scaleName: "Minor" });
     });
 
+    it("should resolve an enharmonic root to its canonical spelling", () => {
+      expect(parseScale("Cb Major")).toStrictEqual({
+        scaleRoot: "B",
+        scaleName: "Major",
+      });
+      expect(parseScale("e# minor")).toStrictEqual({
+        scaleRoot: "F",
+        scaleName: "Minor",
+      });
+    });
+
     it("should handle Bb (flat notation)", () => {
       const result = parseScale("Bb Dorian");
 
@@ -364,32 +388,16 @@ describe("update-live-set-helpers", () => {
       expect(result.tempo).toBe(999);
     });
 
-    it("should warn and not set tempo below 20 BPM", () => {
+    // The range is refused by validateTempo before updateLiveSet writes
+    // anything, so by here the value is known good. See update-live-set.test.ts.
+    it("writes a boundary tempo", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { tempo?: number } = {};
 
-      applyTempo(mockLiveSet, 19, result);
+      applyTempo(mockLiveSet, 20, result);
 
-      expect(mockLiveSet.set).not.toHaveBeenCalled();
-      expect(result.tempo).toBeUndefined();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "tempo must be between 20.0 and 999.0 BPM",
-      );
-    });
-
-    it("should warn and not set tempo above 999 BPM", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { tempo?: number } = {};
-
-      applyTempo(mockLiveSet, 1000, result);
-
-      expect(mockLiveSet.set).not.toHaveBeenCalled();
-      expect(result.tempo).toBeUndefined();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "tempo must be between 20.0 and 999.0 BPM",
-      );
+      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 20);
+      expect(result.tempo).toBe(20);
     });
   });
 
@@ -398,10 +406,11 @@ describe("update-live-set-helpers", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "", result);
+      const respelled = applyScale(mockLiveSet, "", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 0);
       expect(result.scale).toBe("");
+      expect(respelled).toBeNull();
     });
 
     it("should warn and skip without throwing for an invalid scale string", () => {
@@ -418,7 +427,7 @@ describe("update-live-set-helpers", () => {
     });
 
     it("should set scale properties for valid scale string", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
       applyScale(mockLiveSet, "C Major", result);
@@ -429,26 +438,48 @@ describe("update-live-set-helpers", () => {
       expect(result.scale).toBe("C Major");
     });
 
-    it("should handle sharp root notes", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+    it("reports a sharp root by the flat name Live stores", () => {
+      // Live keeps only root_note, a pitch class number, so the result must
+      // name it the way every read of it will.
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "F# Minor", result);
+      const respelled = applyScale(mockLiveSet, "F# Minor", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
-      expect(result.scale).toBe("F# Minor");
+      expect(result.scale).toBe("Gb Minor");
+      expect(respelled).toStrictEqual({
+        requestedRoot: "F#",
+        storedRoot: "Gb",
+      });
     });
 
     it("should handle flat root notes", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "Bb Dorian", result);
+      const respelled = applyScale(mockLiveSet, "Bb Dorian", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
       expect(result.scale).toBe("Bb Dorian");
+      expect(respelled).toBeNull();
+    });
+
+    it("falls back to the requested spelling when Live reports no usable root", () => {
+      const mockLiveSet = {
+        set: vi.fn(),
+        getProperty: vi.fn((property: string) =>
+          property === "scale_name" ? "Major" : -1,
+        ),
+      } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      const respelled = applyScale(mockLiveSet, "C Major", result);
+
+      expect(result.scale).toBe("C Major");
+      expect(respelled).toBeNull();
     });
 
     it("should warn and return when pitchClassToNumber returns null", () => {
@@ -466,7 +497,7 @@ describe("update-live-set-helpers", () => {
 
       expect(mockLiveSet.set).not.toHaveBeenCalled();
       expect(result.scale).toBeUndefined();
-      expect(outlet).toHaveBeenCalledWith(1, "invalid scale root: C");
+      expect(capturedWarnings()).toContain("invalid scale root: C");
     });
   });
 });

@@ -31,13 +31,15 @@ import {
   toSongPositions,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
+  parseToolResult,
   type CreateTrackResult,
   getToolWarnings,
-  parseToolResult,
+  trackIndexFromPath,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,
@@ -169,7 +171,9 @@ describe("Behavioral splitting tests", () => {
       arguments: { type: "midi", name: "Split Behavioral Tests" },
     });
 
-    dynamicTrackIndex = parseToolResult<CreateTrackResult>(result).trackIndex!;
+    dynamicTrackIndex = trackIndexFromPath(
+      parseToolResult<CreateTrackResult>(result).path,
+    );
   });
 
   /**
@@ -184,8 +188,12 @@ describe("Behavioral splitting tests", () => {
   ): Promise<ReadClipResult[]> {
     const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
     const spanStart = startBar - 1;
-    const startOf = (clip: ReadClipResult): number =>
-      clip.arrangementStart ? parseBarBeat(clip.arrangementStart) : -1;
+
+    const startOf = (clip: ReadClipResult): number => {
+      const start = arrangementStartOf(clip);
+
+      return start == null ? -1 : parseBarBeat(start);
+    };
 
     return clips
       .filter((c) => {
@@ -202,8 +210,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "200|1",
+        path: `t${dynamicTrackIndex}[200|1]`,
         notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
         length: "4bar",
         looping: true,
@@ -239,8 +246,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "210|1",
+        path: `t${dynamicTrackIndex}[210|1]`,
         notes: "C3 1|1",
         length: "2bar",
         looping: true,
@@ -289,8 +295,7 @@ describe("Behavioral splitting tests", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "220|1",
+        path: `t${dynamicTrackIndex}[220|1]`,
         notes: "C3 1|1",
         length: "2bar",
         looping: true,
@@ -301,8 +306,7 @@ describe("Behavioral splitting tests", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "230|1",
+        path: `t${dynamicTrackIndex}[230|1]`,
         notes: "E3 1|1",
         length: "2bar",
         looping: true,
@@ -337,8 +341,7 @@ describe("Behavioral splitting tests", () => {
       const result = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${dynamicTrackIndex}`,
-          arrangementStart: `${startBar}|1`,
+          path: `t${dynamicTrackIndex}[${startBar}|1]`,
           notes: "C3 1|1",
           length: "4bar",
           looping: true,
@@ -361,7 +364,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const clips = await clipsInSpan(400, 4);
 
-      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+      expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
         "400|1",
         "402|1",
       ]);
@@ -403,7 +406,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const clips = await clipsInSpan(420, 4);
 
-      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+      expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
         "420|1",
         "422|1",
       ]);
@@ -444,8 +447,7 @@ describe("Behavioral splitting tests", () => {
       const result = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${dynamicTrackIndex}`,
-          arrangementStart: `${startBar}|1`,
+          path: `t${dynamicTrackIndex}[${startBar}|1]`,
           notes: "C3 1|1\nE3 2|1",
           length: "2bar",
           looping: true,

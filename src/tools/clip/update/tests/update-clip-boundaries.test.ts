@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   setupAudioClipMock,
   setupMidiClipMock,
@@ -11,6 +11,10 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateClip - Clip boundaries (shortening)", () => {
   let mocks: UpdateClipMocks;
@@ -35,7 +39,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       12, // loop_start (4) + length (8) = 12
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should set firstStart for looping clips", async () => {
@@ -65,7 +69,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       16, // start (0) + length (16) = 16
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should warn when firstStart provided for non-looping clips", async () => {
@@ -81,12 +85,11 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "firstStart parameter ignored for non-looping clips",
+    expect(capturedWarnings()).toContain(
+      "firstStart parameter ignored for non-looping clip t0/s0 (id 123)",
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should set end_marker for non-looping clips", async () => {
@@ -111,7 +114,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       16, // start (0) + length (16) = 16
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should set loop_start and loop_end for looping clips", async () => {
@@ -142,7 +145,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       12, // start (4) + length (8) = 12
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 });
 
@@ -163,14 +166,13 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
 
     await updateClip({ id: "123", length: "4bar" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Derived start"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("derived start"),
     );
   });
 
   it("does NOT emit warning for non-looping audio clip with mismatched derived start", async () => {
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
 
     setupAudioClipMock(mocks.clip123, {
       looping: 0,
@@ -181,6 +183,6 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
 
     await updateClip({ id: "123", length: "1bar" });
 
-    expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

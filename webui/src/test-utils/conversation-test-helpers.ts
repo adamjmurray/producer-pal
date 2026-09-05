@@ -7,6 +7,10 @@ import {
   type ConversationRecord,
   type ConversationSummary,
 } from "#webui/lib/conversation-db";
+import {
+  createConversationStore,
+  type SaveSnapshot,
+} from "#webui/lib/conversation-store";
 
 /**
  * Create a test ConversationRecord with sensible defaults.
@@ -22,6 +26,21 @@ export function createTestRecord(
     voiceHistory: null,
     ...overrides,
   };
+}
+
+/**
+ * Create a conversation store whose trunk save has already been persisted —
+ * the starting point for the fork/rollback cases.
+ * @returns The store and its persisted trunk snapshot
+ */
+export function storeWithPersistedTrunk() {
+  const store = createConversationStore();
+  // A fresh store always hands out the first save, so this never returns null.
+  const trunk = store.beginSave(false) as SaveSnapshot;
+
+  store.markPersisted(trunk, createTestRecord({ id: trunk.id }));
+
+  return { store, trunk };
 }
 
 /**

@@ -10,8 +10,12 @@
 
 /** One clip in a read-track result. */
 export interface ArrangementClip {
-  arrangementStart?: string;
+  /** Where the clip is, e.g. "t1[5|1]" or "t1/l0[5|1]". */
+  path?: string;
 }
+
+/** The `[song position]` an arrangement clip's path ends with. */
+const COORDINATE = /\[([^\]]*)\]$/;
 
 /** One take lane in a read-track result. */
 export interface TakeLane {
@@ -27,15 +31,16 @@ export interface ArrangementTrack {
 }
 
 /**
- * Bar positions of a clip list, in bar order. Missing positions read as "?" so
- * a failure message shows the gap rather than dropping the clip.
+ * Bar positions of a clip list, in bar order, read out of each clip's path.
+ * Missing positions read as "?" so a failure message shows the gap rather than
+ * dropping the clip.
  *
  * @param clips - Clips from a read-track result
- * @returns Sorted arrangementStart values
+ * @returns Sorted bar|beat positions
  */
 export function clipStarts(clips: ArrangementClip[] | undefined): string[] {
   return (clips ?? [])
-    .map((clip) => clip.arrangementStart ?? "?")
+    .map((clip) => COORDINATE.exec(clip.path ?? "")?.[1] ?? "?")
     .toSorted(
       (a, b) => Number(a.split("|")[0] ?? 0) - Number(b.split("|")[0] ?? 0),
     );
@@ -59,4 +64,25 @@ export function asArrangementTrack(result: unknown): ArrangementTrack {
  */
 export function takeLanes(result: unknown): TakeLane[] {
   return asArrangementTrack(result).takeLanes ?? [];
+}
+
+/**
+ * Whether a clip call put its clip on the song timeline: a `[position]`
+ * coordinate on the destination path, or the deprecated `arrangementStart` a
+ * caller may still send.
+ *
+ * @param args - The tool call's arguments
+ * @param destinationParam - "path" on create-clip, "toPath" on duplicate
+ * @returns True when the call names an arrangement position
+ */
+export function callNamesArrangementPosition(
+  args: Record<string, unknown>,
+  destinationParam: "path" | "toPath",
+): boolean {
+  const destination = args[destinationParam];
+
+  return (
+    (typeof destination === "string" && destination.includes("[")) ||
+    Boolean(args.arrangementStart)
+  );
 }

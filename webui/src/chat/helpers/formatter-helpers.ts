@@ -70,3 +70,14 @@ export function addTextContent(parts: UIPart[], content: string): void {
     parts.push({ type: "text", content });
   }
 }
+
+/**
+ * Concatenate a user message's text as shown on screen.
+ * @param message - User message to format
+ * @returns Concatenated text content
+ */
+export function formatUserContent(message: UIMessage): string {
+  return message.parts
+    .map((part) => ("content" in part ? part.content : ""))
+    .join("");
+}

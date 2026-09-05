@@ -8,26 +8,25 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
+  parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { captureScene } from "./capture-scene.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
+import { validateTempo } from "#src/tools/shared/utils.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
+  resolveCreateSceneIndex,
 } from "./scene-helpers.ts";
 
 interface SceneResult {
   id: string;
-  sceneIndex: number;
-}
-
-interface CaptureSceneResult extends SceneResult {
-  clips: Array<{ id: string; trackIndex: number }>;
+  path: string;
 }
 
 interface SceneProperties {
@@ -37,6 +36,7 @@ interface SceneProperties {
 }
 
 interface CreateSceneArgs {
+  path?: string;
   sceneIndex?: number;
   count?: number;
   capture?: boolean;
@@ -50,7 +50,8 @@ interface CreateSceneArgs {
 /**
  * Creates new scenes at the specified index or captures currently playing clips
  * @param args - The scene parameters
- * @param args.sceneIndex - Scene index (0-based) where to insert new scenes
+ * @param args.path - Where the scenes go: "s+" appends, "s2" inserts at 2
+ * @param args.sceneIndex - Deprecated index (0-based) where to insert new scenes
  * @param args.count - Number of scenes to create (ignored when capture=true)
  * @param args.capture - Capture currently playing Session clips instead of creating empty scenes
  * @param args.name - Base name for the scenes
@@ -63,7 +64,8 @@ interface CreateSceneArgs {
  */
 export function createScene(
   {
-    sceneIndex,
+    path,
+    sceneIndex: sceneIndexParam,
     count = 1,
     capture = false,
     name,
@@ -74,11 +76,21 @@ export function createScene(
   }: CreateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): SceneResult | SceneResult[] | CaptureSceneResult {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const sceneIndex = resolveCreateSceneIndex(path, sceneIndexParam, liveSet);
+
+  validateTempo(tempo, -1);
+
   // Handle capture mode
   if (capture) {
-    const result = captureScene({ sceneIndex, name });
+    // The index is Live's answer to where the capture landed; it stays out of
+    // the result, where `path` already says it.
+    const { sceneIndex: capturedIndex, ...result } = captureScene({
+      sceneIndex,
+      name,
+    });
 
-    applyCaptureProperties(result, { color, tempo, timeSignature });
+    applyCaptureProperties(capturedIndex, { color, tempo, timeSignature });
 
     if (focus) {
       focusSelect({ view: "session", id: result.id });
@@ -90,20 +102,22 @@ export function createScene(
   // Create mode
   validateCreateSceneArgs(sceneIndex, count);
 
+  validateListLengths([
+    { param: "count", count, noun: "scene" },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
+
   // After validation, sceneIndex is guaranteed to be a number
   const validatedSceneIndex = sceneIndex as number;
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
 
   ensureSceneCountForIndex(liveSet, validatedSceneIndex);
 
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
 
-  const parsedNames = parseCommaSeparatedNames(name, count);
-  const parsedColors = parseCommaSeparatedColors(color, count);
-
-  warnExtraNames(parsedNames, count, "createScene");
+  const parsedNames = parseNames(name, count, "scene");
+  const parsedColors = parseColors(color, count, "scene");
 
   for (let i = 0; i < count; i++) {
     const sceneName = getNameForIndex(name, i, parsedNames);
@@ -157,16 +171,16 @@ function validateCreateSceneArgs(
   count: number,
 ): void {
   if (sceneIndex == null) {
-    throw new Error("createScene failed: sceneIndex is required");
+    throw new Error("path is required");
   }
 
   if (count < 1) {
-    throw new Error("createScene failed: count must be at least 1");
+    throw new Error("count must be at least 1");
   }
 
   if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
     throw new Error(
-      `createScene failed: creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+      `creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
     );
   }
 }
@@ -190,18 +204,17 @@ function ensureSceneCountForIndex(liveSet: LiveAPI, sceneIndex: number): void {
 
 /**
  * Applies scene properties in capture mode
- * @param result - The capture result object
- * @param result.sceneIndex - The scene index
+ * @param sceneIndex - Index the capture landed at
  * @param props - Properties to apply
  */
 function applyCaptureProperties(
-  result: { sceneIndex: number },
+  sceneIndex: number,
   props: SceneProperties,
 ): void {
   const { color, tempo, timeSignature } = props;
 
   if (color != null || tempo != null || timeSignature != null) {
-    const scene = LiveAPI.from(livePath.scene(result.sceneIndex));
+    const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
     applySceneProperties(scene, { color, tempo, timeSignature });
   }
@@ -236,6 +249,6 @@ function createSingleScene(
 
   return {
     id: scene.id,
-    sceneIndex,
+    path: formatObjectPath({ kind: "scene", sceneIndex }),
   };
 }

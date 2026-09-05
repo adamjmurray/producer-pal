@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   beginWarningCapture,
+  clearCapturedWarnings,
+  detachWarningCapture,
   endWarningCapture,
   MAX_CAPTURED_WARNINGS,
   recordWarning,
@@ -140,6 +142,90 @@ describe("v8-warning-capture", () => {
 
       expect(recordWarning("still mine")).toBe(true);
       expect(endWarningCapture(capture)).toStrictEqual(["still mine"]);
+    });
+  });
+
+  describe("detachWarningCapture", () => {
+    it("keeps the caller's capture for itself", () => {
+      const caller = beginWarningCapture();
+
+      detachWarningCapture(async () => {
+        await suspendWarningCapture(Promise.resolve());
+      });
+
+      recordWarning("mine");
+
+      expect(endWarningCapture(caller)).toStrictEqual(["mine"]);
+    });
+
+    it("hides the caller's capture from the detached work", () => {
+      const caller = beginWarningCapture();
+      let takenByTheWork = true;
+
+      detachWarningCapture(async () => {
+        takenByTheWork = recordWarning("fire-and-forget");
+
+        await suspendWarningCapture(Promise.resolve());
+      });
+
+      expect(takenByTheWork).toBe(false);
+      expect(endWarningCapture(caller)).toStrictEqual([]);
+    });
+
+    // The shape that makes this load-bearing: the caller's capture is still
+    // live when the detached work resumes, so suspendWarningCapture would
+    // reinstate it — long after the caller moved on, over whatever runs next.
+    it("leaves nothing active when the detached work resumes", async () => {
+      const caller = beginWarningCapture();
+      let parked: (() => void) | undefined;
+      let takenOnResume = true;
+
+      detachWarningCapture(async () => {
+        await suspendWarningCapture(
+          new Promise<void>((resolve) => {
+            parked = resolve;
+          }),
+        );
+
+        takenOnResume = recordWarning("after the round trip");
+      });
+
+      parked?.();
+      await vi.waitFor(() => expect(takenOnResume).toBe(false));
+
+      expect(endWarningCapture(caller)).toStrictEqual([]);
+    });
+
+    it("restores the caller's capture when the work throws before parking", () => {
+      const caller = beginWarningCapture();
+
+      expect(() =>
+        detachWarningCapture(() => {
+          throw new Error("never started");
+        }),
+      ).toThrow("never started");
+
+      recordWarning("still mine");
+
+      expect(endWarningCapture(caller)).toStrictEqual(["still mine"]);
+    });
+  });
+
+  describe("clearCapturedWarnings", () => {
+    it("drops what the active capture has collected so far", () => {
+      const capture = beginWarningCapture();
+
+      recordWarning("before");
+      clearCapturedWarnings();
+      recordWarning("after");
+
+      expect(endWarningCapture(capture)).toStrictEqual(["after"]);
+    });
+
+    it("does nothing when no request is in flight", () => {
+      resetWarningCapture();
+
+      expect(() => clearCapturedWarnings()).not.toThrow();
     });
   });
 

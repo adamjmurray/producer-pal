@@ -12,6 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
+import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "./create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -25,27 +26,10 @@ describe("createTrack", () => {
 
   beforeEach(() => {
     returnTrackCounter = 0;
-    liveSet = registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: {
-        tracks: children("existing1", "existing2"),
-        return_tracks: children("returnA", "returnB"),
-      },
-      methods: {
-        create_midi_track: (index: unknown) => [
-          "id",
-          `midi_track_${String(index)}`,
-        ],
-        create_audio_track: (index: unknown) => [
-          "id",
-          `audio_track_${String(index)}`,
-        ],
-        create_return_track: () => [
-          "id",
-          `return_track_${returnTrackCounter++}`,
-        ],
-      },
-    });
+    liveSet = registerCreateTrackLiveSet(() => [
+      "id",
+      `return_track_${returnTrackCounter++}`,
+    ]);
   });
 
   it("should create a single MIDI track at the specified index", () => {
@@ -62,7 +46,7 @@ describe("createTrack", () => {
     expect(track.set).toHaveBeenCalledWith("color", 16711680);
     expect(result).toStrictEqual({
       id: "midi_track_1",
-      trackIndex: 1,
+      path: "t1",
     });
   });
 
@@ -79,7 +63,7 @@ describe("createTrack", () => {
 
     const result = createTrack({ trackIndex: 0 });
 
-    expect(result).toStrictEqual({ id: "36", trackIndex: 0 });
+    expect(result).toStrictEqual({ id: "36", path: "t0" });
   });
 
   it("should create a single audio track when type is audio", () => {
@@ -95,7 +79,7 @@ describe("createTrack", () => {
     expect(track.set).toHaveBeenCalledWith("name", "New Audio Track");
     expect(result).toStrictEqual({
       id: "audio_track_0",
-      trackIndex: 0,
+      path: "t0",
     });
   });
 
@@ -122,15 +106,15 @@ describe("createTrack", () => {
     expect(result).toStrictEqual([
       {
         id: "midi_track_2",
-        trackIndex: 2,
+        path: "t2",
       },
       {
         id: "midi_track_3",
-        trackIndex: 3,
+        path: "t3",
       },
       {
         id: "midi_track_4",
-        trackIndex: 4,
+        path: "t4",
       },
     ]);
   });
@@ -144,7 +128,7 @@ describe("createTrack", () => {
     expect(track.set).not.toHaveBeenCalled();
     expect(result).toStrictEqual({
       id: "midi_track_0",
-      trackIndex: 0,
+      path: "t0",
     });
   });
 
@@ -165,7 +149,7 @@ describe("createTrack", () => {
     expect(track.set).toHaveBeenCalledWith("arm", true);
     expect(result).toStrictEqual({
       id: "midi_track_0",
-      trackIndex: 0,
+      path: "t0",
     });
   });
 
@@ -184,7 +168,7 @@ describe("createTrack", () => {
     expect(track.set).toHaveBeenCalledWith("arm", false);
     expect(result).toStrictEqual({
       id: "midi_track_0",
-      trackIndex: 0,
+      path: "t0",
     });
   });
 
@@ -195,10 +179,10 @@ describe("createTrack", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
     expect(track.set).toHaveBeenCalledWith("name", "Appended Track");
-    // Result trackIndex should reflect actual position (count of existing tracks)
+    // The result path reflects the actual position (count of existing tracks)
     expect(result).toStrictEqual({
       id: "midi_track_-1",
-      trackIndex: 2, // existing tracks count
+      path: "t2",
     });
   });
 
@@ -208,15 +192,15 @@ describe("createTrack", () => {
     const result = createTrack({ trackIndex: -1, name: "Appended Track" });
 
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
-    expect((result as { trackIndex: number }).trackIndex).toBe(2); // existing tracks count
+    expect((result as { path: string }).path).toBe("t2"); // existing tracks count
   });
 
   it("should throw error when count is less than 1", () => {
     expect(() => createTrack({ trackIndex: 0, count: 0 })).toThrow(
-      "createTrack failed: count must be at least 1",
+      "count must be at least 1",
     );
     expect(() => createTrack({ trackIndex: 0, count: -1 })).toThrow(
-      "createTrack failed: count must be at least 1",
+      "count must be at least 1",
     );
   });
 
@@ -279,8 +263,8 @@ describe("createTrack", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_midi_track", -1);
     // Result indices reflect final positions after the 2 existing tracks.
     expect(result).toStrictEqual([
-      { id: "midi_track_-1", trackIndex: 2 },
-      { id: "midi_track_-1", trackIndex: 3 },
+      { id: "midi_track_-1", path: "t2" },
+      { id: "midi_track_-1", path: "t3" },
     ]);
   });
 
@@ -296,7 +280,7 @@ describe("createTrack", () => {
     expect(track.set).toHaveBeenCalledWith("name", "Solo Track");
     expect(result).toStrictEqual({
       id: "midi_track_0",
-      trackIndex: 0,
+      path: "t0",
     });
   });
 
@@ -329,20 +313,20 @@ describe("createTrack", () => {
 
     expect(singleResult).toStrictEqual({
       id: "midi_track_0",
-      trackIndex: 0,
+      path: "t0",
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
-    const results = arrayResult as Array<{ id: string; trackIndex: number }>;
+    const results = arrayResult as Array<{ id: string; path: string }>;
 
     expect(results).toHaveLength(2);
     expect(results[0]).toStrictEqual({
       id: "midi_track_1",
-      trackIndex: 1,
+      path: "t1",
     });
     expect(results[1]).toStrictEqual({
       id: "midi_track_2",
-      trackIndex: 2,
+      path: "t2",
     });
   });
 
@@ -354,11 +338,8 @@ describe("createTrack", () => {
 
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
       expect(track.set).toHaveBeenCalledWith("name", "New Return");
-      // Result returnTrackIndex should reflect position (2 existing return tracks)
-      expect(result).toStrictEqual({
-        id: "return_track_0",
-        returnTrackIndex: 2,
-      });
+      // The path reflects position (2 existing return tracks)
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
 
     it("should create multiple return tracks", () => {
@@ -372,8 +353,8 @@ describe("createTrack", () => {
       expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_return_track");
 
       expect(result).toStrictEqual([
-        { id: "return_track_0", returnTrackIndex: 2 },
-        { id: "return_track_1", returnTrackIndex: 3 },
+        { id: "return_track_0", path: "rt2" },
+        { id: "return_track_1", path: "rt3" },
       ]);
     });
 
@@ -395,23 +376,20 @@ describe("createTrack", () => {
       });
 
       expect(console.warn).toHaveBeenCalledWith(
-        "createTrack: trackIndex is ignored for return tracks (always added at end)",
+        "trackIndex is ignored for return tracks (always added at end)",
       );
       // Should still create the track
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
-      // The ignored trackIndex must NOT leak into the result index: a return
-      // track is always appended, so returnTrackIndex is the existing return
-      // count (2), never the passed-in 5.
-      expect(result).toStrictEqual({
-        id: "return_track_0",
-        returnTrackIndex: 2,
-      });
+      // The ignored trackIndex must NOT leak into the result path: a return
+      // track is always appended, so its index is the existing return count
+      // (2), never the passed-in 5.
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
 
     it("should index a return track by the return-track count, not the total track count", () => {
       // Regression guard: the default mock happens to have equal regular and
-      // return track counts, which masks whether returnTrackIndex is derived
-      // from return_tracks (correct) or tracks (wrong). Use asymmetric counts.
+      // return track counts, which masks whether the index is derived from
+      // return_tracks (correct) or tracks (wrong). Use asymmetric counts.
       registerMockObject("liveSet", {
         path: livePath.liveSet,
         properties: {
@@ -427,10 +405,7 @@ describe("createTrack", () => {
       const result = createTrack({ type: "return", name: "New Return" });
 
       // 2 existing return tracks → index 2 (NOT 3, the regular-track count).
-      expect(result).toStrictEqual({
-        id: "return_track_0",
-        returnTrackIndex: 2,
-      });
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
   });
 
@@ -448,31 +423,20 @@ describe("createTrack", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should skip name for extras when count exceeds names", () => {
-      const tracks = registerTrackMocks(4);
+    // create-track used to warn and build what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match count", () => {
+      registerTrackMocks(4);
 
-      const result = createTrack({
-        trackIndex: 0,
-        count: 4,
-        name: "kick,snare,hat",
-      });
+      expect(() =>
+        createTrack({ trackIndex: 0, count: 4, name: "kick,snare,hat" }),
+      ).toThrow("count names 4 tracks but name names 3 entries");
 
-      expectTrackNames(tracks, ["kick", "snare", "hat"]);
-      expectNoTrackNames(tracks.slice(3));
-      expect(result).toHaveLength(4);
-    });
+      registerTrackMocks(2);
 
-    it("should ignore extra names when count is less than names", () => {
-      const tracks = registerTrackMocks(2);
-
-      const result = createTrack({
-        trackIndex: 0,
-        count: 2,
-        name: "kick,snare,hat",
-      });
-
-      expectTrackNames(tracks, ["kick", "snare"]);
-      expect(result).toHaveLength(2);
+      expect(() =>
+        createTrack({ trackIndex: 0, count: 2, name: "kick,snare,hat" }),
+      ).toThrow("count names 2 tracks but name names 3 entries");
     });
 
     it("should preserve commas in name when count is 1", () => {
@@ -487,7 +451,7 @@ describe("createTrack", () => {
       expect(track.set).toHaveBeenCalledWith("name", "kick,snare");
       expect(result).toStrictEqual({
         id: "midi_track_0",
-        trackIndex: 0,
+        path: "t0",
       });
     });
 
@@ -502,41 +466,20 @@ describe("createTrack", () => {
 
       expectTrackNames(tracks, ["kick", "snare", "hat"]);
     });
-
-    it("should skip name for extras beyond comma-separated list", () => {
-      const tracks = registerTrackMocks(5);
-
-      createTrack({
-        trackIndex: 0,
-        count: 5,
-        name: "kick,snare,hat",
-      });
-
-      // First 3 tracks use the provided names
-      expectTrackNames(tracks, ["kick", "snare", "hat"]);
-      // Subsequent tracks keep default name
-      expectNoTrackNames(tracks.slice(3));
-    });
   });
 
   describe("comma-separated colors", () => {
-    it("should cycle through colors with modular arithmetic", () => {
-      const tracks = registerTrackMocks(4);
+    it("refuses a color list that doesn't match count", () => {
+      registerTrackMocks(4);
 
-      createTrack({
-        trackIndex: 0,
-        count: 4,
-        name: "Track",
-        color: "#FF0000,#00FF00",
-      });
-
-      // Colors cycle: red, green, red, green
-      expectTrackColors(tracks, [
-        16711680, // #FF0000
-        65280, // #00FF00
-        16711680, // #FF0000
-        65280, // #00FF00
-      ]);
+      expect(() =>
+        createTrack({
+          trackIndex: 0,
+          count: 4,
+          name: "Track",
+          color: "#FF0000,#00FF00",
+        }),
+      ).toThrow("count names 4 tracks but color names 2 entries");
     });
 
     it("should use colors in order when count matches", () => {
@@ -554,22 +497,6 @@ describe("createTrack", () => {
         65280, // #00FF00
         255, // #0000FF
       ]);
-    });
-
-    it("should ignore extra colors when count is less than colors", () => {
-      const track0 = registerMockObject("midi_track_0", {});
-      const track1 = registerMockObject("midi_track_1", {});
-
-      createTrack({
-        trackIndex: 0,
-        count: 2,
-        name: "Track",
-        color: "#FF0000,#00FF00,#0000FF",
-      });
-
-      expect(track0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(track1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
-      // #0000FF is not used
     });
 
     it("should throw error when count is 1 and color contains commas", () => {
@@ -624,16 +551,6 @@ function expectTrackNames(
 ): void {
   for (const [i, expectedName] of expectedNames.entries()) {
     expect(tracks[i]!.set).toHaveBeenCalledWith("name", expectedName);
-  }
-}
-
-/**
- * Assert the given tracks never had a name set, so they keep Live's default.
- * @param tracks - Registered track mocks expected to have no name assignment
- */
-function expectNoTrackNames(tracks: RegisteredMockObject[]): void {
-  for (const track of tracks) {
-    expect(track.set).not.toHaveBeenCalledWith("name", expect.anything());
   }
 }
 

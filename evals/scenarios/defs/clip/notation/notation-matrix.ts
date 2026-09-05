@@ -33,7 +33,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   diffNotes,
   type ExpectedNote,
   getCreatedClip,
@@ -106,7 +106,7 @@ export function notationNeutralScenarios(
     liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
     config: { notation },
     messages: [MSG_CONNECT, spec.prompt],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
+    setup: (mcpClient) => clearClipSlots(mcpClient, candidateSlots),
     assertions: [
       { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
       { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },

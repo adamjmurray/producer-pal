@@ -45,6 +45,7 @@ The whole structure lives here.
 
 ```
 d0: Instrument Rack "Outer"              (no macro mappings)
+│   Macro 1 and Macro 2 both renamed "Drive"
 └── c0: "Kit"
     └── d0: Drum Rack "Kit"              (7 macro mappings — see below)
         ├── pC1  "Kick"         -> Simpler "synth-kick"
@@ -65,6 +66,12 @@ move).
 
 Neither "Outer" nor "Sub Kit" has macro mappings. Only the "Kit" Drum Rack does,
 so an unmapped rack is always available as a control.
+
+"Outer"'s first two macros are **both named `Drive`** — a repeated param name,
+which only a rack can produce by hand. Only the raw names collide, so
+read-device still tells them apart as `Drive (Macro 1)` and `Drive (Macro 2)`,
+and a write by either of those lands. A macro name can't be set through the Live
+API: Live acks the write and ignores it.
 
 `s0` holds a MIDI clip on the pads C1, D1, E1, and F1 — F1 included on purpose,
 since that pad's device is itself a Drum Rack. The track must serialize as drums
@@ -161,7 +168,8 @@ Why each row exists:
 Not baked in, because `ppal-create-device` builds them at runtime: a pad holding
 an **empty** rack, a bare Drum Rack on a track, a rack on a chain other than the
 first, a Drum Rack two Instrument Racks deep, and Audio Effect Rack nesting.
-Only macro mappings and rack return chains can't be made through the Live API.
+Macro mappings, macro names, and rack return chains are the only things that
+can't be made through the Live API.
 
 Every rack here holds its nested device on **chain 0**, and the committed suites
 address it by that path — so don't insert a chain ahead of it.
@@ -227,6 +235,7 @@ content beyond built-in devices — no Factory Packs required.
 | Drum Rack in Drum Rack pad               | `t0/d0/c0/d0/pF1/c0/d0` |
 | Non-default chain trim                   | pF1 chain (-6 dB)       |
 | Unmapped rack (control)                  | "Outer", "Sub Kit"      |
+| Two macros renamed the same              | "Outer" Macro 1 / 2     |
 | Drum Sampler on a pad                    | pAb1                    |
 | Sampler on a pad                         | pA1                     |
 | Multi-sample Simpler on a pad            | pBb1                    |
@@ -236,9 +245,11 @@ content beyond built-in devices — no Factory Packs required.
 
 Suites that read this Set — change the fixture and these are what break:
 
-- `e2e/mcp/device/ppal-update-device-disabled-params.test.ts`
+- `e2e/mcp/device/update/ppal-update-device-disabled-params.test.ts`
 - `e2e/mcp/device/ppal-read-device-nested-racks.test.ts`
-- `e2e/mcp/device/drum/ppal-update-device-pad-sample-policy.test.ts`
+- `e2e/mcp/device/drum/update/ppal-update-device-pad-sample-policy.test.ts`
 - `e2e/mcp/device/drum/nested-rack-drum-detection.test.ts` — asserts both clips'
   serializations verbatim, in barbeat and stark, so editing either clip breaks
   it
+- `e2e/mcp/device/params/ppal-device-duplicate-macro-name.test.ts` — asserts
+  "Outer"'s two `Drive` macros by name

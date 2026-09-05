@@ -3,51 +3,22 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
-  type DrumPadGroup,
-  chainsOnDrumPad,
-  drumPadPath,
-  resolveDrumPadGroup,
-} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import {
-  resolveDrumPadFromPath,
-  resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import {
+  targetEntries,
   namedIdParam,
   namedPathParam,
-  parseCommaSeparatedIds,
-  unwrapSingleResult,
+  validateSendPair,
 } from "#src/tools/shared/utils.ts";
-import {
-  getColorForIndex,
-  parseCommaSeparatedColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import {
-  moveDeviceToPath,
-  moveDrumChainToPath,
-  stripReturnChainLetter,
-  // updateCollapsedState, // Kept for potential future use
-} from "./helpers/update-device-helpers.ts";
-import {
-  type UpdateTargetOptions,
-  updateDeviceProperties,
-  updateNonDeviceProperties,
-} from "./helpers/update-device-property-helpers.ts";
-import { updateDrumPadGroup } from "./helpers/update-device-drum-pad-helpers.ts";
-import {
-  isDeviceType,
-  isValidUpdateType,
-} from "./helpers/update-device-type-helpers.ts";
+import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
+import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
+import { validateParamEntries } from "./helpers/param-entry-validation.ts";
+import { type UpdateTargetOptions } from "./helpers/update-device-property-helpers.ts";
+import { updateMultipleTargets } from "./helpers/update-device-target-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { targetCount } from "#src/tools/shared/validation/lists/target-lists.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -59,12 +30,6 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
   wrapInRack?: boolean;
   focus?: boolean;
 }
-
-/** A bare pad path names the whole pad, so it resolves to a group of objects
- * rather than to one. Everything else resolves to a single object. */
-type ResolvedTarget =
-  | { kind: "object"; target: LiveAPI }
-  | { kind: "drum-pad"; group: DrumPadGroup; padPath: string };
 
 /**
  * Update device(s), chain(s), or drum pad(s) by ID or path
@@ -88,6 +53,7 @@ type ResolvedTarget =
  * @param args.pan - Chain pan -1 to 1 (chains only)
  * @param args.sendGainDb - Chain send level in dB, requires sendReturn (chains only)
  * @param args.sendReturn - Rack return chain id, name, or letter, requires sendGainDb (chains only)
+ * @param args.sends - Several sends at once as [{return, gainDb}] (chains only)
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
@@ -117,6 +83,7 @@ export function updateDevice(
     pan,
     sendGainDb,
     sendReturn,
+    sends,
     chokeGroup,
     mappedPitch,
     wrapInRack,
@@ -130,7 +97,18 @@ export function updateDevice(
   ids = namedIdParam(id, ids, "ids");
   path = namedPathParam(path, paths);
 
-  validateExclusiveParams(ids, path, "id", "path");
+  if (ids == null && path == null) {
+    throw new Error("id or path is required");
+  }
+
+  validateSendPair(sendGainDb, sendReturn);
+  validateParamEntries(params);
+
+  // One value for the whole call, so a per-target skip would repeat itself
+  // down the list. Refused before any target is touched.
+  if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
+    throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
+  }
 
   let result: Record<string, unknown> | Record<string, unknown>[] | null;
 
@@ -140,9 +118,19 @@ export function updateDevice(
       unknown
     > | null;
   } else {
-    const items = parseCommaSeparatedIds(path ?? ids);
-    const parsedNames = parseNames(name, items.length, "updateDevice");
-    const parsedColors = parseCommaSeparatedColors(color, items.length);
+    // Every list in the call is checked together, before any of them is split:
+    // once one is split nothing knows whether the others are lists at all.
+    // toPath is left out — it is one destination for the whole call, not a
+    // per-device list.
+    validateListLengths([
+      { param: "id and path", count: targetCount({ ids, path }) },
+      { param: "name", value: name },
+      { param: "color", value: color },
+    ]);
+
+    const items = targetItems(ids, path);
+    const parsedNames = parseNames(name, items.length, "device");
+    const parsedColors = parseColors(color, items.length, "device");
 
     const updateOptions: UpdateTargetOptions = {
       toPath,
@@ -160,6 +148,7 @@ export function updateDevice(
       pan,
       sendGainDb,
       sendReturn,
+      sends,
       chokeGroup,
       mappedPitch,
       force,
@@ -167,8 +156,6 @@ export function updateDevice(
 
     result = updateMultipleTargets(
       items,
-      path ? resolvePathToTargetSafe : resolveIdToTarget,
-      path ? "path" : "id",
       updateOptions,
       parsedNames,
       parsedColors,
@@ -187,223 +174,39 @@ export function updateDevice(
   return result;
 }
 
-/**
- * Update multiple targets with common logic for path/ID resolution
- * @param items - Array of paths or IDs
- * @param resolveItem - Function to resolve item to ResolvedTarget
- * @param itemType - "path" or "id" for error messages
- * @param updateOptions - Options to pass to updateTarget
- * @param parsedNames - Comma-separated names array, or null
- * @param parsedColors - Comma-separated colors array, or null
- * @returns Single result or array of results
- */
-function updateMultipleTargets(
-  items: string[],
-  resolveItem: (item: string) => ResolvedTarget | null,
-  itemType: string,
-  updateOptions: UpdateTargetOptions,
-  parsedNames: string[] | null,
-  parsedColors: string[] | null,
-): Record<string, unknown> | Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i] as string;
-    const resolved = resolveItem(item);
-
-    if (!resolved) {
-      console.warn(`updateDevice: target not found at ${itemType} "${item}"`);
-      continue;
-    }
-
-    const options: UpdateTargetOptions = {
-      ...updateOptions,
-      name: getNameForIndex(updateOptions.name, i, parsedNames),
-      color: getColorForIndex(updateOptions.color, i, parsedColors),
-    };
-
-    const result =
-      resolved.kind === "drum-pad"
-        ? updateDrumPadGroup(resolved.group, resolved.padPath, options)
-        : updateTarget(resolved.target, options);
-
-    if (result) {
-      results.push(result as Record<string, unknown>);
-    }
-  }
-
-  return unwrapSingleResult(results);
+/** One target the call named, and which param named it. */
+export interface TargetItem {
+  value: string;
+  kind: "id" | "path";
 }
 
 /**
- * Resolve an ID to a LiveAPI target
- * @param id - Object ID
- * @returns Resolved target or null if not found
+ * The targets a call names, ids first.
+ *
+ * `id` and `path` name different devices and add up, as everywhere else. Each
+ * entry remembers which param it came from, because a device is reached
+ * differently by id than by path — the other tools can resolve a path to an id
+ * and forget the difference, and a device path can't be.
+ * @param ids - The `id` param, comma-separated
+ * @param path - The `path` param, comma-separated
+ * @returns One entry per target
  */
-function resolveIdToTarget(id: string): ResolvedTarget | null {
-  const target = LiveAPI.from(id);
-
-  if (!target.exists()) return null;
-
-  return drumPadTarget(target) ?? { kind: "object", target };
-}
-
-/**
- * A DrumPad id names the same thing its pad path does, so give it the same
- * whole-pad update. read-device hands these ids out, and without this most of
- * what it reports on a pad answers "not applicable to DrumPad" when written
- * back by id.
- * @param target - The object an id resolved to
- * @returns The whole-pad target, or null when this isn't a pad with chains
- */
-function drumPadTarget(target: LiveAPI): ResolvedTarget | null {
-  if (target.type !== "DrumPad") return null;
-
-  const chains = chainsOnDrumPad(target);
-
-  // An empty pad has no chains to write to. Its own mute and solo still work
-  // through the plain object path.
-  if (chains.length === 0) return null;
-
-  return {
-    kind: "drum-pad",
-    group: { pad: target, chains },
-    padPath: drumPadPath(target),
-  };
-}
-
-/**
- * Safely resolve a path to a Live API target, catching errors
- * @param path - Device/chain/drum-pad path
- * @returns Resolved target or null if not found or invalid
- */
-function resolvePathToTargetSafe(path: string): ResolvedTarget | null {
-  try {
-    return resolvePathToTarget(path);
-  } catch (e) {
-    console.warn(`updateDevice: ${errorMessage(e)}`);
-
-    return null;
-  }
-}
-
-/**
- * Resolve a path to a Live API target (device, chain, or drum pad)
- * @param path - Device/chain/drum-pad path
- * @returns Resolved target or null if not found
- */
-function resolvePathToTarget(path: string): ResolvedTarget | null {
-  const resolved = resolvePathToLiveApi(path);
-
-  switch (resolved.targetType) {
-    case "device": // fallthrough
-    case "chain": // fallthrough
-
-    case "return-chain": {
-      const target = resolveTargetFromPath(resolved.liveApiPath);
-
-      return target ? { kind: "object", target } : null;
-    }
-
-    case "drum-pad": {
-      // drumPadNote is guaranteed for drum-pad targetType
-      const drumPadNote = resolved.drumPadNote as string;
-      const { remainingSegments } = resolved;
-
-      // A bare pad path (pC1) names the whole pad; anything further down
-      // (pC1/c0, pC1/d0) names one object inside it.
-      if (remainingSegments.length === 0) {
-        const group = resolveDrumPadGroup(resolved.liveApiPath, drumPadNote);
-
-        return group ? { kind: "drum-pad", group, padPath: path } : null;
-      }
-
-      const drumPadResult = resolveDrumPadFromPath(
-        resolved.liveApiPath,
-        drumPadNote,
-        remainingSegments,
-      );
-
-      return drumPadResult.target
-        ? { kind: "object", target: drumPadResult.target }
-        : null;
-    }
-
-    // Unreachable: every TargetType is handled above, and the `never` keeps it
-    // that way if a new one is added.
-    /* v8 ignore start -- exhaustive switch: all TargetType values handled above */
-    default: {
-      const exhaustive: never = resolved.targetType;
-
-      return exhaustive;
-    }
-    /* v8 ignore stop */
-  }
-}
-
-/**
- * Resolve device or chain target from Live API path
- * @param liveApiPath - Live API canonical path
- * @returns LiveAPI object or null if not found
- */
-function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
-  const target = LiveAPI.from(liveApiPath);
-
-  return target.exists() ? target : null;
-}
-
-/**
- * Update a single target (device, chain, or drum pad)
- * @param target - Live API object to update
- * @param options - Update options
- * @returns Result with ID or null if update failed
- */
-function updateTarget(
-  target: LiveAPI,
-  options: UpdateTargetOptions,
-): { id: string } | null {
-  const type = target.type;
-
-  // Validate type is updatable
-  if (!isValidUpdateType(type)) {
-    console.warn(`cannot update ${type} objects`);
-
-    return null;
-  }
-
-  // Handle move operation first (before other updates)
-  if (options.toPath != null) {
-    if (isDeviceType(type)) {
-      const outcome = moveDeviceToPath(target, options.toPath);
-
-      // "unresolvable" said why itself. Either way the move is skipped and the
-      // rest of this update — and of the batch — carries on.
-      if (outcome === "no-destination") {
-        console.warn(`move target at path "${options.toPath}" does not exist`);
-      } else if (outcome === "refused") {
-        console.warn(`device not moved to "${options.toPath}"`);
-      }
-    } else if (type === "DrumChain") {
-      moveDrumChainToPath(target, options.toPath, false);
-    } else {
-      console.warn(`cannot move ${type}`);
-    }
-  }
-
-  // Name works on devices and chains, but DrumPad names are read-only
-  if (options.name != null) {
-    if (type === "DrumPad") {
-      console.warn("updateDevice: 'name' is read-only for DrumPad");
-    } else {
-      target.set("name", stripReturnChainLetter(target, options.name));
-    }
-  }
-
-  if (isDeviceType(type)) {
-    updateDeviceProperties(target, type, options);
-  } else {
-    updateNonDeviceProperties(target, type, options);
-  }
-
-  return { id: target.id };
+export function targetItems(
+  ids: string | undefined,
+  path: string | undefined,
+): TargetItem[] {
+  return [
+    ...(ids == null
+      ? []
+      : targetEntries(ids, "id").map((value): TargetItem => ({
+          value,
+          kind: "id",
+        }))),
+    ...(path == null
+      ? []
+      : targetEntries(path, "path").map((value): TargetItem => ({
+          value,
+          kind: "path",
+        }))),
+  ];
 }

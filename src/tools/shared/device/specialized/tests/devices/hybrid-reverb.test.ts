@@ -14,6 +14,7 @@ import {
   readSpecializedOptions,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Category list for testing: underscore-separated internal names.
 const MOCK_CATEGORY_LIST = [
@@ -98,12 +99,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("translates spaces to underscores and sets the index", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irCategory",
-        "Early Reflections",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "irCategory", "Early Reflections");
 
       expect(device.set).toHaveBeenCalledWith("ir_category_index", 0);
     });
@@ -111,7 +107,9 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets index for a single-word category", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irCategory", "Halls", "updateDevice");
+      expect(
+        applySpecializedParamWrite(device, "irCategory", "Halls"),
+      ).toHaveLength(1);
 
       expect(device.set).toHaveBeenCalledWith("ir_category_index", 1);
     });
@@ -119,16 +117,12 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns and skips for an invalid category", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irCategory",
-        "Bogus Category",
-        "updateDevice",
-      );
+      expect(
+        applySpecializedParamWrite(device, "irCategory", "Bogus Category"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid irCategory"),
       );
     });
@@ -136,17 +130,11 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warning includes available categories with spaces", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irCategory",
-        "Unknown",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "irCategory", "Unknown");
 
       // The whole catalog, comma-separated and de-underscored — this warning is
       // the model's only listing of the valid category names.
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "Available: Early Reflections, Halls, Real Places",
         ),
@@ -183,29 +171,29 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("finds the file name and sets the index", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
+      const outcome = applySpecializedParamWrite(
         device,
         "irFile",
         "Town Hall Long",
-        "updateDevice",
       );
 
       expect(device.set).toHaveBeenCalledWith("ir_file_index", 1);
+      // A write that landed owes the caller an entry; no entry is how a
+      // refused write reports, and the two must not look alike.
+      expect(outcome).toStrictEqual([
+        { name: "irFile", read: expect.any(Function) },
+      ]);
     });
 
     it("warns and skips for an unknown file", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irFile",
-        "Nonexistent File",
-        "updateDevice",
-      );
+      expect(
+        applySpecializedParamWrite(device, "irFile", "Nonexistent File"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid irFile"),
       );
     });
@@ -215,11 +203,12 @@ describe("Hybrid Reverb pseudo-params", () => {
         ir_file_list: ["<empty>"],
       });
 
-      applySpecializedParamWrite(device, "irFile", "Any File", "updateDevice");
+      expect(
+        applySpecializedParamWrite(device, "irFile", "Any File"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("no files"),
       );
     });
@@ -231,7 +220,7 @@ describe("Hybrid Reverb pseudo-params", () => {
         ir_file_list: ["Solo Hall"],
       });
 
-      applySpecializedParamWrite(device, "irFile", "Solo Hall", "updateDevice");
+      applySpecializedParamWrite(device, "irFile", "Solo Hall");
 
       expect(device.set).toHaveBeenCalledWith("ir_file_index", 0);
     });
@@ -239,12 +228,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets the first file in the list (index 0)", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irFile",
-        "Berliner Hall LR",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "irFile", "Berliner Hall LR");
 
       expect(device.set).toHaveBeenCalledWith("ir_file_index", 0);
     });
@@ -263,7 +247,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets a valid number", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irAttackTime", 0.5, "updateDevice");
+      applySpecializedParamWrite(device, "irAttackTime", 0.5);
 
       expect(device.set).toHaveBeenCalledWith("ir_attack_time", 0.5);
     });
@@ -271,7 +255,9 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets a valid number passed as a string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irAttackTime", "1.5", "updateDevice");
+      expect(
+        applySpecializedParamWrite(device, "irAttackTime", "1.5"),
+      ).toHaveLength(1);
 
       expect(device.set).toHaveBeenCalledWith("ir_attack_time", 1.5);
     });
@@ -279,11 +265,12 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns and skips for a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irAttackTime", "abc", "updateDevice");
+      expect(
+        applySpecializedParamWrite(device, "irAttackTime", "abc"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("irAttackTime"),
       );
     });
@@ -302,7 +289,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets a valid number", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irDecayTime", 3.0, "updateDevice");
+      applySpecializedParamWrite(device, "irDecayTime", 3.0);
 
       expect(device.set).toHaveBeenCalledWith("ir_decay_time", 3);
     });
@@ -310,11 +297,10 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns and skips for a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irDecayTime", "abc", "updateDevice");
+      applySpecializedParamWrite(device, "irDecayTime", "abc");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("irDecayTime"),
       );
     });
@@ -333,7 +319,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets a valid number", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irSizeFactor", 0.5, "updateDevice");
+      applySpecializedParamWrite(device, "irSizeFactor", 0.5);
 
       expect(device.set).toHaveBeenCalledWith("ir_size_factor", 0.5);
     });
@@ -341,11 +327,10 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns and skips for a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irSizeFactor", "abc", "updateDevice");
+      applySpecializedParamWrite(device, "irSizeFactor", "abc");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("irSizeFactor"),
       );
     });
@@ -373,12 +358,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("writes 1 for true", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irTimeShapingOn",
-        "true",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "irTimeShapingOn", "true");
 
       expect(device.set).toHaveBeenCalledWith("ir_time_shaping_on", 1);
     });
@@ -386,12 +366,7 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("writes 0 for false", () => {
       const device = registerHybridReverb({ ir_time_shaping_on: 1 });
 
-      applySpecializedParamWrite(
-        device,
-        "irTimeShapingOn",
-        "off",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "irTimeShapingOn", "off");
 
       expect(device.set).toHaveBeenCalledWith("ir_time_shaping_on", 0);
     });
@@ -399,16 +374,10 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns naming irTimeShapingOn and skips uninterpretable input", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(
-        device,
-        "irTimeShapingOn",
-        "maybe",
-        "updateDevice",
-      );
+      applySpecializedParamWrite(device, "irTimeShapingOn", "maybe");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '"maybe" is not a valid irTimeShapingOn (expected true/false)',
         ),

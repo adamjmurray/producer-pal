@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSkillsPreview } from "#webui/hooks/context/use-skills-preview";
 import { jsonResponse, renderAndWait } from "./doc-transport-test-helpers";
@@ -136,7 +137,7 @@ describe("useSkillsPreview", () => {
 
     const { result } = renderHook(useSkillsPreview);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(
         result.current.status.kind === "ready" &&
           result.current.selected.notation,
@@ -150,7 +151,9 @@ describe("useSkillsPreview", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.preview).toMatchObject({
+    expect(status.kind === "ready" && status.preview).toStrictEqual({
+      dropped: [],
+      warnings: [],
       notation: "stark",
       smallModelMode: true,
       head: "stark",
@@ -182,7 +185,7 @@ describe("useSkillsPreview", () => {
       result.current.setNotation("midi-json");
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       const status = result.current.status;
 
       expect(status.kind === "ready" && status.preview.skills).toBe(
@@ -199,7 +202,7 @@ describe("useSkillsPreview", () => {
       result.current.setSmallModelMode(true);
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       const status = result.current.status;
 
       expect(status.kind === "ready" && status.preview.driver).toBe("basic");
@@ -229,7 +232,7 @@ describe("useSkillsPreview", () => {
     });
 
     // The live mode is recorded, but the user's pick wins the selection.
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.currentMode?.notation).toBe("stark");
     });
     expect(result.current.selected.notation).toBe("midi-json");
@@ -261,7 +264,11 @@ describe("useSkillsPreview", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.preview).toMatchObject({
+    expect(status.kind === "ready" && status.preview).toStrictEqual({
+      dropped: [],
+      notation: "barbeat",
+      smallModelMode: false,
+      warnings: [],
       head: "",
       driver: "",
       skills: "",
@@ -276,7 +283,7 @@ describe("useSkillsPreview", () => {
 
     const { result } = renderHook(useSkillsPreview);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.currentMode).not.toBeNull();
     });
 
@@ -329,7 +336,7 @@ describe("useSkillsPreview", () => {
         result.current.setEnabledToolsOnly(false);
       });
 
-      await waitFor(() => {
+      await waitForHookState(() => {
         expect(lastPreviewQuery(fetchMock)).toContain("allTools=true");
       });
       expect(lastPreviewQuery(fetchMock)).not.toContain("disabledTools");
@@ -378,7 +385,7 @@ describe("useSkillsPreview", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       const status = result.current.status;
 
       expect(status.kind === "ready" && status.preview.skills).toBe("later");

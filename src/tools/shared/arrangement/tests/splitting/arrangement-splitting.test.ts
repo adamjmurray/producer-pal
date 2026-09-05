@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, type Mock, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
+  LEGACY_SPLIT_MODE,
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
@@ -22,6 +23,7 @@ import {
   setupSplittingClipGetMock,
   withEachLiveCallCostingASecond,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const HOLDING_AREA = {} as const;
 
@@ -133,8 +135,7 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-no-arrangement")).toBe(true);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("arrangementSplit requires arrangement clips"),
     );
   });
@@ -152,8 +153,7 @@ describe("prepareSplitParams", () => {
     expect(result).toBeNull();
     expect(warnings.has("split-invalid-format")).toBe(true);
     // The warning text names the problem so the model can correct it.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('Invalid arrangementSplit format: "invalid"'),
     );
   });
@@ -198,8 +198,7 @@ describe("prepareSplitParams", () => {
 
     prepareSplitParams("invalid", [mockClip], warnings, ARRANGEMENT_SPLIT_MODE);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Invalid arrangementSplit format"),
     );
   });
@@ -220,8 +219,7 @@ describe("prepareSplitParams", () => {
       ARRANGEMENT_SPLIT_MODE,
     );
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Too many arrangementSplit points"),
     );
   });
@@ -234,8 +232,7 @@ describe("prepareSplitParams", () => {
 
     prepareSplitParams("1|1", [mockClip], warnings, ARRANGEMENT_SPLIT_MODE);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("No valid arrangementSplit points"),
     );
   });
@@ -313,9 +310,22 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-no-valid-points")).toBe(true);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("No valid arrangementSplit points"),
+    );
+  });
+
+  // The deprecated `split` reads its points from each clip's own start, so the
+  // warning has to name that origin rather than the song's.
+  it("names the clip start when clip-relative points are all at or before it", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    prepareSplitParams("1|1", [mockClip], warnings, LEGACY_SPLIT_MODE);
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "No valid split points (all at or before clip start)",
+      ),
     );
   });
 
@@ -335,8 +345,7 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-max-exceeded")).toBe(true);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Too many arrangementSplit points"),
     );
   });
@@ -364,12 +373,11 @@ describe("prepareSplitParams", () => {
     expect(warnings.has("split-no-arrangement")).toBe(true);
 
     // Second call with the same warnings set: should not warn again
-    const outletCallCount = (outlet as Mock).mock.calls.length;
+    const warningCount = capturedWarnings().length;
 
     prepareSplitParams("2|1", [], warnings, ARRANGEMENT_SPLIT_MODE);
 
-    // No additional outlet calls for the same warning
-    expect((outlet as Mock).mock.calls).toHaveLength(outletCallCount);
+    expect(capturedWarnings()).toHaveLength(warningCount);
   });
 });
 
@@ -412,12 +420,10 @@ describe("performSplitting", () => {
 
     // Should warn (not silently no-op) so the model can recover. The clip is
     // 4 beats (1 bar) long and starts at 0, so it spans 1|1 to 2|1.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("arrangementSplit cut nothing"),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("clip_1 (1|1 to 2|1)"),
     );
   });
@@ -442,8 +448,7 @@ describe("performSplitting", () => {
       ARRANGEMENT_SPLIT_MODE,
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Failed to duplicate"),
     );
   });
@@ -483,8 +488,7 @@ describe("performSplitting", () => {
     );
 
     // Should emit warning about trackIndex
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("trackIndex"),
     );
   });
@@ -776,8 +780,7 @@ describe("performSplitting", () => {
     );
 
     expect(callState.trackMock.call).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Ran out of time after splitting 0 of 1 clips. " +
         "Not split: clip_1. Re-run for those ids.",
     );
@@ -802,8 +805,7 @@ describe("performSplitting", () => {
       );
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         "Ran out of time splitting clip clip_1 after 1 of 3 cuts",
       ),

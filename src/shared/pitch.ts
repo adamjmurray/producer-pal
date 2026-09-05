@@ -10,10 +10,12 @@
  * Other modules should import from here rather than defining their own.
  *
  * Output format: Uses flats (Db, Eb, Gb, Ab, Bb) per music theory convention.
- * Input format: Accepts both sharps and flats, case-insensitive.
+ * Input format: Accepts both sharps and flats, case-insensitive, including the
+ * enharmonic spellings Cb/Fb/E#/B# — pitch classes resolve arithmetically here
+ * and in the notation grammars, so both accept the same names.
  *
- * Note: src/notation/transform/parser/transform-grammar.peggy has an inline
- * copy of PITCH_CLASS_VALUES because Peggy cannot import JS modules.
+ * Note: the bar|beat and transform grammars keep an inline copy of the natural
+ * pitch classes because Peggy cannot import JS modules.
  */
 
 /**
@@ -36,8 +38,9 @@ export const PITCH_CLASS_NAMES: readonly string[] = Object.freeze([
 ]);
 
 /**
- * Mapping from pitch class names to semitone values (0-11).
- * Supports both sharps and flats for input flexibility.
+ * The canonical pitch class names and their semitone values (0-11). This is the
+ * name list, not the input path — pitchClassToNumber resolves names
+ * arithmetically and so also accepts spellings absent here (Cb, Fb, E#, B#).
  */
 export const PITCH_CLASS_VALUES: Readonly<Record<string, number>> =
   Object.freeze({
@@ -61,20 +64,38 @@ export const PITCH_CLASS_VALUES: Readonly<Record<string, number>> =
   });
 
 /**
- * Lowercase mapping for case-insensitive pitch class lookup.
+ * Semitones above C for the seven natural letters. Accidentals shift this by
+ * ±1 arithmetically, so enharmonic spellings need no entries of their own.
  */
-const PITCH_CLASS_VALUES_LOWERCASE: Readonly<Record<string, number>> =
-  Object.freeze(
-    Object.fromEntries(
-      Object.entries(PITCH_CLASS_VALUES).map(([key, value]) => [
-        key.toLowerCase(),
-        value,
-      ]),
-    ),
-  );
+const NATURAL_PITCH_CLASS_VALUES: Readonly<Record<string, number>> =
+  Object.freeze({ c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 });
+
+/** A letter and optional accidental, no octave (e.g. "C", "f#", "Bb"). */
+const PITCH_CLASS_PATTERN = /^([A-Ga-g])([#Bb]?)$/;
+
+/** A pitch class followed by an octave (e.g. "C3", "f#4", "Bb-1"). */
+const NOTE_NAME_PATTERN = /^([A-Ga-g])([#Bb]?)(-?\d+)$/;
 
 /**
- * Array of valid pitch class name strings.
+ * Semitones above C for a letter plus accidental, NOT wrapped to 0-11: B# is 12
+ * and Cb is -1. Callers that have an octave must keep it unwrapped so the
+ * (octave + 2) * 12 formula carries those two across the octave edge (Cb3 is
+ * B2, B#3 is C4). An uppercase `B` reads as a flat, so an all-caps `GB3` is Gb3.
+ * @param letter - Note letter A-G, either case
+ * @param accidental - "#", "b", "B", or "" for none
+ * @returns Semitones above C, unwrapped
+ */
+function pitchClassSemitones(letter: string, accidental: string): number {
+  // Both callers match with the patterns above, so the letter is always A-G.
+  const natural = NATURAL_PITCH_CLASS_VALUES[letter.toLowerCase()] as number;
+
+  if (accidental === "#") return natural + 1;
+
+  return accidental === "" ? natural : natural - 1;
+}
+
+/**
+ * The canonical pitch class name strings, for listing them to the user.
  */
 export const VALID_PITCH_CLASS_NAMES: readonly string[] = Object.freeze(
   Object.keys(PITCH_CLASS_VALUES),
@@ -96,38 +117,29 @@ export function isValidMidi(midi: unknown): midi is number {
 
 /**
  * Check if a string is a valid note name (e.g., "C3", "F#4", "Bb-1").
- * Case-insensitive.
+ * Case-insensitive; enharmonic spellings (Cb3, E#3) are valid. Checks the
+ * shape only — noteNameToMidi still range-checks the octave.
  * @param name - Value to check
  * @returns True if valid note name
  */
 export function isValidNoteName(name: unknown): name is string {
-  if (typeof name !== "string") return false;
-
-  const match = name.match(/^([A-Ga-g][#Bb]?)(-?\d+)$/);
-
-  if (!match) return false;
-
-  const pitchClass = (match[1] as string).toLowerCase();
-
-  return pitchClass in PITCH_CLASS_VALUES_LOWERCASE;
+  return typeof name === "string" && NOTE_NAME_PATTERN.test(name);
 }
 
 /**
  * Check if a string is a valid pitch class name (without octave).
- * Case-insensitive.
+ * Case-insensitive; enharmonic spellings (Cb, E#) are valid.
  * @param name - Value to check
  * @returns True if valid pitch class name
  */
 export function isValidPitchClassName(name: unknown): name is string {
-  if (typeof name !== "string") return false;
-
-  return name.toLowerCase() in PITCH_CLASS_VALUES_LOWERCASE;
+  return typeof name === "string" && PITCH_CLASS_PATTERN.test(name);
 }
 
 /**
  * Convert pitch class name to semitone number (0-11).
- * Case-insensitive.
- * @param name - Pitch class name (e.g., "C", "F#", "Bb")
+ * Case-insensitive; enharmonic spellings resolve (Cb → 11, E# → 5).
+ * @param name - Pitch class name (e.g., "C", "F#", "Bb", "Cb")
  * @returns Semitone number (0-11), or null if invalid
  */
 export function pitchClassToNumber(name: string): number | null {
@@ -135,9 +147,16 @@ export function pitchClassToNumber(name: string): number | null {
     return null;
   }
 
-  const value = PITCH_CLASS_VALUES_LOWERCASE[name.toLowerCase()];
+  const match = PITCH_CLASS_PATTERN.exec(name);
 
-  return value ?? null;
+  if (!match) {
+    return null;
+  }
+
+  const semitones = pitchClassSemitones(match[1] as string, match[2] as string);
+
+  // No octave to carry an enharmonic into, so wrap: Cb is B, B# is C.
+  return ((semitones % 12) + 12) % 12;
 }
 
 /**
@@ -179,38 +198,31 @@ export function midiToNoteName(midi: number): string | null {
 
 /**
  * Convert note name to MIDI note number (e.g., "C3" → 60).
- * Case-insensitive, accepts both sharps and flats.
- * @param name - Note name (e.g., "C3", "F#4", "Bb-1", "c#3")
+ * Case-insensitive, accepts both sharps and flats. Enharmonic spellings resolve
+ * to the pitch they name, crossing the octave edge where they have to: Cb3 is
+ * B2 (59), B#3 is C4 (72).
+ * @param name - Note name (e.g., "C3", "F#4", "Bb-1", "c#3", "Cb3")
  * @returns MIDI note number (0-127), or null if invalid
  */
 export function noteNameToMidi(name: string): number | null {
-  if (typeof name !== "string" || name.length < 2) {
+  if (typeof name !== "string") {
     return null;
   }
 
-  const match = name.match(/^([A-Ga-g][#Bb]?)(-?\d+)$/);
+  const match = NOTE_NAME_PATTERN.exec(name);
 
   if (!match) {
     return null;
   }
 
-  const pitchClassName = match[1] as string;
-  const octaveStr = match[2] as string;
-  // The accidental group accepts # or b on ANY letter, so the regex admits
-  // names with no value mapping (Cb, Fb, E#, B#). pitchClassToNumber returns
-  // null for those — bail out, otherwise null coerces to 0 in the arithmetic
-  // below and yields a wrong MIDI note (e.g. "Cb3" → 60).
-  const pitchClass = pitchClassToNumber(pitchClassName);
+  // Unwrapped, so an enharmonic at an octave edge lands in the right octave:
+  // Cb3 is -1 semitones from C3 (B2), B#3 is 12 (C4).
+  const semitones = pitchClassSemitones(match[1] as string, match[2] as string);
+  const octave = Number.parseInt(match[3] as string);
 
-  if (pitchClass == null) {
-    return null;
-  }
-
-  const octave = Number.parseInt(octaveStr);
-
-  // MIDI note = (octave + 2) * 12 + pitchClass
+  // MIDI note = (octave + 2) * 12 + semitones
   // C3 = (3 + 2) * 12 + 0 = 60
-  const midi = (octave + 2) * 12 + pitchClass;
+  const midi = (octave + 2) * 12 + semitones;
 
   if (midi < 0 || midi > 127) {
     return null;

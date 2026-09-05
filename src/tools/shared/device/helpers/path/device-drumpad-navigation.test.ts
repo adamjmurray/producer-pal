@@ -11,8 +11,10 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  drumChainSegmentNamer,
   drumPadIdsByNote,
   findDrumPad,
+  findNestedDrumRack,
   navigateRemainingSegments,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
@@ -316,5 +318,117 @@ describe("drumPadIdsByNote", () => {
     });
 
     expect(drumPadIdsByNote(LiveAPI.from(RACK_PATH)).size).toBe(0);
+  });
+});
+
+describe("drumChainSegmentNamer", () => {
+  const CHAIN_PATH = `${RACK_PATH} chains 0`;
+
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  /**
+   * A rack holding one chain, on whichever pad `inNote` names.
+   * @param inNote - The chain's in_note (-1 for the catch-all)
+   * @returns The chain
+   */
+  function registerChainOn(inNote: number): LiveAPI {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-0"] },
+    });
+    registerMockObject("chain-0", {
+      path: CHAIN_PATH,
+      type: "DrumChain",
+      properties: { in_note: inNote },
+    });
+
+    return LiveAPI.from(CHAIN_PATH);
+  }
+
+  it("names a chain by the pad it sounds on", () => {
+    const chain = registerChainOn(36);
+
+    expect(drumChainSegmentNamer(chain)(CHAIN_PATH, "0")).toBe("pC1/c0");
+  });
+
+  it("names a catch-all chain with the asterisk pad", () => {
+    const chain = registerChainOn(-1);
+
+    expect(drumChainSegmentNamer(chain)(CHAIN_PATH, "0")).toBe("p*/c0");
+  });
+
+  it("leaves a plain rack chain rack-relative", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-0"] },
+    });
+    registerMockObject("chain-0", { path: CHAIN_PATH, type: "Chain" });
+
+    const chain = LiveAPI.from(CHAIN_PATH);
+
+    expect(drumChainSegmentNamer(chain)(CHAIN_PATH, "2")).toBe("c2");
+  });
+
+  it("falls back when the chain is not among the pad's own chains", () => {
+    // A chain Live moved out from under the rack read: naming it by a
+    // pad-local index would name a different layer.
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "other"] },
+    });
+    registerMockObject("other", {
+      path: CHAIN_PATH,
+      type: "DrumChain",
+      properties: { in_note: 38 },
+    });
+    registerMockObject("chain-0", {
+      path: `${RACK_PATH} chains 1`,
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    const chain = LiveAPI.from(`${RACK_PATH} chains 1`);
+
+    expect(drumChainSegmentNamer(chain)(`${RACK_PATH} chains 1`, "1")).toBe(
+      "c1",
+    );
+  });
+});
+
+describe("findNestedDrumRack", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("stops at the search cap rather than walking a rack tree without end", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "c0"] },
+    });
+
+    // Racks all the way down with the kit at the bottom. A kit this deep has no
+    // drum map either — read-device walks the same number of levels — so the
+    // hint stays quiet rather than pointing at pads nothing else reports.
+    for (let i = 0; i <= 4; i++) {
+      registerMockObject(`c${i}`, {
+        type: "Chain",
+        properties: { devices: ["id", `d${i}`] },
+      });
+      registerMockObject(`d${i}`, {
+        type: "RackDevice",
+        properties: {
+          can_have_drum_pads: i === 4 ? 1 : 0,
+          chains: ["id", `c${i + 1}`],
+        },
+      });
+    }
+
+    expect(findNestedDrumRack(LiveAPI.from(RACK_PATH))).toBe(null);
   });
 });

@@ -16,12 +16,15 @@ import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
-import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
+import {
+  registerClipSlot,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 /**
  * Register a scene, reachable by the given id and by its own path.
  * @param sceneIndex - The scene's index
- * @param id - The id a caller would pass in `ids`
+ * @param id - The id a caller would pass in `ids`, defaulting to "scene<index>"
  * @param name - The scene's name, defaulting to the Scene mock's
  * @returns The scene's mock, to assert it fired
  */
@@ -30,7 +33,7 @@ function mockScene(
   id?: string,
   name?: string,
 ): RegisteredMockObject {
-  return registerMockObject(id ?? livePath.scene(sceneIndex), {
+  return registerMockObject(id ?? `scene${sceneIndex}`, {
     path: livePath.scene(sceneIndex),
     type: "Scene",
     ...(name != null && { properties: { name } }),
@@ -97,9 +100,9 @@ describe("playback play-scene target agreement", () => {
     mockScene(3, undefined, "Chorus");
     mockSessionClip("clip1", 0, 3);
 
-    expect(playback({ action: "play-scene", id: "clip1" })).toMatchObject({
-      sceneIndex: 3,
-      sceneName: "Chorus",
+    expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
+      playing: true,
+      scene: { id: "scene3", path: "s3", name: "Chorus" },
     });
   });
 
@@ -107,23 +110,32 @@ describe("playback play-scene target agreement", () => {
   it("names an unnamed scene by its number", () => {
     mockScene(3, undefined, "");
 
-    expect(playback({ action: "play-scene", sceneIndex: 3 })).toMatchObject({
-      sceneIndex: 3,
-      sceneName: "4",
+    expect(playback({ action: "play-scene", sceneIndex: 3 })).toStrictEqual({
+      playing: true,
+      scene: { id: "scene3", path: "s3", name: "4" },
+    });
+  });
+
+  // The path is the payoff: the caller who named the scene by a clip id gets an
+  // address they can paste straight back into a `path` param.
+  it("names the scene by the path the grammar spells", () => {
+    mockScene(5, undefined, "Bridge");
+    mockSessionClip("clip1", 2, 5);
+
+    expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
+      playing: true,
+      scene: { id: "scene5", path: "s5", name: "Bridge" },
     });
   });
 
   // Only play-scene fires one, so nothing else may claim it did.
   it("names no scene for a clip action", () => {
     mockSessionClip("clip1", 0, 3);
-    registerMockObject(livePath.track(0).clipSlot(3), {
-      path: livePath.track(0).clipSlot(3),
-    });
+    registerClipSlot(0, 3);
 
     const result = playback({ action: "play-session-clips", id: "clip1" });
 
-    expect(result).not.toHaveProperty("sceneIndex");
-    expect(result).not.toHaveProperty("sceneName");
+    expect(result).not.toHaveProperty("scene");
   });
 
   // Scene 0 is falsy, so every hop that carries it has to read it as a value
@@ -140,20 +152,33 @@ describe("playback play-scene target agreement", () => {
   // A caller that sends every param, filling the ones it has no value for with
   // null, must not be read as having named a second, conflicting scene. This
   // goes through the schema the tool registers, not straight to the handler.
-  it.each([
-    ["null", null],
-    ["blank", ""],
-  ])("ignores a %s sceneIndex beside a path", (_label, empty) => {
+  it("ignores a null sceneIndex beside a path", () => {
     const scene = mockScene(3);
     const params = resolveToolSchema(
       toolDefPlayback.toolOptions.inputSchema,
       {},
     ).validating;
-    const raw = { action: "play-scene", path: "s3", sceneIndex: empty };
+    const raw = { action: "play-scene", path: "s3", sceneIndex: null };
 
     playback(z.object(params).parse(unsetEmptyParams(raw, params)));
 
     expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // A blank is refused where the null is dropped: a number has no empty value,
+  // so a caller sending one meant something and the call can't guess what.
+  it("refuses a blank sceneIndex beside a path", () => {
+    const params = resolveToolSchema(
+      toolDefPlayback.toolOptions.inputSchema,
+      {},
+    ).validating;
+
+    expect(() =>
+      unsetEmptyParams(
+        { action: "play-scene", path: "s3", sceneIndex: "" },
+        params,
+      ),
+    ).toThrow("sceneIndex: a blank string is not a value for this param.");
   });
 
   it("fires the scene when path and an id agree", () => {
@@ -189,7 +214,7 @@ describe("playback play-scene target agreement", () => {
     expect(() =>
       playback({ action: "play-scene", path: "s3", id: "clip1" }),
     ).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 3 from path "s3", scene 5 from id "clip1"',
     );
   });
@@ -200,7 +225,7 @@ describe("playback play-scene target agreement", () => {
     expect(() =>
       playback({ action: "play-scene", sceneIndex: 3, id: "clip1" }),
     ).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 3 from sceneIndex 3, scene 5 from id "clip1"',
     );
   });
@@ -210,7 +235,7 @@ describe("playback play-scene target agreement", () => {
     mockSessionClip("clip2", 0, 5);
 
     expect(() => playback({ action: "play-scene", id: "clip1,clip2" })).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 3 from id "clip1", scene 5 from id "clip2"',
     );
   });
@@ -289,7 +314,7 @@ describe("playback play-scene from a clip slot", () => {
     expect(() =>
       playback({ action: "play-scene", path: "t0/s1,t2/s3" }),
     ).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 1 from path "t0/s1", scene 3 from path "t2/s3"',
     );
   });
@@ -298,7 +323,7 @@ describe("playback play-scene from a clip slot", () => {
   // rejects, so each entry is named the way the param it came from is written.
   it("quotes disagreeing slots entries in slots spelling", () => {
     expect(() => playback({ action: "play-scene", slots: "0/1,2/3" })).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 1 from slots "0/1", scene 3 from slots "2/3"',
     );
   });
@@ -307,7 +332,7 @@ describe("playback play-scene from a clip slot", () => {
     expect(() =>
       playback({ action: "play-scene", path: "t0/s1", sceneIndex: 3 }),
     ).toThrow(
-      'playback failed: action "play-scene" plays one scene, but got ' +
+      'action "play-scene" plays one scene, but got ' +
         'scene 1 from path "t0/s1", scene 3 from sceneIndex 3',
     );
   });
@@ -336,7 +361,7 @@ describe("playback play-scene ids that name no scene", () => {
     playback({ action: "play-scene", sceneIndex: 3, id: "gone" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
-    expect(warn).toHaveBeenCalledWith('playback: id "gone" does not exist');
+    expect(warn).toHaveBeenCalledWith('id "gone" does not exist');
   });
 
   it("skips an id that sits in no scene, naming its type", () => {
@@ -351,7 +376,7 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      'playback: id "clip1" is in no scene (found Clip); action ' +
+      "t0[1|1] (id clip1) is in no scene (found Clip); action " +
         '"play-scene" takes a scene id or a session clip id',
     );
   });
@@ -365,7 +390,7 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      'playback: id "track9" is in no scene (found Track); action ' +
+      "t5 (id track9) is in no scene (found Track); action " +
         '"play-scene" takes a scene id or a session clip id',
     );
   });
@@ -374,7 +399,7 @@ describe("playback play-scene ids that name no scene", () => {
     registerMockObject("track9", { path: livePath.track(5), type: "Track" });
 
     expect(() => playback({ action: "play-scene", id: "track9" })).toThrow(
-      'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
+      'path "s<scene>" or a scene id is required',
     );
   });
 });
@@ -384,9 +409,7 @@ describe("playback play-scene ids that name no scene", () => {
 describe("playback sceneIndex on an action that acts on clips", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();
-    registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    registerClipSlot(0, 1);
   });
 
   it("warns that play-session-clips ignored it", () => {

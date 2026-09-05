@@ -31,12 +31,28 @@ step.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
   split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
-  whole tree at one threshold.
+  whole tree at one threshold. Markdown is out of scope for all of them:
+  `config/.jscpd-docs.json` scans the repo's prose in one pass, so a doc is
+  measured once and never against a code threshold.
 - **Coverage**: test files are excluded.
 - **Suppression budgets**: counted against the `…Tests` tree in
   `src/test/lint-suppression-limits.test.ts`, so no test file goes unbudgeted.
 - **Layering**: test files are exempt from the `src/` layering contract, which
   only governs the shipped dependency graph.
+
+## Assertions
+
+Assert the whole result with `toStrictEqual`. Both `toEqual` and `toMatchObject`
+are lint errors: the first treats a missing key as `undefined`, the second
+ignores every field the expectation leaves out, so a result that grows a field
+keeps passing.
+
+Where a partial match is genuinely what you mean — a hook's whole return when
+the test is about two of its keys, a big nested tree with its own tests — say so
+with `expect.objectContaining()`. For a value that can't be a literal (a
+generated uuid, wall-clock time, an encrypted blob) use a matcher for that field
+and keep the rest exact. When the defaults get repetitive, build the expected
+shape in a helper.
 
 ## Live API tests
 
@@ -45,10 +61,18 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - `registerMockObject(id, { path, type, properties, methods })` returns a mock
   with instance-level `get`/`set`/`call` spies. Assert on it directly:
   `expect(track.set).toHaveBeenCalledWith(...)`.
+- Registering the same id twice re-describes that object **in place**, so
+  anything already holding it reads the new state — the way a held LiveAPI does
+  in Live. Registering a _different_ id at the same path is a different object
+  arriving there, and holders of the old one keep the old one.
 - `mockNonExistentObjects()` makes unregistered IDs non-existent, for invalid-ID
-  tests.
+  tests. `simulateMockDeletes()` makes `delete_*` calls really remove the
+  target, leaving holders half-stale: cleared path, but the id still lying.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
+
+What the mock does and doesn't model about a held object going stale is in
+`dev/LiveAPI-Object-Reuse.md`.
 
 ## MCP server tests
 

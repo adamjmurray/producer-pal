@@ -31,8 +31,8 @@ answer belongs here.
 - **Don't renumber or delete an ADR on your own.** Cleanup happens with the user
   in the loop and only with their OK — usually because they asked for it. If you
   notice real bloat, redundancy, or records that contradict each other, say so
-  and ask whether to clean up. (ADR-0001 and ADR-0002 were removed this way;
-  their numbers stay retired.)
+  and ask whether to clean up. (ADR-0001, ADR-0002 and ADR-0028 were removed
+  this way; their numbers stay retired.)
 - Markdown docs are exempt from SPDX headers, same as the rest of `dev/`.
 
 ## Template
@@ -78,7 +78,7 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0010](0010-user-content-overrides-layer.md)             | `~/.producer-pal` is a content-override layer, not a settings mirror  |
 | [0011](0011-dotted-triplet-note-value-suffixes.md)       | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`     |
 | [0012](0012-no-chord-symbols-in-bar-beat.md)             | No chord symbols in bar\|beat; they stay Stark-only                   |
-| [0013](0013-config-override-gate.md)                     | Config-override env vars are opt-in (gated), not opt-out              |
+| [0013](0013-config-override-gate.md)                     | Config-override env vars are opt-in (gated), not opt-out (superseded) |
 | [0014](0014-subagent-resume-from-transcript.md)          | A subagent resumes from its recorded transcript, not a live session   |
 | [0015](0015-project-context-param-rename.md)             | Rename the project-context device parameter in 2.1.0, while it's free |
 | [0016](0016-notation-head-gating-granularity.md)         | One fragment per notation is the tool-gating floor (superseded)       |
@@ -93,4 +93,14 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0025](0025-object-path-grammar.md)                      | One object-path grammar, scoped to clips and devices                  |
 | [0026](0026-small-model-read-output-trims-by-include.md) | Small-model read output trims by `include`, not by a second shape     |
 | [0027](0027-setproperty-stays-out-of-ppal-live-api.md)   | `setProperty` stays out of ppal-live-api                              |
-| [0028](0028-only-stable-targets-are-memoized.md)         | Only stable targets are memoized within a request                     |
+| [0029](0029-an-empty-param-is-dropped-from-the-args.md)  | An empty param is dropped from the args                               |
+| [0030](0030-leaving-a-conversation-stops-the-turn.md)    | Leaving a conversation stops the turn, with a warning                 |
+| [0031](0031-list-params-broadcast-or-pair-exactly.md)    | A comma-separated param broadcasts one value or pairs exactly         |
+| [0032](0032-warnings-ride-inside-the-response-json.md)   | Warnings ride inside the response JSON, not as trailing Max atoms     |
+| [0033](0033-portal-settings-are-per-client.md)           | Portal settings are per-client, so the override gate is gone          |
+| [0034](0034-a-drum-pad-is-a-slot-chains-are-layers.md)   | A drum pad is a slot, and chains are the layers on it                 |
+| [0035](0035-malformed-calls-are-refused-up-front.md)     | A malformed call is refused up front, not warned mid-flight           |
+| [0036](0036-paths-address-tracks-and-scenes.md)          | Paths address tracks and scenes too                                   |
+| [0037](0037-arrangement-time-is-part-of-the-path.md)     | Arrangement time is part of the path                                  |
+| [0038](0038-l-equals-names-the-lane-l-plus-made.md)      | `l=` names the lane the `l+` before it appended                       |
+| [0039](0039-the-arrangement-timeline-is-state.md)        | The arrangement timeline is state, the playhead is not                |

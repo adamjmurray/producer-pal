@@ -21,28 +21,27 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 import { readClipsOnTrack } from "../helpers/arrangement-lengthening-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-const emptyMidiTrack = 8;
 
 /**
  * Create an arrangement clip and return its ID.
  * @param trackIndex - Track to create on
- * @param arrangementStart - Bar|beat position
+ * @param position - Bar|beat position
  * @param length - Clip length in absolute note-value format (e.g. "1bar", "n/2")
  * @returns Clip ID
  */
 async function createArrangementClip(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
   length: string,
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${trackIndex}`,
-      arrangementStart,
+      path: `t${trackIndex}[${position}]`,
       notes: "C3 1|1",
       length,
       looping: true,
@@ -75,12 +74,12 @@ function parseUpdateResults(result: unknown): {
 describe("ppal-update-clip arrangement multistart", () => {
   it("moves clip to position with existing clip without crashing", async () => {
     // Existing clip at target position
-    await createArrangementClip(emptyMidiTrack, "101|1", "1bar");
+    await createArrangementClip(EMPTY_MIDI_TRACK, "101|1", "1bar");
     await sleep(200);
 
     // Another clip to move there
     const movingId = await createArrangementClip(
-      emptyMidiTrack,
+      EMPTY_MIDI_TRACK,
       "105|1",
       "2bar",
     );
@@ -90,7 +89,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     // Should not crash (clearClipAtDuplicateTarget handles existing clip)
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: movingId, arrangementStart: "101|1" },
+      arguments: { id: movingId, toPath: "[101|1]" },
     });
     const movedClip = parseToolResult<{ id: string }>(result);
 
@@ -102,15 +101,15 @@ describe("ppal-update-clip arrangement multistart", () => {
     });
     const clip = parseToolResult<ReadClipResult>(readResult);
 
-    expect(clip.arrangementStart).toBe("101|1");
+    expect(arrangementStartOf(clip)).toBe("101|1");
   });
 
   it("deletes non-survivors and keeps survivors", async () => {
     // A(4 beats), B(8 beats), C(2 beats)
     // Backwards: C(2)>0 survives, B(8)>2 survives, A(4)<=8 non-survivor
-    const idA = await createArrangementClip(emptyMidiTrack, "151|1", "1bar");
-    const idB = await createArrangementClip(emptyMidiTrack, "155|1", "2bar");
-    const idC = await createArrangementClip(emptyMidiTrack, "159|1", "n/2");
+    const idA = await createArrangementClip(EMPTY_MIDI_TRACK, "151|1", "1bar");
+    const idB = await createArrangementClip(EMPTY_MIDI_TRACK, "155|1", "2bar");
+    const idC = await createArrangementClip(EMPTY_MIDI_TRACK, "159|1", "n/2");
 
     await sleep(200);
 
@@ -118,7 +117,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       name: "ppal-update-clip",
       arguments: {
         id: `${idA},${idB},${idC}`,
-        arrangementStart: "170|1",
+        toPath: "[170|1]",
       },
     });
     const { clips } = parseUpdateResults(result);
@@ -131,18 +130,18 @@ describe("ppal-update-clip arrangement multistart", () => {
     // Verify final state: 2 clips on track
     const { clips: finalClips } = await readClipsOnTrack(
       ctx.client!,
-      emptyMidiTrack,
+      EMPTY_MIDI_TRACK,
     );
 
     expect(finalClips).toHaveLength(2);
-    expect(finalClips[0]!.arrangementStart).toBe("170|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("170|1");
   });
 
   it("only last clip survives when all have same length", async () => {
     // 3 clips of 4 beats (1 bar) each
-    const id1 = await createArrangementClip(emptyMidiTrack, "201|1", "1bar");
-    const id2 = await createArrangementClip(emptyMidiTrack, "205|1", "1bar");
-    const id3 = await createArrangementClip(emptyMidiTrack, "209|1", "1bar");
+    const id1 = await createArrangementClip(EMPTY_MIDI_TRACK, "201|1", "1bar");
+    const id2 = await createArrangementClip(EMPTY_MIDI_TRACK, "205|1", "1bar");
+    const id3 = await createArrangementClip(EMPTY_MIDI_TRACK, "209|1", "1bar");
 
     await sleep(200);
 
@@ -150,7 +149,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       name: "ppal-update-clip",
       arguments: {
         id: `${id1},${id2},${id3}`,
-        arrangementStart: "220|1",
+        toPath: "[220|1]",
       },
     });
     const { clips } = parseUpdateResults(result);
@@ -162,19 +161,19 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     const { clips: finalClips } = await readClipsOnTrack(
       ctx.client!,
-      emptyMidiTrack,
+      EMPTY_MIDI_TRACK,
     );
 
     expect(finalClips).toHaveLength(1);
-    expect(finalClips[0]!.arrangementStart).toBe("220|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("220|1");
     expect(finalClips[0]!.arrangementLength).toBe("1bar");
   });
 
   it("all clips survive when in descending length order", async () => {
     // A(8 beats), B(4 beats), C(2 beats) — descending order
-    const idA = await createArrangementClip(emptyMidiTrack, "251|1", "2bar");
-    const idB = await createArrangementClip(emptyMidiTrack, "255|1", "1bar");
-    const idC = await createArrangementClip(emptyMidiTrack, "259|1", "n/2");
+    const idA = await createArrangementClip(EMPTY_MIDI_TRACK, "251|1", "2bar");
+    const idB = await createArrangementClip(EMPTY_MIDI_TRACK, "255|1", "1bar");
+    const idC = await createArrangementClip(EMPTY_MIDI_TRACK, "259|1", "n/2");
 
     await sleep(200);
 
@@ -182,7 +181,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       name: "ppal-update-clip",
       arguments: {
         id: `${idA},${idB},${idC}`,
-        arrangementStart: "270|1",
+        toPath: "[270|1]",
       },
     });
     const { clips } = parseUpdateResults(result);
@@ -195,10 +194,10 @@ describe("ppal-update-clip arrangement multistart", () => {
     // 3 clips on track, stacked at target position
     const { clips: finalClips } = await readClipsOnTrack(
       ctx.client!,
-      emptyMidiTrack,
+      EMPTY_MIDI_TRACK,
     );
 
     expect(finalClips).toHaveLength(3);
-    expect(finalClips[0]!.arrangementStart).toBe("270|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("270|1");
   });
 });

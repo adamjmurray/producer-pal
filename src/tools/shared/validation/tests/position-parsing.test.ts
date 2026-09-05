@@ -6,42 +6,10 @@
 import { describe, expect, it } from "vitest";
 import {
   parseArrangementStartList,
-  parseSceneIndexList,
   parseSlot,
   parseSlotList,
 } from "../position-parsing.ts";
-
-describe("parseSceneIndexList", () => {
-  it("should parse a single index", () => {
-    const result = parseSceneIndexList("0");
-
-    expect(result).toStrictEqual([0]);
-  });
-
-  it("should parse multiple comma-separated indices", () => {
-    const result = parseSceneIndexList("0,2,5");
-
-    expect(result).toStrictEqual([0, 2, 5]);
-  });
-
-  it("should handle whitespace around indices", () => {
-    const result = parseSceneIndexList(" 1 , 3 , 7 ");
-
-    expect(result).toStrictEqual([1, 3, 7]);
-  });
-
-  it("should throw error for negative index", () => {
-    expect(() => parseSceneIndexList("-1")).toThrow(
-      'invalid sceneIndex "-1" - must be a non-negative integer',
-    );
-  });
-
-  it("should throw error for negative index in list", () => {
-    expect(() => parseSceneIndexList("0,1,-2,3")).toThrow(
-      'invalid sceneIndex "-2" - must be a non-negative integer',
-    );
-  });
-});
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("parseSlotList", () => {
   it("should parse a single slot", () => {
@@ -78,8 +46,7 @@ describe("parseSlotList", () => {
     const result = parseSlotList("0/1/2", "toSlot");
 
     expect(result).toStrictEqual([{ trackIndex: 0, sceneIndex: 1 }]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'toSlot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
     );
   });
@@ -88,20 +55,15 @@ describe("parseSlotList", () => {
     parseSlotList("0/1", "toSlot");
 
     // Exactly two parts must not trigger the extra-parts warning.
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("has extra parts"),
     );
   });
 
   // Slots are positional, so a dropped entry moves every later one.
-  it("should warn when it drops an empty entry", () => {
-    expect(parseSlotList(",0/1", "toSlot")).toStrictEqual([
-      { trackIndex: 0, sceneIndex: 1 },
-    ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'toSlot ",0/1" has empty entries, which were dropped',
+  it("should refuse an empty entry rather than shift the list", () => {
+    expect(() => parseSlotList(",0/1", "toSlot")).toThrow(
+      'invalid toSlot ",0/1" - it has an empty entry.',
     );
   });
 
@@ -112,28 +74,23 @@ describe("parseSlotList", () => {
       'invalid slots "0" - expected trackIndex/sceneIndex format (e.g., "0/1")',
     );
 
-    parseSlotList(",0/1", "slot");
+    expect(() => parseSlotList(",0/1", "slot")).toThrow(
+      'invalid slot ",0/1" - it has an empty entry.',
+    );
+
     parseSlotList("0/1/2", "slot");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'slot ",0/1" has empty entries, which were dropped',
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'slot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
     );
   });
 
-  it("should not warn for a clean list or a blank param", () => {
-    parseSlotList("0/1, 2/3", "toSlot");
-    parseSlotList("", "toSlot");
-    parseSlotList(undefined, "toSlot");
-
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("has empty entries"),
-    );
+  it("should take a clean list, a trailing comma, or a blank param", () => {
+    expect(parseSlotList("0/1, 2/3", "toSlot")).toHaveLength(2);
+    expect(parseSlotList("0/1,2/3,", "toSlot")).toHaveLength(2);
+    expect(parseSlotList("", "toSlot")).toStrictEqual([]);
+    expect(parseSlotList(undefined, "toSlot")).toStrictEqual([]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should throw for non-integer values", () => {

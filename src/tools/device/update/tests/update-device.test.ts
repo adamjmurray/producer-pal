@@ -14,6 +14,7 @@ import {
   registerParamMock,
   updateDevice,
 } from "./update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice", () => {
   let device123: RegisteredMockObject;
@@ -31,8 +32,8 @@ describe("updateDevice", () => {
     });
 
     // Default param objects
-    registerParamMock("789");
-    registerParamMock("790");
+    registerParamMock("789", 0);
+    registerParamMock("790", 1);
   });
 
   it("should update a single device name", () => {
@@ -42,7 +43,7 @@ describe("updateDevice", () => {
     });
 
     expect(device123.set).toHaveBeenCalledWith("name", "My Device");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   // collapsed — kept for potential future use (tests removed)
@@ -55,7 +56,10 @@ describe("updateDevice", () => {
 
     expect(device123.set).toHaveBeenCalledWith("name", "Same Name");
     expect(device456.set).toHaveBeenCalledWith("name", "Same Name");
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/d0" },
+      { id: "456", path: "t0/d1" },
+    ]);
   });
 
   it("should skip non-existent devices with warning", () => {
@@ -66,11 +70,11 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateDevice: target not found at id "999"',
-    );
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(capturedWarnings()).toContain('target not found at id "999"');
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/d0" },
+      { id: "456", path: "t0/d1" },
+    ]);
   });
 
   it("should return empty array when all devices are invalid", () => {
@@ -91,7 +95,7 @@ describe("updateDevice", () => {
     });
 
     expect(device123.set).toHaveBeenCalledWith("name", "Prefixed ID");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should not call set when no properties provided", () => {
@@ -100,7 +104,7 @@ describe("updateDevice", () => {
     });
 
     expect(device123.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   describe("params - numeric values", () => {
@@ -108,8 +112,8 @@ describe("updateDevice", () => {
     let param790: RegisteredMockObject;
 
     beforeEach(() => {
-      param789 = registerParamMock("789");
-      param790 = registerParamMock("790");
+      param789 = registerParamMock("789", 0);
+      param790 = registerParamMock("790", 1);
     });
 
     it("should set value for numeric params", () => {
@@ -119,7 +123,13 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.8);
-      expect(result).toStrictEqual({ id: "123" });
+      // The value comes back read from the param, so a param that snapped to a
+      // different step would report the step, not what was asked for.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ id: "789", name: "Param 789", value: 0.8 }],
+      });
     });
 
     it("should set multiple param values", () => {
@@ -133,10 +143,17 @@ describe("updateDevice", () => {
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.3);
       expect(param790.set).toHaveBeenCalledWith("value", 0.7);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          { id: "789", name: "Param 789", value: 0.3 },
+          { id: "790", name: "Param 790", value: 0.7 },
+        ],
+      });
     });
 
-    it("should log error for invalid param ID but continue", () => {
+    it("reports an id that reached no param, in the entry and a warning", () => {
       mockNonExistentObjects();
 
       const result = updateDevice({
@@ -144,37 +161,29 @@ describe("updateDevice", () => {
         params: [{ name: "999", value: "0.5" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: param "999" not found on device',
+      expect(capturedWarnings()).toContain(
+        'param "999" not found on t0/d0 (id 123)',
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ name: "999", reason: "not found on t0/d0 (id 123)" }],
+      });
     });
 
-    it("should warn and skip entries with an empty name", () => {
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "  ", value: "0.5" }],
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: skipping param with empty name",
-      );
-      expect(result).toStrictEqual({ id: "123" });
+    // A hole in the params list, the same shape a hole in a comma-separated
+    // list is already refused for. Nothing has been written yet, so the caller
+    // fixes the list and sends it again.
+    it("should refuse an entry with an empty name", () => {
+      expect(() =>
+        updateDevice({ id: "123", params: [{ name: "  ", value: "0.5" }] }),
+      ).toThrow("params entry 1 has an empty name");
     });
 
-    it("should warn and skip entries with an empty value", () => {
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "789", value: "  " }],
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: skipping param "789" with empty value',
-      );
-      expect(result).toStrictEqual({ id: "123" });
+    it("should refuse an entry with an empty value", () => {
+      expect(() =>
+        updateDevice({ id: "123", params: [{ name: "789", value: "  " }] }),
+      ).toThrow('params entry "789" has an empty value');
     });
   });
 
@@ -183,7 +192,11 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param791 = registerMockObject("791", {
+        path: livePath.track(0).device(0).parameter(1),
+        type: "DeviceParameter",
         properties: {
+          name: "Warp Mode",
+          original_name: "Warp Mode",
           is_quantized: 1,
           value_items: ["Repitch", "Fade", "Jump"],
         },
@@ -197,7 +210,11 @@ describe("updateDevice", () => {
       });
 
       expect(param791.set).toHaveBeenCalledWith("value", 1);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ id: "791", name: "Warp Mode", value: "Fade" }],
+      });
     });
 
     it("should log error for invalid enum value", () => {
@@ -206,12 +223,12 @@ describe("updateDevice", () => {
         params: [{ name: "791", value: "InvalidValue" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: "InvalidValue" is not valid. Options: Repitch, Fade, Jump',
+      expect(capturedWarnings()).toContain(
+        't0/d0 (id 123) param "Warp Mode" (id 791): "InvalidValue" is not valid. ' +
+          "Options: Repitch, Fade, Jump",
       );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
@@ -221,7 +238,11 @@ describe("updateDevice", () => {
       // garbage raw value (2.9999… instead of index 2). It must resolve to the
       // index of the "4" label.
       const numericLabelParam = registerMockObject("793", {
+        path: livePath.track(0).device(0).parameter(2),
+        type: "DeviceParameter",
         properties: {
+          name: "Retrigger",
+          original_name: "Retrigger",
           is_quantized: 1,
           value_items: ["1", "2", "4", "8"],
         },
@@ -233,7 +254,11 @@ describe("updateDevice", () => {
       });
 
       expect(numericLabelParam.set).toHaveBeenCalledWith("value", 2);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ id: "793", name: "Retrigger", value: "4" }],
+      });
     });
 
     it("warns when a numeric input matches no quantized label", () => {
@@ -244,12 +269,12 @@ describe("updateDevice", () => {
         params: [{ name: "791", value: "1" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: "1" is not valid. Options: Repitch, Fade, Jump',
+      expect(capturedWarnings()).toContain(
+        't0/d0 (id 123) param "Warp Mode" (id 791): "1" is not valid. ' +
+          "Options: Repitch, Fade, Jump",
       );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
   });
 
@@ -257,7 +282,7 @@ describe("updateDevice", () => {
     let param789: RegisteredMockObject;
 
     beforeEach(() => {
-      param789 = registerParamMock("789");
+      param789 = registerParamMock("789", 0);
     });
 
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {
@@ -267,7 +292,11 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 60);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ id: "789", name: "Param 789", value: 60 }],
+      });
     });
 
     it("should handle sharps and flats", () => {
@@ -285,7 +314,16 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param792 = registerMockObject("792", {
-        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+        path: livePath.track(0).device(0).parameter(3),
+        type: "DeviceParameter",
+        properties: {
+          name: "Pan",
+          original_name: "Pan",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
         methods: { str_for_value: () => "C" },
       });
     });
@@ -298,7 +336,12 @@ describe("updateDevice", () => {
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
       expect(param792.set).toHaveBeenCalledWith("value", 0.25);
-      expect(result).toStrictEqual({ id: "123" });
+      // The mock always reads back "C", so the reported value is center.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ id: "792", name: "Pan", value: 0 }],
+      });
     });
 
     it("should handle full left pan", () => {
@@ -327,6 +370,8 @@ describe("updateDevice", () => {
       // clamped full-RIGHT value. Each must parse back to its signed -1..1
       // position via the param's own display max.
       const panDir = registerMockObject("793", {
+        path: livePath.track(0).device(0).parameter(4),
+        type: "DeviceParameter",
         properties: { is_quantized: 0, value: 0, min: -1, max: 1 },
         methods: {
           str_for_value: (v: unknown) =>
@@ -350,111 +395,15 @@ describe("updateDevice", () => {
         params: [{ name: "792", value: "hard-left" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: "hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
+      expect(capturedWarnings()).toContain(
+        't0/d0 (id 123) param "Pan" (id 792): "hard-left" is not a valid pan ' +
+          'value (use -1 to 1, or "50L"/"50R"/"C")',
       );
       expect(param792.set).not.toHaveBeenCalled();
     });
   });
 
-  describe("params - name-based lookup", () => {
-    let paramFreq: RegisteredMockObject;
-    let paramMacro: RegisteredMockObject;
-
-    beforeEach(() => {
-      registerMockObject("123", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: {
-          parameters: children("p-freq", "p-macro"),
-        },
-      });
-
-      paramFreq = registerMockObject("p-freq", {
-        properties: {
-          name: "Filter Freq",
-          original_name: "Filter Freq",
-          is_quantized: 0,
-          value: 500,
-          min: 20,
-          max: 20000,
-        },
-        methods: { str_for_value: (v: unknown) => `${String(v)} Hz` },
-      });
-
-      paramMacro = registerMockObject("p-macro", {
-        properties: {
-          name: "Reverb",
-          original_name: "Macro 1",
-          is_quantized: 0,
-          value: 0.5,
-          min: 0,
-          max: 1,
-        },
-        methods: { str_for_value: (v: unknown) => String(v) },
-      });
-    });
-
-    it("should resolve param by exact name", () => {
-      updateDevice({
-        id: "123",
-        params: [{ name: "Filter Freq", value: "1000" }],
-      });
-
-      expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
-    });
-
-    it("should resolve param by name case-insensitively", () => {
-      updateDevice({
-        id: "123",
-        params: [{ name: "filter freq", value: "1000" }],
-      });
-
-      expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
-    });
-
-    it("should resolve rack macro by raw name", () => {
-      updateDevice({ id: "123", params: [{ name: "Reverb", value: "0.8" }] });
-
-      expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
-    });
-
-    it("should resolve rack macro by formatted name", () => {
-      updateDevice({
-        id: "123",
-        params: [{ name: "Reverb (Macro 1)", value: "0.8" }],
-      });
-
-      expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
-    });
-
-    it("should resolve multiple params by name", () => {
-      updateDevice({
-        id: "123",
-        params: [
-          { name: "Filter Freq", value: "1000" },
-          { name: "Reverb", value: "0.8" },
-        ],
-      });
-
-      expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
-      expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
-    });
-
-    it("should warn for unresolvable non-integer key", () => {
-      updateDevice({
-        id: "123",
-        params: [{ name: "Nonexistent", value: "0.5" }],
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: param "Nonexistent" not found on device',
-      );
-    });
-  });
-
+  // Params by name are in params/update-device-param-names.test.ts
   // Division params tests are in update-device-division-params.test.js
   // macroVariation tests are in update-device-macro-variation.test.js
   // Chain and DrumPad tests are in update-device-chains.test.js
@@ -481,12 +430,11 @@ describe("updateDevice", () => {
         macroCount: 8,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'macroCount' not applicable to Device",
+      expect(capturedWarnings()).toContain(
+        "'macroCount' not applicable to Device t0/d1 (id 456)",
       );
       expect(device456.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
     });
 
     it("should call add_macro when increasing count (macros added in pairs)", () => {
@@ -497,7 +445,7 @@ describe("updateDevice", () => {
 
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("add_macro");
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should call remove_macro when decreasing count (macros removed in pairs)", () => {
@@ -508,7 +456,7 @@ describe("updateDevice", () => {
 
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("remove_macro");
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should do nothing when count matches", () => {
@@ -518,7 +466,7 @@ describe("updateDevice", () => {
       });
 
       expect(device123.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should round odd counts up to next even and warn", () => {
@@ -527,13 +475,12 @@ describe("updateDevice", () => {
         macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: macro count rounded from 7 to 8 (macros come in pairs)",
+      expect(capturedWarnings()).toContain(
+        "macro count on t0/d0 (id 123) rounded from 7 to 8 (macros come in pairs)",
       );
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("add_macro");
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
   });
 
@@ -558,13 +505,12 @@ describe("updateDevice", () => {
         abCompare: "b",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: A/B Compare not available on this device",
+      expect(capturedWarnings()).toContain(
+        "A/B Compare not available on t0/d1 (id 456)",
       );
       expect(device456.set).not.toHaveBeenCalled();
       expect(device456.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "456" });
+      expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
     });
 
     it("should set is_using_compare_preset_b to 0 for 'a'", () => {
@@ -577,7 +523,7 @@ describe("updateDevice", () => {
         "is_using_compare_preset_b",
         0,
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should set is_using_compare_preset_b to 1 for 'b'", () => {
@@ -590,7 +536,7 @@ describe("updateDevice", () => {
         "is_using_compare_preset_b",
         1,
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should call save_preset_to_compare_ab_slot for 'save'", () => {
@@ -602,7 +548,7 @@ describe("updateDevice", () => {
       expect(device123.call).toHaveBeenCalledWith(
         "save_preset_to_compare_ab_slot",
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
   });
 
@@ -626,6 +572,16 @@ describe("updateDevice", () => {
       });
     });
 
+    // No move was attempted, whatever else the call did.
+    function expectNoMove(): void {
+      expect(liveSet.call).not.toHaveBeenCalledWith(
+        "move_device",
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+    }
+
     it("should move device to a different track", () => {
       const result = updateDevice({
         id: "123",
@@ -639,7 +595,7 @@ describe("updateDevice", () => {
         "id track1",
         0,
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
     });
 
     it("should move device to a specific position", () => {
@@ -654,7 +610,7 @@ describe("updateDevice", () => {
         "id track1",
         2,
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
     });
 
     it("should move device into a rack chain", () => {
@@ -669,7 +625,7 @@ describe("updateDevice", () => {
         "id chain1",
         0,
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0/c1/d0" });
     });
 
     it("should warn and skip when trying to move a Chain", () => {
@@ -682,18 +638,15 @@ describe("updateDevice", () => {
       });
 
       // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
-      expect(outlet).toHaveBeenCalledWith(1, "cannot move Chain");
-      expect(liveSet.call).not.toHaveBeenCalledWith(
-        "move_device",
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-      );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
+      expectNoMove();
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
-    it("should warn and skip when trying to move a DrumPad", () => {
-      registerMockObject("123", { type: "DrumPad" });
+    it("should warn and skip when trying to move a rack Chain", () => {
+      // Not a DrumPad: a pad id names the whole pad now, and a pad move is an
+      // in_note re-map that updateDrumPadGroup handles.
+      registerMockObject("123", { type: "Chain" });
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
@@ -701,8 +654,8 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
-      expect(outlet).toHaveBeenCalledWith(1, "cannot move DrumPad");
-      expect(result).toStrictEqual({ id: "123" });
+      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should warn and skip when target path does not exist", () => {
@@ -715,17 +668,11 @@ describe("updateDevice", () => {
       });
 
       // The missing container is reported and no move is attempted.
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'move target at path "t99" does not exist',
       );
-      expect(liveSet.call).not.toHaveBeenCalledWith(
-        "move_device",
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-      );
-      expect(result).toStrictEqual({ id: "123" });
+      expectNoMove();
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
     it("should allow combining move with other updates", () => {
@@ -746,7 +693,7 @@ describe("updateDevice", () => {
       // Should also set name
       expect(device123.set).toHaveBeenCalledWith("name", "Moved Device");
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
     });
   });
 
@@ -759,7 +706,9 @@ describe("updateDevice", () => {
 
       const result = updateDevice({ id: "999", name: "Nope" });
 
-      expect(outlet).toHaveBeenCalledWith(1, "cannot update Track objects");
+      expect(capturedWarnings()).toContain(
+        "cannot update Track objects: t3 (id 999)",
+      );
       // Nothing is written to an unsupported object, and it drops from results.
       expect(result).toStrictEqual([]);
     });

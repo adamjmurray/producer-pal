@@ -7,7 +7,7 @@
  * Scenario: Connect to Ableton Live
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
+import { getAllToolCalls } from "../../assertions/index.ts";
 import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
 import { type EvalScenario } from "../../types.ts";
 
@@ -41,7 +41,9 @@ export const connectToAbleton: EvalScenario = {
       type: "custom",
       description: "No extraneous tool calls",
       assert: (turns) => {
-        const calls = getToolCalls(turns);
+        // Every attempt, errors included — reaching for the wrong tool is the
+        // violation whether or not the call came back clean.
+        const calls = getAllToolCalls(turns);
         // Tools that may be called at most once
         const onceOnly = ["ppal-connect", "ppal-read-live-set"];
         // Tools that may be called multiple times

@@ -62,7 +62,7 @@ function registerEmptyReturnTrack(): void {
   });
 }
 
-function registerTrackWithSessionSlots(name: string): void {
+function registerTrackWithClipSlots(name: string): void {
   registerMockObject("track3", {
     path: livePath.track(2),
     type: "Track",
@@ -100,7 +100,7 @@ describe("readTrack", () => {
     registerMockObject("0", { path: livePath.track(99), type: "Track" });
 
     expect(() => readTrack({ trackIndex: 99 })).toThrow(
-      "readTrack: trackIndex 99 does not exist",
+      "trackIndex 99 does not exist",
     );
   });
 
@@ -146,9 +146,9 @@ describe("readTrack", () => {
 
     expect(result).toStrictEqual({
       id: "track2",
+      path: "t1",
       type: "audio",
       name: "Audio Track",
-      trackIndex: 1,
 
       sessionClipCount: 0,
       arrangementClipCount: 0,
@@ -177,7 +177,15 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      arrangementClipCount: 0,
+      deviceCount: 0,
+      id: "track2",
+      path: "t1",
+      isArmed: true,
+      name: "Boundary Track",
+      sessionClipCount: 0,
+      type: "midi",
       playingSlotIndex: 0,
       firedSlotIndex: 0,
     });
@@ -262,16 +270,16 @@ describe("readTrack", () => {
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {
-    registerTrackWithSessionSlots("Track with Clips");
+    registerTrackWithClipSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
     const result = readTrack({ trackIndex: 2, include: ["session-clips"] });
 
     expect(result).toStrictEqual({
       id: "track3",
+      path: "t2",
       type: "midi",
       name: "Track with Clips",
-      trackIndex: 2,
 
       sessionClips: [
         {
@@ -348,6 +356,7 @@ describe("readTrack", () => {
       type: "Clip",
       properties: {
         is_arrangement_clip: 1,
+        start_time: 0,
       },
     });
     registerMockObject("arr_clip2", {
@@ -355,6 +364,7 @@ describe("readTrack", () => {
       type: "Clip",
       properties: {
         is_arrangement_clip: 1,
+        start_time: 16,
       },
     });
 
@@ -363,15 +373,22 @@ describe("readTrack", () => {
       include: ["arrangement-clips"],
     });
 
-    const arrangementClips = result.arrangementClips as Array<{ id: string }>;
+    const arrangementClips = result.arrangementClips as Array<{
+      id: string;
+      path: string;
+    }>;
 
     expect(arrangementClips).toHaveLength(2);
     expect(arrangementClips[0]!.id).toBe("arr_clip1");
     expect(arrangementClips[1]!.id).toBe("arr_clip2");
+    // The path is where the clip starts, so it survives the strip that drops
+    // what the parent track already said.
+    expect(arrangementClips[0]!.path).toBe("t2[1|1]");
+    expect(arrangementClips[1]!.path).toBe("t2[5|1]");
   });
 
   it("returns sessionClipCount when session-clips is not included", () => {
-    registerTrackWithSessionSlots("Track with Clips");
+    registerTrackWithClipSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
     const result = readTrack({
@@ -545,9 +562,9 @@ describe("readTrack", () => {
 function expectedSoloedMidiTrackResult(): Record<string, unknown> {
   return {
     id: "track1",
+    path: "t0",
     type: "midi",
     name: "Track 1",
-    trackIndex: 0,
     sessionClipCount: 0,
     arrangementClipCount: 0,
     deviceCount: 0,

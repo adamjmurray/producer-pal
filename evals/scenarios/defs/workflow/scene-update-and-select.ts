@@ -13,10 +13,7 @@
 
 import { argText } from "../arg-text.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import {
-  assertAddressedById,
-  assertNamesScene,
-} from "../path/path-scenario-helpers.ts";
+import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
 
 const TOOL_UPDATE_SCENE = "ppal-update-scene";
 const TOOL_SELECT = "ppal-select";
@@ -83,8 +80,8 @@ function assertSceneSelected(): EvalAssertion {
     tool: TOOL_SELECT,
     args: {},
     expect: (result) =>
-      (result as { selectedScene?: { sceneIndex?: number } }).selectedScene
-        ?.sceneIndex === SCENE_INDEX,
+      (result as { selectedScene?: { path?: string } }).selectedScene?.path ===
+      `s${SCENE_INDEX}`,
     explain: (result) =>
       `expected scene ${SCENE_INDEX} selected, got ${JSON.stringify(
         (result as { selectedScene?: unknown }).selectedScene ?? null,
@@ -110,11 +107,11 @@ export const sceneUpdateAndSelect: EvalScenario = {
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     { type: "tool_called", tool: TOOL_UPDATE_SCENE, turn: 1 },
-    assertAddressedById({ turn: 1, tool: TOOL_UPDATE_SCENE }),
+    assertNamesTarget({ turn: 1, tool: TOOL_UPDATE_SCENE }),
     assertSceneUpdated(),
 
     { type: "tool_called", tool: TOOL_SELECT, turn: 2 },
-    assertNamesScene({ turn: 2, tool: TOOL_SELECT }),
+    assertNamesTarget({ turn: 2, tool: TOOL_SELECT }),
     assertSceneSelected(),
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },

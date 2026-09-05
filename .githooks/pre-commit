@@ -1,0 +1,28 @@
+#!/bin/sh
+# Refuses a commit that would go in unsigned.
+#
+# Opt in per clone, the same switch pre-push uses:
+#
+#   git config core.hooksPath .githooks
+#
+# `git -c commit.gpgsign=false commit` reaches hooks through
+# GIT_CONFIG_PARAMETERS, so the turned-off setting is visible here. A
+# `--no-gpg-sign` flag is not, and neither is a signing key that fails at the
+# last moment — pre-push catches both by checking the signature on every commit
+# it sends.
+#
+# Escape hatch: git commit --no-verify
+
+if [ "$(git config --get commit.gpgsign)" != "true" ]; then
+	echo "pre-commit: refusing to commit with signing turned off." >&2
+	echo "" >&2
+	echo "  commit.gpgsign is not true for this commit. Drop the" >&2
+	echo "  -c commit.gpgsign=false, or turn signing on for the repo:" >&2
+	echo "" >&2
+	echo "    git config commit.gpgsign true" >&2
+	echo "" >&2
+	echo "  Override: git commit --no-verify ..." >&2
+	exit 1
+fi
+
+exit 0

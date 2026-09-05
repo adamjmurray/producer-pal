@@ -5,13 +5,14 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
   // Small model mode drops `capture`, so neither string may mention it — and
-  // with capture gone, sceneIndex is required outright (the handler throws
-  // without it) rather than conditionally.
+  // with capture gone, path is required outright (the handler throws without
+  // it) rather than conditionally.
   description: {
     default: "Create empty scene(s) or capture playing session clips.",
     smallModel: "Create an empty scene.",
@@ -21,11 +22,14 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
     destructiveHint: true,
   },
   inputSchema: {
-    sceneIndex: param(z.coerce.number().int().min(0).optional(), {
+    path: param(z.coerce.string().optional(), {
       default:
-        "0-based index for new scene(s), shifts existing scenes. Required when capture=false, optional when capture=true",
+        "where they go: 's+' appends, 's2' inserts at 2 and shifts the rest down. Required when capture=false, optional when capture=true",
       smallModel:
-        "required: 0-based index for the new scene, shifts existing scenes down",
+        "required: 's+' to append, or 's2' to insert at 2 and shift the rest down",
+    }),
+    sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
     }),
     count: param(z.coerce.number().int().min(1).default(1), {
       default: "number to create",
@@ -36,12 +40,11 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated for each",
+      default: "name for all, or comma-separated one per scene, in order",
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than count)",
+      default: "#RRGGBB for all, or comma-separated one per scene, in order",
       smallModel: "#RRGGBB",
     }),
     tempo: param(z.coerce.number().optional(), {

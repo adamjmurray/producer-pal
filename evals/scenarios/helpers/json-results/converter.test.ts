@@ -27,7 +27,7 @@ function makeTurn(overrides?: Partial<EvalTurnResult>): EvalTurnResult {
     userMessage: "Connect to Ableton",
     assistantResponse: "Connected!",
     toolCalls: [
-      { name: "ppal-connect", args: {}, result: "Connected to Ableton Live" },
+      { name: "ppal-connect", args: {}, result: '{"connected":true}' },
     ],
     durationMs: 1000,
     stepUsages: [{ inputTokens: 5000, outputTokens: 2000 }],
@@ -250,6 +250,28 @@ describe("toJsonResult", () => {
     expect(result.turns[0]?.toolCalls[0]?.result).toBe(longResult);
   });
 
+  it("records isError on a failed call and omits it otherwise", () => {
+    const result = convert({
+      turns: [
+        makeTurn({
+          toolCalls: [
+            { name: "ppal-connect", args: {}, result: "boom", isError: true },
+            { name: "ppal-read-song", args: {}, result: "{}", isError: false },
+            { name: "ppal-read-track", args: {}, result: "{}" },
+          ],
+        }),
+      ],
+    });
+
+    // toStrictEqual, so an `isError: undefined` key would fail too — only the
+    // true case gets written.
+    expect(result.turns[0]?.toolCalls).toStrictEqual([
+      { name: "ppal-connect", args: {}, result: "boom", isError: true },
+      { name: "ppal-read-song", args: {}, result: "{}" },
+      { name: "ppal-read-track", args: {}, result: "{}" },
+    ]);
+  });
+
   it("strips tool results from check details matchingCalls", () => {
     const result = convert({
       assertions: [
@@ -351,6 +373,70 @@ describe("toJsonResult", () => {
       inputTokens: 15500,
       targetTokens: 20000,
       percentage: 77,
+    });
+  });
+
+  describe("signals", () => {
+    it("keeps response_contains out of the gating checks", () => {
+      const json = convert({
+        assertions: [
+          makeAssertion(),
+          makeAssertion({
+            assertion: { type: "response_contains", pattern: /boosted/i },
+            earned: 0,
+            message: "Expected response to contain /boosted/i",
+          }),
+        ],
+      });
+
+      expect(json.checks.results).toHaveLength(1);
+      expect(json.checks.pass).toBe(true);
+      expect(json.signals).toHaveLength(1);
+      expect(json.signals?.[0]?.pass).toBe(false);
+      expect(json.result).toBe("pass");
+    });
+
+    it("omits signals when the scenario has none", () => {
+      expect(convert().signals).toBeUndefined();
+    });
+  });
+
+  describe("toolErrors", () => {
+    it("counts the calls that came back as errors", () => {
+      const json = convert({
+        turns: [
+          makeTurn({
+            toolCalls: [
+              {
+                name: "ppal-create-clip",
+                args: {},
+                result: "Error: bad notes",
+              },
+              { name: "ppal-create-clip", args: {}, result: '{"id":"1"}' },
+            ],
+          }),
+        ],
+      });
+
+      expect(json.toolErrors).toStrictEqual({
+        count: 1,
+        total: 2,
+        errors: [
+          {
+            turnIndex: 0,
+            name: "ppal-create-clip",
+            message: "Error: bad notes",
+          },
+        ],
+      });
+      // A recovered error never gates.
+      expect(json.result).toBe("pass");
+    });
+
+    it("omits toolErrors when the run made no tool calls", () => {
+      expect(
+        convert({ turns: [makeTurn({ toolCalls: [] })] }).toolErrors,
+      ).toBeUndefined();
     });
   });
 });

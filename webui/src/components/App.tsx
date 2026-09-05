@@ -22,6 +22,7 @@ import {
   useMcpConnection,
 } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
@@ -32,8 +33,8 @@ import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
+import { useViewingMode } from "#webui/hooks/view-state/use-viewing-mode";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
 import {
   enabledToolsDiverge as toolsetsDiffer,
   isToolEnabled,
@@ -128,17 +129,14 @@ export function App() {
     showSettings,
   );
 
-  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
-  // voice record opened while saved is a chat model) renders in its native UI
-  // without mutating the user's saved settings. null = follow savedModel.
-  // Cleared by "New conversation" so the next fresh session uses savedModel.
-  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
-  const onForeignRecord = useCallback((record: ConversationRecord) => {
-    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
-  }, []);
-  const clearViewingMode = useCallback(() => {
-    setViewingMode(null);
-  }, []);
+  // null = follow savedModel; cleared by "New conversation" so the next fresh
+  // session uses savedModel again.
+  const { viewingMode, onForeignRecord, clearViewingMode } = useViewingMode();
+
+  // Undo lives here, above the mode split: only one mode is mounted at a time,
+  // so a stack owned by either would drop its pending undos on a mode switch —
+  // and the sidebar showing both kinds of conversation is shared.
+  const undoDelete = useUndoDelete();
 
   const handleSaveSettings = useSaveSettingsHandler({
     settings,
@@ -278,6 +276,7 @@ export function App() {
     onForeignRecord,
     clearViewingMode,
     setModeContext,
+    undoDelete,
   };
 
   // Blur+disable interaction beneath any modal overlay (settings or context).

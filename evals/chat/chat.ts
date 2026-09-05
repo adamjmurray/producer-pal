@@ -39,7 +39,7 @@ export async function runChat(
   options: ChatOptions,
 ): Promise<void> {
   const model = createProviderModel(options.provider, options.model);
-  const { tools, mcpClient } = await createMcpTools();
+  const { tools, mcpClient, erroredToolCallIds } = await createMcpTools();
   const providerOptions = buildProviderOptions(
     options.provider,
     options.thinking,
@@ -110,6 +110,7 @@ export async function runChat(
 
           const turnResult = await processCliStream(result, {
             showUsage: sess.options.usage,
+            erroredToolCallIds,
           });
 
           // On a stream error, result.responseMessages rejects; the error was

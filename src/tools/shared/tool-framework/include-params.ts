@@ -23,9 +23,11 @@ const MIXER = "mixer";
 const LOCATORS = "locators";
 
 /**
- * All available include options mapped by tool type
+ * All available include options mapped by tool type. Each read tool's `.def.ts`
+ * publishes exactly its own list plus '*' — see the meta test that holds them
+ * in step.
  */
-const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
+export const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
   song: ["scenes", "routings", TRACKS, COLOR, MIXER, LOCATORS],
   track: [
     SESSION_CLIPS,
@@ -39,8 +41,9 @@ const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
     AVAILABLE_ROUTINGS,
     MIXER,
     COLOR,
+    WARP,
   ],
-  scene: [CLIPS, CLIP_NOTES, SAMPLE, COLOR, TIMING],
+  scene: [CLIPS, CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
   clip: [CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
 };
 
@@ -237,6 +240,7 @@ export const READ_SCENE_DEFAULTS: Partial<IncludeFlags> = {
   includeSample: false,
   includeColor: false,
   includeTiming: false,
+  includeWarp: false,
 };
 
 /**
@@ -251,16 +255,21 @@ export const READ_CLIP_DEFAULTS: Partial<IncludeFlags> = {
 };
 
 /**
- * Expand '*' wildcard in include array to all concrete options for the tool type
- * @param includeArray - Array of include options that may contain '*'
+ * Expand '*' to the concrete options of the tool the defaults belong to.
+ *
+ * A tool forwarding its include array to a nested read must expand it FIRST:
+ * the nested read expands '*' against its own option list, so a bare '*' turns
+ * on options the outer tool never published (that is how read-track returned
+ * warp data it rejected by name).
+ * @param includeArray - Include options that may contain '*'
  * @param defaults - Default values to determine tool type from structure
  * @returns Expanded array with '*' replaced by concrete options
  */
-function expandWildcardIncludes(
-  includeArray: string[],
+export function expandWildcardIncludes(
+  includeArray: string[] | undefined,
   defaults: Partial<IncludeFlags>,
-): string[] {
-  if (!includeArray.includes("*")) {
+): string[] | undefined {
+  if (includeArray == null || !includeArray.includes("*")) {
     return includeArray;
   }
 

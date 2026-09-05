@@ -154,6 +154,37 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  it("reports a sharp scale root by the flat name Live stores", async () => {
+    // Live keeps only a pitch class number, so it has no sharp spelling to give
+    // back. The write result has to say what every later read will say.
+    const update = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { scale: "F# Dorian" },
+    });
+
+    const updated = parseToolResult<UpdateResult>(update);
+
+    expect(updated.scale).toBe("Gb Dorian");
+    // Without this note a model reads the changed spelling as a failed write.
+    expect(updated.$meta).toContain(
+      "Scale roots are spelled with flats, so F# comes back as Gb — " +
+        "same scale, set correctly.",
+    );
+
+    await sleep(100);
+    const after = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+
+    expect(parseToolResult<ReadResult>(after).scale).toBe("Gb Dorian");
+
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { scale: "" },
+    });
+  });
+
   it("creates, renames, and deletes locators", async () => {
     // Locator IDs are positional and assignment only sticks against real Live,
     // so this exercises the full create/rename/delete cycle end-to-end. The set
@@ -253,6 +284,37 @@ describe("ppal-update-live-set", () => {
 
     expect(locators.length).toBe(initialLocators.length);
   });
+
+  it("takes a numeric locator name", async () => {
+    // Models send numbers where the schema says string, and the MCP SDK
+    // validates before our handler runs, so only a real call proves the
+    // coercion is in the schema the server registered.
+    const created = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "4|1",
+          locatorName: 4321,
+        },
+      }),
+    );
+
+    expect(created.locator?.name).toBe("4321");
+
+    await sleep(100);
+
+    // Deleted by time, not by name: Live hands an all-digit name back as a
+    // number, so no name match can find this locator again.
+    const deleted = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorTime: "4|1" },
+      }),
+    );
+
+    expect(deleted.locator?.operation).toBe("deleted");
+  });
 });
 
 async function readLocatorList(): Promise<LocatorInfo[]> {
@@ -286,6 +348,7 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string[];
+  $meta?: string[];
   locator?: {
     operation: string;
     id?: string;

@@ -6,7 +6,11 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, act, waitFor } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import {
+  waitForHookState,
+  openGate,
+} from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
@@ -21,7 +25,6 @@ import {
   createScriptedAdapter,
   echoUserTurn,
 } from "./helpers/use-chat-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
@@ -91,12 +94,16 @@ async function expectQueueSurvivesError(
  * Render useChat with the given adapter, restore the standard history, then
  * compact the first turn. Returns the hook result for assertions.
  * @param adapter - The adapter whose client bootstraps from restored history
+ * @param overrides - Props to override on top of the defaults
  * @returns The renderHook result
  */
 async function renderRestoreCompact(
   adapter: ReturnType<typeof adapterWithClient>,
+  overrides: Partial<typeof defaultProps> = {},
 ) {
-  const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+  const { result } = renderHook(() =>
+    useChat({ ...defaultProps, adapter, ...overrides }),
+  );
 
   await act(() => {
     result.current.restoreChatHistory([...RESTORED_HISTORY]);
@@ -556,16 +563,7 @@ describe("useChat", () => {
       // from Settings leaves nothing to connect with — bootstrap must bail
       // rather than construct a client that can't authenticate.
       const adapter = adapterWithClient(() => {});
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter, apiKey: "" }),
-      );
-
-      await act(() => {
-        result.current.restoreChatHistory([...RESTORED_HISTORY]);
-      });
-      await act(async () => {
-        await result.current.compact(1);
-      });
+      const result = await renderRestoreCompact(adapter, { apiKey: "" });
 
       expect(adapter.createClient).not.toHaveBeenCalled();
       expect(result.current.isCompacting).toBe(false);
@@ -617,16 +615,7 @@ describe("useChat", () => {
         return { model, thinking };
       });
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter }),
-      );
-
-      await act(() => {
-        result.current.restoreChatHistory([...RESTORED_HISTORY]);
-      });
-      await act(async () => {
-        await result.current.compact(1);
-      });
+      const result = await renderRestoreCompact(adapter);
 
       expect(adapter.createClient).not.toHaveBeenCalled();
       // The conversation is still on screen, with the error behind it.
@@ -675,7 +664,9 @@ describe("useChat", () => {
         compacting = result.current.compact(1);
         // The switch below only races the bootstrap once it is parked in the
         // connect, which is the client existing but initialize() not resolved.
-        await waitFor(() => expect(adapter.createClient).toHaveBeenCalled());
+        await waitForHookState(() =>
+          expect(adapter.createClient).toHaveBeenCalled(),
+        );
       });
 
       await act(() => {

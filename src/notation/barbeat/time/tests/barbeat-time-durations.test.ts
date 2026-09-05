@@ -9,6 +9,7 @@ import {
   durationToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "../barbeat-time.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("timeSigToAbletonBeatsPerBar", () => {
   it("converts time signatures to Ableton beats per bar", () => {
@@ -130,8 +131,7 @@ describe("abletonBeatsToDuration", () => {
 
   it("clamps negative durations to 0 and warns instead of throwing", () => {
     expect(abletonBeatsToDuration(-1, 4, 4)).toBe("0bar");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("duration cannot be negative, got -1"),
     );
   });

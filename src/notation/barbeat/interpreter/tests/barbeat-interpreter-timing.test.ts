@@ -6,6 +6,15 @@
 import { describe, expect, it, type vi } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+// Warning calls on outlet 1, minus the "pitches buffered" one these cases also
+// raise — what is left is the state-change warning under test.
+function stateChangeWarnings(): unknown[][] {
+  return (outlet as ReturnType<typeof vi.fn>).mock.calls
+    .filter((call) => call[0] === 1)
+    .filter((call) => !call[1].includes("buffered but no time position"));
+}
 
 describe("bar|beat interpretNotation() - timing features", () => {
   describe("time-position-driven note emission", () => {
@@ -140,8 +149,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
       const zero = interpretNotation("1bar-n4/4 C4 1|1");
 
       expect(zero[0]!.duration).toBe(1);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("non-positive"),
       );
     });
@@ -197,24 +205,21 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
     it("warns when pitches buffered but no time position", () => {
       interpretNotation("C3 E3 G3");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("3 pitch(es) buffered but no time position"),
       );
     });
 
     it("warns when time position has no pitches", () => {
       interpretNotation("1|1");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Time position 1|1 has no pitches"),
       );
     });
 
     it("warns when state changes after pitch but before time", () => {
       interpretNotation("C4 v100 1|1");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
         ),
@@ -227,11 +232,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
       expect(result).toHaveLength(2);
       // The interspersed `v90` has a following pitch (G4) to apply to, so this is
       // the taught per-note form, NOT the wasted-trailing case — no warning here.
-      const warningCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls
-        .filter((call) => call[0] === 1)
-        .filter((call) => !call[1].includes("buffered but no time position"));
-
-      expect(warningCalls).toHaveLength(0);
+      expect(stateChangeWarnings()).toHaveLength(0);
     });
 
     it("does not warn when state changes after time", () => {
@@ -239,11 +240,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
 
       expect(result).toHaveLength(2);
       // Should only warn about "state change won't affect group", not about it happening
-      const warningCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls
-        .filter((call) => call[0] === 1)
-        .filter((call) => !call[1].includes("buffered but no time position"));
-
-      expect(warningCalls).toHaveLength(0);
+      expect(stateChangeWarnings()).toHaveLength(0);
     });
   });
 });

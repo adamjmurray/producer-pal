@@ -9,11 +9,11 @@ import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   takeLaneKey,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   unreachedPositionsWarning,
   type UnreachedDestination,
-} from "../duplicate-position-helpers.ts";
+} from "../sources/duplicate-position-helpers.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
 
 /**

@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface RoutingType {
   display_name: string;
@@ -25,7 +27,9 @@ function configureSourceTrackInput(
   sourceTrack.set("arm", 1);
 
   if (currentArm !== 1) {
-    console.warn(`routeToSource: Armed the source track`);
+    console.warn(
+      `routeToSource: armed the source track ${targetLabel(sourceTrack)}`,
+    );
   }
 
   const currentInputType = sourceTrack.getProperty(
@@ -48,11 +52,11 @@ function configureSourceTrackInput(
       });
       // Warn that input routing changed
       console.warn(
-        `Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
+        `Changed track "${sourceTrackName}" ${targetLabel(sourceTrack)} input routing from "${currentInputName}" to "No Input"`,
       );
     } else {
       console.warn(
-        `Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
+        `Tried to change track "${sourceTrackName}" ${targetLabel(sourceTrack)} input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
       );
     }
   }
@@ -112,7 +116,7 @@ export function findRoutingOptionForDuplicateNames(
 
   if (sourcePosition === -1) {
     console.warn(
-      `Could not find source track in duplicate name list for "${sourceTrackName}"`,
+      `Could not find source track ${targetLabel(sourceTrack)} in the duplicate name list for "${sourceTrackName}"`,
     );
 
     return undefined;
@@ -150,7 +154,7 @@ function findSourceRouting(
 
     if (!sourceRouting) {
       console.warn(
-        `Could not route to "${sourceTrackName}" due to duplicate track names. ` +
+        `Could not route to "${sourceTrackName}" ${targetLabel(sourceTrack)} due to duplicate track names. ` +
           `Consider renaming tracks to have unique names.`,
       );
     }
@@ -193,7 +197,7 @@ function applyOutputRouting(
 
     if (matchingNames.length === 0) {
       console.warn(
-        `Could not find track "${sourceTrackName}" in routing options`,
+        `Could not find track "${sourceTrackName}" ${targetLabel(sourceTrack)} in routing options`,
       );
     }
   }

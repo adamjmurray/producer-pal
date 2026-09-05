@@ -7,9 +7,13 @@
  * Fixture data for demo mode — realistic tool result scenarios
  * for visual testing of the chat UI.
  *
- * Data captured from real ppal-client calls against the e2e-test-set Live Set.
+ * The demo is the first thing a new user sees, so every call, result, warning
+ * and error here must match what the tools in `src/tools/**` actually produce
+ * today: published param names (`path`, `id`), results carrying `path` rather
+ * than indices, and error text copied from the code that raises it.
  */
 
+import { VERSION } from "#src/shared/config";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
 
@@ -125,10 +129,10 @@ function modelMsg(config: {
   };
 }
 
-// Real data captured from e2e-test-set via ppal-client
+// Shapes mirror the e2e-test-set Live Set as the tools report it today
 const CONNECT_RESULT = {
   connected: true,
-  producerPalVersion: "1.4.3",
+  producerPalVersion: VERSION,
   abletonLiveVersion: "12.3.5",
   liveSet: {
     name: "e2e-test-set",
@@ -138,15 +142,16 @@ const CONNECT_RESULT = {
     regularTrackCount: 12,
     returnTrackCount: 2,
     scale: "A Minor",
+    scalePitches: "A,B,C,D,E,F,G",
   },
 };
 
 const READ_TRACK_RESULT = {
   id: "1",
+  path: "t0",
   type: "midi",
   name: "Drums",
   instrument: "Drum Rack",
-  trackIndex: 0,
   sessionClipCount: 1,
   arrangementClipCount: 1,
   deviceCount: 1,
@@ -157,18 +162,21 @@ const READ_CLIP_RESULT = {
   id: "13",
   type: "midi",
   name: "Beat",
+  path: "t0/s0",
   view: "session",
-  trackIndex: 0,
-  sceneIndex: 0,
   timeSignature: "4/4",
   looping: true,
   start: "1|1",
   end: "2|1",
   length: "1bar",
-  notes: "v127 n/4 C1 1|1,3 v113 D1 1|2 v99 D1 1|4",
+  notes: "v127 n/4 C1 1|1,3\nv113 D1 1|2\nv99 D1 1|4",
 };
 
-const UPDATE_CLIP_RESULT = { id: "44" };
+const UPDATE_CLIP_RESULT = { id: "44", path: "t4/s0" };
+
+// Quantization is MIDI-only, so an audio clip warns and skips it
+const QUANTIZE_WARNING =
+  "WARNING: quantize/quantizeGrid ignored for audio clip (id 44): quantization is MIDI-only";
 
 // Tool name constants to avoid duplicate string violations
 const TOOL_READ_TRACK = "ppal-read-track";
@@ -197,11 +205,12 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: TOOL_READ_TRACK,
-        args: { trackIndex: 0 },
+        args: { path: "t0" },
         result: toolResult(READ_TRACK_RESULT),
       },
     ],
-    responseModel: "gemini-2.5-flash-preview-05-20",
+    // Differs from DemoMode's requestedModel, so the "responded as" badge shows
+    responseModel: "gemini-3.5-flash-lite",
     usage: { inputTokens: 9496, outputTokens: 178 },
   }),
 
@@ -212,16 +221,14 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: TOOL_READ_TRACK,
-        args: { trackIndex: 99 },
-        result: JSON.stringify(
-          "Error executing tool 'ppal-read-track': readTrack: trackIndex 99 does not exist",
-        ),
+        args: { path: "t99" },
+        result: JSON.stringify('Error: nothing at path "t99"'),
         isError: true,
       },
     ],
   }),
 
-  // --- Scenario 4: Heuristic error detection (result contains "error" key) ---
+  // --- Scenario 4: Empty result with a warning (not an error) ---
   userMsg("Read the clip at track 0, scene 5"),
   modelMsg({
     text: "There's no clip in that slot.",
@@ -229,12 +236,10 @@ export const demoMessages: UIMessage[] = [
       {
         name: "ppal-read-clip",
         args: { path: "t0/s5" },
-        result: toolResult({
-          error: "No clip in this slot",
-          id: null,
-          type: null,
-          path: "t0/s5",
-        }),
+        result: toolResult(
+          { id: null, type: null, name: null, path: "t0/s5" },
+          "WARNING: no clip at t0/s5",
+        ),
       },
     ],
   }),
@@ -247,31 +252,28 @@ export const demoMessages: UIMessage[] = [
       {
         name: TOOL_UPDATE_CLIP,
         args: { id: "44", quantize: 0.5, quantizeGrid: "1/8" },
-        result: toolResult(
-          UPDATE_CLIP_RESULT,
-          "WARNING: quantize parameter ignored for audio clip (id 44)",
-        ),
+        result: toolResult(UPDATE_CLIP_RESULT, QUANTIZE_WARNING),
       },
     ],
   }),
 
   // --- Scenario 6: Success with multiple warnings ---
-  userMsg("Update this clip's color and quantize settings"),
+  userMsg("Make this clip red and quantize it"),
   modelMsg({
-    text: "The clip was updated, but some settings couldn't be applied to this audio clip.",
+    text: "The clip was updated, but Live changed the color and skipped the quantization.",
     tools: [
       {
         name: TOOL_UPDATE_CLIP,
         args: {
           id: "44",
+          color: "#FF0000",
           quantize: 0.5,
           quantizeGrid: "1/8",
-          color: "#ZZZZZZ",
         },
         result: toolResult(
           UPDATE_CLIP_RESULT,
-          "WARNING: quantize parameter ignored for audio clip (id 44)",
-          "WARNING: Color #ZZZZZZ is not a valid hex color, skipping",
+          "WARNING: Requested clip id 44 color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+          QUANTIZE_WARNING,
         ),
       },
     ],
@@ -283,10 +285,10 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: "ppal-select",
-        args: { trackIndex: 0, invalidParam: "test" },
+        args: { path: "t0", invalidParam: "test" },
         result: toolResult(
-          { selectedTrack: { id: "1", type: "midi", trackIndex: 0 } },
-          "WARNING: ppal-select ignored unexpected argument(s): invalidParam",
+          { selectedTrack: { id: "1", path: "t0", type: "midi" } },
+          "WARNING: ignored unexpected argument(s): invalidParam",
         ),
       },
     ],
@@ -300,9 +302,9 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: TOOL_READ_TRACK,
-        args: { trackIndex: 0, include: ["arrangement-clips"] },
+        args: { path: "t0", include: ["arrangement-clips"] },
         result: JSON.stringify(
-          "Tool call 'ppal-read-track' timed out after 30000ms. Live may still be applying it — wait, then re-read before acting.",
+          "Tool call 'ppal-read-track' timed out after 45000ms. Live may still be applying it — wait, then re-read before acting.",
         ),
         isError: true,
       },
@@ -310,15 +312,15 @@ export const demoMessages: UIMessage[] = [
   }),
 
   // --- Scenario 9: Input validation failure ---
-  userMsg("Read track abc"),
+  userMsg("Read everything about track 0"),
   modelMsg({
-    text: "That's not a valid track index — it needs to be a number.",
+    text: "That's not one of the options the tool accepts. Let me pick the right ones.",
     tools: [
       {
         name: TOOL_READ_TRACK,
-        args: { trackIndex: "abc" },
+        args: { path: "t0", include: ["everything"] },
         result: JSON.stringify(
-          'MCP error -32602: Input validation error: Invalid arguments for tool ppal-read-track: [\n  {\n    "expected": "number",\n    "code": "invalid_type",\n    "received": "NaN",\n    "path": [\n      "trackIndex"\n    ],\n    "message": "Invalid input"\n  }\n]',
+          'MCP error -32602: Input validation error: Invalid arguments for tool ppal-read-track: Invalid option: expected one of "session-clips"|"arrangement-clips"|"notes"|"timing"|"sample"|"devices"|"drum-map"|"routings"|"available-routings"|"mixer"|"color"|"*" at include[0]',
         ),
         isError: true,
       },
@@ -355,13 +357,13 @@ export const demoMessages: UIMessage[] = [
       },
       {
         name: TOOL_READ_TRACK,
-        args: { trackIndex: 1 },
+        args: { path: "t1" },
         result: toolResult({
           id: "3",
+          path: "t1",
           type: "midi",
           name: "Bass",
           instrument: "Instrument Rack",
-          trackIndex: 1,
           sessionClipCount: 1,
           arrangementClipCount: 0,
           deviceCount: 1,

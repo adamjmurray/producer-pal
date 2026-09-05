@@ -4,7 +4,10 @@
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { filterSchemaForSmallModel } from "../filter-schema.ts";
+import {
+  filterSchemaForSmallModel,
+  unpublishEnumValues,
+} from "../filter-schema.ts";
 
 describe("filterSchemaForSmallModel", () => {
   it("should remove specified parameters from schema", () => {
@@ -391,6 +394,25 @@ describe("filterSchemaForSmallModel", () => {
     expect(() =>
       filterSchemaForSmallModel(schema, [], {}, { kind: ["x"] }),
     ).toThrow("unsupported schema shape");
+  });
+});
+
+describe("unpublishEnumValues", () => {
+  it("returns the schema untouched when nothing is unpublished", () => {
+    const schema = { type: z.enum(["midi", "audio"]).default("midi") };
+
+    expect(unpublishEnumValues(schema, {})).toBe(schema);
+  });
+
+  it("rebuilds an undescribed array param without inventing a description", () => {
+    const schema = {
+      include: z.array(z.enum(["notes", "warp"])).default([]),
+    };
+
+    const published = unpublishEnumValues(schema, { include: ["warp"] });
+
+    expect(published.include!.description).toBeUndefined();
+    expect(getEnumOptions(published.include)).toStrictEqual(["notes", "warp"]);
   });
 });
 

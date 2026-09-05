@@ -17,6 +17,7 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Count how many times a mock clip method ran, so a clip updated twice is
@@ -86,6 +87,32 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     mocks = setupUpdateClipMocks();
   });
 
+  /**
+   * Move both clips at once, with t1/s2 free for one of them to land in.
+   * @param toPath - Where the two clips are sent, in call order
+   * @returns The slot mocks and the per-clip results
+   */
+  async function moveBothClips(toPath: string): Promise<{
+    slots: Map<string, RegisteredMockObject>;
+    result: Array<{ id: string; path?: string }>;
+  }> {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    const slots = registerSlots([
+      [0, 0, 1],
+      [1, 1, 1],
+      [1, 2, 0],
+    ]);
+
+    const result = (await updateClip({
+      path: "t0/s0,t1/s1",
+      toPath,
+    })) as Array<{ id: string; path?: string }>;
+
+    return { slots, result };
+  }
+
   it("keeps each clip on the destination named at its own position", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
@@ -94,10 +121,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     // keep t5/s1 — sliding it onto t5/s0 would overwrite whatever sits there.
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).toHaveBeenCalledWith(1, "destination t5/s1 does not exist");
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      "destination t5/s0 does not exist",
+    expect(capturedWarnings()).toContain(
+      "clip t1/s1 (id 456) was not moved: destination t5/s1 does not exist",
+    );
+    expect(capturedWarnings()).not.toContain(
+      "clip t1/s1 (id 456) was not moved: destination t5/s0 does not exist",
     );
   });
 
@@ -107,9 +135,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("destination(s) for"),
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("destinations for"),
     );
   });
 
@@ -124,9 +151,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
-    expect(result).toStrictEqual({ id: "456", noteCount: 0 });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1", noteCount: 0 });
+    expect(capturedWarnings()).toContain(
       "id/path named 1 clip(s) more than once; each clip was updated once",
     );
   });
@@ -146,7 +172,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = await updateClip({ id: "123,123", name: "Once" });
 
     expect(callsNamed(mocks.clip123.set, "name")).toBe(1);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("gives a repeated clip the destination named the first time", async () => {
@@ -155,32 +181,21 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ id: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).toHaveBeenCalledWith(1, "destination t5/s0 does not exist");
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      "destination t5/s1 does not exist",
+    expect(capturedWarnings()).toContain(
+      "clip t1/s1 (id 456) was not moved: destination t5/s0 does not exist",
+    );
+    expect(capturedWarnings()).not.toContain(
+      "clip t1/s1 (id 456) was not moved: destination t5/s1 does not exist",
     );
   });
 
   // A move onto a slot the batch's own clip sits in overwrote it, and the batch
   // then reported the destroyed clip as updated.
   it("does not move a clip onto another clip this call updates", async () => {
-    setupMidiClipMock(mocks.clip123);
-    setupMidiClipMock(mocks.clip456);
-    const slots = registerSlots([
-      [0, 0, 1],
-      [1, 1, 1],
-      [1, 2, 0],
-    ]);
+    const { slots, result } = await moveBothClips("t1/s1,t1/s2");
 
-    const result = (await updateClip({
-      path: "t0/s0,t1/s1",
-      toPath: "t1/s1,t1/s2",
-    })) as Array<{ id: string; path?: string }>;
-
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "clip 123 was not moved: t1/s1 holds clip 456, which this call also " +
+    expect(capturedWarnings()).toContain(
+      "clip t0/s0 (id 123) was not moved: t1/s1 holds clip t1/s1 (id 456), which this call also " +
         "updates; move that clip out in its own call first",
     );
     // Nothing was copied out of t0/s0, so clip456 is still there to move itself.
@@ -188,7 +203,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       "duplicate_clip_to",
       expect.anything(),
     );
-    expect(result[1]).toMatchObject({ path: "t1/s2" });
+    expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
   });
 
   it("refuses both moves when two clips would trade slots", async () => {
@@ -201,13 +216,15 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ path: "t0/s0,t1/s1", toPath: "t1/s1,t0/s0" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("clip 123 was not moved: t1/s1 holds clip 456"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "clip t0/s0 (id 123) was not moved: t1/s1 holds clip t1/s1 (id 456)",
+      ),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("clip 456 was not moved: t0/s0 holds clip 123"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "clip t1/s1 (id 456) was not moved: t0/s0 holds clip t0/s0 (id 123)",
+      ),
     );
 
     for (const slot of slots.values()) {
@@ -221,29 +238,34 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
   // Both clips landing in one slot means the second overwrites the first, and
   // the response claims two clips are in it.
   it("moves only the first clip when toPath names one slot twice", async () => {
-    setupMidiClipMock(mocks.clip123);
-    setupMidiClipMock(mocks.clip456);
-    const slots = registerSlots([
-      [0, 0, 1],
-      [1, 1, 1],
-      [1, 2, 0],
-    ]);
+    const { slots, result } = await moveBothClips("t1/s2,t1/s2");
 
-    const result = (await updateClip({
-      path: "t0/s0,t1/s1",
-      toPath: "t1/s2,t1/s2",
-    })) as Array<{ id: string; path?: string }>;
-
-    expect(result[0]).toMatchObject({ path: "t1/s2" });
-    expect(result[1]).not.toHaveProperty("path");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "clip 456 was not moved: clip 123 is already moving to t1/s2; " +
+    expect(result[0]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
+    // The second clip stayed put, so its path is still its own slot.
+    expect(result[1]).toStrictEqual({ id: "456", path: "t1/s1" });
+    expect(capturedWarnings()).toContain(
+      "clip t1/s1 (id 456) was not moved: clip t0/s0 (id 123) is already moving to t1/s2; " +
         "name one slot per clip",
     );
     expect(slots.get("t1/s1")?.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to",
       expect.anything(),
+    );
+  });
+
+  // One destination covers both clips, so the count was never mismatched: the
+  // only thing wrong is the destination itself.
+  it("does not blame the count when the one destination is unparseable", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ path: "t0/s0,t1/s1", toPath: "t0/d0" });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("device paths hold no clips"),
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("destination for"),
     );
   });
 
@@ -253,9 +275,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     const result = await updateClip({ path: "t0/s0", toPath: "t0/s0" });
 
-    expect(result).toMatchObject({ id: "123", path: "t0/s0" });
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("was not moved"),
     );
   });
@@ -278,11 +299,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
         toPath: "t1/s2",
       });
 
-      expect(result).toMatchObject({ path: "t1/s2" });
-      expect(outlet).toHaveBeenCalledWith(1, `${param} "null" names nothing`);
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("destination(s) for"),
+      expect(result).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
+      expect(capturedWarnings()).toContain(`${param} "null" names nothing`);
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("destinations for"),
       );
     },
   );

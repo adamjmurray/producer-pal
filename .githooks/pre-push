@@ -1,0 +1,181 @@
+#!/bin/sh
+# Guards pushes to dev so every commit gets its own CI build.
+#
+# Opt in per clone (maintainers pushing to this repo; not on by default):
+#
+#   git config core.hooksPath .githooks
+#   git config --unset core.hooksPath     # back to .git/hooks
+#
+# Needs the gh CLI, authenticated against this repo. A fork has no runs for its
+# commits, so leave it off there.
+#
+# The "Run Test Suite" workflow uses cancel-in-progress on a per-branch
+# concurrency group, so a second push while a build is running KILLS the first
+# one and that commit ends up with no build at all. These three rules keep the
+# sequence one-commit-one-green-build:
+#
+#   1. one commit per push
+#   2. no push while a build is in flight
+#   3. no push when the latest build is red, or ran against something other
+#      than what is on the remote right now (a stale green proves nothing)
+#
+# refs/heads/dev is always guarded. A feature branch normally isn't — its commits
+# get squashed, so only the tip ever needs a build, and waiting on CI per push
+# would just slow it down. Opt one in when you plan to MERGE it instead of
+# squashing, so its history lands with a green build behind every commit:
+#
+#   git config --add push-guard.ref refs/heads/my-branch
+#   git config --unset-all push-guard.ref     # done with it
+#
+# Escape hatch: SKIP_DEV_PUSH_GUARD=1 git push ...   (or --no-verify)
+#
+# Signing is checked on EVERY ref, guarded or not, and SKIP_DEV_PUSH_GUARD does
+# not lift it — that hatch is about CI sequencing, and an unsigned commit is
+# never what anyone meant. pre-commit blocks the usual way in; this catches the
+# ways it can't see, and anything committed before the hooks were switched on.
+
+ZERO=0000000000000000000000000000000000000000
+WORKFLOW="Run Test Suite"
+# `gh run list` intermittently answers with a stale run: the branch-scoped form
+# has been seen naming commits weeks or months old. Querying by commit removes
+# that shape entirely, leaving only an empty answer while CI registers the run,
+# so re-read before trusting that one.
+GH_TRIES=3
+GH_RETRY_SLEEP=2
+
+# Print a refusal and the way out.
+block() {
+	echo "pre-push: refusing to push to $branch — $1" >&2
+	echo "" >&2
+	echo "  $2" >&2
+	echo "" >&2
+	echo "  Override: SKIP_DEV_PUSH_GUARD=1 git push ..." >&2
+	exit 1
+}
+
+# Whether this hook guards a ref: dev, or a branch opted in via git config.
+guarded() {
+	[ "$1" = "refs/heads/dev" ] && return 0
+
+	git config --get-all push-guard.ref 2>/dev/null | grep -qxF "$1"
+}
+
+while read -r _local_ref local_sha remote_ref remote_sha; do
+	branch=${remote_ref#refs/heads/}
+	# Deleting the branch — nothing to build.
+	[ "$local_sha" = "$ZERO" ] && continue
+
+	# --- 0. every commit being sent is signed ----------------------------
+	# "not on any origin ref" is the set this push introduces, which covers a
+	# brand-new branch as well as one with a remote head.
+	unsigned=$(git rev-list "$local_sha" --not --remotes=origin \
+		--format='%h %G?' --no-commit-header |
+		awk '$2 != "G" && $2 != "U" { print $1 }')
+
+	if [ -n "$unsigned" ]; then
+		echo "pre-push: refusing to push to $branch — unsigned commits:" >&2
+		echo "" >&2
+		echo "$unsigned" | sed 's/^/    /' >&2
+		echo "" >&2
+		echo "  Re-sign them, keeping their content and messages:" >&2
+		echo "" >&2
+		echo "    git rebase --force-rebase --gpg-sign <last-good-commit>" >&2
+		echo "" >&2
+		echo "  Override: git push --no-verify ..." >&2
+		exit 1
+	fi
+
+	[ "$SKIP_DEV_PUSH_GUARD" = "1" ] && continue
+
+	guarded "$remote_ref" || continue
+
+	# --- 1. one commit per push -----------------------------------------
+	# A force-push that rewinds counts 0 here, so recovering from a batched
+	# push (rewind, then re-push one at a time) stays allowed.
+	if [ "$remote_sha" != "$ZERO" ]; then
+		ahead=$(git rev-list --count "$remote_sha..$local_sha" 2>/dev/null)
+
+		if [ -z "$ahead" ]; then
+			block "cannot count the commits being pushed" \
+				"git rev-list failed against $remote_sha."
+		fi
+
+		if [ "$ahead" -gt 1 ]; then
+			block "$ahead commits at once" \
+				"Push them one at a time, waiting for green between each."
+		fi
+	fi
+
+	# A brand-new branch has no remote head to have built. Nothing to check.
+	[ "$remote_sha" = "$ZERO" ] && continue
+
+	# --- 2 & 3. CI state of what is on the remote right now --------------
+	# Ask for the head's run BY COMMIT. "--branch dev --limit 1" asks for the
+	# newest run on dev and has answered with runs months old, which looks exactly
+	# like "the head never built" and blocks a good push. A commit-scoped query
+	# cannot answer about a different commit, so that failure mode is gone rather
+	# than retried around.
+	#
+	# --commit needs the full 40-char sha — a short one silently matches nothing.
+	# The push protocol always hands us a full one.
+	#
+	# Empty now means only "no run for this commit yet". That is the one shape
+	# worth retrying; a run genuinely in flight or genuinely red is a real answer
+	# and blocks on the first read.
+	remote_short=$(printf %.8s "$remote_sha")
+	gh_err=$(mktemp)
+	attempt=1
+
+	while :; do
+		run=$(gh run list --commit "$remote_sha" --workflow "$WORKFLOW" --limit 1 \
+			--json headSha,status,conclusion \
+			--jq '.[0] // empty | "\(.headSha) \(.status) \(.conclusion)"' 2>"$gh_err")
+
+		[ -n "$run" ] && break
+		[ "$attempt" -ge "$GH_TRIES" ] && break
+
+		echo "pre-push: no $WORKFLOW run for $remote_short yet, re-reading ($attempt/$GH_TRIES)..." >&2
+		attempt=$((attempt + 1))
+		sleep "$GH_RETRY_SLEEP"
+	done
+
+	gh_stderr=$(cat "$gh_err")
+	rm -f "$gh_err"
+
+	if [ -z "$run" ]; then
+		if [ -n "$gh_stderr" ]; then
+			block "cannot read the $branch build status after $GH_TRIES tries" \
+				"$gh_stderr"
+		fi
+
+		block "$remote_short has no $WORKFLOW run" \
+			"$branch points at $remote_short, which has no build — CI has not registered it yet, or it never triggered. Wait a moment, or check the PR."
+	fi
+
+	# Three space-separated fields by construction.
+	# shellcheck disable=SC2086
+	set -- $run
+	run_sha=$1
+	run_status=$2
+	run_conclusion=$3
+
+	run_short=$(printf %.8s "$run_sha")
+
+	if [ "$run_status" != "completed" ]; then
+		block "a $branch build is still $run_status" \
+			"Pushing now cancels it (cancel-in-progress), leaving $run_short with no build. Wait for it."
+	fi
+
+	# Cannot happen with a commit-scoped query. Kept as a cheap invariant.
+	if [ "$run_sha" != "$remote_sha" ]; then
+		block "got a build for $run_short while $branch points at $remote_short" \
+			"gh answered with the wrong commit's run. Check it by hand."
+	fi
+
+	if [ "$run_conclusion" != "success" ]; then
+		block "the $branch build is $run_conclusion" \
+			"Fix $run_short before stacking another commit on it."
+	fi
+done
+
+exit 0

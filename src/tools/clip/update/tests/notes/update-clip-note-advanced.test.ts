@@ -39,6 +39,24 @@ function expectNoteUpdateCalls(
   });
 }
 
+/**
+ * Answer get_notes_extended with these notes, and nothing else.
+ * @param clip - The clip mock
+ * @param notes - Notes already in the clip
+ */
+function stubExistingNotes(
+  clip: UpdateClipMocks["clip123"],
+  notes: unknown[],
+): void {
+  clip.call.mockImplementation((method: string) => {
+    if (method === "get_notes_extended") {
+      return JSON.stringify({ notes });
+    }
+
+    return {};
+  });
+}
+
 describe("updateClip - Advanced note operations", () => {
   let mocks: UpdateClipMocks;
 
@@ -61,19 +79,11 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in the clip
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            note(60, 0), // C3 at 1|1 - should be deleted
-            note(62, 1, { velocity: 80 }), // D3 at 1|2 - should remain
-            note(64, 0, { velocity: 90 }), // E3 at 1|1 - should remain
-          ],
-        });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, [
+      note(60, 0), // C3 at 1|1 - should be deleted
+      note(62, 1, { velocity: 80 }), // D3 at 1|2 - should remain
+      note(64, 0, { velocity: 90 }), // E3 at 1|1 - should remain
+    ]);
 
     const result = await updateClip({
       id: "123",
@@ -112,22 +122,14 @@ describe("updateClip - Advanced note operations", () => {
     expect(notesArg.notes).toContainEqual(note(64, 0, { velocity: 90 })); // E3 at 1|1
     expect(notesArg.notes).toContainEqual(note(65, 0)); // New F3 note
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
 
   it("should handle v0 notes when no existing notes match", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes that don't match the v0 note
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [note(62, 1, { velocity: 80 })], // D3 at 1|2 - no match
-        });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, [note(62, 1, { velocity: 80 })]); // D3 at 1|2 - no match
 
     await updateClip({
       id: "123",
@@ -142,13 +144,7 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, []);
 
     await updateClip({
       id: "123",
@@ -200,7 +196,7 @@ describe("updateClip - Advanced note operations", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 4 }); // 2 existing + 2 copied
   });
 
   it("reports noteCount across read-clip's [-length, 2*length] window (near overhang counted, far overhang not)", async () => {
@@ -242,7 +238,7 @@ describe("updateClip - Advanced note operations", () => {
 
     // noteCount mirrors read-clip's window [-8, 16): beats 0, 4, and the overhang
     // at 8 are counted; F3 at beat 20 (> one clip-length past the end) is not.
-    expect(result).toStrictEqual({ id: "123", noteCount: 3 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
 
     // Window: from -length (-8) spanning length*3 (24), i.e. [-8, 16).
     expect(mocks.clip123.call).toHaveBeenCalledWith(
@@ -258,18 +254,10 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            note(60, 0), // C3 at 1|1
-            note(64, 1, { velocity: 80 }), // E3 at 1|2
-          ],
-        });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, [
+      note(60, 0), // C3 at 1|1
+      note(64, 1, { velocity: 80 }), // E3 at 1|2
+    ]);
 
     const result = await updateClip({
       id: "123",
@@ -286,7 +274,7 @@ describe("updateClip - Advanced note operations", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 
   it("should update warp mode for audio clips", async () => {
@@ -302,7 +290,7 @@ describe("updateClip - Advanced note operations", () => {
       4, // Complex mode = 4
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should update warping on/off for audio clips", async () => {
@@ -318,7 +306,7 @@ describe("updateClip - Advanced note operations", () => {
       1, // true = 1
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should update both warp mode and warping together", async () => {
@@ -340,7 +328,7 @@ describe("updateClip - Advanced note operations", () => {
       0, // false = 0
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   // The merge path concatenates existing + new notes, so the combined
@@ -367,7 +355,7 @@ describe("updateClip - Advanced note operations", () => {
       const added = tracking.getAddedNotes() as { start_time: number }[];
 
       expect(added.map((n) => n.start_time)).toStrictEqual([1, 2]);
-      expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+      expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
     });
 
     it("dedupes a same-pitch+start restatement, keeping the new (shorter) note", async () => {
@@ -392,7 +380,7 @@ describe("updateClip - Advanced note operations", () => {
       expect(added).toHaveLength(1);
       expect(added[0]?.start_time).toBe(0);
       expect(added[0]?.duration).toBe(1);
-      expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+      expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
     });
   });
 });

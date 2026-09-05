@@ -11,6 +11,7 @@ import {
   beginLiveApiScope,
   endLiveApiScope,
   memoizedObject,
+  requestMemo,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
@@ -23,14 +24,11 @@ describe("live-api memo", () => {
     );
   });
 
-  // this_device names one object forever but resolves to an indexed path
-  // (live_set tracks 3 devices 0), and deleting an earlier track moves the
-  // device without moving the path. A remembered object keeps reporting the
-  // host track it was resolved against — and delete's "don't remove Producer
-  // Pal's own track" guard compares against exactly that number.
-  it("resolves this_device afresh every time", () => {
-    expect(LiveAPI.from("this_device")).not.toBe(LiveAPI.from("this_device"));
-    expect(memoizedObject("this_device")).toBeUndefined();
+  // this_device resolves to an indexed path (live_set tracks 3 devices 0), but
+  // the held object follows its device: shift a track or a device ahead of it
+  // and Live rewrites the path. Measured — see live-api-build.ts.
+  it("hands back the same object for this_device", () => {
+    expect(LiveAPI.from("this_device")).toBe(LiveAPI.from("this_device"));
   });
 
   // The one that matters. Tools read a path, mutate, then read the same path
@@ -74,5 +72,47 @@ describe("live-api memo", () => {
     mockNonExistentObjects();
 
     expect(LiveAPI.from(livePath.liveSet)).not.toBe(first);
+  });
+
+  // A rack's return chain names, and anything else a request reads once and
+  // reuses. Same lifetime as a memoized object: settled within a request,
+  // stale after it.
+  it("computes a derived value once per request and forgets it after", () => {
+    let computed = 0;
+    const compute = (): number => ++computed;
+
+    beginLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(1);
+    expect(requestMemo("count", compute)).toBe(1);
+    expect(requestMemo("other", compute)).toBe(2);
+
+    endLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(3);
+  });
+
+  // Requests overlap whenever a tool awaits, and the second one can rename the
+  // very thing the first derived its value from.
+  it("stops reusing a derived value once a second request is in flight", () => {
+    let computed = 0;
+    const compute = (): number => ++computed;
+
+    beginLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(1);
+
+    // A second request starts while the first is suspended on an await.
+    beginLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(2);
+    expect(requestMemo("count", compute)).toBe(3);
+
+    endLiveApiScope();
+
+    // The first request resumes: its value predates the other request's writes.
+    expect(requestMemo("count", compute)).toBe(4);
+
+    endLiveApiScope();
   });
 });

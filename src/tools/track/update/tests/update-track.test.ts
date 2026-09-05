@@ -13,6 +13,7 @@ import {
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateTrack", () => {
   let track123: RegisteredMockObject;
@@ -40,7 +41,7 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("mute", true);
     expect(track123.set).toHaveBeenCalledWith("solo", false);
     expect(track123.set).toHaveBeenCalledWith("arm", true);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should update multiple tracks by comma-separated IDs", () => {
@@ -55,7 +56,10 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledTimes(2);
     expect(track456.set).toHaveBeenCalledTimes(2);
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+    ]);
   });
 
   it("should handle 'id ' prefixed track IDs", () => {
@@ -65,7 +69,7 @@ describe("updateTrack", () => {
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Prefixed ID Track");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should not update properties when not provided", () => {
@@ -76,7 +80,7 @@ describe("updateTrack", () => {
 
     expect(track123.set).toHaveBeenCalledWith("name", "Only Name Update");
     expect(track123.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -90,23 +94,22 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("mute", false);
     expect(track123.set).toHaveBeenCalledWith("solo", false);
     expect(track123.set).toHaveBeenCalledWith("arm", false);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
-  it("should warn and return empty when id is missing", () => {
-    expect(updateTrack({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: id is required");
-
-    vi.mocked(outlet).mockClear();
-    expect(updateTrack({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: id is required");
+  it("should refuse the call when id is missing", () => {
+    expect(() => updateTrack({})).toThrow("id or path is required");
+    expect(() => updateTrack({ name: "Test" })).toThrow(
+      "id or path is required",
+    );
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still updates by the ids alias", () => {
-    expect(updateTrack({ id: "123", name: "Renamed" })).toStrictEqual({
+    expect(updateTrack({ ids: "123", name: "Renamed" })).toStrictEqual({
       id: "123",
+      path: "t0",
     });
     expect(track123.set).toHaveBeenCalledWith("name", "Renamed");
   });
@@ -117,10 +120,7 @@ describe("updateTrack", () => {
     const result = updateTrack({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateTrack: id "nonexistent" does not exist',
-    );
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
@@ -128,20 +128,82 @@ describe("updateTrack", () => {
 
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateTrack: id "nonexistent" does not exist',
-    );
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
     expect(track123.set).toHaveBeenCalledWith("name", "Test");
+  });
+
+  it("keeps positional name/color aligned to original ids when one is skipped", () => {
+    mockNonExistentObjects();
+
+    // ids[0] is invalid and skipped, but the positional name/color lists must
+    // still line up with the ORIGINAL id positions: id "123" is position 1 → B,
+    // id "456" is position 2 → C. Before the fix they shifted to A/B.
+    const result = updateTrack({
+      id: "nonexistent,123,456",
+      name: "A,B,C",
+      color: "#FF0000,#00FF00,#0000FF",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+    ]);
+    expect(track123.set).toHaveBeenCalledWith("name", "B");
+    expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(track456.set).toHaveBeenCalledWith("name", "C");
+    expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+  });
+
+  // A trailing comma is the commonest typo in a hand-written list. Counting it
+  // as an entry made it an empty name, which Live accepts, so the last track
+  // lost its name without a word. It is not an entry on either side now, so the
+  // two lists agree and the call goes through.
+  it("does not clear a name for a trailing comma", () => {
+    updateTrack({ id: "123,456", name: "A,B," });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "A");
+    expect(track456.set).toHaveBeenCalledWith("name", "B");
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Which is also why the trailing comma can't hide a real mismatch: it is
+  // dropped before the counts are compared, so 3 ids against "A,B," is 3
+  // against 2, and refused.
+  it("refuses a trailing comma that leaves the lists uneven", () => {
+    expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
+      "id and path names 3 entries but name names 2 entries.",
+    );
+  });
+
+  // A gap in a name list used to mean "leave this one alone", while the same
+  // gap in an id list was refused. One rule now: no list takes a hole.
+  it("refuses an empty entry in a name list", () => {
+    expect(() => updateTrack({ id: "123,456,789", name: "A,,C" })).toThrow(
+      'invalid name "A,,C" - it has an empty entry',
+    );
+    expect(track123.set).not.toHaveBeenCalledWith("name", expect.anything());
+  });
+
+  // `name: ""` still clears the name, for every target in the call — the one
+  // unambiguous spelling, now that a hole isn't one.
+  it("clears every name for a blank name param", () => {
+    updateTrack({ id: "123,456", name: "" });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "");
+    expect(track456.set).toHaveBeenCalledWith("name", "");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
     const singleResult = updateTrack({ id: "123", name: "Single" });
     const arrayResult = updateTrack({ id: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toStrictEqual({ id: "123" });
-    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123", path: "t0" });
+    expect(arrayResult).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+    ]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -150,29 +212,36 @@ describe("updateTrack", () => {
       color: "#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+      { id: "789", path: "t2" },
+    ]);
   });
 
-  it("should filter out empty IDs from comma-separated list", () => {
-    const result = updateTrack({
-      id: "123,,456,  ,789",
-      name: "Filtered",
-    });
+  // Refusing is atomic: nothing has been set, so the caller retries with the
+  // stray comma removed and loses no work.
+  it("should refuse an empty ID in a comma-separated list", () => {
+    expect(() =>
+      updateTrack({
+        id: "123,,456,  ,789",
+        name: "Filtered",
+      }),
+    ).toThrow('invalid id "123,,456,  ,789" - it has an empty entry.');
 
-    expect(track123.set).toHaveBeenCalledTimes(1);
-    expect(track456.set).toHaveBeenCalledTimes(1);
-    expect(track789.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(track123.set).not.toHaveBeenCalled();
+    expect(track456.set).not.toHaveBeenCalled();
+    expect(track789.set).not.toHaveBeenCalled();
   });
 
   describe("routing properties", () => {
     it("should update routing properties when provided", () => {
       const result = updateTrack({
         id: "123",
-        inputRoutingTypeId: "17",
-        inputRoutingChannelId: "1",
-        outputRoutingTypeId: "25",
-        outputRoutingChannelId: "26",
+        inputRoutingType: "17",
+        inputRoutingChannel: "1",
+        outputRoutingType: "25",
+        outputRoutingChannel: "26",
       });
 
       expect(track123.set).toHaveBeenCalledWith(
@@ -192,7 +261,7 @@ describe("updateTrack", () => {
         '{"output_routing_channel":{"identifier":26}}',
       );
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should update monitoring state when provided", () => {
@@ -203,7 +272,7 @@ describe("updateTrack", () => {
 
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should update monitoring state for all valid values", () => {
@@ -234,11 +303,10 @@ describe("updateTrack", () => {
         "current_monitoring_state",
         expect.anything(),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("invalid monitoring state"),
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should handle mixed routing and basic properties", () => {
@@ -247,7 +315,7 @@ describe("updateTrack", () => {
         name: "Test Track",
         color: "#FF0000",
         mute: true,
-        inputRoutingTypeId: "17",
+        inputRoutingType: "17",
         monitoringState: MONITORING_STATE.IN,
       });
 
@@ -260,13 +328,13 @@ describe("updateTrack", () => {
       );
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 0);
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should handle routing properties in bulk operations", () => {
       const result = updateTrack({
         id: "123, 456",
-        outputRoutingTypeId: "25",
+        outputRoutingType: "25",
         monitoringState: MONITORING_STATE.AUTO,
       });
 
@@ -281,7 +349,10 @@ describe("updateTrack", () => {
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
       expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 1);
 
-      expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+      expect(result).toStrictEqual([
+        { id: "123", path: "t0" },
+        { id: "456", path: "t1" },
+      ]);
     });
 
     it("should not update routing properties when not provided", () => {
@@ -294,7 +365,7 @@ describe("updateTrack", () => {
       expect(track123.set).toHaveBeenCalledTimes(1);
       expect(track123.set).toHaveBeenCalledWith("name", "Only Name Update");
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     describe("type-guarded routing and monitoring", () => {
@@ -306,8 +377,8 @@ describe("updateTrack", () => {
 
         updateTrack({
           id: "ret1",
-          inputRoutingTypeId: "17",
-          outputRoutingTypeId: "25",
+          inputRoutingType: "17",
+          outputRoutingType: "25",
         });
 
         // Input routing exists only on regular non-group tracks: warn-and-skip.
@@ -320,8 +391,7 @@ describe("updateTrack", () => {
           "output_routing_type",
           '{"output_routing_type":{"identifier":25}}',
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("input routing is only available"),
         );
       });
@@ -332,14 +402,13 @@ describe("updateTrack", () => {
           properties: { is_foldable: 1 },
         });
 
-        updateTrack({ id: "grp1", inputRoutingTypeId: "17" });
+        updateTrack({ id: "grp1", inputRoutingType: "17" });
 
         expect(groupTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",
           expect.anything(),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("input routing is only available"),
         );
       });
@@ -356,13 +425,35 @@ describe("updateTrack", () => {
           "current_monitoring_state",
           expect.anything(),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "monitoringState is only available on armable",
           ),
         );
       });
+    });
+  });
+
+  // The helper is unit-tested on its own, but nothing checked updateTrack
+  // actually routes a return track's name through it — the read tool reports
+  // "A-Delay", and writing that back unstripped gives "A-A-Delay".
+  describe("return track names", () => {
+    it("strips the send letter read-track reported", () => {
+      const returnTrack = registerMockObject("ret1", {
+        path: livePath.returnTrack(0),
+      });
+
+      updateTrack({ id: "ret1", name: "A-Delay" });
+
+      expect(returnTrack.set).toHaveBeenCalledWith("name", "Delay");
+    });
+
+    it("leaves a regular track's name alone", () => {
+      const track = registerMockObject("trk1", { path: livePath.track(0) });
+
+      updateTrack({ id: "trk1", name: "A-Delay" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "A-Delay");
     });
   });
 
@@ -386,7 +477,7 @@ describe("updateTrack", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested track t0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();
@@ -438,11 +529,11 @@ describe("updateTrack", () => {
       expect(consoleSpy).toHaveBeenCalledTimes(2);
       expect(consoleSpy).toHaveBeenNthCalledWith(
         1,
-        "Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+        "Requested track t0 (id 123) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
       );
       expect(consoleSpy).toHaveBeenNthCalledWith(
         2,
-        "Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+        "Requested track t1 (id 456) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();

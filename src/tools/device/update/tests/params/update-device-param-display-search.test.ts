@@ -1,0 +1,417 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  type RegisteredMockObject,
+  expectValueSet,
+  registerDeviceWithParams,
+  registerMockObject,
+  updateDevice,
+} from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+// A non-linear dB param, like Saturator's Drive: raw 0–1 maps to -36..+36 dB
+// and the display rounds to 0.1 dB steps, so each step is 1/720 of the raw
+// range. Live snaps what you write to its own resolution, so a raw value on a
+// step boundary reads back one step off. Math.fround models the snap — Live is
+// this coarse at best, and coarser on some params.
+const STEP = 1 / 720;
+
+function displayFor(raw: number): number {
+  return Math.round((raw * 72 - 36) * 10) / 10;
+}
+
+function registerDbParam(): RegisteredMockObject {
+  registerDeviceWithParams("db-param");
+
+  return registerMockObject("db-param", {
+    properties: {
+      name: "Drive",
+      original_name: "Drive",
+      is_quantized: 0,
+      value: 0.5,
+      min: 0,
+      max: 1,
+    },
+    methods: {
+      str_for_value: (v: unknown) => `${displayFor(Number(v)).toFixed(1)} dB`,
+    },
+  });
+}
+
+describe("updateDevice - display-value search", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerDbParam();
+  });
+
+  it("lands in the middle of the requested display step, not on its edge", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "2.3" }] });
+
+    const written = expectValueSet(param);
+
+    expect(displayFor(written)).toBe(2.3);
+    // Middle of the step, so 32-bit rounding can't push it into a neighbor.
+    expect(displayFor(Math.fround(written))).toBe(2.3);
+    expect(Math.abs(written - (36 + 2.25) / 72)).toBeGreaterThan(STEP / 4);
+  });
+
+  it("hits every step across the range", () => {
+    for (let tenths = -359; tenths <= 359; tenths++) {
+      const target = (tenths / 10).toFixed(1);
+
+      param.set.mockClear();
+      updateDevice({ id: "dev1", params: [{ name: "Drive", value: target }] });
+
+      expect(displayFor(Math.fround(expectValueSet(param)))).toBe(
+        Number(target),
+      );
+    }
+  });
+
+  it("rounds down when the step below the target is closer", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "2.26" }] });
+
+    expect(displayFor(Math.fround(expectValueSet(param)))).toBe(2.3);
+
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "2.24" }] });
+
+    expect(displayFor(Math.fround(expectValueSet(param)))).toBe(2.2);
+  });
+
+  it("clamps to the raw max when the target is above the display range", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "99" }] });
+
+    expect(expectValueSet(param)).toBe(1);
+    expect(capturedWarnings()).toContain(
+      't0/d0 (id dev1) param "Drive" (id db-param) only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value.',
+    );
+  });
+
+  it("stays inside the bottom step when the target is below the display range", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "-99" }] });
+
+    expect(displayFor(Math.fround(expectValueSet(param)))).toBe(-36);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
+    );
+  });
+
+  it("says nothing about the range when the target is inside it", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "12" }] });
+
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+});
+
+// Glue Compressor's Attack: is_quantized is 0, but only seven displays are
+// reachable. A target between rungs is off by a lot no matter which way it
+// rounds, so this is where round-up vs. round-to-nearest is visible.
+const RUNGS = [0.01, 0.1, 0.3, 1, 3, 10, 30];
+
+function registerLadderParam(): RegisteredMockObject {
+  registerDeviceWithParams("ladder-param");
+
+  return registerMockObject("ladder-param", {
+    properties: {
+      name: "Attack",
+      original_name: "Attack",
+      is_quantized: 0,
+      value: 0,
+      min: 0,
+      max: 6,
+    },
+    methods: {
+      str_for_value: (v: unknown) =>
+        `${RUNGS[Math.min(Math.floor(Number(v)), RUNGS.length - 1)]} ms`,
+    },
+  });
+}
+
+describe("updateDevice - display-value search on a discrete ladder", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerLadderParam();
+  });
+
+  function displayAfterWrite(target: string): number {
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Attack", value: target }] });
+
+    return RUNGS[Math.floor(expectValueSet(param))] as number;
+  }
+
+  it("picks the nearer rung when the target falls between two", () => {
+    expect(displayAfterWrite("2")).toBe(3);
+    expect(displayAfterWrite("1.5")).toBe(1);
+    expect(displayAfterWrite("25")).toBe(30);
+    expect(displayAfterWrite("12")).toBe(10);
+  });
+
+  it("rounds a tie up", () => {
+    expect(displayAfterWrite("20")).toBe(30);
+  });
+
+  it("still hits every rung exactly", () => {
+    for (const rung of RUNGS) {
+      expect(displayAfterWrite(String(rung))).toBe(rung);
+    }
+  });
+});
+
+function registerLinearParam(): RegisteredMockObject {
+  registerDeviceWithParams("linear-param");
+
+  return registerMockObject("linear-param", {
+    properties: {
+      name: "Threshold",
+      original_name: "Threshold",
+      is_quantized: 0,
+      value: 0,
+      min: -40,
+      max: 0,
+    },
+    methods: {
+      str_for_value: (v: unknown) => `${Number(v).toFixed(2)} dB`,
+    },
+  });
+}
+
+// A param whose display range matches its raw range skips the search and writes
+// the target straight through, so it's the one path that could hand Live a
+// value outside the range — which Live drops without a word.
+describe("updateDevice - display-value search on a linear param", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerLinearParam();
+  });
+
+  it("writes the target straight through when it's in range", () => {
+    updateDevice({
+      id: "dev1",
+      params: [{ name: "Threshold", value: "-12.5" }],
+    });
+
+    expect(expectValueSet(param)).toBe(-12.5);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("clamps a target past the range instead of letting Live drop it", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Threshold", value: "-99" }] });
+
+    expect(expectValueSet(param)).toBe(-40);
+
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Threshold", value: "5" }] });
+
+    expect(expectValueSet(param)).toBe(0);
+  });
+});
+
+// Some params have no number line at all: Hybrid Reverb's Vintage runs
+// "Off".."Extreme". There is nothing to convert, so the request goes to Live as
+// a raw value — and Live drops one outside the raw range without a word, which
+// is what the readback check is for.
+describe("updateDevice - a request Live silently drops", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerDeviceWithParams("word-param");
+
+    param = registerMockObject("word-param", {
+      properties: {
+        name: "Vintage",
+        original_name: "Vintage",
+        is_quantized: 0,
+        value: 1,
+        min: 0,
+        max: 4,
+      },
+      methods: {
+        str_for_value: (v: unknown) => {
+          const raw = Number(v);
+
+          if (raw < 0 || raw > 4) return "";
+
+          return ["Off", "Subtle", "Old", "Older", "Extreme"][
+            Math.round(raw)
+          ] as string;
+        },
+      },
+    });
+
+    param.set.mockImplementation((property: string, value: unknown) => {
+      const raw = Number(value);
+
+      if (property === "value" && raw >= 0 && raw <= 4) {
+        param.properties.value = Math.fround(raw);
+      }
+    });
+  });
+
+  it("warns when the value never changed", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "10" }] });
+
+    expect(param.properties.value).toBe(1);
+    expect(capturedWarnings()).toContain(
+      't0/d0 (id dev1) param "Vintage" (id word-param) was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
+  it("says nothing when the value does change", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "2" }] });
+
+    expect(param.properties.value).toBe(2);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+});
+
+// Glue Compressor's Release: raw 0..6 over seven display steps, the top of
+// which is the word "A" (Auto). Trimming that end off is what makes the numbers
+// below it reachable — before, the whole param fell back to raw units and
+// asking for 0.4 gave 0.1.
+function registerSentinelParam(): RegisteredMockObject {
+  registerDeviceWithParams("sentinel-param");
+
+  return registerMockObject("sentinel-param", {
+    properties: {
+      name: "Release",
+      original_name: "Release",
+      is_quantized: 0,
+      value: 0,
+      min: 0,
+      max: 6,
+    },
+    methods: {
+      str_for_value: (v: unknown) => {
+        const raw = Number(v);
+
+        if (raw >= 6) return "A";
+
+        return String(RELEASE_STEPS[Math.floor(raw)]);
+      },
+    },
+  });
+}
+
+const RELEASE_STEPS = [0.1, 0.2, 0.4, 0.6, 0.8, 1.2];
+
+describe("updateDevice - a word at the max end of the range", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerSentinelParam();
+  });
+
+  function displayAfterWrite(target: string): number | string {
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Release", value: target }] });
+
+    const raw = expectValueSet(param);
+
+    return raw >= 6 ? "A" : (RELEASE_STEPS[Math.floor(raw)] as number);
+  }
+
+  it("hits every step below the word", () => {
+    for (const step of RELEASE_STEPS) {
+      expect(displayAfterWrite(String(step))).toBe(step);
+    }
+  });
+
+  it("reaches the word by naming it", () => {
+    expect(displayAfterWrite("A")).toBe("A");
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("matches the word case-insensitively", () => {
+    expect(displayAfterWrite("a")).toBe("A");
+  });
+
+  it("names the word when a target overshoots the numbers", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Release", value: "3" }] });
+
+    expect(capturedWarnings()).toContain(
+      't0/d0 (id dev1) param "Release" (id sentinel-param) only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value.',
+    );
+  });
+});
+
+// A display that falls as the raw value rises, like Multiband Dynamics' ratios:
+// raw -1..1 reads "1 : Inf" down to "1 : 0.50". Steps of 0.1, as Live rounds.
+function descendingDisplayFor(raw: number): number {
+  return Math.round((5 - 2 * raw) * 10) / 10;
+}
+
+function registerRatioParam(
+  strForValue: (v: unknown) => string,
+): RegisteredMockObject {
+  registerDeviceWithParams("ratio-param");
+
+  return registerMockObject("ratio-param", {
+    properties: {
+      name: "Above Ratio",
+      original_name: "Above Ratio",
+      is_quantized: 0,
+      value: 0,
+      min: -1,
+      max: 1,
+    },
+    methods: { str_for_value: strForValue },
+  });
+}
+
+describe("updateDevice - display-value search on a descending range", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerRatioParam(
+      (v) => `1 : ${descendingDisplayFor(Number(v)).toFixed(2)}`,
+    );
+  });
+
+  it("finds the raw value for a target the display counts down to", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "4" }] });
+
+    expect(descendingDisplayFor(expectValueSet(param))).toBe(4);
+  });
+
+  it("hits every step across the range", () => {
+    for (let tenths = 30; tenths <= 70; tenths++) {
+      const target = (tenths / 10).toFixed(1);
+
+      param.set.mockClear();
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Above Ratio", value: target }],
+      });
+
+      expect(descendingDisplayFor(expectValueSet(param))).toBe(Number(target));
+    }
+  });
+
+  it("warns in the param's own units when the target is off the end", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "9" }] });
+
+    expect(capturedWarnings().join("\n")).toContain("1 : 7.00");
+  });
+});
+
+describe("updateDevice - a display range collapsed to a point", () => {
+  it("skips the write instead of walking to the middle of the raw range", () => {
+    // Every raw value reads the same, so no display value maps back to a raw
+    // one. Searching would land in the middle and report success from there.
+    const param = registerRatioParam(() => "1 : 1.00");
+
+    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "1" }] });
+
+    expect(param.set).not.toHaveBeenCalled();
+    expect(capturedWarnings().join("\n")).toContain("1 : 1.00");
+  });
+});

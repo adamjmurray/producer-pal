@@ -15,6 +15,10 @@
 
 import { describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -38,7 +42,7 @@ const RACK = livePath.track(1).device(0);
  * listing only the filled ones puts them at the wrong notes and hides what a
  * read pays for the rest.
  */
-function setupKit(): void {
+function setupKit(sendsActive = false): void {
   const padIds = Array.from(
     { length: RACK_PADS },
     (_, note) => `pad${String(note)}`,
@@ -75,7 +79,7 @@ function setupKit(): void {
   }
 
   for (let i = 0; i < PADS; i++) {
-    setupPadChain(i, chainIds[i] as string, returnIds);
+    setupPadChain(i, chainIds[i] as string, returnIds, sendsActive);
   }
 }
 
@@ -104,11 +108,13 @@ function registerFixturePad(note: number, padId: string): void {
  * @param index - Chain index within the rack
  * @param chainId - Id for the chain
  * @param returnIds - The rack's return chain ids, one send each
+ * @param sendsActive - Whether the sends are turned up
  */
 function setupPadChain(
   index: number,
   chainId: string,
   returnIds: string[],
+  sendsActive: boolean,
 ): void {
   const note = FIRST_NOTE + index;
   const chainPath = `${RACK} chains ${String(index)}`;
@@ -167,7 +173,10 @@ function setupPadChain(
     registerMockObject(sendId, {
       path: `${chainPath} mixer_device sends ${String(r)}`,
       type: "DeviceParameter",
-      properties: { display_value: -70, value: 0 },
+      properties: {
+        display_value: sendsActive ? -12 : -70,
+        value: sendsActive ? 0.5 : 0,
+      },
     });
   }
 }
@@ -208,5 +217,31 @@ describe("readDevice drum rack build budget", () => {
     // shows it, not because it stopped happening. Per chain that mixer costs
     // the mixer device, a volume, a pan, and one send per return chain.
     expect(liveApiBuildStats().resolved).toBe(2 + PADS * (2 + 3 + RETURNS));
+  });
+
+  it("names a chain's returns once per rack, not once per chain", () => {
+    setupKit(true);
+
+    // Inside a request scope: the names are remembered for one request only, so
+    // without one every chain names the returns again.
+    beginLiveApiScope();
+
+    try {
+      readDevice({
+        path: "t1/d0",
+        include: ["drum-pads", "chains"],
+        maxDepth: 0,
+      });
+    } finally {
+      endLiveApiScope();
+    }
+
+    // A chain with a send up has to name the returns it feeds, and the names
+    // live on the rack — the same rack for every chain. Reading them per chain
+    // cost 1 + RETURNS objects a pad and doubled the time to read a 64-pad kit
+    // against real Live. The + 1 + RETURNS here is the whole rack's share.
+    expect(liveApiBuildStats().resolved).toBe(
+      2 + PADS * (2 + 3 + RETURNS) + 1 + RETURNS,
+    );
   });
 });

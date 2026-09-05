@@ -18,6 +18,7 @@ import {
   type ClipPropsToSet,
 } from "#src/tools/clip/update/helpers/update-clip-properties-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -39,7 +40,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Prefixed ID Clip");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should not update properties when not provided", async () => {
@@ -62,7 +63,7 @@ describe("updateClip - Properties and ID handling", () => {
       expect.anything(),
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should handle boolean false values correctly", async () => {
@@ -74,7 +75,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", false);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", async () => {
@@ -89,11 +90,8 @@ describe("updateClip - Properties and ID handling", () => {
       name: "Test",
     });
 
-    expect(result).toStrictEqual({ id: "123" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateClip: id "nonexistent" does not exist',
-    );
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -104,8 +102,11 @@ describe("updateClip - Properties and ID handling", () => {
     const singleResult = await updateClip({ id: "123", name: "Single" });
     const arrayResult = await updateClip({ id: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toStrictEqual({ id: "123" });
-    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(arrayResult).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+    ]);
   });
 
   it("should handle whitespace in comma-separated IDs", async () => {
@@ -121,23 +122,38 @@ describe("updateClip - Properties and ID handling", () => {
       color: "#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+      // start_time 8 in 4/4 is bar 3 beat 1
+      { id: "789", path: "t2[3|1]" },
+    ]);
   });
 
-  it("should filter out empty IDs from comma-separated list", async () => {
+  // Refusing is atomic: nothing has been set, so the caller drops the stray
+  // comma and retries with no work to undo.
+  it("should refuse an empty ID in a comma-separated list", async () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    const result = await updateClip({
-      id: "123,,456,  ,",
-      name: "Filtered",
-    });
+    await expect(
+      updateClip({ id: "123,,456,  ,", name: "Filtered" }),
+    ).rejects.toThrow('invalid id "123,,456,  ," - it has an empty entry.');
 
-    // set the names of the two clips:
-    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Filtered");
-    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Filtered");
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
+  });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+  it("should refuse an empty entry in a comma-separated path list", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await expect(
+      updateClip({ path: "t0/s0,,t1/s1", name: "One,Two,Three" }),
+    ).rejects.toThrow('invalid path "t0/s0,,t1/s1" - it has an empty entry.');
+
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
   });
 
   describe("color quantization verification", () => {
@@ -170,7 +186,7 @@ describe("updateClip - Properties and ID handling", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested clip t0/s0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();

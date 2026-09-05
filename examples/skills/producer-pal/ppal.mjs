@@ -18,7 +18,7 @@
 // Examples:
 //   node ppal.mjs --list-tools --notation midi-json
 //   node ppal.mjs ppal-read-live-set
-//   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+//   node ppal.mjs ppal-read-track '{"path": "t0"}'
 //   node ppal.mjs ppal-create-clip '{...}' --timeout-ms 10000
 //   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 //
@@ -28,8 +28,8 @@
 
 const DEFAULT_BASE_URL = "http://localhost:3350";
 
-// The three per-request headers. Unlike --set-config these change nothing on the
-// device: each applies to the one request that carries it, so it can't move the
+// Three of the per-request headers. Unlike --set-config these change nothing on
+// the device: each applies to the one request that carries it, so it can't move the
 // chat UI or another client off its own notation or toolset. Absent ⇒ that
 // client keeps the device's global setting.
 const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
@@ -177,7 +177,7 @@ time, --list-tools included.
 Examples:
   node ppal.mjs --list-tools --notation midi-json
   node ppal.mjs ppal-read-live-set
-  node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+  node ppal.mjs ppal-read-track '{"path": "t0"}'
   node ppal.mjs ppal-create-clip '{...}' --notation midi-json
   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 `;

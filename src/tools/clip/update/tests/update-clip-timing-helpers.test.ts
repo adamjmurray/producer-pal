@@ -1,9 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { calculateBeatPositions } from "../helpers/update-clip-timing-helpers.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("update-clip-timing-helpers", () => {
   beforeEach(() => {
@@ -53,20 +58,18 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("firstStart parameter ignored"),
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("firstStart ignored for clip"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("exceeds clip content boundary"),
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("exceeds its content boundary"),
       );
       expect(result.startMarkerBeats).toBeNull();
       expect(result.firstStartBeats).toBe(8); // Still calculated, just not applied
     });
 
     it("should set startMarkerBeats when firstStart is within end_marker", () => {
-      vi.mocked(outlet).mockClear();
+      clearCapturedWarnings();
 
       const mockClip = clipStub({
         end_marker: 8, // 2 bars at 4/4
@@ -77,7 +80,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
       });
 
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
       expect(result.startMarkerBeats).toBe(2);
       expect(result.firstStartBeats).toBe(2);
     });
@@ -105,7 +108,7 @@ describe("update-clip-timing-helpers", () => {
     });
 
     it("should not warn when start exceeds end_marker (silent skip intentional)", () => {
-      vi.mocked(outlet).mockClear();
+      clearCapturedWarnings();
 
       const mockClip = clipStub({
         end_marker: 4, // 1 bar at 4/4
@@ -117,7 +120,7 @@ describe("update-clip-timing-helpers", () => {
       });
 
       // No warning for start param - silent skip is intentional
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
       expect(result.startMarkerBeats).toBeNull();
       expect(result.startBeats).toBe(8);
     });
@@ -135,9 +138,8 @@ describe("update-clip-timing-helpers", () => {
 
       expect(result.firstStartBeats).toBe(4);
       expect(result.startMarkerBeats).toBeNull();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("firstStart parameter ignored"),
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("firstStart ignored for clip"),
       );
     });
 
@@ -155,7 +157,7 @@ describe("update-clip-timing-helpers", () => {
 
       expect(result.startBeats).toBe(4);
       expect(result.startMarkerBeats).toBeNull();
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("derives start from end_marker - length on non-looping clips (no drift warn)", () => {
@@ -177,7 +179,7 @@ describe("update-clip-timing-helpers", () => {
 
       expect(result.startBeats).toBe(4);
       expect(result.endBeats).toBe(8);
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("does not warn when derived-start drift is exactly SAME_TIME_EPSILON (strict >)", () => {
@@ -197,7 +199,7 @@ describe("update-clip-timing-helpers", () => {
       });
 
       expect(result.startBeats).toBe(0);
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 

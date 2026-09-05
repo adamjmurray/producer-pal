@@ -3,19 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
+  testNote,
   createTestNotes,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
+import { warnSpyWithNote, warnSpyWithNotes } from "./transform-test-helpers.ts";
 
 // Asserts a merge tolerance is rejected: the two well-separated notes pass
 // through unchanged and a warning containing `message` is emitted.
 function expectMergeWarnsAndSkips(transform: string, message: string): void {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const notes = createTestNotes([
+  const { warn, notes } = warnSpyWithNotes([
     { pitch: 60, start_time: 0, duration: 1 },
     { pitch: 60, start_time: 3, duration: 1 },
   ]);
@@ -52,22 +52,19 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("inherits velocity, probability, and deviation from the parent", () => {
-      const notes = createTestNote({
-        duration: 1,
+      const inherited = {
         velocity: 90,
         probability: 0.7,
         velocity_deviation: 12,
-      });
+      };
+      const notes = createTestNote({ duration: 1, ...inherited });
 
       applyTransforms(notes, "ratchet(2)", 4, 4);
 
-      for (const note of notes) {
-        expect(note).toMatchObject({
-          velocity: 90,
-          probability: 0.7,
-          velocity_deviation: 12,
-        });
-      }
+      expect(notes).toStrictEqual([
+        testNote({ start_time: 0, duration: 0.5, ...inherited }),
+        testNote({ start_time: 0.5, duration: 0.5, ...inherited }),
+      ]);
     });
 
     it("only ratchets notes matching a pitch selector", () => {
@@ -150,8 +147,10 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("leaves a note that spans no grid line unchanged (with a warning)", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ start_time: 0, duration: 0.25 }); // a 16th
+      const { warn, notes } = warnSpyWithNote({
+        start_time: 0,
+        duration: 0.25,
+      }); // a 16th
 
       applyTransforms(notes, "ratchet(n/4)", 4, 4); // quarter grid > note
 
@@ -163,8 +162,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and skips a count below 2", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       applyTransforms(notes, "ratchet(1)", 4, 4);
 
@@ -176,8 +174,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("clamps an excessive count and warns", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       applyTransforms(notes, "ratchet(500)", 4, 4);
 
@@ -187,9 +184,8 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("clamps the grid form when the cuts would exceed the max pieces", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       // A 40-beat note on a 16th-note grid would yield far more than 64 pieces.
-      const notes = createTestNote({ start_time: 0, duration: 40 });
+      const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 40 });
 
       applyTransforms(notes, "ratchet(n/16)", 4, 4);
 
@@ -199,8 +195,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and skips a zero-length grid (n0/4)", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       applyTransforms(notes, "ratchet(n0/4)", 4, 4);
 
@@ -212,8 +207,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and skips when the argument overflows to a non-finite value", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
       const big = "9".repeat(62);
 
       // A product of huge decimals overflows to Infinity, which is not a usable
@@ -233,8 +227,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and skips when no argument is given", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       applyTransforms(notes, "ratchet()", 4, 4);
 
@@ -246,8 +239,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and uses the first argument when given more than one", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       applyTransforms(notes, "ratchet(2, 3)", 4, 4);
 
@@ -272,8 +264,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and skips when the argument is not a usable number", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       // clip.index has no value without clip context -> not a usable count
       applyTransforms(notes, "ratchet(clip.index)", 4, 4);
@@ -284,8 +275,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("warns and skips a bare pitch literal instead of coercing to MIDI", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ duration: 1 });
 
       // ratchet(C2) would silently coerce to MIDI 36 pieces — reject it instead
       applyTransforms(notes, "ratchet(C2)", 4, 4);
@@ -490,8 +480,7 @@ describe("note-count operations (ratchet/merge)", () => {
       });
 
       it("warns about extra arguments and uses the first", () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        const notes = createTestNotes([
+        const { warn, notes } = warnSpyWithNotes([
           { pitch: 60, start_time: 0, duration: 1 },
           { pitch: 60, start_time: 1, duration: 1 }, // touches -> merges under merge(0)
         ]);

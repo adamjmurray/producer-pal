@@ -33,6 +33,25 @@ async function expectHtmlNoStoreResponse(url: string): Promise<void> {
 }
 
 /**
+ * Call a tool and pull out the two things a failure test looks at.
+ *
+ * @param client - The connected MCP client
+ * @param name - Tool name
+ * @param args - Tool arguments
+ * @returns The error flag and the first content block's text
+ */
+async function callToolText(
+  client: Client,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<{ isError: unknown; text: string }> {
+  const result = await client.callTool({ name, arguments: args });
+  const content = result.content as Array<{ type: string; text: string }>;
+
+  return { isError: result.isError, text: content[0]!.text };
+}
+
+/**
  * Create a test client and transport, returning cleanup function
  *
  * @param getServerUrl - Function to get server URL
@@ -141,32 +160,24 @@ describe("MCP Express App", () => {
         result.tools.map((tool) => [tool.name, tool]),
       );
 
-      // Verify key tools exist with expected structure
-      expect(toolsByName).toMatchObject({
-        "ppal-read-live-set": {
-          description: expect.stringContaining("Read Live Set"),
-        },
-        "ppal-update-clip": {
-          inputSchema: {
-            properties: { id: expect.anything() },
-          },
-        },
-        "ppal-create-track": {
-          description: expect.stringContaining("Create track(s)"),
-          inputSchema: {
-            properties: {
-              trackIndex: expect.anything(),
-              count: expect.anything(),
-            },
-          },
-        },
-        "ppal-update-track": {
-          description: expect.stringContaining("Update track(s)"),
-          inputSchema: {
-            properties: { id: expect.anything() },
-          },
-        },
-      });
+      // Spot-check a few tools; the full name list is pinned by the test above.
+      const paramsOf = (name: string) =>
+        Object.keys(toolsByName[name]!.inputSchema.properties ?? {});
+
+      expect(toolsByName["ppal-read-live-set"]!.description).toContain(
+        "Read Live Set",
+      );
+      expect(paramsOf("ppal-update-clip")).toContain("id");
+      expect(toolsByName["ppal-create-track"]!.description).toContain(
+        "Create track(s)",
+      );
+      expect(paramsOf("ppal-create-track")).toStrictEqual(
+        expect.arrayContaining(["path", "count"]),
+      );
+      expect(toolsByName["ppal-update-track"]!.description).toContain(
+        "Update track(s)",
+      );
+      expect(paramsOf("ppal-update-track")).toContain("id");
 
       // Additional description checks for read-live-set
       const readLiveSetDesc = toolsByName["ppal-read-live-set"]!.description;
@@ -286,27 +297,26 @@ describe("MCP Express App", () => {
     });
 
     it("should handle tool with missing required arguments", async () => {
-      const { client } = testState;
-      const result = await client!.callTool({
-        name: "delete-scene",
-        arguments: {}, // Missing sceneIndex
-      });
-      const content = result.content as Array<{ type: string; text: string }>;
+      // No sceneIndex, which the schema requires.
+      const { isError, text } = await callToolText(
+        testState.client!,
+        "delete-scene",
+        {},
+      );
 
-      expect(result.isError).toBe(true);
-      expect(content[0]!.text).toContain("MCP error -32602");
+      expect(isError).toBe(true);
+      expect(text).toContain("MCP error -32602");
     });
 
     it("should handle unknown tool", async () => {
-      const { client } = testState;
-      const result = await client!.callTool({
-        name: "nonexistent-tool",
-        arguments: {},
-      });
-      const content = result.content as Array<{ type: string; text: string }>;
+      const { isError, text } = await callToolText(
+        testState.client!,
+        "nonexistent-tool",
+        {},
+      );
 
-      expect(result.isError).toBe(true);
-      expect(content[0]!.text).toContain("MCP error -32602");
+      expect(isError).toBe(true);
+      expect(text).toContain("MCP error -32602");
     });
 
     it("should return isError: true when Max.outlet rejects", async () => {

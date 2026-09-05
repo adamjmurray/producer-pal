@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -10,8 +11,10 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LIVE_API_WARP_MODE_TEXTURE, WARP_MODE } from "#src/tools/constants.ts";
 import { toolDefReadScene } from "../read-scene.def.ts";
 import { readScene } from "../read-scene.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Helper to create default Scene mock config
 const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({
@@ -66,10 +69,24 @@ function setupSessionClip(
   clipId: string,
   trackIndex: number,
   sceneIndex: number,
+  properties?: Record<string, unknown>,
 ): void {
   registerMockObject(clipId, {
     path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
     type: "Clip",
+    ...(properties && { properties }),
+  });
+}
+
+function setupSceneWithAudioClip(): void {
+  setupLiveSetTracks(["track1"]);
+  setupScene("scene_warp", 0, defaultSceneConfig({ name: "Warp Scene" }));
+  setupSessionClip("clip_warp", 0, 0, {
+    is_midi_clip: 0,
+    sample_length: 88200,
+    sample_rate: 44100,
+    warping: 1,
+    warp_mode: LIVE_API_WARP_MODE_TEXTURE,
   });
 }
 
@@ -82,8 +99,8 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene1",
+      path: "s0",
       name: "Test Scene",
-      sceneIndex: 0,
       clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -97,7 +114,7 @@ describe("readScene", () => {
     });
 
     expect(() => readScene({ sceneIndex: 99 })).toThrow(
-      "readScene: sceneIndex 99 does not exist",
+      "sceneIndex 99 does not exist",
     );
   });
 
@@ -123,8 +140,8 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene2",
+      path: "s1",
       name: "Scene with Disabled Properties",
-      sceneIndex: 1,
       clipCount: 0,
       triggered: true,
     });
@@ -138,8 +155,8 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene3",
+      path: "s2",
       name: "3",
-      sceneIndex: 2,
       clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -164,8 +181,8 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene_0",
+      path: "s0",
       name: "Scene with 2 Clips",
-      sceneIndex: 0,
       clipCount: 2,
       tempo: 120,
       timeSignature: "4/4",
@@ -200,8 +217,7 @@ describe("readScene", () => {
     const result = readScene({ sceneIndex: 0, include: ["clips"] });
 
     expect(result.clips).toHaveLength(1);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("no clip at trackIndex"),
     );
   });
@@ -219,8 +235,8 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene_0",
+      path: "s0",
       name: "Scene with Clips",
-      sceneIndex: 0,
       tempo: 120,
       timeSignature: "4/4",
       clips: [
@@ -242,6 +258,31 @@ describe("readScene", () => {
         },
       ].map(({ color: _color, view: _v, ...clip }) => clip),
     });
+  });
+
+  it("passes warp through to nested clip reads", () => {
+    setupSceneWithAudioClip();
+
+    const result = readScene({ sceneIndex: 0, include: ["clips", "warp"] });
+
+    expect((result.clips as Record<string, unknown>[])[0]).toStrictEqual(
+      expect.objectContaining({
+        warping: true,
+        warpMode: WARP_MODE.TEXTURE,
+        sampleLength: 88200,
+        sampleRate: 44100,
+      }),
+    );
+  });
+
+  it("omits warp from nested clip reads when it wasn't asked for", () => {
+    setupSceneWithAudioClip();
+
+    const result = readScene({ sceneIndex: 0, include: ["clips"] });
+
+    expect((result.clips as Record<string, unknown>[])[0]).not.toHaveProperty(
+      "warping",
+    );
   });
 
   it("includes all available options when '*' is used", () => {
@@ -279,7 +320,6 @@ describe("readScene", () => {
       expect.objectContaining({
         id: "scene_0",
         name: "Wildcard Test Scene",
-        sceneIndex: 0,
         clips: expect.any(Array),
       }),
     );
@@ -307,8 +347,8 @@ describe("readScene", () => {
 
       expect(result).toStrictEqual({
         id: "123",
+        path: "s5",
         name: "Scene by ID",
-        sceneIndex: 5,
         clipCount: 0,
         triggered: true,
         tempo: 128,
@@ -322,8 +362,12 @@ describe("readScene", () => {
       setupLiveSetTracks([]);
       setupScene("123", 5, defaultSceneConfig({ name: "Scene by ID" }));
 
-      expect(readScene({ sceneId: "123" })).toMatchObject({
+      expect(readScene({ sceneId: "123" })).toStrictEqual({
+        clipCount: 0,
+        tempo: 120,
+        timeSignature: "4/4",
         id: "123",
+        path: "s5",
         name: "Scene by ID",
       });
     });
@@ -349,8 +393,8 @@ describe("readScene", () => {
 
       expect(result).toStrictEqual({
         id: "456",
+        path: "s2",
         name: "Scene with Clips by ID",
-        sceneIndex: 2,
         tempo: 110,
         timeSignature: "4/4",
         clips: [
@@ -379,13 +423,13 @@ describe("readScene", () => {
 
       expect(() => {
         readScene({ id: "nonexistent" });
-      }).toThrow('readScene failed: id "nonexistent" does not exist');
+      }).toThrow('id "nonexistent" does not exist');
     });
 
     it("throws error when neither id nor sceneIndex provided", () => {
       expect(() => {
         readScene({});
-      }).toThrow("Either id or sceneIndex must be provided");
+      }).toThrow("id or path is required");
     });
 
     it("prioritizes id over sceneIndex when both provided", () => {
@@ -410,7 +454,7 @@ describe("readScene", () => {
       const result = readScene({ id: "789", sceneIndex: 3 });
 
       // Should use scene with ID "789" (index 7) not sceneIndex 3
-      expect(result.sceneIndex).toBe(7);
+      expect(result.path).toBe("s7");
       expect(result.name).toBe("Priority Test Scene");
     });
   });

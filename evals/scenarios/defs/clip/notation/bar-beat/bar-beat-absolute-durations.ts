@@ -18,7 +18,7 @@
 import { CONNECT_MESSAGE } from "../../../../helpers/seed-connect/seed-connect.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   clipStateAssertion,
 } from "../../helpers/clip-scenario-helpers.ts";
 
@@ -124,7 +124,7 @@ export const barBeatTriplets: EvalScenario = {
   ],
 
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+    clearClipSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     ...createClipAssertionHead(),
@@ -164,7 +164,7 @@ export const barBeatMeterFill: EvalScenario = {
   ],
 
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+    clearClipSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     ...createClipAssertionHead(),
@@ -209,7 +209,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
   ],
 
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+    clearClipSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     ...createClipAssertionHead(),
@@ -252,7 +252,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
   // doesn't inherit clips from a previous one (which would otherwise trigger a
   // delete/recreate dance and mask the real behavior).
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [
+    clearClipSlots(mcpClient, [
       `${DRUMS_TRACK}/0`,
       `${DRUMS_TRACK}/1`,
       `${DRUMS_TRACK}/2`,

@@ -9,7 +9,6 @@ import {
   aliasParam,
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -32,33 +31,39 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         "stop",
       ])
       .describe(
-        `play-arrangement: from startTime
-update-arrangement: set playhead/loop without playing
+        `play-arrangement: from startTime, or from wherever it already is
+update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s)
 stop-session-clips: by id(s) or path(s)
 stop-all-session-clips: all
-stop: session and arrangement`,
+stop: session and arrangement; takes startTime to park the next play`,
       ),
     startTime: z
       .string()
       .optional()
-      .describe("bar|beat position in arrangement (song meter)"),
-    startLocator: param(z.string().optional(), {
-      default:
-        "locator ID or name for start position (e.g., locator-0 or Verse)",
-      smallModel: null,
+      .describe(
+        "where arrangement playback starts, and restarts from if it's already " +
+          "playing. Stays put until something changes it: bar|beat in song " +
+          "meter, or loc:<locator name or id> (e.g. '5|1' or 'loc:Verse')",
+      ),
+    startLocator: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "startTime",
     }),
     loop: z.boolean().optional().describe("arrangement loop?"),
-    loopStart: z.string().optional().describe("bar|beat position (song meter)"),
-    loopStartLocator: param(z.string().optional(), {
-      default: "locator ID or name for loop start",
-      smallModel: null,
+    loopStart: z
+      .string()
+      .optional()
+      .describe("bar|beat (song meter) or loc:<locator>; turns the loop on"),
+    loopStartLocator: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "loopStart",
     }),
-    loopEnd: z.string().optional().describe("bar|beat position (song meter)"),
-    loopEndLocator: param(z.string().optional(), {
-      default: "locator ID or name for loop end",
-      smallModel: null,
+    loopEnd: z
+      .string()
+      .optional()
+      .describe("bar|beat (song meter) or loc:<locator>; turns the loop on"),
+    loopEndLocator: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "loopEnd",
     }),
     id: z.coerce
       .string()
@@ -82,11 +87,8 @@ stop: session and arrangement`,
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
     }),
-    sceneIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based scene index for play-scene (or use path 's<scene>')"),
+    sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
   },
 });

@@ -9,7 +9,10 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  masterTrackMockObject,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 interface LocatorLiveSetConfig {
   numerator?: number;
@@ -166,11 +169,7 @@ export function setupRoutingTestMocks(
         name: "Test Track",
         ...trackProps,
       },
-      [String(livePath.masterTrack())]: {
-        has_midi_input: 0,
-        name: "Master",
-        devices: [],
-      },
+      ...masterTrackMockObject(),
     },
   });
 }

@@ -27,23 +27,20 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../mcp-test-helpers";
+import { CHILD_TRACK, EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// t8 "9-MIDI" is an empty MIDI track in e2e-test-set
-const MIDI_TRACK = 8;
-
-// Clip-free MIDI tracks, for cross-track take-lane duplicates
-const LANE_DEST_TRACK = 7;
-const LANE_DEST_TRACK_2 = 10;
 
 interface TakeLaneInfo {
   name: string;
@@ -57,13 +54,12 @@ interface ReadTrackTakeLanesResult {
 }
 
 interface LiveSetTracksResult {
-  tracks: Array<{ id: string; trackIndex: number; takeLaneCount?: number }>;
+  tracks: Array<{ id: string; path: string; takeLaneCount?: number }>;
 }
 
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  arrangementStart?: string;
 }
 
 /**
@@ -87,7 +83,7 @@ async function readTakeLanes(
 ): Promise<ReadTrackTakeLanesResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["arrangement-clips"] },
+    arguments: { path: `t${trackIndex}`, include: ["arrangement-clips"] },
   });
 
   return parseToolResult<ReadTrackTakeLanesResult>(result);
@@ -97,44 +93,41 @@ describe("take lanes", () => {
   it("creates clips on take lanes, reports the lane path, and reads them back", async () => {
     // Targeting l0 auto-creates it; the result path names the lane
     const lane0 = await createOnLane({
-      path: `t${MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
     expect(lane0.id).toBeDefined();
-    expect(lane0.path).toBe(`t${MIDI_TRACK}/l0`);
+    expect(lane0.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[1|1]`);
 
     // "l+" appends a fresh lane; takeLaneName names only that new lane
     const lane1 = await createOnLane({
-      path: `t${MIDI_TRACK}/l+`,
-      arrangementStart: "5|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
       notes: "E3 1|1",
       takeLaneName: "Variation B",
     });
 
-    expect(lane1.path).toBe(`t${MIDI_TRACK}/l1`);
+    expect(lane1.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[5|1]`);
 
-    // A main-lane clip's path is the bare track (and it emits no warning)
+    // A main-lane clip's path is the track plus where it starts
     const mainResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${MIDI_TRACK}`,
-        arrangementStart: "9|1",
+        path: `t${EMPTY_MIDI_TRACK}[9|1]`,
         notes: "G3 1|1",
       },
     });
     const main = parseToolResult<CreateClipResult>(mainResult);
 
     expect(main.id).toBeDefined();
-    expect(main.path).toBe(`t${MIDI_TRACK}`);
+    expect(main.path).toBe(`t${EMPTY_MIDI_TRACK}[9|1]`);
 
     await sleep(100);
 
     // Overview reports the count (no arrangement-clips include)
     const overviewResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: MIDI_TRACK },
+      arguments: { path: `t${EMPTY_MIDI_TRACK}` },
     });
     const overview = parseToolResult<ReadTrackTakeLanesResult>(overviewResult);
 
@@ -142,7 +135,7 @@ describe("take lanes", () => {
     expect(overview).not.toHaveProperty("takeLanes");
 
     // arrangement-clips include returns the full take lane list instead
-    const detail = await readTakeLanes(MIDI_TRACK);
+    const detail = await readTakeLanes(EMPTY_MIDI_TRACK);
 
     expect(detail).not.toHaveProperty("takeLaneCount");
     expect(detail.takeLanes).toHaveLength(2);
@@ -158,8 +151,7 @@ describe("take lanes", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${MIDI_TRACK}`,
-        arrangementStart: "1|1",
+        path: `t${EMPTY_MIDI_TRACK}[1|1]`,
         notes: "C3 1|1",
         takeLane: 2,
       },
@@ -167,7 +159,7 @@ describe("take lanes", () => {
     const { data: clip } =
       parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(clip.path).toBe(`t${MIDI_TRACK}/l1`);
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[1|1]`);
     expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('param "takeLane" is deprecated'),
     );
@@ -178,7 +170,7 @@ describe("take lanes", () => {
     const midi = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: 1 },
+        arguments: { path: "t1" },
       }),
     );
 
@@ -189,7 +181,7 @@ describe("take lanes", () => {
     const group = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: 9 },
+        arguments: { path: "t9" },
       }),
     );
 
@@ -200,7 +192,7 @@ describe("take lanes", () => {
     const ret = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackType: "return", trackIndex: 0 },
+        arguments: { path: "rt0" },
       }),
     );
 
@@ -210,7 +202,7 @@ describe("take lanes", () => {
     const master = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackType: "master" },
+        arguments: { path: "mt" },
       }),
     );
 
@@ -219,41 +211,38 @@ describe("take lanes", () => {
 
   it("replaces an overlapping clip and enforces the 8-lane cap", async () => {
     await createOnLane({
-      path: `t${MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
     // A second clip at the same position on the same lane replaces it, like the
     // main lane — no overlap error.
     const replaced = await createOnLane({
-      path: `t${MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
-    expect(replaced.path).toBe(`t${MIDI_TRACK}/l0`);
+    expect(replaced.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[1|1]`);
 
     await sleep(100);
-    const afterReplace = await readTakeLanes(MIDI_TRACK);
+    const afterReplace = await readTakeLanes(EMPTY_MIDI_TRACK);
 
     // Replace (not stack): lane 0 still holds a single clip at the position
     expect(afterReplace.takeLanes![0]!.clips).toHaveLength(1);
 
     // Targeting the last lane auto-creates the lanes up to it
     const lane7 = await createOnLane({
-      path: `t${MIDI_TRACK}/l7`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l7[1|1]`,
       notes: "C3 1|1",
     });
 
-    expect(lane7.path).toBe(`t${MIDI_TRACK}/l7`);
+    expect(lane7.path).toBe(`t${EMPTY_MIDI_TRACK}/l7[1|1]`);
 
     await sleep(100);
     const overview = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: MIDI_TRACK },
+        arguments: { path: `t${EMPTY_MIDI_TRACK}` },
       }),
     );
 
@@ -266,8 +255,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${MIDI_TRACK}/l+`,
-          arrangementStart: "5|1",
+          path: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
           notes: "C3 1|1",
         },
       }),
@@ -282,8 +270,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${MIDI_TRACK}/l8`,
-          arrangementStart: "5|1",
+          path: `t${EMPTY_MIDI_TRACK}/l8[5|1]`,
           notes: "C3 1|1",
         },
       }),
@@ -297,8 +284,7 @@ describe("take lanes", () => {
 
   it("reports per-track takeLaneCount in read-live-set", async () => {
     await createOnLane({
-      path: `t${MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
@@ -310,8 +296,10 @@ describe("take lanes", () => {
       }),
     );
 
-    const withLanes = liveSet.tracks.find((t) => t.trackIndex === MIDI_TRACK);
-    const withoutLanes = liveSet.tracks.find((t) => t.trackIndex === 0);
+    const withLanes = liveSet.tracks.find(
+      (t) => t.path === `t${EMPTY_MIDI_TRACK}`,
+    );
+    const withoutLanes = liveSet.tracks.find((t) => t.path === "t0");
 
     expect(withLanes?.takeLaneCount).toBe(1);
     expect(withoutLanes).not.toHaveProperty("takeLaneCount");
@@ -325,17 +313,17 @@ describe("take lanes", () => {
       }),
     );
 
-    expect(track.trackIndex).toBeDefined();
+    const trackIndex = trackIndexFromPath(track.path);
+
     await sleep(100);
 
     const clip = await createOnLane({
-      path: `t${track.trackIndex}/l+`,
-      arrangementStart: "1|1",
+      path: `t${trackIndex}/l+[1|1]`,
       sampleFile: SAMPLE_FILE,
     });
 
     expect(clip.id).toBeDefined();
-    expect(clip.path).toBe(`t${track.trackIndex}/l0`);
+    expect(clip.path).toBe(`t${trackIndex}/l0[1|1]`);
 
     await sleep(100);
     const readClip = parseToolResult<ReadClipResult>(
@@ -348,20 +336,19 @@ describe("take lanes", () => {
     expect(readClip.type).toBe("audio");
 
     // The lane clip is reachable through the track's take lane list
-    const detail = await readTakeLanes(track.trackIndex!);
+    const detail = await readTakeLanes(trackIndex);
 
     expect(detail.takeLanes).toHaveLength(1);
     expect(detail.takeLanes![0]!.clips).toHaveLength(1);
   });
 
-  it("duplicates MIDI clips to take lanes (copying notes/name), ignoring arrangementLength and skipping audio", async () => {
+  it("duplicates clips to take lanes (copying notes/name/sample), ignoring arrangementLength", async () => {
     // A main-lane MIDI source to duplicate from
     const source = parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${MIDI_TRACK}`,
-          arrangementStart: "1|1",
+          path: `t${EMPTY_MIDI_TRACK}[1|1]`,
           notes: "C3 E3 G3 1|1",
           name: "Original Take",
         },
@@ -377,14 +364,13 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          arrangementStart: "5|1",
-          toPath: `t${MIDI_TRACK}/l+`,
+          toPath: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
         },
       }),
     );
 
     expect(midiDup.data.id).toBeDefined();
-    expect(midiDup.data.path).toBe(`t${MIDI_TRACK}/l0`);
+    expect(midiDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[5|1]`);
 
     await sleep(100);
     const copy = parseToolResult<ReadClipResult>(
@@ -406,8 +392,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          arrangementStart: "9|1",
-          toPath: `t${MIDI_TRACK}/l+`,
+          toPath: `t${EMPTY_MIDI_TRACK}/l+[9|1]`,
           arrangementLength: "2bar",
         },
       }),
@@ -416,9 +401,10 @@ describe("take lanes", () => {
     expect(lengthDup.warnings.join(" ")).toContain(
       "arrangementLength ignored for the re-created copies",
     );
-    expect(lengthDup.data.path).toBe(`t${MIDI_TRACK}/l1`);
+    expect(lengthDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[9|1]`);
 
-    // An audio source is MIDI-only for v1: warn + skip (nothing created)
+    // An audio source is re-created from its sample. Warped on purpose, so the
+    // warp-marker warning doesn't depend on the sample's own analysis file.
     const audioTrack = parseToolResult<CreateTrackResult>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
@@ -426,35 +412,50 @@ describe("take lanes", () => {
       }),
     );
 
+    const audioTrackIndex = trackIndexFromPath(audioTrack.path);
+
     await sleep(100);
     const audioSource = parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${audioTrack.trackIndex}`,
-          arrangementStart: "1|1",
+          path: `t${audioTrackIndex}[1|1]`,
           sampleFile: SAMPLE_FILE,
+          warping: true,
+          name: "Original Sample",
         },
       }),
     );
 
     await sleep(100);
-    const audioDup = parseToolResultWithWarnings<unknown[]>(
+    const audioDup = parseToolResultWithWarnings<DuplicateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
         arguments: {
           type: "clip",
           id: audioSource.id,
-          arrangementStart: "5|1",
-          toPath: `t${audioTrack.trackIndex}/l+`,
+          toPath: `t${audioTrackIndex}/l+[5|1]`,
         },
       }),
     );
 
+    expect(audioDup.data.path).toBe(`t${audioTrackIndex}/l0[5|1]`);
     expect(audioDup.warnings.join(" ")).toContain(
-      "take lanes hold MIDI clips only",
+      "warp markers reset to the sample's defaults",
     );
-    expect(audioDup.data).toStrictEqual([]);
+
+    await sleep(100);
+    const audioCopy = parseToolResult<ReadClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: audioDup.data.id, include: ["sample", "warp"] },
+      }),
+    );
+
+    expect(audioCopy.type).toBe("audio");
+    expect(audioCopy.name).toBe("Original Sample");
+    expect(audioCopy.sampleFile).toBe(SAMPLE_FILE);
+    expect(audioCopy.warping).toBe(true);
   });
 
   // Live's duplicate_clip_to_arrangement no-ops on a take-lane SOURCE, so this
@@ -462,14 +463,13 @@ describe("take lanes", () => {
   // stays put, because nothing can remove it.
   it("promotes a take-lane clip back to the main lane, leaving the take behind", async () => {
     await createOnLane({
-      path: `t${MIDI_TRACK}/l+`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[1|1]`,
       notes: "C3 E3 G3 1|1",
       name: "The Keeper",
     });
 
     await sleep(100);
-    const lanes = await readTakeLanes(MIDI_TRACK);
+    const lanes = await readTakeLanes(EMPTY_MIDI_TRACK);
     const takeId = lanes.takeLanes![0]!.clips[0]!.id;
 
     const promoted = parseToolResultWithWarnings<DuplicateClipResult>(
@@ -478,16 +478,19 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: takeId,
-          toPath: `t${MIDI_TRACK}`,
-          arrangementStart: "5|1",
+          toPath: `t${EMPTY_MIDI_TRACK}[5|1]`,
         },
       }),
     );
 
-    // Main lane has no `l` segment, so the path is the bare track
-    expect(promoted.data.path).toBe(`t${MIDI_TRACK}`);
-    // Re-creating carries notes, not automation, and the response says so
+    // Main lane has no `l` segment, so the path is the track plus the position
+    expect(promoted.data.path).toBe(`t${EMPTY_MIDI_TRACK}[5|1]`);
+    // Re-creating carries notes, and the response says so. This clip has no
+    // envelopes, so nothing was lost and the warning names no cost.
     expect(promoted.warnings.join(" ")).toContain(
+      "was promoted to the main lane by re-creating it",
+    );
+    expect(promoted.warnings.join(" ")).not.toContain(
       "automation envelopes aren't copied",
     );
 
@@ -503,7 +506,7 @@ describe("take lanes", () => {
     expect(copy.notes).toContain("C3");
 
     // The source take is untouched on its lane
-    const after = await readTakeLanes(MIDI_TRACK);
+    const after = await readTakeLanes(EMPTY_MIDI_TRACK);
 
     expect(after.takeLanes![0]!.clips).toHaveLength(1);
     expect(after.takeLanes![0]!.clips[0]!.id).toBe(takeId);
@@ -511,13 +514,12 @@ describe("take lanes", () => {
 
   it("warns and skips deletion of a take-lane clip (no delete API)", async () => {
     await createOnLane({
-      path: `t${MIDI_TRACK}/l+`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[1|1]`,
       notes: "C3 1|1",
     });
 
     await sleep(100);
-    const before = await readTakeLanes(MIDI_TRACK);
+    const before = await readTakeLanes(EMPTY_MIDI_TRACK);
     const clipId = before.takeLanes![0]!.clips[0]!.id;
 
     const deleteResult = parseToolResultWithWarnings<{ deleted: boolean }>(
@@ -534,15 +536,17 @@ describe("take lanes", () => {
 
     // The clip is still on the lane afterward
     await sleep(100);
-    const after = await readTakeLanes(MIDI_TRACK);
+    const after = await readTakeLanes(EMPTY_MIDI_TRACK);
 
     expect(after.takeLanes![0]!.clips).toHaveLength(1);
   });
 
   // One written "l+" is one lane however many clips land on it — the copy loop
-  // cycles the destination list, and a cycled repeat must reuse its lane.
+  // cycles the destination list, and a cycled repeat must reuse its lane. The
+  // deprecated spelling on purpose: "l=" is how a path asks for the same stack
+  // (the test after next), and both have to keep landing on one lane.
   it("stacks every copy on one new lane when one l+ cycles across positions", async () => {
-    const source = await sourceClipOn(MIDI_TRACK, "Take Source");
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Take Source");
 
     const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
       await ctx.client!.callTool({
@@ -550,19 +554,22 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          toPath: `t${LANE_DEST_TRACK}/l+`,
+          toPath: `t${RACKS_TRACK}/l+`,
           arrangementStart: "5|1, 9|1, 13|1",
         },
       }),
     );
 
     expect(dup.data).toHaveLength(3);
-    expect(dup.data.map((copy) => copy.path)).toStrictEqual(
-      Array(3).fill(`t${LANE_DEST_TRACK}/l0`),
-    );
+    // One lane, three positions on it.
+    expect(dup.data.map((copy) => copy.path)).toStrictEqual([
+      `t${RACKS_TRACK}/l0[5|1]`,
+      `t${RACKS_TRACK}/l0[9|1]`,
+      `t${RACKS_TRACK}/l0[13|1]`,
+    ]);
 
     await sleep(100);
-    const detail = await readTakeLanes(LANE_DEST_TRACK);
+    const detail = await readTakeLanes(RACKS_TRACK);
 
     expect(detail.takeLanes).toHaveLength(1);
     expect(detail.takeLanes![0]!.clips).toHaveLength(3);
@@ -571,7 +578,7 @@ describe("take lanes", () => {
   // ...but two written "l+" are two lanes, even on the same track. Sharing them
   // is what makes a stack of takes impossible to write in one call.
   it("gives each written l+ its own lane on the same track", async () => {
-    const source = await sourceClipOn(MIDI_TRACK, "Two Lanes");
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Two Lanes");
 
     const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
       await ctx.client!.callTool({
@@ -579,27 +586,28 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          toPath: `t${LANE_DEST_TRACK}/l+,t${LANE_DEST_TRACK}/l+`,
-          arrangementStart: "5|1",
+          toPath: `t${RACKS_TRACK}/l+[5|1],t${RACKS_TRACK}/l+[5|1]`,
         },
       }),
     );
 
     expect(dup.data.map((copy) => copy.path)).toStrictEqual([
-      `t${LANE_DEST_TRACK}/l0`,
-      `t${LANE_DEST_TRACK}/l1`,
+      `t${RACKS_TRACK}/l0[5|1]`,
+      `t${RACKS_TRACK}/l1[5|1]`,
     ]);
 
     await sleep(100);
-    const detail = await readTakeLanes(LANE_DEST_TRACK);
+    const detail = await readTakeLanes(RACKS_TRACK);
 
     expect(detail.takeLanes).toHaveLength(2);
     expect(detail.takeLanes![0]!.clips).toHaveLength(1);
     expect(detail.takeLanes![1]!.clips).toHaveLength(1);
   });
 
-  it("gives each toPath track its own new lane", async () => {
-    const source = await sourceClipOn(MIDI_TRACK, "Fan Out");
+  // The path spelling of the stack above: each "l=" lands on the lane the "l+"
+  // before it appended, so two copies share one new lane at the bars named.
+  it("stacks an l= on the lane the l+ before it appended", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Stacked Takes");
 
     const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
       await ctx.client!.callTool({
@@ -607,20 +615,63 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          toPath: `t${LANE_DEST_TRACK}/l+,t${LANE_DEST_TRACK_2}/l+`,
-          arrangementStart: "5|1",
+          toPath: `t${CHILD_TRACK}/l+[5|1],t${CHILD_TRACK}/l=[9|1]`,
         },
       }),
     );
 
     expect(dup.data.map((copy) => copy.path)).toStrictEqual([
-      `t${LANE_DEST_TRACK}/l0`,
-      `t${LANE_DEST_TRACK_2}/l0`,
+      `t${CHILD_TRACK}/l0[5|1]`,
+      `t${CHILD_TRACK}/l0[9|1]`,
+    ]);
+
+    await sleep(100);
+    const detail = await readTakeLanes(CHILD_TRACK);
+
+    expect(detail.takeLanes).toHaveLength(1);
+    expect(detail.takeLanes![0]!.clips).toHaveLength(2);
+  });
+
+  it("refuses an l= with no l+ before it", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Unanchored");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        toPath: `t${RACKS_TRACK}/l=[5|1]`,
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'toPath "l=" names the lane the "l+" before it appended',
+    );
+  });
+
+  it("gives each toPath track its own new lane", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Fan Out");
+
+    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${RACKS_TRACK}/l+[5|1],t${CHILD_TRACK}/l+[5|1]`,
+        },
+      }),
+    );
+
+    expect(dup.data.map((copy) => copy.path)).toStrictEqual([
+      `t${RACKS_TRACK}/l0[5|1]`,
+      `t${CHILD_TRACK}/l0[5|1]`,
     ]);
 
     await sleep(100);
 
-    for (const trackIndex of [LANE_DEST_TRACK, LANE_DEST_TRACK_2]) {
+    for (const trackIndex of [RACKS_TRACK, CHILD_TRACK]) {
       const detail = await readTakeLanes(trackIndex);
 
       expect(detail.takeLanes).toHaveLength(1);
@@ -643,8 +694,7 @@ async function sourceClipOn(
     await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${trackIndex}`,
-        arrangementStart: "1|1",
+        path: `t${trackIndex}[1|1]`,
         notes: "C3 E3 1|1",
         name,
       },

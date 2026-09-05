@@ -18,6 +18,7 @@ import {
   setupTrackWithQueuedMethods,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
 import { createPartialTile, tileClipToRange } from "../arrangement-tiling.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -552,8 +553,7 @@ describe("tileClipToRange", () => {
 
     const result = tileClipToRange(sourceClip, track, 100, 12, mockContext);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         "Failed to duplicate source clip for tile at 104",
       ),

@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the MCP SDK Client
@@ -54,7 +55,7 @@ import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 async function renderUntilStatus(status: "connected" | "error") {
   const { result } = renderHook(() => useMcpConnection());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(result.current.mcpStatus).toBe(status);
   });
 
@@ -69,7 +70,7 @@ async function renderUntilStatus(status: "connected" | "error") {
 async function expectConnectionError(message: string) {
   const { result } = renderHook(() => useMcpConnection());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(result.current.mcpStatus).toBe("error");
     expect(result.current.mcpError).toBe(message);
   });
@@ -110,7 +111,7 @@ describe("useMcpConnection", () => {
   it("returns mcpTools on successful connection", async () => {
     const { result } = renderHook(() => useMcpConnection());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpTools).toStrictEqual([
         {
           id: "ppal-connect",
@@ -132,7 +133,7 @@ describe("useMcpConnection", () => {
     });
     const { result } = renderHook(() => useMcpConnection());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpTools).toStrictEqual([
         { id: "ppal-create-clip", name: "Create Clip", description: undefined },
       ]);
@@ -145,7 +146,7 @@ describe("useMcpConnection", () => {
     });
     const { result } = renderHook(() => useMcpConnection());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpTools).toStrictEqual([
         {
           id: "ppal-unknown-tool",
@@ -177,7 +178,7 @@ describe("useMcpConnection", () => {
     mockConnect.mockResolvedValue(undefined);
     await result.current.checkMcpConnection();
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpStatus).toBe("connected");
       expect(result.current.mcpTools).not.toBe(null);
     });
@@ -210,7 +211,7 @@ describe("useMcpConnection", () => {
     mockDetectCorsBlock.mockResolvedValue(true);
     const { result } = renderHook(() => useMcpConnection());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpStatus).toBe("error");
       expect(result.current.mcpError).toContain("Rebuild in dev mode");
     });
@@ -252,7 +253,7 @@ describe("useMcpConnection", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpTools).toHaveLength(3);
     });
 
@@ -344,7 +345,7 @@ describe("useMcpConnection", () => {
     // Wait until both focus-triggered listTools calls have started (mount
     // was the first call; the two focuses bring the total to 3) so both
     // mockImplementationOnce slots have been claimed.
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(mockListTools).toHaveBeenCalledTimes(3);
     });
 
@@ -359,7 +360,7 @@ describe("useMcpConnection", () => {
       });
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpTools).toHaveLength(3);
     });
 
@@ -378,7 +379,7 @@ describe("useMcpConnection", () => {
   it("removes the focus listener on unmount", async () => {
     const { result, unmount } = renderHook(() => useMcpConnection());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.mcpStatus).toBe("connected");
     });
 

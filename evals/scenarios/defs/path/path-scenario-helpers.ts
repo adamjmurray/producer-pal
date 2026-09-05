@@ -45,6 +45,7 @@ const HIDDEN_LOCATION_PARAMS = new Set([
   "split",
   "trackIndex",
   "sceneIndex",
+  "trackType",
   "trackId",
   "sceneId",
   "clipId",
@@ -163,52 +164,14 @@ function pathAccepted(
 }
 
 /**
- * Assert a call names its target with `id` — the canonical param since 2.2.0 —
- * and not with a path or a hidden alias.
- *
- * @param options - What to grade
- * @param options.turn - Turn index containing the call
- * @param options.tool - Tool name
- * @returns A custom assertion
- */
-export function assertAddressedById(options: {
-  turn: number;
-  tool: string;
-}): EvalAssertion {
-  const { turn, tool } = options;
-
-  return {
-    type: "custom",
-    description: `${tool} turn ${turn}: names its target with id`,
-    assert: (turns) => {
-      const call = requireCall(turns, turn, tool);
-
-      if (call.args.path != null) {
-        throw new Error(
-          `named the target with path '${argText(call.args.path)}' instead of id`,
-        );
-      }
-
-      if (argText(call.args.id) === "") {
-        throw new Error(
-          `no id — hidden location params: ${hiddenSpellings(call)}`,
-        );
-      }
-
-      return true;
-    },
-  };
-}
-
-/**
  * The opening of a "did the model spell the path right?" clip scenario:
  * connect, create a clip in turn 1, and grade the `path` it wrote.
  *
- * @param expected - Accepted path(s); the first is the canonical one
+ * @param expected - Accepted path(s) or a shape
  * @returns The leading assertions, to spread into a scenario
  */
 export function assertClipCreatedAtPath(
-  expected: string | string[],
+  expected: string | string[] | RegExp,
 ): EvalAssertion[] {
   return [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
@@ -217,32 +180,39 @@ export function assertClipCreatedAtPath(
   ];
 }
 
-/** The published ways to name a scene. All three are equally correct. */
-const SCENE_LOCATION_PARAMS = ["id", "path", "sceneIndex"];
+/** The ways every tool can name its target. Both are equally correct. */
+const PUBLISHED_LOCATION_PARAMS = ["id", "path"];
 
 /**
- * Assert a call names its scene with a published location param. `id`, `path`
- * ("s1"), and `sceneIndex` all pass — only a hidden alias, or naming nothing,
- * fails. Which of the three a model picks is a counting question over saved
- * runs; grading one would mark the other two wrong.
+ * Assert a call names its target with a published location param. `id` and
+ * `path` both pass everywhere — only a hidden alias, or naming nothing, fails.
+ * Which one a model picks is a counting question over saved runs; grading one
+ * would mark the other wrong, and the skills tell models to reuse the `path` a
+ * read just handed back.
+ *
+ * `params` is for a tool that publishes a third way: `ppal-playback` still
+ * offers `sceneIndex`, while `ppal-select` retired it, so the accepted set
+ * can't be one list.
  *
  * @param options - What to grade
  * @param options.turn - Turn index containing the call
  * @param options.tool - Tool name
  * @param options.action - The `action` arg the call must carry, for tools that take one
+ * @param options.params - Published location params for this tool
  * @returns A custom assertion
  */
-export function assertNamesScene(options: {
+export function assertNamesTarget(options: {
   turn: number;
   tool: string;
   action?: string;
+  params?: string[];
 }): EvalAssertion {
-  const { turn, tool, action } = options;
+  const { turn, tool, action, params = PUBLISHED_LOCATION_PARAMS } = options;
   const prefix = action == null ? "" : `${action} `;
 
   return {
     type: "custom",
-    description: `${tool} turn ${turn}: ${prefix}names the scene with a published param`,
+    description: `${tool} turn ${turn}: ${prefix}names its target with a published param`,
     assert: (turns) => {
       const call = requireCall(turns, turn, tool);
 
@@ -252,9 +222,9 @@ export function assertNamesScene(options: {
         );
       }
 
-      if (!SCENE_LOCATION_PARAMS.some((key) => call.args[key] != null)) {
+      if (!params.some((key) => argText(call.args[key]) !== "")) {
         throw new Error(
-          `no ${SCENE_LOCATION_PARAMS.join("/")} — args: ${JSON.stringify(call.args)}`,
+          `no ${params.join("/")} — hidden location params: ${hiddenSpellings(call)}`,
         );
       }
 
@@ -298,7 +268,7 @@ export function assertSlotOccupancy(
  * @param value - The raw arg
  * @returns Trimmed, non-empty entries
  */
-function listEntries(value: unknown): string[] {
+export function listEntries(value: unknown): string[] {
   return argText(value)
     .split(",")
     .map((entry) => entry.trim())
@@ -312,8 +282,8 @@ function listEntries(value: unknown): string[] {
  * The list semantics differ per tool on purpose, and getting them backwards is
  * a silent data-loss bug: `update-clip` pairs 1:1, so two clips with one
  * destination put both in the same slot and destroy the first (`rule: "equal"`).
- * `duplicate` cycles a short `toPath` against `arrangementStart`, so fewer
- * destinations than starts is correct there, but more is not (`rule: "atMost"`).
+ * `duplicate` sends one destination to every source, so fewer destinations than
+ * sources is correct there, but more is not (`rule: "atMost"`).
  *
  * Checks each call separately rather than summing the turn, because splitting
  * one batched call into several 1:1 calls is a perfectly good way to do this —
@@ -414,5 +384,50 @@ export function assertCallResult(options: {
 
       return true;
     },
+  };
+}
+
+/** One arrangement clip on a read track, in overview form. */
+interface ArrangementClipOverview {
+  name?: string | null;
+}
+
+/**
+ * Names of the arrangement clips on a read track.
+ * @param result - Parsed ppal-read-track result
+ * @returns Clip names, an unnamed clip reading as ""
+ */
+function arrangementClipNames(result: unknown): string[] {
+  const track = result as { arrangementClips?: ArrangementClipOverview[] };
+
+  return (track.arrangementClips ?? []).map((clip) => clip.name ?? "");
+}
+
+/**
+ * A clip with this name sits in the track's arrangement, however the model
+ * addressed it — by id, or by the path a result handed back. A warned-and-
+ * skipped update leaves the old name in place, so this catches both.
+ * @param options - Which track to read and what name to look for
+ * @param options.trackIndex - 0-based track index
+ * @param options.name - The name the clip should be carrying
+ * @returns A state assertion over the track's arrangement clips
+ */
+export function assertArrangementClipNamed(options: {
+  trackIndex: number;
+  name: string;
+}): EvalAssertion {
+  const { trackIndex, name } = options;
+
+  return {
+    type: "state",
+    tool: "ppal-read-track",
+    args: { trackIndex, include: ["arrangement-clips"] },
+    expect: (result) => arrangementClipNames(result).includes(name),
+    explain: (result) =>
+      `expected an arrangement clip named "${name}", got ${
+        arrangementClipNames(result)
+          .map((found) => `"${found}"`)
+          .join(", ") || "no arrangement clips"
+      }`,
   };
 }

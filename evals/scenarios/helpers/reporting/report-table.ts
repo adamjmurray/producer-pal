@@ -11,7 +11,7 @@ import { type InspectColor, styleText } from "node:util";
 import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { checkTally } from "./result-format.ts";
+import { scorePercentage } from "./result-format.ts";
 
 /** A column in the results table (one per model). `configId` is the run-env
  *  label used to look up the cell's results. */
@@ -75,7 +75,7 @@ export function printResultsTable(
 
       if (!results || results.length === 0) return "—";
       if (isSkippedCell(results)) return "skip";
-      const pct = getCellPercentage(results);
+      const pct = scorePercentage(results);
 
       if (pct == null) return "—";
 
@@ -85,7 +85,7 @@ export function printResultsTable(
       const results = modelResults.get(col.modelKey)?.get(col.configId);
 
       if (results && isSkippedCell(results)) return "gray";
-      const pct = results ? getCellPercentage(results) : null;
+      const pct = results ? scorePercentage(results) : null;
 
       return pct != null ? pctColor(pct) : undefined;
     });
@@ -162,7 +162,7 @@ function columnAverage(
 
   for (const modelResults of resultsByScenario.values()) {
     const results = modelResults.get(col.modelKey)?.get(col.configId);
-    const pct = results ? getCellPercentage(results) : null;
+    const pct = results ? scorePercentage(results) : null;
 
     if (pct !== null) pcts.push(pct);
   }
@@ -181,34 +181,6 @@ function columnAverage(
  */
 function isSkippedCell(results: JsonEvalResult[]): boolean {
   return results.length === 1 && results[0]?.result === "skipped";
-}
-
-/**
- * Get the display percentage for a table cell.
- * Single trial: check pass percentage. Multiple trials: trial pass rate.
- * Skipped scenarios have no checks, so they return null (excluded from averages).
- *
- * @param results - Array of results (1 for single run, N for repeated trials)
- * @returns Percentage (0-100) or null if no results
- */
-function getCellPercentage(results: JsonEvalResult[]): number | null {
-  if (results.length === 0) return null;
-
-  // Multiple trials: show trial pass rate
-  if (results.length > 1) {
-    const passed = results.filter((r) => r.result === "pass").length;
-
-    return Math.round((passed / results.length) * 100);
-  }
-
-  // Single trial: show check pass percentage
-  const { passed, total } = checkTally(
-    (results[0] as JsonEvalResult).checks.results,
-  );
-
-  if (total === 0) return null;
-
-  return Math.round((passed / total) * 100);
 }
 
 /**

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
+import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { sortNotes } from "../../barbeat-test-helpers.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
@@ -59,4 +60,32 @@ export function expectRoundTripNotes(
       ).toBeLessThan(EPSILON);
     }
   }
+}
+
+/**
+ * A C-major triad (C3 E3 G3) sounding at one time.
+ *
+ * @param startTime - When the chord starts, in Ableton beats
+ * @returns Its three notes
+ */
+export function cMajorAt(startTime: number): NoteEvent[] {
+  return [
+    createNote({ start_time: startTime }),
+    createNote({ pitch: 64, start_time: startTime }),
+    createNote({ pitch: 67, start_time: startTime }),
+  ] as NoteEvent[];
+}
+
+/**
+ * A D-minor triad (D3 F3 A3) sounding at one time.
+ *
+ * @param startTime - When the chord starts, in Ableton beats
+ * @returns Its three notes
+ */
+export function dMinorAt(startTime: number): NoteEvent[] {
+  return [
+    createNote({ pitch: 62, start_time: startTime }),
+    createNote({ pitch: 65, start_time: startTime }),
+    createNote({ pitch: 69, start_time: startTime }),
+  ] as NoteEvent[];
 }

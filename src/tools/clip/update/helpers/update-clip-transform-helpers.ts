@@ -16,7 +16,8 @@ import {
   rawNotesToNoteEvents,
   readAllClipNotes,
   removeAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
+} from "#src/tools/shared/clip/clip-notes.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Apply transforms to existing notes without merging new notes.
@@ -48,7 +49,9 @@ export function applyTransformsToExistingNotes(
   const rawNotes = readAllClipNotes(clip);
 
   if (rawNotes.length === 0) {
-    console.warn("transforms ignored: clip has no notes to transform");
+    console.warn(
+      `transforms ignored: clip ${targetLabel(clip)} has no notes to transform`,
+    );
 
     return { noteCount: 0 };
   }

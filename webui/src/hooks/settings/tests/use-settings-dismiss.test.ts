@@ -42,6 +42,21 @@ function renderDismiss(overrides: Partial<DismissOptions> = {}) {
 }
 
 /**
+ * Try to dismiss settings and assert it was refused with a shake.
+ * @param overrides - Options describing what blocks the dismiss
+ */
+async function expectShakeInsteadOfDismiss(
+  overrides: Partial<DismissOptions>,
+): Promise<void> {
+  const { result, handleCancel } = renderDismiss(overrides);
+
+  await act(() => result.current.handleSettingsDismiss());
+
+  expect(handleCancel).not.toHaveBeenCalled();
+  expect(result.current.shake).toBe(true);
+}
+
+/**
  * Dispatch an Escape keydown on the document.
  * @returns Promise resolving once the handler has run
  */
@@ -62,23 +77,13 @@ describe("useSettingsDismiss", () => {
   });
 
   it("shakes when there are unsaved changes", async () => {
-    const { result, handleCancel } = renderDismiss({ hasUnsavedChanges: true });
-
-    await act(() => result.current.handleSettingsDismiss());
-
-    expect(handleCancel).not.toHaveBeenCalled();
-    expect(result.current.shake).toBe(true);
+    await expectShakeInsteadOfDismiss({ hasUnsavedChanges: true });
   });
 
   it("shakes instead of dismissing while a sub-form is open", async () => {
     // No unsaved settings, but the Presets tab's create form holds a draft
     // that closing would silently discard.
-    const { result, handleCancel } = renderDismiss({ blockDismiss: true });
-
-    await act(() => result.current.handleSettingsDismiss());
-
-    expect(handleCancel).not.toHaveBeenCalled();
-    expect(result.current.shake).toBe(true);
+    await expectShakeInsteadOfDismiss({ blockDismiss: true });
   });
 
   it("clears shake state", async () => {
@@ -147,6 +152,16 @@ describe("useSettingsDismiss", () => {
     await pressEscape();
 
     expect(handleCancel).toHaveBeenCalledOnce();
+  });
+
+  it("leaves other keys alone while settings are open", async () => {
+    const { handleCancel } = renderDismiss();
+
+    await act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    });
+
+    expect(handleCancel).not.toHaveBeenCalled();
   });
 
   it("ignores Escape key when settings are closed", async () => {

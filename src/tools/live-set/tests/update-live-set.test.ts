@@ -10,19 +10,35 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
 const scaleDisabledNote =
   "Scale disabled for selected clips and defaults for new clips.";
+const scaleRespellNote =
+  "Scale roots are spelled with flats, so F# comes back as Gb — " +
+  "same scale, set correctly.";
+
+const D_MAJOR_RESULT = {
+  id: "live_set_id",
+  scale: "D Major",
+  scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
+  $meta: [scaleChangeNote],
+};
 
 describe("updateLiveSet", () => {
   let liveSet: RegisteredMockObject;
-  let mockRootNote = 0; // Track the root note state across tests
+  // Track the scale state across tests. Live stores root_note as a pitch class
+  // number with no spelling, so the mock must too — that's what makes the
+  // write result render "Gb" for an "F#" request, like every read does.
+  let mockRootNote = 0;
+  let mockScaleName = "Major";
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set_id", { path: livePath.liveSet });
     mockRootNote = 0; // Reset to C for each test
+    mockScaleName = "Major";
 
     // Mock scale_intervals and root_note for tests that need it
     liveSet.get.mockImplementation(function (property: string) {
@@ -34,16 +50,45 @@ describe("updateLiveSet", () => {
         return [mockRootNote]; // Return array with the current mock root note
       }
 
+      if (property === "scale_name") {
+        return [mockScaleName];
+      }
+
       return [0];
     });
 
-    // Mock the set method to update our mock root note
+    // Mock the set method to update our mock scale state
     liveSet.set.mockImplementation(function (property: string, value: unknown) {
       if (property === "root_note") {
         mockRootNote = value as number;
       }
+
+      if (property === "scale_name") {
+        mockScaleName = value as string;
+      }
     });
   });
+
+  /**
+   * Set the scale and check the root note, the scale name, and the spelling
+   * the result reports back.
+   * @param input - The scale as the caller spelled it
+   * @param rootNote - Pitch class Live should be given
+   * @param scaleName - Scale name Live should be given
+   * @param normalized - The scale the result should report
+   */
+  async function expectScaleNormalizes(
+    input: string,
+    rootNote: number,
+    scaleName: string,
+    normalized: string,
+  ): Promise<void> {
+    const result = await updateLiveSet({ scale: input });
+
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", rootNote);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", scaleName);
+    expect(result.scale).toBe(normalized);
+  }
 
   it("should update tempo", async () => {
     const result = await updateLiveSet({ tempo: 140 });
@@ -55,7 +100,7 @@ describe("updateLiveSet", () => {
     });
     // scale was not provided → applyScale must not run (it would warn on the
     // undefined scale via its parse-error path).
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("throws for an unknown locator operation", async () => {
@@ -64,14 +109,13 @@ describe("updateLiveSet", () => {
     ).rejects.toThrow("Unknown locator operation: bogus");
   });
 
-  it("should warn and skip for invalid tempo", async () => {
-    // Should not throw, just warn and skip the tempo update
-    const result1 = await updateLiveSet({ tempo: 10 });
-    const result2 = await updateLiveSet({ tempo: 1000 });
-
-    // Tempo should not be in the result when skipped
-    expect(result1).toStrictEqual({ id: "live_set_id" });
-    expect(result2).toStrictEqual({ id: "live_set_id" });
+  // One value for the whole call, and Live can't hold it — refused before any
+  // property is written, the way a malformed timeSignature already was.
+  it.each([10, 1000])("refuses an out-of-range tempo of %i", async (tempo) => {
+    await expect(updateLiveSet({ tempo })).rejects.toThrow(
+      "tempo must be between 20.0 and 999.0 BPM",
+    );
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
   it("should update time signature", async () => {
@@ -126,12 +170,7 @@ describe("updateLiveSet", () => {
 
     expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-      scale: "D Major",
-      scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
-      $meta: [scaleChangeNote],
-    });
+    expect(result).toStrictEqual(D_MAJOR_RESULT);
   });
 
   it("should warn and skip an invalid scale without throwing", async () => {
@@ -166,57 +205,59 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should handle sharp and flat scale roots", async () => {
-    const result1 = await updateLiveSet({ scale: "F# Minor" });
+  it("reports a sharp root by the flat name Live stores", async () => {
+    // Live keeps root_note, a pitch class number with no spelling, so reads
+    // always render it flat. The write result must agree with them.
+    const sharp = await updateLiveSet({ scale: "F# Dorian" });
 
-    expect(result1.scale).toBe("F# Minor");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 6);
+    expect(sharp.scale).toBe("Gb Dorian");
 
-    const result2 = await updateLiveSet({ scale: "Bb Major" });
+    const flat = await updateLiveSet({ scale: "Bb Major" });
 
-    expect(result2.scale).toBe("Bb Major");
+    expect(flat.scale).toBe("Bb Major");
+
+    // A root with no enharmonic spelling comes back unchanged.
+    const natural = await updateLiveSet({ scale: "C Major" });
+
+    expect(natural.scale).toBe("C Major");
+  });
+
+  it("explains the respelling only when the root comes back differently", async () => {
+    // Weak models read a changed value as a failed write and retry, so the
+    // respelled case has to say the write succeeded.
+    const sharp = await updateLiveSet({ scale: "F# Dorian" });
+
+    expect(sharp.$meta).toStrictEqual([scaleChangeNote, scaleRespellNote]);
+
+    const flat = await updateLiveSet({ scale: "Db Major" });
+
+    expect(flat.$meta).toStrictEqual([scaleChangeNote]);
+
+    const natural = await updateLiveSet({ scale: "C Major" });
+
+    expect(natural.$meta).toStrictEqual([scaleChangeNote]);
+
+    const disabled = await updateLiveSet({ scale: "" });
+
+    expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
+
+    const invalid = await updateLiveSet({ scale: "H Major" });
+
+    expect(invalid.$meta).toBeUndefined();
   });
 
   it("should handle case insensitive scale input and normalize the output", async () => {
-    const result1 = await updateLiveSet({ scale: "c major" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("root_note", 0);
-    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
-    expect(result1.scale).toBe("C Major");
-
-    const result2 = await updateLiveSet({ scale: "D# MINOR" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("root_note", 3);
-    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
-    expect(result2.scale).toBe("D# Minor");
-
-    const result3 = await updateLiveSet({ scale: "bB DoRiAn" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("root_note", 10);
-    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
-    expect(result3.scale).toBe("Bb Dorian");
+    await expectScaleNormalizes("c major", 0, "Major", "C Major");
+    await expectScaleNormalizes("D# MINOR", 3, "Minor", "Eb Minor");
+    await expectScaleNormalizes("bB DoRiAn", 10, "Dorian", "Bb Dorian");
   });
 
   it("should handle various whitespace formats in scale input and normalize the scale name in the output", async () => {
-    // Test with tab
-    const result1 = await updateLiveSet({ scale: "C\tMajor" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("root_note", 0);
-    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
-    expect(result1.scale).toBe("C Major");
-
-    // Test with multiple spaces
-    const result2 = await updateLiveSet({ scale: "D   Minor" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
-    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
-    expect(result2.scale).toBe("D Minor");
-
-    // Test with mixed whitespace
-    const result3 = await updateLiveSet({ scale: "F# \t Dorian" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("root_note", 6);
-    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
-    expect(result3.scale).toBe("F# Dorian");
+    // Tab, multiple spaces, then a mix of both.
+    await expectScaleNormalizes("C\tMajor", 0, "Major", "C Major");
+    await expectScaleNormalizes("D   Minor", 2, "Minor", "D Minor");
+    await expectScaleNormalizes("F# \t Dorian", 6, "Dorian", "Gb Dorian");
   });
 
   it("should disable scale when given empty string", async () => {
@@ -307,12 +348,7 @@ describe("updateLiveSet", () => {
 
     expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
     expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-      scale: "D Major",
-      scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
-      $meta: [scaleChangeNote],
-    });
+    expect(result).toStrictEqual(D_MAJOR_RESULT);
   });
 
   it("should handle minor scales correctly", async () => {

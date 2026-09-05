@@ -22,6 +22,7 @@ import {
   registerThrowingTrack0,
   registerTrack0,
 } from "./update-device-wrap-in-rack-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - wrapInRack", () => {
   let track0: RegisteredMockObject;
@@ -260,8 +261,7 @@ describe("updateDevice - wrapInRack", () => {
         toPath: "t99",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "wrapInRack: target container does not exist",
       );
       expect(result).toBeNull();
@@ -286,8 +286,7 @@ describe("updateDevice - wrapInRack", () => {
         toPath: "garbage",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("wrapInRack: invalid toPath"),
       );
       expect(result).toBeNull();
@@ -438,8 +437,7 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "wrapInRack: cannot mix MIDI and Audio effects in one rack",
     );
     expect(result).toBeNull();
@@ -505,11 +503,10 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     // The unresolved id is reported, then the empty set aborts the wrap.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'wrapInRack: device not found at "nonexistent"',
     );
-    expect(outlet).toHaveBeenCalledWith(1, "wrapInRack: no devices found");
+    expect(capturedWarnings()).toContain("wrapInRack: no devices found");
     expect(result).toBeNull();
   });
 
@@ -518,8 +515,7 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ path: "t99/d0", wrapInRack: true });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'wrapInRack: device not found at "t99/d0"',
     );
     expect(result).toBeNull();
@@ -532,8 +528,7 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ path: "t0/d0/pC1/d0", wrapInRack: true });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'wrapInRack: device not found at "t0/d0/pC1/d0"',
     );
     expect(result).toBeNull();
@@ -548,8 +543,7 @@ describe("updateDevice - wrapInRack", () => {
       toPath: "t99",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "wrapInRack: target container does not exist",
     );
     expect(result).toBeNull();
@@ -562,8 +556,7 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("wrapInRack: Device at path"),
     );
     expect(result).toBeNull();
@@ -581,8 +574,7 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ id: "device-0", wrapInRack: true, toPath });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(`wrapInRack: ${reason}`),
     );
     expect(result).toBeNull();
@@ -605,10 +597,21 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "wrapInRack: no valid effect devices found",
     );
+    expect(result).toBeNull();
+  });
+
+  it("should warn and skip the Producer Pal device", () => {
+    registerMockObject("this_device", { path: livePath.track(0).device(0) });
+
+    const result = updateDevice({ id: "device-0", wrapInRack: true });
+
+    expect(capturedWarnings()).toContain(
+      "wrapInRack: cannot wrap the Producer Pal device t0/d0 (id device-0), skipping",
+    );
+    expect(capturedWarnings()).toContain("wrapInRack: no devices found");
     expect(result).toBeNull();
   });
 
@@ -625,8 +628,7 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'wrapInRack: "not-a-device" is not a device (type: Chain)',
     );
     expect(result).toBeNull();
@@ -651,13 +653,13 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     // The failed chain insertion is reported (1/1), but the wrap continues.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "wrapInRack: failed to create chain 1/1",
     );
 
     // Result contains rack info even if chain creation failed
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      deviceCount: 1,
       id: "new-rack",
       type: "audio-effect-rack",
     });
@@ -675,12 +677,12 @@ describe("updateDevice - wrapInRack", () => {
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
 
     // A returned array whose head isn't "id" is treated as a failure and warned.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "wrapInRack: failed to create chain 1/1",
     );
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      deviceCount: 1,
       id: "new-rack",
       type: "audio-effect-rack",
     });
@@ -703,7 +705,11 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
 
-    expect(result).toMatchObject({ id: "new-rack", type: "audio-effect-rack" });
+    expect(result).toStrictEqual({
+      deviceCount: 1,
+      id: "new-rack",
+      type: "audio-effect-rack",
+    });
   });
 
   it("defaults the insertion position to 0 when the device path has no index", () => {

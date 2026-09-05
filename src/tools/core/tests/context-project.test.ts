@@ -5,6 +5,14 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  endWarningCapture,
+  recordWarning,
+  resetWarningCapture,
+  suspendWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { context } from "../context.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
@@ -21,7 +29,8 @@ describe("context - project scope (default)", () => {
   let toolContext: Partial<ToolContext>;
 
   beforeEach(() => {
-    mockBackup.mockClear();
+    mockBackup.mockReset();
+    resetWarningCapture();
     toolContext = {
       projectContext: { content: "" },
     };
@@ -74,6 +83,7 @@ describe("context - project scope (default)", () => {
 
       expect(result).toStrictEqual({ content: "test content" });
       expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("returns empty string when project context is missing", async () => {
@@ -81,6 +91,7 @@ describe("context - project scope (default)", () => {
 
       expect(result).toStrictEqual({ content: "" });
       expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -90,6 +101,7 @@ describe("context - project scope (default)", () => {
         "Content required for write action",
       );
       expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("clears content when content is an empty string", async () => {
@@ -163,6 +175,26 @@ describe("context - project scope (default)", () => {
 
       expect(mockBackup).not.toHaveBeenCalled();
     });
+
+    // Fire-and-forget from inside a tool call, so it starts detached: holding
+    // the request's capture, its first suspend would pocket that capture and
+    // reinstate it whenever the write resumes — over whatever request is
+    // running by then. See v8-warning-capture.ts rule 3.
+    it("starts the backup with the request's warning capture detached", async () => {
+      const request = beginWarningCapture();
+      let takenByTheBackup = true;
+
+      mockBackup.mockImplementation(async () => {
+        takenByTheBackup = recordWarning("from the backup");
+
+        await suspendWarningCapture(Promise.resolve());
+      });
+
+      await context({ action: "write", content: "Genre: jungle" }, toolContext);
+
+      expect(takenByTheBackup).toBe(false);
+      expect(endWarningCapture(request)).toStrictEqual([]);
+    });
   });
 
   // The unrecoverable failure mode for the user-owned layers: a write REPLACES
@@ -188,8 +220,8 @@ describe("context - project scope (default)", () => {
       // it needs to re-send a merged write.
       expect(toolContext.projectContext!.content).toBe(EXISTING);
       expect(result).toStrictEqual({ content: EXISTING });
-      // outlet 1 DOES fire — that's how console.warn reaches the LLM. Only the
-      // project-context update on outlet 0 must not.
+      // The warning still reaches the model on the response. Only the
+      // project-context update on outlet 0 must not fire.
       expect(outlet).not.toHaveBeenCalledWith(
         0,
         "update_project_context",
@@ -420,5 +452,6 @@ describe("context - project scope (default)", () => {
       context({ action: "delete", name: "x" }, toolContext),
     ).rejects.toThrow("Unknown action for scope:project: delete");
     expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

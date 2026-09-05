@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
@@ -13,6 +13,28 @@ import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 const OUTER_CHAIN = `${livePath.track(1).device(0)} chains 0`;
 const SUB_RACK = `${OUTER_CHAIN} devices 0`;
 const SUB_CHAIN = `${SUB_RACK} chains 0`;
+
+/**
+ * Register the outer Drum Rack with what a tree walk needs: a device type, and
+ * its drum chains under `chains` (setupDrumPadMocks only wires drum_pads).
+ * @param path - Where the rack sits
+ */
+function registerOuterDrumRack(path: PathLike): void {
+  registerMockObject("drum-rack-1", {
+    path,
+    type: "Device",
+    properties: {
+      name: "Kit",
+      class_display_name: "Drum Rack",
+      type: 1,
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      is_active: 1,
+      drum_pads: children("pad-36"),
+      chains: children("chain-1"),
+    },
+  });
+}
 
 /**
  * Build a Drum Rack whose C1 pad holds another Drum Rack, itself holding a
@@ -29,22 +51,9 @@ function setupNestedDrumRack(): void {
     },
   });
 
-  // Re-register the outer rack with what a tree walk needs: a device type, and
-  // its drum chains under `chains` (setupDrumPadMocks only wires drum_pads).
-  registerMockObject("drum-rack-1", {
-    path: livePath.track(1).device(0),
-    type: "Device",
-    properties: {
-      name: "Kit",
-      class_display_name: "Drum Rack",
-      type: 1,
-      can_have_chains: 1,
-      can_have_drum_pads: 1,
-      is_active: 1,
-      drum_pads: children("pad-36"),
-      chains: children("chain-1"),
-    },
-  });
+  // Re-register the outer rack: setupDrumPadMocks leaves out what a tree walk
+  // needs.
+  registerOuterDrumRack(livePath.track(1).device(0));
 
   registerMockObject("sub-rack", {
     path: SUB_RACK,
@@ -154,20 +163,7 @@ describe("readDevice - paths through a nested drum rack", () => {
       type: "Chain",
       properties: { name: "Kit", devices: children("drum-rack-1") },
     });
-    registerMockObject("drum-rack-1", {
-      path: `${livePath.track(1).device(0)} chains 0 devices 0`,
-      type: "Device",
-      properties: {
-        name: "Kit",
-        class_display_name: "Drum Rack",
-        type: 1,
-        can_have_chains: 1,
-        can_have_drum_pads: 1,
-        is_active: 1,
-        drum_pads: children("pad-36"),
-        chains: children("chain-1"),
-      },
-    });
+    registerOuterDrumRack(`${livePath.track(1).device(0)} chains 0 devices 0`);
 
     const result = readDevice({ path: "t1/d0", include: ["drum-map"] });
 
@@ -226,6 +222,7 @@ describe("readDevice - paths through a nested drum rack", () => {
       name: "Hat",
       note: 60,
       pitch: "C3",
+      chainCount: 1,
     });
   });
 

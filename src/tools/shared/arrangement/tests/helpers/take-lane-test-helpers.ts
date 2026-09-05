@@ -56,9 +56,9 @@ export interface TakeLaneTrackOptions {
  * `create_midi_clip` / `create_audio_clip` registers and returns a fresh
  * arrangement clip and grows the lane's `arrangement_clips` list.
  *
- * The track answers `create_midi_clip` too, landing on its MAIN lane the way
- * Live does even on a track that has take lanes — that's the call a promote
- * makes.
+ * The track answers `create_midi_clip` / `create_audio_clip` too, landing on its
+ * MAIN lane the way Live does even on a track that has take lanes — that's the
+ * call a promote makes.
  * @param options - Track index, initial lane count, and clip length
  * @returns The registered track mock object
  */
@@ -156,6 +156,8 @@ export function registerTakeLaneTrack(
       },
       create_midi_clip: (start, length) =>
         createOwnedClip(mainLane, "is_midi_clip", start, length),
+      create_audio_clip: (_file, start) =>
+        createOwnedClip(mainLane, "is_audio_clip", start),
     },
   });
 }

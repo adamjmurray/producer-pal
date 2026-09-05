@@ -39,6 +39,12 @@ import {
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
+import {
+  type CellResult,
+  numArg,
+  runProbeMatrix,
+  truncate,
+} from "./probe-report.ts";
 import { VARIANTS, type Args, type Variant } from "./schema-compat-variants.ts";
 
 /** Per-call wall-clock cap so a hung/rate-limited model can't stall the run. */
@@ -67,78 +73,25 @@ const REPEATS = Math.max(1, Math.floor(numArg("--repeat=") ?? 3));
  */
 const TEMPERATURE = numArg("--temp=");
 
-type Status = "ok" | "wrong-shape" | "rejected" | "no-call" | "no-key";
-
-interface CellResult {
-  status: Status;
-  detail: string;
-}
-
-/** Worst-first: a flaky cell is reported by its most severe draw, not its best. */
-const SEVERITY: Status[] = [
-  "rejected",
-  "no-key",
-  "no-call",
-  "wrong-shape",
-  "ok",
-];
-
-/**
- * Collapse repeated draws into one cell: status is the worst observed (so flaky
- * cells can't masquerade as clean), detail carries the full distribution plus a
- * representative input from the worst draw.
- * @param results - One CellResult per draw
- * @returns Aggregated CellResult
- */
-function aggregate(results: CellResult[]): CellResult {
-  const counts = new Map<Status, number>();
-
-  for (const r of results)
-    counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
-
-  const worst = SEVERITY.find((s) => counts.has(s)) ?? "ok";
-  const dist = SEVERITY.filter((s) => counts.has(s))
-    .map((s) => `${s} ${counts.get(s)}/${results.length}`)
-    .join(", ");
-  const rep = results.find((r) => r.status === worst);
-
-  return { status: worst, detail: `[${dist}] ${rep?.detail ?? ""}` };
-}
-
-/**
- * Parse a numeric CLI flag like --repeat=3 or --temp=0; absent flag is undefined.
- * @param flag - Flag prefix including trailing '='
- * @returns Parsed number, or undefined when the flag is absent/unparseable
- */
-function numArg(flag: string): number | undefined {
-  const arg = process.argv.find((a) => a.startsWith(flag));
-
-  if (arg == null) return undefined;
-
-  const n = Number(arg.slice(flag.length));
-
-  return Number.isFinite(n) ? n : undefined;
-}
-
 /**
  * Resolve a model argument to an AI SDK LanguageModel. Handles Mistral natively
  * (the eval provider factory omits it) and delegates the rest to the factory.
  * @param arg - provider/model or prefix-inferred model string
  * @returns AI SDK LanguageModel
  */
-function resolveModel(arg: string): LanguageModel {
+function resolveModel(arg: string): Promise<LanguageModel> {
   if (arg.startsWith("mistral/")) {
     const model = arg.slice("mistral/".length);
     const apiKey = process.env.MISTRAL_KEY;
 
     if (!apiKey) throw new Error("API key for Mistral is not set");
 
-    return createMistral({ apiKey })(model);
+    return Promise.resolve(createMistral({ apiKey })(model));
   }
 
   const { provider, model } = parseModelArg(arg);
 
-  return createProviderModel(provider, model);
+  return Promise.resolve(createProviderModel(provider, model));
 }
 
 /**
@@ -173,30 +126,12 @@ async function probe(
   }
 
   const input = (call.input ?? {}) as Args;
-  const detail = truncate(JSON.stringify(input));
 
-  return { status: variant.check(input) ? "ok" : "wrong-shape", detail };
+  return {
+    status: variant.check(input) ? "ok" : "wrong-shape",
+    detail: truncate(JSON.stringify(input)),
+  };
 }
-
-/**
- * Truncate a string for compact terminal output.
- * @param s - Input string
- * @param n - Max length
- * @returns Truncated single-line string
- */
-function truncate(s: string, n = 160): string {
-  const flat = s.replaceAll(/\s+/g, " ").trim();
-
-  return flat.length > n ? `${flat.slice(0, n)}…` : flat;
-}
-
-const SYMBOL: Record<Status, string> = {
-  ok: "✓",
-  "wrong-shape": "~",
-  rejected: "✗",
-  "no-call": "·",
-  "no-key": "-",
-};
 
 /**
  * Resolve default model list from provider configs (one per provider).
@@ -211,101 +146,16 @@ function defaultModels(): string[] {
   ];
 }
 
-/**
- * Probe every requested model against every schema variant and print a report.
- * @returns Promise that resolves when the report is printed
- */
-async function main(): Promise<void> {
-  const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-  const modelArgs = args.length > 0 ? args : defaultModels();
+const models = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 
-  console.log("Schema compatibility probe");
-  console.log(`Variants: ${VARIANTS.map((v) => v.id).join(", ")}\n`);
-  for (const v of VARIANTS) console.log(`  ${v.id}: ${v.tests}`);
-  console.log("\nLegend: ✓ ok  ~ wrong-shape  ✗ rejected  · no-call  - no-key");
-  console.log(
+await runProbeMatrix<LanguageModel>({
+  modelArgs: models.length > 0 ? models : defaultModels(),
+  variants: VARIANTS,
+  repeats: REPEATS,
+  settings: [
     `Tool choice: ${TOOL_CHOICE} | repeats: ${REPEATS} | temperature: ` +
-      `${TEMPERATURE ?? "provider default"} (cell shows worst of N draws)\n`,
-  );
-
-  const details: string[] = [];
-  const header = ["model".padEnd(42), ...VARIANTS.map((v) => v.id.padEnd(22))];
-
-  console.log(header.join(""));
-  console.log("-".repeat(header.join("").length));
-
-  for (const modelArg of modelArgs) {
-    const row = [modelArg.padEnd(42)];
-    let model: LanguageModel;
-
-    try {
-      model = resolveModel(modelArg);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      row.push(...VARIANTS.map(() => `${SYMBOL["no-key"]} no-key`.padEnd(22)));
-      details.push(`[${modelArg}] unresolved: ${truncate(message)}`);
-      console.log(row.join(""));
-      continue;
-    }
-
-    for (const variant of VARIANTS) {
-      const cell = await runCell(model, variant, modelArg, details);
-
-      row.push((SYMBOL[cell.status] + " " + cell.status).padEnd(22));
-    }
-
-    console.log(row.join(""));
-  }
-
-  console.log("\n=== details ===\n");
-  console.log(details.join("\n"));
-}
-
-/**
- * Run one (model, variant) cell REPEATS times, aggregate the draws, and append
- * a details line carrying the full distribution.
- * @param model - Resolved AI SDK LanguageModel
- * @param variant - Schema variant
- * @param modelArg - Original model argument (for labeling)
- * @param details - Mutable details accumulator
- * @returns The aggregated cell result
- */
-async function runCell(
-  model: LanguageModel,
-  variant: Variant,
-  modelArg: string,
-  details: string[],
-): Promise<CellResult> {
-  const draws: CellResult[] = [];
-
-  for (let n = 0; n < REPEATS; n++) draws.push(await runOnce(model, variant));
-
-  const cell = aggregate(draws);
-
-  details.push(`[${modelArg} | ${variant.id}] ${cell.status}: ${cell.detail}`);
-
-  return cell;
-}
-
-/**
- * One probe attempt, converting thrown errors into a rejected/no-key result.
- * @param model - Resolved AI SDK LanguageModel
- * @param variant - Schema variant
- * @returns The single-draw cell result
- */
-async function runOnce(
-  model: LanguageModel,
-  variant: Variant,
-): Promise<CellResult> {
-  try {
-    return await probe(model, variant);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const status: Status = /api key/i.test(message) ? "no-key" : "rejected";
-
-    return { status, detail: truncate(message) };
-  }
-}
-
-await main();
+      `${TEMPERATURE ?? "provider default"} (cell shows worst of N draws)`,
+  ],
+  prepareRow: resolveModel,
+  draw: probe,
+});

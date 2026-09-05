@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
+import { fetchWithDeadline } from "#webui/utils/fetch-with-deadline";
 
 /** How often to re-read the document while the editor is open and focused. */
 const POLL_INTERVAL_MS = 5000;
@@ -487,39 +488,50 @@ export function makeContentTransport(
   url: string,
   label: string,
 ): ContentTransport {
-  const read = async (): Promise<DocRead> => {
-    const response = await fetch(url, { cache: "no-store" });
+  const read = async (): Promise<DocRead> =>
+    await fetchWithDeadline(
+      url,
+      { cache: "no-store" },
+      `${label} request timed out`,
+      async (response) => {
+        if (!response.ok) {
+          throw new Error(
+            `${label} request failed (${response.status} ${response.statusText})`,
+          );
+        }
 
-    if (!response.ok) {
-      throw new Error(
-        `${label} request failed (${response.status} ${response.statusText})`,
-      );
-    }
+        return toDocRead((await response.json()) as ContentResponse);
+      },
+    );
 
-    return toDocRead((await response.json()) as ContentResponse);
-  };
+  // Deliberately NOT `keepalive: true` (unlike the collection transport's
+  // small-entry writes): a context / custom-system-prompt body can be imported
+  // up to ~1MB, and a keepalive fetch whose body exceeds the browser's ~64KB
+  // quota rejects outright — that would regress ordinary large-doc saves to fix
+  // only the rare beforeunload drop. On localhost the flush completes in a few
+  // ms, so that drop window is negligible; the size safety is the better trade.
+  // The deadline below is orthogonal and applies either way: a write that never
+  // settles holds autosave off and makes every later refresh discard its result
+  // for the rest of the editor's mount.
+  const write = async (content: string): Promise<DocRead> =>
+    await fetchWithDeadline(
+      url,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      },
+      `${label} update timed out`,
+      async (response) => {
+        if (!response.ok) {
+          throw new Error(
+            `${label} update failed (${response.status} ${response.statusText})`,
+          );
+        }
 
-  const write = async (content: string): Promise<DocRead> => {
-    // Deliberately NOT `keepalive: true` (unlike the collection transport's
-    // small-entry writes): a context / custom-system-prompt body can be imported
-    // up to ~1MB, and a keepalive fetch whose body exceeds the browser's ~64KB
-    // quota rejects outright — that would regress ordinary large-doc saves to fix
-    // only the rare beforeunload drop. On localhost the flush completes in a few
-    // ms, so that drop window is negligible; the size safety is the better trade.
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `${label} update failed (${response.status} ${response.statusText})`,
-      );
-    }
-
-    return toDocRead((await response.json()) as ContentResponse);
-  };
+        return toDocRead((await response.json()) as ContentResponse);
+      },
+    );
 
   return { read, write };
 }

@@ -5,7 +5,7 @@
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "../transform-warning-label.ts";
 import {
   type PitchRange,
   type PredicateNode,

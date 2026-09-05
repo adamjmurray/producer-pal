@@ -21,6 +21,7 @@ import {
   throwOnNthDuplicate,
   type SplittingClipProps,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const HOLDING_AREA = {} as const;
 
@@ -106,9 +107,10 @@ describe("performSplitting when Live refuses a step", () => {
     // answering ["id", 0] there is what used to throw out of the whole call.
     const trackMock = splitWithFailure({ failOnDuplicate: 3 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "Failed to cut segment 1 of clip t0[26|1] (id clip_1)",
+      ),
     );
     // 104 is the failed segment's own start: everything from there on goes back
     // as one clip, rather than that span being left empty.
@@ -129,9 +131,10 @@ describe("performSplitting when Live refuses a step", () => {
     // same failure as an exception never lost anything.
     const trackMock = splitWithFailure({ failOnDuplicate: 2 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "Failed to cut segment 1 of clip t0[26|1] (id clip_1)",
+      ),
     );
     // 104, not 108: the tail covers the refused segment's span too.
     expect(dupPositions(trackMock).at(-1)).toBe(104);
@@ -142,9 +145,10 @@ describe("performSplitting when Live refuses a step", () => {
     // half-built copy to clean up.
     const trackMock = splitWithFailure({ throwOnDuplicate: 2 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "Failed to cut segment 1 of clip t0[26|1] (id clip_1)",
+      ),
     );
     expect(dupPositions(trackMock).at(-1)).toBe(104);
   });
@@ -204,9 +208,10 @@ describe("performSplitting when Live refuses a step", () => {
       ),
     ).not.toThrow();
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("arrangementSplit failed for clip clip_1"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "arrangementSplit failed for clip t0[26|1] (id clip_1)",
+      ),
     );
     expect(dups.count).toBe(4);
   });

@@ -16,18 +16,16 @@ import {
   toLiveApiView,
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
 
 export interface TrackSelectionResult {
   selectedTrackId?: string;
-  selectedCategory?: string;
-  selectedTrackIndex?: number;
 }
 
 export interface SceneSelectionResult {
   selectedSceneId?: string;
-  selectedSceneIndex?: number;
 }
 
 interface ValidateParametersOptions {
@@ -179,21 +177,12 @@ export function updateTrackSelection({
   const result: TrackSelectionResult = {};
 
   if (trackId != null) {
-    const trackAPI = validateIdType(trackId, "track", "select");
+    const trackAPI = validateIdType(trackId, "track");
     const liveApiTrackId = toLiveApiId(trackAPI.id);
 
     songView.setProperty("selected_track", liveApiTrackId);
     result.selectedTrackId = liveApiTrackId;
-
-    if (category != null) {
-      result.selectedCategory = category;
-    }
-
-    if (trackIndex != null) {
-      result.selectedTrackIndex = trackIndex;
-    }
   } else if (category != null || trackIndex != null) {
-    const finalCategory = category ?? "regular";
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
@@ -201,11 +190,6 @@ export function updateTrackSelection({
 
       songView.setProperty("selected_track", liveApiTrackId);
       result.selectedTrackId = liveApiTrackId;
-      result.selectedCategory = finalCategory;
-
-      if (finalCategory !== "master" && trackIndex != null) {
-        result.selectedTrackIndex = trackIndex;
-      }
     }
   }
 
@@ -228,15 +212,11 @@ export function updateSceneSelection({
   const result: SceneSelectionResult = {};
 
   if (sceneId != null) {
-    const sceneAPI = validateIdType(sceneId, "scene", "select");
+    const sceneAPI = validateIdType(sceneId, "scene");
     const liveApiSceneId = toLiveApiId(sceneAPI.id);
 
     songView.setProperty("selected_scene", liveApiSceneId);
     result.selectedSceneId = liveApiSceneId;
-
-    if (sceneIndex != null) {
-      result.selectedSceneIndex = sceneIndex;
-    }
   } else if (sceneIndex != null) {
     const finalSceneId = toLiveApiId(
       LiveAPI.from(livePath.scene(sceneIndex)).id,
@@ -244,7 +224,6 @@ export function updateSceneSelection({
 
     songView.setProperty("selected_scene", finalSceneId);
     result.selectedSceneId = finalSceneId;
-    result.selectedSceneIndex = sceneIndex;
   }
 
   return result;
@@ -266,7 +245,7 @@ export function updateDeviceSelection({
   devicePathParam,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
-    const deviceAPI = validateIdType(deviceId, "device", "select");
+    const deviceAPI = validateIdType(deviceId, "device");
 
     songView.call("select_device", toLiveApiId(deviceId));
 
@@ -304,7 +283,7 @@ export function applyPluginEditorWindow(
 ): boolean {
   if (device == null) {
     console.warn(
-      "select: openPluginWindow requires a plug-in device — specify id or path",
+      "openPluginWindow requires a plug-in device — specify id or path",
     );
 
     return false;
@@ -312,7 +291,7 @@ export function applyPluginEditorWindow(
 
   if (device.type !== "PluginDevice") {
     console.warn(
-      `select: openPluginWindow ignored — ${device.type} is not a plug-in (VST/AU)`,
+      `openPluginWindow ignored — ${targetLabel(device)} is a ${device.type}, not a plug-in (VST/AU)`,
     );
 
     return false;
@@ -428,7 +407,7 @@ export function updateClipSelection({
   clipId,
   requestedView,
 }: UpdateClipSelectionOptions): void {
-  const clipAPI = validateIdType(clipId, "clip", "select");
+  const clipAPI = validateIdType(clipId, "clip");
   const isSessionClip =
     clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null;
   const requiredView = isSessionClip ? "session" : "arrangement";
@@ -436,7 +415,7 @@ export function updateClipSelection({
   // Warn if user explicitly requested a conflicting view
   if (requestedView != null && requestedView !== requiredView) {
     console.warn(
-      `ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
+      `ignoring view="${requestedView}" - clip ${targetLabel(clipAPI)} requires ${requiredView} view`,
     );
   }
 

@@ -8,9 +8,9 @@
  */
 
 import { type InspectColor, styleText } from "node:util";
-import { efficiencyColor } from "#evals/chat/shared/formatting.ts";
+import { efficiencyColor, pctColor } from "#evals/chat/shared/formatting.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { checkTally } from "../reporting/result-format.ts";
+import { checkTally, scorePercentage } from "../reporting/result-format.ts";
 
 /**
  * Parse the repeat count from CLI option
@@ -37,10 +37,19 @@ export function parseRepeatCount(value: string | undefined): number {
  */
 export function printTrialSummary(trials: JsonEvalResult[]): void {
   const passed = trials.filter((r) => r.result === "pass").length;
-  const color = passed === trials.length ? "green" : "red";
+  const graded = trials.filter((r) => r.result !== "error");
+  const color = passed === graded.length ? "green" : "red";
+  // Errored trials never reached the model, so they are not out of N.
+  const errorNote =
+    trials.length === graded.length
+      ? ""
+      : ` (${trials.length - graded.length} never ran)`;
 
   console.log(
-    styleText(color, `  Trials: ${passed}/${trials.length} passed\n`),
+    styleText(
+      color,
+      `  Trials: ${passed}/${graded.length} passed${errorNote}\n`,
+    ),
   );
 }
 
@@ -61,13 +70,20 @@ interface SummaryPart {
 export function buildMultiTrialParts(trials: JsonEvalResult[]): SummaryPart[] {
   const parts: SummaryPart[] = [];
 
-  // Trial pass rate
+  // Trial pass rate, over the trials that actually ran. A trial that errored
+  // before the model's first turn tested nothing, so it is not in the
+  // denominator — otherwise a Live outage prints as a confident 0/3.
   const trialsPassed = trials.filter((r) => r.result === "pass").length;
+  const trialsGraded = trials.filter((r) => r.result !== "error").length;
+  const errorSuffix =
+    trialsGraded === trials.length
+      ? ""
+      : ` (+${trials.length - trialsGraded} err)`;
 
   parts.push({
     label: "trials",
-    value: `${trialsPassed}/${trials.length}`,
-    color: trialsPassed === trials.length ? "green" : "red",
+    value: `${trialsPassed}/${trialsGraded}${errorSuffix}`,
+    color: trialsPassed === trialsGraded ? "green" : "red",
   });
 
   // Checks: total across all trials
@@ -80,6 +96,42 @@ export function buildMultiTrialParts(trials: JsonEvalResult[]): SummaryPart[] {
     value: `${checksPassed}/${checksTotal}`,
     color: checksPassed === checksTotal ? "green" : "red",
   });
+
+  // Signals: totaled like checks, but never gating
+  const signalTallies = trials
+    .filter((r) => r.signals != null)
+    .map((r) => checkTally(r.signals ?? []));
+
+  if (signalTallies.length > 0) {
+    const passed = signalTallies.reduce((sum, t) => sum + t.passed, 0);
+    const total = signalTallies.reduce((sum, t) => sum + t.total, 0);
+
+    parts.push({
+      label: "signals",
+      value: `${passed}/${total}`,
+      color: passed === total ? "green" : "yellow",
+    });
+  }
+
+  // Tool errors: total failed calls across all trials
+  const toolErrors = trials.reduce(
+    (sum, r) => sum + (r.toolErrors?.count ?? 0),
+    0,
+  );
+
+  if (toolErrors > 0) {
+    parts.push({
+      label: "tool errors",
+      value: String(toolErrors),
+      color: "yellow",
+    });
+  }
+
+  const score = scorePercentage(trials);
+
+  if (score != null) {
+    parts.push({ label: "score", value: `${score}%`, color: pctColor(score) });
+  }
 
   // Efficiency: average percentage
   const effTrials = trials.filter((r) => r.efficiency != null);

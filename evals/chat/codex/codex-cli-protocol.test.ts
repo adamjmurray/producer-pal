@@ -112,26 +112,24 @@ describe("scrubAgentCliEnv", () => {
 
 describe("parseCodexStream", () => {
   it("collects text, MCP calls, results, session id and usage", () => {
+    // The started and completed events describe the same call, so they share
+    // its identity and differ only in what the completion adds.
+    const mcpCall = {
+      id: "call-1",
+      type: "mcp_tool_call",
+      server: "producer-pal",
+      tool: "ppal-connect",
+    };
     const stdout = [
       { type: "thread.started", thread_id: "thread-abc" },
       {
         type: "item.started",
-        item: {
-          id: "call-1",
-          type: "mcp_tool_call",
-          server: "producer-pal",
-          tool: "ppal-connect",
-          arguments: "{}",
-          status: "in_progress",
-        },
+        item: { ...mcpCall, arguments: "{}", status: "in_progress" },
       },
       {
         type: "item.completed",
         item: {
-          id: "call-1",
-          type: "mcp_tool_call",
-          server: "producer-pal",
-          tool: "ppal-connect",
+          ...mcpCall,
           arguments: {},
           status: "completed",
           result: { content: [{ type: "text", text: "connected" }] },
@@ -297,7 +295,7 @@ describe("parseCodexStream", () => {
             { type: "text", text: '{"id":"device1"}' },
             {
               type: "text",
-              text: 'WARNING: updateDevice: setModulation target "Flt 1 Freq" — parameter not found',
+              text: 'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
             },
           ],
         },
@@ -310,7 +308,7 @@ describe("parseCodexStream", () => {
         args: {},
         result: '{"id":"device1"}',
         warnings: [
-          'WARNING: updateDevice: setModulation target "Flt 1 Freq" — parameter not found',
+          'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
         ],
       },
     ]);
@@ -329,9 +327,74 @@ describe("parseCodexStream", () => {
       },
     });
 
+    expect(parseCodexStream(stdout).toolCalls[0]).toStrictEqual({
+      name: "ppal-connect",
+      args: {},
+      result: "ERROR: connection refused",
+      isError: true,
+    });
+  });
+
+  // Captured from a real `codex exec --json` run against the device: a tool that
+  // throws comes back as `status: "failed"` with the message already in the
+  // result's first text block and `error: null`. So the `ERROR:` fallback below
+  // is for the no-result case (transport-level failure) only, and a failed call
+  // never loses its message.
+  it("keeps the message a failed call carries in its own result", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "item_0",
+        type: "mcp_tool_call",
+        tool: "ppal-read-track",
+        arguments: { trackIndex: 999 },
+        result: {
+          content: [
+            {
+              type: "text",
+              text: "Error: trackIndex 999 does not exist",
+            },
+          ],
+        },
+        error: null,
+        status: "failed",
+      },
+    });
+
     expect(parseCodexStream(stdout).toolCalls[0]?.result).toBe(
-      "ERROR: connection refused",
+      "Error: trackIndex 999 does not exist",
     );
+  });
+
+  // Also captured live. An update tool that warn-and-skips reports `completed`
+  // with an empty payload — the refusal is only in the WARNING block. Nothing is
+  // dropped here, but the payload alone reads as a clean no-op, so anything
+  // grading these calls has to read `warnings`, not just `result`.
+  it("keeps the WARNING when the payload is an empty success", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "item_0",
+        type: "mcp_tool_call",
+        tool: "ppal-update-clip",
+        arguments: { path: "t0/s0" },
+        result: {
+          content: [
+            { type: "text", text: "[]" },
+            { type: "text", text: "WARNING: Failed to update clip 285" },
+          ],
+        },
+        error: null,
+        status: "completed",
+      },
+    });
+
+    expect(parseCodexStream(stdout).toolCalls[0]).toStrictEqual({
+      name: "ppal-update-clip",
+      args: { path: "t0/s0" },
+      result: "[]",
+      warnings: ["WARNING: Failed to update clip 285"],
+    });
   });
 
   it("throws on fatal turn errors and ignores stray output", () => {

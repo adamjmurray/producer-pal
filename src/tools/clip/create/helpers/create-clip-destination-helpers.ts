@@ -4,31 +4,38 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Where new clips go. `path` names it in the grammar duplicate and update-clip
-// already speak — `t0/s1` for a clip slot, `t0` for that track's arrangement
-// — and the retired `slot` plus the trackIndex/sceneIndex models reach for on
-// their own still resolve to the same two buckets.
+// already speak — `t0/s1` for a clip slot, `t0[5|1]` for a spot on that track's
+// arrangement — and the retired `slot` plus the trackIndex/sceneIndex models
+// reach for on their own still resolve to the same two buckets.
+//
+// A create has no source to borrow the other half of an arrangement address
+// from, so it needs both: the lane from the path, and the position from either
+// the path's coordinate or arrangementStart.
 //
 // Resolved before anything is created, so a bad destination fails instead of
 // quietly landing clips somewhere else.
 
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
+import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
   takeLaneFromPath,
+  reusesPreviousLane,
   withNewLaneOrdinals,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
+import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   arrangementPath,
   namedHiddenPath,
-  parseObjectPathList,
-  requireClipPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   parseSlotList,
-  type SlotPosition,
+  type ClipSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
 /** One arrangement clip: which track and lane, and where on it. */
@@ -38,7 +45,7 @@ export interface ArrangementPosition extends ArrangementTrack {
 
 export interface ClipDestinations {
   /** Clip slots, in order. */
-  sessionSlots: SlotPosition[];
+  clipSlots: ClipSlotPosition[];
   /** Arrangement clips, one per track/position pair. */
   arrangementPositions: ArrangementPosition[];
 }
@@ -56,43 +63,55 @@ export interface ClipDestinationParams {
   takeLane?: number | string | null;
 }
 
+/** An arrangement destination, with the position its own coordinate named. */
+interface ArrangementTrackTarget extends ArrangementTrack {
+  /** The `[...]` position, or null when the entry carried none. */
+  position: string | null;
+}
+
 interface SplitDestinations {
-  sessionSlots: SlotPosition[];
-  tracks: ArrangementTrack[];
+  clipSlots: ClipSlotPosition[];
+  tracks: ArrangementTrackTarget[];
 }
 
 /**
  * Resolves where a create-clip call's clips go.
  * @param params - The destination params as the tool received them
- * @param arrangementStarts - Parsed arrangement bar|beat positions
+ * @param arrangementStart - Bar|beat position(s), comma-separated, as sent
  * @returns Clip slots and arrangement positions, both possibly empty
  */
 export function resolveCreateClipDestinations(
   params: ClipDestinationParams,
-  arrangementStarts: string[],
+  arrangementStart?: string | null,
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
-  // destination that failed to parse.
+  // destination that failed to parse. A position list that is not blank but
+  // still names nothing warns instead: a real position beside a slot-only path
+  // is refused, so one that parses to nothing must not just vanish.
   const path = namedParam(params.path, "path");
   const slot = namedHiddenPath(params.slot ?? undefined, "slot");
+  const arrangementStarts = targetEntries(
+    namedParam(arrangementStart, "arrangementStart"),
+    "arrangementStart",
+  );
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // path replaces, so refuse instead of picking.
   if (path != null && slot != null) {
     throw new Error(
-      "createClip failed: path and slot both name a destination; use path alone (slot is deprecated)",
+      "path and slot both name a destination; use path alone (slot is deprecated)",
     );
   }
 
-  const { sessionSlots, tracks } =
+  const { clipSlots, tracks } =
     path != null
       ? splitPathDestinations(path, params)
       : legacyDestinations(slot, params, arrangementStarts.length > 0);
 
   return {
-    sessionSlots,
+    clipSlots,
     arrangementPositions: pairTracksWithStarts(
-      applyTakeLaneAlias(tracks, params.takeLane, sessionSlots.length),
+      applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length),
       arrangementStarts,
     ),
   };
@@ -117,32 +136,55 @@ function splitPathDestinations(
   // other went unused rather than guessing which was meant.
   if (params.trackIndex != null || params.sceneIndex != null) {
     console.warn(
-      'createClip: trackIndex/sceneIndex ignored — "path" already names the destination',
+      'trackIndex/sceneIndex ignored — "path" already names the destination',
     );
   }
 
-  const sessionSlots: SlotPosition[] = [];
-  const tracks: ArrangementTrack[] = [];
+  const clipSlots: ClipSlotPosition[] = [];
+  const tracks: ArrangementTrackTarget[] = [];
+  // The lane is settled before the locators are resolved, so a refusal quotes
+  // the position the caller wrote rather than the bar|beat it names.
+  const entries = parseClipDestinationList(path, "path").map((entry) => ({
+    position: entry.position,
+    lane: entry.lane ?? noTrack(entry.position),
+  }));
 
-  for (const destination of parseObjectPathList(path, "path")) {
-    const clipPath = requireClipPath(destination, "path");
-
-    if (clipPath.kind === "slot") {
-      sessionSlots.push({
-        trackIndex: clipPath.trackIndex,
-        sceneIndex: clipPath.sceneIndex,
+  for (const { lane, position } of resolveDestinationPositions(entries, {
+    paramName: "path",
+  })) {
+    if (lane.kind === "slot") {
+      clipSlots.push({
+        trackIndex: lane.trackIndex,
+        sceneIndex: lane.sceneIndex,
       });
     } else {
       tracks.push({
-        trackIndex: clipPath.trackIndex,
-        takeLane: takeLaneFromPath(clipPath),
+        trackIndex: lane.trackIndex,
+        takeLane: takeLaneFromPath(lane),
+        ...(reusesPreviousLane(lane) && { sameLane: true }),
+        position,
       });
     }
   }
 
   // Number the lanes here, off the list the caller wrote: pairTracksWithStarts
-  // cycles this list, and a cycled repeat must reuse its lane, not append one.
-  return { sessionSlots, tracks: withNewLaneOrdinals(tracks) };
+  // may broadcast one entry to every position, and a repeat of one "l+" must
+  // reuse its lane, not append one per position.
+  return { clipSlots, tracks: withNewLaneOrdinals(tracks, "path") };
+}
+
+/**
+ * Refuses a bare "[5|1]". A create has no source clip to borrow the lane from,
+ * so half an address names nowhere to put a clip.
+ * @param position - The position the coordinate named
+ * @returns Never — always throws
+ */
+function noTrack(position: string | null): never {
+  throw pathError(
+    "path",
+    `[${position}]`,
+    `a new clip needs a track; name the lane too, as "t<track>[${position}]"`,
+  );
 }
 
 /**
@@ -151,36 +193,30 @@ function splitPathDestinations(
  * fallback for a caller that didn't use the segment.
  * @param tracks - Arrangement destinations, in order
  * @param takeLane - The raw takeLane param
- * @param sessionSlotCount - Number of clip slots in this request
+ * @param clipSlotCount - Number of clip slots in this request
  * @returns The destinations, with the alias applied where a lane was unnamed
  */
 function applyTakeLaneAlias(
-  tracks: ArrangementTrack[],
+  tracks: ArrangementTrackTarget[],
   takeLane: number | string | null | undefined,
-  sessionSlotCount: number,
-): ArrangementTrack[] {
+  clipSlotCount: number,
+): ArrangementTrackTarget[] {
   if (!isTakeLaneRequested(takeLane)) return tracks;
 
   // Warn-and-ignore without validating the value: an LLM passing garbage on a
   // request with nowhere to put a lane shouldn't lose the whole call to it.
   if (tracks.length === 0) {
-    console.warn(
-      "createClip: takeLane ignored for session clips (arrangement-only)",
-    );
+    console.warn("takeLane ignored for session clips (arrangement-only)");
 
     return tracks;
   }
 
-  if (sessionSlotCount > 0) {
-    console.warn(
-      "createClip: takeLane ignored for session clips (arrangement-only)",
-    );
+  if (clipSlotCount > 0) {
+    console.warn("takeLane ignored for session clips (arrangement-only)");
   }
 
   if (tracks.some((track) => track.takeLane != null)) {
-    console.warn(
-      'createClip: takeLane ignored — "path" already names the take lane',
-    );
+    console.warn('takeLane ignored — "path" already names the take lane');
 
     return tracks;
   }
@@ -206,15 +242,16 @@ function legacyDestinations(
   hasArrangementStarts: boolean,
 ): SplitDestinations {
   const { trackIndex, sceneIndex } = params;
-  const sessionSlots = slot == null ? [] : parseSlotList(slot, "slot");
+  const clipSlots = slot == null ? [] : parseSlotList(slot, "slot");
+  // The params path replaced never carried a position of their own.
 
   if (trackIndex == null && sceneIndex == null) {
-    return { sessionSlots, tracks: [] };
+    return { clipSlots, tracks: [] };
   }
 
   if (trackIndex == null) {
     throw new Error(
-      `createClip failed: sceneIndex ${sceneIndex} has no track; use path "t<track>/s${sceneIndex}"`,
+      `sceneIndex ${sceneIndex} has no track; use path "t<track>/s${sceneIndex}"`,
     );
   }
 
@@ -223,68 +260,107 @@ function legacyDestinations(
     // destinations, so the guess is the redundant one.
     if (slot != null) {
       console.warn(
-        'createClip: trackIndex/sceneIndex ignored — "slot" already names the session destination',
+        'trackIndex/sceneIndex ignored — "slot" already names the session destination',
       );
 
-      return { sessionSlots, tracks: [] };
+      return { clipSlots, tracks: [] };
     }
 
-    return { sessionSlots: [{ trackIndex, sceneIndex }], tracks: [] };
+    return { clipSlots: [{ trackIndex, sceneIndex }], tracks: [] };
   }
 
-  // trackIndex alone means the arrangement, but only arrangementStart says
-  // where on it. Without one it named nothing the clip slots didn't already.
-  if (!hasArrangementStarts && sessionSlots.length > 0) {
+  // trackIndex alone means the arrangement, but only a position says where on
+  // it. Without one it named nothing the clip slots didn't already.
+  if (!hasArrangementStarts && clipSlots.length > 0) {
     console.warn(
-      "createClip: trackIndex ignored — an arrangement clip also needs arrangementStart",
+      `trackIndex ignored — an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
     );
 
-    return { sessionSlots, tracks: [] };
+    return { clipSlots, tracks: [] };
   }
 
-  return { sessionSlots, tracks: [{ trackIndex, takeLane: null }] };
+  return {
+    clipSlots,
+    tracks: [{ trackIndex, takeLane: null, position: null }],
+  };
 }
 
 /**
- * Pairs arrangement tracks with arrangement positions. Each param sets a clip
- * count; the longer list wins and the shorter one cycles, matching duplicate.
+ * Pairs arrangement tracks with arrangement positions.
+ *
+ * A track whose path carried a `[...]` already has its own position, so nothing
+ * pairs — the two spellings can't both be in play, since a coordinate beside
+ * arrangementStart is refused before any of this runs. Otherwise either list
+ * may hold the single value that covers the other; two lists pair 1:1, and a
+ * mismatch warns and makes only the clips both lists name — see
+ * `list-pairing.ts`.
  * @param tracks - Arrangement destination tracks, in order
  * @param arrangementStarts - Parsed arrangement bar|beat positions
  * @returns One entry per arrangement clip
  */
 function pairTracksWithStarts(
-  tracks: ArrangementTrack[],
+  tracks: ArrangementTrackTarget[],
   arrangementStarts: string[],
 ): ArrangementPosition[] {
   if (tracks.length === 0) {
     if (arrangementStarts.length > 0) {
       throw new Error(
-        'createClip failed: arrangementStart needs a track; add one to path (e.g. path: "t0")',
+        'arrangementStart needs a track; name both in path (e.g. path: "t0[5|1]")',
       );
     }
 
     return [];
   }
 
-  if (arrangementStarts.length === 0) {
-    // A bare track names two places at once, and guessing between them is how a
-    // clip lands on top of something. A take lane names only one, but still
-    // needs a position on it.
-    const { trackIndex, takeLane } = tracks[0] as ArrangementTrack;
-    const fix =
-      takeLane == null
-        ? `add arrangementStart for its arrangement, or use "t${trackIndex}/s<scene>" for a clip slot`
-        : "add arrangementStart; take lanes hold arrangement clips";
-
-    throw new Error(
-      `createClip failed: path "${arrangementPath(trackIndex, takeLane)}" names no position; ${fix}`,
-    );
+  if (tracks.some((track) => track.position != null)) {
+    return tracks.map(({ position, ...track }) => ({
+      ...track,
+      arrangementStart: position ?? noPosition(track),
+    }));
   }
 
-  const count = Math.max(tracks.length, arrangementStarts.length);
+  if (arrangementStarts.length === 0) noPosition(tracks[0] as ArrangementTrack);
 
-  return Array.from({ length: count }, (_unused, i) => ({
-    ...(tracks[i % tracks.length] as ArrangementTrack),
-    arrangementStart: arrangementStarts[i % arrangementStarts.length] as string,
-  }));
+  const count = Math.max(tracks.length, arrangementStarts.length);
+  const pairedTracks = pairValues(tracks, count, {
+    param: "path",
+    noun: "track",
+    item: "position",
+    shortfall: "got no clip",
+  });
+  const pairedStarts = pairValues(arrangementStarts, count, {
+    param: "arrangementStart",
+    noun: "position",
+    item: "track",
+    shortfall: "got no clip",
+  });
+
+  return pairedTracks.flatMap((entry, i) => {
+    const arrangementStart = pairedStarts[i];
+
+    if (entry == null || arrangementStart == null) return [];
+
+    const { position: _position, ...track } = entry;
+
+    return [{ ...track, arrangementStart }];
+  });
+}
+
+/**
+ * Refuses a lane the call named no position on. A bare track names two places
+ * at once — its arrangement and its clip slots — and guessing between them is
+ * how a clip lands on top of something. A take lane names only one, but still
+ * needs a position on it.
+ * @param track - The lane with no position
+ * @returns Never — always throws
+ */
+function noPosition(track: ArrangementTrack): never {
+  const { trackIndex, takeLane } = track;
+  const lane = arrangementPath(trackIndex, takeLane);
+  const fix =
+    takeLane == null
+      ? `add one, as "${lane}[5|1]", or use "t${trackIndex}/s<scene>" for a clip slot`
+      : `add one, as "${lane}[5|1]"; take lanes hold arrangement clips`;
+
+  throw new Error(`path "${lane}" names no position; ${fix}`);
 }

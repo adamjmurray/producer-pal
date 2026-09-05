@@ -15,13 +15,14 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   type CreatedClip,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 import { adjustClipPreRoll } from "./arrangement-tiling-holding.ts";
 import {
   clearArrangementRange,
   clearClipAtDuplicateTarget,
   sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
+import { targetLabelForId } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * How many tiles' worth of span one clear empties, ahead of the tiles that
@@ -61,7 +62,7 @@ export function outOfTime(
   if (!isDeadlineExceeded(context.deadline ?? null)) return false;
 
   console.warn(
-    `Ran out of time while lengthening clip ${sourceClipId}: placed ${placed} of ${total} tiles, ` +
+    `Ran out of time while lengthening clip ${targetLabelForId(sourceClipId)}: placed ${placed} of ${total} tiles, ` +
       `reaching ${reached} beats instead of ${target}. Re-run to continue.`,
   );
 

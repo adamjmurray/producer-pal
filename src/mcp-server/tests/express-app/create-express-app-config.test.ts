@@ -34,7 +34,9 @@ describe("MCP Express App - Config", () => {
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config).toMatchObject({
+      expect(config).toStrictEqual({
+        liveApiEnabled: true,
+        liveApiForcedOn: false,
         projectContext: expect.any(String),
         smallModelMode: expect.any(Boolean),
         notation: expect.any(String),
@@ -48,11 +50,7 @@ describe("MCP Express App - Config", () => {
       const initialResponse = await fetch(configUrl);
       const initialConfig = await initialResponse.json();
 
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notation: "midi-json" }),
-      });
+      const response = await appState.postConfig({ notation: "midi-json" });
 
       expect(response.status).toBe(200);
       const updatedConfig = await response.json();
@@ -60,21 +58,15 @@ describe("MCP Express App - Config", () => {
       expect(updatedConfig.notation).toBe("midi-json");
 
       // Invalid values are ignored, leaving the current setting intact
-      const invalidResponse = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notation: "not-a-notation" }),
+      const invalidResponse = await appState.postConfig({
+        notation: "not-a-notation",
       });
       const invalidConfig = await invalidResponse.json();
 
       expect(invalidConfig.notation).toBe("midi-json");
 
       // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notation: initialConfig.notation }),
-      });
+      await appState.postConfig({ notation: initialConfig.notation });
     });
 
     it("should update config on POST /config", async () => {
@@ -83,13 +75,9 @@ describe("MCP Express App - Config", () => {
       const initialConfig = await initialResponse.json();
 
       // Update with new values
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smallModelMode: true,
-          jsonOutput: true,
-        }),
+      const response = await appState.postConfig({
+        smallModelMode: true,
+        jsonOutput: true,
       });
 
       expect(response.status).toBe(200);
@@ -99,13 +87,9 @@ describe("MCP Express App - Config", () => {
       expect(updatedConfig.jsonOutput).toBe(true);
 
       // Restore original values
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smallModelMode: initialConfig.smallModelMode,
-          jsonOutput: initialConfig.jsonOutput,
-        }),
+      await appState.postConfig({
+        smallModelMode: initialConfig.smallModelMode,
+        jsonOutput: initialConfig.jsonOutput,
       });
     });
 
@@ -115,10 +99,8 @@ describe("MCP Express App - Config", () => {
       const before = await getResponse.json();
 
       // Only update sampleFolder
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleFolder: "/tmp/partial-test" }),
+      const response = await appState.postConfig({
+        sampleFolder: "/tmp/partial-test",
       });
 
       expect(response.status).toBe(200);
@@ -130,21 +112,13 @@ describe("MCP Express App - Config", () => {
       expect(after.jsonOutput).toBe(before.jsonOutput);
 
       // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleFolder: before.sampleFolder }),
-      });
+      await appState.postConfig({ sampleFolder: before.sampleFolder });
     });
 
     it("should update projectContext string", async () => {
       const testNotes = "Test memory content";
 
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectContext: testNotes }),
-      });
+      const response = await appState.postConfig({ projectContext: testNotes });
 
       expect(response.status).toBe(200);
       const config = await response.json();
@@ -152,11 +126,7 @@ describe("MCP Express App - Config", () => {
       expect(config.projectContext).toBe(testNotes);
 
       // Clear notes
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectContext: "" }),
-      });
+      await appState.postConfig({ projectContext: "" });
     });
 
     it("restores the on-disk backup into config on projectContext.sync (device upgrade)", async () => {
@@ -170,11 +140,7 @@ describe("MCP Express App - Config", () => {
           "Restored from disk",
           "utf8",
         );
-        await fetch(configUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectContext: "" }),
-        });
+        await appState.postConfig({ projectContext: "" });
 
         // The V8 side calls this route on its first tool call after the upgrade.
         // dispatchNodeRoute reads Max.outlet's first recorded call, so clear the
@@ -199,22 +165,14 @@ describe("MCP Express App - Config", () => {
         expect(config.projectContext).toBe("Restored from disk");
       } finally {
         rmSync(projectDir, { recursive: true, force: true });
-        await fetch(configUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectContext: "" }),
-        });
+        await appState.postConfig({ projectContext: "" });
       }
     });
 
     it("should update sampleFolder", async () => {
       const testPath = "/path/to/samples";
 
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleFolder: testPath }),
-      });
+      const response = await appState.postConfig({ sampleFolder: testPath });
 
       expect(response.status).toBe(200);
       const config = await response.json();
@@ -222,29 +180,20 @@ describe("MCP Express App - Config", () => {
       expect(config.sampleFolder).toBe(testPath);
 
       // Clear
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleFolder: "" }),
-      });
+      await appState.postConfig({ sampleFolder: "" });
     });
 
     it("should clear projectContext and sampleFolder sent as null", async () => {
       // Max sends a bare `null` for an emptied field; it must land as "" rather
       // than as a null the rest of the config code has to guard against.
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectContext: "notes",
-          sampleFolder: "/path/to/samples",
-        }),
+      await appState.postConfig({
+        projectContext: "notes",
+        sampleFolder: "/path/to/samples",
       });
 
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectContext: null, sampleFolder: null }),
+      const response = await appState.postConfig({
+        projectContext: null,
+        sampleFolder: null,
       });
       const config = await response.json();
 
@@ -255,11 +204,7 @@ describe("MCP Express App - Config", () => {
     it("should update tools whitelist", async () => {
       const subset = ["ppal-connect", "ppal-read-live-set", "ppal-playback"];
 
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: subset }),
-      });
+      const response = await appState.postConfig({ tools: subset });
 
       expect(response.status).toBe(200);
       const config = await response.json();
@@ -267,11 +212,7 @@ describe("MCP Express App - Config", () => {
       expect(config.tools).toStrictEqual(subset);
 
       // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
-      });
+      await appState.postConfig({ tools: [...TOOL_NAMES] });
     });
 
     it.each([
@@ -283,11 +224,7 @@ describe("MCP Express App - Config", () => {
     ])(
       "should return 400 for invalid tools: $error",
       async ({ tools, error }) => {
-        const response = await fetch(configUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tools }),
-        });
+        const response = await appState.postConfig({ tools });
 
         expect(response.status).toBe(400);
         const body = await response.json();
@@ -301,12 +238,8 @@ describe("MCP Express App - Config", () => {
     );
 
     it("should return 400 when ppal-connect is omitted", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tools: ["ppal-read-live-set", "ppal-playback"],
-        }),
+      const response = await appState.postConfig({
+        tools: ["ppal-read-live-set", "ppal-playback"],
       });
 
       expect(response.status).toBe(400);
@@ -328,7 +261,16 @@ describe("MCP Express App - Config", () => {
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config).toMatchObject({ tools: expect.any(Array) });
+      expect(config).toStrictEqual({
+        jsonOutput: false,
+        liveApiEnabled: true,
+        liveApiForcedOn: false,
+        notation: "barbeat",
+        projectContext: "",
+        sampleFolder: "",
+        smallModelMode: false,
+        tools: expect.any(Array),
+      });
     });
 
     it("should reject POST /config from a cross-origin browser request", async () => {

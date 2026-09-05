@@ -13,7 +13,7 @@ import {
   resolveTakeLane,
   takeLaneKey,
   takeLaneTargetsThatFit,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { convertTimingParameters } from "./create-clip-helpers.ts";
@@ -147,10 +147,10 @@ export function resolveCreateClipTakeLanes(
   // Lanes are permanent (Live has no delete), so pick the whole call's
   // destinations before creating a lane on any of it — otherwise a cap failure
   // on the last destination strands empty lanes on all the earlier ones.
-  const fitting = takeLaneTargetsThatFit(arrangementPositions, "createClip");
+  const fitting = takeLaneTargetsThatFit(arrangementPositions);
 
   // Resolve once per destination rather than once per clip — otherwise a single
-  // "l+" cycled over three arrangementStarts gets three fresh lanes.
+  // "l+" covering three arrangementStarts gets three fresh lanes.
   for (const position of fitting) {
     const { trackIndex, takeLane: target } = position;
     const key = takeLaneKey(position);
@@ -165,7 +165,7 @@ export function resolveCreateClipTakeLanes(
 
     lanes.set(key, lane);
     console.warn(
-      `createClip: targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
+      `targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
     );
   }
 

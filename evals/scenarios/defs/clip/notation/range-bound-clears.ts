@@ -25,7 +25,7 @@ import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
   assertNotesRead,
-  clearSessionSlots,
+  clearClipSlots,
   MSG_CONNECT,
   readClipNotesFromTurn,
   TOOL_CONNECT,
@@ -48,7 +48,7 @@ const EPS = 1e-6;
  * @param mcpClient - MCP client for tool calls
  */
 async function setupRangeClip(mcpClient: Client): Promise<void> {
-  await clearSessionSlots(mcpClient, [SLOT]);
+  await clearClipSlots(mcpClient, [SLOT]);
   await mcpClient.callTool({
     name: "ppal-create-clip",
     arguments: {

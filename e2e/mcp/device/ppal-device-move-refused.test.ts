@@ -98,7 +98,7 @@ describe("a device move Live refuses", () => {
     // Nothing was copied, so there is nothing to report but the warning.
     expect(data).toStrictEqual([]);
     expect(warnings).toContainEqual(
-      expect.stringContaining(`the copy could not be moved to "t${to}"`),
+      expect.stringContaining(`could not be moved to "t${to}"`),
     );
 
     await sleep(200);

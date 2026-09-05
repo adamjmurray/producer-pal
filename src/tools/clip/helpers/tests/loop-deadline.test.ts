@@ -11,6 +11,7 @@ import {
   LOOP_DEADLINE_BUFFER_MS,
   stopForDeadline,
 } from "../loop-deadline.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("LOOP_DEADLINE_BUFFER_MS", () => {
   it("is exactly twice the per-clip code execution timeout", () => {
@@ -95,8 +96,7 @@ describe("isDeadlineExceeded", () => {
 describe("stopForDeadline", () => {
   it("warns with what is left undone once time is up", () => {
     expect(stopForDeadline(Date.now() - 1, () => "nope: 3|1")).toBe(true);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("nope: 3|1"),
     );
   });

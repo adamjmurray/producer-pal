@@ -6,7 +6,7 @@
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
 import {
   type ClipContext,
@@ -19,6 +19,10 @@ import {
   type TimeRange,
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
+import {
+  findWaveformName,
+  warnIfFlatWaveform,
+} from "./helpers/transform-flat-waveform-helpers.ts";
 import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
 import {
   buildNoteContext,
@@ -256,6 +260,12 @@ function applyAssignmentToNotes(
   // single malformed line doesn't relay N copies of the same WARNING.
   const warnedFailures = new Set<string>();
 
+  // A waveform that lands on one phase for every note assigns one value and
+  // still reports a full transformed count. Collect what it produced so the
+  // flat case can be reported after the loop.
+  const waveformName = findWaveformName(assignment.expression);
+  const waveformValues: number[] = [];
+
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
     const note = notes[i] as NoteEvent;
@@ -307,6 +317,8 @@ function applyAssignmentToNotes(
         timeSigDenominator,
       );
 
+      if (waveformName != null) waveformValues.push(value);
+
       transformedIndices.add(i);
     } catch (error) {
       const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
@@ -317,6 +329,8 @@ function applyAssignmentToNotes(
       }
     }
   }
+
+  if (waveformName != null) warnIfFlatWaveform(waveformName, waveformValues);
 }
 
 /**

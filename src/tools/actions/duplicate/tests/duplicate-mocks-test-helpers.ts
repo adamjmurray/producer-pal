@@ -31,8 +31,9 @@ vi.mock(
     const s = await import("./setup.ts");
 
     return {
-      // Keep the real holdingAreaStartPast: it is pure arithmetic on the
-      // holding-area start, and stubbing it would hide where callers place it.
+      // Keep the real holdingAreaStartAfter/holdingAreaStartOnTrack: they are
+      // pure arithmetic, and stubbing them would hide where callers place the
+      // holding area.
       ...(await importOriginal()),
       clearClipAtDuplicateTarget: s.clearClipAtDuplicateTargetMock,
       duplicateSelfOverlappingClip: s.duplicateSelfOverlappingClipMock,

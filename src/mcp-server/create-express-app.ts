@@ -15,6 +15,7 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
+import { withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
   TOOL_NAMES,
@@ -32,7 +33,8 @@ import {
 } from "./helpers/http/request-profile.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
-import { withNotationOverride } from "./helpers/request-overrides/notation-override.ts";
+import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
+import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
@@ -46,8 +48,6 @@ import { registerSubagentBriefingRoute } from "./routes/subagent-briefing-route.
 import { registerSystemPromptRoutes } from "./routes/config/system-prompt-route.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/voice/gemini-voice-token-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice/voice-token-route.ts";
-
-const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
   projectContext: string;
@@ -147,14 +147,7 @@ Max.addHandler("liveApiEnabled", (enabled: unknown) => {
  */
 function applyLiveApiEnabled(next: boolean): void {
   config.liveApiEnabled = next;
-
-  const has = config.tools.includes(LIVE_API_TOOL_NAME);
-
-  if (next && !has) {
-    config.tools = [...config.tools, LIVE_API_TOOL_NAME];
-  } else if (!next && has) {
-    config.tools = config.tools.filter((t) => t !== LIVE_API_TOOL_NAME);
-  }
+  config.tools = withLiveApiTool(config.tools, next);
 }
 
 /**
@@ -164,35 +157,52 @@ function applyLiveApiEnabled(next: boolean): void {
  * toolset, and notation arrive through getters (not config directly) so a
  * request can supply its own per-request values — the same values that shrink
  * its tool schemas and its registered tools. POST /mcp and the REST tool
- * endpoints both override all three, off the same headers.
+ * endpoints both override them, off the same headers.
  *
- * Notation is also pushed down as a request override (withNotationOverride), so
+ * Notation is also pushed down as a request override (withDefaultOverrides), so
  * the notation the skills teach is the one V8 actually parses and formats notes
  * in. It wraps the inner call, inside the connect-enrichment chain.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
  * @param getTools - Reads the toolset skills fragments are gated on
  * @param getNotation - Reads the notation for this wrapper's calls
+ * @param getCompactOutput - Reads the output format, or undefined to leave the
+ *   device's own setting alone
  * @returns A callLiveApi whose ppal-connect results carry every block
  */
 function buildEnrichedCall(
   getSmallModelMode: () => boolean,
   getTools: () => readonly string[],
   getNotation: () => Notation,
+  getCompactOutput: () => boolean | undefined = () => undefined,
 ): WrappedCallLiveApi {
-  return enrichConnect(withNotationOverride(callLiveApi, getNotation), () => ({
-    notation: getNotation(),
-    smallModelMode: getSmallModelMode(),
-    projectContext: config.projectContext,
-    tools: getTools(),
-  }));
+  return enrichConnect(
+    withDefaultOverrides(callLiveApi, () => {
+      const overrides: RequestOverrides = { notation: getNotation() };
+      const compactOutput = getCompactOutput();
+
+      // Only when a header asked: an absent one must leave V8 on its own
+      // global rather than pin it to Node's mirror of the device setting.
+      if (compactOutput !== undefined) overrides.compactOutput = compactOutput;
+
+      return overrides;
+    }),
+    () => ({
+      notation: getNotation(),
+      smallModelMode: getSmallModelMode(),
+      projectContext: config.projectContext,
+      tools: getTools(),
+    }),
+  );
 }
 
 /**
  * Build the enriched call for one REST request from that request's profile —
- * the same three per-request values POST /mcp resolves, off the same headers.
+ * the same per-request values POST /mcp resolves, off the same headers. The
+ * output format is left out: REST already has `?format=`, which the route
+ * passes as an explicit override on each call.
  *
- * @param profile - The toolset, notation, and small-model mode for this request
+ * @param profile - The resolved settings for this request
  * @returns A callLiveApi for this one request
  */
 function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
@@ -272,17 +282,16 @@ export function createExpressApp(): Express {
 
       console.info(`MCP request: ${method}`);
 
-      // The caller's own profile, off the three per-request headers: the
+      // The caller's own profile, off the per-request headers: the
       // built-in chat and each subagent worker send their own values, so one
       // caller's never reach the concurrently-running main session (a POST
       // /config would). Absent ⇒ the globals, so external MCP clients are
       // unaffected. See resolveRequestProfile for what each one drives.
       //
-      // Deliberately no per-request output format or timeout here, unlike the
-      // REST endpoints' ?format= and ?timeoutMs=. Query params on /mcp are not
-      // something MCP clients do; this endpoint is built for MCP clients, which
-      // want the one MCP-shaped response; and the timeout exists for slow
-      // machines, which is a device-wide fact, not a per-call one.
+      // The output format arrives as a header rather than the REST endpoints'
+      // ?format= — query params on /mcp are not something MCP clients do. Still
+      // no per-request timeout: that exists for slow machines, which is a
+      // device-wide fact, not a per-call one.
       const profile = resolveRequestProfile(req, config);
 
       const server = createMcpServer(
@@ -290,11 +299,12 @@ export function createExpressApp(): Express {
           () => profile.smallModelMode,
           () => profile.tools,
           () => profile.notation,
+          () => profile.compactOutput,
         ),
         {
           smallModelMode: profile.smallModelMode,
           notation: profile.notation,
-          liveApiEnabled: config.liveApiEnabled,
+          liveApiEnabled: profile.liveApiEnabled,
           tools: profile.tools,
         },
       );

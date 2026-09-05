@@ -11,39 +11,43 @@ import {
   registerMockObject,
   registerSessionClipDuplication,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import { registerSessionClipForArrangementDup } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerSessionClipForArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", async () => {
     await expect(
       duplicate({ id: "some-id" } as { type: string; id: string }),
-    ).rejects.toThrow("duplicate failed: type is required");
+    ).rejects.toThrow("type is required");
   });
 
   it("should throw an error when id is missing", async () => {
     await expect(
       duplicate({ type: "track" } as { type: string; id: string }),
-    ).rejects.toThrow("duplicate failed: id is required");
+    ).rejects.toThrow("id or path is required");
   });
 
   it("should throw an error when type is invalid", async () => {
     await expect(duplicate({ type: "invalid", id: "some-id" })).rejects.toThrow(
-      "duplicate failed: type must be one of track, scene, clip",
+      "type must be one of track, scene, clip",
     );
   });
 
   it("should throw an error when count is less than 1", async () => {
     await expect(
       duplicate({ type: "track", id: "some-id", count: 0 }),
-    ).rejects.toThrow("duplicate failed: count must be at least 1");
+    ).rejects.toThrow("count must be at least 1");
   });
 
   it("should throw an error when the object doesn't exist", async () => {
     mockNonExistentObjects();
     await expect(
       duplicate({ type: "track", id: "nonexistent" }),
-    ).rejects.toThrow('duplicate failed: id "nonexistent" does not exist');
+    ).rejects.toThrow('id "nonexistent" does not exist');
   });
 
   it("should throw an error when track has arrangement params", async () => {
@@ -54,42 +58,57 @@ describe("duplicate - input validation", () => {
         id: "track1",
         arrangementStart: "1|1|1",
       }),
-    ).rejects.toThrow(
-      "duplicate failed: tracks cannot be duplicated to arrangement",
-    );
-  });
-
-  it("should allow type 'track' without arrangement params", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    await expect(
-      duplicate({ type: "track", id: "track1" }),
-    ).resolves.toBeDefined();
+    ).rejects.toThrow("tracks cannot be duplicated to arrangement");
   });
 });
 
 // Every other write tool takes `ids`, so a model carries the plural here too.
 describe("duplicate - the ids alias", () => {
-  it("takes ids as the source when id is unset", async () => {
+  it("copies every source a list names", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("track2", { path: livePath.track(3) });
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+    registerMockObject("live_set/tracks/4", {
+      path: livePath.track(4),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const result = await duplicate({ type: "track", ids: "track1,track2" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: "t1" }),
+      expect.objectContaining({ path: "t4" }),
+    ]);
+  });
+
+  // A source that doesn't exist is caught before the first copy is made, so a
+  // list can't leave half its copies behind.
+  it("refuses the whole list when one source is missing", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    mockNonExistentObjects();
+
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
     await expect(
-      duplicate({ type: "track", ids: "track1" }),
+      duplicate({ type: "track", id: "track1,nope" }),
+    ).rejects.toThrow('id "nope" does not exist');
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
+  });
+});
+
+describe("duplicate - the paths alias", () => {
+  it("takes paths as the source when path is unset", async () => {
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
+
+    await expect(
+      duplicate({ type: "track", paths: "t0" }),
     ).resolves.toBeDefined();
-  });
-
-  // duplicate copies one object per call, so the list `ids` implies has to be
-  // refused by name — handing "track1,track2" to Live reads as a missing object.
-  it("refuses a source list rather than looking one up", async () => {
-    await expect(
-      duplicate({ type: "track", ids: "track1,track2" }),
-    ).rejects.toThrow(
-      'duplicate failed: id "track1,track2" names more than one source; duplicate copies one object per call',
-    );
-  });
-
-  it("refuses a list sent as id too", async () => {
-    await expect(
-      duplicate({ type: "track", id: "track1,track2" }),
-    ).rejects.toThrow("names more than one source");
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 });
 
@@ -105,7 +124,7 @@ describe("duplicate - clip session validation", () => {
         id: "clip1",
         toSlot: ",",
       }),
-    ).rejects.toThrow("duplicate failed: clip requires toPath");
+    ).rejects.toThrow("clip requires toPath");
   });
 
   // Every other inapplicable param on this tool warns; these two used to be
@@ -124,8 +143,7 @@ describe("duplicate - clip session validation", () => {
       id: "live_set/tracks/0/clip_slots/1/clip",
       path: "t0/s1",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("count ignored for clips"),
     );
   });
@@ -140,10 +158,45 @@ describe("duplicate - clip session validation", () => {
       arrangementLength: "4bar",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("arrangementLength ignored"),
     );
+  });
+});
+
+// Dropping a position would make one fewer copy than the list asked for, and
+// the names are counted against the position count, so the last one would go
+// unused. Nothing is duplicated yet, so refuse instead.
+describe("duplicate - an empty arrangementStart entry", () => {
+  it("refuses the call", async () => {
+    registerSessionClipForArrangementDup();
+    registerArrangementClip(0, 1, 16);
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1,,5|1",
+      }),
+    ).rejects.toThrow('invalid arrangementStart "3|1,,5|1" - it has an empty');
+  });
+
+  // The check runs once for the call, before any source is resolved, so a call
+  // naming several sources is refused before the first copy is made.
+  it("refuses before duplicating any of several sources", async () => {
+    registerSessionClipForArrangementDup();
+    registerArrangementClip(0, 1, 16);
+    registerMockObject("clip2", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1,clip2",
+        arrangementStart: "3|1,,5|1",
+      }),
+    ).rejects.toThrow('invalid arrangementStart "3|1,,5|1" - it has an empty');
   });
 });
 
@@ -169,8 +222,7 @@ describe("duplicate - coerced-null takeLane", () => {
       expect(track0.call).not.toHaveBeenCalledWith("create_take_lane");
       expect(result).toStrictEqual({
         id: livePath.track(0).arrangementClip(0),
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
       });
     },
   );
@@ -184,7 +236,7 @@ describe("duplicate - return format", () => {
 
     expect(result).toStrictEqual({
       id: expect.any(String),
-      trackIndex: expect.any(Number),
+      path: expect.any(String),
       clips: [],
     });
   });
@@ -194,9 +246,9 @@ describe("duplicate - return format", () => {
 
     const result = await duplicate({ type: "track", id: "track1", count: 2 });
 
-    expect(result).toMatchObject([
-      expect.objectContaining({ trackIndex: expect.any(Number) }),
-      expect.objectContaining({ trackIndex: expect.any(Number) }),
+    expect(result).toStrictEqual([
+      expect.objectContaining({ path: expect.any(String) }),
+      expect.objectContaining({ path: expect.any(String) }),
     ]);
   });
 });
@@ -209,7 +261,7 @@ describe("duplicate - track/scene index validation", () => {
     });
 
     await expect(duplicate({ type: "track", id: "track1" })).rejects.toThrow(
-      'duplicate failed: no track index for id "track1"',
+      'no track index for id "track1"',
     );
   });
 
@@ -223,7 +275,7 @@ describe("duplicate - track/scene index validation", () => {
 
     it("should throw for session duplication", async () => {
       await expect(duplicate({ type: "scene", id: "scene1" })).rejects.toThrow(
-        'duplicate failed: no scene index for id "scene1"',
+        'no scene index for id "scene1"',
       );
     });
 
@@ -234,7 +286,7 @@ describe("duplicate - track/scene index validation", () => {
           id: "scene1",
           arrangementStart: "1|1",
         }),
-      ).rejects.toThrow('duplicate failed: no scene index for id "scene1"');
+      ).rejects.toThrow('no scene index for id "scene1"');
     });
   });
 });

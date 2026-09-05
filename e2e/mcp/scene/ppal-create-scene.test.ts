@@ -23,17 +23,17 @@ describe("ppal-create-scene", () => {
     // Test 1: Create single scene at index 0
     const basicResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 0 },
+      arguments: { path: "s0" },
     });
     const basic = parseToolResult<CreateSceneResult>(basicResult);
 
     expect(basic.id).toBeDefined();
-    expect(basic.sceneIndex).toBe(0);
+    expect(basic.path).toBe("s0");
 
     // Test 2: Create scene with name
     const namedResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 1, name: "Test Scene" },
+      arguments: { path: "s1", name: "Test Scene" },
     });
     const named = parseToolResult<CreateSceneResult>(namedResult);
 
@@ -49,7 +49,7 @@ describe("ppal-create-scene", () => {
     // Test 3: Create scene with color
     const coloredResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 2, name: "Colored Scene", color: "#FF0000" },
+      arguments: { path: "s2", name: "Colored Scene", color: "#FF0000" },
     });
     const colored = parseToolResult<CreateSceneResult>(coloredResult);
 
@@ -66,7 +66,7 @@ describe("ppal-create-scene", () => {
     // Test 4: Create scene with tempo
     const tempoResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 3, name: "Tempo Scene", tempo: 120 },
+      arguments: { path: "s3", name: "Tempo Scene", tempo: 120 },
     });
     const tempo = parseToolResult<CreateSceneResult>(tempoResult);
 
@@ -82,7 +82,7 @@ describe("ppal-create-scene", () => {
     // Test 5: Create scene with timeSignature
     const timeSigResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 4, name: "TimeSig Scene", timeSignature: "3/4" },
+      arguments: { path: "s4", name: "TimeSig Scene", timeSignature: "3/4" },
     });
     const timeSig = parseToolResult<CreateSceneResult>(timeSigResult);
 
@@ -108,19 +108,19 @@ describe("ppal-create-scene", () => {
     // Test 1: Create multiple scenes with count
     const batchResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 5, count: 2 },
+      arguments: { path: "s5", count: 2 },
     });
     const batch = parseBatchResult<CreateSceneResult>(batchResult, 2);
 
     expect(batch[0]!.id).toBeDefined();
     expect(batch[1]!.id).toBeDefined();
-    expect(batch[0]!.sceneIndex).toBe(5);
-    expect(batch[1]!.sceneIndex).toBe(6);
+    expect(batch[0]!.path).toBe("s5");
+    expect(batch[1]!.path).toBe("s6");
 
     // Test 2: Create multiple scenes with name
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 7, count: 2, name: "Multi" },
+      arguments: { path: "s7", count: 2, name: "Multi" },
     });
     const multiName = parseToolResult<CreateSceneResult[]>(multiNameResult);
 
@@ -145,7 +145,7 @@ describe("ppal-create-scene", () => {
     const csvResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: {
-        sceneIndex: 9,
+        path: "s9",
         count: 2,
         name: "Intro,Verse",
         color: "#FF0000,#00FF00",
@@ -213,9 +213,15 @@ describe("ppal-create-scene", () => {
     );
 
     expect(capture.id).toBeDefined();
-    expect(capture.sceneIndex).toBeGreaterThan(0);
+    expect(capture.path).toMatch(/^s[1-9]\d*$/);
     expect(Array.isArray(capture.clips)).toBe(true);
     expect(capture.clips!.length).toBeGreaterThan(0);
+    // Every captured clip names the slot it landed in, on the new scene
+    const sceneSuffix = `/${capture.path!}`;
+
+    for (const clip of capture.clips!) {
+      expect(clip.path.endsWith(sceneSuffix)).toBe(true);
+    }
 
     // The capture inserts exactly one scene
     await sleep(100);
@@ -252,13 +258,13 @@ interface LiveSetResult {
 
 interface CreateSceneResult {
   id: string;
-  sceneIndex: number;
+  path: string;
 }
 
 interface CaptureSceneResult {
   id: string;
-  sceneIndex: number;
-  clips?: Array<{ id: string; trackIndex: number }>;
+  path: string;
+  clips?: Array<{ id: string; path: string }>;
 }
 
 interface ReadSceneResult {

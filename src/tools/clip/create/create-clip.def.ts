@@ -19,11 +19,11 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   // own — `firstStart` is not one of them there.
   description: {
     default:
-      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, and/or 't0' plus arrangementStart for the arrangement. " +
+      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
     smallModel:
-      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, and/or 't0' plus arrangementStart for the arrangement. " +
+      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/looping are MIDI-only.",
   },
@@ -36,11 +36,14 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     path: param(z.coerce.string().optional(), {
       default:
         "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a clip slot; " +
-        "'t<track>' is that track's arrangement, which also needs arrangementStart; 't<track>/l<lane>' is a " +
-        "take lane on it and 't<track>/l+' appends a fresh one. All indices 0-based, " +
-        "so 't0/s0' is the first track's first scene (e.g., 't0/s0' or 't0/s0,t0/s2' or 't1' with arrangementStart)",
+        "'t<track>[<position>]' is that spot on the track's arrangement, where a position is bar|beat " +
+        "or loc:<locator name or id>. An arrangement path needs both halves. " +
+        "'t<track>/l<lane>[<position>]' puts it on a take lane, 't<track>/l+[<position>]' appends a " +
+        "fresh one, and 't<track>/l=[<position>]' reuses the lane the 'l+' before it appended. " +
+        "All indices 0-based, so 't0/s0' is the first track's first scene " +
+        "(e.g., 't0/s0' or 't0[5|1]' or 't0/s0,t1[loc:Chorus]')",
       smallModel:
-        "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0' = first track's arrangement (also needs arrangementStart)",
+        "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0[5|1]' = bar 5 on the first track's arrangement",
     }),
 
     slot: deprecatedParam(z.coerce.string().optional(), {
@@ -60,22 +63,19 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       example: "t0/s0",
     }),
 
-    arrangementStart: param(z.coerce.string().optional(), {
-      default:
-        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3'). Song meter",
-      smallModel:
-        "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
+    arrangementStart: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+      example: "t0[5|1]",
     }),
 
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated for each (indexed: clip slots first, then arrangement)",
+        "name for all, or comma-separated one per position, in order (clip slots first, then arrangement)",
       smallModel: "clip name",
     }),
 
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than positions)",
+      default: "#RRGGBB for all, or comma-separated one per position, in order",
       smallModel: "#RRGGBB",
     }),
 
@@ -118,7 +118,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     }),
 
     transforms: param(z.string().optional(), {
-      default: "transform expressions (parameter: expression per line)",
+      default:
+        "transform expressions (parameter: expression per line). Note-count operations (ratchet()/repeat()/split()/merge()) change how many notes exist",
       smallModel: null,
     }),
 

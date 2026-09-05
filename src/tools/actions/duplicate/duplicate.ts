@@ -3,34 +3,30 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
-  getColorForIndex,
-  parseCommaSeparatedColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
-import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+  namedIdParam,
+  namedPathParam,
+  targetEntries,
+} from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import { duplicateClipWithPositions } from "./helpers/clip/duplicate-clip-position-helpers.ts";
-import { resolveClipDestinations } from "./helpers/clip/duplicate-destination-helpers.ts";
-import { duplicateDeviceWithPaths } from "./helpers/duplicate-device-helpers.ts";
-import {
-  duplicateDrumPad,
-  resolveSourcePad,
-  type PadTarget,
-} from "./helpers/duplicate-drum-pad-helpers.ts";
+  parseClipDestinationList,
+  pathCarriesPosition,
+  refuseDoubledPosition,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
-import { duplicateSceneToArrangementAtPositions } from "./helpers/duplicate-position-helpers.ts";
+import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
 import {
-  duplicateTrack,
-  duplicateScene,
-} from "./helpers/duplicate-track-scene-helpers.ts";
+  duplicateChainSources,
+  duplicateOneSource,
+} from "./helpers/sources/duplicate-run-source-helpers.ts";
+import {
+  planSources,
+  resolveSourceClipDestinations,
+} from "./helpers/sources/duplicate-source-helpers.ts";
 import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
 import {
   hasArrangementPosition,
@@ -45,9 +41,12 @@ interface DuplicateArgs {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   count?: number;
 
   arrangementStart?: string;
+  /** Deprecated: locator ref(s), folded onto arrangementStart as `loc:` */
   locator?: string;
   arrangementLength?: string;
   name?: string;
@@ -64,28 +63,20 @@ interface DuplicateArgs {
   takeLaneName?: string;
 }
 
-interface DuplicateParams {
-  arrangementStart?: string;
-  locator?: string;
-  arrangementLength?: string;
-  withoutClips?: boolean;
-  withoutDevices?: boolean;
-  routeToSource?: boolean;
-}
-
 /**
  * Duplicates an object based on its type.
  * @param args - The parameters
  * @param args.type - Object type to duplicate
- * @param args.id - Object ID
+ * @param args.id - Object ID(s), comma-separated to copy several sources
  * @param args.ids - Hidden alias for id
- * @param args.path - Source drum pad path, instead of id
+ * @param args.path - Source path(s), comma-separated, instead of or alongside id
+ * @param args.paths - Hidden alias for path
  * @param args.count - Number of duplicates
- * @param args.arrangementStart - Arrangement start position
- * @param args.locator - Arrangement locator ID(s) or name(s)
+ * @param args.arrangementStart - Arrangement position(s): bar|beat or `loc:<locator>`
+ * @param args.locator - Deprecated locator ref(s); use arrangementStart
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
- * @param args.color - Color for duplicates (cycles if comma-separated)
+ * @param args.color - Color for all the copies, or comma-separated one per copy
  * @param args.withoutClips - Exclude clips
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
@@ -105,6 +96,7 @@ export async function duplicate(
     id,
     ids,
     path,
+    paths,
     count = 1,
     arrangementStart,
     locator,
@@ -127,45 +119,66 @@ export async function duplicate(
   // A value the schema coerced from a JSON null names nothing. Counting it as
   // sent refuses the call over a param the caller deliberately left empty.
   id = namedIdParam(id, ids, "ids");
-  path = namedParam(path, "path");
+  path = namedPathParam(path, paths);
 
   // Validate basic inputs
   validateBasicInputs(type, id, count, path);
 
   // Auto-configure for routing back to source
-  const routeToSourceConfig = validateAndConfigureRouteToSource(
+  ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
     type,
     routeToSource,
     withoutClips,
     withoutDevices,
-  );
+  ));
 
-  withoutClips = routeToSourceConfig.withoutClips;
-  withoutDevices = routeToSourceConfig.withoutDevices;
+  // One spelling from here down: a scene's whole destination is its position,
+  // the deprecated locator folds onto the position it named, and every `loc:`
+  // entry becomes the bar|beat it names. Nothing below knows any of that.
+  const dest = settleDestination(type, toPath, arrangementStart, locator);
 
-  // Validate the ID exists and matches the expected type. Only a drum-pad call
-  // naming its source by path gets here without one.
-  const object = id ? validateIdType(id, type, "duplicate") : null;
+  toPath = dest.toPath;
+  arrangementStart = dest.arrangementStart;
+
+  const hasArrangementParams = dest.onArrangement;
+  // A container destination — a track's arrangement or a take lane on it — holds
+  // many copies and tells them apart by position, so every source can have the
+  // whole list. A clip slot, device slot or drum pad holds one object, so the
+  // list is shared out instead of copied over itself.
+  const sources = planSources({
+    type,
+    id,
+    path,
+    toPath,
+    toSlot,
+    broadcasts: type === "clip" && hasArrangementParams,
+  });
+
+  // A bad id partway through a list would leave the copies before it behind, so
+  // check every source before the first one is made.
+  if (sources.length > 1) {
+    for (const source of sources) {
+      validateIdType(source.id, type);
+    }
+  }
 
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
   const clipDestinations =
     type === "clip"
-      ? resolveClipDestinations(
-          toPath,
-          toSlot,
-          hasArrangementPosition(arrangementStart, locator),
-        )
+      ? resolveSourceClipDestinations(sources, hasArrangementParams)
       : null;
 
   const destination = resolveDestinationAndWarn({
     type,
-    clipDestinations,
+    sources,
+    // Every source's destination is the same kind, and the warnings are about
+    // the params rather than the places, so one of them speaks for the call.
+    clipDestinations: clipDestinations?.[0] ?? null,
     count,
     toPath,
     toSlot,
     arrangementStart,
-    locator,
     arrangementLength,
     takeLane,
     takeLaneName,
@@ -173,52 +186,37 @@ export async function duplicate(
     code,
   });
 
+  const labels = copyLabels(name, color, sources.length);
+
   // Both of these take comma-separated toPath for multiple destinations
-  if (type === "drum-pad") {
-    const sourcePad = resolveSourcePad(object, path);
-
-    return sourcePad == null
-      ? []
-      : duplicateDrumPadToPaths(sourcePad, toPath, name, count);
+  if (type === "drum-pad" || type === "device" || type === "chain") {
+    return duplicateChainSources(type, sources, labels, count);
   }
 
-  if (type === "device") {
-    return duplicateDeviceWithPaths(object as LiveAPI, toPath, name, count);
-  }
+  const createdObjects: object[] = [];
 
-  // For clips, use position-based iteration; for tracks/scenes, use count-based
-  const createdObjects = await (clipDestinations != null
-    ? duplicateClipWithPositions(
-        clipDestinations,
-        object as LiveAPI,
-        id as string,
-        name,
-        color,
-        arrangementStart,
-        locator,
-        arrangementLength,
-        takeLane,
-        takeLaneName,
-        context,
-      )
-    : duplicateTrackOrSceneWithCount(
+  for (const [i, source] of sources.entries()) {
+    createdObjects.push(
+      ...(await duplicateOneSource({
         type,
+        source,
         destination,
-        object as LiveAPI,
-        id as string,
+        clipDestinations: clipDestinations?.[i] ?? null,
         count,
-        name,
-        color,
-        {
+        labels,
+        params: {
           arrangementStart,
-          locator,
           arrangementLength,
           withoutClips,
           withoutDevices,
           routeToSource,
         },
+        takeLane,
+        takeLaneName,
         context,
-      ));
+      })),
+    );
+  }
 
   // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
   if (type === "clip" && (transforms != null || code != null)) {
@@ -242,194 +240,162 @@ export async function duplicate(
 }
 
 /**
- * Copies a drum pad to one or more destination pads.
- * Supports comma-separated toPath for multiple destinations.
- * @param source - The pad to copy from
- * @param toPath - Destination pad path(s), comma-separated for multiple
- * @param name - Optional name(s) for the chain(s) each copy creates
- * @param count - Number of copies (warns if > 1)
- * @returns Result object, or an array of them for multiple destinations
+ * Folds the deprecated locator param onto arrangementStart and resolves the
+ * result to bar|beat only.
+ *
+ * A device or drum pad has no arrangement position, so neither param is read
+ * and there is nothing to fold, refuse or look up — warnUnusedArrangementParams
+ * says they were ignored instead. Same rule as playback, where a session action
+ * drops the timeline params before the fold rather than refusing a conflict
+ * between two params it will never read.
+ * @param type - What is being duplicated, which decides whether these apply
+ * @param arrangementStart - Position list as the caller wrote it
+ * @param locator - Deprecated locator ref list, if sent
+ * @returns The positions, in bar|beat, or undefined when none were named
  */
-function duplicateDrumPadToPaths(
-  source: PadTarget,
-  toPath: string | undefined,
-  name: string | undefined,
-  count: number,
-): object | object[] {
-  if (count > 1) {
-    console.warn(
-      `count ${count} ignored: a drum pad copy goes to the pads toPath names`,
-    );
-  }
+function resolveArrangementStart(
+  type: string | undefined,
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): string | undefined {
+  if (type === "device" || type === "drum-pad") return arrangementStart;
 
-  const paths = pathEntries(toPath, "toPath");
+  const positions = foldLocatorParam(arrangementStart, locator);
 
-  // Unlike a device, a pad has no natural "next" slot to default to — the next
-  // MIDI note is as likely to be occupied as empty — so the caller must say.
-  if (paths.length === 0) {
-    throw new Error("duplicate failed: toPath is required for drum pads");
-  }
+  // Here, not in resolveArrangementPositions, which runs once per source: one
+  // mistake in the list gets one word for the call.
+  targetEntries(positions, "arrangementStart");
 
-  const parsedNames = parseCommaSeparatedNames(name, paths.length);
+  if (positions == null) return undefined;
 
-  warnExtraNames(parsedNames, paths.length, "duplicate");
-
-  const results = paths
-    .map((destination, i) =>
-      duplicateDrumPad(
-        source,
-        destination,
-        getNameForIndex(name, i, parsedNames),
-      ),
-    )
-    .filter((result) => result != null);
-
-  // Collapse on what was asked for, not on what survived: one object back from
-  // a two-destination call would read as a one-destination call that worked.
-  if (paths.length > 1) {
-    return results;
-  }
-
-  // A lone copy that was skipped has nothing to report but its warning.
-  return results[0] ?? results;
+  return resolveLocatorPositions(LiveAPI.from(livePath.liveSet), positions, {
+    paramName: "arrangementStart",
+  });
 }
 
 /**
- * Duplicates a track or scene using count-based or position-based iteration
- * @param type - Type of object (track or scene)
- * @param destination - Destination for duplication
- * @param object - Live API object to duplicate
- * @param id - ID of the object
- * @param count - Number of duplicates to create
- * @param name - Base name for duplicated objects
- * @param color - Color for duplicated objects (cycles if comma-separated)
- * @param params - Additional parameters
- * @param context - Per-request context
- * @returns Array of result objects
+ * Settles the two params that say where copies land, before anything reads
+ * them: a scene's coordinate folds onto arrangementStart, the retired locator
+ * folds onto it too, and every `loc:` becomes the bar|beat it names.
+ * @param type - What is being duplicated
+ * @param rawToPath - Destination path(s) as the caller wrote them
+ * @param rawStart - Position list as the caller wrote it
+ * @param locator - Deprecated locator ref list, if sent
+ * @returns The two params in one spelling, and whether they land on the song timeline
  */
-async function duplicateTrackOrSceneWithCount(
-  type: string,
-  destination: string | undefined,
-  object: LiveAPI,
-  id: string,
-  count: number,
-  name: string | undefined,
-  color: string | undefined,
-  params: DuplicateParams,
-  context: Partial<ToolContext>,
-): Promise<object[]> {
-  // Scene to arrangement: use position-based iteration (supports multi-value locators)
-  if (type === "scene" && destination === "arrangement") {
-    return await duplicateSceneToArrangementAtPositions(
-      object,
-      id,
-      count,
-      name,
-      params,
-      context,
-    );
-  }
-
-  // Count-based iteration for tracks and session scenes
-  const createdObjects: object[] = [];
-  const { withoutClips, withoutDevices, routeToSource } = params;
-  const parsedNames = parseCommaSeparatedNames(name, count);
-  const parsedColors = parseCommaSeparatedColors(color, count);
-
-  warnExtraNames(parsedNames, count, "duplicate");
-
-  for (let i = 0; i < count; i++) {
-    if (
-      stopForDeadline(
-        context.deadline,
-        () =>
-          `Ran out of time after duplicating ${createdObjects.length} of ${count} ${type}s. ` +
-          `Re-run for the rest.`,
-      )
-    ) {
-      break;
-    }
-
-    createdObjects.push(
-      duplicateTrackOrSceneToSession(
-        type,
-        object,
-        id,
-        i,
-        getNameForIndex(name, i, parsedNames),
-        getColorForIndex(color, i, parsedColors),
-        withoutClips,
-        withoutDevices,
-        routeToSource,
-      ),
-    );
-  }
-
-  return createdObjects;
-}
-
-/**
- * Duplicates a track or scene to the session view
- * @param type - Type of object being duplicated (track or scene)
- * @param object - Live API object to duplicate
- * @param id - ID of the object
- * @param i - Current duplicate index
- * @param objectName - Name for the duplicated object
- * @param objectColor - Color for the duplicated object
- * @param withoutClips - Whether to exclude clips
- * @param withoutDevices - Whether to exclude devices
- * @param routeToSource - Whether to route to source track
- * @returns Metadata about the duplicated object
- */
-function duplicateTrackOrSceneToSession(
-  type: string,
-  object: LiveAPI,
-  id: string,
-  i: number,
-  objectName: string | undefined,
-  objectColor: string | undefined,
-  withoutClips: boolean | undefined,
-  withoutDevices: boolean | undefined,
-  routeToSource: boolean | undefined,
-): object {
-  if (type === "track") {
-    const trackIndex = object.trackIndex;
-
-    if (trackIndex == null) {
-      throw new Error(
-        `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
-      );
-    }
-
-    const actualTrackIndex = trackIndex + i;
-
-    return duplicateTrack(
-      actualTrackIndex,
-      objectName,
-      objectColor,
-      withoutClips,
-      withoutDevices,
-      routeToSource,
-      trackIndex,
-    );
-  }
-
-  // Only "track" and "scene" get here: clip, device and drum-pad all return
-  // from duplicate() before the count-based path.
-  const sceneIndex = object.sceneIndex;
-
-  if (sceneIndex == null) {
-    throw new Error(
-      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-    );
-  }
-
-  const actualSceneIndex = sceneIndex + i;
-
-  return duplicateScene(
-    actualSceneIndex,
-    objectName,
-    objectColor,
-    withoutClips,
+function settleDestination(
+  type: string | undefined,
+  rawToPath: string | undefined,
+  rawStart: string | undefined,
+  locator: string | undefined,
+): { toPath?: string; arrangementStart?: string; onArrangement: boolean } {
+  const scene = foldSceneDestination(type, rawToPath, rawStart);
+  const toPath = scene.toPath;
+  const arrangementStart = resolveArrangementStart(
+    type,
+    scene.arrangementStart,
+    locator,
   );
+
+  return {
+    toPath,
+    arrangementStart,
+    onArrangement: namesArrangementPosition(type, toPath, arrangementStart),
+  };
+}
+
+/**
+ * Folds a scene's bare-coordinate destination onto arrangementStart.
+ *
+ * A scene copy lands clips across every track at one song position, so it has
+ * no lane to name — `[5|1]` is its whole destination, and `t2[5|1]` names one
+ * track a scene copy has no use for. Positions are spelled back as bar|beat
+ * before they join arrangementStart's comma-separated list, so a locator name
+ * holding a comma survives the trip.
+ * @param type - What is being duplicated
+ * @param toPath - Destination path(s) as the caller wrote them
+ * @param arrangementStart - Position list as the caller wrote it
+ * @returns The two params, with a scene's coordinate moved across
+ */
+function foldSceneDestination(
+  type: string | undefined,
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): { toPath?: string; arrangementStart?: string } {
+  if (type !== "scene" || !pathCarriesPosition(toPath)) {
+    return { toPath, arrangementStart };
+  }
+
+  refuseDoubledPosition(toPath, arrangementStart, "toPath");
+
+  const entries = resolveDestinationPositions(
+    parseClipDestinationList(toPath, "toPath"),
+    { paramName: "toPath" },
+  );
+
+  for (const entry of entries) {
+    if (entry.lane == null) continue;
+
+    throw new Error(
+      `toPath "${toPath?.trim()}" names a lane, but a scene ` +
+        `copies across every track; name the position alone, as "[5|1]"`,
+    );
+  }
+
+  return {
+    arrangementStart: entries.map((entry) => entry.position).join(","),
+  };
+}
+
+/**
+ * Whether the call lands its copies on the song timeline, refusing a position
+ * spelled twice on the way.
+ *
+ * A `[...]` in toPath says where just as arrangementStart does, so it makes the
+ * call an arrangement duplicate the same way — and sending both is two
+ * spellings of one position, with no combined reading and nothing run yet. Only
+ * a clip's toPath can carry a coordinate; every other type's names a device or
+ * a pad.
+ * @param type - What is being duplicated
+ * @param toPath - Destination path(s) as the caller wrote them
+ * @param arrangementStart - Position list, already resolved to bar|beat
+ * @returns True when the copies land on the arrangement
+ */
+function namesArrangementPosition(
+  type: string | undefined,
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): boolean {
+  if (type !== "clip") return hasArrangementPosition(arrangementStart);
+
+  refuseDoubledPosition(toPath, arrangementStart, "toPath");
+
+  return (
+    hasArrangementPosition(arrangementStart) || pathCarriesPosition(toPath)
+  );
+}
+
+/**
+ * Rewrites the retired locator param as the `loc:` positions it named, one per
+ * entry so a list keeps naming a list.
+ * @param arrangementStart - Position list as the caller wrote it
+ * @param locator - Deprecated locator ref list, if sent
+ * @returns The one position list
+ */
+function foldLocatorParam(
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): string | undefined {
+  if (locator == null) return arrangementStart;
+
+  // Never pick one: the two params name the same position, so a caller who sent
+  // both told us two different things about it.
+  if (arrangementStart != null && arrangementStart.trim() !== "") {
+    throw new Error("arrangementStart and locator are mutually exclusive");
+  }
+
+  return locator
+    .split(",")
+    .map((entry) => `loc:${entry.trim()}`)
+    .join(",");
 }

@@ -5,10 +5,7 @@
 
 import { type MutableRef, useEffect } from "preact/hooks";
 import { type Notation } from "#src/shared/notation";
-import {
-  type ActiveMeta,
-  DEFAULT_META,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+import { type ActiveMeta, DEFAULT_META } from "#webui/lib/conversation-store";
 import { type Provider } from "#webui/types/settings";
 
 export interface SyncActiveMetaParams {

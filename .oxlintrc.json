@@ -889,6 +889,12 @@
         "vitest/prefer-to-have-length": "error",
         "vitest/prefer-comparison-matcher": "error",
         "vitest/prefer-strict-equal": "error",
+        "vitest/no-restricted-matchers": [
+          "error",
+          {
+            "toMatchObject": "Assert the whole result with toStrictEqual. Where a partial match is genuinely wanted, say so with expect.objectContaining()."
+          }
+        ],
         "vitest/no-conditional-tests": "error",
         "vitest/max-expects": [
           "error",

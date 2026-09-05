@@ -12,6 +12,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Discriminating cases for the param value-conversion pipeline. Each uses
 // str_for_value mappings crafted so that a single mutated branch produces an
@@ -56,14 +57,22 @@ describe("updateDevice - param conversion discriminators", () => {
       // "1/16" resolves to raw -4 via the division path; a numeric-branch
       // fallthrough would fail to interpret the fraction and warn instead.
       expect(param.set).toHaveBeenCalledWith("value", -4);
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("could not interpret"),
       );
     });
   });
 
-  describe("min-label-unparseable numeric fallback", () => {
+  /**
+   * The mirror param's display value at a raw value.
+   * @param raw - Raw value written
+   * @returns Display value in Hz
+   */
+  function displayFor(raw: number): number {
+    return 1000 * raw;
+  }
+
+  describe("a word at the min end of the range", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
@@ -72,9 +81,9 @@ describe("updateDevice - param conversion discriminators", () => {
         type: "Device",
         properties: { parameters: children("mirror-param") },
       });
-      // Mirror of the existing max-unparseable case: here the MIN label can't be
-      // parsed while the max label can. The min-side null guard must short out to
-      // the raw input, not proceed into a (bogus) linear/binary conversion.
+      // Mirror of the max-end case (Glue Compressor's Release reads "A"): here
+      // the MIN label is the word. The numbers above it are still a range, so
+      // the search must use them rather than writing the input as a raw value.
       param = registerMockObject("mirror-param", {
         properties: {
           name: "Mirror",
@@ -91,12 +100,58 @@ describe("updateDevice - param conversion discriminators", () => {
       });
     });
 
-    it("falls back to the raw value when the min label is unparseable", () => {
+    it("converts against the numbers above the word", () => {
       updateDevice({ id: "dev1", params: [{ name: "Mirror", value: "0.7" }] });
 
-      // Unparseable min label => no linear range => write the raw input as-is.
-      // Skipping the guard would binary-search a garbage value near the min.
-      expect(param.set).toHaveBeenCalledWith("value", 0.7);
+      // 0.7 Hz, not raw 0.7 (which would be 700 Hz).
+      expect(displayFor(expectValueSet(param))).toBeCloseTo(0.7, 6);
+    });
+
+    it("reaches the word by naming it", () => {
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Mirror", value: "custom" }],
+      });
+
+      expect(param.set).toHaveBeenCalledWith("value", 0);
+      expect(capturedWarnings()).toHaveLength(0);
+    });
+  });
+
+  describe("bare-number display labels arrive as numbers, not strings", () => {
+    let param: RegisteredMockObject;
+
+    beforeEach(() => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("bare-param") },
+      });
+      // Max hands back a JS number when a label has no unit or suffix. Display
+      // runs 0..100 over a raw 0..1 range, non-linearly, so a write that skips
+      // the search is unmistakable.
+      param = registerMockObject("bare-param", {
+        properties: {
+          name: "Attack",
+          original_name: "Attack",
+          is_quantized: 0,
+          value: 0,
+          min: 0,
+          max: 1,
+        },
+        methods: {
+          str_for_value: (v: unknown) =>
+            Math.round(Number(v) * Number(v) * 1000) / 10,
+        },
+      });
+    });
+
+    it("searches for the raw value instead of writing the display value", () => {
+      updateDevice({ id: "dev1", params: [{ name: "Attack", value: "25" }] });
+
+      // Display 25 sits at raw 0.5. Uncoerced, parseLabel rejects the numeric
+      // label, the search bails, and 25 is written as a raw value — 25x past max.
+      expect(expectValueSet(param)).toBeCloseTo(0.5, 2);
     });
   });
 

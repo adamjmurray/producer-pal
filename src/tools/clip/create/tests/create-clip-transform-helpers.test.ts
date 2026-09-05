@@ -64,36 +64,36 @@ describe("resolveClipTransform", () => {
   });
 
   describe("early-return guard", () => {
-    it("returns the shared notes/length unchanged when there is no transform", () => {
-      const inputs = makeInputs({ transformString: null });
+    /**
+     * Resolve inputs the guard should turn away, and check it did.
+     * @param overrides - The operand this case makes fail the guard
+     * @returns What resolveClipTransform handed back
+     */
+    function expectTransformSkipped(overrides: Partial<ClipTransformInputs>) {
+      const inputs = makeInputs(overrides);
 
       const result = resolveClipTransform(inputs, 0, 1, null);
 
       expect(result.transformedCount).toBeUndefined();
-      // Early return hands back the exact shared array, not a sorted clone.
+      // The early return hands back the exact shared array, not a sorted clone.
       expect(result.notes).toBe(inputs.notes);
-      expect(result.clipLength).toBe(4);
       expect(applyTransforms).not.toHaveBeenCalled();
+
+      return result;
+    }
+
+    it("returns the shared notes/length unchanged when there is no transform", () => {
+      const result = expectTransformSkipped({ transformString: null });
+
+      expect(result.clipLength).toBe(4);
     });
 
     it("skips the transform for audio clips", () => {
-      const inputs = makeInputs({ isAudio: true });
-
-      const result = resolveClipTransform(inputs, 0, 1, null);
-
-      expect(result.transformedCount).toBeUndefined();
-      expect(result.notes).toBe(inputs.notes);
-      expect(applyTransforms).not.toHaveBeenCalled();
+      expectTransformSkipped({ isAudio: true });
     });
 
     it("skips the transform when there are no notes", () => {
-      const inputs = makeInputs({ notes: [] });
-
-      const result = resolveClipTransform(inputs, 0, 1, null);
-
-      expect(result.transformedCount).toBeUndefined();
-      expect(result.notes).toBe(inputs.notes);
-      expect(applyTransforms).not.toHaveBeenCalled();
+      expectTransformSkipped({ notes: [] });
     });
 
     it("runs the transform when transform present, MIDI, and notes non-empty", () => {

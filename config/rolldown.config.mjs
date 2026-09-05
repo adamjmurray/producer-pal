@@ -34,6 +34,9 @@ const envVarReplacements = {
   "process.env.ENABLE_REMOTE_CORS": JSON.stringify(
     process.env.ENABLE_REMOTE_CORS,
   ),
+  "process.env.ENABLE_OBJECT_PROBE": JSON.stringify(
+    process.env.ENABLE_OBJECT_PROBE,
+  ),
 };
 
 // Substitute dev-only modules with do-nothing stubs unless the build asked for

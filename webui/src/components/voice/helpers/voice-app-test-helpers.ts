@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type RealtimeItem } from "@openai/agents/realtime";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { type Mock, vi } from "vitest";
 import { type VoiceAppProps } from "#webui/components/voice/VoiceApp";
 import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
@@ -85,6 +86,8 @@ export interface PropOverrides {
    * from the other provider" for record-aware routing tests. */
   openaiApiKey?: string;
   geminiApiKey?: string;
+  /** Override the App-owned undo stack (e.g. to render a pending undo). */
+  undoDelete?: Partial<UndoDeleteReturn>;
 }
 
 /**
@@ -142,6 +145,17 @@ export function makeProps(o: PropOverrides = {}): VoiceAppProps {
     onForeignRecord: vi.fn(),
     clearViewingMode: vi.fn(),
     setModeContext: vi.fn(),
+    // App owns the real stack; VoiceApp only reads the banner off it, and
+    // useVoicePersistence (which uses the rest) is mocked in these tests.
+    undoDelete: {
+      undoNotification: null,
+      deleteWithUndo: vi.fn(),
+      pushDeleted: vi.fn(),
+      dismissUndoNotification: vi.fn(),
+      dropUndoable: vi.fn(),
+      setRefreshList: vi.fn(),
+      ...o.undoDelete,
+    },
   } as unknown as VoiceAppProps;
 }
 

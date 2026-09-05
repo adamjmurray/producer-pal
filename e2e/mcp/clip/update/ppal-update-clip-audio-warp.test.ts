@@ -14,7 +14,6 @@
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-audio-warp
  */
-import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it } from "vitest";
 import {
   abletonBeatsToDuration,
@@ -22,47 +21,22 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   DRUM_LOOP_FILE,
-  parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
-  sleep,
 } from "../../mcp-test-helpers";
 import {
-  AUDIO_WARP_TRACK,
   createAndRead,
   expectedSampleLength,
-  readClipFully,
   readSongTiming,
   sampleBeats,
   type SongTiming,
 } from "../helpers/audio-warp-test-helpers.ts";
+import { updateAndRead } from "../helpers/clip-io-test-helpers.ts";
+import { AUDIO_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
-const SLOT_PATH = `t${AUDIO_WARP_TRACK}/s1`;
-
-/**
- * Update a clip and read it back with every include.
- * @param client - The MCP client
- * @param clipId - The clip to update
- * @param args - ppal-update-clip arguments, merged over the clip id
- * @returns The clip as read back, and any warnings the update reported
- */
-async function updateAndRead(
-  client: Client,
-  clipId: string,
-  args: Record<string, unknown>,
-): Promise<{ clip: ReadClipResult; warnings: string[] }> {
-  const result = await client.callTool({
-    name: "ppal-update-clip",
-    arguments: { id: clipId, ...args },
-  });
-  const { warnings } = parseToolResultWithWarnings<unknown>(result);
-
-  await sleep(100);
-
-  return { clip: await readClipFully(client, clipId), warnings };
-}
+const SLOT_PATH = `t${AUDIO_TRACK}/s1`;
 
 /**
  * A clip's reported length in real Ableton beats.
@@ -127,8 +101,7 @@ describe("ppal-update-clip audio warping", () => {
     // markers start out in seconds and the first switch is the one into beats.
     const song = await readSongTiming(ctx.client!);
     const { created } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_WARP_TRACK}`,
-      arrangementStart: "49|1",
+      path: `t${AUDIO_TRACK}[49|1]`,
       name: "warp round trip",
       warping: false,
     });

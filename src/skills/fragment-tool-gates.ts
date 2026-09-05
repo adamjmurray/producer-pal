@@ -26,8 +26,28 @@
 
 // The clip writers, named because several separate gates reach for them.
 const CREATE_CLIP = "ppal-create-clip";
+const READ_TRACK = "ppal-read-track";
+const READ_SCENE = "ppal-read-scene";
 const UPDATE_CLIP = "ppal-update-clip";
 const DUPLICATE = "ppal-duplicate";
+
+/**
+ * Every tool that names a track or scene by `path` — reads, writes, creates,
+ * and the two that address either kind. Wide because the round trip is the
+ * point: a caller that can only read still gets a `path` back and needs to
+ * know what it means.
+ */
+const TRACK_SCENE_PATH_TOOLS = [
+  READ_TRACK,
+  READ_SCENE,
+  "ppal-create-track",
+  "ppal-create-scene",
+  "ppal-update-track",
+  "ppal-update-scene",
+  "ppal-select",
+  "ppal-delete",
+  "ppal-duplicate",
+] as const;
 
 /** The gate for guidance whose whole point is to be said out loud to a person. */
 const CONVERSATION_ONLY = "conversation-only";
@@ -47,8 +67,8 @@ const NOTE_TOOLS = [
   "ppal-read-clip",
   CREATE_CLIP,
   UPDATE_CLIP,
-  "ppal-read-track",
-  "ppal-read-scene",
+  READ_TRACK,
+  READ_SCENE,
 ] as const;
 
 /**
@@ -96,18 +116,18 @@ const DEVICE_WRITE_TOOLS = [
 
 /**
  * Every tool that reports or sets an arrangement position: three put clips
- * there, and two report an `arrangementStart` back — read-clip directly,
+ * there, and two report one back in a clip's path — read-clip directly,
  * read-track in the `arrangementClips` entries it returns. A reader needs the
- * dual-meter rule to make sense of the number either way. read-scene is absent
- * because it reads clip slots only, so no arrangement position ever reaches
- * it.
+ * dual-meter rule to make sense of the position either way. read-scene is
+ * absent because it reads clip slots only, so no arrangement position ever
+ * reaches it.
  */
 const ARRANGEMENT_TOOLS = [
   CREATE_CLIP,
   "ppal-read-clip",
   UPDATE_CLIP,
   DUPLICATE,
-  "ppal-read-track",
+  READ_TRACK,
 ] as const;
 
 /**
@@ -177,6 +197,12 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   arrangement: ARRANGEMENT_TOOLS,
   // Moving, splitting, and take lanes: read-clip has no tool to run any of it.
   "arrangement-write": ARRANGEMENT_WRITE_TOOLS,
+  // The small-model driver's only arrangement prose. Not the write subset: a
+  // lane shows up in read-track output and in a clip path, so a reader meets
+  // one whether or not it can write.
+  "arrangement-basic": ARRANGEMENT_TOOLS,
+
+  "object-paths": TRACK_SCENE_PATH_TOOLS,
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],

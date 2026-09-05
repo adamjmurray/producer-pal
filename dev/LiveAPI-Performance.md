@@ -43,9 +43,11 @@ one. At the old 512, a deep 64-pad kit read (1,314 objects) rebuilt 803 of them
 on every repeat and climbed 2.2 s to 5.9 s over twelve calls. See
 `MAX_POOLED_OBJECTS` in `live-api-adapter/live-api-release.ts`.
 
-**Five stable targets resolve once per request** — `live_set`, the master track
-and three others that name one object at a path nothing can move. ADR-0028 says
-why the list is that short, and why `this_device` is not on it.
+**Six stable targets resolve once per request** — `live_set`, the master track,
+`this_device` and three others that name one object nothing can repoint. The
+header comment of `live-api-adapter/live-api-build.ts` says why the list is that
+short. `this_device` is the biggest of them on a full read: 12 resolutions of
+one object on a 12-track Set.
 
 **Tools stopped building objects they don't read.** Reading one property no
 longer builds the whole collection it belongs to; a session grid is counted once
@@ -73,6 +75,19 @@ scenes, four drum racks, a four-level instrument rack — see
 A warm pool builds nothing, which is the whole claim. The deep kit read holds
 flat at about 1.2 s per call; at the old ceiling the same call was past 5.9 s by
 its twelfth run and still climbing.
+
+## Return chain names are read once per rack
+
+A chain with a send turned up has to name the returns it feeds, and those names
+live on the rack. Reading them per chain cost `1 + returnCount` objects a pad:
+on the counter Set's 64-pad kit, `read-device` with chains resolved 1,154
+objects for 712 targets and took 1.0 s a call. Naming them once per rack
+(`requestMemo` in `live-api-adapter/live-api-release.ts`) took it to 713
+resolutions and 0.52 s, with identical output. It scales with pads, so a 128-pad
+kit saves twice that.
+
+`read-track` never reaches this — it does not descend into rack chains at any
+depth. Only `read-device` on the rack does.
 
 ## What still costs
 

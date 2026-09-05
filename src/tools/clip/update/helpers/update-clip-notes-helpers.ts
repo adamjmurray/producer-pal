@@ -22,11 +22,12 @@ import {
   rawNotesToNoteEvents,
   readAllClipNotes,
   removeAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
+} from "#src/tools/shared/clip/clip-notes.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
 } from "./update-clip-transform-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
@@ -226,7 +227,7 @@ function mergeNewNotes(
 export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
     console.warn(
-      `duplicateLoop parameter ignored for audio clip (id ${clip.id})`,
+      `duplicateLoop parameter ignored for audio clip ${targetLabel(clip)}`,
     );
 
     return null;
@@ -282,6 +283,8 @@ export function handleDuplicateLoopWithEdits({
   notation: Notation | undefined;
 }): NoteUpdateResult | null {
   // Stage 1: flush preTransforms onto the existing notes before doubling.
+  let preTransformed: number | undefined;
+
   if (preTransformString != null) {
     const preContext = buildClipContext(
       clip,
@@ -291,14 +294,14 @@ export function handleDuplicateLoopWithEdits({
       timeSigDenominator,
     );
 
-    applyTransformsToExistingNotes(
+    preTransformed = applyTransformsToExistingNotes(
       clip,
       preTransformString,
       undefined,
       timeSigNumerator,
       timeSigDenominator,
       preContext,
-    );
+    ).transformed;
   }
 
   // Stage 2: native double (MIDI guaranteed by the caller).
@@ -307,7 +310,7 @@ export function handleDuplicateLoopWithEdits({
   // Stage 3: merge notes + transforms across the doubled clip. Re-read from id
   // (duplicate_loop mutates in place) and rebuild context for the doubled length.
   if (notationString == null && transformString == null) {
-    return dupResult;
+    return withPreTransformed(dupResult, preTransformed);
   }
 
   const freshClip = LiveAPI.from(clip.id);
@@ -329,7 +332,27 @@ export function handleDuplicateLoopWithEdits({
     notation,
   );
 
-  return mergeResult ?? dupResult;
+  return withPreTransformed(mergeResult ?? dupResult, preTransformed);
+}
+
+/**
+ * Fall back to the preTransform match count when the later stages produced none.
+ * Stage 3 is handed no preTransform string of its own, so without this a
+ * duplicateLoop + preTransforms call would be the one path where preTransforms
+ * ran and matched notes yet reported no count.
+ * @param result - The result the later stages produced, or null if there is none
+ * @param preTransformed - Stage 1's match count, or undefined if it did not run
+ * @returns The result, with the preTransform count filled in when it had none
+ */
+function withPreTransformed(
+  result: NoteUpdateResult | null,
+  preTransformed: number | undefined,
+): NoteUpdateResult | null {
+  if (result == null || result.transformed != null || preTransformed == null) {
+    return result;
+  }
+
+  return { ...result, transformed: preTransformed };
 }
 
 /**
@@ -394,7 +417,7 @@ export function handleQuantization(
     ].filter((param) => param != null);
 
     console.warn(
-      `${sent.join("/")} ignored for audio clip (id ${clip.id}): quantization is MIDI-only`,
+      `${sent.join("/")} ignored for audio clip ${targetLabel(clip)}: quantization is MIDI-only`,
     );
 
     return;
@@ -409,15 +432,8 @@ export function handleQuantization(
   const gridValue = QUANTIZE_GRID[grid];
 
   if (quantizePitch != null) {
-    const midiPitch = noteNameToMidi(quantizePitch);
-
-    if (midiPitch == null) {
-      console.warn(
-        `invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
-      );
-
-      return;
-    }
+    // Refused up front by updateClip, so this reads back a known-good name.
+    const midiPitch = noteNameToMidi(quantizePitch) as number;
 
     clip.call("quantize_pitch", midiPitch, gridValue, strength);
   } else {

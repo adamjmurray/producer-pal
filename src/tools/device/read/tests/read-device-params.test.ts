@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -87,6 +88,34 @@ describe("readDevice param-values include option", () => {
     expect(params[0]).toHaveProperty("min", 0);
     expect(params[0]).toHaveProperty("max", 48);
     expect(params[0]!.value).toBe(12);
+  });
+
+  it("should report the display range when Max returns bare-number labels", () => {
+    // Max hands back a JS number, not a string, when a label has no unit or
+    // suffix (EQ Eight `Q`, Glue Compressor `Attack`). Uncoerced, the label
+    // fails parseLabel's type guard and the param falls back to raw units —
+    // here that would report min 0, max 1, value 999.
+    setupDeviceParamMocks({
+      param: {
+        name: "1 Q A",
+        original_name: "1 Q A",
+        value: 0.5,
+        min: 0,
+        max: 1,
+        display_value: 999,
+      },
+      strForValue: (value) => 1 + Number(value) * 17,
+    });
+
+    const { params } = readDeviceParamValues();
+
+    expect(params[0]).toStrictEqual({
+      id: "param-1",
+      name: "1 Q A",
+      value: 9.5,
+      min: 1,
+      max: 18,
+    });
   });
 
   it("should not include min and max for quantized parameters", () => {
@@ -201,6 +230,96 @@ function readDeviceParamValues(): {
     params: result.parameters as Record<string, unknown>[],
   };
 }
+
+// Some of Live's stock params display a bare number and nothing else. What those
+// measure is recorded in known-param-units.ts and reported here, so a model has
+// something to write back.
+describe("readDevice recorded units", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearMockRegistry();
+  });
+
+  /**
+   * Read one bare-number param off a named device.
+   * @param className - The device's class_display_name
+   * @param name - The param's name
+   * @param range - The param's display range
+   * @returns The parameter as read-device reports it
+   */
+  function readBareParam(
+    className: string,
+    name: string,
+    range: { min: number; max: number },
+  ): Record<string, unknown> {
+    setupDeviceParamMocks({
+      device: { class_display_name: className },
+      param: { name, original_name: name, value: range.min, ...range },
+      strForValue: (value) => String(Number(value)),
+    });
+
+    const result = readDevice({ id: "device-123", include: ["param-values"] });
+    const [param] = (result as { parameters: Record<string, unknown>[] })
+      .parameters;
+
+    return param as Record<string, unknown>;
+  }
+
+  it("reports the recorded unit for a param that displays none", () => {
+    expect(
+      readBareParam("Glue Compressor", "Attack", { min: 0.01, max: 30 }),
+    ).toStrictEqual({
+      id: "param-1",
+      name: "Attack",
+      value: 0.01,
+      min: 0.01,
+      max: 30,
+      unit: "ms",
+    });
+  });
+
+  it("reports nothing for the same param name on another device", () => {
+    expect(
+      readBareParam("Compressor", "Attack", { min: 0.01, max: 30 }),
+    ).not.toHaveProperty("unit");
+  });
+
+  it("reports nothing when the range no longer matches what was recorded", () => {
+    expect(
+      readBareParam("Glue Compressor", "Attack", { min: 0.01, max: 60 }),
+    ).not.toHaveProperty("unit");
+  });
+
+  // Corpus "Fine" reads "0 ct" and used to need a recorded row, because the
+  // parser dropped the suffix. The label carries the unit now, so the row is
+  // gone and nothing about Corpus is recorded at all.
+  it("reads a unit off the label with no recorded row behind it", () => {
+    setupDeviceParamMocks({
+      device: { class_display_name: "Corpus" },
+      param: {
+        name: "Fine",
+        original_name: "Fine",
+        value: 0,
+        min: -50,
+        max: 50,
+      },
+      strForValue: (value) => `${Number(value)} ct`,
+    });
+
+    const result = readDevice({ id: "device-123", include: ["param-values"] });
+    const [param] = (result as { parameters: Record<string, unknown>[] })
+      .parameters;
+
+    expect(param).toStrictEqual({
+      id: "param-1",
+      name: "Fine",
+      value: 0,
+      min: -50,
+      max: 50,
+      unit: "cents",
+    });
+  });
+});
 
 /**
  * Stubs Live's str_for_value for a dB-scaled parameter.

@@ -10,6 +10,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import {
+  masterTrackMockObject,
   returnTrackMockObjects,
   setupLiveSetPathMappedMocks,
 } from "./read-live-set-path-mapped-test-helpers.ts";
@@ -52,13 +53,10 @@ describe("readLiveSet - track types", () => {
           arrangement_clips: children(),
           devices: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
+        ...masterTrackMockObject({
           clip_slots: children(),
           arrangement_clips: children(),
-          devices: [],
-        },
+        }),
       },
     });
 
@@ -74,27 +72,23 @@ describe("readLiveSet - track types", () => {
             id: "track1",
             name: "Regular Track",
             type: "midi",
-            trackIndex: 0,
           }),
         ],
         returnTracks: [
           expect.objectContaining({
             id: "return1",
             name: "Return A",
-            type: "return",
-            returnTrackIndex: 0,
+            path: "rt0",
           }),
           expect.objectContaining({
             id: "return2",
             name: "Return B",
-            type: "return",
-            returnTrackIndex: 1,
+            path: "rt1",
           }),
         ],
-        masterTrack: expect.objectContaining({
+        mainTrack: expect.objectContaining({
           id: "master1",
           name: "Master",
-          type: "master",
         }),
       }),
     );
@@ -126,7 +120,7 @@ describe("readLiveSet - track types", () => {
     expect(resultDefault.returnTrackCount).toBe(2);
     expect(resultDefault.tracks).toBeUndefined();
     expect(resultDefault.returnTracks).toBeUndefined();
-    expect(resultDefault.masterTrack).toBeUndefined();
+    expect(resultDefault.mainTrack).toBeUndefined();
   });
 
   it("includes all available options when '*' is used", () => {
@@ -161,12 +155,7 @@ describe("readLiveSet - track types", () => {
           arrangement_clips: children(),
           devices: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          arrangement_clips: children(),
-          devices: [],
-        },
+        ...masterTrackMockObject({ arrangement_clips: children() }),
         [livePath.scene(0)]: {
           name: "Scene 1",
           is_empty: 0,
@@ -205,7 +194,7 @@ describe("readLiveSet - track types", () => {
       expect.objectContaining({
         tracks: expect.any(Array),
         returnTracks: expect.any(Array),
-        masterTrack: expect.any(Object),
+        mainTrack: expect.any(Object),
         scenes: expect.any(Array),
       }),
     );

@@ -3,12 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   getMinimalClipInfo,
   createClipsForLength,
@@ -16,6 +16,7 @@ import {
   type MinimalClipInfo,
 } from "./duplicate-helpers.ts";
 import { configureRouting } from "./duplicate-routing-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Callback type for forEachClipInScene
@@ -79,13 +80,13 @@ function removeHostTrackDevice(
           Number.parseInt(deviceIndexMatch[1] ?? ""),
         );
         console.warn(
-          "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
+          `removed the Producer Pal device from the new track ${targetLabel(newTrack)} - it cannot be duplicated`,
         );
       }
     } catch {
       // If we can't access this_device, just continue without removing anything
       console.warn(
-        "Could not check for Producer Pal device in duplicated track",
+        `could not check the new track ${targetLabel(newTrack)} for the Producer Pal device`,
       );
     }
   }
@@ -206,7 +207,7 @@ function collectArrangementClips(
  * @param withoutDevices - Whether to exclude devices when duplicating
  * @param routeToSource - Whether to route the new track to the source track
  * @param sourceTrackIndex - Source track index for routing
- * @returns Track info object with id, trackIndex, and clips array
+ * @returns Track info object with id, path, and clips array
  */
 export function duplicateTrack(
   trackIndex: number,
@@ -216,7 +217,7 @@ export function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
   sourceTrackIndex?: number,
-): { id: string; trackIndex: number; clips: MinimalClipInfo[] } {
+): { id: string; path: string; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
@@ -244,7 +245,7 @@ export function duplicateTrack(
 
   return {
     id: newTrack.id,
-    trackIndex: newTrackIndex,
+    path: formatObjectPath({ kind: "track", trackIndex: newTrackIndex }),
     clips: duplicatedClips,
   };
 }
@@ -255,14 +256,14 @@ export function duplicateTrack(
  * @param name - Optional name for the duplicated scene
  * @param color - Optional color for the duplicated scene
  * @param withoutClips - Whether to exclude clips when duplicating
- * @returns Scene info object with id, sceneIndex, and clips array
+ * @returns Scene info object with id, path, and clips array
  */
 export function duplicateScene(
   sceneIndex: number,
   name?: string,
   color?: string,
   withoutClips?: boolean,
-): { id: string; sceneIndex: number; clips: MinimalClipInfo[] } {
+): { id: string; path: string; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_scene", sceneIndex);
@@ -297,7 +298,7 @@ export function duplicateScene(
   // Return optimistic metadata
   return {
     id: newScene.id,
-    sceneIndex: newSceneIndex,
+    path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
     clips: duplicatedClips,
   };
 }
@@ -341,7 +342,7 @@ function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
  * @param context - Context object with silenceWavPath
- * @returns Object with arrangementStart and clips array
+ * @returns The clips the copy landed, each with its own path
  */
 export async function duplicateSceneToArrangement(
   sceneId: string,
@@ -352,20 +353,18 @@ export async function duplicateSceneToArrangement(
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
-): Promise<{ arrangementStart: string; clips: MinimalClipInfo[] }> {
+): Promise<{ clips: MinimalClipInfo[] }> {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
-    throw new Error(
-      `duplicate failed: scene with id "${sceneId}" does not exist`,
-    );
+    throw new Error(`scene with id "${sceneId}" does not exist`);
   }
 
   const sceneIndex = scene.sceneIndex;
 
   if (sceneIndex == null) {
     throw new Error(
-      `duplicate failed: no scene index for id "${sceneId}" (path="${scene.path}")`,
+      `no scene index for id "${sceneId}" (path="${scene.path}")`,
     );
   }
 
@@ -402,7 +401,6 @@ export async function duplicateSceneToArrangement(
       const track = LiveAPI.from(livePath.track(trackIndex));
 
       // Use the new length-aware clip creation logic
-      // Omit arrangementStart since all clips share the same start time
       const clipsForTrack = await createClipsForLength(
         clip,
         track,
@@ -411,7 +409,6 @@ export async function duplicateSceneToArrangement(
         songTimeSigNumerator,
         songTimeSigDenominator,
         name,
-        ["arrangementStart"],
         context,
       );
 
@@ -424,12 +421,5 @@ export async function duplicateSceneToArrangement(
     }
   }
 
-  return {
-    arrangementStart: abletonBeatsToBarBeat(
-      arrangementStartBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
-    clips: duplicatedClips,
-  };
+  return { clips: duplicatedClips };
 }

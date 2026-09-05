@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  abletonBeatsToBarBeat,
   abletonBeatsToDuration,
   durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -14,7 +13,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
 import {
   holdingAreaStartOnTrack,
@@ -23,7 +22,11 @@ import {
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import {
+  objectPathForApi,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
@@ -46,7 +49,7 @@ export function parseArrangementLength(
 
     if (arrangementLengthBeats <= 0) {
       throw new Error(
-        `duplicate failed: arrangementLength must be positive, got "${arrangementLength}"`,
+        `arrangementLength must be positive, got "${arrangementLength}"`,
       );
     }
 
@@ -55,7 +58,7 @@ export function parseArrangementLength(
     const msg = errorMessage(error);
 
     if (msg.includes("Invalid duration format")) {
-      throw new Error(`duplicate failed: ${msg}`, { cause: error });
+      throw new Error(msg, { cause: error });
     }
 
     throw error;
@@ -64,12 +67,9 @@ export function parseArrangementLength(
 
 export interface MinimalClipInfo {
   id: string;
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
-   * arrangement. A clip slot pastes back into any path/toPath param; an
-   * arrangement one names a whole track, so only tools that take a track
-   * destination accept it — reach a specific arrangement clip by id. */
+  /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
+   * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
-  arrangementStart?: string;
   name?: string;
   noteCount?: number;
   transformed?: number;
@@ -78,49 +78,21 @@ export interface MinimalClipInfo {
 /**
  * Get minimal clip information for result objects
  * @param clip - The clip to get info from
- * @param omitFields - Optional fields to omit from result
  * @returns Minimal clip info object
  */
-export function getMinimalClipInfo(
-  clip: LiveAPI,
-  omitFields: string[] = [],
-): MinimalClipInfo {
+export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (isArrangementClip) {
-    const trackIndex = clip.trackIndex;
-
-    if (trackIndex == null) {
+    if (clip.trackIndex == null) {
       throw new Error(
-        `getMinimalClipInfo failed: could not determine trackIndex for clip (path="${clip.path}")`,
+        `could not determine trackIndex for clip (path="${clip.path}")`,
       );
     }
 
-    const arrangementStartBeats = clip.getProperty("start_time") as number;
-    // Convert to bar|beat format using song time signature
-    const liveSet = LiveAPI.from(livePath.liveSet);
-    const timeSigNum = liveSet.getProperty("signature_numerator") as number;
-    const timeSigDenom = liveSet.getProperty("signature_denominator") as number;
-    const arrangementStart = abletonBeatsToBarBeat(
-      arrangementStartBeats,
-      timeSigNum,
-      timeSigDenom,
-    );
-
-    const result: MinimalClipInfo = {
-      id: clip.id,
-    };
-
-    if (!omitFields.includes("path")) {
-      result.path = arrangementPath(trackIndex, clip.takeLaneIndex);
-    }
-
-    if (!omitFields.includes("arrangementStart")) {
-      result.arrangementStart = arrangementStart;
-    }
-
-    return result;
+    // The path spells the lane and the start, so nothing else reports either.
+    return { id: clip.id, path: objectPathForApi(clip) };
   }
 
   const trackIndex = clip.trackIndex;
@@ -128,19 +100,11 @@ export function getMinimalClipInfo(
 
   if (trackIndex == null || sceneIndex == null) {
     throw new Error(
-      `getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
+      `could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
     );
   }
 
-  const result: MinimalClipInfo = {
-    id: clip.id,
-  };
-
-  if (!omitFields.includes("path")) {
-    result.path = slotPath(trackIndex, sceneIndex);
-  }
-
-  return result;
+  return { id: clip.id, path: slotPath(trackIndex, sceneIndex) };
 }
 
 /**
@@ -152,7 +116,6 @@ export function getMinimalClipInfo(
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length for updateClip)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
  * @param name - Optional name for the clips
- * @param omitFields - Optional fields to omit from clip info
  * @param context - Context object with silenceWavPath
  * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
@@ -165,7 +128,6 @@ export async function createClipsForLength(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name?: string,
-  omitFields: string[] = [],
   context: Partial<ToolContext & TilingContext> = {},
   color?: string,
 ): Promise<MinimalClipInfo[]> {
@@ -208,7 +170,7 @@ export async function createClipsForLength(
     );
 
     newClip.setAll({ name, color });
-    duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
+    duplicatedClips.push(getMinimalClipInfo(newClip));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
     // Routes a self-overlapping source through the holding area (overwrite
@@ -219,13 +181,14 @@ export async function createClipsForLength(
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
+      sourceClip,
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
     // phantom clip, matching the no-length path and the arrangement-tiling guards.
     if (!newClip.exists()) {
       console.warn(
-        `Failed to duplicate clip ${sourceClip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+        `Failed to duplicate clip ${targetLabel(sourceClip)} to arrangement at ${arrangementStartBeats}, skipping`,
       );
 
       return duplicatedClips;
@@ -241,13 +204,12 @@ export async function createClipsForLength(
         songTimeSigNumerator,
         songTimeSigDenominator,
         name,
-        omitFields,
         context,
         duplicatedClips,
       );
     } else {
       newClip.setAll({ name, color });
-      duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
+      duplicatedClips.push(getMinimalClipInfo(newClip));
     }
   }
 
@@ -262,7 +224,6 @@ export async function createClipsForLength(
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length)
  * @param name - Optional name
- * @param omitFields - Fields to omit from results
  * @param context - Context object
  * @param duplicatedClips - Array to push results to
  */
@@ -273,7 +234,6 @@ async function lengthenClipAndCollectInfo(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name: string | undefined,
-  omitFields: string[],
   context: Partial<ToolContext & TilingContext>,
   duplicatedClips: MinimalClipInfo[],
 ): Promise<void> {
@@ -303,7 +263,7 @@ async function lengthenClipAndCollectInfo(
       .find((c) => c.id === clipObj.id);
 
     if (clipLiveAPI) {
-      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI, omitFields));
+      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI));
     }
   }
 }
@@ -319,7 +279,9 @@ async function lengthenClipAndCollectInfo(
  * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
  * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
  * @param context - Context object with silenceWavPath
- * @returns Clip info or object with trackIndex and clips array
+ * @param sourceClip - The clip, when the caller already resolved it
+ * @param tracks - The destination tracks, keyed by index
+ * @returns Clip info, or the destination track's path with a clips array
  */
 export async function duplicateClipToArrangement(
   clipId: string,
@@ -331,23 +293,32 @@ export async function duplicateClipToArrangement(
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
-): Promise<MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] }> {
-  // Support "id {id}" (such as returned by childIds()) and id values directly
-  const clip = LiveAPI.from(clipId);
+  sourceClip: LiveAPI | null = null,
+  tracks: Map<number, LiveAPI> = new Map(),
+): Promise<MinimalClipInfo | { path: string; clips: MinimalClipInfo[] }> {
+  // Support "id {id}" (such as returned by childIds()) and id values directly.
+  // A source hoisted across the copies of one call stays good: Live's
+  // arrangement duplicate never destroys its own source — measured on 12.4.3,
+  // an exact self-cover no-ops and hands back the source's own id — and
+  // clearClipAtDuplicateTarget refuses to clear it. That matters because
+  // exists() could not tell us otherwise: a dead handle keeps its id
+  // (dev/LiveAPI-Object-Reuse.md).
+  const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {
-    throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
+    throw new Error(`no clip exists for clipId "${clipId}"`);
   }
 
   const trackIndex = destTrackIndex ?? clip.trackIndex;
 
   if (trackIndex == null) {
     throw new Error(
-      `duplicate failed: no track index for clipId "${clipId}" (path=${clip.path})`,
+      `no track index for clipId "${clipId}" (path=${clip.path})`,
     );
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
+  const track =
+    tracks.get(trackIndex) ?? LiveAPI.from(livePath.track(trackIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLength != null) {
@@ -359,7 +330,6 @@ export async function duplicateClipToArrangement(
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
-    // When creating multiple clips, omit trackIndex since they all share the same track
     const clipsCreated = await createClipsForLength(
       clip,
       track,
@@ -368,7 +338,6 @@ export async function duplicateClipToArrangement(
       songTimeSigNumerator,
       songTimeSigDenominator,
       name,
-      ["trackIndex"],
       context,
       color,
     );
@@ -386,6 +355,7 @@ export async function duplicateClipToArrangement(
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
+      clip,
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
@@ -395,18 +365,18 @@ export async function duplicateClipToArrangement(
       duplicatedClips.push(getMinimalClipInfo(newClip));
     } else {
       console.warn(
-        `Failed to duplicate clip ${clip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+        `Failed to duplicate clip ${targetLabel(clip)} to arrangement at ${arrangementStartBeats}, skipping`,
       );
     }
   }
 
-  // Return single clip info directly, or clips array with trackIndex for multiple
+  // Return single clip info directly, or the track the tiled copies share
   if (duplicatedClips.length === 1) {
     return duplicatedClips[0] as MinimalClipInfo;
   }
 
   return {
-    trackIndex,
+    path: arrangementPath(trackIndex),
     clips: duplicatedClips,
   };
 }

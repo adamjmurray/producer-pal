@@ -8,8 +8,11 @@
 // two in flight — parallel subagent tool calls are routine — could swap them, and
 // a warning raised with no request at all rode along on the next one.
 
-import { describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  END_OF_CHUNKS,
+  reassembleChunks,
+} from "#src/shared/mcp-response-utils.ts";
 import { warn } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-sleep.ts";
 import { installCapturingTask } from "./v8-protocol-test-helpers.ts";
@@ -29,21 +32,36 @@ vi.mock(import("#src/tools/track/read/read-track.ts"), () => ({
   readTrack: vi.fn(),
 }));
 
+// The one thing that warns while a failed request unwinds — the debug build's
+// LiveAPI build stats, reported from handleRequest's finally. Stubbed silent by
+// default, like a release build.
+vi.mock(import("#src/live-api-adapter/live-api-build-stats.ts"), () => ({
+  beginLiveApiBuildStats: vi.fn(),
+  reportLiveApiBuildStats: vi.fn(),
+}));
+
 const { createClip } = await import("#src/tools/clip/create/create-clip.ts");
 const { readTrack } = await import("#src/tools/track/read/read-track.ts");
+const { reportLiveApiBuildStats } =
+  await import("#src/live-api-adapter/live-api-build-stats.ts");
 const { requestNode } =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
 const { mcp_request, node_response } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 
+interface McpResponsePayload {
+  content?: { type: string; text: string }[];
+  isError?: boolean;
+  warnings?: string[];
+}
+
 /**
- * The warnings a request's `mcp_response` carried — everything the patch would
- * hand Node after the delimiter.
+ * The `mcp_response` payload a request sent back out outlet 0.
  *
  * @param requestId - The request whose response to read
- * @returns The warning strings, or null if that request never responded
+ * @returns The parsed payload, or null if that request never responded
  */
-function warningsSentFor(requestId: string): string[] | null {
+function responseFor(requestId: string): McpResponsePayload | null {
   const call = vi
     .mocked(outlet)
     .mock.calls.find(
@@ -52,9 +70,22 @@ function warningsSentFor(requestId: string): string[] | null {
 
   if (call == null) return null;
 
-  const delimiter = call.indexOf(MAX_ERROR_DELIMITER);
+  return JSON.parse(reassembleChunks(call.slice(3))) as McpResponsePayload;
+}
 
-  return call.slice(delimiter + 1) as string[];
+/**
+ * The warnings a request's `mcp_response` carried — the `warnings` sidecar in
+ * its JSON payload.
+ *
+ * @param requestId - The request whose response to read
+ * @returns The warning strings, or null if that request never responded
+ */
+function warningsSentFor(requestId: string): string[] | null {
+  const response = responseFor(requestId);
+
+  if (response == null) return null;
+
+  return response.warnings ?? [];
 }
 
 /**
@@ -77,11 +108,16 @@ function answerNodeRequest(): void {
   node_response(
     pendingNodeRequestId(),
     JSON.stringify({ success: true }),
-    MAX_ERROR_DELIMITER,
+    END_OF_CHUNKS,
   );
 }
 
 describe("warning correlation", () => {
+  // Silent by default, like a release build.
+  beforeEach(() => {
+    vi.mocked(reportLiveApiBuildStats).mockImplementation(() => {});
+  });
+
   it("keeps each request's warnings on its own response", async () => {
     // The only way V8 suspends mid-request is a round trip to Node, so that is
     // where the other request gets to run.
@@ -156,6 +192,53 @@ describe("warning correlation", () => {
     }
   });
 
+  // A throw is a path back out of an awaited section, so the catch has to
+  // re-assert too. Without that, a warning raised while the request unwinds
+  // rides out on whichever request started in the gap.
+  it("keeps a failing request's unwind warnings on its own response", async () => {
+    // Stands in for whatever warns while a request unwinds — in a debug build
+    // that is the LiveAPI build stats, reported from handleRequest's finally.
+    // Each call warns its own text: with both saying the same thing, one warning
+    // copied onto both responses would read the same as one landing on each.
+    let unwind = 0;
+
+    vi.mocked(reportLiveApiBuildStats).mockImplementation(() => {
+      unwind++;
+      warn(`unwinding ${unwind}`);
+    });
+    vi.mocked(createClip).mockImplementation(async () => {
+      await requestNode("any-route");
+
+      throw new Error("boom");
+    });
+    vi.mocked(readTrack).mockReturnValue({} as never);
+
+    const failing = mcp_request("req-failing", "ppal-create-clip", "{}");
+
+    await vi.waitFor(() => expect(pendingNodeRequestId()).toBeDefined());
+    answerNodeRequest();
+
+    // Starts in the same tick the failing tool resumes in, so it is the active
+    // capture while that request unwinds.
+    const other = mcp_request("req-other", "ppal-read-track", "{}");
+
+    await Promise.all([failing, other]);
+
+    // req-other runs start to finish inside the gap, so it has taken the
+    // capture and given it back by the time the failing one unwinds. Without a
+    // resume in the catch, the failing request's own warning reaches nobody.
+    const otherWarnings = warningsSentFor("req-other") ?? [];
+    const failingWarnings = warningsSentFor("req-failing") ?? [];
+
+    expect(otherWarnings).toHaveLength(1);
+    expect(failingWarnings).toHaveLength(1);
+    // Two distinct warnings were raised and each landed once — neither request
+    // took the other's, and neither warning was duplicated across both.
+    expect(new Set([...otherWarnings, ...failingWarnings])).toStrictEqual(
+      new Set(["unwinding 1", "unwinding 2"]),
+    );
+  });
+
   it("sends no warnings for a request that raised none", async () => {
     vi.mocked(readTrack).mockReturnValue({} as never);
 
@@ -164,7 +247,7 @@ describe("warning correlation", () => {
     expect(warningsSentFor("req-quiet")).toStrictEqual([]);
   });
 
-  it("still mirrors a warning to outlet 1, and wipes no buffer", async () => {
+  it("sends a warning on the response and nowhere else", async () => {
     vi.mocked(readTrack).mockImplementation(() => {
       warn("mine");
 
@@ -173,11 +256,13 @@ describe("warning correlation", () => {
 
     await mcp_request("req-debug", "ppal-read-track", "{}");
 
+    expect(warningsSentFor("req-debug")).toStrictEqual(["mine"]);
+
+    // The response is the only channel. There is no second outlet mirroring
+    // warnings, and no patch-side buffer to clear before the response goes out.
     const calls = vi.mocked(outlet).mock.calls;
 
-    // Outlet 1 is a debug stream now: the patch buffers nothing, so there is
-    // nothing to clear before the response goes out.
-    expect(calls).toContainEqual([1, "mine"]);
+    expect(calls.every((args) => args[0] === 0)).toBe(true);
     expect(calls.some((args) => args[1] === "zlclear")).toBe(false);
   });
 
@@ -195,5 +280,45 @@ describe("warning correlation", () => {
     await mcp_request("req-after-stray", "ppal-read-track", "{}");
 
     expect(warningsSentFor("req-after-stray")).toStrictEqual(["mine"]);
+  });
+});
+
+// A failing tool's message goes back as `Error: <thrown message>`. The tool name
+// is deliberately left out: the response is already paired with its tool call in
+// the conversation, so naming the tool again only spends context. Exact equality
+// on purpose, so any later change to the prefix fails here. These sit in this
+// file for the mcp_request harness above; the folder is at its item limit, so
+// they can't have a file of their own.
+describe("tool error response shape", () => {
+  it("prefixes the thrown message with `Error: `", async () => {
+    vi.mocked(readTrack).mockImplementation(() => {
+      throw new Error("Track 3 does not exist");
+    });
+
+    await mcp_request("req-thrown-error", "ppal-read-track", "{}");
+
+    const response = responseFor("req-thrown-error");
+
+    expect(response?.isError).toBe(true);
+    expect(response?.content).toStrictEqual([
+      { type: "text", text: "Error: Track 3 does not exist" },
+    ]);
+  });
+
+  it("stringifies a non-Error thrown value behind the same prefix", async () => {
+    // A rejection, not a throw, so the test doesn't have to throw a literal.
+    // Both reach the catch as a non-Error value.
+    vi.mocked(readTrack).mockImplementation(
+      () => Promise.reject("plain string failure") as never,
+    );
+
+    await mcp_request("req-thrown-string", "ppal-read-track", "{}");
+
+    const response = responseFor("req-thrown-string");
+
+    expect(response?.isError).toBe(true);
+    expect(response?.content).toStrictEqual([
+      { type: "text", text: "Error: plain string failure" },
+    ]);
   });
 });

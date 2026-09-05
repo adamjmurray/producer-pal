@@ -112,9 +112,6 @@ export const error = (...args: unknown[]): void => {
  * response to append to, so it goes to the Max console — the user can act on it,
  * and no other request's result gets polluted.
  *
- * Outlet 1 still carries every warning, as a debug stream nothing in the patch
- * is wired to — hang a print on it when you need to watch warnings live.
- *
  * @param args - Values to log as warnings
  */
 export const warn = (...args: unknown[]): void => {
@@ -122,9 +119,11 @@ export const warn = (...args: unknown[]): void => {
   const message = parts.join(" ");
   const captured = recordWarning(message);
 
-  if (typeof outlet === "function") {
-    outlet(1, message);
-  } else if (
+  // Outside Max there is no response to ride and no Max console to fall back
+  // on, so relay to the host console. Node scripts import V8 code directly —
+  // docs generation does.
+  if (
+    typeof outlet !== "function" &&
     typeof console !== "undefined" &&
     typeof console.warn === "function"
   ) {

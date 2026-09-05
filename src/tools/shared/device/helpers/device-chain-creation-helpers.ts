@@ -9,7 +9,7 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { trackSegmentPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   liveApiCollection,
   type IndexedSegment,
@@ -19,6 +19,7 @@ import {
   navigateRemainingSegments,
   resolveDrumPadFromPath,
 } from "./path/device-drumpad-navigation.ts";
+import { cachedDevicePath } from "./path/with-device-path-cache.ts";
 
 /** A chain segment: everything an IndexedSegment can be except a device. */
 type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
@@ -39,7 +40,7 @@ export function resolveContainerWithAutoCreate(
   path: string,
 ): LiveAPI {
   let currentPath = trackSegmentPath(root).toString();
-  let current = LiveAPI.from(currentPath);
+  let current = cachedDevicePath(currentPath);
 
   if (!current.exists()) {
     throw new Error(`Track in path "${path}" does not exist`);
@@ -71,7 +72,7 @@ function navigateToDevice(
   fullPath: string,
 ): LiveAPI {
   const devicePath = `${currentPath} devices ${index}`;
-  const device = LiveAPI.from(devicePath);
+  const device = cachedDevicePath(devicePath);
 
   if (!device.exists()) {
     throw new Error(`Device in path "${fullPath}" does not exist`);
@@ -98,7 +99,7 @@ function navigateToChain(
 
   // Return chains are never auto-created
   if (segment.kind === "return-chain") {
-    const chain = LiveAPI.from(chainPath);
+    const chain = cachedDevicePath(chainPath);
 
     if (!chain.exists()) {
       throw new Error(`Return chain in path "${fullPath}" does not exist`);
@@ -111,7 +112,7 @@ function navigateToChain(
     autoCreateChains(parentDevice, segment.index, fullPath);
   }
 
-  return LiveAPI.from(chainPath);
+  return cachedDevicePath(chainPath);
 }
 
 /**
@@ -166,13 +167,15 @@ function autoCreateChains(
  * @param targetInNote - MIDI note for the chain's in_note property
  * @param targetIndex - Target chain index within the note group
  * @param existingCount - Current count of chains with this in_note
+ * @returns The last chain created, which is the one at targetIndex: a new chain
+ *   appends to the rack, so it lands last in its note group too
  */
-export function autoCreateDrumPadChains(
+function autoCreateDrumPadChains(
   device: LiveAPI,
   targetInNote: number,
   targetIndex: number,
   existingCount: number,
-): void {
+): LiveAPI | null {
   const chainsToCreate = targetIndex + 1 - existingCount;
 
   if (chainsToCreate > MAX_AUTO_CREATE_CHAINS) {
@@ -181,17 +184,23 @@ export function autoCreateDrumPadChains(
     );
   }
 
+  let created: LiveAPI | null = null;
+
   for (let i = 0; i < chainsToCreate; i++) {
     // A new chain appends to the end on note 36, so move it to the pad we want.
     device.call("insert_chain");
 
-    const chains = device.getChildren("chains");
-    const newChain = chains.at(-1);
+    // By id, not getChildren: naming the last chain would otherwise build every
+    // chain in the rack, once per chain created.
+    const newChainId = device.getChildIds("chains").at(-1);
 
-    if (newChain) {
-      newChain.set("in_note", targetInNote);
-    }
+    if (newChainId == null) continue;
+
+    created = LiveAPI.from(newChainId);
+    created.set("in_note", targetInNote);
   }
+
+  return created;
 }
 
 /**
@@ -254,6 +263,14 @@ export function resolveOrCreateDrumPadChain(
     return null;
   }
 
+  // Auto-create only when the pad's chain is the whole of what's missing. A
+  // brand-new chain is empty, so anything after it in the path can never
+  // resolve: returning the new chain for `pC1/c1/d0/c0` would insert into
+  // `pC1/c1` instead. A deeper miss also comes back without a chain count.
+  if (chainSegments.length > 1) {
+    return null;
+  }
+
   // The catch-all pad is in_note -1, and Live 12.4.3 clamps a drum chain's
   // in_note to 0-127, so there is no way to create one: insert_chain would
   // strand an empty chain on note 36. An existing catch-all chain still
@@ -274,20 +291,16 @@ export function resolveOrCreateDrumPadChain(
     return null;
   }
 
-  const matchingChains = rack
-    .getChildren("chains")
-    .filter((chain) => chain.getProperty("in_note") === targetInNote);
+  // The miss above already counted the pad's chains; counting them again would
+  // build every one of them a second time. Only the pad's own chain lookup sets
+  // the count, and the guards above have bailed on every other way a chain miss
+  // can arrive here, so it is always there.
+  const existingCount = assertDefined(existing.chainCount, "pad chain count");
 
-  if (chainIndex >= matchingChains.length) {
-    autoCreateDrumPadChains(
-      rack,
-      targetInNote,
-      chainIndex,
-      matchingChains.length,
-    );
-  }
-
-  return resolveDrumPadFromPath(rack.path, drumPadNote, chainSegments).target;
+  // The chain the miss was looking for is the one just created, so there is
+  // nothing to look up again — a second resolve would rebuild every chain on
+  // the pad to find it.
+  return autoCreateDrumPadChains(rack, targetInNote, chainIndex, existingCount);
 }
 
 /**

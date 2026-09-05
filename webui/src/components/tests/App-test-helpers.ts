@@ -3,8 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 import { DEFAULT_NOTATION } from "#src/shared/notation";
+import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
+import { setStubLeaveGuard } from "./App-context-mocks";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -75,6 +77,21 @@ export const mockSettingsHook = {
 
   savedTurnDetection: DEFAULT_TURN_DETECTION,
 };
+
+/**
+ * Standard setup for a suite that renders the real <App>. Call it inside the
+ * suite's describe.
+ */
+export function installAppTestSetup(): void {
+  // SettingsScreen's useGlobalSettings GETs /settings on mount.
+  installJsonFetchMock({ autoUpdateCheck: true });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+    setStubLeaveGuard(null);
+  });
+}
 
 /**
  * Set up default mock return values for all App hooks.

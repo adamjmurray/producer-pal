@@ -287,7 +287,7 @@ pitchAccidental
 // stream persists until that parameter is reassigned, so its cursor carries
 // across separate time positions (cross-event cursor). The emitter zips it
 // against the positions: value at cursor i = values[i mod values.length]; see
-// "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
+// dev/specs/barbeat/pattern-brackets.md.
 //
 // One bracket holds ONE parameter kind. Values are kind-tagged so buildStream
 // can reject a mix (`[v80 C3]`); homogeneous output keeps the bare per-kind

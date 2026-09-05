@@ -55,7 +55,6 @@ const OVERRIDE_ENV_VARS = [
   "FORMAT",
   "LIVE_API",
   "JSON_OUTPUT",
-  "ALLOW_CONFIGURATION_OVERRIDES",
   "MCP_SERVER_ORIGIN",
 ] as const;
 
@@ -264,19 +263,8 @@ describe("producer-pal-portal", () => {
     });
   });
 
-  describe("env vars (gated behind ALLOW_CONFIGURATION_OVERRIDES)", () => {
-    it("ignores every override env var when the gate is off", async () => {
-      process.env.SMALL_MODEL_MODE = "true";
-      process.env.NOTATION = "stark";
-      process.env.LIVE_API = "true";
-      process.env.JSON_OUTPUT = "true";
-      process.env.FORMAT = "json";
-
-      expect(await bridgeOptionsFor([])).toStrictEqual({});
-    });
-
-    it("applies every override env var when the gate is on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+  describe("env vars", () => {
+    it("applies every override env var", async () => {
       process.env.SMALL_MODEL_MODE = "true";
       process.env.NOTATION = "stark";
       process.env.LIVE_API = "true";
@@ -290,8 +278,7 @@ describe("producer-pal-portal", () => {
       });
     });
 
-    it("forces settings off with explicit false env values when gated on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("forces settings off with explicit false env values", async () => {
       process.env.SMALL_MODEL_MODE = "false";
       process.env.LIVE_API = "false";
       process.env.JSON_OUTPUT = "false";
@@ -303,8 +290,7 @@ describe("producer-pal-portal", () => {
       });
     });
 
-    it("ignores unrecognized boolean env values even when gated on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("ignores unrecognized boolean env values", async () => {
       process.env.SMALL_MODEL_MODE = "yes";
       process.env.LIVE_API = "";
       process.env.JSON_OUTPUT = "1";
@@ -312,8 +298,7 @@ describe("producer-pal-portal", () => {
       expect(await bridgeOptionsFor([])).toStrictEqual({});
     });
 
-    it("normalizes and applies the NOTATION env var when gated on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("normalizes and applies the NOTATION env var", async () => {
       process.env.NOTATION = " MIDI-JSON ";
 
       expect(await bridgeOptionsFor([])).toStrictEqual({
@@ -321,30 +306,21 @@ describe("producer-pal-portal", () => {
       });
     });
 
-    it("treats an empty NOTATION env var as no override when gated on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("treats an empty NOTATION env var as no override", async () => {
       process.env.NOTATION = "";
 
       expect(await bridgeOptionsFor([])).toStrictEqual({});
     });
 
-    it("requests JSON output from the FORMAT env var when gated on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("requests JSON output from the FORMAT env var", async () => {
       process.env.FORMAT = "json";
 
       expect(await bridgeOptionsFor([])).toStrictEqual({ jsonOutput: true });
     });
-
-    it("does not treat 'true'/'false' gate values other than 'true' as on", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "1";
-      process.env.SMALL_MODEL_MODE = "true";
-
-      expect(await bridgeOptionsFor([])).toStrictEqual({});
-    });
   });
 
-  describe("flags win over gated env vars", () => {
-    it("applies a flag even when the gate is off", async () => {
+  describe("flags win over env vars", () => {
+    it("prefers the --notation flag over the NOTATION env var", async () => {
       process.env.NOTATION = "midi-json";
 
       expect(await bridgeOptionsFor(["--notation", "stark"])).toStrictEqual({
@@ -352,17 +328,7 @@ describe("producer-pal-portal", () => {
       });
     });
 
-    it("prefers the --notation flag over the NOTATION env var (gate on)", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
-      process.env.NOTATION = "midi-json";
-
-      expect(await bridgeOptionsFor(["--notation", "stark"])).toStrictEqual({
-        notation: "stark",
-      });
-    });
-
-    it("prefers --format compact over FORMAT=json env (gate on)", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("prefers --format compact over FORMAT=json env", async () => {
       process.env.FORMAT = "json";
 
       expect(await bridgeOptionsFor(["--format", "compact"])).toStrictEqual({
@@ -370,8 +336,7 @@ describe("producer-pal-portal", () => {
       });
     });
 
-    it("prefers --format compact over JSON_OUTPUT=true env (gate on)", async () => {
-      process.env.ALLOW_CONFIGURATION_OVERRIDES = "true";
+    it("prefers --format compact over JSON_OUTPUT=true env", async () => {
       process.env.JSON_OUTPUT = "true";
 
       expect(await bridgeOptionsFor(["--format", "compact"])).toStrictEqual({

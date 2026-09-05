@@ -59,7 +59,11 @@ describe("updateClip - note stats alongside arrangementLength", () => {
       mockContext,
     );
 
-    expect(result).toStrictEqual({ id: "789", noteCount: 2 });
+    expect(result).toStrictEqual({
+      id: "789",
+      path: "t0[1|1]",
+      noteCount: 2,
+    });
   });
 
   it("counts the notes past the old end, not just the ones that already fit", async () => {
@@ -74,7 +78,11 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     // The clip is still 1 bar when the notes are written, so the first count's
     // [-length, 2*length] window stops at beat 8 and misses E3. Lengthening
     // widens the window, and the recount picks all three up.
-    expect(result).toStrictEqual({ id: "789", noteCount: 3 });
+    expect(result).toStrictEqual({
+      id: "789",
+      path: "t0[1|1]",
+      noteCount: 3,
+    });
   });
 
   it("puts noteCount on the source clip and leaves the tiles bare", async () => {
@@ -86,11 +94,12 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     );
 
     // Notes were written to 789, so only it carries the count; the tiles are
-    // copies of it.
+    // copies of it. A 1-bar clip at beat 0 tiled to 3 bars puts them at beats
+    // 4 and 8, which 4/4 spells as bars 2 and 3.
     expect(result).toStrictEqual([
-      { id: "789", noteCount: 1 },
-      { id: "1000" },
-      { id: "1001" },
+      { id: "789", path: "t0[1|1]", noteCount: 1 },
+      { id: "1000", path: "t0[2|1]" },
+      { id: "1001", path: "t0[3|1]" },
     ]);
   });
 });

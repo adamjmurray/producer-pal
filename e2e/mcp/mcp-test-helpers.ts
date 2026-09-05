@@ -55,6 +55,17 @@ export const DRUM_LOOP_FILE = resolve(
 );
 
 /**
+ * A generated eight-bar 4/4 drum loop — 441000 frames at 22050 Hz is exactly 32
+ * beats at 96 BPM, the arrangement-sections tempo. DRUM_LOOP_FILE is one bar, so
+ * a clip built from it still cannot cross a bar line; anything that needs a
+ * multi-bar audio region (splitting, cropping) uses this against that Set.
+ */
+export const DRUM_LOOP_8BAR_FILE = resolve(
+  __dirname,
+  "../live-sets/samples/drum-loop-8bar.wav",
+);
+
+/**
  * Parse a tool result as JSON with type casting.
  * Throws if the result contains unexpected warnings.
  * Use parseToolResultWithWarnings() for results where warnings are expected.
@@ -182,21 +193,19 @@ export function parseToolResultWithWarnings<T>(
  * one live check each — folded into a test that already reads the same object
  * the canonical way, rather than a suite of its own.
  * @param result - Raw tool result
- * @param toolName - Tool that was called
  * @param alias - The alias param the call used
  * @param canonical - The param it folds onto
  * @returns The parsed result
  */
 export function parseAliasedToolResult<T>(
   result: unknown,
-  toolName: string,
   alias: string,
   canonical: string,
 ): T {
   const { data, warnings } = parseToolResultWithWarnings<T>(result);
 
   expect(warnings).toStrictEqual([
-    `WARNING: ${toolName} accepts "${alias}" as a fallback; the parameter is "${canonical}"`,
+    `WARNING: "${alias}" accepted as a fallback; the parameter is "${canonical}"`,
   ]);
 
   return data;
@@ -280,7 +289,7 @@ async function resetConfigAndSettle(): Promise<void> {
 
 interface CreateDeviceResult {
   id: string;
-  deviceIndex: number | null;
+  path?: string;
 }
 
 /**
@@ -332,14 +341,13 @@ function createdDevice(
   containerPath: string,
   created: CreateDeviceResult,
 ): CreatedDevice {
-  if (created.deviceIndex == null) {
-    throw new Error(`create-device gave no index for "${containerPath}"`);
+  const deviceIndex = Number(created.path?.match(/\/d(\d+)$/)?.[1]);
+
+  if (created.path == null || Number.isNaN(deviceIndex)) {
+    throw new Error(`create-device gave no device path for "${containerPath}"`);
   }
 
-  return {
-    path: `${containerPath}/d${created.deviceIndex}`,
-    deviceIndex: created.deviceIndex,
-  };
+  return { path: created.path, deviceIndex };
 }
 
 /**
@@ -383,7 +391,7 @@ export async function readDeviceCount(
   const track = parseToolResult<{ devices?: unknown[] }>(
     await client.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex, include: ["devices"] },
+      arguments: { path: `t${trackIndex}`, include: ["devices"] },
     }),
   );
 
@@ -396,7 +404,7 @@ export async function readDeviceCount(
  * @returns The new track's index
  */
 export async function createMidiTrack(client: Client): Promise<number> {
-  const track = parseToolResult<{ trackIndex: number }>(
+  const track = parseToolResult<{ path: string }>(
     await client.callTool({
       name: "ppal-create-track",
       arguments: { type: "midi" },
@@ -405,7 +413,23 @@ export async function createMidiTrack(client: Client): Promise<number> {
 
   await sleep(150);
 
-  return track.trackIndex;
+  return trackIndexFromPath(track.path);
+}
+
+/**
+ * The 0-based index a track path names. Track results report `path`, not an
+ * index, so a test that needs the number takes it from there.
+ * @param path - Track path from a tool result, e.g. `t3`
+ * @returns The track index
+ */
+export function trackIndexFromPath(path: string | undefined | null): number {
+  const index = Number(path?.match(/^t(\d+)$/)?.[1]);
+
+  if (Number.isNaN(index)) {
+    throw new Error(`not a regular track path: "${path}"`);
+  }
+
+  return index;
 }
 
 /**
@@ -426,8 +450,8 @@ export async function createTwoPadDrumRack(
         deviceName: "Drum Rack",
         path,
         params: [
-          { name: "pC1/d0/sample", value: KICK_FILE },
-          { name: "pD1/d0/sample", value: SAMPLE_FILE },
+          { name: "pC1/sample", value: KICK_FILE },
+          { name: "pD1/sample", value: SAMPLE_FILE },
         ],
       },
     }),
@@ -559,7 +583,7 @@ export interface UpdateClipResult {
 /** Result from ppal-create-track tool */
 export interface CreateTrackResult {
   id: string;
-  trackIndex?: number;
+  path?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
@@ -571,12 +595,12 @@ export interface ReadClipResult {
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;
+  muted?: boolean;
   start?: string;
   end?: string;
   length?: string;
-  /** Where the clip is: "t0/s3", "t0", or "t0/l1" */
+  /** Where the clip is: "t0/s3", "t0[5|1]", or "t0/l1[5|1]" */
   path?: string;
-  arrangementStart?: string;
   arrangementLength?: string;
   noteCount?: number;
   notes?: string;

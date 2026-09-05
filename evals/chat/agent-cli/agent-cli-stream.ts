@@ -135,11 +135,19 @@ export function toToolArguments(value: unknown): Record<string, unknown> {
  * `WARNING:` blocks live in the content blocks after it, so they are collected
  * separately instead of being dropped along with them.
  *
+ * A whole `CallToolResult` also carries `isError`, which grading prefers over
+ * guessing from the result's shape. A bare content array (what Claude Code
+ * hands over) carries no flag, so none is recorded.
+ *
  * @param call - The call the result belongs to
  * @param value - Raw MCP result, its content array, or plain text
  */
 export function recordToolResult(call: ToolCall, value: unknown): void {
   call.result = stringifyToolResult(value);
+
+  const isError = (value as { isError?: unknown } | null | undefined)?.isError;
+
+  if (typeof isError === "boolean") call.isError = isError;
 
   const warnings = mcpResultWarnings(value);
 

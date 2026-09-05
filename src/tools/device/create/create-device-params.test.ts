@@ -41,6 +41,35 @@ function registerSimplerCreationFixture(): RegisteredMockObject {
   return simpler;
 }
 
+/**
+ * Register a freshly-created device at track 0 / device 2 holding a Threshold
+ * param that displays -60 to 0 dB, plus the track that inserts it.
+ */
+function registerThresholdDevice(): void {
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: { insert_device: () => ["id", "comp-new"] },
+  });
+  registerMockObject("comp-new", {
+    path: livePath.track(0).device(2),
+    type: "Device",
+    properties: { parameters: children("threshold") },
+  });
+  registerMockObject("threshold", {
+    properties: {
+      name: "Threshold",
+      original_name: "Threshold",
+      is_quantized: 0,
+      value: 0,
+      min: 0,
+      max: 1,
+    },
+    methods: {
+      str_for_value: (v: unknown) => `${Math.round(Number(v) * 60) - 60} dB`,
+    },
+  });
+}
+
 describe("createDevice params", () => {
   describe("params after creation", () => {
     it("loads a sample on a created Simpler via params", () => {
@@ -58,23 +87,87 @@ describe("createDevice params", () => {
       );
     });
 
-    it("prefixes param warnings with createDevice, not updateDevice", async () => {
+    it("reports what each written param reads as after creation", () => {
+      registerThresholdDevice();
+
+      const result = createDevice({
+        deviceName: "Compressor",
+        path: "t0",
+        params: [{ name: "Threshold", value: "-20 dB" }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [{ id: "threshold", name: "Threshold", value: -20 }],
+      });
+    });
+
+    it("reports a param that names nothing on the new device", async () => {
       const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
       vi.mocked(mockConsole.warn).mockClear();
 
       registerSimplerCreationFixture();
 
-      createDevice({
+      const result = createDevice({
         deviceName: "Simpler",
         path: "t0",
         params: [{ name: "nonexistent", value: "42" }],
       });
 
+      expect(result).toStrictEqual({
+        id: "simpler-new",
+        path: "t0/d2",
+        params: [
+          {
+            name: "nonexistent",
+            reason: "not found on t0/d2 (id simpler-new)",
+          },
+        ],
+      });
+
       const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
 
-      expect(calls).toMatch(/createDevice: param "nonexistent" not found/);
-      expect(calls).not.toMatch(/updateDevice:/);
+      expect(calls).toMatch(/param "nonexistent" not found/);
+    });
+
+    it("keeps the params the caller sent paired with the list it sent", () => {
+      registerThresholdDevice();
+
+      const result = createDevice({
+        deviceName: "Compressor",
+        path: "t0",
+        params: [
+          { name: "nope", value: "1" },
+          // Below the param's floor, so the entry can only say -60 dB by
+          // reading Live back — an echo of the argument would say -100.
+          { name: "Threshold", value: "-100 dB" },
+        ],
+      });
+
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [
+          { name: "nope", reason: "not found on t0/d2 (id comp-new)" },
+          { id: "threshold", name: "Threshold", value: -60 },
+        ],
+      });
+    });
+
+    // Refused before the device is created, so a bad params list doesn't leave
+    // a new device behind for the caller to clean up before retrying.
+    it("refuses a params entry with an empty value, creating nothing", () => {
+      registerSimplerCreationFixture();
+
+      expect(() =>
+        createDevice({
+          deviceName: "Simpler",
+          path: "t0",
+          params: [{ name: "Volume", value: "" }],
+        }),
+      ).toThrow('params entry "Volume" has an empty value');
     });
 
     it("does not call replace_sample on a non-Simpler when sample is in params", () => {
@@ -184,12 +277,22 @@ describe("createDevice params", () => {
         deviceName: "Drum Rack",
         path: "t0",
         params: [
-          { name: "pC1/d0/sample", value: "/kick.wav" },
+          { name: "pC1/sample", value: "/kick.wav" },
           { name: "pC#1/d0/sample", value: "/snare.wav" },
         ],
       });
 
-      expect(result).toMatchObject({ id: "drum-rack" });
+      // Each pad's entry carries the path it was addressed by and the sample
+      // its Simpler reports — the fixture's Simplers keep their own loaded
+      // path, so an entry echoing the written value would not match.
+      expect(result).toStrictEqual({
+        path: "t0/d0",
+        id: "drum-rack",
+        params: [
+          { name: "pC1/sample", value: "/loaded.wav" },
+          { name: "pC#1/d0/sample", value: "/loaded.wav" },
+        ],
+      });
       expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(
         "replace_sample",
         "/kick.wav",
@@ -207,7 +310,7 @@ describe("createDevice params", () => {
         deviceName: "Drum Rack",
         path: "t0",
         params: [
-          { name: "pC1/d0/sample", value: "/kick.wav" },
+          { name: "pC1/sample", value: "/kick.wav" },
           { name: "pC1/d0/gainDb", value: "-6" },
         ],
       });

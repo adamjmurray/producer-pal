@@ -11,15 +11,23 @@ import {
 } from "#src/tools/clip/read/read-clip.ts";
 import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import {
+  expandWildcardIncludes,
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+  stripFields,
+} from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { sceneApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface ReadSceneArgs {
   sceneIndex?: number;
   id?: string;
+  path?: string;
   /** Hidden alias for id */
   sceneId?: string;
   include?: string[];
@@ -33,8 +41,8 @@ interface ReadSceneArgs {
 
 interface ReadSceneResult {
   id: string | null;
+  path?: string;
   name: string | null;
-  sceneIndex?: number | null;
   color?: string | null;
   tempo?: unknown;
   timeSignature?: string | null;
@@ -55,6 +63,7 @@ type SceneClip = ReadClipResult & { trackName?: string };
  * @param args - The parameters
  * @param args.sceneIndex - Scene index (0-based)
  * @param args.id - Scene ID to directly access any scene
+ * @param args.path - Scene path to read instead of an id (e.g. "s3")
  * @param args.include - Array of data to include
  * @param args.clipCount - Clips in this scene, when the caller already counted them
  * @param context - Internal context object (supplies the active notation)
@@ -66,10 +75,17 @@ export function readScene(
 ): ReadSceneResult {
   const { sceneIndex } = args;
   const sceneId = namedIdParam(args.id, args.sceneId, "sceneId");
+  const scenePath = namedParam(args.path, "path");
 
   // Validate parameters
-  if (sceneId == null && sceneIndex == null) {
-    throw new Error("Either id or sceneIndex must be provided");
+  if (sceneId == null && scenePath == null && sceneIndex == null) {
+    throw new Error("id or path is required");
+  }
+
+  if (scenePath != null && (sceneId != null || sceneIndex != null)) {
+    throw new Error(
+      "path names the scene on its own - don't send id or sceneIndex with it",
+    );
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -81,11 +97,14 @@ export function readScene(
   let scene: LiveAPI;
   let resolvedSceneIndex: number | null | undefined = sceneIndex;
 
-  if (sceneId != null) {
-    // Use the id to access the scene directly and validate it's a scene
-    scene = validateIdType(sceneId, "scene", "readScene");
+  if (sceneId != null || scenePath != null) {
+    // Validate an id names a scene; a path says so by its own spelling
+    scene =
+      sceneId != null
+        ? validateIdType(sceneId, "scene")
+        : sceneApiAtPath(scenePath as string);
 
-    // Determine scene index from the scene's path
+    // Determine scene index from the scene's Live path
     resolvedSceneIndex = scene.sceneIndex;
   } else {
     // sceneIndex guaranteed defined here: null-check at function start covers the id==null case
@@ -93,7 +112,7 @@ export function readScene(
   }
 
   if (!scene.exists()) {
-    throw new Error(`readScene: sceneIndex ${sceneIndex} does not exist`);
+    throw new Error(`sceneIndex ${sceneIndex} does not exist`);
   }
 
   const isTempoEnabled = (scene.getProperty("tempo_enabled") as number) > 0;
@@ -102,8 +121,8 @@ export function readScene(
 
   const result: ReadSceneResult = {
     id: scene.id,
+    ...pathField(scene),
     name: sceneDisplayName(scene, resolvedSceneIndex as number),
-    sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };
 
@@ -127,7 +146,7 @@ export function readScene(
     const clips = readSceneClips(
       liveSet,
       resolvedSceneIndex,
-      args.include,
+      expandWildcardIncludes(args.include, READ_SCENE_DEFAULTS),
       context.notation,
     );
 

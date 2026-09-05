@@ -6,8 +6,10 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GEM_ITEM_ID } from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
 
 // --- hoisted doubles (vi.mock factories can only see vi.hoisted values) ---
 const h = vi.hoisted(() => {
@@ -153,6 +155,13 @@ vi.mock(import("#webui/hooks/voice/gemini/gemini-pcm-player"), () => ({
 vi.mock(import("#webui/hooks/voice/gemini/gemini-mcp-tools"), () => ({
   createGeminiMcpTools: h.createGeminiMcpTools as never,
 }));
+// Shrink the resume backoff — the real 1s is waited out for real here, and the
+// backoff's own timing is covered with fake timers in the resume suite.
+vi.mock(import("#webui/lib/constants/voice-resume"), () => ({
+  MAX_RESUME_ATTEMPTS: 3,
+  RESUME_BACKOFF_MS: 20,
+}));
+
 vi.mock(import("#webui/hooks/voice/gemini/gemini-voice-token"), () => ({
   fetchGeminiToken: h.fetchGeminiToken as never,
 }));
@@ -399,9 +408,12 @@ describe("useGeminiVoiceSession", () => {
 
     await emit(transcriptMsg("hello there"));
 
-    expect(result.current.history[0]).toMatchObject({
+    expect(result.current.history[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      status: "completed",
       role: "user",
-      content: [{ transcript: "hello there" }],
+      content: [{ type: "input_audio", transcript: "hello there" }],
     });
   });
 
@@ -537,8 +549,12 @@ describe("useGeminiVoiceSession", () => {
 
     await emit(transcriptMsg("world"));
     expect(result.current.history).toHaveLength(1);
-    expect(result.current.history[0]).toMatchObject({
-      content: [{ transcript: "world" }],
+    expect(result.current.history[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      status: "completed",
+      role: "user",
+      content: [{ type: "input_audio", transcript: "world" }],
     });
   });
 
@@ -613,18 +629,13 @@ describe("useGeminiVoiceSession", () => {
       h.state.callbacks.onclose?.();
     });
 
-    // openResumableGeminiSession retries behind a linear backoff (attempt 1 =
-    // 1s). Poll past it instead of sleeping a hair over: a 1100ms fixed wait
-    // leaves only a 10% margin, so a loaded runner clips the resume and fails
-    // these assertions. The timeout must clear the backoff itself, which the
-    // 1s waitFor default would not.
-    await waitFor(
-      () => {
-        expect(h.liveConnect).toHaveBeenCalledTimes(2);
-        expect(result.current.status).toBe("connected");
-      },
-      { timeout: 5000 },
-    );
+    // openResumableGeminiSession retries behind a linear backoff, mocked short
+    // above. Poll past it rather than sleeping a hair over it, so a loaded
+    // runner can't clip the resume.
+    await waitForHookState(() => {
+      expect(h.liveConnect).toHaveBeenCalledTimes(2);
+      expect(result.current.status).toBe("connected");
+    });
 
     expect(result.current.error).toBeNull();
     const cfg = h.state.connectParams!.config as {

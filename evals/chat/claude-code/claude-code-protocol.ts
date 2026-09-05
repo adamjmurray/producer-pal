@@ -263,9 +263,50 @@ function handleToolResult(
 
   recordToolResult(call, block.content);
 
-  if (block.is_error === true) call.result = `ERROR: ${call.result ?? ""}`;
+  // Only stamp true: a `tool_result` block flagged this way is the one failure
+  // shape we're sure of. Anything else leaves `isError` unset, so grading falls
+  // back to reading the result's shape rather than calling a real error a pass.
+  if (block.is_error === true) {
+    call.isError = true;
+    call.result = `ERROR: ${call.result ?? ""}`;
+  }
+
+  state.error ??= persistedOutputError(call);
 
   state.openCalls.delete(block.tool_use_id);
+}
+
+/**
+ * The stub Claude Code swaps in for a tool result too big to inline. The size
+ * and path vary; the opening tag does not.
+ */
+const PERSISTED_OUTPUT = "<persisted-output>";
+
+/**
+ * Report a tool result the CLI spilled to a file instead of returning.
+ *
+ * Past a size limit Claude Code replaces the result with a stub naming the file
+ * it wrote, plus a 2KB preview — and that stub is what the MODEL gets, so a
+ * `ppal-connect` over the limit grades a model that never received the Skills.
+ * The sibling of a dead MCP server, and the same silent outcome, so it gets the
+ * same treatment: fail the turn rather than publish a score for a run that
+ * measured something else. Reading the file back would fix the report and leave
+ * the lie in place.
+ *
+ * @param call - The tool call whose result just landed
+ * @returns Error message, or undefined when the result came back whole
+ */
+function persistedOutputError(call: ToolCall): string | undefined {
+  if (call.result == null || !call.result.startsWith(PERSISTED_OUTPUT)) {
+    return undefined;
+  }
+
+  return (
+    `${call.name} returned more than the claude CLI will inline, so it saved ` +
+    `the result to a file and gave the model a 2KB preview instead. The model ` +
+    `never saw the full result, so this run would grade something else. ` +
+    `Use a smaller toolset (--tools) or another provider.`
+  );
 }
 
 /**

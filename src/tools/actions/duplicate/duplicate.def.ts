@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
-import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
+import { DUPLICATE_TYPES, MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
@@ -17,12 +17,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
   description: {
     default:
-      "Duplicate an object. Supports tracks, scenes, clips, devices, and drum pads. " +
-      "Use count for multiple track/scene copies; arrangementStart or locator for clip placement, " +
-      "and toPath for the destination track, clip slot, device chain, or drum pad.",
+      "Duplicate an object, or several — id takes a comma-separated list. Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Use count for multiple track/scene copies, and toPath for the destination: a clip slot, a spot on " +
+      "the arrangement, a track, a device chain, or a drum pad.",
     smallModel:
-      "Duplicate an object. Supports tracks, scenes, clips, devices, and drum pads. " +
-      "Use arrangementStart for clip placement; toPath for the destination track, clip slot, device, or pad.",
+      "Duplicate an object, or several (id takes a list). Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Use toPath for the destination: clip slot, arrangement spot, device, or pad.",
   },
 
   annotations: {
@@ -31,34 +31,37 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
-    id: z.coerce.string().optional().describe("id of the object to duplicate"),
-
-    // Every other write tool takes `ids`, so a model carries the plural over to
-    // this one. It still copies one source at a time — a list is refused by
-    // name rather than handed to Live as an id.
-    ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
-    path: z.coerce
+    id: z.coerce
       .string()
       .optional()
       .describe(
-        "source drum pad path instead of id, e.g. 't0/d0/pC1' (drum pads only)",
+        "id(s) of the object(s) to duplicate, comma-separated for multiple",
       ),
-    type: z
-      .enum(["track", "scene", "clip", "device", "drum-pad"])
-      .describe("type of object to duplicate"),
+
+    ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    path: param(z.coerce.string().optional(), {
+      default:
+        "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
+        "(e.g. 't0', 's1', 't0/s1', 't0[5|1]', 't0/d0', 't0/d0/pC1')",
+      smallModel:
+        "path of the object to duplicate instead of id (e.g., 't0' or 't0/s1')",
+    }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
+    type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {
-      default: "name (comma-separated when duplicating multiple)",
+      default: "name for all, or comma-separated one per copy, in order",
       smallModel: "name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB (comma-separated when duplicating multiple, cycles)",
+      default: "#RRGGBB for all, or comma-separated one per copy, in order",
       smallModel: "#RRGGBB",
     }),
 
     count: param(z.coerce.number().int().min(1).default(1), {
       default:
-        "number of copies (tracks/scenes only, ignored for clips/devices)",
+        "copies per source (tracks/scenes only, ignored for clips/devices)",
       smallModel: null,
     }),
 
@@ -71,15 +74,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: null,
     }),
 
-    arrangementStart: param(z.coerce.string().optional(), {
-      default:
-        "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1'). Song meter",
-      smallModel: "arrangement bar|beat position (e.g., '1|1'). Song meter",
+    arrangementStart: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+      example: "t2[5|1]",
     }),
-    locator: param(z.coerce.string().optional(), {
-      default:
-        "arrangement locator ID(s) or name(s), comma-separated for multiple (e.g., 'locator-0' or 'Verse' or 'locator-0,Chorus')",
-      smallModel: null,
+    locator: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+      example: "t2[loc:Verse]",
     }),
     arrangementLength: z
       .string()
@@ -93,14 +94,19 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     }),
     toPath: param(z.coerce.string().optional(), {
       default:
-        "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1), " +
-        "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type), " +
-        "'t2/l0' = its first take lane and 't2/l+' appends a fresh one (MIDI only); " +
-        "omit for the source clip's own track. Devices: 't1/d0'. " +
+        "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1); " +
+        "'t2[5|1]' = that spot on track 2's arrangement, and '[5|1]' the same spot on the source clip's " +
+        "own track (a position is bar|beat or loc:<locator name or id> — 't2[loc:Chorus]' names a " +
+        "section instead of counting bars; an arrangement track must match " +
+        "the clip's MIDI/audio type); 't2/l0' = its first take lane, 't2/l+' appends a fresh one, and " +
+        "'t2/l=' reuses the one the 'l+' before it appended, for a stack of takes on one new lane; " +
+        "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
+        "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "Cycles against arrangementStart when the lists differ in length",
+        "One destination covers every position, or name one per position, in order; the lists do not cycle. " +
+        "With several sources, a track/take-lane destination goes to every source; clip slots, devices and pads are shared out, so name one per copy",
       smallModel:
-        "destination(s): clip slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",
+        "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
     }),
 
     routeToSource: param(z.boolean().optional(), {
@@ -111,7 +117,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation",
+        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation. Note-count operations (ratchet()/repeat()/split()/merge()) change how many notes exist",
       smallModel: null,
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"

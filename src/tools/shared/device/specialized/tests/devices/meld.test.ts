@@ -14,6 +14,7 @@ import {
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a mock Meld device and return its LiveAPI.
@@ -94,7 +95,7 @@ describe("Meld pseudo-params", () => {
     it("sets poly_voices when value is in range", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 4, "updateDevice");
+      applySpecializedParamWrite(device, "polyVoices", 4);
 
       expect(device.set).toHaveBeenCalledWith("poly_voices", 4);
     });
@@ -102,7 +103,7 @@ describe("Meld pseudo-params", () => {
     it("sets poly_voices at the minimum boundary (1)", () => {
       const device = registerMeld({ poly_voices: 3 });
 
-      applySpecializedParamWrite(device, "polyVoices", 1, "updateDevice");
+      applySpecializedParamWrite(device, "polyVoices", 1);
 
       expect(device.set).toHaveBeenCalledWith("poly_voices", 1);
     });
@@ -110,7 +111,7 @@ describe("Meld pseudo-params", () => {
     it("sets poly_voices at the maximum boundary (6)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 6, "updateDevice");
+      applySpecializedParamWrite(device, "polyVoices", 6);
 
       expect(device.set).toHaveBeenCalledWith("poly_voices", 6);
     });
@@ -118,11 +119,12 @@ describe("Meld pseudo-params", () => {
     it("warns and skips when polyVoices is above range (7)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 7, "updateDevice");
+      expect(applySpecializedParamWrite(device, "polyVoices", 7)).toStrictEqual(
+        [],
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("polyVoices"),
       );
     });
@@ -130,11 +132,10 @@ describe("Meld pseudo-params", () => {
     it("warns and skips when polyVoices is below range (0)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 0, "updateDevice");
+      applySpecializedParamWrite(device, "polyVoices", 0);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("polyVoices"),
       );
     });
@@ -144,7 +145,7 @@ describe("Meld pseudo-params", () => {
     it("sets unison_voices when value is in range", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 2, "updateDevice");
+      applySpecializedParamWrite(device, "unisonVoices", 2);
 
       expect(device.set).toHaveBeenCalledWith("unison_voices", 2);
     });
@@ -152,7 +153,7 @@ describe("Meld pseudo-params", () => {
     it("sets unison_voices at the minimum boundary (0)", () => {
       const device = registerMeld({ unison_voices: 1 });
 
-      applySpecializedParamWrite(device, "unisonVoices", 0, "updateDevice");
+      applySpecializedParamWrite(device, "unisonVoices", 0);
 
       expect(device.set).toHaveBeenCalledWith("unison_voices", 0);
     });
@@ -160,7 +161,7 @@ describe("Meld pseudo-params", () => {
     it("sets unison_voices at the maximum boundary (2)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 2, "updateDevice");
+      applySpecializedParamWrite(device, "unisonVoices", 2);
 
       expect(device.set).toHaveBeenCalledWith("unison_voices", 2);
     });
@@ -168,11 +169,10 @@ describe("Meld pseudo-params", () => {
     it("warns and skips when unisonVoices is above range (3)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 3, "updateDevice");
+      applySpecializedParamWrite(device, "unisonVoices", 3);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("unisonVoices"),
       );
     });
@@ -180,11 +180,10 @@ describe("Meld pseudo-params", () => {
     it("warns and skips when unisonVoices is a non-integer", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 1.5, "updateDevice");
+      applySpecializedParamWrite(device, "unisonVoices", 1.5);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("unisonVoices"),
       );
     });

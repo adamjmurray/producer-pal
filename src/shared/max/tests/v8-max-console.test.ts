@@ -15,6 +15,7 @@ import {
 import { error, log, warn } from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
+  capturedWarnings,
   resetWarningCapture,
 } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -246,24 +247,22 @@ describe("v8-max-console", () => {
       );
     });
 
-    it("uses outlet() when in Max environment", () => {
+    it("stays off the host console in a Max environment", () => {
       const mockOutlet = vi.fn();
 
       g.outlet = mockOutlet;
 
       warn("test warning");
-      expect(mockOutlet).toHaveBeenCalledWith(1, "test warning");
+      // Under Max the warning rides the response, and nothing goes out an
+      // outlet of its own.
+      expect(mockOutlet).not.toHaveBeenCalled();
       expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
 
-    it("joins multiple outlet arguments with spaces", () => {
-      const mockOutlet = vi.fn();
-
-      g.outlet = mockOutlet;
-
+    it("joins multiple arguments with spaces", () => {
       warn("first", 42, "third");
-      // Multiple args are join(" ")-ed into one outlet string, not concatenated.
-      expect(mockOutlet).toHaveBeenCalledWith(1, "first 42 third");
+      // Multiple args are join(" ")-ed into one message, not concatenated.
+      expect(capturedWarnings()).toContain("first 42 third");
     });
   });
 

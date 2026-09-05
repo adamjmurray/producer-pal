@@ -6,11 +6,23 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  type ParamModeMap,
   getParamModes,
   param,
   resolveModalDescription,
   resolveParamModes,
 } from "../modal-config.ts";
+
+/**
+ * A one-param schema whose `notes` description varies by mode.
+ * @param overrides - Mode keys to their override, over `default: "base"`
+ * @returns The schema to pass to resolveParamModes
+ */
+function notesSchema(overrides: Omit<ParamModeMap, "default">) {
+  return {
+    notes: param(z.string().optional(), { default: "base", ...overrides }),
+  };
+}
 
 describe("param / getParamModes", () => {
   it("applies the default description and tags the schema with its modes", () => {
@@ -37,17 +49,15 @@ describe("resolveParamModes", () => {
       excludeParams: [],
       descriptionOverrides: {},
       excludeEnumValues: {},
+      unpublishedEnumValues: {},
     });
   });
 
   it("leaves modal params untouched when no mode is active", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "short",
-        "midi-json": "json",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "short",
+      "midi-json": "json",
+    });
 
     // barbeat is the default notation and applies no overrides.
     const result = resolveParamModes(schema, {
@@ -129,14 +139,81 @@ describe("resolveParamModes", () => {
     expect(result.excludeEnumValues).toStrictEqual({ include: ["b"] });
   });
 
-  it("lets the active notation win over small-model for the description", () => {
+  it("trims an enum value in every mode when default says to", () => {
     const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small-model text",
-        "midi-json": "json text",
+      type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+        default: {
+          description: "midi or audio",
+          excludeEnumValues: ["return"],
+        },
       }),
     };
+
+    for (const context of [
+      { smallModelMode: false, notation: "barbeat" as const },
+      { smallModelMode: true },
+      { notation: "stark" as const },
+    ]) {
+      const resolved = resolveParamModes(schema, context);
+
+      expect(resolved.unpublishedEnumValues).toStrictEqual({
+        type: ["return"],
+      });
+      // Hidden, not refused - the handler still takes it.
+      expect(resolved.excludeEnumValues).toStrictEqual({});
+    }
+  });
+
+  it("describes a param from default's object form", () => {
+    const schema = {
+      type: param(z.enum(["midi", "return"]).default("midi"), {
+        default: { description: "midi only", excludeEnumValues: ["return"] },
+      }),
+    };
+
+    expect(schema.type.description).toBe("midi only");
+  });
+
+  // The trim is a floor, not something a mode override replaces: a mode that
+  // only rewords the param must not put the hidden value back.
+  it("keeps default's trim when a mode overrides only the description", () => {
+    const schema = {
+      type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+        default: {
+          description: "midi or audio",
+          excludeEnumValues: ["return"],
+        },
+        smallModel: "type",
+      }),
+    };
+
+    const result = resolveParamModes(schema, { smallModelMode: true });
+
+    expect(result.descriptionOverrides).toStrictEqual({ type: "type" });
+    expect(result.unpublishedEnumValues).toStrictEqual({ type: ["return"] });
+  });
+
+  // Both trims apply to what gets published, but only the mode's takes the
+  // value out of the schema that validates.
+  it("keeps a mode's trim apart from default's", () => {
+    const schema = {
+      include: param(z.array(z.enum(["a", "b", "c"])).default([]), {
+        default: { description: "a or b", excludeEnumValues: ["c"] },
+        smallModel: { excludeEnumValues: ["b"] },
+      }),
+    };
+
+    const result = resolveParamModes(schema, { smallModelMode: true });
+
+    expect(result.excludeEnumValues).toStrictEqual({ include: ["b"] });
+    expect(result.unpublishedEnumValues).toStrictEqual({ include: ["c"] });
+  });
+
+  it("lets the active notation win over small-model for the description", () => {
+    const schema = notesSchema({
+      smallModel: "small-model text",
+      "midi-json": "json text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -147,13 +224,10 @@ describe("resolveParamModes", () => {
   });
 
   it("falls back to the small-model override when the notation has no entry", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small-model text",
-        "midi-json": "json text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small-model text",
+      "midi-json": "json text",
+    });
 
     // stark has no entry, so the small-model override still applies.
     const result = resolveParamModes(schema, {
@@ -167,14 +241,11 @@ describe("resolveParamModes", () => {
   });
 
   it("uses the compound smallModel:notation cell when both axes are active", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small barbeat text",
-        stark: "large stark text",
-        "smallModel:stark": "small stark text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small barbeat text",
+      stark: "large stark text",
+      "smallModel:stark": "small stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -187,13 +258,10 @@ describe("resolveParamModes", () => {
   });
 
   it("ignores the compound cell for a large model (bare notation wins)", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        stark: "large stark text",
-        "smallModel:stark": "small stark text",
-      }),
-    };
+    const schema = notesSchema({
+      stark: "large stark text",
+      "smallModel:stark": "small stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: false,
@@ -206,13 +274,10 @@ describe("resolveParamModes", () => {
   });
 
   it("ignores the compound cell in the barbeat default (smallModel wins)", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small barbeat text",
-        "smallModel:stark": "small stark text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small barbeat text",
+      "smallModel:stark": "small stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -225,13 +290,10 @@ describe("resolveParamModes", () => {
   });
 
   it("falls back to the bare notation when the compound cell is absent", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small barbeat text",
-        stark: "large stark text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small barbeat text",
+      stark: "large stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -244,13 +306,10 @@ describe("resolveParamModes", () => {
   });
 
   it("hides a param whose compound cell is null", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        stark: "large stark text",
-        "smallModel:stark": null,
-      }),
-    };
+    const schema = notesSchema({
+      stark: "large stark text",
+      "smallModel:stark": null,
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,

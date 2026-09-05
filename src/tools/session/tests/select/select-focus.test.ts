@@ -19,7 +19,7 @@ describe("focusSelect", () => {
 
     expect(() => focusSelect({ id: "id gone" })).not.toThrow();
     expect(warn).toHaveBeenCalledWith(
-      'Could not move the focus: select failed: id "id gone" does not exist',
+      'Could not move the focus: id "id gone" does not exist',
     );
   });
 });

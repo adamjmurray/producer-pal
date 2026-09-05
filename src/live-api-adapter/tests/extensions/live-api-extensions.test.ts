@@ -10,6 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import "../../live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("LiveAPI extensions", () => {
   beforeEach(() => {
@@ -193,8 +194,7 @@ describe("LiveAPI extensions", () => {
 
       LiveAPI.from("track4").getProperty("input_routing_type");
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           `LiveAPI getProperty: failed to parse "input_routing_type" response`,
         ),
@@ -202,8 +202,7 @@ describe("LiveAPI extensions", () => {
 
       // The raw payload is the point of the warning — without it there is
       // nothing to debug from.
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(`"invalid json {"`),
       );
     });
@@ -219,7 +218,7 @@ describe("LiveAPI extensions", () => {
       expect(
         LiveAPI.from("track5").getProperty("input_routing_type"),
       ).toBeNull();
-      expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 });

@@ -13,13 +13,15 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
- * Register a Drum Rack at t0/d0 with a single empty C1 (MIDI 36) pad chain
- * whose device slot auto-creates a Simpler on insert.
+ * Register a Drum Rack at t0/d0 with a single C1 (MIDI 36) pad chain holding
+ * `deviceIds`, whose device slot auto-creates a Simpler on insert.
+ * @param deviceIds - Ids of the devices already on the pad
  * @returns The C1 chain mock
  */
-function registerDrumRackWithEmptyC1(): RegisteredMockObject {
+function registerDrumRackWithC1(...deviceIds: string[]): RegisteredMockObject {
   registerMockObject("drum-rack", {
     path: livePath.track(0).device(0),
     type: "RackDevice",
@@ -28,7 +30,7 @@ function registerDrumRackWithEmptyC1(): RegisteredMockObject {
 
   const chain = registerMockObject("chain-c1", {
     type: "DrumChain",
-    properties: { in_note: 36, devices: [] },
+    properties: { in_note: 36, devices: children(...deviceIds) },
     methods: { insert_device: () => ["id", "new-simpler"] },
   });
 
@@ -45,17 +47,7 @@ function registerDrumRackWithEmptyC1(): RegisteredMockObject {
  * @returns The C1 chain mock
  */
 function registerDrumRackWithDrumSamplerOnC1(): RegisteredMockObject {
-  registerMockObject("drum-rack", {
-    path: livePath.track(0).device(0),
-    type: "RackDevice",
-    properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
-  });
-
-  const chain = registerMockObject("chain-c1", {
-    type: "DrumChain",
-    properties: { in_note: 36, devices: ["id", "ds-1"] },
-    methods: { insert_device: () => ["id", "new-simpler"] },
-  });
+  const chain = registerDrumRackWithC1("ds-1");
 
   registerMockObject("ds-1", {
     type: "Device",
@@ -64,21 +56,17 @@ function registerDrumRackWithDrumSamplerOnC1(): RegisteredMockObject {
       type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
     },
   });
-  registerMockObject("new-simpler", {
-    type: "SimplerDevice",
-    properties: { class_display_name: "Simpler", multi_sample_mode: 0 },
-  });
 
   return chain;
 }
 
 describe("updateDevice - path-prefixed pseudo-params", () => {
   it("loads a sample into a drum pad by addressing the rack", () => {
-    const chain = registerDrumRackWithEmptyC1();
+    const chain = registerDrumRackWithC1();
 
     updateDevice({
       path: "t0/d0",
-      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
     });
 
     expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
@@ -88,22 +76,19 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     );
   });
 
-  it("warns and skips a path-prefixed param with an empty name after '/'", () => {
+  it("refuses a path-prefixed param with an empty name after '/'", () => {
     registerMockObject("drum-rack", {
       path: livePath.track(0).device(0),
       type: "RackDevice",
       properties: { chains: [], can_have_drum_pads: 1 },
     });
 
-    updateDevice({
-      path: "t0/d0",
-      params: [{ name: "pC1/d0/", value: "/snare.wav" }],
-    });
-
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining('empty name after "/"'),
-    );
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        params: [{ name: "pC1/d0/", value: "/snare.wav" }],
+      }),
+    ).toThrow('params entry "pC1/d0/" has an empty name after "/"');
   });
 
   it("sets a real slash-named param (Dry/Wet) by name, not as a path", () => {
@@ -168,8 +153,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       ],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("failed to set param"),
     );
     expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
@@ -182,12 +166,11 @@ describe("updateDevice - pad instrument guard", () => {
 
     updateDevice({
       path: "t0/d0",
-      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("sample write SKIPPED on pad C1"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("sample write SKIPPED on pad t0/d0/pC1"),
     );
     expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
     expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
@@ -198,7 +181,7 @@ describe("updateDevice - pad instrument guard", () => {
 
     updateDevice({
       path: "t0/d0",
-      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
       force: true,
     });
 

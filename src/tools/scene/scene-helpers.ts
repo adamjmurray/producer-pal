@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { namedParam, parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
  * Applies tempo property to a scene
@@ -18,16 +19,7 @@ export function applyTempoProperty(
   if (tempo === -1) {
     scene.set("tempo_enabled", false);
   } else if (tempo != null) {
-    // Mirror the live-set tempo guard: an out-of-range value (e.g. 0) would
-    // otherwise be written and enabled as an invalid scene tempo. Warn and skip.
-    if (tempo < 20 || tempo > 999) {
-      console.warn(
-        "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
-      );
-
-      return;
-    }
-
+    // Range already refused by validateTempo, before any scene was touched.
     scene.set("tempo", tempo);
     scene.set("tempo_enabled", true);
   }
@@ -64,4 +56,39 @@ export function sceneDisplayName(scene: LiveAPI, sceneIndex: number): string {
   const name = scene.getProperty("name") as string | null;
 
   return name == null || name === "" ? `${sceneIndex + 1}` : name;
+}
+
+/**
+ * Reads where new scenes go, from a path or the index the path replaced.
+ * @param path - "s+" to append, "s2" to insert at 2
+ * @param sceneIndex - Deprecated index
+ * @param liveSet - Live set, read only to append
+ * @returns The index to insert at, or undefined when neither was given
+ */
+export function resolveCreateSceneIndex(
+  path: string | undefined,
+  sceneIndex: number | undefined,
+  liveSet: LiveAPI,
+): number | undefined {
+  const entry = namedParam(path, "path");
+
+  if (entry == null) return sceneIndex;
+
+  if (sceneIndex != null) {
+    throw new Error(
+      "path says where the scene goes - don't send sceneIndex with it",
+    );
+  }
+
+  const parsed = parseObjectPath(entry, "path");
+
+  if (parsed.kind === "new-scene") return liveSet.getChildIds("scenes").length;
+
+  if (parsed.kind === "scene") return parsed.sceneIndex;
+
+  throw pathError(
+    "path",
+    entry,
+    'it names no place for a scene; expected "s+" or "s<index>"',
+  );
 }

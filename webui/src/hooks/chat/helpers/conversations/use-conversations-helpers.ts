@@ -4,51 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect } from "preact/hooks";
-import { type Notation } from "#src/shared/notation";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ConversationLockedSettings,
   type PendingFork,
 } from "#webui/hooks/chat/use-chat-types";
+import { type ActiveMeta } from "#webui/lib/conversation-store";
 import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
-  deleteConversation,
   loadConversation,
 } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
-
-/** Mutable metadata for the active conversation (excludes ID which is tracked separately) */
-export interface ActiveMeta {
-  title: string | null;
-  createdAt: number | null;
-  bookmarked: boolean;
-  model: string | null;
-  provider: Provider | null;
-  thinking: string | null;
-  smallModelMode: boolean | null;
-  /** Resolved system instruction in effect (snapshotted onto the record). */
-  systemInstruction: string | null;
-  /** Notation in effect (snapshotted onto the record so a restore keeps it). */
-  notation: Notation | null;
-  /** Toolset the conversation last connected with (recorded, not enforced). */
-  enabledTools: Record<string, boolean> | null;
-}
-
-export const DEFAULT_META: ActiveMeta = {
-  title: null,
-  createdAt: null,
-  bookmarked: false,
-  model: null,
-  provider: null,
-  thinking: null,
-  smallModelMode: null,
-  systemInstruction: null,
-  notation: null,
-  enabledTools: null,
-};
 
 /** Ref snapshot for building a save record */
 export interface ActiveRefs extends ActiveMeta {
@@ -86,25 +55,31 @@ export function setLocationHash(id: string | null): void {
  * Route browser back/forward (hashchange) to the matching conversation: switch
  * to the hashed id, or start a new conversation when the hash clears. Ignores
  * the programmatic hash writes the manager makes itself (guarded by a ref flag).
+ *
+ * Back/Forward tears the conversation down exactly as the sidebar does — the
+ * teardown stops a streaming response — so it asks the same question first, and
+ * rewrites the hash back to the active conversation when the answer is no.
  * @param params - Navigation dependencies
  * @param params.programmaticHashRef - Flag set when the manager wrote the hash itself
  * @param params.programmaticHashRef.current - The mutable flag value
- * @param params.activeIdRef - Ref holding the current active conversation id
- * @param params.activeIdRef.current - The mutable active-id value
+ * @param params.activeId - Reads the current active conversation id
  * @param params.switchConversation - Loads and activates a conversation by id
  * @param params.startNewConversation - Clears state for a brand-new conversation
+ * @param params.confirmLeave - Asks before a navigation cuts a streaming turn off
  */
 export function useHashNavigation(params: {
   programmaticHashRef: { current: boolean };
-  activeIdRef: { current: string | null };
+  activeId: () => string | null;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
+  confirmLeave: () => boolean;
 }): void {
   const {
     programmaticHashRef,
-    activeIdRef,
+    activeId,
     switchConversation,
     startNewConversation,
+    confirmLeave,
   } = params;
 
   useEffect(() => {
@@ -117,7 +92,16 @@ export function useHashNavigation(params: {
 
       const hashId = getHashConversationId();
 
-      if (hashId === activeIdRef.current) return;
+      if (hashId === activeId()) return;
+
+      if (!confirmLeave()) {
+        // The browser already moved; put the id back on the entry we landed on.
+        // replaceState rather than assigning the hash: no new history entry, and
+        // no second hashchange to re-enter this handler.
+        restoreHash(activeId());
+
+        return;
+      }
 
       if (hashId) {
         void switchConversation(hashId);
@@ -131,10 +115,21 @@ export function useHashNavigation(params: {
     return () => window.removeEventListener("hashchange", handler);
   }, [
     programmaticHashRef,
-    activeIdRef,
+    activeId,
     switchConversation,
     startNewConversation,
+    confirmLeave,
   ]);
+}
+
+/**
+ * Rewrite the current history entry's hash without firing a hashchange.
+ * @param id - Conversation id to put back, or null to clear the hash
+ */
+function restoreHash(id: string | null): void {
+  const base = window.location.pathname + window.location.search;
+
+  history.replaceState(null, "", id ? `${base}#${id}` : base);
 }
 
 /**
@@ -400,24 +395,6 @@ export function deriveTitle(
 }
 
 /**
- * Delete a conversation, first snapshotting the full record so it can be
- * restored via undo — the DB row is gone the moment deletion resolves.
- * @param id - Conversation id to delete
- * @param onSnapshot - Receives the deleted record for undo (skipped if the id
- *   had no record)
- */
-export async function deleteConversationWithSnapshot(
-  id: string,
-  onSnapshot: (record: ConversationRecord) => void,
-): Promise<void> {
-  const record = await loadConversation(id);
-
-  await deleteConversation(id);
-
-  if (record) onSnapshot(record);
-}
-
-/**
  * Pick which banner the conversation panel shows and the matching dismiss
  * handler. Rank by severity first — an error (a save failure / data-loss
  * signal) outranks a warning — then let the fresher undo-delete banner win
@@ -467,25 +444,4 @@ export function resolvePanelNotification(
       ? undo.dismissUndoNotification
       : limit.dismissLimitNotification,
   };
-}
-
-/**
- * Chain `work` after the ref's current promise and store the new tail, so
- * successive conversation saves run strictly in order. This keeps a later
- * save's read-back from racing ahead of an earlier save's write (which would
- * drop a freshly-forked record's branch linkage).
- * @param ref - Ref holding the in-flight save chain
- * @param ref.current - The current tail promise
- * @param work - Save work to run once prior saves settle
- * @returns The new tail promise
- */
-export function chainSave(
-  ref: { current: Promise<void> },
-  work: () => Promise<void>,
-): Promise<void> {
-  const next = ref.current.then(work);
-
-  ref.current = next;
-
-  return next;
 }

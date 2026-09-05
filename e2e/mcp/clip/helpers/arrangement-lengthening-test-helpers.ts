@@ -10,12 +10,13 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
-  type CreateClipResult,
   parseToolResult,
   parseToolResultWithWarnings,
+  type CreateClipResult,
   type ReadClipResult,
 } from "../../mcp-test-helpers.ts";
 import { type ExpectedClip } from "./arrangement-lengthening-expected-test-cases.ts";
+import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
 
 export const ARRANGEMENT_CLIP_TESTS_PATH =
   "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als";
@@ -39,7 +40,7 @@ export async function readClipsOnTrack(
   const result = await client.callTool({
     name: "ppal-read-track",
     arguments: {
-      trackIndex,
+      path: `t${trackIndex}`,
       include: ["arrangement-clips", "timing"],
     },
   });
@@ -107,17 +108,16 @@ export function calculateTotalLengthInBars(clips: ReadClipResult[]): number {
 
   // Get the range from first start to last end
   const starts = clips
-    .map((c) => c.arrangementStart)
+    .map((c) => arrangementStartOf(c))
     .filter((s): s is string => s != null)
     .map(parseBarBeat);
 
   const ends = clips
     .map((c) => {
-      if (c.arrangementStart && c.arrangementLength) {
-        const start = parseBarBeat(c.arrangementStart);
-        const length = parseBarBeat(c.arrangementLength);
+      const startText = arrangementStartOf(c);
 
-        return start + length;
+      if (startText != null && c.arrangementLength) {
+        return parseBarBeat(startText) + parseBarBeat(c.arrangementLength);
       }
 
       return null;
@@ -161,14 +161,18 @@ export function assertClipDetails(
   resultClips: ReadClipResult[],
   expectedClips: ExpectedClip[],
 ): void {
-  expect(resultClips).toHaveLength(expectedClips.length);
+  // A clip spells where it starts inside its path; the tables name that start
+  // on its own, so read it back out first.
+  const actual = resultClips.map((clip) => ({
+    ...clip,
+    arrangementStart: arrangementStartOf(clip),
+  }));
 
-  for (let i = 0; i < expectedClips.length; i++) {
-    // loop bounds guarantee valid index
-    const expected = expectedClips[i] as ExpectedClip;
-
-    expect(resultClips[i]).toMatchObject(expected);
-  }
+  // ExpectedClip names four timing fields; the rest of a clip read is not what
+  // these table-driven cases are about. Asserting the array pins the count too.
+  expect(actual).toStrictEqual(
+    expectedClips.map((expected) => expect.objectContaining(expected)),
+  );
 }
 
 export type LengthenResult = {

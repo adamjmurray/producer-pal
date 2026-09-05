@@ -10,14 +10,23 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
-import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
+  navigateRemainingSegments,
+  resolveDrumPadGroup,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 const SAMPLE_PARAM = "sample";
 
 interface DrumPadSlot {
   padNote: string;
   chainIndex: number;
+  /** Whether the caller wrote a `cN` segment, rather than defaulting to 0. */
+  chainNamed: boolean;
+  /** The `dN` index the caller wrote, when they wrote one. */
+  deviceIndex?: number;
 }
 
 /**
@@ -32,6 +41,10 @@ interface DrumPadSlot {
  * to an explicit non-pad device path — is plain read-only navigation to an
  * existing device.
  *
+ * The pad is addressed as `pC1` (one layer) or `pC1/cN` (several); a `dN` is
+ * accepted but must name the instrument the search found. Both a stacked pad
+ * with no layer named and a `dN` that isn't the instrument skip and warn.
+ *
  * | Pad instrument           | Behavior                                      |
  * | ------------------------ | --------------------------------------------- |
  * | none                     | create a Simpler                              |
@@ -42,7 +55,6 @@ interface DrumPadSlot {
  * @param rack - The device being created/updated (the path prefix is relative to it)
  * @param prefix - The path segments before the param name (e.g. "pC1")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
- * @param toolName - Calling tool name for warning prefix
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
  * @returns The target device, or null (after warning) when none can be targeted
  */
@@ -50,14 +62,13 @@ export function resolveNestedParamTarget(
   rack: LiveAPI,
   prefix: string,
   paramName: string,
-  toolName: string,
   force = false,
 ): LiveAPI | null {
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
   if (segments.length === 0) {
     console.warn(
-      `${toolName}: param "${prefix}/${paramName}" has no path before the param name`,
+      `param "${prefix}/${paramName}" has no path before the param name`,
     );
 
     return null;
@@ -70,23 +81,21 @@ export function resolveNestedParamTarget(
 
   // Pad-property model: a `sample` write to a drum pad.
   if (slot) {
-    return resolveDrumPadSampleTarget(rack, slot, toolName, force);
+    return resolveDrumPadSampleTarget(rack, slot, force);
   }
 
   // General case: read-only navigation to an existing device.
   const { target, targetType } = navigateRemainingSegments(rack, segments);
 
   if (!target?.exists()) {
-    console.warn(
-      `${toolName}: no device at "${prefix}" relative to the target device`,
-    );
+    console.warn(`no device at "${pathPrefix(rack)}/${prefix}"`);
 
     return null;
   }
 
   if (targetType !== "device") {
     console.warn(
-      `${toolName}: "${prefix}" resolves to a ${targetType}, not a device`,
+      `"${pathPrefix(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
     );
 
     return null;
@@ -97,8 +106,8 @@ export function resolveNestedParamTarget(
 
 /**
  * Parse a relative path prefix as a drum pad (`p<note>[/c<chain>][/d<device>]`).
- * The chain index defaults to 0, so `pC1`, `pC1/d0`, and `pC1/c0/d0` all address
- * the same pad. Returns null for non-drum-pad prefixes, malformed indices, or
+ * The chain index defaults to 0, which the caller only accepts on a pad holding
+ * one layer. Returns null for non-drum-pad prefixes, malformed indices, or
  * deeper nesting (handled by the general resolver instead).
  * @param segments - Non-empty path segments
  * @returns The parsed slot, or null
@@ -118,6 +127,7 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
 
   let index = 1;
   let chainIndex = 0;
+  let chainNamed = false;
   const chainSegment = segments[index];
 
   if (chainSegment?.startsWith("c")) {
@@ -128,12 +138,14 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     }
 
     chainIndex = parsed;
+    chainNamed = true;
     index++;
   }
 
-  // A `d<N>` segment is accepted so read and write paths stay interchangeable,
-  // but its value is ignored: the pad's instrument is found by device type, not
-  // by index.
+  // A `d<N>` segment is accepted so read and write paths stay interchangeable.
+  // It never locates the instrument — that is found by device type — but it is
+  // checked against the one found, so a wrong index can't silently "work".
+  let deviceIndex: number | undefined;
   const deviceSegment = segments[index];
 
   if (deviceSegment?.startsWith("d")) {
@@ -143,6 +155,7 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
       return null;
     }
 
+    deviceIndex = parsed;
     index++;
   }
 
@@ -152,7 +165,7 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     return null;
   }
 
-  return { padNote, chainIndex };
+  return { padNote, chainIndex, chainNamed, deviceIndex };
 }
 
 /**
@@ -160,32 +173,49 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
  * sample. The pad's chain auto-creates when missing.
  * @param rack - Drum Rack device
  * @param slot - Parsed drum pad slot
- * @param toolName - Calling tool name for warning prefix
  * @param force - Allow the instrument-to-Simpler swap
  * @returns The Simpler to write the sample to, or null (after warning)
  */
 function resolveDrumPadSampleTarget(
   rack: LiveAPI,
   slot: DrumPadSlot,
-  toolName: string,
   force: boolean,
 ): LiveAPI | null {
-  const { padNote, chainIndex } = slot;
+  const { padNote, chainIndex, chainNamed, deviceIndex } = slot;
+  const padLabel = `${pathPrefix(rack)}/p${padNote}`;
+
+  if (!chainNamed && warnAmbiguousLayer(rack, padNote, padLabel)) {
+    return null;
+  }
+
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 
   if (!chain?.exists()) {
-    console.warn(
-      `${toolName}: could not resolve or create drum pad "${padNote}"`,
-    );
+    console.warn(`could not resolve or create drum pad "${padLabel}"`);
 
     return null;
   }
 
   const instrument = findChainInstrument(chain);
 
+  // Nothing to hold the sample yet, so a `dN` names nothing to disagree with.
   if (!instrument) {
-    return createSimplerInChain(chain, toolName);
+    return createSimplerInChain(chain);
+  }
+
+  if (deviceIndex != null && deviceIndex !== instrument.index) {
+    const retry = chainNamed
+      ? `p${padNote}/c${chainIndex}/sample`
+      : `p${padNote}/sample`;
+
+    console.warn(
+      `sample write SKIPPED on pad ${padLabel} — d${deviceIndex} ` +
+        `is not its instrument, which is at d${instrument.index}. Drop the ` +
+        `device segment to find the instrument wherever it sits: "${retry}".`,
+    );
+
+    return null;
   }
 
   const className = instrument.device.getProperty(
@@ -211,7 +241,7 @@ function resolveDrumPadSampleTarget(
 
   if (!force) {
     console.warn(
-      `${toolName}: sample write SKIPPED on pad ${padNote} — it holds ` +
+      `sample write SKIPPED on pad ${padLabel} — it holds ` +
         `${description}, whose sample the Live API can't set. Honoring the ` +
         `write REPLACES it with a Simpler, losing all its settings. Ask the ` +
         `user before passing force:true. To keep it: load the sample on ` +
@@ -223,11 +253,15 @@ function resolveDrumPadSampleTarget(
   }
 
   chain.call("delete_device", instrument.index);
+  // A delete renumbers the chain's remaining devices, and the path cache's
+  // contract says nothing cached survives that. createSimplerInChain invalidates
+  // again after its insert; this one keeps the invariant true in between.
+  invalidateDevicePathCache();
   console.warn(
-    `${toolName}: force:true — replaced ${description} on pad ${padNote} with a Simpler to load the sample. Its settings are gone.`,
+    `force:true — replaced ${description} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
   );
 
-  return createSimplerInChain(chain, toolName);
+  return createSimplerInChain(chain);
 }
 
 /**
@@ -238,6 +272,40 @@ function resolveDrumPadSampleTarget(
  */
 function article(name: string): string {
   return /^[aeiou]/i.test(name) ? "an" : "a";
+}
+
+/**
+ * Warn when a pad holds several layers and the caller named none of them. A
+ * sample belongs to one layer, so writing "the pad" used to load the first one
+ * silently — and with `force` that replaces an instrument nobody named. Matches
+ * the pad-property path, which skips its per-layer settings the same way.
+ * @param rack - Drum Rack device
+ * @param padNote - The pad's note, as the caller spelled it
+ * @param padLabel - The pad's full path, for naming it in the warning
+ * @returns Whether the write was skipped
+ */
+function warnAmbiguousLayer(
+  rack: LiveAPI,
+  padNote: string,
+  padLabel: string,
+): boolean {
+  const layers = resolveDrumPadGroup(rack.path, padNote)?.chains.length ?? 0;
+
+  if (layers < 2) return false;
+
+  // Name the retries as param names, relative to the rack, since that is what
+  // the caller re-sends — not the pad's full path.
+  const retries = Array.from(
+    { length: layers },
+    (_, index) => `"p${padNote}/c${index}/sample"`,
+  ).join(", ");
+
+  console.warn(
+    `sample write SKIPPED on pad ${padLabel} — it has ${layers} ` +
+      `layers, so which one to load is ambiguous. Name one: ${retries}.`,
+  );
+
+  return true;
 }
 
 /**
@@ -266,21 +334,21 @@ function findChainInstrument(
  * re-sorts a chain by device type, so the Simpler lands after any MIDI effects
  * and before any audio effects on its own.
  * @param chain - Chain LiveAPI object
- * @param toolName - Calling tool name for warning prefix
  * @returns The created Simpler, or null (after warning) on failure
  */
-function createSimplerInChain(
-  chain: LiveAPI,
-  toolName: string,
-): LiveAPI | null {
+function createSimplerInChain(chain: LiveAPI): LiveAPI | null {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
     | undefined;
+
+  // The re-sort pushes the chain's audio effects down a slot, so createDevice's
+  // path cache can no longer be trusted for anything below this chain.
+  invalidateDevicePathCache();
   const rawId = result?.[1];
   const id = rawId ? String(rawId) : null;
 
   if (!id) {
-    console.warn(`${toolName}: failed to create a Simpler on the drum pad`);
+    console.warn(`failed to create a Simpler on the drum pad`);
 
     return null;
   }

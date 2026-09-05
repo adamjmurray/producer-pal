@@ -11,10 +11,11 @@ import {
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
+  lookupMockObject,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -168,7 +169,7 @@ export function setupArrangementClipPath(
       track_index: trackIndex,
     },
     methods: {
-      duplicate_clip_to_arrangement: () => {
+      duplicate_clip_to_arrangement: (_sourceId, startTime) => {
         const id = duplicateIds[duplicateIndex];
 
         if (id == null) {
@@ -178,6 +179,11 @@ export function setupArrangementClipPath(
         }
 
         duplicateIndex += 1;
+        // Live lands the copy where it was asked for, and a result reads the
+        // position back off the clip to spell its path.
+        const copy = clips.get(id);
+
+        if (copy != null) copy.properties.start_time = startTime;
 
         return `id ${id}`;
       },
@@ -200,6 +206,7 @@ function setupArrangementClip(
   return registerMockObject(id, {
     path: livePath.track(trackIndex).arrangementClip(0),
     type: "Clip",
+    properties: {},
     methods: createNoteTrackingMethods(),
   });
 }
@@ -417,32 +424,60 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
       return null;
     }),
   };
-  const sessionSlot = {
+  const clipSlot = {
     call: vi.fn(),
   };
   const mockCreate = vi
     .spyOn(tilingHelpers, "createAudioClipInSession")
     .mockReturnValue({
       clip: sessionClip as unknown as LiveAPI,
-      slot: sessionSlot as unknown as LiveAPI,
+      slot: clipSlot as unknown as LiveAPI,
     });
 
-  return { mockCreate, sessionClip, sessionSlot };
+  return { mockCreate, sessionClip, clipSlot };
 }
 
 /**
  * Assert that session-based file boundary detection ran correctly.
  * Verifies the session clip was created for boundary detection and cleaned up.
  * @param mockCreate - Spy on createAudioClipInSession
- * @param sessionSlot - Mock clip slot with a call method
- * @param sessionSlot.call - Mock function for clip slot calls
+ * @param clipSlot - Mock clip slot with a call method
+ * @param clipSlot.call - Mock function for clip slot calls
  * @param filePath - Expected audio file path
  */
 export function assertBoundaryDetection(
   mockCreate: ReturnType<typeof vi.spyOn>,
-  sessionSlot: { call: ReturnType<typeof vi.fn> },
+  clipSlot: { call: ReturnType<typeof vi.fn> },
   filePath = "/audio/test.wav",
 ): void {
   expect(mockCreate).toHaveBeenCalledWith(expect.anything(), 1, filePath);
-  expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+  expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
+}
+
+/**
+ * Stand in for what rescanSplitClips sees after a split: the track's
+ * arrangement_clips answers with one real fresh clip plus a non-existent one
+ * (id "0") that the exists() filter has to drop.
+ * @param freshClipId - Id to register the real fresh clip under
+ */
+export function stubSplitRescan(freshClipId: string): void {
+  registerMockObject(freshClipId, {
+    path: livePath.track(0).arrangementClip(2),
+    type: "Clip",
+    properties: {
+      start_time: 0.0,
+      is_midi_clip: 1,
+      is_audio_clip: 0,
+      is_arrangement_clip: 1,
+    },
+  });
+
+  const trackMock = lookupMockObject("track_0", livePath.track(0));
+  const origGet = trackMock?.get.getMockImplementation();
+
+  trackMock?.get.mockImplementation((prop: string) => {
+    if (prop === "arrangement_clips") return ["id", freshClipId, "id", "0"];
+
+    return origGet ? origGet(prop) : [0];
+  });
 }

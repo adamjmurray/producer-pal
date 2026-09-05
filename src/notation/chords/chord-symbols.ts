@@ -23,7 +23,7 @@
  * tones below it (a `9` chord includes its `7`). `""` = a bare major triad.
  */
 
-import { PITCH_CLASS_VALUES } from "#src/shared/pitch.ts";
+import { pitchClassToNumber } from "#src/shared/pitch.ts";
 
 /** A chord symbol resolved to register-independent pitch material. */
 export interface ResolvedChord {
@@ -74,7 +74,7 @@ export function resolveChordSymbol(
   quality: string,
   bass: string | null,
 ): ResolvedChord | null {
-  const rootPc = pitchClassFromName(root);
+  const rootPc = pitchClassToNumber(root);
 
   if (rootPc == null) return null;
 
@@ -86,7 +86,7 @@ export function resolveChordSymbol(
     return { rootPc, intervals, bassPc: null };
   }
 
-  const bassPc = pitchClassFromName(bass);
+  const bassPc = pitchClassToNumber(bass);
 
   // A slash bass that isn't a spellable pitch class invalidates the symbol.
   if (bassPc == null) return null;
@@ -124,38 +124,6 @@ export function realizeChordSymbol(
   const clamped = pitches.map((p) => Math.max(0, Math.min(127, p)));
 
   return [...new Set(clamped)].toSorted((a, b) => a - b);
-}
-
-/**
- * Resolve a chord root/bass pitch-class NAME to 0–11 arithmetically: a natural
- * letter (case-insensitive) shifted ±1 by an optional accidental, wrapping at
- * the octave edges so enharmonic spellings resolve (Cb → 11, Fb → 4, E# → 5,
- * B# → 0). This mirrors how Stark's melody line and bar|beat resolve pitch, so
- * the chords line accepts the same spellings — unlike the shared 12-entry
- * pitchClassToNumber, which intentionally rejects these theoretical names for
- * tool-param note names.
- * @param name - Pitch-class name from the grammar (e.g. "C", "Eb", "F#", "Cb")
- * @returns Semitone 0–11, or null when the letter is not A–G or the accidental
- *   is malformed
- */
-function pitchClassFromName(name: string): number | null {
-  const base = PITCH_CLASS_VALUES[name.at(0)?.toUpperCase() ?? ""];
-
-  if (base == null) return null;
-
-  const accidental = name.slice(1);
-  const value =
-    accidental === "#"
-      ? base + 1
-      : accidental === "b"
-        ? base - 1
-        : accidental === ""
-          ? base
-          : null;
-
-  if (value == null) return null;
-
-  return ((value % 12) + 12) % 12;
 }
 
 /**

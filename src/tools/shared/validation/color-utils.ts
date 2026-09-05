@@ -3,54 +3,51 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  type ListEntries,
+  splitList,
+  valueForIndex,
+  warnPairingMismatch,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
+
 /**
- * Parse a comma-separated string when creating/updating multiple items.
- * Only splits when count > 1 and the value contains a comma.
- * @param value - Input string that may contain commas
- * @param count - Number of items being processed
- * @returns Array of trimmed strings, or null if not applicable
+ * Parse a comma-separated color param and warn when it names the wrong number.
+ *
+ * One color covers every item; a list pairs 1:1 in order. See `list-pairing.ts`
+ * for why nothing cycles.
+ * @param value - The raw color param
+ * @param count - How many items the call acts on
+ * @param item - What the call acts on, singular ("clip", "track")
+ * @returns One color per item, or null when the value covers every item
  */
-export function parseCommaSeparatedValues(
+export function parseColors(
   value: string | undefined,
   count: number,
-): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
+  item: string,
+): ListEntries | null {
+  const parsed = splitList(value, count, "color");
 
-  return value.split(",").map((v) => v.trim());
+  warnPairingMismatch(parsed?.length ?? 0, count, {
+    param: "color",
+    noun: "color",
+    item,
+    shortfall: "were not recolored",
+  });
+
+  return parsed;
 }
 
 /**
- * Parse comma-separated colors when creating/updating multiple items.
- * Only splits when count > 1 and the value contains a comma.
- * @param value - Input string that may contain commas
- * @param count - Number of items being colored
- * @returns Array of trimmed color strings, or null if not applicable
- */
-export function parseCommaSeparatedColors(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  return parseCommaSeparatedValues(value, count);
-}
-
-/**
- * Get color for a specific index when creating/updating multiple items.
- * When parsedColors is provided, cycles through them via modulo
- * (e.g., 3 colors for 5 items → color1, color2, color3, color1, color2).
- * @param color - Base color string (the raw parameter value)
- * @param index - Current item index
- * @param parsedColors - Comma-separated colors array, or null
- * @returns Color for this index, or undefined if color was not provided
+ * The color for one item, or undefined when the call named none for it.
+ * @param color - The raw color param
+ * @param index - The item's position in the call
+ * @param parsedColors - The split colors, or null
+ * @returns The color, or undefined
  */
 export function getColorForIndex(
   color: string | undefined,
   index: number,
-  parsedColors: string[] | null,
+  parsedColors: ListEntries | null,
 ): string | undefined {
-  if (color == null) return undefined;
-  if (parsedColors == null) return color;
-
-  return parsedColors[index % parsedColors.length];
+  return valueForIndex(color, index, parsedColors);
 }

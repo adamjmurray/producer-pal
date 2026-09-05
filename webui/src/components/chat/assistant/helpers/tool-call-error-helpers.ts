@@ -12,7 +12,7 @@
  *
  * Handles these formats (in priority order):
  * 1. MCP content array with `error` field in inner JSON
- * 2. `Error executing tool '...': message` prefix
+ * 2. `Error: message` prefix
  * 3. `Tool call '...' timed out after Nms` prefix
  * 4. `MCP error -NNNNN: message` prefix (with optional `Input validation error:` sub-prefix)
  *
@@ -24,7 +24,7 @@ export function extractErrorSummary(result: string): string | null {
 
   return (
     extractMcpContentError(text) ??
-    stripToolErrorPrefix(text) ??
+    stripErrorPrefix(text) ??
     stripTimeoutPrefix(text) ??
     stripMcpErrorPrefix(text)
   );
@@ -70,12 +70,12 @@ function extractMcpContentError(s: string): string | null {
 }
 
 /**
- * Strip `Error executing tool '...': ` prefix.
+ * Strip the `Error: ` prefix a failed tool result carries.
  * @param s - Error message string
  * @returns Message after prefix, or null
  */
-function stripToolErrorPrefix(s: string): string | null {
-  const match = s.match(/^Error executing tool '[^']+': (.+)$/s);
+function stripErrorPrefix(s: string): string | null {
+  const match = s.match(/^Error: (.+)$/s);
 
   return match?.[1] ?? null;
 }

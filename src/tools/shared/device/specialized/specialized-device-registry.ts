@@ -18,6 +18,10 @@ import { roarSpec } from "./devices/roar.ts";
 import { simplerSpec } from "./devices/simpler.ts";
 import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
 import { wavetableSpec } from "./devices/wavetable.ts";
+import {
+  type UnresolvedParam,
+  type WrittenPseudoParam,
+} from "../helpers/device-display-helpers.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
@@ -70,42 +74,52 @@ export function getSpecForDevice(
 }
 
 /**
- * Attempt to apply a pseudo-param write for a specialized device. Returns
- * whether the key was recognized as a pseudo-param (so the caller knows not to
- * fall through to DeviceParameter resolution).
+ * Attempt to apply a pseudo-param write for a specialized device. Null means
+ * the key is not a pseudo-param, so the caller falls through to DeviceParameter
+ * resolution. Otherwise the return is what the key contributes to the `params`
+ * result: how to read the written value back, why nothing was written, or
+ * nothing at all when a refused write left no value to report.
  * @param device - LiveAPI device object
  * @param key - Param name from the `params` input
  * @param value - Coerced value
- * @param toolName - Calling tool name for warning prefix
- * @returns true if the key matched a pseudo-param (handled or warned)
+ * @returns The param's entries, or null when the key matched no pseudo-param
  */
 export function applySpecializedParamWrite(
   device: LiveAPI,
   key: string,
   value: string | number,
-  toolName: string,
-): boolean {
+): (WrittenPseudoParam | UnresolvedParam)[] | null {
   const spec = getSpecForDevice(device);
 
   if (!spec?.params) {
-    return false;
+    return null;
   }
 
   const param = findParam(spec.params, key);
 
   if (!param) {
-    return false;
+    return null;
   }
 
   if (!param.write) {
-    console.warn(`${toolName}: "${param.name}" is read-only`);
+    console.warn(`"${param.name}" is read-only`);
 
-    return true;
+    // Said twice on purpose, like the param-not-found reasons: the entry is
+    // where the caller reads what happened to this param, and the warning
+    // stays until every way a param write can fail has an entry of its own.
+    return [{ name: param.name, reason: "read-only" }];
   }
 
-  param.write(device, value, toolName);
+  // A refused write names nothing, the way a DeviceParameter write Live
+  // ignored does: an entry is only ever a value that landed. Reporting one
+  // here would report the unchanged value as the value the call wrote.
+  if (!param.write(device, value)) {
+    return [];
+  }
 
-  return true;
+  // Read at the end of the call, not here: a later write in the same call can
+  // change this value (replacing a Simpler's sample resets its gain).
+  return [{ name: param.name, read: () => param.read(device) }];
 }
 
 /**
@@ -146,12 +160,10 @@ export function readSpecializedParams(
  * malformed actions warn-and-skip.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
- * @param toolName - Calling tool name for warning prefix
  */
 export function applySpecializedActions(
   device: LiveAPI,
   actions: string[],
-  toolName: string,
 ): void {
   const spec = getSpecForDevice(device);
 
@@ -159,20 +171,18 @@ export function applySpecializedActions(
     const parsed = parseAction(raw);
 
     if (!parsed) {
-      console.warn(`${toolName}: could not parse action "${raw}"`);
+      console.warn(`could not parse action "${raw}"`);
       continue;
     }
 
     const action = findAction(spec, parsed.name);
 
     if (!action) {
-      console.warn(
-        `${toolName}: unknown action "${parsed.name}" for this device`,
-      );
+      console.warn(`unknown action "${parsed.name}" for this device`);
       continue;
     }
 
-    action.handler(device, parsed.args, toolName);
+    action.handler(device, parsed.args);
   }
 }
 

@@ -7,9 +7,11 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import {
   DEFAULT_MAX_DEPTH,
+  findDrumRack,
   getDrumMap,
   type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
+import { resultLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DrumMapPostProcessOptions {
   /** Whether a drum map was asked for, including via `include: ["*"]` */
@@ -44,10 +46,11 @@ export function postProcessDrumMap(
     if (devices == null) {
       warnNoDrumMap(result, drumMapExplicit);
     } else {
-      const drumMap = getDrumMap(devices, notation);
+      const drumRack = findDrumRack(devices);
 
-      if (drumMap != null) {
-        result.drumMap = drumMap;
+      if (drumRack != null) {
+        result.drumMap = getDrumMap(devices, notation);
+        result.drumRackPath = drumRack.path;
       }
     }
   }
@@ -126,7 +129,7 @@ function warnNoDrumMap(
   const kind = result.type == null ? "drum pad" : "drum chain";
 
   console.warn(
-    `readDevice: a ${kind} has no drum map of its own — read its drum rack for the kit's map`,
+    `${resultLabel(result)} is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
   );
 }
 
@@ -147,9 +150,16 @@ function stripInternalChains(
 
   if (keepDrumPads && Array.isArray(result.drumPads)) {
     // The pads stay, but not their chains: chains are forced on to build the
-    // map, and a pad read without the map never carries them.
+    // map, and a pad read without the map never carries them. The count takes
+    // the array's place, which is what such a read reports.
     for (const pad of result.drumPads) {
-      delete (pad as Record<string, unknown>).chains;
+      const padFields = pad as Record<string, unknown>;
+
+      if (Array.isArray(padFields.chains)) {
+        padFields.chainCount = padFields.chains.length;
+      }
+
+      delete padFields.chains;
     }
   } else {
     delete result.drumPads;

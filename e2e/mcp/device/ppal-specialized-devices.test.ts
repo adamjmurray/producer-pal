@@ -27,6 +27,7 @@ import {
   setConfig,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../mcp-test-helpers";
 
 interface PseudoParam {
@@ -73,11 +74,11 @@ async function createTrack(type: "midi" | "audio"): Promise<number> {
     name: "ppal-create-track",
     arguments: { type },
   });
-  const { trackIndex } = parseToolResult<{ trackIndex: number }>(result);
+  const { path } = parseToolResult<{ path: string }>(result);
 
   await sleep(100);
 
-  return trackIndex;
+  return trackIndexFromPath(path);
 }
 
 /** Create an instrument on a fresh MIDI track; returns the device id. */
@@ -173,9 +174,21 @@ describe("specialized devices: Drift", () => {
   it("validates pitchBendRange (Live reverts out-of-range, does not clamp)", async () => {
     const id = await createInstrument("Drift");
 
-    await updateDevice(id, {
-      params: [{ name: "pitchBendRange", value: "12" }],
-    });
+    // Read the update's own response here (the shared helper discards it):
+    // the write reports what the pseudo-param reads as, so the caller needs no
+    // follow-up read. A pseudo-param is a device property, so it has no id.
+    const written = parseToolResult<{ params?: PseudoParam[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id, params: [{ name: "pitchBendRange", value: "12" }] },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(written.params).toStrictEqual([
+      { name: "pitchBendRange", value: 12 },
+    ]);
     expect(
       paramValue(
         await readDevice(id, ["params"], "pitchBendRange"),
@@ -185,7 +198,9 @@ describe("specialized devices: Drift", () => {
 
     // 13 is out of range (max 12). Live silently reverts, so we warn-and-skip
     // rather than write — the value must stay at 12.
-    const { warnings } = parseToolResultWithWarnings(
+    const { data: refused, warnings } = parseToolResultWithWarnings<{
+      params?: PseudoParam[];
+    }>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
@@ -198,6 +213,9 @@ describe("specialized devices: Drift", () => {
     await sleep(100);
 
     expect(warnings.some((w) => w.includes("pitchBendRange"))).toBe(true);
+    // A refused write reports no value: an entry would say 12 was what the
+    // call wrote.
+    expect(refused.params).toBeUndefined();
     expect(
       paramValue(
         await readDevice(id, ["params"], "pitchBendRange"),
@@ -394,10 +412,10 @@ describe("specialized devices: Compressor", () => {
     // Return/master sources now resolve to a track id on read (they
     // previously read back as null). A return track only becomes a routable
     // sidechain source once it carries an audio-bearing device, so give it one.
-    const created = parseToolResult<{ id: string; returnTrackIndex: number }>(
+    const created = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
-        arguments: { type: "return" },
+        arguments: { path: "rt+" },
       }),
     );
 
@@ -405,11 +423,7 @@ describe("specialized devices: Compressor", () => {
 
     const returnTrackId = created.id;
 
-    await createTestDevice(
-      ctx.client!,
-      "Reverb",
-      `rt${created.returnTrackIndex}`,
-    );
+    await createTestDevice(ctx.client!, "Reverb", created.path);
 
     const compId = await createEffect("Compressor");
     const sourceIds = (await readDevice(compId, ["options"])).options
@@ -549,6 +563,29 @@ describe("specialized devices: Simpler", () => {
     expect(String(paramValue(paramsView, "sample"))).toContain("sample.aiff");
     expect(paramValue(paramsView, "gainDb")).toBeCloseTo(-6, 0);
     expect(paramsView).not.toHaveProperty("sample");
+  });
+
+  it("says so when a sample write lands nowhere", async () => {
+    const id = await createInstrument("Simpler");
+    const missing = SAMPLE_FILE.replace("sample.aiff", "no-such-sample.aiff");
+
+    // Absolute, so nothing refuses it up front — Live takes replace_sample,
+    // finds no file, and loads nothing.
+    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id, params: [{ name: "sample", value: missing }] },
+      }),
+    );
+
+    await sleep(100);
+
+    // read-device omits an empty Simpler's sample too, so this entry is the
+    // only thing anywhere that says the write never landed.
+    expect(data.params).toStrictEqual([
+      { name: "sample", reason: "written, but no value reads back" },
+    ]);
+    expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
   });
 
   it('include: ["*"] emits both the top-level sample field and the sample param entry', async () => {

@@ -22,6 +22,7 @@ import {
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type MemoryEntryView } from "#webui/hooks/context/use-memory-collection";
+import { flushTurns } from "#webui/test-utils/dom-test-helpers";
 import { MemoryScreenHarness } from "./memory-screen-harness";
 
 export const ENTRY: MemoryEntryView = {
@@ -175,13 +176,13 @@ export async function startRename(): Promise<void> {
 }
 
 /**
- * Wait out the editor's idle autosave: preact defers post-paint effects (the
- * arming) to a real timeout that happy-dom's rAF never beats, then the debounce
- * itself runs (mocked to ~0 by the caller). Both directions need the same
- * settle, so whether a save fires is an honest assertion either way.
+ * Wait out the editor's idle autosave: preact defers the arming to a post-paint
+ * effect, then the debounce itself runs (mocked to ~0 by the caller). Both
+ * directions need the same settle, so whether a save fires is an honest
+ * assertion either way — and one turn is not enough to reach the write.
  */
 export async function settleAutosave(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 150));
+  await flushTurns();
 }
 
 /**

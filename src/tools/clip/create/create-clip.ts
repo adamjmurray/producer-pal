@@ -6,15 +6,11 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
-import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
-import {
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import {
-  parseArrangementStartList,
-  type SlotPosition,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
+import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
+import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
 import {
   createClips,
@@ -33,6 +29,8 @@ import {
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 export interface CreateClipArgs {
   /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
@@ -43,7 +41,7 @@ export interface CreateClipArgs {
   trackIndex?: number | null;
   /** Hidden alias for path: scene index (0-based), with trackIndex */
   sceneIndex?: number | null;
-  /** Bar|beat position(s), comma-separated */
+  /** Song position(s), bar|beat or `loc:<locator>`, comma-separated */
   arrangementStart?: string | null;
   /** Musical notation string (MIDI clips only) */
   notes?: string | null;
@@ -92,7 +90,7 @@ export interface CreateClipArgs {
  * @param args.slot - Deprecated session clip slot(s), trackIndex/sceneIndex
  * @param args.trackIndex - Hidden alias for path: track index
  * @param args.sceneIndex - Hidden alias for path: scene index, with trackIndex
- * @param args.arrangementStart - Bar|beat position(s), comma-separated
+ * @param args.arrangementStart - Song position(s), bar|beat or `loc:`, comma-separated
  * @param args.notes - Musical notation string (MIDI clips only)
  * @param args.transforms - Transform expressions
  * @param args.sampleFile - Absolute path to audio file (audio clips only)
@@ -153,14 +151,21 @@ export async function createClip(
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
 
+  refuseUnreadableCall({ path, slot, arrangementStart, name, color });
+
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  // Rewrite every `loc:` position as the bar|beat it names, once, before the
+  // list is split. Everything downstream sees bar|beat and needs no Live Set.
+  arrangementStart = resolveArrangementLocators(liveSet, arrangementStart);
+
   // Resolve where the clips go before touching Live, so a bad destination fails
   // instead of creating half of them somewhere else.
-  const arrangementStarts = parseArrangementStartList(arrangementStart);
   const destinations = resolveCreateClipDestinations(
     { path, slot, trackIndex, sceneIndex, takeLane },
-    arrangementStarts,
+    arrangementStart,
   );
-  const { sessionSlots, arrangementPositions } = destinations;
+  const { clipSlots, arrangementPositions } = destinations;
 
   validatePositions(destinations);
 
@@ -168,9 +173,7 @@ export async function createClip(
   validateCreateClipParams(notationString, sampleFile);
   warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
   warnAudioOnlyMidiParams(sampleFile, audio);
-  validateDestinationTracks(destinations);
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
+  const tracks = validateDestinationTracks(destinations);
 
   // Resolve time signatures and convert timing parameters to Ableton beats
   // (arrangementStart is converted per-position later)
@@ -196,7 +199,7 @@ export async function createClip(
   const { parsedNames, parsedColors } = parseMultiClipParams(
     name,
     color,
-    sessionSlots.length + arrangementPositions.length,
+    clipSlots.length + arrangementPositions.length,
   );
 
   // Before any clip or take lane exists: a position that won't parse has to
@@ -222,7 +225,8 @@ export async function createClip(
     createClips({
       view,
       takeLanes,
-      sessionSlots,
+      tracks,
+      clipSlots,
       arrangementPositions,
       baseName: name,
       parsedNames,
@@ -250,14 +254,68 @@ export async function createClip(
       ...audio,
     });
 
-  const sessionClips = await clipsForView("session", 0);
-  const arrangementClips = await clipsForView(
-    "arrangement",
-    sessionSlots.length,
-  );
-  const createdClips = [...sessionClips, ...arrangementClips];
+  const createdClips = [
+    ...(await clipsForView("session", 0)),
+    ...(await clipsForView("arrangement", clipSlots.length)),
+  ];
 
-  return finalizeCreatedClips(createdClips, auto, sessionSlots, focus);
+  return finalizeCreatedClips(createdClips, auto, clipSlots, focus);
+}
+
+/**
+ * Refuse a call the tool can't read, before any clip is created: lists that
+ * disagree on how many entries they name, and a position spelled twice.
+ *
+ * Every list is checked together, before any of them is split: once one is
+ * split nothing knows whether the others are lists at all.
+ * @param args - The call's list params
+ * @param args.path - Where the clips go
+ * @param args.slot - The clip-slot spelling of path
+ * @param args.arrangementStart - Arrangement positions
+ * @param args.name - Clip names
+ * @param args.color - Clip colors
+ */
+function refuseUnreadableCall({
+  path,
+  slot,
+  arrangementStart,
+  name,
+  color,
+}: Pick<
+  CreateClipArgs,
+  "path" | "slot" | "arrangementStart" | "name" | "color"
+>): void {
+  validateListLengths([
+    {
+      param: path != null ? "path" : "slot",
+      value: path ?? slot,
+      isPath: true,
+    },
+    { param: "arrangementStart", value: arrangementStart },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
+
+  // A "[...]" in path and arrangementStart are two spellings of one position,
+  // so there is no combined reading.
+  refuseDoubledPosition(path, arrangementStart, "path");
+}
+
+/**
+ * Resolve any `loc:` entry in arrangementStart to the bar|beat it names.
+ * @param liveSet - The live_set LiveAPI object, for the locator lookups
+ * @param arrangementStart - The position list as the caller wrote it, or null
+ * @returns The list with every locator resolved, unchanged when there are none
+ */
+function resolveArrangementLocators(
+  liveSet: LiveAPI,
+  arrangementStart: string | null,
+): string | null {
+  if (arrangementStart == null) return null;
+
+  return resolveLocatorPositions(liveSet, arrangementStart, {
+    paramName: "arrangementStart",
+  });
 }
 
 /**
@@ -277,18 +335,18 @@ function normalizeTransforms(transformString: string | null): string | null {
  * Handle auto-playback and focus for the created clips, then unwrap the result.
  * @param createdClips - All created clip result objects
  * @param auto - Automatic playback action
- * @param sessionSlots - Parsed clip slot positions
+ * @param clipSlots - Parsed clip slot positions
  * @param focus - Whether to select the last created clip
  * @returns Single clip object when one, array when multiple
  */
 function finalizeCreatedClips(
   createdClips: object[],
   auto: string | null,
-  sessionSlots: SlotPosition[],
+  clipSlots: ClipSlotPosition[],
   focus: boolean | undefined,
 ): object | object[] {
   // Handle automatic playback (session clips only, guard inside handles no-op)
-  handleAutoPlayback(auto, "session", sessionSlots);
+  handleAutoPlayback(auto, "session", clipSlots);
 
   // Focus last created clip: arrangement clips are after session clips, so
   // arrangement gets priority (the arrangement is where the final song lives)
@@ -312,17 +370,13 @@ function parseMultiClipParams(
   name: string | null,
   color: string | null,
   totalPositionCount: number,
-): { parsedNames: string[] | null; parsedColors: string[] | null } {
-  const parsedNames = parseCommaSeparatedNames(
-    name ?? undefined,
-    totalPositionCount,
-  );
-  const parsedColors = parseCommaSeparatedColors(
+): { parsedNames: ListEntries | null; parsedColors: ListEntries | null } {
+  const parsedNames = parseNames(name ?? undefined, totalPositionCount, "clip");
+  const parsedColors = parseColors(
     color ?? undefined,
     totalPositionCount,
+    "clip",
   );
-
-  warnExtraNames(parsedNames, totalPositionCount, "createClip");
 
   return { parsedNames, parsedColors };
 }

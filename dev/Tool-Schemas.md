@@ -32,20 +32,64 @@ schema tolerant. There's no built-in "degrade to a comma-separated string"
 switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 `params` array adds a `preprocess` that also accepts a JSON-stringified array.
 
+## Comma-separated params pair one way
+
+When a param varies per item, use `src/tools/shared/validation/list-pairing.ts`:
+one value covers every item, or exactly N pair 1:1 in order, and no entry may be
+empty. Anything else is refused before any work runs. Nothing cycles — including
+`color`, which used to (ADR-0031).
+
+`pairValues` / `valueForIndex` for values, `pairExact` for a destination that
+holds one item — broadcasting a lone clip slot to three clips would destroy two
+of them.
+
+## An empty entry is a hole in either kind of list
+
+One trailing comma is not an entry in either kind, the way most languages read a
+list literal. Any other empty entry is a hole and is refused, in either kind of
+list:
+
+- **Target lists** name objects or places (`id`, `path`, `toPath`,
+  `arrangementStart`, `locator`). Split them with `targetEntries` from
+  `src/tools/shared/utils.ts`, which refuses a hole and refuses a list that
+  names nothing at all (`","`). Dropping a hole shifts every later pairing and
+  keeping it names nothing, so neither is guessed at. Nothing has run when the
+  check fires, so refusing costs the caller only a retry.
+- **Value lists** are properties applied to targets (`name`, `color`). Split
+  them with `splitList`, which refuses a hole for the same reason. `name: ""`
+  alone is how you clear a value, for every target in the call.
+
+## Two lists in one call must agree
+
+`validateListLengths` in `src/tools/shared/validation/list-lengths.ts`, called
+once per tool before any param is split: two comma-separated params that both
+name more than one entry must name the same number, or the call is refused. One
+value still covers every item, and nothing cycles.
+
+A param with a scalar item count (`count: 3`) is outside it — there's only one
+list in the call — and keeps ADR-0031's warning.
+
+Two tools can't check their raw args. update-clip's `id` and `path` name
+different clips and add up, so it passes the sum as a count and never compares
+the two. duplicate shares its destinations out across the sources first, so its
+check (`requireSameLength`) runs where the copies are planned.
+
+See ADR-0035.
+
 ## Params that don't apply to every action
 
 A modal tool publishes one schema for every action, so a caller can always send
 a param the chosen action has no use for. **Warn and skip it — never apply it,
 never drop it quietly.** Applying it is the worse half: `ppal-playback` used to
-write the arrangement playhead on `play-scene`, so "play scene 3 from bar 5"
-changed the Live Set in a way nobody asked for.
+write the arrangement start position on `play-scene`, so "play scene 3 from bar
+5" changed the Live Set in a way nobody asked for.
 
 Say which action ignored it, and point at every action that would have used it —
 naming only one steers a caller who meant the other:
 
 ```
 startTime ignored: action "play-scene" doesn't take arrangement timeline
-params; use "play-arrangement" or "update-arrangement" for the playhead and loop
+params; use "play-arrangement" or "update-arrangement" for the start position and loop
 ```
 
 Group the params that share a reason into one warning rather than repeating the
@@ -66,21 +110,27 @@ checks every tool. Background: ADR-0021.
 
 ## Coercion
 
-Use `z.coerce.string()` for ID params (`ids`, `trackId`, `clipId`,
-comma-separated `sceneIndex`) and `z.coerce.number()` for numeric ones
-(`trackIndex`, `sceneIndex`, `count`, `tempo`, `gainDb`). Models pass values as
-strings or numbers interchangeably, and the MCP SDK validates before our handler
-runs, so the coercion has to be at the schema level.
+Use `z.coerce.string()` for ID params (`id`, `ids`, `path`, `paths`) and
+`z.coerce.number()` for numeric ones (`count`, `tempo`, `gainDb`). Models pass
+values as strings or numbers interchangeably, and the MCP SDK validates before
+our handler runs, so the coercion has to be at the schema level.
 
-## Params sent as null
+## Params sent as null, or blank
 
 Write an optional param the plain way — nothing to remember. Clients fill the
 params they have no value for with `null`, and `unsetEmptyParams()` drops those
 args before validation on every call path, so a null reads as a param never
 sent. Without it `Number(null)` is 0, `z.coerce.string()` gives `"null"`, and a
-boolean or enum rejects the whole call. A blank string survives on a text param,
-where clearing a name or a clip's notes is a real request. See ADR-0029; the
-line is held by `src/test/meta/tool-schemas/empty-params.test.ts`.
+boolean or enum rejects the whole call. See ADR-0029.
+
+A blank string is not the same thing. It survives on a text param, where
+clearing a name or a clip's notes is a real request; on a param with no empty
+value of its own — a number, boolean, enum or array — it is **refused**, naming
+the param. Dropping it is what let `bpm: ""` become a call that set no tempo and
+said nothing. See ADR-0035 rule 5.
+
+Both halves are held for the whole tool surface by
+`src/test/meta/tool-schemas/empty-params.test.ts`.
 
 A param nested below the args isn't reached — wrap that shape in
 `optionalParams()`, as `library-query-schema.ts` does.
@@ -100,6 +150,12 @@ A mode's value is one of:
 - a **string** — override the description
 - **`null`** — hide the param entirely
 - an **object** `{ description?, excludeEnumValues? }` — trim the enum
+
+`excludeEnumValues` means two different things depending on which mode it sits
+on. On `default` it only hides the value: the JSON Schema stops offering it, but
+the param still accepts it, so a caller sending a retired spelling gets the
+behavior and a warning. On any other mode it also refuses the value, as defense
+in depth against a small model hallucinating one it was not shown.
 
 The tool's own `description` field takes the same shapes:
 `{ default, smallModel?, <notation>?, "smallModel:<notation>"? }`.

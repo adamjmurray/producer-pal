@@ -10,14 +10,16 @@ import {
 import {
   requireDeviceContainer,
   trackSegmentPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
+  formatObjectPath,
   parseObjectPath,
   type DeviceSegment,
   type IndexedSegment,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { resolveDevicePath } from "./device-path-to-live-api.ts";
+import { cachedDevicePath } from "./with-device-path-cache.ts";
 
 // Re-export all functions for backwards compatibility
 export { extractDevicePath } from "./device-path-builders.ts";
@@ -30,9 +32,15 @@ export {
   resolveDrumPadFromPath,
 } from "./device-drumpad-navigation.ts";
 
+/** A trailing device position, for a path the grammar couldn't parse. */
+const TRAILING_POSITION = /\/d\d+$/;
+
 export interface InsertionPathResolution {
   container: LiveAPI | null;
   position: number | null;
+  /** How the call spelled the container, so a result can hand back the
+   * caller's own spelling of a drum chain rather than the rack-relative one. */
+  containerPath: string;
 }
 
 /**
@@ -50,7 +58,7 @@ export interface InsertionPathResolution {
  *
  * @param path - Device insertion path
  * @param label - Param name the path came from, for error messages
- * @returns Container and optional position
+ * @returns Container, optional position, and the container's spelling
  */
 export function resolveInsertionPath(
   path: string,
@@ -61,18 +69,55 @@ export function resolveInsertionPath(
     label,
   );
   const last = segments.at(-1);
+  const above = containerSegments(segments);
 
-  if (last?.kind === "device") {
-    return {
-      container: resolveContainer(root, segments.slice(0, -1), path),
-      position: last.index,
-    };
+  return {
+    container: resolveContainer(root, above, path),
+    position: last?.kind === "device" ? last.index : null,
+    containerPath: formatObjectPath({ kind: "device", root, segments: above }),
+  };
+}
+
+/**
+ * How a call spelled the container an insertion path names — the path itself,
+ * or everything above a trailing `d<n>` position. Parsing only, so a result can
+ * echo the caller's own spelling without a Live read.
+ *
+ * A path that doesn't parse comes back trimmed lexically rather than throwing:
+ * this only names what a result already has, so it must not turn a completed
+ * operation into an error — but it must never hand back a path that still
+ * names the object inside the container.
+ * @param path - Device insertion path
+ * @param label - Param name the path came from, for error messages
+ * @returns The container's path (e.g. "t0/d0/pC1/c1" from "t0/d0/pC1/c1/d2")
+ */
+export function insertionContainerPath(path: string, label = "path"): string {
+  try {
+    const { root, segments } = requireDeviceContainer(
+      parseObjectPath(path, label),
+      label,
+    );
+
+    return formatObjectPath({
+      kind: "device",
+      root,
+      segments: containerSegments(segments),
+    });
+  } catch {
+    return path.replace(TRAILING_POSITION, "");
   }
-
-  return { container: resolveContainer(root, segments, path), position: null };
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The segments naming the container, dropping a trailing `d<n>` position.
+ * @param segments - Device-chain segments below the root
+ * @returns The container's segments
+ */
+function containerSegments(segments: DeviceSegment[]): DeviceSegment[] {
+  return segments.at(-1)?.kind === "device" ? segments.slice(0, -1) : segments;
+}
 
 /**
  * Resolve a container path (track or chain) to a LiveAPI object.
@@ -99,7 +144,8 @@ function resolveContainer(
     indexed.push(segment);
   }
 
-  if (indexed.length === 0) return LiveAPI.from(trackSegmentPath(root));
+  if (indexed.length === 0)
+    return cachedDevicePath(trackSegmentPath(root).toString());
 
   return resolveContainerWithAutoCreate(root, indexed, path);
 }
@@ -115,7 +161,7 @@ function resolveDrumPadContainer(
   segments: DeviceSegment[],
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
-  const rack = LiveAPI.from(resolved.liveApiPath);
+  const rack = cachedDevicePath(resolved.liveApiPath);
 
   return resolveOrCreateDrumPadChain(
     rack,

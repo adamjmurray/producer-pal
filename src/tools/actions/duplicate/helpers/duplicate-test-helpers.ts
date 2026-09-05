@@ -199,12 +199,12 @@ export function setupRouteToSourceMock(
  */
 export function createTrackResult(trackIndex: number): {
   id: string;
-  trackIndex: number;
+  path: string;
   clips: unknown[];
 } {
   return {
     id: `live_set/tracks/${trackIndex}`,
-    trackIndex,
+    path: `t${trackIndex}`,
     clips: [],
   };
 }
@@ -218,7 +218,7 @@ export function createTrackResult(trackIndex: number): {
 export function createTrackResultArray(
   startIndex: number,
   count: number,
-): Array<{ id: string; trackIndex: number; clips: unknown[] }> {
+): Array<{ id: string; path: string; clips: unknown[] }> {
   return Array.from({ length: count }, (_, i) =>
     createTrackResult(startIndex + i),
   );
@@ -445,4 +445,17 @@ export function setupRoutingMocks(
   });
 
   return { sourceTrack, newTrack };
+}
+
+/**
+ * The scaffold a "duplicate a bare track" case needs: the source track, the
+ * live_set, and the empty track 1 the copy lands on.
+ */
+export function registerBareTrackDuplication(): void {
+  registerMockObject("track1", { path: livePath.track(0) });
+  registerMockObject("live_set", { path: livePath.liveSet });
+  registerMockObject(NEW_TRACK_ID, {
+    path: livePath.track(1),
+    properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+  });
 }

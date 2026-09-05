@@ -4,18 +4,14 @@
 
 import { describe, expect, it } from "vitest";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-test-helpers.ts";
-import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { readLiveSetTracks } from "./read-live-set-path-mapped-test-helpers.ts";
 import { setupRoutingTestMocks } from "./update-live-set-test-helpers.ts";
 
 describe("readLiveSet - routing", () => {
   it("includes routing information in tracks when includeRoutings is true", () => {
     setupRoutingTestMocks({ trackProps: createSimpleRoutingMock() });
 
-    const result = readLiveSet({
-      include: ["tracks", "routings"],
-    });
-
-    const tracks = result.tracks as Record<string, unknown>[];
+    const tracks = readLiveSetTracks(["tracks", "routings"]);
 
     expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
@@ -38,11 +34,7 @@ describe("readLiveSet - routing", () => {
   it("excludes routing information from tracks when includeRoutings is false", () => {
     setupRoutingTestMocks();
 
-    const result = readLiveSet({
-      include: ["tracks"],
-    });
-
-    const tracks = result.tracks as Record<string, unknown>[];
+    const tracks = readLiveSetTracks();
 
     expect(tracks[0]).toStrictEqual(
       expect.objectContaining({

@@ -42,21 +42,44 @@ type SearchBatchResult = Extract<
 >;
 
 /**
- * Run a searchBatch library call and narrow the union to the results branch.
- * @param queries - The batch queries (omit for the missing-arg case)
+ * Run a fanned-out library search and narrow the union to the results branch.
+ * @param searches - The per-query filter sets
  * @returns The library result, asserted to contain `results`
  */
 async function runSearchBatch(
-  queries?: NonNullable<Parameters<typeof library>[0]>["queries"],
+  searches: NonNullable<Parameters<typeof library>[0]>["searches"],
 ): Promise<SearchBatchResult> {
-  const result = await library({ action: "searchBatch", queries });
+  const result = await library({ action: "search", searches });
 
   if (!("results" in result)) throw new Error("expected results");
 
   return result;
 }
 
-describe("library tool — searchBatch action", () => {
+/**
+ * The names of the items one labeled result carries.
+ * @param result - A fan-out search result
+ * @param index - Which labeled result to read
+ * @returns Item names, or undefined if there is no result at that index
+ */
+function itemNamesAt(
+  result: SearchBatchResult,
+  index: number,
+): string[] | undefined {
+  return result.results[index]?.items.map((item) => item.name);
+}
+
+/**
+ * Spy on the Max console's warn, silencing the output.
+ * @returns The spy
+ */
+async function spyOnMaxWarn() {
+  const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+
+  return vi.spyOn(consoleModule, "warn").mockImplementation(() => {});
+}
+
+describe("library tool — searches fan-out", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -98,28 +121,40 @@ describe("library tool — searchBatch action", () => {
     };
   }
 
-  it("returns results per query in order, grouped under their labels", async () => {
+  /** A DB holding one kick and one snare, keyed by their tags. */
+  function mockKickAndSnare(): void {
     mockSearchByFilter({
       Kick: [dbItem("kick.wav")],
       Snare: [dbItem("snare.wav")],
     });
+  }
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [
-        { label: "Kick", tags: "Kick" },
-        { label: "Snare", tags: "Snare" },
-      ],
-    });
+  /**
+   * Fan out `count` numbered queries against an empty DB.
+   * @param count - How many queries to send
+   * @returns The library result
+   */
+  async function runNumberedSearchBatch(
+    count: number,
+  ): Promise<SearchBatchResult> {
+    mockSearchByFilter({});
 
-    if (!("results" in result)) throw new Error("expected results");
+    return await runSearchBatch(
+      Array.from({ length: count }, (_, index) => ({ query: String(index) })),
+    );
+  }
+
+  it("returns results per query in order, grouped under their labels", async () => {
+    mockKickAndSnare();
+
+    const result = await runSearchBatch([
+      { label: "Kick", tags: "Kick" },
+      { label: "Snare", tags: "Snare" },
+    ]);
+
     expect(result.results.map((r) => r.label)).toStrictEqual(["Kick", "Snare"]);
-    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
-      "kick.wav",
-    ]);
-    expect(result.results[1]?.items.map((i) => i.name)).toStrictEqual([
-      "snare.wav",
-    ]);
+    expect(itemNamesAt(result, 0)).toStrictEqual(["kick.wav"]);
+    expect(itemNamesAt(result, 1)).toStrictEqual(["snare.wav"]);
     expect(result.dbAvailable).toBe(true);
   });
 
@@ -180,8 +215,8 @@ describe("library tool — searchBatch action", () => {
     });
 
     const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { query: "808" }],
+      action: "search",
+      searches: [{ tags: "Kick" }, { query: "808" }],
     });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
@@ -193,20 +228,16 @@ describe("library tool — searchBatch action", () => {
       expect.objectContaining({ query: "808" }),
     );
     if (!("results" in result)) throw new Error("expected results");
-    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
-      "kick.wav",
-    ]);
-    expect(result.results[1]?.items.map((i) => i.name)).toStrictEqual([
-      "808.wav",
-    ]);
+    expect(itemNamesAt(result, 0)).toStrictEqual(["kick.wav"]);
+    expect(itemNamesAt(result, 1)).toStrictEqual(["808.wav"]);
   });
 
   it("threads inFolder per query through to the library.search route", async () => {
     mockSearchByFilter({});
 
     await library({
-      action: "searchBatch",
-      queries: [
+      action: "search",
+      searches: [
         { label: "Kicks", tags: "Kick", inFolder: "/L/Drums/Kicks" },
         { label: "Snares", tags: "Snare" },
       ],
@@ -225,17 +256,8 @@ describe("library tool — searchBatch action", () => {
   });
 
   it("truncates to the first 20 queries and warns", async () => {
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
-    mockSearchByFilter({});
-
-    const queries = Array.from({ length: 25 }, (_, i) => ({
-      query: String(i),
-    }));
-    const result = await runSearchBatch(queries);
+    const warnSpy = await spyOnMaxWarn();
+    const result = await runNumberedSearchBatch(25);
 
     expect(result.results).toHaveLength(20);
     expect(protocolMock.requestNode).toHaveBeenCalledTimes(20);
@@ -252,17 +274,8 @@ describe("library tool — searchBatch action", () => {
 
   it("does not warn when the batch is exactly at the cap of 20", async () => {
     // Boundary of the > cap guard: 20 queries is allowed in full, so no warn.
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
-    mockSearchByFilter({});
-
-    const queries = Array.from({ length: 20 }, (_, i) => ({
-      query: String(i),
-    }));
-    const result = await runSearchBatch(queries);
+    const warnSpy = await spyOnMaxWarn();
+    const result = await runNumberedSearchBatch(20);
 
     expect(result.results).toHaveLength(20);
     expect(warnSpy).not.toHaveBeenCalled();
@@ -270,12 +283,111 @@ describe("library tool — searchBatch action", () => {
     warnSpy.mockRestore();
   });
 
-  it("treats a missing queries arg as an empty batch", async () => {
-    const result = await runSearchBatch();
+  // An empty array names no filters at all, so grouping nothing would just
+  // hide the mistake. Fall back to the single search the top-level params
+  // describe, and say so.
+  it("falls back to a single search when searches is empty, and warns", async () => {
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
 
-    expect(result.results).toStrictEqual([]);
-    expect("dbAvailable" in result).toBe(false);
-    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+    mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
+
+    const result = await library({
+      action: "search",
+      searches: [],
+      tags: "Kick",
+    });
+
+    expect("results" in result).toBe(false);
+    expect(result).toStrictEqual({
+      dbAvailable: true,
+      items: [{ path: "/db/kick.wav" }],
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("searches was empty"),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("warns and ignores searches on an action that has no use for it", async () => {
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
+
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { tags: [] },
+    });
+
+    await library({ action: "listTags", searches: [{ tags: "Kick" }] });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('searches does not apply to action "listTags"'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  // The spellings the fan-out shipped under before it folded into search +
+  // searches. Each still reaches the handler, so a 2.2 script gets results
+  // instead of a schema error.
+  it.each([
+    [
+      "queries",
+      { action: "search", queries: [{ label: "Kick", tags: "Kick" }] },
+    ],
+    [
+      "the searchBatch action",
+      { action: "searchBatch", searches: [{ label: "Kick", tags: "Kick" }] },
+    ],
+    [
+      "both old names at once",
+      { action: "searchBatch", queries: [{ label: "Kick", tags: "Kick" }] },
+    ],
+  ])("runs the fan-out for a caller still on %s", async (_label, args) => {
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    expect(await library(args)).toStrictEqual({
+      dbAvailable: true,
+      results: [{ label: "Kick", items: [dbItem("kick.wav")] }],
+    });
+  });
+
+  it("warns when a caller still sends the searchBatch action", async () => {
+    const warnSpy = await spyOnMaxWarn();
+
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    await library({
+      action: "searchBatch",
+      searches: [{ label: "Kick", tags: "Kick" }],
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("prefers searches when a caller sends both names", async () => {
+    mockKickAndSnare();
+
+    const result = await library({
+      action: "search",
+      searches: [{ label: "Kick", tags: "Kick" }],
+      queries: [{ label: "Snare", tags: "Snare" }],
+    });
+
+    expect(result).toStrictEqual({
+      dbAvailable: true,
+      results: [{ label: "Kick", items: [dbItem("kick.wav")] }],
+    });
   });
 
   it("reports dbAvailable:false when any query finds the DB missing", async () => {
@@ -320,8 +432,8 @@ describe("library tool — searchBatch action", () => {
 
     const result = await library(
       {
-        action: "searchBatch",
-        queries: [{ source: "sampleFolder" }],
+        action: "search",
+        searches: [{ source: "sampleFolder" }],
       },
       { sampleFolder: "/samples/" },
     );
@@ -456,8 +568,8 @@ describe("library tool — searchBatch action", () => {
     mockSearchByFilter({});
 
     await library({
-      action: "searchBatch",
-      queries: [
+      action: "search",
+      searches: [
         { label: "Kicks", tags: "Kick", verifyPaths: true },
         { label: "Snares", tags: "Snare" },
       ],

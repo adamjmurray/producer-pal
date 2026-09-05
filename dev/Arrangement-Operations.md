@@ -53,6 +53,17 @@ Only edge trims work reliably:
 This is why the splitting algorithm uses a holding-area approach with individual
 segment extraction rather than splitting in place.
 
+### Warp Markers Can't Be Written
+
+`Clip.add_warp_marker` and `Clip.move_warp_marker` both report success and
+change nothing (verified against Live 12.4.3, on a warped session clip).
+`warp_markers` reads fine, so markers can be inspected but not restored.
+
+The practical consequence: an audio clip re-created from its `file_path` gets
+the sample's own markers, which match the source exactly unless someone
+hand-edited them in Live. Anything re-creating an audio clip has to warn about
+that rather than fix it.
+
 ### `end_marker` Accepts Any Value
 
 `end_marker` is **not clamped** to the audio file boundary. You can set it to
@@ -81,8 +92,9 @@ lengthening (MIDI, warped audio, and unwarped audio).
 
 ### Audio Clip Creation in Arrangement
 
-`create_audio_clip` in arrangement doesn't support length control. To create an
-audio clip with a specific arrangement length:
+`Track.create_audio_clip(file, position)` and
+`TakeLane.create_audio_clip(file, start)` both exist, but neither takes a
+length. To create an audio clip with a specific arrangement length:
 
 1. Create it in session view with
    `createAudioClipInSession(track, length, filePath)`

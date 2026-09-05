@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface SimplerProps {
   multiSampleMode?: number;
@@ -144,7 +145,7 @@ describe("Simpler pseudo-params", () => {
     it("sets playbackMode by label", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "playbackMode", "one-shot", "t");
+      applySpecializedParamWrite(device, "playbackMode", "one-shot");
 
       expect(device.set).toHaveBeenCalledWith("playback_mode", 1);
     });
@@ -152,11 +153,10 @@ describe("Simpler pseudo-params", () => {
     it("warns on an invalid playbackMode", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "playbackMode", "bogus", "t");
+      applySpecializedParamWrite(device, "playbackMode", "bogus");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid playbackMode"),
       );
     });
@@ -164,7 +164,7 @@ describe("Simpler pseudo-params", () => {
     it("sets slicingPlaybackMode by label", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "slicingPlaybackMode", "thru", "t");
+      applySpecializedParamWrite(device, "slicingPlaybackMode", "thru");
 
       expect(device.set).toHaveBeenCalledWith("slicing_playback_mode", 2);
     });
@@ -172,7 +172,7 @@ describe("Simpler pseudo-params", () => {
     it("sets retrigger", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "retrigger", "true", "t");
+      applySpecializedParamWrite(device, "retrigger", "true");
 
       expect(device.set).toHaveBeenCalledWith("retrigger", 1);
     });
@@ -180,11 +180,10 @@ describe("Simpler pseudo-params", () => {
     it("warns naming retrigger and skips uninterpretable input", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "retrigger", "sometimes", "t");
+      applySpecializedParamWrite(device, "retrigger", "sometimes");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '"sometimes" is not a valid retrigger (expected true/false)',
         ),
@@ -194,12 +193,7 @@ describe("Simpler pseudo-params", () => {
     it("sets gainDb on the loaded sample, converting dB to linear", () => {
       registerSimpler({ samplePath: "/tmp/kick.wav" });
 
-      applySpecializedParamWrite(
-        LiveAPI.from("id simpler-1"),
-        "gainDb",
-        0,
-        "t",
-      );
+      applySpecializedParamWrite(LiveAPI.from("id simpler-1"), "gainDb", 0);
 
       expect(LiveAPI.from("id sample-1").set).toHaveBeenCalledWith(
         "gain",
@@ -210,7 +204,7 @@ describe("Simpler pseudo-params", () => {
     it("sets voices when in the allowed set", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "voices", 12, "t");
+      applySpecializedParamWrite(device, "voices", 12);
 
       expect(device.set).toHaveBeenCalledWith("voices", 12);
     });
@@ -218,11 +212,10 @@ describe("Simpler pseudo-params", () => {
     it("warns on a voices value not in the allowed set", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "voices", 9, "t");
+      expect(applySpecializedParamWrite(device, "voices", 9)).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("voices must be one of"),
       );
     });
@@ -234,13 +227,13 @@ describe("Simpler pseudo-params", () => {
         device,
         "multiSampleMode",
         "true",
-        "t",
       );
 
-      expect(handled).toBe(true);
+      expect(handled).toStrictEqual([
+        { name: "multiSampleMode", reason: "read-only" },
+      ]);
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("read-only"),
       );
     });
@@ -255,7 +248,7 @@ describe("Simpler pseudo-params", () => {
     ])("dispatches %s to %s", (action, method) => {
       const device = registerSimpler();
 
-      applySpecializedActions(device, [action], "updateDevice");
+      applySpecializedActions(device, [action]);
 
       expect(device.call).toHaveBeenCalledWith(method);
     });
@@ -263,7 +256,7 @@ describe("Simpler pseudo-params", () => {
     it("dispatches warpAs(N) to warp_as with the beats arg", () => {
       const device = registerSimpler();
 
-      applySpecializedActions(device, ["warpAs(4)"], "updateDevice");
+      applySpecializedActions(device, ["warpAs(4)"]);
 
       expect(device.call).toHaveBeenCalledWith("warp_as", 4);
     });
@@ -271,14 +264,13 @@ describe("Simpler pseudo-params", () => {
     it("warns when warpAs has a non-numeric arg", () => {
       const device = registerSimpler();
 
-      applySpecializedActions(device, ["warpAs(soon)"], "updateDevice");
+      applySpecializedActions(device, ["warpAs(soon)"]);
 
       expect(device.call).not.toHaveBeenCalledWith(
         "warp_as",
         expect.anything(),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("warpAs requires a numeric"),
       );
     });

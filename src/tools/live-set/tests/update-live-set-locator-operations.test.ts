@@ -15,6 +15,7 @@ import {
   setupLocatorCreationMocks,
   setupLocatorMocks,
 } from "./update-live-set-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateLiveSet - locator operations", () => {
   let liveSet: RegisteredMockObject;
@@ -105,8 +106,7 @@ describe("updateLiveSet - locator operations", () => {
         time: "5|1",
         existingId: "locator-0",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Locator already exists at 5|1"),
       );
     });
@@ -120,8 +120,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_locatorTime",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "locatorTime is required for create operation",
       );
     });
@@ -245,8 +244,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_identifier",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "delete requires locatorId, locatorTime, or locatorName",
       );
     });
@@ -263,8 +261,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         id: "locator-99",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Locator not found: locator-99"),
       );
     });
@@ -281,8 +278,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         time: "100|1",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("No locator found at position: 100|1"),
       );
     });
@@ -299,8 +295,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "no_locators_found",
         name: "NonExistent",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("No locators found with name: NonExistent"),
       );
     });
@@ -358,8 +353,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_locatorName",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "locatorName is required for rename operation",
       );
     });
@@ -374,8 +368,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_identifier",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "rename requires locatorId or locatorTime",
       );
     });
@@ -392,8 +385,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         id: "locator-99",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("locator not found: locator-99"),
       );
     });
@@ -410,8 +402,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         time: "100|1",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("no locator found at position: 100|1"),
       );
     });

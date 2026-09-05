@@ -96,9 +96,8 @@ export function liveApiBuildStats(): LiveApiBuildStats {
 /**
  * Warn the counts into the tool response.
  *
- * Has to run before the response is assembled: the patch appends whatever is on
- * outlet 1 at that moment, so reporting any later files the numbers under some
- * other call.
+ * Has to run before endWarningCapture(), or the numbers land on whichever
+ * request is capturing next.
  */
 export function reportLiveApiBuildStats(): void {
   if (resolvedCount === 0) return;
@@ -112,7 +111,6 @@ export function reportLiveApiBuildStats(): void {
     shown.push(`+${String(shapes.length - shown.length)} more shapes`);
   }
 
-  // One line on purpose: the warning crosses to Node as a single Max symbol.
   console.warn(
     `LiveAPI stats: ${String(resolvedCount)} resolved, ` +
       `${String(targetCounts.size)} distinct, ` +

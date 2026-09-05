@@ -36,6 +36,7 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
   type UpdateClipResult,
 } from "../mcp-test-helpers";
 
@@ -55,10 +56,9 @@ async function createOrderingTrack(name: string): Promise<number> {
     }),
   );
 
-  expect(track.trackIndex).toBeDefined();
   await sleep(100);
 
-  return track.trackIndex!;
+  return trackIndexFromPath(track.path);
 }
 
 /**

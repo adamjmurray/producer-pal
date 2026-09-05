@@ -15,6 +15,11 @@
  * `transforms-editing`, whose gate is exactly update-clip. The `v:0` marker DOES
  * belong here — it is what the velocity field means, not a way of editing, and
  * omitting it left models guessing (and silently writing velocity-1 notes).
+ *
+ * The pitch key spells out the octave convention the way the bar|beat heads do.
+ * This is the one notation where the MODEL converts a pitch name to a number,
+ * so a head that doesn't name and reject the usual C4=60 prior loses that
+ * conversion — models wrote 48 for C3.
  */
 export const midiJson = `## MIDI Notation — MIDI JSON
 
@@ -22,7 +27,7 @@ The \`notes\` argument (and read-clip's returned notes) is a compact array-of-ob
 
 \`[{p:60,t:0,d:4,v:100},{p:62,t:1,d:1,v:90,vd:10,c:0.75}]\`
 
-Keys: \`p\` pitch 0-127 (C3=60, middle C), \`t\` start and \`d\` duration in musical beats, \`v\` velocity 1-127, optional \`vd\` velocity-deviation 0-127 (default 0) and \`c\` probability/chance 0-1 (default 1) — omit \`vd\`/\`c\` at their defaults.
+Keys: \`p\` pitch 0-127 (C3 = middle C = MIDI 60, Ableton numbering; most other software calls this note C4), \`t\` start and \`d\` duration in musical beats, \`v\` velocity 1-127, optional \`vd\` velocity-deviation 0-127 (default 0) and \`c\` probability/chance 0-1 (default 1) — omit \`vd\`/\`c\` at their defaults.
 
 - \`t\` and \`d\` are absolute musical beats (a quarter = 1 beat in x/4): \`t:0\` is clip start, \`t:4\` is beat 5. Chords share a \`t\`.
 - \`v:0\` deletes instead of adding: it removes the note at that same \`p\`+\`t\` (already in the clip, or written earlier in this same array) and writes nothing. It applies to that one object only.

@@ -13,15 +13,17 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  createTestDevice,
-  getToolWarnings,
   parseAliasedToolResult,
   parseToolResult,
   parseToolResultWithWarnings,
+  createTestDevice,
+  getToolWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
+import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -47,13 +49,12 @@ describe("ppal-duplicate", () => {
     });
     const dupTrack = parseAliasedToolResult<DuplicateTrackResult>(
       dupTrackResult,
-      "ppal-duplicate",
       "ids",
       "id",
     );
 
     expect(dupTrack.id).toBeDefined();
-    expect(dupTrack.trackIndex).toBe(1); // Inserted after track 0
+    expect(dupTrack.path).toBe("t1"); // Inserted after track 0
 
     await sleep(100);
 
@@ -90,8 +91,8 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateTrackResult[]>(dupMultipleResult);
 
     expect(dupMultiple).toHaveLength(2);
-    expect(dupMultiple[0]!.trackIndex).toBe(1);
-    expect(dupMultiple[1]!.trackIndex).toBe(2);
+    expect(dupMultiple[0]!.path).toBe("t1");
+    expect(dupMultiple[1]!.path).toBe("t2");
 
     await sleep(100);
 
@@ -156,7 +157,7 @@ describe("ppal-duplicate", () => {
     const dupScene = parseToolResult<DuplicateSceneResult>(dupSceneResult);
 
     expect(dupScene.id).toBeDefined();
-    expect(dupScene.sceneIndex).toBe(1);
+    expect(dupScene.path).toBe("s1");
 
     await sleep(100);
 
@@ -207,16 +208,12 @@ describe("ppal-duplicate", () => {
   });
 
   it("duplicates clips", async () => {
-    // Use empty tracks for clip tests
-    const emptyMidiTrack = 8;
-    const emptyMidiTrack2 = 7;
-
     // Test 1: Session clip to session
     // First create a clip to duplicate on empty track
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s0`,
+        path: `t${EMPTY_MIDI_TRACK}/s0`,
         notes: "C3 D3 E3 F3 1|1",
         length: "1bar",
       },
@@ -231,14 +228,14 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        toPath: `t${emptyMidiTrack2}/s0`,
+        toPath: `t${RACKS_TRACK}/s0`,
       },
     });
     const dupClipSession =
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.path).toBe(`t${emptyMidiTrack2}/s0`);
+    expect(dupClipSession.path).toBe(`t${RACKS_TRACK}/s0`);
 
     await sleep(100);
 
@@ -282,8 +279,7 @@ describe("ppal-duplicate", () => {
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}`,
-        arrangementStart: "41|1",
+        path: `t${EMPTY_MIDI_TRACK}[41|1]`,
         notes: "C3 D3 E3 1|1",
         length: "2bar",
       },
@@ -300,14 +296,14 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: arrangementClip.id,
 
-        arrangementStart: "5|1",
+        toPath: "[5|1]",
       },
     });
     const dupArrangement =
       parseToolResult<DuplicateClipResult>(dupArrangementResult);
 
     expect(dupArrangement.id).toBeDefined();
-    expect(dupArrangement.arrangementStart).toBe("5|1");
+    expect(arrangementStartOf(dupArrangement)).toBe("5|1");
 
     await sleep(100);
 
@@ -318,7 +314,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: arrangementClip.id,
 
-        arrangementStart: "9|1,13|1,17|1",
+        toPath: "[9|1],[13|1],[17|1]",
       },
     });
     const dupArrangementMulti = parseToolResult<DuplicateClipResult[]>(
@@ -326,9 +322,9 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupArrangementMulti).toHaveLength(3);
-    expect(dupArrangementMulti[0]!.arrangementStart).toBe("9|1");
-    expect(dupArrangementMulti[1]!.arrangementStart).toBe("13|1");
-    expect(dupArrangementMulti[2]!.arrangementStart).toBe("17|1");
+    expect(arrangementStartOf(dupArrangementMulti[0]!)).toBe("9|1");
+    expect(arrangementStartOf(dupArrangementMulti[1]!)).toBe("13|1");
+    expect(arrangementStartOf(dupArrangementMulti[2]!)).toBe("17|1");
 
     await sleep(100);
 
@@ -339,7 +335,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        arrangementStart: "21|1",
+        toPath: "[21|1]",
       },
     });
     const dupSessionToArrangement = parseToolResult<DuplicateClipResult>(
@@ -347,19 +343,59 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupSessionToArrangement.id).toBeDefined();
-    expect(dupSessionToArrangement.arrangementStart).toBe("21|1");
+    expect(arrangementStartOf(dupSessionToArrangement)).toBe("21|1");
+  });
+
+  it("places arrangement copies at locators", async () => {
+    // Locators are named positions in the Set, so resolving a name or an id to
+    // a real bar|beat is something only Live's own locator list can prove.
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: { path: "t8/s0", notes: "C3 1|1", length: "1bar" },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const byName = parseToolResult<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: clip.id,
+          toPath: "[loc:Verse],[loc:Chorus]",
+        },
+      }),
+    );
+
+    expect(byName).toHaveLength(2);
+    expect(arrangementStartOf(byName[0]!)).toBe("9|1");
+    expect(arrangementStartOf(byName[1]!)).toBe("17|1");
+
+    await sleep(100);
+
+    const byId = parseToolResult<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: clip.id,
+          toPath: "[loc:locator-3]",
+        },
+      }),
+    );
+
+    expect(arrangementStartOf(byId)).toBe("33|1");
   });
 
   it("copies the whole clip whichever order the positions are listed", async () => {
     // The bar-58 copy lands on the source and trims it to one bar. The bar-51
     // copy stops well short of the source, so it must come out full length —
     // it used to be made from that leftover just for being listed second.
-    const track = 8;
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${track}`,
-        arrangementStart: "57|1",
+        path: `t${EMPTY_MIDI_TRACK}[57|1]`,
         notes: "C3 D3 E3 F3 1|1",
         length: "2bar",
       },
@@ -373,11 +409,11 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: source.id,
-        arrangementStart: "58|1,51|1",
+        toPath: "[58|1],[51|1]",
       },
     });
     const copies = parseToolResult<DuplicateClipResult[]>(dupResult);
-    const early = copies.find((copy) => copy.arrangementStart === "51|1");
+    const early = copies.find((copy) => arrangementStartOf(copy) === "51|1");
 
     await sleep(100);
 
@@ -392,12 +428,10 @@ describe("ppal-duplicate", () => {
   });
 
   it("still honors the deprecated toSlot, and says so", async () => {
-    const emptyMidiTrack = 8;
-
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s6`,
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -411,7 +445,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        toSlot: `${emptyMidiTrack}/7`,
+        toSlot: `${EMPTY_MIDI_TRACK}/7`,
       },
     });
 
@@ -419,7 +453,7 @@ describe("ppal-duplicate", () => {
     // reports it in the spelling that replaced the param...
     expect(
       parseToolResultWithWarnings<DuplicateClipResult>(result).data.path,
-    ).toBe(`t${emptyMidiTrack}/s7`);
+    ).toBe(`t${EMPTY_MIDI_TRACK}/s7`);
 
     // ...and the model is told to stop using the param.
     expect(getToolWarnings(result)).toContainEqual(
@@ -428,15 +462,12 @@ describe("ppal-duplicate", () => {
   });
 
   it("duplicates devices", async () => {
-    // Use t7 (Racks track) which has an Instrument Rack but proper routing
-    const testTrack = 7;
-
     // Test 1: Duplicate device within same track
     // First create a device to duplicate
     const deviceId = await createTestDevice(
       ctx.client!,
       "Auto Filter",
-      `t${testTrack}`,
+      `t${RACKS_TRACK}`,
     );
 
     const dupDeviceResult = await ctx.client!.callTool({
@@ -466,7 +497,7 @@ describe("ppal-duplicate", () => {
     const device2Id = await createTestDevice(
       ctx.client!,
       "Compressor",
-      `t${testTrack}`,
+      `t${RACKS_TRACK}`,
     );
 
     const dupDeviceToTrackResult = await ctx.client!.callTool({
@@ -507,21 +538,19 @@ interface ReadLiveSetResult {
 
 interface DuplicateTrackResult {
   id: string;
-  trackIndex: number;
+  path: string;
   clips: Array<{ id: string }>;
 }
 
 interface DuplicateSceneResult {
   id: string;
-  sceneIndex?: number;
-  arrangementStart?: string;
+  path?: string;
   clips: Array<{ id: string }>;
 }
 
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  arrangementStart?: string;
   name?: string;
 }
 

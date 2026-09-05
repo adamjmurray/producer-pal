@@ -13,6 +13,7 @@ import {
   resolveParamModes,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { liveEnumValues } from "#src/test/helpers/enum-options-test-helpers.ts";
 import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 
 // The enum-value twin of small-model-param-references.test.ts. Trimming a value
@@ -34,38 +35,6 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 // values are exact literals — that is what keeps `folder` off `sampleFolder`.
 
 /**
- * Values a param may name because they are its OWN live options. Enum values
- * collide across params far more than param names do: ppal-library trims
- * `plugin` from `kind` while `source` still offers a `plugin` of its own, and
- * listing it there is correct. Skipping by live-value keeps the check sharp — if
- * `source` ever drops `plugin` too, this stops excusing it.
- *
- * @param schema - A published param schema
- * @returns Its enum options, or [] when it isn't enum-shaped
- */
-function liveEnumValues(schema: ZodType): readonly string[] {
-  type Unwrappable = { type: string; def: Record<string, unknown> };
-
-  let current = schema as unknown as Unwrappable;
-
-  // Unwrap the builders enum params are actually declared with:
-  // z.array(z.enum(…)).default(…), z.enum(…).optional().default(…), etc.
-  while (["default", "optional", "nullable", "array"].includes(current.type)) {
-    const inner = (current.def.innerType ?? current.def.element) as
-      | Unwrappable
-      | undefined;
-
-    if (inner == null) return [];
-
-    current = inner;
-  }
-
-  return current.type === "enum"
-    ? ((current as unknown as z.ZodEnum).options as string[])
-    : [];
-}
-
-/**
  * Trimmed values that are also ordinary English on a given tool, keyed by tool
  * name. The sibling param test needs no such list and says so; enum values need
  * one because they are far likelier to be common words. Add an entry ONLY when
@@ -77,6 +46,10 @@ function liveEnumValues(schema: ZodType): readonly string[] {
  */
 const ORDINARY_WORDS: Record<string, readonly string[]> = {
   "ppal-library": ["folder"],
+  // `return` is trimmed off create-track's `type` because "rt+" asks for one
+  // now, and `path` has to say what "rt+" makes. Safe to excuse: the word is
+  // prose here, and the value is still accepted anyway - only unoffered.
+  "ppal-create-track": ["return"],
 };
 
 const SMALL_BARBEAT = { notation: "barbeat", smallModelMode: true } as const;
@@ -166,11 +139,16 @@ function danglingEnumReferences(
 ): string[] {
   const { inputSchema, description } = def.toolOptions;
   const excused = ORDINARY_WORDS[def.toolName] ?? [];
+  const resolved = resolveParamModes(inputSchema, context);
+  // Both kinds count: whether a value was refused or merely not offered, a
+  // published description naming it points the model at something it can't
+  // pick out of the schema.
   const trimmed = [
     ...new Set(
-      Object.values(
-        resolveParamModes(inputSchema, context).excludeEnumValues,
-      ).flat(),
+      [
+        ...Object.values(resolved.excludeEnumValues),
+        ...Object.values(resolved.unpublishedEnumValues),
+      ].flat(),
     ),
   ].filter((value) => !excused.includes(value));
 
@@ -178,7 +156,8 @@ function danglingEnumReferences(
 
   const { published } = resolveToolSchema(inputSchema, context);
   // Each text carries the values its own param still offers, so a collision
-  // with another param's trimmed enum doesn't read as a dangling reference.
+  // with another param's trimmed enum doesn't read as a dangling reference:
+  // ppal-library trims `plugin` from `kind` while `source` still offers one.
   const texts: [string, string, readonly string[]][] = [
     ["tool description", resolveModalDescription(description, context), []],
   ];

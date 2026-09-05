@@ -11,7 +11,11 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  masterTrackMockObject,
+  readLiveSetTracks,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 const SYNTH_DEVICE = {
   name: "Analog",
@@ -148,18 +152,17 @@ describe("readLiveSet - basic reading", () => {
       scale: "C Major",
       scalePitches: "C,D,E,F,G,A,B",
       returnTracks: [],
-      masterTrack: expect.objectContaining({
+      mainTrack: expect.objectContaining({
         id: "master1",
-        type: "master",
         name: "Master",
         deviceCount: 0,
       }),
       tracks: [
         {
           id: "track1",
+          path: "t0",
           type: "midi",
           name: "MIDI Track 1",
-          trackIndex: 0,
           state: "soloed",
           isGroup: true,
           playingSlotIndex: 2,
@@ -170,9 +173,9 @@ describe("readLiveSet - basic reading", () => {
         },
         {
           id: "track2",
+          path: "t1",
           type: "audio",
           name: "Audio Track 2",
-          trackIndex: 1,
           state: "muted",
           isGroupMember: true,
           groupId: "track1",
@@ -185,7 +188,7 @@ describe("readLiveSet - basic reading", () => {
         (() => {
           const { color: _color, ...track } = expectedTrack({
             id: "track3",
-            trackIndex: 2,
+            path: "t2",
           });
 
           return track;
@@ -194,23 +197,23 @@ describe("readLiveSet - basic reading", () => {
       scenes: [
         {
           id: "scene1",
+          path: "s0",
           name: "Scene 1",
-          sceneIndex: 0,
           clipCount: 2,
           tempo: 120,
           timeSignature: "4/4",
         },
         {
           id: "scene2",
+          path: "s1",
           name: "Scene 2",
-          sceneIndex: 1,
           clipCount: 0,
           triggered: true,
         },
         {
           id: "scene3",
+          path: "s2",
           name: "Scene 3",
-          sceneIndex: 2,
           clipCount: 1,
           tempo: 120,
           timeSignature: "4/4",
@@ -255,9 +258,8 @@ describe("readLiveSet - basic reading", () => {
       timeSignature: "3/4",
       tracks: [],
       returnTracks: [],
-      masterTrack: expect.objectContaining({
+      mainTrack: expect.objectContaining({
         id: "master1",
-        type: "master",
         name: "Master",
         deviceCount: 0,
       }),
@@ -280,11 +282,7 @@ describe("readLiveSet - basic reading", () => {
           return_tracks: children(),
           scenes: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          devices: [],
-        },
+        ...masterTrackMockObject(),
         [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Synth Track",
@@ -301,11 +299,7 @@ describe("readLiveSet - basic reading", () => {
       },
     });
 
-    const result = readLiveSet({
-      include: ["tracks"],
-    });
-
-    const tracks = result.tracks as Record<string, unknown>[];
+    const tracks = readLiveSetTracks();
 
     // Track with instrument shows instrument name as string
     expect(tracks[0]).toStrictEqual(

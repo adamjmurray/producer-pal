@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "./transform-warning-label.ts";
 import {
   type TimeRange,
   type NoteProperties,
@@ -377,7 +377,10 @@ export function parsePeriod(
   );
 
   if (period <= 0) {
-    throw new Error(`Function ${name}() period must be > 0, got ${period}`);
+    throw new Error(
+      `Function ${name}() period must be > 0, got ${period}. The first ` +
+        `argument is a period in beats (e.g. n/4, 2bar), not a phase.`,
+    );
   }
 
   return period;

@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useUpdateCheck } from "#webui/hooks/connection/use-update-check";
 import { getSettingsUrl, getUpdateUrl } from "#webui/utils/mcp-url";
@@ -30,7 +31,7 @@ async function renderWithUpdateAvailable() {
   );
   const { result } = renderHook(() => useUpdateCheck());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(result.current.update).toStrictEqual({ version: "2.0.0" });
   });
 
@@ -44,7 +45,7 @@ async function renderWithUpdateAvailable() {
 async function expectNoUpdate(): Promise<void> {
   const { result } = renderHook(() => useUpdateCheck());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(globalThis.fetch).toHaveBeenCalled();
   });
 
@@ -118,7 +119,7 @@ describe("useUpdateCheck", () => {
     const fetchSpy = mockFetch(new Response(JSON.stringify({ version: null })));
     const { result } = renderHook(() => useUpdateCheck());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 

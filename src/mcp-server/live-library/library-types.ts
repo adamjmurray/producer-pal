@@ -239,14 +239,14 @@ export interface LibraryFindDuplicatesResult {
   reason?: string;
 }
 
-/** One query in a searchBatch call: the single-search filter set plus an
+/** One query in a `searches` fan-out: the single-search filter set plus an
  * optional label used to group its results in the response. */
 export interface LibraryBatchQuery extends LibrarySearchArgs {
   /** Result-group label; defaults to the query's index (as a string). */
   label?: string;
 }
 
-/** Results for a single searchBatch query, grouped under its label. */
+/** Results for one query in a `searches` fan-out, grouped under its label. */
 export interface LibraryBatchEntry {
   /** Provided label, or the query's index as a string when none was given. */
   label: string;

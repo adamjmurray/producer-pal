@@ -7,7 +7,11 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import {
+  waitForHookState,
+  openGate,
+} from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
@@ -18,7 +22,6 @@ import {
   saveConversation,
 } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Wrap saveConversation in a spy that delegates to the real fake-indexeddb
 // implementation by default, so most tests exercise the real DB. Failure tests
@@ -50,7 +53,7 @@ type UndoResult = { current: ReturnType<typeof useUndoDelete> };
 async function undoIntoError(result: UndoResult): Promise<void> {
   await act(() => result.current.undoNotification!.action!.onClick());
 
-  await waitFor(() =>
+  await waitForHookState(() =>
     expect(result.current.undoNotification?.type).toBe("error"),
   );
 }
@@ -64,13 +67,40 @@ describe("useUndoDelete", () => {
   });
 
   it("has no banner initially", () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
+
+    expect(result.current.undoNotification).toBeNull();
+  });
+
+  it("deleteWithUndo removes the row and offers it back", async () => {
+    const { result } = renderHook(() => useUndoDelete());
+    const record = makeRecord({ title: "Take me" });
+
+    await saveConversation(record);
+    await act(() => result.current.deleteWithUndo(record.id));
+
+    expect(await loadConversation(record.id)).toBeUndefined();
+    expect(result.current.undoNotification?.message).toBe(
+      "Deleted \u201cTake me\u201d",
+    );
+
+    await act(() => result.current.undoNotification!.action!.onClick());
+
+    await waitForHookState(async () =>
+      expect(await loadConversation(record.id)).toBeDefined(),
+    );
+  });
+
+  it("deleteWithUndo shows no banner for an id with no record", async () => {
+    const { result } = renderHook(() => useUndoDelete());
+
+    await act(() => result.current.deleteWithUndo("never-existed"));
 
     expect(result.current.undoNotification).toBeNull();
   });
 
   it("shows an undo banner naming the deleted conversation", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() =>
       result.current.pushDeleted(makeRecord({ title: "My Chat" })),
@@ -82,7 +112,7 @@ describe("useUndoDelete", () => {
   });
 
   it("falls back to a timestamp label when the record has no title", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() => result.current.pushDeleted(makeRecord({ title: null })));
 
@@ -91,7 +121,7 @@ describe("useUndoDelete", () => {
   });
 
   it("truncates long titles", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
     const longTitle = "x".repeat(80);
 
     await act(() =>
@@ -106,48 +136,27 @@ describe("useUndoDelete", () => {
 
   it("restores the deleted record and refreshes on undo", async () => {
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
     const record = makeRecord({ title: "Restore me" });
 
     await act(() => result.current.pushDeleted(record));
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       const restored = await loadConversation(record.id);
 
       expect(restored?.title).toBe("Restore me");
     });
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
     expect(refreshList).toHaveBeenCalled();
-    expect(result.current.undoNotification).toBeNull();
-  });
-
-  it("invokes onRestore with the restored id after a successful undo", async () => {
-    // The manager passes onRestore to un-cancel the restored id in its delete
-    // guard; it must fire with the exact restored id once the save lands.
-    const onRestore = vi.fn();
-    const { result } = renderHook(() => useUndoDelete(vi.fn(), onRestore));
-    const record = makeRecord({ title: "Un-cancel me" });
-
-    await act(() => result.current.pushDeleted(record));
-    await act(() => result.current.undoNotification!.action!.onClick());
-
-    await waitFor(() => expect(onRestore).toHaveBeenCalledWith(record.id));
-  });
-
-  it("does not invoke onRestore when the restore save fails", async () => {
-    // A failed restore leaves the row deleted, so the id must stay canceled —
-    // onRestore fires only on the success path.
-    vi.mocked(saveConversation).mockRejectedValueOnce(new Error("boom"));
-    const onRestore = vi.fn();
-    const { result } = renderHook(() => useUndoDelete(vi.fn(), onRestore));
-
-    await act(() => result.current.pushDeleted(makeRecord({ title: "Nope" })));
-    await undoIntoError(result);
-    expect(onRestore).not.toHaveBeenCalled();
   });
 
   it("supports multi-level undo (history > 1) in LIFO order", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
     const first = makeRecord({ title: "First" });
     const second = makeRecord({ title: "Second" });
 
@@ -160,21 +169,25 @@ describe("useUndoDelete", () => {
     await act(() => result.current.undoNotification!.action!.onClick());
 
     // After undoing Second, it is restored and the banner reveals First.
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       const restoredSecond = await loadConversation(second.id);
 
       expect(restoredSecond?.title).toBe("Second");
     });
-    expect(result.current.undoNotification?.message).toBe("Deleted “First”");
+    await waitForHookState(() =>
+      expect(result.current.undoNotification?.message).toBe("Deleted “First”"),
+    );
 
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       const restoredFirst = await loadConversation(first.id);
 
       expect(restoredFirst?.title).toBe("First");
     });
-    expect(result.current.undoNotification).toBeNull();
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
   });
 
   it("keeps the record and shows a retryable error when the restore save fails", async () => {
@@ -185,7 +198,9 @@ describe("useUndoDelete", () => {
       new DOMException("full", "QuotaExceededError"),
     );
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
     const record = makeRecord({ title: "Keep me" });
 
     await act(() => result.current.pushDeleted(record));
@@ -202,11 +217,13 @@ describe("useUndoDelete", () => {
     // restored and the banner clears.
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       expect(await loadConversation(record.id)).toBeDefined();
     });
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
     expect(refreshList).toHaveBeenCalled();
-    expect(result.current.undoNotification).toBeNull();
   });
 
   it("ignores a second undo click while the first restore is still saving", async () => {
@@ -217,7 +234,9 @@ describe("useUndoDelete", () => {
     vi.mocked(saveConversation).mockReturnValueOnce(savePending as never);
 
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "Once" })));
 
@@ -237,13 +256,15 @@ describe("useUndoDelete", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => expect(result.current.undoNotification).toBeNull());
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
     expect(refreshList).toHaveBeenCalledTimes(1);
   });
 
   it("clears a prior restore error when a new deletion is pushed", async () => {
     vi.mocked(saveConversation).mockRejectedValueOnce(new Error("boom"));
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "First" })));
     await undoIntoError(result);
@@ -259,7 +280,7 @@ describe("useUndoDelete", () => {
   });
 
   it("dismiss drops all pending undos without restoring", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "A" })));
     await act(() => result.current.pushDeleted(makeRecord({ title: "B" })));
@@ -271,7 +292,9 @@ describe("useUndoDelete", () => {
 
   it("undo is a no-op when the stack was emptied before a stale click fires", async () => {
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "Gone" })));
 
@@ -291,7 +314,7 @@ describe("useUndoDelete", () => {
   });
 
   it("caps retained history at 10 deletions", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
     const records = Array.from({ length: 12 }, (_, i) =>
       makeRecord({ title: `conv-${i}` }),
     );
@@ -307,7 +330,7 @@ describe("useUndoDelete", () => {
       if (!notif) break;
 
       await act(() => notif.action!.onClick());
-      await waitFor(() =>
+      await waitForHookState(() =>
         expect(result.current.undoNotification).not.toBe(notif),
       );
     }

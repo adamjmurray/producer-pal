@@ -4,15 +4,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  keepsParamValue,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../update-device.ts";
 import { mockWorkingDeviceMoves } from "./update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {
   let chain: RegisteredMockObject;
@@ -23,7 +29,12 @@ describe("updateDevice - Chain and DrumPad support", () => {
     registerMockObject("123", { type: "RackDevice" });
     chain = registerMockObject("456", { type: "Chain" });
     drumChain = registerMockObject("789", { type: "DrumChain" });
-    drumPad = registerMockObject("790", { type: "DrumPad" });
+    drumPad = registerMockObject("790", {
+      // A real pad path, so the empty-pad warning can name it.
+      path: livePath.track(0).device(0).drumPad(36),
+      type: "DrumPad",
+      properties: { note: 36 },
+    });
     registerMockObject("791", { type: "Track" });
   });
 
@@ -58,14 +69,19 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
-    it("should set mute on a DrumPad", () => {
+    it("warns and skips a drum pad with no chains", () => {
       const result = updateDevice({
         id: "790",
         mute: true,
       });
 
-      expect(drumPad.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "790" });
+      // Live drops writes to an empty pad, so there is nothing to report.
+      expect(capturedWarnings()).toContain(
+        "drum pad t0/d0/pC1 (id 790) has no chains, so there is " +
+          "nothing to update — Live ignores writes to an empty pad",
+      );
+      expect(drumPad.set).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
     });
 
     it("should set mute to false (unmute)", () => {
@@ -84,9 +100,8 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mute: true,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'mute' not applicable to RackDevice",
+      expect(capturedWarnings()).toContain(
+        "'mute' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -115,28 +130,14 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
-    it("should warn when color is used on a DrumPad", () => {
-      const result = updateDevice({
-        id: "790",
-        color: "#FF0000",
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'color' not applicable to DrumPad",
-      );
-      expect(result).toStrictEqual({ id: "790" });
-    });
-
     it("should warn when color is used on a Device", () => {
       const result = updateDevice({
         id: "123",
         color: "#FF0000",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'color' not applicable to RackDevice",
+      expect(capturedWarnings()).toContain(
+        "'color' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -159,9 +160,8 @@ describe("updateDevice - Chain and DrumPad support", () => {
         chokeGroup: 1,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'chokeGroup' not applicable to Chain",
+      expect(capturedWarnings()).toContain(
+        "'chokeGroup' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -172,9 +172,8 @@ describe("updateDevice - Chain and DrumPad support", () => {
         chokeGroup: 1,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'chokeGroup' not applicable to RackDevice",
+      expect(capturedWarnings()).toContain(
+        "'chokeGroup' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -200,21 +199,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(drumChain.set).toHaveBeenCalledWith("out_note", 54);
     });
 
-    it("should warn for invalid note name in mappedPitch", () => {
-      const result = updateDevice({
-        id: "789",
-        mappedPitch: "InvalidNote",
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'updateDevice: invalid note name "InvalidNote"',
-      );
-      expect(drumChain.set).not.toHaveBeenCalledWith(
-        "out_note",
-        expect.anything(),
-      );
-      expect(result).toStrictEqual({ id: "789" });
+    // One pitch for every target in the call, so a per-target skip repeated the
+    // same message. Refused before any of them is touched.
+    it("should refuse an invalid note name in mappedPitch", () => {
+      expect(() =>
+        updateDevice({ id: "789", mappedPitch: "InvalidNote" }),
+      ).toThrow('invalid note name "InvalidNote" for mappedPitch');
+      expect(drumChain.set).not.toHaveBeenCalled();
     });
 
     it("should warn when mappedPitch is used on a Chain", () => {
@@ -223,9 +214,8 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mappedPitch: "C3",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'mappedPitch' not applicable to Chain",
+      expect(capturedWarnings()).toContain(
+        "'mappedPitch' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -234,27 +224,25 @@ describe("updateDevice - Chain and DrumPad support", () => {
   describe("device-only properties on non-devices", () => {
     // collapsed — kept for potential future use (test removed)
 
-    it("should warn when params is used on a DrumPad", () => {
+    it("should warn when params is used on a Chain", () => {
       const result = updateDevice({
-        id: "790",
+        id: "456",
         params: [{ name: "789", value: "0.5" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'params' not applicable to DrumPad",
+      expect(capturedWarnings()).toContain(
+        "'params' not applicable to Chain id 456",
       );
-      expect(result).toStrictEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
-    it("should not warn when params is an empty array on a DrumPad", () => {
-      const result = updateDevice({ id: "790", params: [] });
+    it("should not warn when params is an empty array on a Chain", () => {
+      const result = updateDevice({ id: "456", params: [] });
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'params' not applicable to DrumPad",
+      expect(capturedWarnings()).not.toContain(
+        "'params' not applicable to Chain id 456",
       );
-      expect(result).toStrictEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "456" });
     });
   });
 
@@ -283,9 +271,8 @@ describe("updateDevice - Chain and DrumPad support", () => {
       (label, args, type, id) => {
         updateDevice({ id: id, ...args });
 
-        expect(outlet).toHaveBeenCalledWith(
-          1,
-          `updateDevice: '${label}' not applicable to ${type}`,
+        expect(capturedWarnings()).toContain(
+          `'${label}' not applicable to ${type} id ${id}`,
         );
       },
     );
@@ -298,26 +285,23 @@ describe("updateDevice - Chain and DrumPad support", () => {
     ] as const)("warns that %s is not applicable to a Chain", (label, args) => {
       updateDevice({ id: "456", ...args });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        `updateDevice: '${label}' not applicable to Chain`,
+      expect(capturedWarnings()).toContain(
+        `'${label}' not applicable to Chain id 456`,
       );
     });
 
     it("does not spuriously warn about A/B Compare when abCompare is unset", () => {
       updateDevice({ id: "123", mute: true });
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
-        "updateDevice: A/B Compare not available on this device",
+      expect(capturedWarnings()).not.toContain(
+        "A/B Compare not available on this device",
       );
     });
 
     it("does not spuriously adjust macro count on a rack when macroCount is unset", () => {
       updateDevice({ id: "801", abCompare: "a" });
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("macro count rounded"),
       );
     });
@@ -330,8 +314,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(chain.set).not.toHaveBeenCalledWith("mute", expect.anything());
       expect(chain.set).not.toHaveBeenCalledWith("solo", expect.anything());
       // Unset (null) params must be treated as absent, not warned about.
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("not applicable"),
       );
     });
@@ -347,8 +330,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "out_note",
         expect.anything(),
       );
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("invalid note name"),
       );
     });
@@ -386,20 +368,6 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(drumChain.set).toHaveBeenCalledWith("name", "Kick");
       expect(result).toStrictEqual({ id: "789" });
     });
-
-    it("should warn when name is used on a DrumPad (read-only)", () => {
-      const result = updateDevice({
-        id: "790",
-        name: "Hi-Hat",
-      });
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "updateDevice: 'name' is read-only for DrumPad",
-      );
-      expect(drumPad.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(result).toStrictEqual({ id: "790" });
-    });
   });
 });
 
@@ -434,11 +402,68 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   it("sets a chain's own gain and pan", () => {
+    // Live snaps both, so the result can only match by reading them back.
+    keepsParamValue(volume, -15.02);
+    keepsParamValue(panning, -0.30000001192092896);
+
     const result = updateDevice({ id: "chain-0", gainDb: -15, pan: -0.3 });
 
     expect(volume.set).toHaveBeenCalledWith("display_value", -15);
     expect(panning.set).toHaveBeenCalledWith("value", -0.3);
-    expect(result).toStrictEqual({ id: "chain-0" });
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      gainDb: -15.02,
+      pan: -0.3,
+    });
+  });
+
+  // The write used to land with the result saying nothing about it, so a
+  // clamped or snapped level was invisible to the model that asked for it.
+  it("reports every send it wrote, keyed by the return that resolved", () => {
+    keepsParamValue(send, -11.98);
+
+    const result = updateDevice({
+      id: "chain-0",
+      sends: [{ return: "a", gainDb: -12 }],
+    });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      sends: [{ return: "a Reverb", returnId: "rc-0", gainDb: -11.98 }],
+    });
+  });
+
+  it("reports the sendGainDb/sendReturn pair under sends as well", () => {
+    keepsParamValue(send, -6.02);
+
+    const result = updateDevice({
+      id: "chain-0",
+      sendGainDb: -6,
+      sendReturn: "a",
+    });
+
+    // One send has one shape, whichever param spelled it.
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      sends: [{ return: "a Reverb", returnId: "rc-0", gainDb: -6.02 }],
+    });
+  });
+
+  it("reports no send for a return name that matches none", () => {
+    const result = updateDevice({
+      id: "chain-0",
+      sends: [{ return: "nope", gainDb: -12 }],
+    });
+
+    expect(send.set).not.toHaveBeenCalled();
+    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
+    expect(capturedWarnings().join()).toContain(
+      'no return chain matching "nope"',
+    );
   });
 
   it("sets a chain's send to a rack return chain", () => {
@@ -464,17 +489,25 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(panning.set).toHaveBeenCalledWith("value", 0.5);
   });
 
-  it("warns when sendReturn is the only mixer param given", () => {
-    updateDevice({ id: "chain-0", sendReturn: "a" });
-
-    expect(send.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+  it("refuses the call when sendReturn is the only mixer param given", () => {
+    expect(() => updateDevice({ id: "chain-0", sendReturn: "a" })).toThrow(
       "sendGainDb and sendReturn must both be specified",
     );
+    expect(send.set).not.toHaveBeenCalled();
   });
 
-  it.each(["DrumPad", "SimplerDevice"] as const)(
+  // Same gate: `sends` alone has to open it. It shipped not doing so, and
+  // every unit test passed because they all called applyChainMixer directly.
+  it("sets sends when it is the only mixer param given", () => {
+    updateDevice({
+      id: "chain-0",
+      sends: [{ return: "a", gainDb: -12 }],
+    });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+  });
+
+  it.each(["SimplerDevice"] as const)(
     "warns when mixer params are used on a %s",
     (type) => {
       registerMockObject("target-1", { type });
@@ -485,16 +518,87 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         pan: 1,
         sendGainDb: -6,
         sendReturn: "a",
+        sends: [{ return: "a", gainDb: -6 }],
       });
 
-      for (const name of ["gainDb", "pan", "sendGainDb", "sendReturn"]) {
-        expect(outlet).toHaveBeenCalledWith(
-          1,
-          `updateDevice: '${name}' not applicable to ${type}`,
+      for (const name of [
+        "gainDb",
+        "pan",
+        "sendGainDb",
+        "sendReturn",
+        "sends",
+      ]) {
+        expect(capturedWarnings()).toContain(
+          `'${name}' not applicable to ${type} id target-1`,
         );
       }
     },
   );
+});
+
+describe("updateDevice - return chain rename mid-request", () => {
+  it("sends by a return chain's new name after an earlier id in the same call renamed it", () => {
+    const rackPath = livePath.track(0).device(0);
+    const chainAPath = rackPath.chain(0);
+    const chainBPath = rackPath.chain(1);
+    const returnXPath = rackPath.returnChain(0);
+
+    registerMockObject("rack", {
+      path: rackPath,
+      properties: { return_chains: children("return-x") },
+    });
+
+    const returnX = registerMockObject("return-x", {
+      path: returnXPath,
+      type: "Chain",
+      properties: { name: "Delay" },
+    });
+
+    // Real Live reflects a name write immediately; the mock's set() is a
+    // pure spy by default, so mirror that here.
+    returnX.set.mockImplementation((prop: string, value: unknown) => {
+      if (prop === "name") returnX.properties.name = value;
+    });
+
+    registerMockObject("chain-a", { path: chainAPath, type: "Chain" });
+    registerMockObject("mixer-a", {
+      path: `${chainAPath} mixer_device`,
+      properties: { sends: children("send-a") },
+    });
+    registerMockObject("send-a");
+
+    registerMockObject("chain-b", { path: chainBPath, type: "Chain" });
+    registerMockObject("mixer-b", {
+      path: `${chainBPath} mixer_device`,
+      properties: { sends: children("send-b") },
+    });
+    const sendB = registerMockObject("send-b");
+
+    // One request, matching how the adapter wraps a real tool call: the
+    // return-chain memo lives for its whole duration.
+    beginLiveApiScope();
+
+    try {
+      updateDevice({
+        id: "chain-a,return-x,chain-b",
+        name: "Chain A,Echo,Chain B",
+        sends: [{ return: "Echo", gainDb: -6 }],
+      });
+    } finally {
+      endLiveApiScope();
+    }
+
+    expect(returnX.set).toHaveBeenCalledWith("name", "Echo");
+    // chain-a's send to "Echo" legitimately misses — at that point in the
+    // request Live still calls the return chain "Delay". chain-b's must not,
+    // and must not double the "no return chain matching" warning either.
+    expect(sendB.set).toHaveBeenCalledWith("display_value", -6);
+    expect(
+      capturedWarnings().filter((w) =>
+        w.includes('no return chain matching "Echo"'),
+      ),
+    ).toHaveLength(1);
+  });
 });
 
 describe("updateDevice - moving a device out of a trimmed chain", () => {
@@ -532,27 +636,37 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
   });
 
-  it("carries the trim onto an untouched destination chain", () => {
-    // chain-1 holds no devices and sits at defaults, so writing its fader
-    // re-levels nothing — the trim follows the sound instead of stranding.
-    const destinationVolume = registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-    });
-
+  /**
+   * Register chain 1's mixer — the destination the trim would be carried to.
+   * @param volumeProperties - Property overrides for its volume parameter
+   * @returns The destination volume mock
+   */
+  function registerDestinationMixer(
+    volumeProperties?: Record<string, unknown>,
+  ): RegisteredMockObject {
     registerMockObject("mixer-1", {
       path: `${rackPath.chain(1)} mixer_device`,
     });
+
+    return registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+      properties: volumeProperties,
+    });
+  }
+
+  it("carries the trim onto an untouched destination chain", () => {
+    // chain-1 holds no devices and sits at defaults, so writing its fader
+    // re-levels nothing — the trim follows the sound instead of stranding.
+    const destinationVolume = registerDestinationMixer();
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
     // Announced, because the caller asked to move a device, not to set a fader.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'chain "Trimmed" trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
+    expect(capturedWarnings()).toContain(
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("stays behind"),
     );
   });
@@ -572,25 +686,17 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    expect(capturedWarnings()).toContain(
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
   it("warns instead of overwriting a destination chain with its own trim", () => {
-    registerMockObject("mixer-1", {
-      path: `${rackPath.chain(1)} mixer_device`,
-    });
-    registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-      properties: { display_value: 6 },
-    });
+    registerDestinationMixer({ display_value: 6 });
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("stays behind"),
     );
   });
@@ -598,8 +704,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
   it("stays quiet when the device only moves within its own chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c0/d1" });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("stays behind"),
     );
   });
@@ -627,9 +732,8 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t1/d0/c0" });
 
     expect(destinationVolume.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    expect(capturedWarnings()).toContain(
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -666,31 +770,22 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'chain "Trimmed" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
+    expect(capturedWarnings()).toContain(
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
     );
   });
 
   it("names what landed rather than what it set out to carry", () => {
     // A macro-mapped destination gain is skipped with its own warning, so
     // announcing the carry up front contradicted the very next line.
-    registerMockObject("mixer-1", {
-      path: `${rackPath.chain(1)} mixer_device`,
-    });
-    registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-      properties: { is_enabled: 0 },
-    });
+    registerDestinationMixer({ is_enabled: 0 });
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'chain "Trimmed" trim could not be carried onto the destination chain — it stays on the chain the device left',
+    expect(capturedWarnings()).toContain(
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain, which was"),
     );
   });
@@ -701,20 +796,15 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     // fader would re-level a chain nothing moved into.
     registerMockObject("live-set", { path: livePath.liveSet });
 
-    const destinationVolume = registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-    });
-
-    registerMockObject("mixer-1", {
-      path: `${rackPath.chain(1)} mixer_device`,
-    });
+    const destinationVolume = registerDestinationMixer();
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(1, "Live refused the move");
+    expect(capturedWarnings()).toContain(
+      "Live refused the move of t0/d0/c0/d0 (id device-0)",
+    );
     expect(destinationVolume.set).not.toHaveBeenCalled();
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain"),
     );
   });

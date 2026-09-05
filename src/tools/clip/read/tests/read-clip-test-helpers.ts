@@ -8,6 +8,7 @@
  */
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -275,4 +276,18 @@ export function expectGetNotesExtendedCall(
   ];
 
   expect(handle.call).toHaveBeenCalledWith(...expectedArgs);
+}
+
+/**
+ * Track 0 holding a single Drum Rack, so read-clip picks drum notation.
+ */
+export function registerDrumRackTrack(): void {
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: { devices: children("drumRack") },
+  });
+  registerMockObject("drumRack", {
+    type: "Device",
+    properties: { can_have_drum_pads: 1 },
+  });
 }

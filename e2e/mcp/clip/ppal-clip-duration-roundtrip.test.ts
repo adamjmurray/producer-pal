@@ -25,10 +25,8 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
-import {
-  createClipInSlot,
-  emptyMidiTrack,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import { createClipInSlot } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -53,7 +51,7 @@ async function readClipTiming(
  * @returns The new clip's id
  */
 function createLoopingClip(length: string): Promise<string> {
-  return createClipInSlot(ctx, `t${emptyMidiTrack}/s0`, {
+  return createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s0`, {
     notes: "C3 1|1",
     looping: true,
     length,
@@ -100,8 +98,7 @@ describe("clip duration round-trips (absolute note values)", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}`,
-        arrangementStart: "10|1",
+        path: `t${EMPTY_MIDI_TRACK}[10|1]`,
         notes: "C3 1|1",
         looping: false,
         length: "2bar",

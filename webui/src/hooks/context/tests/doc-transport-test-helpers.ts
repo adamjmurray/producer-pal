@@ -10,7 +10,8 @@
 // rather than per-hook clones. Callers keep the `@vitest-environment happy-dom`
 // directive in their own file (it must be file-level).
 
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import {
   afterEach,
   beforeEach,
@@ -20,7 +21,10 @@ import {
   type Mock,
   vi,
 } from "vitest";
-import { type UseDocReturn } from "#webui/hooks/context/use-doc";
+import {
+  type SaveStatus,
+  type UseDocReturn,
+} from "#webui/hooks/context/use-doc";
 
 /** Per-hook inputs for the shared transport suite. */
 export interface DocTransportSpec {
@@ -107,7 +111,7 @@ export async function renderAndWait<T extends { status: { kind: string } }>(
 ): Promise<{ current: T }> {
   const { result } = renderHook(useHook);
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(result.current.status.kind).toBe(kind);
   });
 
@@ -138,6 +142,40 @@ export function deferred<T>(): Deferred<T> {
   return box as Deferred<T>;
 }
 
+/** The save state this helper reads back off a rendered hook. */
+type SaveStateRef = {
+  current: { saveStatus: SaveStatus; saveError: string | null };
+};
+
+/**
+ * Fail the next write with a 403 and assert the hook surfaced it: the save
+ * reports false and the error state names the cause.
+ * @param fetchMock - The installed fetch mock
+ * @param result - The rendered hook, read back once the write settles
+ * @param save - Runs the hook's write and resolves to its ok flag
+ * @param expectedError - Text the surfaced message must contain
+ */
+export async function expectWriteErrorSurfaced(
+  fetchMock: ReturnType<typeof vi.fn>,
+  result: SaveStateRef,
+  save: () => Promise<boolean>,
+  expectedError: string,
+): Promise<void> {
+  fetchMock.mockResolvedValueOnce(
+    new Response("nope", { status: 403, statusText: "Forbidden" }),
+  );
+
+  let ok: boolean | undefined;
+
+  await act(async () => {
+    ok = await save();
+  });
+
+  expect(ok).toBe(false);
+  expect(result.current.saveStatus).toBe("error");
+  expect(result.current.saveError).toContain(expectedError);
+}
+
 /**
  * Register the standard read/write behavioral tests for a useDoc
  * transport wrapper.
@@ -159,7 +197,7 @@ export function describeDocTransport(spec: DocTransportSpec): void {
 
       const { result } = renderHook(spec.useHook);
 
-      await waitFor(() => {
+      await waitForHookState(() => {
         expect(result.current.status).toStrictEqual({
           kind: "ready",
           content: "# doc",
@@ -177,7 +215,7 @@ export function describeDocTransport(spec: DocTransportSpec): void {
 
       const { result } = renderHook(spec.useHook);
 
-      await waitFor(() => {
+      await waitForHookState(() => {
         expect(result.current.status).toStrictEqual({
           kind: "ready",
           content: "",
@@ -225,19 +263,12 @@ export function describeDocTransport(spec: DocTransportSpec): void {
     it("save() surfaces an error when the PUT is not ok", async () => {
       const result = await renderReady();
 
-      fetchMock.mockResolvedValueOnce(
-        new Response("nope", { status: 403, statusText: "Forbidden" }),
+      await expectWriteErrorSurfaced(
+        fetchMock,
+        result,
+        () => result.current.save("attempt"),
+        spec.writeError,
       );
-
-      let ok: boolean | undefined;
-
-      await act(async () => {
-        ok = await result.current.save("attempt");
-      });
-
-      expect(ok).toBe(false);
-      expect(result.current.saveStatus).toBe("error");
-      expect(result.current.saveError).toContain(spec.writeError);
     });
 
     registerSaveOrderingTests(fetchMock, renderReady);

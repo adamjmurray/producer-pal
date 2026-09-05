@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
@@ -29,16 +30,14 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
  * @param fired - True when the warning is expected, false for the negative control
  */
 function expectViewConflictWarning(fired: boolean): void {
-  const outletMock = (globalThis as Record<string, unknown>)
-    .outlet as ReturnType<typeof vi.fn>;
   // Anchored at the start: max-api-adapter prepends "WARNING: ", so any prefix
   // of its own renders as "WARNING: Warning: ignoring view=...".
   const warning = expect.stringMatching(/^ignoring view=/);
 
   if (fired) {
-    expect(outletMock).toHaveBeenCalledWith(1, warning);
+    expect(capturedWarnings()).toContainEqual(warning);
   } else {
-    expect(outletMock).not.toHaveBeenCalledWith(1, warning);
+    expect(capturedWarnings()).not.toContainEqual(warning);
   }
 }
 
@@ -148,6 +147,22 @@ describe("view", () => {
       expect(result.selectedTrack).toBeDefined();
     });
 
+    it("selects regular track when trackType is explicitly regular", () => {
+      const track = registerMockObject("track_id_123", {
+        path: livePath.track(2),
+        type: "Track",
+      });
+      const songView = setupSongViewMock();
+
+      const result = select({ trackType: "regular", trackIndex: 2 });
+
+      expect(songView.set).toHaveBeenCalledWith(
+        "selected_track",
+        `id ${track.id}`,
+      );
+      expect(result.selectedTrack).toBeDefined();
+    });
+
     it("defaults to regular track type when only index provided", () => {
       registerMockObject("track_id_123", {
         path: livePath.track(2),
@@ -183,9 +198,7 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      expect(() => select({ trackIndex: 99 })).toThrow(
-        'select failed: no track at "t99"',
-      );
+      expect(() => select({ trackIndex: 99 })).toThrow('no track at "t99"');
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_track",
         expect.anything(),
@@ -253,9 +266,7 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      expect(() => select({ sceneIndex: 99 })).toThrow(
-        'select failed: no scene at "s99"',
-      );
+      expect(() => select({ sceneIndex: 99 })).toThrow('no scene at "s99"');
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_scene",
         expect.anything(),

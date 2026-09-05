@@ -8,6 +8,7 @@ import { registerSkillOverridesRoutes } from "#src/mcp-server/routes/skill-overr
 import { SKILL_SLOT_NAMES } from "#src/skills/skill-slots.ts";
 import {
   type MarkdownRouteServer,
+  errorOf,
   putJson,
   startMarkdownRouteServer,
   useTempConfigDir,
@@ -128,9 +129,7 @@ describe("skill-overrides route", () => {
     const res = await putJson(`${base}/standard`, { enabled: false });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /cannot be disabled/i,
-    );
+    expect(await errorOf(res)).toMatch(/cannot be disabled/i);
   });
 
   it("reports canDisable so the editor knows which slots offer a toggle", async () => {
@@ -153,9 +152,7 @@ describe("skill-overrides route", () => {
     const res = await putJson(`${base}/barbeat-standard`, { enabled: "no" });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /enabled must be a boolean/i,
-    );
+    expect(await errorOf(res)).toMatch(/enabled must be a boolean/i);
   });
 
   it("PUT with no JSON body rejects with 400, not 500", async () => {
@@ -164,9 +161,7 @@ describe("skill-overrides route", () => {
     const res = await fetch(`${base}/barbeat-standard`, { method: "PUT" });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /content must be a string/i,
-    );
+    expect(await errorOf(res)).toMatch(/content must be a string/i);
   });
 
   it("rejects an unknown slot with 404 on PUT and DELETE", async () => {

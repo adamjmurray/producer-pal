@@ -6,6 +6,7 @@
 import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
 import {
   arrangement,
+  arrangementBasic,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
 import {
@@ -21,6 +22,7 @@ import {
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
+import { objectPaths } from "#src/skills/fragments/object-paths.ts";
 import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
@@ -104,6 +106,8 @@ export const SKILL_SLOT_NAMES = [
   "specialized-devices",
   ARRANGEMENT,
   "arrangement-write",
+  "arrangement-basic",
+  "object-paths",
   "working-with-live",
   "context-standard",
   "context-basic",
@@ -266,7 +270,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "devices-write": {
     title: "Devices: building instruments",
     description:
-      "Loading samples into a Simpler and building a whole Drum Rack in one call. Only create-device and update-device can act on it, so a read-only caller never gets it. Needs the devices guide it sits under.",
+      "How a param write behaves — values snap to the steps Live allows, and the response reports where they landed — plus loading samples into a Simpler and building a whole Drum Rack in one call. Only create-device and update-device can act on it, so a read-only caller never gets it. Needs the devices guide it sits under.",
     builtIn: devicesWrite,
   },
 
@@ -289,6 +293,20 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Moving clips with toPath — along the arrangement timeline and between clip slots — plus splitting them and stacking take lanes. It's the only place toPath is explained. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
     builtIn: arrangementWrite,
+  },
+
+  "arrangement-basic": {
+    title: "Take lanes (small model mode)",
+    description:
+      "What a take lane is and how a path names one, for the small-model document. A lane turns up in read-track output and inside a clip's path whether or not the model can write, and no other small-model section mentions one.",
+    builtIn: arrangementBasic,
+  },
+
+  "object-paths": {
+    title: "Addressing tracks & scenes",
+    description:
+      "How a track or scene path is spelled, what a track's `type` does and doesn't say now, and the `+` roots that name a place to create one. The clip half of the same grammar lives in the arrangement guide.",
+    builtIn: objectPaths,
   },
 
   "working-with-live": {

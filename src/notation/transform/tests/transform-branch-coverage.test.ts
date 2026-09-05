@@ -37,6 +37,16 @@ function velocitySetAST(
   ] as unknown as TransformAssignment[];
 }
 
+// A C4 note against an assignment gated to C5..G#5: the note is outside the
+// range, so the assignment is skipped.
+function evaluateOutsidePitchRange(): ReturnType<typeof evaluateTransformAST> {
+  return evaluateTransformAST(
+    velocitySetAST({ pitchRange: { startPitch: 70, endPitch: 80 } }),
+    createContext({ pitch: 60 }),
+    { pitch: 60 },
+  );
+}
+
 describe("Transform Branch Coverage", () => {
   beforeEach(() => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -111,11 +121,7 @@ describe("Transform Branch Coverage", () => {
     it("handles assignment with pitch range that filters out the note", () => {
       // When a note is outside the pitch range, assignment is skipped
       // and assignmentResult.value will be null/undefined
-      const result = evaluateTransformAST(
-        velocitySetAST({ pitchRange: { startPitch: 70, endPitch: 80 } }),
-        createContext({ pitch: 60 }), // C4 - outside the C5..G#5 range
-        { pitch: 60 },
-      );
+      const result = evaluateOutsidePitchRange();
 
       // Assignment should be skipped, result should not have velocity
       expect(result.velocity).toBeUndefined();
@@ -138,11 +144,7 @@ describe("Transform Branch Coverage", () => {
     it("handles assignment that skips due to pitch filtering", () => {
       // This tests the branch where assignmentResult.value is null
       // because the assignment was skipped and continues to next iteration
-      const result = evaluateTransformAST(
-        velocitySetAST({ pitchRange: { startPitch: 70, endPitch: 80 } }),
-        createContext({ pitch: 60 }), // outside the pitch range
-        { pitch: 60 },
-      );
+      const result = evaluateOutsidePitchRange();
 
       // Assignment was skipped, so velocity should not be in result
       expect(result.velocity).toBeUndefined();

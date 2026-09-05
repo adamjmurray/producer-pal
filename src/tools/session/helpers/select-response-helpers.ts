@@ -3,18 +3,18 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+  objectPathForApi,
+  pathField,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
 import { type SelectResult } from "../select.ts";
-import { type TrackCategory } from "./select-helpers.ts";
 
 /**
  * Read full current view state (for no-args calls)
@@ -161,37 +161,35 @@ function buildTrackInfo(
 
   if (category == null) return undefined;
 
-  const info: NonNullable<SelectResult["selectedTrack"]> = {
+  return {
     id: track.id,
-    type: computeTrackType(track, category),
+    ...pathField(track),
+    ...trackTypeField(
+      (track.getProperty("has_midi_input") as number) > 0,
+      category,
+    ),
   };
-
-  if (category === "regular" && track.trackIndex != null) {
-    info.trackIndex = track.trackIndex;
-  } else if (category === "return" && track.returnTrackIndex != null) {
-    info.trackIndex = track.returnTrackIndex;
-  }
-
-  return info;
 }
 
 /**
  * Build scene info from a LiveAPI scene reference
  * @param scene - LiveAPI reference to a scene
- * @returns Scene info or undefined if scene doesn't exist
+ * @returns Scene info, or undefined when the scene is gone or unnameable
  */
 function buildSceneInfo(
   scene: LiveAPI,
 ): SelectResult["selectedScene"] | undefined {
-  if (!scene.exists() || scene.sceneIndex == null) return undefined;
+  if (!scene.exists()) return undefined;
 
-  return { id: scene.id, sceneIndex: scene.sceneIndex };
+  const path = objectPathForApi(scene);
+
+  return path == null ? undefined : { id: scene.id, path };
 }
 
 /**
  * Build clip info from a LiveAPI clip reference
  * @param clip - LiveAPI reference to a clip
- * @returns Clip info with its path, plus arrangementStart for arrangement clips
+ * @returns Clip info with its path
  */
 function buildClipInfo(
   clip: LiveAPI,
@@ -200,23 +198,11 @@ function buildClipInfo(
 
   const isSessionClip = clip.trackIndex != null && clip.clipSlotIndex != null;
 
-  if (isSessionClip) {
-    return {
-      id: clip.id,
-      path: slotPath(clip.trackIndex, clip.clipSlotIndex),
-    };
-  }
-
-  // Arrangement clip
-  const startTime = clip.getProperty("start_time") as number;
-  const liveSet = LiveAPI.from("live_set");
-  const num = liveSet.getProperty("signature_numerator") as number;
-  const den = liveSet.getProperty("signature_denominator") as number;
-
   return {
     id: clip.id,
-    path: arrangementPath(clip.trackIndex as number, clip.takeLaneIndex),
-    arrangementStart: abletonBeatsToBarBeat(startTime, num, den),
+    path: isSessionClip
+      ? slotPath(clip.trackIndex, clip.clipSlotIndex)
+      : objectPathForApi(clip),
   };
 }
 
@@ -244,18 +230,4 @@ function readSelectedDeviceInfo(
   const path = extractDevicePath(device.path);
 
   return path ? { id: rawId, path } : undefined;
-}
-
-/**
- * Compute merged track type from category and has_midi_input. The caller has
- * already established that the track exists and has a category.
- * @param track - Selected track LiveAPI object
- * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", or "master"
- */
-function computeTrackType(track: LiveAPI, category: TrackCategory): string {
-  if (category === "return") return "return";
-  if (category === "master") return "master";
-
-  return (track.getProperty("has_midi_input") as number) > 0 ? "midi" : "audio";
 }

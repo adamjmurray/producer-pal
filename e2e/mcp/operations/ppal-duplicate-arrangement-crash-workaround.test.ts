@@ -17,43 +17,43 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
-  KICK_FILE,
   parseToolResult,
+  KICK_FILE,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
 interface DuplicateClipResult {
   id: string;
-  arrangementStart?: string;
+  /** Where the copy landed, e.g. "t0[5|1]" */
+  path?: string;
 }
 
 interface TrackResult {
   arrangementClips?: ReadClipResult[];
 }
 
-const MIDI_TRACK = 8;
-const AUDIO_TRACK = 5;
-
 /**
  * Duplicate a clip to arrangement at a given position.
  * @param id - Source clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  * @returns The duplicated clip's metadata
  */
 async function dupToArr(
   id: string,
-  arrangementStart: string,
+  position: string,
 ): Promise<DuplicateClipResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-duplicate",
     arguments: {
       type: "clip",
       id,
-      arrangementStart,
+      toPath: `[${position}]`,
     },
   });
   const clip = parseToolResult<DuplicateClipResult>(result);
@@ -71,7 +71,10 @@ async function dupToArr(
 async function readArrClips(trackIndex: number): Promise<ReadClipResult[]> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["arrangement-clips", "timing"] },
+    arguments: {
+      path: `t${trackIndex}`,
+      include: ["arrangement-clips", "timing"],
+    },
   });
 
   return parseToolResult<TrackResult>(result).arrangementClips ?? [];
@@ -90,8 +93,10 @@ function clipsInBarRange(
   maxBar: number,
 ): ReadClipResult[] {
   return clips.filter((c) => {
-    if (!c.arrangementStart) return false;
-    const barStr = c.arrangementStart.split("|")[0];
+    const start = arrangementStartOf(c);
+
+    if (start == null) return false;
+    const barStr = start.split("|")[0];
 
     if (!barStr) return false;
     const bar = parseInt(barStr, 10);
@@ -112,7 +117,7 @@ function parseLengthToBeats(length: string): number {
 }
 
 /**
- * Parse arrangementStart "bar|beat" string to absolute beats (assumes 4/4).
+ * Parse a "bar|beat" position to absolute beats (assumes 4/4).
  * @param barBeat - Position in "bar|beat" format (e.g., "133|1")
  * @returns Position in absolute beats
  */
@@ -137,19 +142,19 @@ function beatsToBarBeat(beats: number): string {
 /**
  * Get the arrangement length of a clip in beats by matching its position.
  * @param trackIndex - Track index
- * @param arrangementStart - Position in bar|beat format to match
+ * @param position - Position in bar|beat format to match
  * @returns Length in beats
  */
 async function getClipLengthBeatsAtPosition(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
 ): Promise<number> {
   const clips = await readArrClips(trackIndex);
-  const clip = clips.find((c) => c.arrangementStart === arrangementStart);
+  const clip = clips.find((c) => arrangementStartOf(c) === position);
 
   if (!clip?.arrangementLength) {
     throw new Error(
-      `Clip at ${arrangementStart} not found or missing arrangementLength`,
+      `Clip at ${position} not found or missing arrangementLength`,
     );
   }
 
@@ -168,7 +173,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiLong = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${MIDI_TRACK}/s0`,
+        path: `t${EMPTY_MIDI_TRACK}/s0`,
         notes: "C3 1|1",
         length: "4bar",
       },
@@ -180,7 +185,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiShort = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${MIDI_TRACK}/s1`,
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -220,10 +225,10 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(shortArr.id, "42|3");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("42|3");
+      expect(arrangementStartOf(result)).toBe("42|3");
 
       // 3 clips: dup at 42|3, trimmed 4-bar (after portion), source at 49|1
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 42, 50);
 
       expect(relevant).toHaveLength(3);
@@ -238,10 +243,10 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(shortArr.id, "61|1");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("61|1");
+      expect(arrangementStartOf(result)).toBe("61|1");
 
       // 3 clips: 1-bar at 61|1, truncated 3-bar, original 1-bar at 69|1
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 61, 70);
 
       expect(relevant).toHaveLength(3);
@@ -256,10 +261,10 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(shortArr.id, "83|1");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("83|1");
+      expect(arrangementStartOf(result)).toBe("83|1");
 
       // 4 clips: before (81-83), duplicated (83-84), after (84-85), original (89)
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 81, 90);
 
       expect(relevant).toHaveLength(4);
@@ -274,10 +279,10 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(shortArr.id, "76|3");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("76|3");
+      expect(arrangementStartOf(result)).toBe("76|3");
 
       // 3 clips: trimmed 4-bar (before portion), dup at 76|3, source at 79|1
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 73, 80);
 
       expect(relevant).toHaveLength(3);
@@ -322,7 +327,7 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(shortArr.id, "101|1");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("101|1");
+      expect(arrangementStartOf(result)).toBe("101|1");
 
       // 3 clips: kick at 101|1, partial sample, original kick at 105|1
       const clips = await readArrClips(AUDIO_TRACK);
@@ -391,7 +396,7 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(midiShortId, "51|1");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("51|1");
+      expect(arrangementStartOf(result)).toBe("51|1");
     });
 
     it("audio session clip onto existing arrangement clip does not crash", async () => {
@@ -400,7 +405,7 @@ describe("arrangement clip duplication crash workaround", () => {
       const result = await dupToArr(audioShortId, "151|1");
 
       expect(result.id).toBeDefined();
-      expect(result.arrangementStart).toBe("151|1");
+      expect(arrangementStartOf(result)).toBe("151|1");
     });
   });
 });

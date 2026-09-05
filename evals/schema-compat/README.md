@@ -14,6 +14,29 @@ and stops. For each (model × variant) it records whether the provider:
 - **filled** it in a structurally correct shape, scored by a per-variant
   `check()` in [`schema-compat-variants.ts`](./schema-compat-variants.ts).
 
+A second, narrower question was added later: **does a model fill an optional
+param it has no value for with `""` or `null`, or leave it out?** ADR-0029
+assumes it fills; ADR-0035's rule 5 would make the blank an error. The
+`unset-optionals` variant measures it, and is not in the AI SDK snapshot below.
+
+## Two runners, one corpus
+
+The variants are pure data, shared by two runners:
+
+| runner                       | reaches the model via | needs           |
+| ---------------------------- | --------------------- | --------------- |
+| `probe-schema-compat.ts`     | the AI SDK directly   | an API key      |
+| `probe-schema-compat-cli.ts` | a coding-agent CLI    | a logged-in CLI |
+
+The CLI runner exists because the agent CLIs (Codex, Claude Code) own their own
+MCP connection and can't be reached through `jsonSchema()`. It serves each
+variant from a throwaway MCP server
+([`probe-mcp-server.ts`](./probe-mcp-server.ts)) that returns the schema
+byte-for-byte, points the CLI at it, and reads the arguments off the wire. Still
+no Ableton. It measures the **CLI as a client** — its system prompt, tool-name
+mangling, and any schema rewriting are all in the signal, which is the point:
+that is what those users' clients actually do.
+
 ## Running it
 
 ```bash
@@ -33,6 +56,20 @@ node --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [fla
   this probe controls for noise.
 - `--auto` — let the model decide whether to call the tool (default is
   `required`, which guarantees a call but is rejected by a few endpoints).
+
+```bash
+node evals/schema-compat/probe-schema-compat-cli.ts [models...] [flags]
+```
+
+- **models** — `provider/model` for a CLI-backed provider (`codex-code/luna`,
+  the default, or `claude-code/sonnet`). No API key: these bill the logged-in
+  subscription.
+- `--repeat=N` — draws per cell (default **1**). Each draw spawns a CLI
+  subprocess, so repeats cost far more here than on the AI SDK path.
+- `--variant=id` — probe only this variant; repeatable.
+
+There is no `--auto`/`required` equivalent: the CLI decides whether to call, so
+a `no-call` cell means it chatted instead — not a schema failure on its own.
 
 ## Results snapshot
 
@@ -74,6 +111,22 @@ distribution is in the probe's `=== details ===` output.)
   with `|` separators (`reverse | warpAs(4) | ...`); haiku sometimes kept the
   whole pipe-delimited string as a single array element. The takeaway is about
   prompt phrasing, not array support.
+
+### Agent-CLI snapshot
+
+**Date:** 2026-08-31 · **`codex-code/luna`, 1 draw per cell.** All eight
+variants came back `ok`, including the two that break AI SDK models:
+
+| variant                 | result | input                                |
+| ----------------------- | ------ | ------------------------------------ |
+| `string-or-array-union` | ok     | `{"action":["reverse","warpAs(4)"]}` |
+| `object-map`            | ok     | `{"params":{"Frequency":"500",…}}`   |
+| `unset-optionals`       | ok     | `{"tempo":120}`                      |
+
+The `unset-optionals` cell is the one ADR-0035's rule 5 rests on: five optional
+params offered, one asked for, nothing blank-filled. It matches what 128 tool
+calls over 13 eval scenarios showed on the same model. **One model, one draw** —
+it says nothing about the clients most users run.
 
 ### Bottom line
 

@@ -22,6 +22,11 @@ your replies.
 - **Never cut the load-bearing part.** An assumption that causes a bug if it's
   wrong stays. So does a "don't do the obvious thing here, because X" warning.
   Trim the story around the fact, not the fact.
+- **A code comment stands on its own.** Say the reason in the comment; don't
+  send the reader to an ADR for it. ADRs get rewritten, merged and renumbered,
+  and a pointer to a numbered rule inside one is the first thing a rewrite
+  breaks. A bare `(ADR-00NN)` after a complete thought is fine — it attributes
+  without the comment depending on it.
 - **Tool descriptions and results are the tightest of all** — the Producer Pal
   Skills, `.def.ts` descriptions, and tool results all spend the user's context
   window. Keep them short, clear, and limited to what the model needs.
@@ -103,16 +108,23 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   at a different Live object. Build them where you use them. See
   `src/live-api-adapter/live-api-release.ts`.
 
-- **Update tools never throw** for a bad param combo or an operation that
-  doesn't apply. `console.warn()`, skip that operation, and keep going, so the
-  rest of a multi-item call still succeeds. Warnings are not silent — they're
-  appended to the tool response as `WARNING:` blocks the model reads.
+- **Tool design follows `dev/Principles.md`** — addressing, multi-target,
+  relocation, partial completion, observability, warnings, destruction,
+  vocabulary, spelling, efficiency. Read it before changing a tool's inputs,
+  outputs, or failure behavior. Anything about a target goes in that target's
+  result entry; a warning is only for what no result can carry, and is appended
+  to the response as a `WARNING:` block the model reads. See ADR-0035 for the
+  calls that are refused up front instead. Never cite a principle by number
+  outside that file — numbering shifts as principles merge and split; state the
+  idea instead.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
   async context to do that automatically. So: adding an `await` to
-  `handleRequest` needs a matching `resumeWarningCapture()`, and any new promise
-  V8 can suspend on needs `suspendWarningCapture()`. Miss either and warnings
+  `handleRequest` needs a matching `resumeWarningCapture()` on every path back
+  out, `catch` included; any new promise V8 can suspend on needs
+  `suspendWarningCapture()`; and a `void`-ed async call is a suspension point
+  too, so it needs `detachWarningCapture()`. Miss any of them and warnings
   silently land on another request's response. Warnings raised with no request
   in flight go to the Max console instead — don't try to route them into a
   response. See `src/shared/max/v8-warning-capture.ts`.
@@ -176,8 +188,7 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   `{feature}-helpers.ts` beside it — don't compress code to squeak under the
   limit. Once a directory has 2+ helper files, move them into `helpers/`. Split
   test files as `{feature}-{area}.test.ts`, and give a feature its own `tests/`
-  directory once it has 3+ test files. See
-  `.claude/skills/refactoring/SKILL.md`.
+  directory once it has 3+ test files.
 
 - **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
   work, but the rule requiring a `-- reason` on every directive only sees the
@@ -223,9 +234,15 @@ The practical consequences:
   `npm run fix`, then `npm run check`, then `npm run check:build`. If you
   touched `webui/**`, also run `npm run ui:test` — `check` doesn't include it.
 - `npm run build:debug` is the dev build. It force-enables the Direct Live API
-  tool, code execution, and work-in-progress warp markers, none of which exist
-  in a release build. `npm run check:build` overwrites it with a release build,
-  so re-run `build:debug` afterwards or the device in Live is the wrong one.
+  tool, which a release build gates off — harmless for evals and e2e, since it
+  stays off until `POST /config { liveApiEnabled }` turns it on. The `code`
+  param and the work-in-progress warp params are NOT on by default: they go
+  straight into the clip tool schemas with no runtime gate, so a model would
+  reach for a feature no release build ships. Opt in per build when you're
+  working on one (`ENABLE_CODE_EXEC=true npm run build:debug`), and rebuild
+  plain afterwards. `npm run check:build` overwrites the device with a release
+  build, so re-run `build:debug` afterwards or the device in Live is the wrong
+  one.
 - **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
   use `console.warn()` — it shows up in the CLI and in the live MCP response.
   `console.log()` and `console.error()` don't.
@@ -262,10 +279,19 @@ which returns the path the device actually landed at. A test that assumes `d1`
 passes for whoever wrote it and fails for everyone else. The same goes for any
 other per-machine Live preference a test might lean on.
 
+**Save test Live Sets from `MIN_LIVE_VERSION`**, not from whatever Live you have
+installed. Live can't open a Set saved by a newer version, so a Set authored
+above the minimum makes every test that opens it unrunnable on the oldest Live
+we support. `src/test/meta/versions/live-set-versions.test.ts` catches it.
+
 ## Protected Files (Require User Approval)
 
-These hold quality thresholds — **don't relax any of them without asking:**
+These encode standards the project is held to — **don't relax or rewrite any of
+them without asking:**
 
+- `dev/Principles.md` — the first principles for tool design. It states the
+  intended future state, so editing one to match today's code retires a goal
+  silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
   `@ts-expect-error`, and v8-ignore comments.
 - `vitest.config.ts` (thresholds) — coverage.
@@ -274,11 +300,28 @@ These hold quality thresholds — **don't relax any of them without asking:**
 ## Documentation
 
 Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
-find one. The main ones: `dev/Architecture.md` (system design),
-`dev/Coding-Standards.md` (full style guide + Live API reference),
-`dev/Testing.md`, `dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/`
-(bar|beat and transform grammars), `dev/Development-Tools.md`, and
-`dev/decisions/` (ADRs — why settled choices went the way they did, especially
-the rejections).
+find one. The main ones: `dev/Principles.md` (first principles for tool design —
+read first), `dev/Architecture.md` (system design), `dev/Coding-Standards.md`
+(full style guide + Live API reference), `dev/Testing.md`,
+`dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/` (bar|beat and transform
+grammars), `dev/Development-Tools.md`, and `dev/decisions/` (ADRs — why settled
+choices went the way they did, especially the rejections).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
+
+**Keep a doc small enough to read whole.** Past ~20 KB, split it: an index with
+the concepts, plus one file per lookup-table chunk in a sibling directory
+(`dev/mutation-baselines/`, `dev/specialized-devices/`). Catalogs and per-scope
+results are the parts to move out; the reasoning stays in the index.
+
+### For agents: reading without burning context
+
+This repo is big — 900+ source files and ~1.3 MB of `dev/` docs. Reading whole
+files is the main way a session runs out of room.
+
+- **Search docs, don't read them.** `grep -n -A15` for the term you need. Read a
+  `dev/` doc end-to-end only if it's under ~15 KB.
+- **Read tests and long sources in ranges.** `sed -n '120,190p'` the block you
+  care about; test files here run to 800+ lines.
+- **Coverage:** `grep` the file you touched out of
+  `coverage/coverage-summary.txt` — don't print the whole thing.

@@ -6,12 +6,10 @@
 import { describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   overrideCall,
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
 import {
   buildClipProperties,
@@ -21,6 +19,7 @@ import {
   expectClipCreated,
   expectNotesAdded,
   note,
+  registerEmptyClipSlot,
   setupArrangementClipMocks,
   setupDualMocks,
   setupSessionMocks,
@@ -29,17 +28,6 @@ import {
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
-
-// Registers an empty clip slot (and its clip path) at track 0, the given scene.
-function registerEmptyClipSlot(sceneIndex: number): void {
-  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}`, {
-    path: livePath.track(0).clipSlot(sceneIndex),
-    properties: { has_clip: 0 },
-  });
-  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}/clip`, {
-    path: livePath.track(0).clipSlot(sceneIndex).clip(),
-  });
-}
 
 /**
  * Create a clip from two identical p60/start0 notes and assert the dedupe
@@ -122,7 +110,7 @@ describe("createClip - advanced features", () => {
       name: "Multiple",
     });
 
-    expect(singleResult).toMatchObject({
+    expect(singleResult).toStrictEqual({
       id: expect.any(String),
       path: "t0/s0",
     });
@@ -238,12 +226,13 @@ describe("createClip - advanced features", () => {
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
       selectMockRef.get().mockImplementationOnce(() => {
-        throw new Error('select failed: id "gone" does not exist');
+        throw new Error('id "gone" does not exist');
       });
 
       const result = await createClip({ slot: "0/0", focus: true });
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
+        path: "t0/s0",
         id: "live_set/tracks/0/clip_slots/0/clip",
       });
       expect(warn).toHaveBeenCalledWith(
@@ -323,8 +312,7 @@ describe("createClip - advanced features", () => {
       });
       expect(clips[1]).toStrictEqual({
         id: "arrangement_clip",
-        path: "t0",
-        arrangementStart: "1|1",
+        path: "t0[1|1]",
       });
     });
 
@@ -453,7 +441,12 @@ describe("createClip - advanced features", () => {
         notes: "C1 D1 E1 1|1",
       });
 
-      expect(result).toMatchObject({ noteCount: 2 });
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+        length: "1bar",
+        path: "t0/s0",
+        noteCount: 2,
+      });
     });
   });
 
@@ -561,7 +554,6 @@ describe("buildClipResult (unit)", () => {
       0,
       "session",
       0,
-      null,
       "C3 1|1",
       "2bar",
       4,

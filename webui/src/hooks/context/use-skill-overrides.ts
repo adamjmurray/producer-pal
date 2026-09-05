@@ -8,6 +8,7 @@ import {
   getSkillOverrideUrl,
   getSkillOverridesUrl,
 } from "#webui/utils/mcp-url";
+import { fetchWithDeadline } from "#webui/utils/fetch-with-deadline";
 import {
   runGuardedRefresh,
   statusAfterFailedRefresh,
@@ -196,17 +197,22 @@ interface SlotWriteBody {
  * @returns Every slot's built-in, override, and drift state
  */
 async function fetchSlots(): Promise<SkillSlotView[]> {
-  const response = await fetch(getSkillOverridesUrl(), { cache: "no-store" });
+  return await fetchWithDeadline(
+    getSkillOverridesUrl(),
+    { cache: "no-store" },
+    "Skills request timed out",
+    async (response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Skills request failed (${response.status} ${response.statusText})`,
+        );
+      }
 
-  if (!response.ok) {
-    throw new Error(
-      `Skills request failed (${response.status} ${response.statusText})`,
-    );
-  }
+      const body = (await response.json()) as { slots?: RawSkillSlot[] };
 
-  const body = (await response.json()) as { slots?: RawSkillSlot[] };
-
-  return (body.slots ?? []).map(toView);
+      return (body.slots ?? []).map(toView);
+    },
+  );
 }
 
 /**
@@ -244,21 +250,26 @@ async function sendSlot(
   method: "PUT" | "DELETE",
   jsonBody?: SlotWriteBody,
 ): Promise<SkillSlotView> {
-  const response = await fetch(url, {
-    method,
-    headers: jsonBody ? { "Content-Type": "application/json" } : undefined,
-    body: jsonBody ? JSON.stringify(jsonBody) : undefined,
-  });
+  return await fetchWithDeadline(
+    url,
+    {
+      method,
+      headers: jsonBody ? { "Content-Type": "application/json" } : undefined,
+      body: jsonBody ? JSON.stringify(jsonBody) : undefined,
+    },
+    "Skills update timed out",
+    async (response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Skills update failed (${response.status} ${response.statusText})`,
+        );
+      }
 
-  if (!response.ok) {
-    throw new Error(
-      `Skills update failed (${response.status} ${response.statusText})`,
-    );
-  }
+      const body = (await response.json()) as { slot: RawSkillSlot };
 
-  const body = (await response.json()) as { slot: RawSkillSlot };
-
-  return toView(body.slot);
+      return toView(body.slot);
+    },
+  );
 }
 
 /**

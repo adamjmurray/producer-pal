@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("bar|beat interpretNotation() - pattern features", () => {
   describe("repeat patterns (x{times}@{step})", () => {
@@ -224,8 +225,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
 
     it("emits warning for excessive repeat times", () => {
       interpretNotation("C1 1|1x101@n/4");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("101 notes, which may be excessive"),
       );
     });
@@ -239,8 +239,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[0]!.duration).toBe(0.5);
 
       // Should NOT warn about buffered pitches
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("pitch(es) buffered but no time position"),
       );
     });
@@ -254,8 +253,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[0]!.duration).toBe(0.5);
 
       // Should NOT warn about buffered pitches before bar copy
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining(
           "pitch(es) buffered but not emitted before bar copy",
         ),
@@ -269,8 +267,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result).toHaveLength(0);
 
       // Should warn about buffered pitches before bar copy
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "2 pitch(es) buffered but not emitted before bar copy",
         ),

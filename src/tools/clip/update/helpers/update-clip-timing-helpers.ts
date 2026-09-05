@@ -12,6 +12,10 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import {
+  targetLabel,
+  targetLabelForId,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface BeatPositions {
   startBeats: number | null;
@@ -40,12 +44,14 @@ interface TimeSignature {
 
 /**
  * Determine start_marker value with bounds checking
+ * @param clipId - The clip being updated, for the warning
  * @param firstStartBeats - First start position in beats
  * @param startBeats - Start position in beats
  * @param endMarker - Clip end marker (content boundary)
  * @returns start_marker value or null if not applicable
  */
 function determineStartMarker(
+  clipId: string,
   firstStartBeats: number | null,
   startBeats: number | null,
   endMarker: number,
@@ -56,7 +62,7 @@ function determineStartMarker(
     }
 
     console.warn(
-      `firstStart parameter ignored - exceeds clip content boundary (${firstStartBeats} >= ${endMarker})`,
+      `firstStart ignored for clip ${targetLabelForId(clipId)} - exceeds its content boundary (${firstStartBeats} >= ${endMarker})`,
     );
 
     return null;
@@ -150,7 +156,7 @@ export function calculateBeatPositions({
           Math.abs(startBeats - currentStart) > SAME_TIME_EPSILON
         ) {
           console.warn(
-            `Derived start (${startBeats}) differs from current start_marker (${currentStart})`,
+            `clip ${targetLabel(clip)}: derived start (${startBeats}) differs from current start_marker (${currentStart})`,
           );
         }
       }
@@ -181,6 +187,7 @@ export function calculateBeatPositions({
   // Bound it by the end this update is writing rather than the stale one — an
   // expanding write moves the end first (see buildClipPropertiesToSet).
   const startMarkerBeats = determineStartMarker(
+    clip.id,
     firstStartBeats,
     startBeats,
     endBeats ?? readMarker("end_marker"),

@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
-import { assertDefined } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -69,9 +68,15 @@ interface DrumPadInfo {
 
 export interface DeviceWithDrumPads {
   type: string;
+  path?: string;
   _processedDrumPads?: DrumPadInfo[];
   chains?: Array<{ devices?: DeviceWithDrumPads[] }>;
 }
+
+/** A drum rack that has been read, so its pads are there to map. */
+export type DrumRackDevice = DeviceWithDrumPads & {
+  _processedDrumPads: DrumPadInfo[];
+};
 
 /**
  * Determine device type from Live API properties
@@ -189,6 +194,38 @@ function cleanupChain(chain: unknown): unknown {
 }
 
 /**
+ * Find the drum rack whose pads a track or device plays.
+ *
+ * Every chain is searched, not just the first, so a kit nested in any rack
+ * chain is found. Searching `chains` alone is also what stops the walk at a
+ * drum rack: a drum rack keeps its chains under drum pads, so racks nested
+ * inside the kit are deliberately not collected — the track plays the outer
+ * kit, and its pads are the drum map.
+ * @param devices - Array of processed device objects
+ * @returns The first drum rack found, or null if there is none
+ */
+export function findDrumRack(
+  devices: DeviceWithDrumPads[],
+): DrumRackDevice | null {
+  for (const device of devices) {
+    if (
+      device.type.startsWith(DEVICE_TYPE.DRUM_RACK) &&
+      device._processedDrumPads
+    ) {
+      return device as DrumRackDevice;
+    }
+
+    for (const chain of device.chains ?? []) {
+      const nested = findDrumRack(chain.devices ?? []);
+
+      if (nested != null) return nested;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Extract track-level drum map from the processed device structure.
  *
  * Keys match how the active notation addresses drum pads (see drumMapKey):
@@ -202,58 +239,21 @@ export function getDrumMap(
   devices: DeviceWithDrumPads[],
   notation?: Notation,
 ): Record<string, string> | null {
-  /**
-   * Recursively find drum rack devices in a device list
-   * @param deviceList - Array of device objects to search
-   * @returns Array of drum rack devices
-   */
-  function findDrumRacksInDevices(
-    deviceList: DeviceWithDrumPads[],
-  ): DeviceWithDrumPads[] {
-    const drumRacks: DeviceWithDrumPads[] = [];
+  const drumRack = findDrumRack(devices);
 
-    for (const device of deviceList) {
-      if (
-        device.type.startsWith(DEVICE_TYPE.DRUM_RACK) &&
-        device._processedDrumPads
-      ) {
-        drumRacks.push(device);
-      }
-
-      // Every chain is searched, not just the first, so a kit nested in any
-      // rack chain is found. Searching `chains` alone is also what stops the
-      // walk at a drum rack: a drum rack keeps its chains under drum pads, so
-      // racks nested inside the kit are deliberately not collected — the track
-      // plays the outer kit, and its pads are the drum map.
-      if (device.chains) {
-        for (const chain of device.chains) {
-          if (chain.devices) {
-            drumRacks.push(...findDrumRacksInDevices(chain.devices));
-          }
-        }
-      }
-    }
-
-    return drumRacks;
-  }
-
-  const drumRacks = findDrumRacksInDevices(devices);
-
-  if (drumRacks.length === 0) {
+  if (drumRack == null) {
     return null;
   }
 
   const drumMap: Record<string, string> = {};
-  const firstDrumRack = assertDefined(drumRacks[0], "first drum rack");
-  const drumPads = firstDrumRack._processedDrumPads ?? [];
 
-  for (const drumPad of drumPads) {
+  for (const drumPad of drumRack._processedDrumPads) {
     if (drumPad.hasInstrument !== false) {
       drumMap[drumMapKey(drumPad, notation)] = drumPad.name;
     }
   }
 
-  return Object.keys(drumMap).length > 0 ? drumMap : {};
+  return drumMap;
 }
 
 /**

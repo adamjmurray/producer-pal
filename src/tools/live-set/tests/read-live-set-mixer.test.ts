@@ -6,7 +6,10 @@ import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  masterTrackMockObject,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 // Helper to set up mocks for a single track with mixer properties
 function setupSingleTrackMixerMock({
@@ -39,12 +42,7 @@ function setupSingleTrackMixerMock({
         clip_slots: [],
         devices: [],
       },
-      [String(livePath.masterTrack())]: {
-        has_midi_input: 0,
-        name: "Master",
-        mixer_device: children("master_mixer"),
-        devices: [],
-      },
+      ...masterTrackMockObject({ mixer_device: children("master_mixer") }),
       [livePath.masterTrack().mixerDevice()]: {
         volume: children("master_volume"),
         panning: children("master_pan"),
@@ -112,11 +110,7 @@ describe("readLiveSet - mixer properties", () => {
           return_tracks: children("return1"),
           scenes: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          devices: [],
-        },
+        ...masterTrackMockObject(),
         [String(livePath.returnTrack(0))]: {
           has_midi_input: 0,
           name: "Return Track",
@@ -167,12 +161,7 @@ describe("readLiveSet - mixer properties", () => {
           tracks: children(),
           scenes: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          mixer_device: children("mixer_1"),
-          devices: [],
-        },
+        ...masterTrackMockObject({ mixer_device: children("mixer_1") }),
         [livePath.masterTrack().mixerDevice()]: {
           volume: children("volume_param_1"),
           panning: children("panning_param_1"),
@@ -190,7 +179,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["tracks", "mixer"],
     });
 
-    expect(result.masterTrack).toStrictEqual(
+    expect(result.mainTrack).toStrictEqual(
       expect.objectContaining({
         name: "Master",
         gainDb: 0,
@@ -238,11 +227,7 @@ describe("readLiveSet - mixer properties", () => {
           return_tracks: children(),
           scenes: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          devices: [],
-        },
+        ...masterTrackMockObject(),
         [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Track 1",

@@ -9,10 +9,31 @@ import {
   children,
   expectValueSet,
   livePath,
+  registerDeviceWithParams,
   registerMockObject,
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/**
+ * Registration options for a mock "Volume" param. Fresh objects each call —
+ * set() writes into `properties`, so two mocks must not share one.
+ * @returns The properties and str_for_value a Volume param mock needs
+ */
+function volumeParamOptions() {
+  return {
+    properties: {
+      name: "Volume",
+      original_name: "Volume",
+      is_quantized: 0,
+      value: 0.5,
+      min: 0,
+      max: 1,
+    },
+    methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+  };
+}
 
 /**
  * Register a device holding one 0–1 continuous param whose min/max labels are
@@ -28,11 +49,7 @@ function registerBinarySearchParam(
   name: string,
   midLabel: string,
 ): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children(paramId) },
-  });
+  registerDeviceWithParams(paramId);
 
   return registerMockObject(paramId, {
     properties: {
@@ -61,11 +78,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("env-param") },
-      });
+      registerDeviceWithParams("env-param");
       // Simulate exponential envelope time: raw 0-1 → display 5-15000 ms
       param = registerMockObject("env-param", {
         properties: {
@@ -117,11 +130,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("time-param") },
-      });
+      registerDeviceWithParams("time-param");
       param = registerMockObject("time-param", {
         properties: {
           name: "Decay",
@@ -155,11 +164,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("weird-param") },
-      });
+      registerDeviceWithParams("weird-param");
       param = registerMockObject("weird-param", {
         properties: {
           name: "Special",
@@ -189,11 +194,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("half-param") },
-      });
+      registerDeviceWithParams("half-param");
       param = registerMockObject("half-param", {
         properties: {
           name: "HalfParsed",
@@ -225,11 +226,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("str-param") },
-      });
+      registerDeviceWithParams("str-param");
       param = registerMockObject("str-param", {
         properties: {
           name: "Mode",
@@ -252,9 +249,19 @@ describe("updateDevice - param value conversion", () => {
       });
 
       expect(param.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('could not interpret "custom-value"'),
+      );
+    });
+
+    it("should warn and not write a unit with no number in front of it", () => {
+      // "-dB" once parsed to NaN, which fails every range check silently and
+      // writes NaN (or walks a searched param to an end) reporting success.
+      updateDevice({ id: "dev1", params: [{ name: "Mode", value: "-dB" }] });
+
+      expect(param.set).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining('could not interpret "-dB"'),
       );
     });
   });
@@ -268,13 +275,12 @@ describe("updateDevice - param value conversion", () => {
       param = registerBinarySearchParam("flaky-param", "Flaky", "---");
     });
 
-    it("should converge toward min when mid-range labels parse as NaN", () => {
+    it("should stop where the labels stop being numbers", () => {
       updateDevice({ id: "dev1", params: [{ name: "Flaky", value: "500" }] });
 
-      // "---" parses as NaN (leading hyphens match the number regex).
-      // NaN comparisons always false, so binary search treats it as
-      // greater-than-target and converges hi toward lo (near rawMin).
-      expect(expectValueSet(param)).toBeCloseTo(0.01, 1);
+      // "---" is not a number, so the search has nothing left to compare and
+      // collapses on the midpoint it stalled at rather than walking to an end.
+      expect(expectValueSet(param)).toBeCloseTo(0.5, 2);
     });
   });
 
@@ -282,28 +288,92 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children() },
-      });
+      registerDeviceWithParams();
       param = registerMockObject("42", {
-        properties: {
-          name: "Volume",
-          original_name: "Volume",
-          is_quantized: 0,
-          value: 0.5,
-          min: 0,
-          max: 1,
-        },
-        methods: {
-          str_for_value: (v: unknown) => `${Number(v)} dB`,
-        },
+        path: livePath.track(0).device(0).parameter(1),
+        type: "DeviceParameter",
+        ...volumeParamOptions(),
       });
     });
 
     it("should resolve param via absolute numeric ID fallback", () => {
       updateDevice({ id: "dev1", params: [{ name: "42", value: "0.8" }] });
+
+      expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    });
+
+    it("refuses an id that names something other than a parameter", () => {
+      // Every object id resolves, and a non-parameter reads back as an
+      // enabled param with no range, so the write would be reported as landing
+      // on a name read off an unrelated object.
+      const liveSet = registerMockObject("1", {
+        path: livePath.liveSet,
+        type: "Song",
+        properties: { name: "my-set" },
+      });
+
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "1", value: "5" }],
+      });
+
+      expect(capturedWarnings()).toContain(
+        'param "1" not found on t0/d0 (id dev1)',
+      );
+      expect(result).toStrictEqual({
+        id: "dev1",
+        path: "t0/d0",
+        params: [{ name: "1", reason: "not found on t0/d0 (id dev1)" }],
+      });
+      expect(liveSet.set).not.toHaveBeenCalled();
+    });
+
+    it("refuses an id belonging to a device the call never addressed", () => {
+      // A param id is global. Nothing but the nesting in the result says which
+      // device a param entry belongs to, so writing another device's param
+      // reports a change to the addressed one that never happened there.
+      const foreign = registerForeignParam();
+
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "143", value: "-12" }],
+      });
+
+      expect(foreign.set).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        id: "dev1",
+        path: "t0/d0",
+        params: [
+          {
+            name: "143",
+            reason:
+              "id 143 is on t10/d0, not t0/d0 (id dev1), so it was not written",
+          },
+        ],
+      });
+    });
+
+    it("names where the param actually lives, so the call can be corrected", () => {
+      registerForeignParam();
+
+      updateDevice({ id: "dev1", params: [{ name: "143", value: "-12" }] });
+
+      expect(capturedWarnings()).toContain(
+        "param id 143 is on t10/d0, not t0/d0 (id dev1), " +
+          "so it was not written",
+      );
+    });
+
+    it("keeps writing the device's own params in the same call", () => {
+      registerForeignParam();
+
+      updateDevice({
+        id: "dev1",
+        params: [
+          { name: "143", value: "-12" },
+          { name: "42", value: "0.8" },
+        ],
+      });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.8);
     });
@@ -350,11 +420,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("note name out of MIDI range", () => {
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("note-param") },
-      });
+      registerDeviceWithParams("note-param");
       registerMockObject("note-param", {
         properties: {
           name: "Pitch",
@@ -374,8 +440,7 @@ describe("updateDevice - param value conversion", () => {
       // C-3 is a valid note name but maps to MIDI note -12 (out of 0-127)
       updateDevice({ id: "dev1", params: [{ name: "Pitch", value: "C-3" }] });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('invalid note name "C-3"'),
       );
     });
@@ -408,11 +473,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("pan param with non-standard scale labels", () => {
     it("falls back to a 50 pan scale when neither min nor max label is parseable", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("pan-param") },
-      });
+      registerDeviceWithParams("pan-param");
       const param = registerMockObject("pan-param", {
         properties: {
           name: "Pan",
@@ -446,11 +507,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("division param with numeric str_for_value labels", () => {
     it("matches a division option when str_for_value returns a number", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("div-param") },
-      });
+      registerDeviceWithParams("div-param");
       const param = registerMockObject("div-param", {
         properties: {
           name: "Div",
@@ -476,11 +533,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("numeric param with zero raw range", () => {
     it("uses the flat tolerance and sets the display value directly", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("fixed-param") },
-      });
+      registerDeviceWithParams("fixed-param");
       const param = registerMockObject("fixed-param", {
         properties: {
           name: "Fixed",
@@ -501,23 +554,28 @@ describe("updateDevice - param value conversion", () => {
     });
   });
 
-  describe("param not found warning", () => {
-    it("should warn when param name does not match any device parameter", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children() },
-      });
+  describe("a param name that matches nothing", () => {
+    it("comes back as an entry saying so, and a warning", () => {
+      registerDeviceWithParams();
 
-      updateDevice({
+      const result = updateDevice({
         id: "dev1",
         params: [{ name: "NonExistentParam", value: "0.5" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('"NonExistentParam" not found'),
       );
+      expect(result).toStrictEqual({
+        id: "dev1",
+        path: "t0/d0",
+        params: [
+          {
+            name: "NonExistentParam",
+            reason: "not found on t0/d0 (id dev1)",
+          },
+        ],
+      });
     });
   });
 });
@@ -535,7 +593,13 @@ describe("updateDevice - sample pseudo-param", () => {
       "replace_sample",
       "/tmp/kick.wav",
     );
-    expect(result).toStrictEqual({ id: "simpler-1" });
+    // The call went through and nothing loaded, so the entry says the value
+    // never arrived rather than leaving the write looking like it worked.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [{ name: "sample", reason: "written, but no value reads back" }],
+    });
   });
 
   it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
@@ -546,25 +610,14 @@ describe("updateDevice - sample pseudo-param", () => {
       params: [{ name: "sample", value: "/tmp/kick.wav" }],
     });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining('"sample" not found'),
     );
   });
 
   it("loads sample alongside regular DeviceParameters in one params block", () => {
     const simpler = registerSimplerDevice("vol-param");
-    const param = registerMockObject("vol-param", {
-      properties: {
-        name: "Volume",
-        original_name: "Volume",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
-    });
+    const param = registerMockObject("vol-param", volumeParamOptions());
 
     updateDevice({
       id: "simpler-1",
@@ -589,7 +642,7 @@ describe("updateDevice - actions arg", () => {
     const result = updateDevice({ id: "simpler-1", actions: ["reverse"] });
 
     expect(simpler.call).toHaveBeenCalledWith("reverse");
-    expect(result).toStrictEqual({ id: "simpler-1" });
+    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
   });
 
   it("applies actions alongside params in one call", () => {
@@ -617,9 +670,21 @@ describe("updateDevice - actions arg", () => {
 
     updateDevice({ id: "chain-1", actions: ["reverse"] });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("'actions' not applicable to Chain"),
     );
   });
 });
+
+/**
+ * A parameter on a device the tests never address, so a numeric key naming it
+ * is a cross-device write.
+ * @returns The registered mock parameter
+ */
+function registerForeignParam(): RegisteredMockObject {
+  return registerMockObject("143", {
+    path: livePath.track(10).device(0).parameter(2),
+    type: "DeviceParameter",
+    ...volumeParamOptions(),
+  });
+}

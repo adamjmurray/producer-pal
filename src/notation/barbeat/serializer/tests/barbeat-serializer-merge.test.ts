@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
+import { cMajorAt, dMinorAt } from "./barbeat-serializer-test-helpers.ts";
 
 describe("comma merging", () => {
   it("merges identical single notes at different beats in same bar", () => {
@@ -19,14 +20,7 @@ describe("comma merging", () => {
   });
 
   it("merges identical chords at different beats in same bar", () => {
-    const notes = [
-      createNote({ start_time: 0 }),
-      createNote({ pitch: 64, start_time: 0 }),
-      createNote({ pitch: 67, start_time: 0 }),
-      createNote({ start_time: 2 }),
-      createNote({ pitch: 64, start_time: 2 }),
-      createNote({ pitch: 67, start_time: 2 }),
-    ] as NoteEvent[];
+    const notes = [...cMajorAt(0), ...cMajorAt(2)];
 
     expect(formatNotation(notes)).toBe("v100 n/4 C3 E3 G3 1|1,3");
   });
@@ -146,23 +140,11 @@ describe("comma merging", () => {
 
   it("merges repeated chord progression pattern", () => {
     const notes = [
-      // C major at beat 1
-      createNote({ start_time: 0 }),
-      createNote({ pitch: 64, start_time: 0 }),
-      createNote({ pitch: 67, start_time: 0 }),
-      // D minor at beat 2
-      createNote({ pitch: 62, start_time: 1 }),
-      createNote({ pitch: 65, start_time: 1 }),
-      createNote({ pitch: 69, start_time: 1 }),
-      // C major at beat 3 (same as beat 1)
-      createNote({ start_time: 2 }),
-      createNote({ pitch: 64, start_time: 2 }),
-      createNote({ pitch: 67, start_time: 2 }),
-      // D minor at beat 4 (same as beat 2)
-      createNote({ pitch: 62, start_time: 3 }),
-      createNote({ pitch: 65, start_time: 3 }),
-      createNote({ pitch: 69, start_time: 3 }),
-    ] as NoteEvent[];
+      ...cMajorAt(0),
+      ...dMinorAt(1),
+      ...cMajorAt(2),
+      ...dMinorAt(3),
+    ];
 
     // C/E/G merges at 1,3 and D/F/A merges at 2,4
     expect(formatNotation(notes)).toBe(

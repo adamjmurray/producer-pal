@@ -67,7 +67,10 @@ describe("createScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
     expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
     expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
-    expect(result).toStrictEqual({ id: "live_set/scenes/1", sceneIndex: 1 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/1",
+      path: "s1",
+    });
   });
 
   it("should create multiple scenes with auto-incrementing names", () => {
@@ -87,9 +90,9 @@ describe("createScene", () => {
     expect(scene2.set).toHaveBeenCalledWith("name", "Verse");
 
     expect(result).toStrictEqual([
-      { id: "live_set/scenes/0", sceneIndex: 0 },
-      { id: "live_set/scenes/1", sceneIndex: 1 },
-      { id: "live_set/scenes/2", sceneIndex: 2 },
+      { id: "live_set/scenes/0", path: "s0" },
+      { id: "live_set/scenes/1", path: "s1" },
+      { id: "live_set/scenes/2", path: "s2" },
     ]);
   });
 
@@ -98,7 +101,10 @@ describe("createScene", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 0);
     expect(scene0.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
   });
 
   it("should pad with empty scenes when sceneIndex exceeds current count", () => {
@@ -123,6 +129,15 @@ describe("createScene", () => {
     expect(scene0.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
   });
 
+  // Checked before the padding scenes are created, so a bad tempo doesn't
+  // leave a run of empty scenes behind.
+  it("refuses an out-of-range tempo before creating anything", () => {
+    expect(() => createScene({ sceneIndex: 0, tempo: 0 })).toThrow(
+      "tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
   it("should disable time signature when 'disabled' is passed", () => {
     createScene({
       sceneIndex: 0,
@@ -141,20 +156,16 @@ describe("createScene", () => {
   });
 
   it("should throw error when sceneIndex is missing", () => {
-    expect(() => createScene({})).toThrow(
-      "createScene failed: sceneIndex is required",
-    );
-    expect(() => createScene({ count: 2 })).toThrow(
-      "createScene failed: sceneIndex is required",
-    );
+    expect(() => createScene({})).toThrow("path is required");
+    expect(() => createScene({ count: 2 })).toThrow("path is required");
   });
 
   it("should throw error when count is less than 1", () => {
     expect(() => createScene({ sceneIndex: 0, count: 0 })).toThrow(
-      "createScene failed: count must be at least 1",
+      "count must be at least 1",
     );
     expect(() => createScene({ sceneIndex: 0, count: -1 })).toThrow(
-      "createScene failed: count must be at least 1",
+      "count must be at least 1",
     );
   });
 
@@ -197,23 +208,20 @@ describe("createScene", () => {
 
     expect(singleResult).toStrictEqual({
       id: "live_set/scenes/0",
-      sceneIndex: 0,
+      path: "s0",
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    const arrayResultArr = arrayResult as Array<{
-      id: string;
-      sceneIndex: number;
-    }>;
+    const arrayResultArr = arrayResult as Array<{ id: string; path: string }>;
 
     expect(arrayResultArr[0]).toStrictEqual({
       id: "live_set/scenes/1",
-      sceneIndex: 1,
+      path: "s1",
     });
     expect(arrayResultArr[1]).toStrictEqual({
       id: "live_set/scenes/2",
-      sceneIndex: 2,
+      path: "s2",
     });
   });
 
@@ -225,7 +233,10 @@ describe("createScene", () => {
     });
 
     expect(scene0.set).toHaveBeenCalledWith("name", "Solo Scene");
-    expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
   });
 
   it("should include disabled tempo and timeSignature in result", () => {
@@ -235,7 +246,10 @@ describe("createScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
   });
 
   describe("comma-separated names", () => {
@@ -252,39 +266,29 @@ describe("createScene", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should skip name for extras when count exceeds names", () => {
-      const scene3 = registerMockObject("live_set/scenes/3", {
-        path: livePath.scene(3),
-      });
+    // create-scene used to warn and build what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match count", () => {
+      registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
 
-      const result = createScene({
-        sceneIndex: 0,
-        count: 4,
-        name: "Intro,Verse,Chorus",
-      });
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 4, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 4 scenes but name names 3 entries");
 
-      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
-      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
-      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
-      expect(scene3.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(result).toHaveLength(4);
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 2, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 2 scenes but name names 3 entries");
     });
 
-    it("should ignore extra names when count is less than names", () => {
-      const result = createScene({
-        sceneIndex: 0,
-        count: 2,
-        name: "Intro,Verse,Chorus",
-      });
+    // Refusing is only free if nothing has happened yet. Creating past the end
+    // pads the Set with empty scenes first, so the check has to come before it
+    // or a refused call leaves scenes behind to delete by hand.
+    it("pads no scenes when it refuses the list", () => {
+      expect(() =>
+        createScene({ sceneIndex: 5, count: 2, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 2 scenes but name names 3 entries");
 
-      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
-      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
-      expect(result).toHaveLength(2);
-      // The tool label prefixes the "extra names ignored" warning.
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("createScene: 3 names provided"),
-      );
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
     });
 
     it("should preserve commas in name when count is 1", () => {
@@ -311,22 +315,12 @@ describe("createScene", () => {
   });
 
   describe("comma-separated colors", () => {
-    it("should cycle through colors with modular arithmetic", () => {
-      const scene3 = registerMockObject("live_set/scenes/3", {
-        path: livePath.scene(3),
-      });
+    it("refuses a color list that doesn't match count", () => {
+      registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
 
-      const result = createScene({
-        sceneIndex: 0,
-        count: 4,
-        color: "#FF0000,#00FF00",
-      });
-
-      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
-      expect(scene2.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene3.set).toHaveBeenCalledWith("color", 65280);
-      expect(result).toHaveLength(4);
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 4, color: "#FF0000,#00FF00" }),
+      ).toThrow("count names 4 scenes but color names 2 entries");
     });
 
     it("should use colors in order when count matches", () => {
@@ -339,17 +333,6 @@ describe("createScene", () => {
       expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
       expect(scene1.set).toHaveBeenCalledWith("color", 65280);
       expect(scene2.set).toHaveBeenCalledWith("color", 255);
-    });
-
-    it("should ignore extra colors when count is less than colors", () => {
-      createScene({
-        sceneIndex: 0,
-        count: 2,
-        color: "#FF0000,#00FF00,#0000FF",
-      });
-
-      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
     });
 
     it("should trim whitespace around comma-separated colors", () => {
@@ -397,7 +380,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [],
       });
     });
@@ -418,7 +401,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [],
       });
     });
@@ -438,7 +421,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [],
       });
     });
@@ -476,7 +459,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [],
       });
     });
@@ -498,10 +481,10 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [
-          { id: "live_set/tracks/0/clip_slots/2/clip", trackIndex: 0 },
-          { id: "live_set/tracks/2/clip_slots/2/clip", trackIndex: 2 },
+          { id: "live_set/tracks/0/clip_slots/2/clip", path: "t0/s2" },
+          { id: "live_set/tracks/2/clip_slots/2/clip", path: "t2/s2" },
         ],
       });
     });
@@ -522,7 +505,7 @@ describe("createScene", () => {
       });
       expect(result).toStrictEqual({
         id: "live_set/scenes/0",
-        sceneIndex: 0,
+        path: "s0",
       });
     });
 
@@ -546,7 +529,7 @@ describe("createScene", () => {
       });
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [],
       });
     });

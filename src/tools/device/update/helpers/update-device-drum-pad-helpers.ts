@@ -4,15 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { type DrumPadGroup } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
-  moveDrumChainToPath,
-  stripReturnChainLetter,
-} from "./update-device-helpers.ts";
+  pathField,
+  pathTargetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { stripReturnChainLetter } from "./update-device-helpers.ts";
 import {
   type UpdateTargetOptions,
   updateNonDeviceProperties,
 } from "./update-device-property-helpers.ts";
+import { moveDrumChainToPath } from "./update-device-drum-move-helpers.ts";
 
 // Settings that belong to one layer. Writing one absolute value to every layer
 // of a stacked pad flattens the balance between them, and `name` has no pad-wide
@@ -23,6 +26,7 @@ const PER_LAYER_PROPS = [
   "pan",
   "sendGainDb",
   "sendReturn",
+  "sends",
 ] as const;
 
 // Anything that lands on a chain rather than on the DrumPad object.
@@ -36,9 +40,12 @@ const CHAIN_WRITE_PROPS = [
   ...PER_LAYER_PROPS,
 ] as const;
 
-export interface DrumPadUpdateResult {
+export interface DrumPadUpdateResult extends ChainMixerApplied {
   /** The DrumPad's id, absent on a virtual pad that has no DrumPad object */
   id?: string;
+  /** The pad's path, so a whole-pad write names its target the way every other
+   * write result does. Absent on a virtual pad, which has nothing to name. */
+  path?: string;
   /** The chains written to, absent when only the pad itself was touched */
   chainIds?: string[];
 }
@@ -51,16 +58,33 @@ export interface DrumPadUpdateResult {
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
- * @returns The pad id and the ids of the chains written to
+ * @returns The pad's id and path, and the ids of the chains written to, or null
+ *   for a pad with no chains, which Live ignores every write to
  */
 export function updateDrumPadGroup(
   group: DrumPadGroup,
   padPath: string,
   options: UpdateTargetOptions,
-): DrumPadUpdateResult {
+): DrumPadUpdateResult | null {
   const { pad, chains } = group;
+  const padLabel = pathTargetLabel(pad, padPath);
+
+  // Live drops every write to a pad with no chains — `set` returns 1 and the
+  // read-back stays 0 — so there is nothing here to write, and saying the
+  // write landed would be a lie.
+  if (chains.length === 0) {
+    console.warn(
+      `drum pad ${padLabel} has no chains, so there is nothing ` +
+        `to update — Live ignores writes to an empty pad`,
+    );
+
+    return null;
+  }
+
   const applicable =
-    chains.length > 1 ? dropPerLayerProps(options, padPath, chains) : options;
+    chains.length > 1
+      ? dropPerLayerProps(options, padPath, padLabel, chains)
+      : options;
 
   // mute/solo go to the DrumPad where there is one: Live broadcasts them to the
   // pad's chains itself, and reads them back aggregated.
@@ -78,11 +102,13 @@ export function updateDrumPadGroup(
     ? { ...applicable, mute: undefined, solo: undefined }
     : applicable;
 
-  applyToChains(chains, chainOptions);
+  // Only a single-layer pad reaches the chain mixer — the per-layer settings
+  // are dropped above once a pad is stacked — so this is one chain's read-back.
+  const mixer = applyToChains(chains, chainOptions);
 
-  const result: DrumPadUpdateResult = {};
+  const result: DrumPadUpdateResult = { ...mixer };
 
-  if (pad != null) result.id = pad.id;
+  if (pad != null) Object.assign(result, { id: pad.id }, pathField(pad));
 
   if (CHAIN_WRITE_PROPS.some((key) => chainOptions[key] != null)) {
     result.chainIds = chains.map((chain) => chain.id);
@@ -95,8 +121,12 @@ export function updateDrumPadGroup(
  * Write the pad's properties to its chains.
  * @param chains - The pad's chains, in rack order
  * @param options - Update options, already filtered for this pad
+ * @returns The first chain's mixer read-back; the rest only take pad-wide props
  */
-function applyToChains(chains: LiveAPI[], options: UpdateTargetOptions): void {
+function applyToChains(
+  chains: LiveAPI[],
+  options: UpdateTargetOptions,
+): ChainMixerApplied {
   const first = chains[0] as LiveAPI;
 
   // in_note is what puts a chain on a pad, and this already retargets every
@@ -110,15 +140,21 @@ function applyToChains(chains: LiveAPI[], options: UpdateTargetOptions): void {
     first.set("name", stripReturnChainLetter(first, options.name));
   }
 
+  let mixer: ChainMixerApplied = {};
+
   for (const [index, chain] of chains.entries()) {
     // The first chain carries the full options so the "not applicable to
     // DrumChain" warnings are emitted once, not once per layer.
-    updateNonDeviceProperties(
+    const applied = updateNonDeviceProperties(
       chain,
       "DrumChain",
       index === 0 ? options : broadcastOnly(options),
     );
+
+    if (index === 0) mixer = applied;
   }
+
+  return mixer;
 }
 
 /**
@@ -141,12 +177,14 @@ function broadcastOnly(options: UpdateTargetOptions): UpdateTargetOptions {
  * paths to use instead.
  * @param options - Update options
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
+ * @param padLabel - How the warning names the pad
  * @param chains - The pad's chains
  * @returns Options with the per-layer properties removed
  */
 function dropPerLayerProps(
   options: UpdateTargetOptions,
   padPath: string,
+  padLabel: string,
   chains: LiveAPI[],
 ): UpdateTargetOptions {
   const skipped = PER_LAYER_PROPS.filter((key) => options[key] != null);
@@ -158,7 +196,7 @@ function dropPerLayerProps(
     .join(", ");
 
   console.warn(
-    `updateDevice: "${padPath}" has ${chains.length} layers, so per-layer ` +
+    `${padLabel} has ${chains.length} layers, so per-layer ` +
       `settings (${skipped.join(", ")}) were skipped. ` +
       `Set them on ${chainPaths}.`,
   );

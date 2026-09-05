@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   SMALL_MODEL_EXCLUDED_PARAMS,
   STANDARD_TOOL_DEFS,
@@ -73,11 +74,13 @@ function aliasShapes(
  * but not published.
  * @param aliases - Tool name and alias param name pairs
  * @param canonical - The param the aliases fold onto
+ * @param extra - Extra alias-info fields these aliases carry
  * @returns The expected shapes, keyed the same way as {@link aliasShapes}
  */
 function foldedShapes(
   aliases: Array<[string, string]>,
   canonical: string,
+  extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return Object.fromEntries(
     aliases.map(([toolName, alias]) => [
@@ -86,7 +89,7 @@ function foldedShapes(
         publishesCanonical: true,
         publishesAlias: false,
         validatesAlias: true,
-        alias: { kind: "alias", canonical },
+        alias: { kind: "alias", canonical, ...extra },
       },
     ]),
   );
@@ -140,6 +143,30 @@ describe("hidden params", () => {
     });
   });
 
+  // playback was the last tool publishing an index param, so a model reading
+  // its schema saw two spellings for one scene.
+  it("publishes path and hides playback's index params", () => {
+    const playback = publishedParams("ppal-playback");
+
+    expect(playback).toContain("path");
+    expect(playback).not.toContain("sceneIndex");
+    expect(playback).not.toContain("slots");
+
+    const def = STANDARD_TOOL_DEFS.find(
+      (td: ToolDefFunction) => td.toolName === "ppal-playback",
+    ) as ToolDefFunction;
+    const { validating, hidden } = resolveToolSchema(
+      def.toolOptions.inputSchema,
+      {},
+    );
+
+    expect(Object.keys(validating)).toContain("sceneIndex");
+    expect(hidden.sceneIndex).toStrictEqual({
+      kind: "deprecated",
+      replacedBy: "path",
+    });
+  });
+
   // Every tool names its target with "id". The prefixed spellings a model
   // reaches for on its own stay accepted for good, so a well-founded guess
   // costs a warning rather than a round trip.
@@ -166,7 +193,8 @@ describe("hidden params", () => {
   });
 
   // select is the only tool that takes every object type by id, so all four
-  // prefixed spellings are ones a model reaches for here.
+  // prefixed spellings are ones a model reaches for here. They are independent:
+  // each selects its own object, so several of them can't fold into one `id`.
   it("folds every prefixed spelling onto select's id", () => {
     const aliases: Array<[string, string]> = [
       ["ppal-select", "trackId"],
@@ -176,23 +204,55 @@ describe("hidden params", () => {
     ];
 
     expect(aliasShapes(aliases, "id")).toStrictEqual(
-      foldedShapes(aliases, "id"),
+      foldedShapes(aliases, "id", { independent: true }),
     );
   });
 
-  // `path` takes a comma-separated list on these four, so the plural is the
-  // same well-founded guess `ids` is.
+  // `path` takes a comma-separated list on these, so the plural is the same
+  // well-founded guess `ids` is.
   it("publishes path and accepts paths as a fallback", () => {
     const aliases: Array<[string, string]> = [
+      ["ppal-update-track", "paths"],
+      ["ppal-update-scene", "paths"],
       ["ppal-update-clip", "paths"],
       ["ppal-update-device", "paths"],
       ["ppal-delete", "paths"],
       ["ppal-playback", "paths"],
+      ["ppal-duplicate", "paths"],
     ];
 
     expect(aliasShapes(aliases, "path")).toStrictEqual(
       foldedShapes(aliases, "path"),
     );
+  });
+
+  // The fan-out was `action: "searchBatch"` + `queries` before it folded into
+  // `search` + `searches`. Both spellings still have to reach the handler.
+  it("publishes searches and accepts queries as the name it replaced", () => {
+    const aliases: Array<[string, string]> = [["ppal-library", "queries"]];
+
+    expect(aliasShapes(aliases, "searches")).toStrictEqual(
+      foldedShapes(aliases, "searches"),
+    );
+  });
+
+  it("stops offering the searchBatch action without refusing it", () => {
+    const def = STANDARD_TOOL_DEFS.find(
+      (td: ToolDefFunction) => td.toolName === "ppal-library",
+    ) as ToolDefFunction;
+    const { published } = resolveToolSchema(def.toolOptions.inputSchema, {});
+    const json = z.toJSONSchema(z.object(published), {
+      io: "input",
+    }) as unknown as {
+      properties: { action: { enum?: string[] } };
+    };
+
+    expect(json.properties.action.enum).not.toContain("searchBatch");
+    // The MCP SDK gates every call on the published schema, so hiding the value
+    // there must not be the same as refusing it.
+    expect(
+      z.object(published).safeParse({ action: "searchBatch" }).success,
+    ).toBe(true);
   });
 
   it("still validates the params it stopped publishing", () => {

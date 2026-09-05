@@ -12,9 +12,11 @@
  * only dereference them when the mocked constructor is actually called — so
  * importing this from a test file that mocks the SDK is safe.
  */
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { expect, vi, type Mock } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
-import { type BridgeOptions, StdioHttpBridge } from "../stdio-http-bridge.ts";
+import { type BridgeOptions } from "../portal-settings.ts";
+import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
 export const mockClient = {
   connect: vi.fn(),
@@ -99,15 +101,16 @@ export function getHandler(
 }
 
 /**
- * Connect a fresh bridge built with `options` and assert the JSON body it POSTed
- * to /config — or, when `expectedBody` is null, that it pushed nothing. Restores
- * the fetch spy before returning.
+ * Connect a fresh bridge built with `options` and assert the request headers it
+ * gave its transport — or, when `expectedHeaders` is null, that it passed no
+ * transport options at all. Also asserts nothing was POSTed to /config: these
+ * settings are per-client, and a push would change them device-wide.
  * @param options - Bridge constructor options
- * @param expectedBody - Expected POST /config body, or null to assert no push
+ * @param expectedHeaders - Expected request headers, or null for none
  */
-export async function expectPushedConfig(
+export async function expectRequestHeaders(
   options: BridgeOptions,
-  expectedBody: Record<string, unknown> | null,
+  expectedHeaders: Record<string, string> | null,
 ): Promise<void> {
   const fetchSpy = vi
     .spyOn(globalThis, "fetch")
@@ -121,15 +124,14 @@ export async function expectPushedConfig(
 
   await testBridge._ensureHttpConnection();
 
-  if (expectedBody == null) {
-    expect(fetchSpy).not.toHaveBeenCalled();
-  } else {
-    expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(expectedBody),
-    });
-  }
+  const transportMock = StreamableHTTPClientTransport as unknown as Mock;
+
+  expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual(
+    expectedHeaders == null
+      ? undefined
+      : { requestInit: { headers: expectedHeaders } },
+  );
+  expect(fetchSpy).not.toHaveBeenCalled();
 
   fetchSpy.mockRestore();
 }

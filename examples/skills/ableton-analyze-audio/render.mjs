@@ -206,13 +206,13 @@ async function renderSessionClip({ track, scene, outDir, withReturns }) {
   });
   try {
     const copy = await ppal("ppal-read-track", {
-      trackIndex: temp.trackIndex,
+      path: temp.path,
       include: ["session-clips", "arrangement-clips"],
     });
     const inherited = (copy.arrangementClips ?? []).map((c) => c.id).join(",");
     if (inherited) await ppal("ppal-delete", { id: inherited, type: "clip" });
 
-    const wanted = `t${temp.trackIndex}/s${scene}`;
+    const wanted = `${temp.path}/s${scene}`;
     const clip = (copy.sessionClips ?? []).find((c) => c.path === wanted);
     if (clip == null)
       throw new Error(`Track "${track}" has no Session clip in scene ${scene}`);

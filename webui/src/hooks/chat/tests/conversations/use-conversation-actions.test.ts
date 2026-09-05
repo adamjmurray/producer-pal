@@ -19,12 +19,13 @@ import { type UIMessage } from "#webui/types/messages";
 /**
  * Build a minimal user UIMessage pointing at the given raw history index.
  * @param rawHistoryIndex - Index into the raw chat history
+ * @param text - On-screen text of the message
  * @returns A user-role UIMessage
  */
-function userMessage(rawHistoryIndex: number): UIMessage {
+function userMessage(rawHistoryIndex: number, text = "x"): UIMessage {
   return {
     role: "user",
-    parts: [{ type: "text", content: "x" }],
+    parts: [{ type: "text", content: text }],
     rawHistoryIndex,
     timestamp: 0,
   };
@@ -50,6 +51,14 @@ function setup(over: DepsOverrides = {}) {
       await fn(() => true),
   );
   const invalidateCompactionUndo = vi.fn();
+  // Drain the stream so the mock client records what was actually re-sent.
+  const executeWithRetry = vi.fn(
+    async (args: { executeStream: () => AsyncIterable<TestMessage[]> }) => {
+      for await (const _snapshot of args.executeStream());
+
+      return true;
+    },
+  );
   const clientRef = { current: over.client ?? null };
   const pendingHistoryRef = { current: over.pendingHistory ?? null };
 
@@ -63,7 +72,7 @@ function setup(over: DepsOverrides = {}) {
       abortControllerRef: { current: null },
       initializeChat: vi.fn(async () => {}),
       runWithChat: runWithChat as never,
-      executeWithRetry: vi.fn(async () => true),
+      executeWithRetry: executeWithRetry as never,
       invalidateCompactionUndo,
       drainQueuedFollowUps: vi.fn(async () => {}),
       applyPendingLock: vi.fn(),
@@ -103,22 +112,30 @@ describe("useConversationActions guards", () => {
     expect(runWithChat).not.toHaveBeenCalled();
   });
 
-  it("handleRetry bails when the raw history entry is missing", async () => {
-    // History exists (empty array is truthy) but the message's raw index points
-    // past its end, so the lookup yields undefined and retry stops.
+  it("handleRetry re-sends the on-screen text when the raw entry is missing", async () => {
+    // A send that failed before the client saw it (no API key) leaves a row
+    // whose raw index points past the end of the client's history. Retry must
+    // still fork from the text on screen instead of silently doing nothing.
     const client = new MockChatClient();
 
-    client.chatHistory = [];
+    client.chatHistory = [
+      { role: "user", content: "first" },
+      { role: "assistant", content: "reply" },
+    ];
     const { result, runWithChat } = setup({
       client,
-      messages: [userMessage(5)],
+      messages: [userMessage(2, "never sent")],
     });
 
     await act(async () => {
       await result.current.handleRetry(0);
     });
 
-    expect(runWithChat).not.toHaveBeenCalled();
+    expect(runWithChat).toHaveBeenCalled();
+    expect(client.chatHistory).toContainEqual({
+      role: "user",
+      content: "never sent",
+    });
   });
 
   it("handleRetry bails when the raw entry yields no user message", async () => {

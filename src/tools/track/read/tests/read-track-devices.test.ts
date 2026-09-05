@@ -19,10 +19,13 @@ import {
   createRackDeviceMockProperties,
   setupDrumRackWithReverbMocks,
   setupInstrumentRackOnTrack0,
+  setupTrackWithDevices,
+  setupTrackWithSingleRack,
 } from "./helpers/read-track-device-test-helpers.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("readTrack", () => {
   describe("devices", () => {
@@ -66,79 +69,69 @@ describe("readTrack", () => {
       // Defensive warning: a track is expected to have 0 or 1 instrument. Two
       // instruments (unusual) must surface a warning. Reached via the drum-map
       // path, which categorizes devices.
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("device1", "device2"),
-        },
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
+      setupTrackWithDevices([
+        {
           name: "Analog",
           className: "InstrumentVector",
           classDisplayName: "Analog",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        }),
-      });
-      registerMockObject("device2", {
-        path: livePath.track(0).device(1),
-        type: "Device",
-        properties: createDeviceMockProperties({
+        },
+        {
           name: "Operator",
           className: "Operator",
           classDisplayName: "Operator",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        }),
-      });
+        },
+      ]);
 
       readTrack({ trackIndex: 0, include: ["drum-map"] });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("instruments, which is unusual"),
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(
+          "Track has 2 instruments (t0/d0 (id device1), t0/d1 (id device2))",
+        ),
       );
     });
 
-    it("categorizes devices correctly", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("device1", "device2", "device3"),
+    it("puts a device of an unrecognized type in no category", () => {
+      // Live's device `type` is one of three values; anything else reads as
+      // "unknown" and must not be filed as an instrument or an effect.
+      setupTrackWithDevices([
+        {
+          name: "Mystery",
+          className: "Mystery",
+          classDisplayName: "Mystery",
+          type: 99,
         },
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
+      ]);
+
+      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+
+      expect(result.drumMap).toBeUndefined();
+    });
+
+    it("categorizes devices correctly", () => {
+      setupTrackWithDevices([
+        {
           name: "Custom Analog",
           className: "InstrumentVector",
           classDisplayName: "Analog",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        }),
-      });
-      registerMockObject("device2", {
-        path: livePath.track(0).device(1),
-        type: "Device",
-        properties: createDeviceMockProperties({
+        },
+        {
           name: "Custom Reverb",
           className: "Reverb",
           classDisplayName: "Reverb",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
-      registerMockObject("device3", {
-        path: livePath.track(0).device(2),
-        type: "Device",
-        properties: createDeviceMockProperties({
+        },
+        {
           name: "Custom Note Length",
           className: "MidiNoteLength",
           classDisplayName: "Note Length",
           type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
           isActive: 0,
-        }),
-      });
+        },
+      ]);
 
       const result = readTrack({
         trackIndex: 0,
@@ -169,16 +162,8 @@ describe("readTrack", () => {
     });
 
     it("correctly identifies drum rack devices", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("device1"),
-        },
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createRackDeviceMockProperties({
+      setupTrackWithSingleRack(
+        {
           name: "My Drums",
           className: "DrumGroupDevice",
           classDisplayName: "Drum Rack",
@@ -187,8 +172,9 @@ describe("readTrack", () => {
           extraProperties: {
             drum_pads: [],
           },
-        }),
-      });
+        },
+        "device1",
+      );
 
       const result = readTrack({ trackIndex: 0, include: ["devices"] });
 

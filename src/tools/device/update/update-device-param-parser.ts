@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import {
+  recordedUnitSpelling,
+  splitLeadingNumber,
+} from "#src/tools/shared/device/known-param-units.ts";
 
 /**
  * Normalize a raw param value (always a string after schema coercion) into the
@@ -15,9 +19,15 @@ import { parseLabel } from "#src/tools/shared/device/helpers/device-display-help
  * and "NaN" are not treated as numbers. An empty string stays a string (rather
  * than coercing to 0 via Number("")) so a future caller can't silently write 0.
  * @param rawValue - Trimmed value string from a param entry
+ * @param deviceName - The device's class_display_name, to check for a recorded unit
+ * @param paramName - The param's name, to check for a recorded unit
  * @returns The coerced number, or the original string
  */
-export function normalizeParamValue(rawValue: string): string | number {
+export function normalizeParamValue(
+  rawValue: string,
+  deviceName?: string,
+  paramName?: string,
+): string | number {
   if (rawValue === "") {
     return rawValue;
   }
@@ -41,7 +51,27 @@ export function normalizeParamValue(rawValue: string): string | number {
     return rawValue;
   }
 
-  return typeof parsed.value === "number" && parsed.unit != null
-    ? parsed.value
-    : rawValue;
+  if (typeof parsed.value === "number" && parsed.unit != null) {
+    return parsed.value;
+  }
+
+  // parseLabel doesn't know every unit read-device records (Erosion's
+  // "octaves", say) — that spelling stands for itself. A match here just gets
+  // the value into the numeric pipeline; displayValueForWrite is the one that
+  // actually checks it against the param's range-verified recorded unit.
+  const recorded =
+    paramName == null ? null : recordedUnitSpelling(deviceName, paramName);
+
+  if (recorded != null) {
+    const split = splitLeadingNumber(rawValue);
+
+    if (
+      split != null &&
+      split.trailing.toLowerCase() === recorded.toLowerCase()
+    ) {
+      return split.value;
+    }
+  }
+
+  return rawValue;
 }

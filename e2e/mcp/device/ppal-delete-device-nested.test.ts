@@ -25,6 +25,7 @@ import {
   parseToolResult,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
@@ -38,13 +39,13 @@ interface DeleteResult {
 describe("ppal-delete nested rack device ordering", () => {
   it("deletes same-chain siblings and a sibling-chain device in one call", async () => {
     // Fresh MIDI track so the Drum Rack is isolated from the rest of the set.
-    const track = parseToolResult<{ trackIndex: number }>(
+    const track = parseToolResult<{ path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
         arguments: { type: "midi" },
       }),
     );
-    const t = track.trackIndex;
+    const t = trackIndexFromPath(track.path);
 
     await sleep(150);
 
@@ -52,14 +53,19 @@ describe("ppal-delete nested rack device ordering", () => {
     const rack = (await createTwoPadDrumRack(ctx.client!, `t${t}`)).path;
 
     // Append a SECOND device into pad C1's chain -> same-chain siblings (d0, d1).
-    const reverb = parseToolResult<{ id: string; deviceIndex: number }>(
+    const reverb = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: { deviceName: "Reverb", path: `${rack}/pC1/c0/d1` },
       }),
     );
 
-    expect(reverb.deviceIndex).toBe(1); // Sibling of the Simpler at index 0.
+    // Sibling of the Simpler at d0. A device inside a pad reports the
+    // rack-relative spelling rather than the pad one the call used — naming the
+    // pad costs a rack read per chain segment, and both spellings reach it.
+    expect(reverb.path).toMatch(
+      new RegExp(`^${rack.replaceAll("/", "\\/")}\\/c\\d+\\/d1$`),
+    );
 
     await sleep(150);
 

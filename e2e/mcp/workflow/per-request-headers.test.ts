@@ -40,6 +40,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -71,7 +72,6 @@ const GATED_OUT = [
 ];
 
 /** t8 "9-MIDI": the empty MIDI track, pitched, so notes read back as a melody. */
-const EMPTY_MIDI_TRACK = 8;
 
 const extraConnections: McpConnection[] = [];
 

@@ -3,11 +3,119 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
+import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import { parseAssignments } from "./parse-test-helpers.ts";
 
+const GRAMMAR_PATH = "src/notation/transform/parser/transform-grammar.peggy";
+
+/** The grammar rules that enumerate expression-function names. */
+const NAME_RULES = ["cyclicalFunctionName", "otherFunctionName"];
+
+// Aliases the grammar accepts but the unknown-function error must not
+// advertise, so it keeps teaching one canonical name per function.
+const ALIASES = new Set(["random"]);
+
+/**
+ * Read the quoted alternatives out of one grammar rule.
+ *
+ * @param grammar - The grammar source
+ * @param rule - Rule name to read
+ * @returns The names that rule accepts
+ */
+function ruleAlternatives(grammar: string, rule: string): string[] {
+  const body = new RegExp(`^${rule}\\n((?:\\s+[=/].*\\n)+)`, "m").exec(
+    grammar,
+  )?.[1];
+
+  return [...(body ?? "").matchAll(/"(\w+)"/g)].map(
+    (match) => match[1] as string,
+  );
+}
+
 describe("Transform Parser - Function Keywords", () => {
+  // The unknown-function error names every function the grammar accepts, from a
+  // list the grammar keeps by hand. Read that list back out of the message and
+  // check each name really parses, so a rule renamed or added without touching
+  // the list fails here rather than sending a model after a function that
+  // doesn't exist.
+  describe("unknown function error", () => {
+    /** @returns The function names the error message advertises */
+    function advertisedNames(): string[] {
+      let message = "";
+
+      try {
+        parseAssignments("velocity += nosuchfn(1)");
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+
+      return (/available: ([^.]+)\./.exec(message)?.[1] ?? "").split(", ");
+    }
+
+    it("advertises only functions the grammar accepts", () => {
+      const names = advertisedNames();
+
+      expect(names.length).toBeGreaterThan(20);
+
+      for (const name of names) {
+        // Args differ per function; any parse failure OTHER than "unknown
+        // function" means the name itself is real.
+        try {
+          parseAssignments(`velocity += ${name}(1)`);
+        } catch (error) {
+          expect(String(error)).not.toContain(`unknown function ${name}()`);
+        }
+      }
+    });
+
+    it("advertises every function the grammar accepts", () => {
+      const grammar = readFileSync(join(projectRoot, GRAMMAR_PATH), "utf8");
+      const declared = new Set(
+        NAME_RULES.flatMap((rule) => ruleAlternatives(grammar, rule)),
+      );
+
+      // `swing` has its own rule — an argument list no other function takes —
+      // so it appears in neither name rule.
+      declared.add("swing");
+
+      for (const alias of ALIASES) declared.delete(alias);
+
+      expect(advertisedNames().toSorted()).toStrictEqual(
+        [...declared].toSorted(),
+      );
+    });
+
+    it("does not advertise the random alias", () => {
+      expect(advertisedNames()).not.toContain("random");
+    });
+  });
+
+  describe("aliases", () => {
+    it("parses random() as rand()", () => {
+      const result = parseAssignments("velocity += random(1, 10)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "rand",
+        args: [1, 10],
+        sync: false,
+        raw: false,
+      });
+    });
+
+    it("parses random() with no args", () => {
+      const node = parseAssignments("velocity += random()")[0]!
+        .expression as FunctionNode;
+
+      expect(node.name).toBe("rand");
+      expect(node.args).toStrictEqual([]);
+    });
+  });
+
   describe("sync keyword", () => {
     it("parses cos with note-value period and sync", () => {
       const result = parseAssignments("velocity += cos(n/4, sync)");

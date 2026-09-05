@@ -6,7 +6,11 @@
 import { z } from "zod";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
@@ -27,14 +31,20 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     ids: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
     }),
+    path: param(z.coerce.string().optional(), {
+      default:
+        "track path(s) to update instead of id, comma-separated: 't<index>', 'rt<index>' (return), or 'mt' (main) - e.g. 't0' or 't0,rt1'",
+      smallModel: "track path to update instead of id (e.g., 't0')",
+    }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated for each (extras keep existing name), ideally unique",
+        "name for all, or comma-separated one per track, in order, ideally unique",
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the tracks)",
+      default: "#RRGGBB for all, or comma-separated one per track, in order",
       smallModel: "#RRGGBB",
     }),
     gainDb: z.coerce
@@ -65,21 +75,34 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),
 
-    inputRoutingTypeId: param(z.coerce.string().optional(), {
-      default: "from availableInputRoutingTypes, set before channel",
+    inputRoutingType: param(z.coerce.string().optional(), {
+      default: "name from availableInputRoutingTypes, set before channel",
       smallModel: null,
     }),
-    inputRoutingChannelId: param(z.coerce.string().optional(), {
-      default: "from availableInputRoutingChannels",
+    inputRoutingChannel: param(z.coerce.string().optional(), {
+      default: "name from availableInputRoutingChannels",
       smallModel: null,
     }),
-    outputRoutingTypeId: param(z.coerce.string().optional(), {
-      default: "from availableOutputRoutingTypes, set before channel",
+    outputRoutingType: param(z.coerce.string().optional(), {
+      default: "name from availableOutputRoutingTypes, set before channel",
       smallModel: null,
     }),
-    outputRoutingChannelId: param(z.coerce.string().optional(), {
-      default: "from availableOutputRoutingChannels",
+    outputRoutingChannel: param(z.coerce.string().optional(), {
+      default: "name from availableOutputRoutingChannels",
       smallModel: null,
+    }),
+
+    inputRoutingTypeId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "inputRoutingType",
+    }),
+    inputRoutingChannelId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "inputRoutingChannel",
+    }),
+    outputRoutingTypeId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "outputRoutingType",
+    }),
+    outputRoutingChannelId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "outputRoutingChannel",
     }),
     monitoringState: param(
       z
@@ -97,6 +120,11 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     sendReturn: param(z.coerce.string().optional(), {
       default:
         'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A")',
+      smallModel: null,
+    }),
+    sends: param(sendsInputSchema, {
+      default:
+        "set several of the track's sends at once: [{return, gainDb}], where return is a return track's id, exact name, or letter — the `return`/`returnId` read-track reports. Use instead of sendGainDb + sendReturn, which set one",
       smallModel: null,
     }),
   },

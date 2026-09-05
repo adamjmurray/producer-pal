@@ -6,6 +6,14 @@
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
 // Import from there directly instead of through this file
 
+import {
+  parseLabel,
+  strForValue,
+  unitForLabels,
+} from "./device-label-helpers.ts";
+import { recordedUnitFor } from "../known-param-units.ts";
+import { readNumericRange } from "./param-numeric-range.ts";
+
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP: Record<number, string> = {
   0: "active",
@@ -20,49 +28,6 @@ export const AUTOMATION_STATE_MAP: Record<number, string> = {
   2: "overridden",
 };
 
-interface LabelPattern {
-  regex: RegExp;
-  unit: string;
-  multiplier?: number;
-  fixedValue?: number;
-  isNoteName?: boolean;
-  isPan?: boolean;
-}
-
-/**
- * Label parsing patterns for extracting values and units from display labels.
- * Order matters - more specific patterns should come before general ones.
- */
-const LABEL_PATTERNS: LabelPattern[] = [
-  // ms must precede s so "100ms" doesn't match the s-only pattern
-  { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
-  { regex: /^([\d.]+)\s*hz$/i, unit: "Hz", multiplier: 1 },
-  { regex: /^([\d.]+)\s*ms$/i, unit: "ms", multiplier: 1 },
-  { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
-  { regex: /^([\d.-]+)\s*db$/i, unit: "dB", multiplier: 1 },
-  { regex: /^(-?inf)\s*db$/i, unit: "dB", fixedValue: -70 },
-  { regex: /^([\d.-]+)\s*(?:%|percent)$/i, unit: "%", multiplier: 1 },
-  {
-    regex: /^([\d.-]+)\s*(?:°|deg|degrees?)$/i,
-    unit: "degrees",
-    multiplier: 1,
-  },
-  {
-    regex: /^([+-]?\d+)\s*(?:st|semis?|semitones?)$/i,
-    unit: "semitones",
-    multiplier: 1,
-  },
-  { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
-  { regex: /^(\d+)([lr])$/i, unit: "pan", isPan: true },
-  { regex: /^(c)$/i, unit: "pan", fixedValue: 0 },
-];
-
-export interface ParsedLabel {
-  value: number | string | null;
-  unit: string | null;
-  direction?: string;
-}
-
 /**
  * Format parameter name, appending original_name if different (e.g. for rack macros).
  * @param paramApi - LiveAPI parameter object
@@ -73,59 +38,6 @@ function formatParamName(paramApi: LiveAPI): string {
   const originalName = paramApi.getProperty("original_name") as string;
 
   return originalName !== name ? `${name} (${originalName})` : name;
-}
-
-/**
- * Parse a label string to extract numeric value and unit.
- * @param label - Display label from str_for_value()
- * @returns Parsed value and unit
- */
-export function parseLabel(label: string): ParsedLabel {
-  if (!label || typeof label !== "string") {
-    return { value: null, unit: null };
-  }
-
-  // VST plugins like Serum right-pad numeric values (e.g. "    8 Hz")
-  const trimmed = label.trim();
-
-  for (const pattern of LABEL_PATTERNS) {
-    const match = trimmed.match(pattern.regex);
-
-    if (!match) continue;
-
-    if (pattern.fixedValue !== undefined) {
-      return { value: pattern.fixedValue, unit: pattern.unit };
-    }
-
-    if (pattern.isNoteName) {
-      return { value: match[1] as string, unit: "note" };
-    }
-
-    if (pattern.isPan) {
-      // Will be normalized later when we know the max pan value
-      const num = Number.parseInt(match[1] as string);
-      const dir = match[2] as string;
-
-      return { value: num, unit: "pan", direction: dir };
-    }
-
-    return {
-      value: Number.parseFloat(match[1] as string) * (pattern.multiplier ?? 1),
-      unit: pattern.unit,
-    };
-  }
-
-  // No unit detected - try to extract just a number
-  const numMatch = trimmed.match(/^([\d.-]+)/);
-
-  if (numMatch) {
-    return {
-      value: Number.parseFloat(numMatch[1] as string),
-      unit: null,
-    };
-  }
-
-  return { value: null, unit: null };
 }
 
 /**
@@ -141,11 +53,34 @@ export function isPanLabel(label: string): boolean {
 
 /**
  * Check if a label is a division fraction format (e.g., "1/8", "1/16").
+ * Live spaces the slash on some params ("1 / 16") and not on others.
  * @param label - Display label
  * @returns True if label is a division fraction
  */
 export function isDivisionLabel(label: string): boolean {
-  return typeof label === "string" && /^1\/\d+$/.test(label);
+  return typeof label === "string" && /^1\s*\/\s*\d+$/.test(label);
+}
+
+/**
+ * Whether a param's display is a ladder of divisions. Any end is enough: a
+ * sync ladder that runs from bar counts up to fractions ("8".."1/64") shows a
+ * bare number at both its current value and its minimum, and only names a
+ * fraction at the far end.
+ * @param labels - The param's value, min and max labels
+ * @returns True if any label is a division fraction
+ */
+export function isDivisionParam(...labels: string[]): boolean {
+  return labels.some(isDivisionLabel);
+}
+
+/**
+ * A division label with its spacing removed, so "1 / 16" and "1/16" compare
+ * equal. Whatever a caller writes has to match a label Live produced.
+ * @param label - Display label
+ * @returns The label with all whitespace stripped
+ */
+export function normalizeDivisionLabel(label: string): string {
+  return label.replaceAll(/\s+/g, "");
 }
 
 /**
@@ -160,7 +95,7 @@ export function isDivisionLabel(label: string): boolean {
 function buildDivisionParamResult(
   paramApi: LiveAPI,
   name: string,
-  valueLabel: string | number,
+  valueLabel: string,
   rawMin: number,
   rawMax: number,
 ): Record<string, unknown> {
@@ -170,16 +105,43 @@ function buildDivisionParamResult(
   const options: string[] = [];
 
   for (let i = minInt; i <= maxInt; i++) {
-    const label = paramApi.call("str_for_value", i) as string | number;
-
-    options.push(typeof label === "number" ? String(label) : label);
+    options.push(strForValue(paramApi, i));
   }
 
   return {
     id: paramApi.id,
     name,
-    value: typeof valueLabel === "number" ? String(valueLabel) : valueLabel,
+    value: valueLabel,
     options,
+  };
+}
+
+/**
+ * Build result for pan-type parameters, whose display is directional ("50L").
+ * @param paramApi - LiveAPI parameter object
+ * @param name - Formatted parameter name
+ * @param valueLabel - Current value label
+ * @param minLabel - Raw minimum's label
+ * @param maxLabel - Raw maximum's label
+ * @returns Parameter result on the -1..1 scale
+ */
+function buildPanParamResult(
+  paramApi: LiveAPI,
+  name: string,
+  valueLabel: string,
+  minLabel: string,
+  maxLabel: string,
+): Record<string, unknown> {
+  const maxPanValue =
+    extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
+
+  return {
+    id: paramApi.id,
+    name,
+    value: normalizePan(valueLabel, maxPanValue),
+    min: -1,
+    max: 1,
+    unit: "pan",
   };
 }
 
@@ -253,9 +215,15 @@ export function readParameterBasic(paramApi: LiveAPI): {
 /**
  * Read a single device parameter with full details.
  * @param paramApi - LiveAPI parameter object
+ * @param deviceName - The device's class_display_name, for the recorded-unit
+ *   lookup. Omitted where the device isn't known; the param then reports a unit
+ *   only if its own labels carry one.
  * @returns Parameter info object
  */
-export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
+export function readParameter(
+  paramApi: LiveAPI,
+  deviceName?: string,
+): Record<string, unknown> {
   const name = formatParamName(paramApi);
   const stateIdx = paramApi.getProperty("state") as number;
   const automationIdx = paramApi.getProperty("automation_state") as number;
@@ -280,12 +248,12 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
   const rawValue = paramApi.getProperty("value") as number;
   const rawMin = paramApi.getProperty("min") as number;
   const rawMax = paramApi.getProperty("max") as number;
-  const valueLabel = paramApi.call("str_for_value", rawValue) as string;
-  const minLabel = paramApi.call("str_for_value", rawMin) as string;
-  const maxLabel = paramApi.call("str_for_value", rawMax) as string;
+  const valueLabel = strForValue(paramApi, rawValue);
+  const minLabel = strForValue(paramApi, rawMin);
+  const maxLabel = strForValue(paramApi, rawMax);
 
   // Check for division-type params (fraction format like "1/8")
-  if (isDivisionLabel(valueLabel) || isDivisionLabel(minLabel)) {
+  if (isDivisionParam(valueLabel, minLabel, maxLabel)) {
     const result = buildDivisionParamResult(
       paramApi,
       name,
@@ -302,36 +270,139 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
   const valueParsed = parseLabel(valueLabel);
   const minParsed = parseLabel(minLabel);
   const maxParsed = parseLabel(maxLabel);
-  const unit = valueParsed.unit ?? minParsed.unit ?? maxParsed.unit;
+  const unit = unitForLabels(valueLabel, minLabel, maxLabel);
 
   if (unit === "pan") {
-    const maxPanValue =
-      extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
-    const result: Record<string, unknown> = {
-      id: paramApi.id,
+    const result = buildPanParamResult(
+      paramApi,
       name,
-      value: normalizePan(valueLabel, maxPanValue),
-      min: -1,
-      max: 1,
-      unit: "pan",
-    };
+      valueLabel,
+      minLabel,
+      maxLabel,
+    );
 
     addStateFlags(result, paramApi, state, automationState);
 
     return result;
   }
 
+  // A word at one end (Glue Compressor's Release reads "A" for Auto) is not a
+  // number, so without this the range falls back to raw units and advertises a
+  // max the param can never display.
+  const range = readNumericRange(paramApi, rawMin, rawMax, minLabel, maxLabel);
+  const sentinel = range?.sentinel;
+  // Some of Live's stock params display a bare number and nothing else. Fall
+  // back to the recorded one so the model has something to write back.
+  const reportedUnit =
+    unit ?? recordedUnitFor(unit, range, deviceName, name)?.unit;
   const result: Record<string, unknown> = {
     id: paramApi.id,
     name,
     value:
-      valueParsed.value ?? paramApi.getProperty("display_value") ?? rawValue,
-    min: minParsed.value ?? rawMin,
-    max: maxParsed.value ?? rawMax,
+      (sentinel?.label === valueLabel ? valueLabel : valueParsed.value) ??
+      paramApi.getProperty("display_value") ??
+      rawValue,
+    min: range?.minValue ?? minParsed.value ?? rawMin,
+    max: range?.maxValue ?? maxParsed.value ?? rawMax,
   };
 
-  if (unit) result.unit = unit;
+  if (reportedUnit) result.unit = reportedUnit;
+  if (sentinel) result.alsoAccepts = sentinel.label;
   addStateFlags(result, paramApi, state, automationState);
 
   return result;
+}
+
+/** A param a write landed on. Its value is read once, at the end of the call. */
+export interface WrittenParam {
+  id: string;
+  name: string;
+}
+
+/**
+ * A param the call named that has no value to report, named the way the call
+ * spelled it. It has no id and no value, so `reason` says why.
+ */
+export interface UnresolvedParam {
+  name: string;
+  reason: string;
+}
+
+/**
+ * A pseudo-param a write landed on (Simpler's `sample`, Roar's `routingMode`).
+ * It is a device property, not a DeviceParameter, so it has no id to read
+ * through and carries its own read instead. The read runs before the call
+ * returns, so the device it closes over is still this request's. A forced pad
+ * swap later in the same call can still delete that device, and the read then
+ * comes back empty — the same staleness the id path already has.
+ */
+export interface WrittenPseudoParam {
+  name: string;
+  read: () => unknown;
+}
+
+/** One param the call named: what a write landed on, or why nothing did. */
+export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
+
+/** What create-device and update-device report for each param they wrote. */
+export interface ParamValueResult extends WrittenParam {
+  value: unknown;
+}
+
+/** What they report for a written pseudo-param, which has no id. */
+export interface PseudoParamValueResult {
+  name: string;
+  value: unknown;
+}
+
+/** One entry of the `params` a create-device or update-device result reports. */
+export type ParamResult =
+  | ParamValueResult
+  | PseudoParamValueResult
+  | UnresolvedParam;
+
+/** Why a pseudo-param a write landed on still has nothing to report. */
+const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
+
+/**
+ * Read the values of the params a call wrote, once everything else in that call
+ * has run. An A/B compare swap or a macro-variation recall rewrites the values a
+ * `params` write just landed, so reading at write time would report what the
+ * same call went on to overwrite. This is the only place a written param's value
+ * comes from, and it reads the same as read-device's, so a write and a read can
+ * never disagree.
+ *
+ * Assumes the params are still there: nothing that runs after a `params` write
+ * removes a device.
+ *
+ * The name stays as reported — a path-prefixed write is named by the path the
+ * caller used, not by the param's own name. An entry that resolved to nothing
+ * passes through: it has no id to read.
+ * @param outcomes - Every param the call named
+ * @returns The written ones with their current values, the rest unchanged
+ */
+export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
+  return outcomes.flatMap((entry): ParamResult[] => {
+    if ("id" in entry) {
+      return [{ ...entry, value: readParameter(LiveAPI.from(entry.id)).value }];
+    }
+
+    // A pseudo-param brings its own read; the read itself is not reported. A
+    // meaningful null (e.g. Compressor's "No Input" sidechain source) reports
+    // as a value. undefined means the param does not apply in the device's
+    // current state — and only a param a write landed on gets here, so the
+    // write went in and the device still shows nothing. That is a silent
+    // refusal (an absolute `sample` path naming no file loads nothing), and
+    // read-device omits the param too, so dropping the entry would leave
+    // nothing anywhere to say the value never arrived.
+    if ("read" in entry) {
+      const value = entry.read();
+
+      return value === undefined
+        ? [{ name: entry.name, reason: NO_VALUE_AFTER_WRITE }]
+        : [{ name: entry.name, value }];
+    }
+
+    return [entry];
+  });
 }

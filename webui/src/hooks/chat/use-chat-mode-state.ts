@@ -16,6 +16,7 @@ import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-re
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/conversations/use-conversation-lock";
 import { useConversationPanelState } from "#webui/hooks/chat/helpers/conversations/use-conversation-panel-state";
+import { useStreamEndAutosave } from "#webui/hooks/chat/helpers/conversations/use-stream-end-autosave";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
@@ -25,6 +26,7 @@ import {
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import {
@@ -70,6 +72,7 @@ export interface UseChatModeStateParams {
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
+  undoDelete: UndoDeleteReturn;
 }
 
 /**
@@ -98,6 +101,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     onForeignRecord,
     clearViewingMode,
     setModeContext,
+    undoDelete,
   } = params;
 
   const autoSaveRef = useRef<(() => void) | null>(null);
@@ -233,10 +237,18 @@ export function useChatModeState(params: UseChatModeStateParams) {
     remoteConfig.postSmallModelMode,
   );
 
+  // Every switch/new/delete/back-forward tears the conversation down through
+  // this, so it is also where a stream cut short by the user gets saved.
+  const clearConversation = useStreamEndAutosave({
+    isAssistantResponding: chat.isAssistantResponding,
+    autoSaveRef,
+    clearConversation: wrappedClearConversation,
+  });
+
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
-    clearConversation: wrappedClearConversation,
+    clearConversation,
     activeMeta: {
       activeModel: chat.activeModel,
       activeProvider: chat.activeProvider,
@@ -253,6 +265,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     },
     onForeignRecord,
     pendingForkRef,
+    undoDelete,
+    isAssistantResponding: chat.isAssistantResponding,
   });
 
   useEffect(() => {
@@ -272,6 +286,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     conversationManager,
     chat.stopResponse,
     clearViewingMode,
+    chat.isAssistantResponding,
   );
 
   const conversationPanelState = useConversationPanelState({
@@ -281,16 +296,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
     setViewState,
     handlers: conversationHandlers,
   });
-
-  const prevRespondingRef = useRef(false);
-
-  useEffect(() => {
-    if (!chat.isAssistantResponding && prevRespondingRef.current) {
-      void conversationManager.saveCurrentConversation(Date.now());
-    }
-
-    prevRespondingRef.current = chat.isAssistantResponding;
-  }, [chat.isAssistantResponding, conversationManager]);
 
   const headerInfo = useChatModeReporting({
     chat,

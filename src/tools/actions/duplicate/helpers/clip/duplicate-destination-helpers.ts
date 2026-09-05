@@ -3,47 +3,69 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Where a clip duplicate goes. `toPath` names it — `t7` for that track's
-// arrangement, `t7/s2` for a clip slot — and the deprecated `toSlot` still
-// works. Resolved before anything is created, so a bad destination fails
-// instead of quietly landing the copy somewhere else.
+// Where a clip duplicate goes. `toPath` names it — `t7[5|1]` for a spot on
+// that track's arrangement, `t7/s2` for a clip slot — and the deprecated
+// `toSlot` still works. An entry may name the lane, the position, or both; a
+// bare `[5|1]` lands on the source clip's own track. Resolved before anything
+// is created, so a bad destination fails instead of quietly landing the copy
+// somewhere else.
 
 import { namedParam } from "#src/tools/shared/utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
+  reusesPreviousLane,
   withNewLaneOrdinals,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
+import {
+  parseClipDestinationList,
+  type ClipDestinationPath,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   namedHiddenPath,
-  parseObjectPathList,
-  requireClipPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+  type ClipPath,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   parseSlotList,
-  type SlotPosition,
+  type ClipSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
-type ClipPath = ReturnType<typeof requireClipPath>;
+/**
+ * One arrangement destination. A null `trackIndex` is a bare `[5|1]`: the entry
+ * named a position but no lane, so the copy lands on the source clip's own
+ * track — the same place an omitted toPath sends it.
+ */
+export interface DuplicateArrangementTarget extends Omit<
+  ArrangementTrack,
+  "trackIndex"
+> {
+  trackIndex: number | null;
+}
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
   /** Clip slots, in order. Empty for arrangement destinations. */
-  slots: SlotPosition[];
+  slots: ClipSlotPosition[];
   /**
    * Arrangement destinations, in order, null where the path named something
    * this call can't use. Empty means the source's own track.
    */
-  arrangementTargets: (ArrangementTrack | null)[];
+  arrangementTargets: (DuplicateArrangementTarget | null)[];
+  /**
+   * The position each entry's own `[...]` named, aligned with
+   * arrangementTargets. Empty when the positions came from arrangementStart.
+   */
+  arrangementPositions: (string | null)[];
 }
 
 /**
  * Resolves a clip duplicate's destination from its path params.
  * @param rawToPath - Destination path(s), comma-separated for multiple
  * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart or locator was given
+ * @param hasArrangementParams - Whether arrangementStart was given
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
@@ -60,7 +82,7 @@ export function resolveClipDestinations(
   // toPath replaces, so refuse instead of picking.
   if (toPath != null && toSlot != null) {
     throw new Error(
-      "duplicate failed: toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
     );
   }
 
@@ -68,21 +90,24 @@ export function resolveClipDestinations(
     return legacySlotDestinations(toSlot, hasArrangementParams);
   }
 
-  const paths = parseObjectPathList(toPath, "toPath").map((path) =>
-    requireClipPath(path, "toPath"),
+  const entries = resolveDestinationPositions(
+    parseClipDestinationList(toPath, "toPath"),
+    { paramName: "toPath" },
   );
 
   if (hasArrangementParams) {
-    return arrangementDestinations(paths);
+    return arrangementDestinations(entries);
   }
 
-  if (paths.length === 0) {
+  if (entries.length === 0) {
     throw new Error(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
+      'clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
   }
 
-  return sessionDestinations(paths);
+  // A coordinate — bare or not — made the call an arrangement duplicate above,
+  // so every entry left here named a lane.
+  return clipSlotDestinations(entries.map(({ lane }) => lane as ClipPath));
 }
 
 /**
@@ -99,7 +124,7 @@ export function warnInapplicableClipParams(
 ): void {
   if (count > 1) {
     console.warn(
-      "count ignored for clips: one copy per destination — list more in toPath or arrangementStart",
+      "count ignored for clips: one copy per destination — list more in toPath",
     );
   }
 
@@ -116,20 +141,17 @@ export function warnInapplicableClipParams(
  * dropped — and every other inapplicable param on this tool warns.
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
- * @param locator - Locator ID or name
  * @param arrangementLength - Requested arrangement length
  */
 export function warnUnusedArrangementParams(
   type: string,
   arrangementStart: string | undefined,
-  locator: string | undefined,
   arrangementLength: string | undefined,
 ): void {
   if (type !== "device" && type !== "drum-pad") return;
 
   const sent = [
     arrangementStart != null ? "arrangementStart" : null,
-    locator != null ? "locator" : null,
     arrangementLength != null ? "arrangementLength" : null,
   ].filter((param) => param != null);
 
@@ -156,9 +178,14 @@ export function warnUnusedDestination(
   const toPath = namedParam(rawToPath, "toPath");
   const toSlot = namedHiddenPath(rawToSlot, "toSlot");
 
-  if (type !== "device" && type !== "drum-pad" && toPath != null) {
+  if (
+    type !== "device" &&
+    type !== "drum-pad" &&
+    type !== "chain" &&
+    toPath != null
+  ) {
     console.warn(
-      `toPath ignored: only supported for clips, devices, and drum pads (type "${type}")`,
+      `toPath ignored: only supported for clips, devices, drum pads and chains (type "${type}")`,
     );
   }
 
@@ -172,8 +199,8 @@ export function warnUnusedDestination(
 /**
  * Resolves the deprecated toSlot param, which only ever named clip slots.
  * @param toSlot - Clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart or locator was given
- * @returns Session destinations
+ * @param hasArrangementParams - Whether arrangementStart was given
+ * @returns Clip slot destinations
  */
 function legacySlotDestinations(
   toSlot: string,
@@ -188,17 +215,22 @@ function legacySlotDestinations(
   // failing the call, the way toPath does for the same conflict.
   if (hasArrangementParams) {
     console.warn(
-      "duplicate: arrangementStart/locator ignored — toSlot names a clip slot; " +
+      "arrangementStart ignored — toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
 
-  return { destination: "session", slots, arrangementTargets: [] };
+  return {
+    destination: "session",
+    slots,
+    arrangementTargets: [],
+    arrangementPositions: [],
+  };
 }
 
 /**
  * Reads arrangement destination tracks off the parsed paths. A clip slot here
- * contradicts arrangementStart/locator; warn and drop the weaker of the two
+ * contradicts arrangementStart; warn and drop the weaker of the two
  * rather than failing the call, the way every other tool handles a position
  * that doesn't apply.
  *
@@ -207,29 +239,51 @@ function legacySlotDestinations(
  * the wrong copy, and a two-destination call collapsing to one stops the
  * comma-separated values from splitting at all — Live is then handed the whole
  * string, which fails the call after a copy has already landed.
- * @param paths - Parsed clip destination paths
+ * @param entries - Parsed clip destinations, lane and position apart
  * @returns Arrangement destinations, or session ones when only slots were named
  */
-function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
-  const slots: SlotPosition[] = [];
-  const targets = paths.map((path) => {
-    if (path.kind !== "slot") {
-      return { trackIndex: path.trackIndex, takeLane: takeLaneFromPath(path) };
+function arrangementDestinations(
+  entries: ClipDestinationPath[],
+): ClipDestinations {
+  // A coordinate is its own entry's position, so when any entry carries one
+  // every arrangement entry needs one of its own: arrangementStart was refused
+  // alongside them, and there is nothing else to fall back on.
+  const fromPath = entries.some((entry) => entry.position != null);
+  const slots: ClipSlotPosition[] = [];
+  const targets: (DuplicateArrangementTarget | null)[] = [];
+  const arrangementPositions = entries.map((entry) => entry.position);
+
+  for (const { lane, position } of entries) {
+    if (lane == null) {
+      targets.push({ trackIndex: null, takeLane: null });
+    } else if (lane.kind === "slot") {
+      slots.push({ trackIndex: lane.trackIndex, sceneIndex: lane.sceneIndex });
+      targets.push(null);
+    } else {
+      if (fromPath && position == null) throw noPositionError(lane);
+
+      targets.push({
+        trackIndex: lane.trackIndex,
+        takeLane: takeLaneFromPath(lane),
+        ...(reusesPreviousLane(lane) && { sameLane: true }),
+      });
     }
+  }
 
-    slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
-
-    return null;
-  });
-
-  // Number the lanes here, off the list the caller wrote: the copy loop cycles
-  // this list, and a cycled repeat must reuse its lane, not append one. Both
+  // Number the lanes here, off the list the caller wrote: one entry may cover
+  // every copy, and a repeat of one "l+" must reuse its lane, not append one
+  // per copy. Both
   // arrangement returns below need it — leaving it off one path collapses two
   // "l+" into one lane.
   const arrangementTargets = withNewLaneOrdinals(targets);
 
   if (slots.length === 0) {
-    return { destination: "arrangement", slots: [], arrangementTargets };
+    return {
+      destination: "arrangement",
+      slots: [],
+      arrangementTargets,
+      arrangementPositions,
+    };
   }
 
   const named = slots
@@ -238,30 +292,59 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
 
   // toPath names where the copy goes; arrangementStart only says where on a
   // track. With nothing but clip slots, the position has no track to apply
-  // to, so toPath is the one that survives.
+  // to, so toPath is the one that survives. A coordinate can't reach here: a
+  // clip slot has no room for one, so a slot-only toPath names no position.
   if (arrangementTargets.every((target) => target == null)) {
     console.warn(
-      `duplicate: arrangementStart/locator ignored — toPath "${named}" names a clip slot; ` +
+      `arrangementStart ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 
-    return { destination: "session", slots, arrangementTargets: [] };
+    return {
+      destination: "session",
+      slots,
+      arrangementTargets: [],
+      arrangementPositions: [],
+    };
   }
 
   console.warn(
-    `duplicate: toPath "${named}" ignored — arrangementStart/locator makes this an arrangement duplicate`,
+    `toPath "${named}" ignored — ` +
+      (fromPath
+        ? "the other toPath entries name arrangement positions"
+        : "arrangementStart makes this an arrangement duplicate"),
   );
 
-  return { destination: "arrangement", slots: [], arrangementTargets };
+  return {
+    destination: "arrangement",
+    slots: [],
+    arrangementTargets,
+    arrangementPositions,
+  };
+}
+
+/**
+ * Refuses an arrangement entry with no position, on a toPath whose other
+ * entries carry one. Nothing else can supply it: arrangementStart beside a
+ * coordinate is refused before the call starts.
+ * @param lane - The lane the entry named
+ * @returns The error to throw
+ */
+function noPositionError(lane: ClipPath): Error {
+  const named = formatObjectPath(lane);
+
+  return new Error(
+    `toPath "${named}" names no position; add one, as "${named}[5|1]"`,
+  );
 }
 
 /**
  * Reads clip slots off the parsed paths.
  * @param paths - Parsed clip destination paths
- * @returns Session destinations
+ * @returns Clip slot destinations
  */
-function sessionDestinations(paths: ClipPath[]): ClipDestinations {
-  const slots: SlotPosition[] = [];
+function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
+  const slots: ClipSlotPosition[] = [];
 
   for (const path of paths) {
     // A bare track names two places at once, and guessing between them is how a
@@ -269,8 +352,8 @@ function sessionDestinations(paths: ClipPath[]): ClipDestinations {
     // outright, so it needs a position there rather than a scene.
     if (path.kind !== "slot") {
       throw new Error(
-        `duplicate failed: toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
-          `arrangementStart or locator for track ${path.trackIndex}'s arrangement, or use ` +
+        `toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
+          `a position for its arrangement, as "${formatObjectPath(path)}[5|1]", or use ` +
           `"t${path.trackIndex}/s<scene>" for a clip slot`,
       );
     }
@@ -278,5 +361,10 @@ function sessionDestinations(paths: ClipPath[]): ClipDestinations {
     slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
   }
 
-  return { destination: "session", slots, arrangementTargets: [] };
+  return {
+    destination: "session",
+    slots,
+    arrangementTargets: [],
+    arrangementPositions: [],
+  };
 }

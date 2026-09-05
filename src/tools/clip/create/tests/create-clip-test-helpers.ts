@@ -5,6 +5,10 @@
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type CuePoint,
+  setupCuePointMocksRegistry,
+} from "#src/test/helpers/cue-point-test-helpers.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -18,32 +22,53 @@ export interface ArrangementClipMockHandles {
   clip: RegisteredMockObject;
 }
 
+// scale_mode 0 = no active scale, so transform tests resolve scale:mask to
+// undefined rather than reading undefined scale intervals.
+const ARRANGEMENT_LIVE_SET_PROPS = {
+  signature_numerator: 4,
+  signature_denominator: 4,
+  scale_mode: 0,
+};
+
 /**
  * Setup mocks for arrangement clip creation tests.
  * Registers LiveSet (time signature), Track (create_midi_clip), and arrangement clip.
+ * @param options - Setup options
+ * @param options.cuePoints - Locators on the live_set, for `loc:` positions
  * @returns Handles for registered mock objects
  */
-export function setupArrangementClipMocks(): ArrangementClipMockHandles {
-  const liveSet = registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: {
-      signature_numerator: 4,
-      signature_denominator: 4,
-      // scale_mode 0 = no active scale, so transform tests resolve scale:mask
-      // to undefined rather than reading undefined scale intervals.
-      scale_mode: 0,
-    },
-  });
+export function setupArrangementClipMocks({
+  cuePoints,
+}: { cuePoints?: CuePoint[] } = {}): ArrangementClipMockHandles {
+  const liveSet =
+    cuePoints == null
+      ? registerMockObject("live-set", {
+          path: livePath.liveSet,
+          properties: ARRANGEMENT_LIVE_SET_PROPS,
+        })
+      : setupCuePointMocksRegistry({
+          cuePoints,
+          liveSetProps: ARRANGEMENT_LIVE_SET_PROPS,
+        }).liveSet;
 
+  // Live answers create_midi_clip with a clip that already knows where it
+  // starts, and the result path is read back off it, so the mock has to move
+  // with each create rather than sit at one position.
+  const clipProps: Record<string, unknown> = { length: 4 }; // 1 bar in 4/4
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
     methods: {
-      create_midi_clip: () => ["id", "arrangement_clip"],
+      create_midi_clip: (start) => {
+        clipProps.start_time = start;
+
+        return ["id", "arrangement_clip"];
+      },
     },
   });
 
   const clip = registerMockObject("arrangement_clip", {
-    properties: { length: 4 }, // 1 bar in 4/4 = 4 beats
+    path: livePath.track(0).arrangementClip(0),
+    properties: clipProps,
     methods: createNoteTrackingMethods(),
   });
 
@@ -59,15 +84,21 @@ export function setupArrangementClipMocks(): ArrangementClipMockHandles {
 export function registerArrangementTrack(
   trackIndex: number,
 ): RegisteredMockObject {
+  const clipProps: Record<string, unknown> = { length: 4 };
   const track = registerMockObject(`track-${trackIndex}`, {
     path: livePath.track(trackIndex),
     methods: {
-      create_midi_clip: () => ["id", `arrangement_clip_${trackIndex}`],
+      create_midi_clip: (start) => {
+        clipProps.start_time = start;
+
+        return ["id", `arrangement_clip_${trackIndex}`];
+      },
     },
   });
 
   registerMockObject(`arrangement_clip_${trackIndex}`, {
-    properties: { length: 4 },
+    path: livePath.track(trackIndex).arrangementClip(0),
+    properties: clipProps,
   });
 
   return track;
@@ -186,15 +217,23 @@ export function setupAudioArrangementClipMocks(
 
   const liveSet = registerLiveSetWithTimeSig();
 
+  // Live answers with a clip that already knows where it starts, and the
+  // result path is read back off it, so the mock moves with each create.
+  const clipProps = audioClipProperties(clipLength);
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
     methods: {
-      create_audio_clip: () => ["id", "arrangement_audio_clip"],
+      create_audio_clip: (_sampleFile, start) => {
+        clipProps.start_time = start;
+
+        return ["id", "arrangement_audio_clip"];
+      },
     },
   });
 
   const clip = registerMockObject("arrangement_audio_clip", {
-    properties: audioClipProperties(clipLength),
+    path: livePath.track(0).arrangementClip(0),
+    properties: clipProps,
   });
 
   return { liveSet, track, clip };
@@ -284,19 +323,26 @@ export function setupMultiAudioArrangementClipMocks(
 
   registerLiveSetWithTimeSig();
 
+  const clipProps = Array.from({ length: clipCount }, () =>
+    audioClipProperties(clipLength),
+  );
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
     methods: {
-      create_audio_clip: () => [
-        "id",
-        `arrangement_audio_clip_${clipCounter++}`,
-      ],
+      create_audio_clip: (_sampleFile, start) => {
+        const props = clipProps[clipCounter];
+
+        if (props != null) props.start_time = start;
+
+        return ["id", `arrangement_audio_clip_${clipCounter++}`];
+      },
     },
   });
 
   for (let i = 0; i < clipCount; i++) {
     registerMockObject(`arrangement_audio_clip_${i}`, {
-      properties: audioClipProperties(clipLength),
+      path: livePath.track(0).arrangementClip(i),
+      properties: clipProps[i],
     });
   }
 
@@ -332,6 +378,21 @@ export function setupDualMocks(): DualMockHandles {
   );
 
   return { clipSlot, sessionClip, track, arrangementClip };
+}
+
+/**
+ * Register an empty clip slot (and its clip) at track 0, the given scene.
+ * @param sceneIndex - 0-based scene index
+ */
+export function registerEmptyClipSlot(sceneIndex: number): void {
+  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}`, {
+    path: livePath.track(0).clipSlot(sceneIndex),
+    properties: { has_clip: 0 },
+  });
+  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}/clip`, {
+    path: livePath.track(0).clipSlot(sceneIndex).clip(),
+    methods: createNoteTrackingMethods(),
+  });
 }
 
 /**

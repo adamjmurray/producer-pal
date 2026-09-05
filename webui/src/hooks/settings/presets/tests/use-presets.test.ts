@@ -8,6 +8,7 @@
  */
 import { act, renderHook } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
+import { UUID } from "#webui/test-utils/matcher-test-helpers";
 import { loadPresets } from "#webui/hooks/settings/presets/preset-storage";
 import {
   type CreatePresetResult,
@@ -67,7 +68,8 @@ describe("usePresets", () => {
 
     expect(created?.ok).toBe(true);
     expect(result.current.presets).toHaveLength(1);
-    expect(result.current.presets[0]).toMatchObject({
+    expect(result.current.presets[0]).toStrictEqual({
+      id: UUID,
       name: "My Preset",
       ...fields,
     });
@@ -108,6 +110,27 @@ describe("usePresets", () => {
     expect(loadPresets()[0]?.model).toBe("new-model");
   });
 
+  it("leaves the other presets alone on an update", async () => {
+    const { result, id } = await renderWithPreset();
+    let otherId = "";
+
+    await act(() => {
+      otherId = expectCreatedId(result.current.createPreset("Q", fields));
+    });
+
+    await act(() => {
+      result.current.updatePreset(id, { ...fields, model: "new-model" });
+    });
+    await act(() => {
+      result.current.updatePresetDescription(id, "note");
+    });
+
+    const other = result.current.presets.find((p) => p.id === otherId);
+
+    expect(other?.model).toBe(fields.model);
+    expect(other?.description).toBeUndefined();
+  });
+
   it("stores a trimmed description and the captured toolset", async () => {
     const { result } = renderHook(() => usePresets());
 
@@ -119,7 +142,13 @@ describe("usePresets", () => {
       );
     });
 
-    expect(result.current.presets[0]).toMatchObject({
+    expect(result.current.presets[0]).toStrictEqual({
+      id: UUID,
+      model: "claude",
+      name: "Worker",
+      provider: "anthropic",
+      smallModelMode: false,
+      thinking: "Default",
       description: "cheap bulk editor",
       enabledTools: { "ppal-delete": false },
     });
@@ -148,7 +177,9 @@ describe("usePresets", () => {
       result.current.updatePresetDescription(id, "  new note  ");
     });
 
-    expect(result.current.presets[0]).toMatchObject({
+    expect(result.current.presets[0]).toStrictEqual({
+      id: UUID,
+      name: "P",
       ...fields,
       description: "new note",
     });

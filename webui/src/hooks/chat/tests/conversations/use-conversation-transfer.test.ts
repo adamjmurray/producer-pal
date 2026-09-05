@@ -367,6 +367,29 @@ describe("useConversationTransfer", () => {
     expect(result.current.notification?.message).toContain("3 skipped");
   });
 
+  it("import of an empty file says so with no detail in parentheses", async () => {
+    const { result } = await mockImportAndRender({
+      newCount: 0,
+      updatedCount: 0,
+      skippedCount: 0,
+      ignoredCount: 0,
+    });
+
+    expect(result.current.notification?.message).toBe(
+      "Imported 0 conversations",
+    );
+  });
+
+  it("dismisses when there is no notification to dismiss", () => {
+    const { result } = renderTransferHook();
+
+    void act(() => {
+      result.current.dismissNotification();
+    });
+
+    expect(result.current.notification).toBeNull();
+  });
+
   it("dismissNotification clears auto-dismiss timer", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 

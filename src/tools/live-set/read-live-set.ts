@@ -10,6 +10,7 @@ import {
 } from "#src/shared/pitch.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
 import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
+import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import {
   type IncludeFlags,
   parseIncludeArray,
@@ -43,12 +44,8 @@ export function readLiveSet(
   // Build include array to propagate to track/scene readers
   const trackInclude = buildTrackInclude(includeFlags);
 
-  // Compute return track names once for efficiency (used for sends in mixer data)
-  const returnTrackNames: string[] = returnTrackIds.map((_, idx) => {
-    const rt = LiveAPI.from(livePath.returnTrack(idx));
-
-    return rt.getProperty("name") as string;
-  });
+  // Read the return tracks once for efficiency (used for sends in mixer data)
+  const returnTracks = readReturnTrackInfo();
 
   // One pass over the session grid, shared by the scenes and the tracks below.
   // Each counts the same slots — scenes by column, tracks by row — so counting
@@ -95,7 +92,7 @@ export function readLiveSet(
         {
           trackIndex,
           include: trackInclude,
-          returnTrackNames,
+          returnTracks,
           sessionClipCount: clipCounts?.perTrack[trackIndex],
         },
         context,
@@ -112,19 +109,19 @@ export function readLiveSet(
           trackIndex: returnTrackIndex,
           category: "return",
           include: trackInclude,
-          returnTrackNames,
+          returnTracks,
           notation: context.notation,
         });
       },
     );
     const masterTrack = LiveAPI.from(livePath.masterTrack());
 
-    result.masterTrack = readTrackGeneric({
+    result.mainTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
       category: "master",
       include: trackInclude,
-      returnTrackNames,
+      returnTracks,
       notation: context.notation,
     });
   } else {

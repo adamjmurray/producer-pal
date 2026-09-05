@@ -394,7 +394,8 @@ _Note: Track is intentionally unnamed; Live auto-generates "9-MIDI"_
 e2e/live-sets/samples/
 ├── sample.aiff             # Used by t4/s0, t5/s0
 ├── drum-loop-1bar.wav      # Generated; not in the Set, loaded by tests
-├── generate-drum-loop.mjs  # Regenerates the above
+├── drum-loop-8bar.wav      # Generated; for arrangement-sections, not this Set
+├── generate-drum-loop.mjs  # Regenerates both drum loops
 └── drums/
     └── kick.aiff           # Used by t4 arrangement
 ```
@@ -406,6 +407,11 @@ region built from them is shorter than a bar.
 `drum-loop-1bar.wav` exists for the cases that need a bar line: 98000 frames at
 44100 Hz is exactly 4 beats at 108 BPM, so a clip covering the whole sample is
 one bar and its length reads as a round note value. Regenerate it with
-`node e2e/live-sets/samples/generate-drum-loop.mjs` — the script asserts the
+`node e2e/live-sets/samples/generate-drum-loop.mjs` — the script asserts every
 frame count, so a tempo or sample-rate change that no longer divides evenly
 fails instead of silently shifting every expectation.
+
+That script also renders `drum-loop-8bar.wav` (8 bars at 96 BPM), which belongs
+to `arrangement-sections` and is not used here. A clip built from a 1-bar sample
+still cannot cross a bar line, so anything that needs a multi-bar audio region
+uses that Set.

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { createClip } from "../create-clip.ts";
 import { convertTimingParameters } from "../helpers/create-clip-helpers.ts";
 import {
@@ -18,19 +18,18 @@ import {
   note,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when nothing names a destination", async () => {
-    await expect(createClip({})).rejects.toThrow(
-      "createClip failed: path is required",
-    );
+    await expect(createClip({})).rejects.toThrow("path is required");
   });
 
   // A bare track is half a destination either way — it needs a scene or an
   // arrangementStart — so the error names both fixes rather than the missing param.
   it("should throw error when a track is named without a spot on it", async () => {
     await expect(createClip({ path: "t0" })).rejects.toThrow(
-      'createClip failed: path "t0" names no position',
+      'path "t0" names no position',
     );
   });
 
@@ -267,8 +266,7 @@ describe("createClip - basic validation and time signatures", () => {
       looping: false,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         "firstStart parameter ignored for non-looping clips",
       ),
@@ -297,8 +295,7 @@ describe("convertTimingParameters (unit)", () => {
   it("warns when firstStart is used with a non-looping clip", () => {
     convertTimingParameters(null, null, "1|2", null, false, 4, 4, 4, 4);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("firstStart parameter ignored"),
     );
   });
@@ -308,8 +305,7 @@ describe("convertTimingParameters (unit)", () => {
     // `looping === false` → true and whole-condition → true / && → || mutants.
     convertTimingParameters(null, null, "1|2", null, true, 4, 4, 4, 4);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("firstStart parameter ignored"),
     );
   });
@@ -319,8 +315,7 @@ describe("convertTimingParameters (unit)", () => {
     // is false; the && → || mutant would make it warn.
     convertTimingParameters(null, null, "1|2", null, null, 4, 4, 4, 4);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("firstStart parameter ignored"),
     );
   });
@@ -377,7 +372,7 @@ describe("calculateClipLength (unit)", () => {
 });
 
 describe("handleAutoPlayback (unit)", () => {
-  const slot = (): SlotPosition => ({ trackIndex: 0, sceneIndex: 0 });
+  const slot = (): ClipSlotPosition => ({ trackIndex: 0, sceneIndex: 0 });
 
   it("no-ops (does not reach the switch) when view is not session", () => {
     // auto is truthy + view arrangement → the guard returns early. The
@@ -389,7 +384,7 @@ describe("handleAutoPlayback (unit)", () => {
   });
 
   it("no-ops (does not reach the switch) when there are no clip slots", () => {
-    // Empty slots → guard returns early. The `sessionSlots.length === 0` → false
+    // Empty slots → guard returns early. The `clipSlots.length === 0` → false
     // mutant would fall through to the switch and throw on the unknown auto value.
     expect(() =>
       handleAutoPlayback("unknown-mode", "session", []),

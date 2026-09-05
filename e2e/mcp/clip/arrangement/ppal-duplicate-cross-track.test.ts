@@ -6,16 +6,15 @@
 /**
  * E2E tests for a cross-track arrangement clip duplicate.
  *
- * `toPath` names the destination track. A destination that isn't honored
- * degrades the call to "duplicate onto my own track at arrangementStart", which
- * overwrites the source when the position matches — so these pin both halves:
- * `toPath` really copies, and anything ambiguous or wrong is refused instead of
- * quietly eating the source.
+ * `toPath` names the destination: a track, a position, or both. A destination
+ * that isn't honored degrades the call to "copy onto my own track at that
+ * position", which overwrites the source when the position matches — so these
+ * pin both halves: `toPath` really copies, and anything ambiguous or wrong is
+ * refused instead of quietly eating the source.
  *
- * `toPath` and `arrangementStart` are both lists, and the shorter one cycles.
- * That count only shows up against real Live — the copies have to land on the
- * tracks and beats we claim — so the fan-out cases live here rather than in unit
- * tests.
+ * `toPath` is a list. That count only shows up against real Live — the copies
+ * have to land on the tracks and beats we claim — so the fan-out cases live
+ * here rather than in unit tests.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track; t7, t10 = MIDI tracks with no
  * clips; t5 = audio track)
@@ -24,21 +23,23 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  getToolErrorMessage,
-  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
+  getToolErrorMessage,
+  isToolError,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import {
+  AUDIO_TRACK,
+  CHILD_TRACK,
+  EMPTY_MIDI_TRACK,
+  RACKS_TRACK,
+} from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const SOURCE_TRACK = 8;
-const DEST_TRACK = 7;
-const DEST_TRACK_2 = 10;
-const AUDIO_TRACK = 5;
 
 describe("cross-track arrangement clip duplicate", () => {
   it("copies to toPath's track at the source's own position, leaving the source intact", async () => {
@@ -48,23 +49,22 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
-      toPath: `t${DEST_TRACK}`,
+      toPath: `t${RACKS_TRACK}[${position}]`,
       name: "Cross Copy A",
     });
-    const copy = parseToolResult<{ id: string; trackIndex?: number }>(result);
+    const copy = parseToolResult<{ id: string }>(result);
 
     // The copy is a new clip on the destination track...
     expect(copy.id).not.toBe(source.id);
 
-    const placed = await clipAt(DEST_TRACK, position);
+    const placed = await clipAt(RACKS_TRACK, position);
 
     expect(placed?.id).toBe(copy.id);
     expect(placed?.name).toBe("Cross Copy A");
     expect(placed?.notes).toContain("C3");
 
     // ...and the source is untouched: same id, same name, same track.
-    const survivor = await clipAt(SOURCE_TRACK, position);
+    const survivor = await clipAt(EMPTY_MIDI_TRACK, position);
 
     expect(survivor?.id).toBe(source.id);
     expect(survivor?.name).toBe("Source A");
@@ -77,16 +77,16 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      toPath: `t${DEST_TRACK}`,
+      toPath: `t${RACKS_TRACK}`,
       name: "Cross Copy B",
     });
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      `"t${DEST_TRACK}" names a track but not a spot on it`,
+      `"t${RACKS_TRACK}" names a track but not a spot on it`,
     );
 
-    const survivor = await clipAt(SOURCE_TRACK, position);
+    const survivor = await clipAt(EMPTY_MIDI_TRACK, position);
 
     expect(survivor?.id).toBe(source.id);
     expect(survivor?.name).toBe("Source B");
@@ -100,7 +100,7 @@ describe("cross-track arrangement clip duplicate", () => {
       type: "clip",
       id: source.id,
       arrangementStart: position,
-      toSlot: `${DEST_TRACK}/0`,
+      toSlot: `${RACKS_TRACK}/0`,
       name: "Cross Copy C",
     });
 
@@ -111,7 +111,7 @@ describe("cross-track arrangement clip duplicate", () => {
       "cannot duplicate arrangement clips to the session",
     );
 
-    const survivor = await clipAt(SOURCE_TRACK, position);
+    const survivor = await clipAt(EMPTY_MIDI_TRACK, position);
 
     expect(survivor?.id).toBe(source.id);
     expect(survivor?.name).toBe("Source C");
@@ -126,14 +126,21 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
-      toPath: `t${AUDIO_TRACK}`,
+      toPath: `t${AUDIO_TRACK}[${position}]`,
     });
     const { data, warnings } = parseToolResultWithWarnings<unknown[]>(result);
 
     expect(data).toStrictEqual([]);
-    expect(warnings.join(" ")).toContain(
-      `MIDI clip cannot be duplicated to audio track ${AUDIO_TRACK}`,
+
+    // The warning names the clip it skipped by both spellings, and the track
+    // as a path.
+    const warningText = warnings.join(" ");
+
+    expect(warningText).toContain(
+      `MIDI clip t${EMPTY_MIDI_TRACK}[${position}] (id ${source.id})`,
+    );
+    expect(warningText).toContain(
+      `cannot be duplicated to audio track t${AUDIO_TRACK}`,
     );
     expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
   });
@@ -145,8 +152,7 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
-      toPath: `t${DEST_TRACK},t${DEST_TRACK_2}`,
+      toPath: `t${RACKS_TRACK}[${position}],t${CHILD_TRACK}[${position}]`,
       name: "Fan Out",
     });
     const copies = parseToolResult<Array<{ id: string }>>(result);
@@ -154,8 +160,8 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(copies).toHaveLength(2);
 
     // One copy per track, at the single position we gave.
-    const first = await clipAt(DEST_TRACK, position);
-    const second = await clipAt(DEST_TRACK_2, position);
+    const first = await clipAt(RACKS_TRACK, position);
+    const second = await clipAt(CHILD_TRACK, position);
 
     expect(first?.id).toBe(copies[0]!.id);
     expect(second?.id).toBe(copies[1]!.id);
@@ -163,20 +169,19 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(second?.name).toBe("Fan Out");
     expect(second?.notes).toContain("C3");
 
-    const survivor = await clipAt(SOURCE_TRACK, position);
+    const survivor = await clipAt(EMPTY_MIDI_TRACK, position);
 
     expect(survivor?.id).toBe(source.id);
   });
 
-  it("cycles one toPath track across every arrangementStart", async () => {
+  it("sends one toPath track a position apiece", async () => {
     const source = await createArrClip("45|1", "Source F");
     const positions = ["49|1", "53|1", "57|1"];
 
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: positions.join(", "),
-      toPath: `t${DEST_TRACK_2}`,
+      toPath: positions.map((at) => `t${CHILD_TRACK}[${at}]`).join(", "),
       name: "Cycled",
     });
     const copies = parseToolResult<Array<{ id: string }>>(result);
@@ -184,14 +189,14 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(copies).toHaveLength(3);
 
     for (const [i, position] of positions.entries()) {
-      const placed = await clipAt(DEST_TRACK_2, position);
+      const placed = await clipAt(CHILD_TRACK, position);
 
       expect(placed?.id).toBe(copies[i]!.id);
       expect(placed?.name).toBe("Cycled");
     }
 
     // All three went to the named track, not the source's.
-    expect(await clipAt(SOURCE_TRACK, "49|1")).toBeUndefined();
+    expect(await clipAt(EMPTY_MIDI_TRACK, "49|1")).toBeUndefined();
   });
 
   it("honors the old bare track index and says what to write instead", async () => {
@@ -205,19 +210,18 @@ describe("cross-track arrangement clip duplicate", () => {
       await callTool("ppal-duplicate", {
         type: "clip",
         id: source.id,
-        arrangementStart: position,
-        toPath: `${DEST_TRACK}`,
+        toPath: `${RACKS_TRACK}[${position}]`,
       }),
     );
 
     expect(warnings.join(" ")).toContain(
-      `toPath "${DEST_TRACK}" is a bare track index; use "t${DEST_TRACK}"`,
+      `toPath "${RACKS_TRACK}" is a bare track index; use "t${RACKS_TRACK}"`,
     );
 
     // Honored, not just tolerated: the copy is on the track the old spelling
     // named, and the result reports it the way the warning asks for.
-    expect(copy.path).toBe(`t${DEST_TRACK}`);
-    expect((await clipAt(DEST_TRACK, position))?.id).toBe(copy.id);
+    expect(copy.path).toBe(`t${RACKS_TRACK}[${position}]`);
+    expect((await clipAt(RACKS_TRACK, position))?.id).toBe(copy.id);
   });
 });
 
@@ -240,17 +244,16 @@ async function callTool(
 
 /**
  * Create a named MIDI clip in the source track's arrangement.
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @param name - Clip name
  * @returns The created clip's metadata
  */
 async function createArrClip(
-  arrangementStart: string,
+  position: string,
   name: string,
 ): Promise<{ id: string }> {
   const result = await callTool("ppal-create-clip", {
-    path: `t${SOURCE_TRACK}`,
-    arrangementStart,
+    path: `t${EMPTY_MIDI_TRACK}[${position}]`,
     name,
     notes: "C3 D3 E3 F3 1|1",
     length: "1bar",
@@ -263,12 +266,12 @@ async function createArrClip(
  * Read the arrangement clip at an exact position on a track. Tolerates warnings
  * so a fix that warns about the dropped destination still reads back cleanly.
  * @param trackIndex - Track index
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @returns The clip at that position, if any
  */
 async function clipAt(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
 ): Promise<ReadClipResult | undefined> {
   const result = await callTool("ppal-read-track", {
     trackIndex,
@@ -279,6 +282,6 @@ async function clipAt(
   }>(result);
 
   return data.arrangementClips?.find(
-    (clip) => clip.arrangementStart === arrangementStart,
+    (clip) => arrangementStartOf(clip) === position,
   );
 }

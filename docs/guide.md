@@ -1,16 +1,15 @@
 ---
 title: Getting Started
 description:
-  Get started with Producer Pal — the Ableton MCP server for AI-powered music
+  Get started with Producer Pal, the Ableton MCP server for AI-powered music
   production in Ableton Live. Quick guide to install and connect your AI.
 ---
 
 # Getting Started
 
-Welcome to Producer Pal™! This guide will help you get started controlling
-Ableton Live with words. Producer Pal is an Ableton MCP server, a
-[REST API](/guide/rest-api), and a portable [Agent Skill](/guide/skills) — three
-ways into the same Max for Live device.
+Producer Pal is an Ableton MCP server, a [REST API](/guide/rest-api), and a
+portable [Agent Skill](/guide/skills). Three ways into the same Max for Live
+device.
 
 ## Installation
 
@@ -28,7 +27,7 @@ Quick options:
 - **[Local Models](/installation/choose-local)** - Run completely offline with
   Ollama, LM Studio Bionic, and other MCP-compatible platforms
 - **[Agent Skill](/guide/skills)** - Drop a folder into Claude Code, Codex CLI,
-  or Gemini CLI — no MCP config
+  or Gemini CLI, with no MCP config
 - **[REST API](/guide/rest-api)** - Script Live over plain HTTP, no AI required
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`
@@ -50,7 +49,7 @@ After installation:
 
 Using the [Agent Skill](/guide/skills) instead? Steps 3 and 4 are handled by its
 bootstrap. Using the [REST API](/guide/rest-api) directly? Nothing connects for
-you — call `ppal-connect` first when a model is in the loop, since that's what
+you, so call `ppal-connect` first when a model is in the loop, since that's what
 returns the skills and [context](/guide/context). A plain script can call the
 other tools straight away.
 

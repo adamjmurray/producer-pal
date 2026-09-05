@@ -11,6 +11,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const C3 = {
   pitch: 60,
@@ -54,7 +55,12 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
       transforms: "velocity = 50",
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 1, transformed: 1 });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 1,
+      transformed: 1,
+    });
     expect(addedVelocity(mocks.clip123)).toBe(50);
   });
 
@@ -97,9 +103,29 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
       transforms: "!!!bad!!!",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Failed to update clip 123"),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("Failed to update clip t0/s0 (id 123)"),
     );
+  });
+});
+
+describe("updateClip - transforms name the clip they warn about", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip456, { length: 4 });
+    mockMergeNoteTracking(mocks.clip123, [{ ...C3 }]);
+    mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
+  });
+
+  it("tells two firings of the same reason apart", async () => {
+    await updateClip({ ids: "123,456", transforms: "gain = 3" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      "clip t0/s0 (id 123): Audio parameters (gain, pitchShift) ignored for MIDI clips",
+      "clip t1/s1 (id 456): Audio parameters (gain, pitchShift) ignored for MIDI clips",
+    ]);
   });
 });

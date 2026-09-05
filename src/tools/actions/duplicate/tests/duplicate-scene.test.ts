@@ -19,6 +19,7 @@ import {
   registerArrangementClip,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface DuplicateClipResult {
   id: string;
@@ -28,7 +29,7 @@ interface DuplicateClipResult {
 
 interface DuplicateSceneResult {
   id?: string;
-  sceneIndex?: number;
+  path?: string;
   arrangementStart?: string;
   clips: DuplicateClipResult[];
 }
@@ -62,7 +63,7 @@ describe("duplicate - scene duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
-      sceneIndex: 1,
+      path: "s1",
       clips: [
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
@@ -103,7 +104,7 @@ describe("duplicate - scene duplication", () => {
     expect(result).toStrictEqual([
       {
         id: "live_set/scenes/1",
-        sceneIndex: 1,
+        path: "s1",
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
@@ -117,7 +118,7 @@ describe("duplicate - scene duplication", () => {
       },
       {
         id: "live_set/scenes/2",
-        sceneIndex: 2,
+        path: "s2",
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/2/clip",
@@ -156,7 +157,7 @@ describe("duplicate - scene duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
-      sceneIndex: 1,
+      path: "s1",
       clips: [],
     });
 
@@ -255,15 +256,60 @@ describe("duplicate - scene duplication", () => {
         16,
       );
 
-      // Verify result structure
-      expect(result).toHaveProperty("arrangementStart", "5|1");
+      // Verify result structure. Each clip's own path says where it landed,
+      // so the batch reports no position of its own.
       expect(result).toHaveProperty("clips");
       expect(Array.isArray(result.clips)).toBe(true);
       // At least the exact-match clip (track 2) should appear
       // Track 0's lengthening via updateClip is tested in updateClip's own tests
       expect(
-        result.clips.some((c: DuplicateClipResult) => c.path === "t2"),
+        result.clips.some((c: DuplicateClipResult) => c.path === "t2[5|1]"),
       ).toBe(true);
+    });
+
+    // A scene copy lands a clip on every track, so it has no lane to name —
+    // the bare coordinate is its whole destination, and it is what the
+    // arrangementStart deprecation points at.
+    it("takes a bare coordinate on toPath", async () => {
+      setupArrangementSceneMocks(1);
+
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      registerArrangementClip(0, 0, 16);
+
+      await duplicate({ type: "scene", id: "scene1", toPath: "[5|1]" });
+
+      expect(track0.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id live_set/tracks/0/clip_slots/0/clip",
+        16,
+      );
+    });
+
+    it("refuses a lane on a scene's toPath", async () => {
+      setupArrangementSceneMocks();
+
+      await expect(
+        duplicate({ type: "scene", id: "scene1", toPath: "t0[5|1]" }),
+      ).rejects.toThrow(
+        'toPath "t0[5|1]" names a lane, but a scene copies ' +
+          'across every track; name the position alone, as "[5|1]"',
+      );
+    });
+
+    it("refuses a scene position spelled on both params", async () => {
+      setupArrangementSceneMocks();
+
+      await expect(
+        duplicate({
+          type: "scene",
+          id: "scene1",
+          toPath: "[5|1]",
+          arrangementStart: "9|1",
+        }),
+      ).rejects.toThrow("both name a song position; use one");
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
@@ -279,11 +325,11 @@ describe("duplicate - scene duplication", () => {
     it("rejects a malformed arrangementStart that parses to no positions", async () => {
       setupArrangementSceneMocks();
 
-      // "," survives the earlier trim-only checks but parses to zero positions;
-      // it must throw, not silently produce no duplicates.
+      // "," survives the earlier trim-only checks but names no position; it
+      // must throw, not silently produce no duplicates.
       await expect(
         duplicate({ type: "scene", id: "scene1", arrangementStart: "," }),
-      ).rejects.toThrow(/no valid bar\|beat positions/);
+      ).rejects.toThrow('invalid arrangementStart "," - it names nothing');
     });
 
     it("should duplicate multiple scenes to arrangement view at sequential positions", async () => {
@@ -326,33 +372,31 @@ describe("duplicate - scene duplication", () => {
         32,
       );
 
+      // Beats 16, 24 and 32, which the song's 4/4 spells as bars 5, 7 and 9.
       expect(result).toStrictEqual([
         {
-          arrangementStart: "5|1",
           clips: [
             {
               id: livePath.track(0).arrangementClip(0),
-              path: "t0",
+              path: "t0[5|1]",
               name: "Scene Copy",
             },
           ],
         },
         {
-          arrangementStart: "7|1",
           clips: [
             {
               id: livePath.track(0).arrangementClip(1),
-              path: "t0",
+              path: "t0[7|1]",
               name: "Scene Copy",
             },
           ],
         },
         {
-          arrangementStart: "9|1",
           clips: [
             {
               id: livePath.track(0).arrangementClip(2),
-              path: "t0",
+              path: "t0[9|1]",
               name: "Scene Copy",
             },
           ],
@@ -382,9 +426,10 @@ describe("duplicate - scene duplication", () => {
 
       expectSceneDupAtBeat(track0, 16);
       expectSceneDupAtBeat(track0, 32);
-      expect(result.map((r) => r.arrangementStart)).toStrictEqual([
-        "5|1",
-        "9|1",
+      // Each copy's clip says where it landed: beats 16 and 32 in 4/4.
+      expect(result.map((r) => r.clips[0]?.path)).toStrictEqual([
+        "t0[5|1]",
+        "t0[9|1]",
       ]);
     });
 
@@ -401,10 +446,7 @@ describe("duplicate - scene duplication", () => {
         arrangementStart: "5|1",
       })) as DuplicateSceneResult;
 
-      expect(result).toStrictEqual({
-        arrangementStart: "5|1",
-        clips: [],
-      });
+      expect(result).toStrictEqual({ clips: [] });
     });
 
     it("should duplicate a scene to arrangement without clips when withoutClips is true", async () => {
@@ -450,10 +492,7 @@ describe("duplicate - scene duplication", () => {
         expect.any(Number),
       );
 
-      expect(result).toStrictEqual({
-        arrangementStart: "5|1",
-        clips: [],
-      });
+      expect(result).toStrictEqual({ clips: [] });
     });
   });
 
@@ -478,7 +517,7 @@ describe("duplicate - scene duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
     expect(newScene.set).toHaveBeenCalledWith("color", 0x00ff00);
     expect(result.id).toBe("live_set/scenes/1");
-    expect(result.sceneIndex).toBe(1);
+    expect(result.path).toBe("s1");
   });
 
   it("names the positions a cut-short arrangement duplicate did not reach", async () => {
@@ -494,8 +533,7 @@ describe("duplicate - scene duplication", () => {
 
     expect(result).toStrictEqual([]);
     expect(track0.call).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Ran out of time after duplicating 0 of 2. " +
         "Not duplicated: 5|1, 9|1. Re-run for those positions.",
     );

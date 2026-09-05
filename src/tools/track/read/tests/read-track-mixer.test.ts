@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -12,15 +12,24 @@ import {
 } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
+const RETURN_TRACKS = [
+  { name: "Reverb", id: "return1" },
+  { name: "Delay", id: "return2" },
+];
+
 function expectSendsWithReverbAndSecond(
   result: Record<string, unknown>,
-  secondReturn: string,
+  second: Record<string, unknown>,
 ): void {
   const sends = result.sends as Record<string, unknown>[];
 
   expect(sends).toHaveLength(2);
-  expect(sends[0]).toStrictEqual({ gainDb: -12.5, return: "Reverb" });
-  expect(sends[1]).toStrictEqual({ gainDb: -6.0, return: secondReturn });
+  expect(sends[0]).toStrictEqual({
+    gainDb: -12.5,
+    return: "Reverb",
+    returnId: "return1",
+  });
+  expect(sends[1]).toStrictEqual({ gainDb: -6.0, ...second });
 }
 
 describe("readTrack - mixer properties", () => {
@@ -158,6 +167,23 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("pan");
   });
 
+  it("passes a non-numeric pan through instead of rounding it", () => {
+    // Rounding assumes a number; anything else Live hands back is reported as
+    // it came rather than turned into NaN.
+    setupTrackMixerMocks({
+      volumeProperties: {
+        display_value: 0,
+      },
+      panningProperties: {
+        value: "unavailable",
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("pan", "unavailable");
+  });
+
   it("includes mixer with wildcard include", () => {
     setupTrackMixerMocks({
       volumeProperties: {
@@ -234,7 +260,7 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("rightPan");
   });
 
-  it("includes sends with return track names when requested", () => {
+  it("includes sends with return track names and ids when requested", () => {
     setupTrackMixerMocks({
       sendIds: ["send_1", "send_2"],
       sendValues: [-12.5, -6.0],
@@ -243,11 +269,59 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({
       trackIndex: 0,
       include: ["mixer"],
-      returnTrackNames: ["Reverb", "Delay"],
+      returnTracks: RETURN_TRACKS,
     });
 
     expect(result).toHaveProperty("sends");
-    expectSendsWithReverbAndSecond(result, "Delay");
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  it("includes sends on a return track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.returnTrack(1)),
+      trackId: "return2",
+      trackProperties: { has_midi_input: 0, name: "Delay" },
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readTrack({
+      trackIndex: 1,
+      trackType: "return",
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  // Live's main track has no sends, so this only proves the return track list
+  // reaches the master read path.
+  it("includes sends on the main track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.masterTrack()),
+      trackId: "master",
+      trackProperties: { has_midi_input: 0, name: "Master" },
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readTrack({
+      trackType: "master",
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
   });
 
   it("does not include sends property when track has no sends", () => {
@@ -259,13 +333,13 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({
       trackIndex: 0,
       include: ["mixer"],
-      returnTrackNames: ["Reverb"],
+      returnTracks: RETURN_TRACKS.slice(0, 1),
     });
 
     expect(result).not.toHaveProperty("sends");
   });
 
-  it("fetches return track names if not provided", () => {
+  it("fetches return tracks if not provided", () => {
     setupTrackMixerMocks({
       sendIds: ["send_1"],
       sendValues: [-10.0],
@@ -284,7 +358,25 @@ describe("readTrack - mixer properties", () => {
     expect(sends[0]).toStrictEqual({
       gainDb: -10.0,
       return: "FetchedReverb",
+      returnId: "return1",
     });
+  });
+
+  it("rounds track and send gain to Live's 0.01 dB steps", () => {
+    // Live's raw float32 reads back as -6.333000183105469.
+    setupTrackMixerMocks({
+      volumeProperties: { display_value: -6.333000183105469 },
+      sendIds: ["send_1"],
+      sendValues: [-6.333000183105469],
+    });
+    setupReturnTrackNames(["Reverb"]);
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -6.33);
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends[0]).toHaveProperty("gainDb", -6.33);
   });
 
   it("warns when send count doesn't match return track count", () => {
@@ -298,13 +390,14 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({
       trackIndex: 0,
       include: ["mixer"],
-      returnTrackNames: ["Reverb"],
+      returnTracks: RETURN_TRACKS.slice(0, 1),
     });
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Send count (2) doesn't match return track count (1)",
+      "Send count (2) on track t0 (id track1) doesn't match return track count (1)",
     );
-    expectSendsWithReverbAndSecond(result, "Return 2");
+    // No return track lines up with the second send, so it carries no returnId
+    expectSendsWithReverbAndSecond(result, { return: "Return 2" });
 
     consoleSpy.mockRestore();
   });

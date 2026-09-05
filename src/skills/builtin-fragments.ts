@@ -51,6 +51,7 @@
 import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
 import {
   arrangement,
+  arrangementBasic,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
 import { codeTransforms } from "#src/skills/fragments/transforms/code-transforms.ts";
@@ -67,6 +68,7 @@ import {
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
+import { objectPaths } from "#src/skills/fragments/object-paths.ts";
 import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
@@ -130,6 +132,10 @@ export function builtinFragments(
     "specialized-devices": specializedDevices,
     arrangement,
     "arrangement-write": arrangementWrite,
+    "arrangement-basic": arrangementBasic,
+
+    "object-paths": objectPaths,
+
     "working-with-live": workingWithLive,
     "context-standard": contextStandard,
     "context-basic": contextBasic,

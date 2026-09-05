@@ -21,6 +21,7 @@ import {
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const HOLDING_AREA = {} as const;
 
@@ -107,12 +108,10 @@ describe("split position coordinates", () => {
       expect.any(Number),
       expect.any(Number),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("arrangementSplit cut nothing"),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("clip_1 (5|1 to 9|1)"),
     );
   });
@@ -135,12 +134,10 @@ describe("split position coordinates", () => {
       expect.any(Number),
       expect.any(Number),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("split cut nothing"),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("clip_1 (1|1 to 5|1)"),
     );
   });
@@ -169,8 +166,7 @@ describe("split position coordinates", () => {
       ARRANGEMENT_SPLIT_MODE,
     );
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("cut nothing"),
     );
   });
@@ -189,9 +185,29 @@ describe("split position coordinates", () => {
       ARRANGEMENT_SPLIT_MODE,
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("arrangementSplit cut nothing at 51|1"),
+    );
+  });
+
+  // Clip-relative positions get their own explanation, and several of them are
+  // "them", not "it".
+  it("names every clip-relative position that landed in no clip", () => {
+    const { mockClip, clips } = setupSplitTest(CLIP_AT_BAR_5);
+
+    // 8 beats into a 16-beat clip cuts; 100 and 200 are far past its end.
+    performSplitting(
+      [mockClip],
+      [8, 100, 200],
+      clips,
+      HOLDING_AREA,
+      LEGACY_SPLIT_MODE,
+    );
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "positions are relative to each clip's start, and no clip is long enough for them",
+      ),
     );
   });
 });

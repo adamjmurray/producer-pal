@@ -10,10 +10,12 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface LiveSetConfig {
   numerator?: number;
   denominator?: number;
+  startTime?: number;
   loop?: number;
   loopStart?: number;
   loopLength?: number;
@@ -64,6 +66,21 @@ export function setupPlaybackLiveSet(
 }
 
 /**
+ * Register a session clip slot, keyed by its own path.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ * @returns RegisteredMockObject for the clip slot
+ */
+export function registerClipSlot(
+  trackIndex: number,
+  sceneIndex: number,
+): RegisteredMockObject {
+  const path = livePath.track(trackIndex).clipSlot(sceneIndex);
+
+  return registerMockObject(path, { path });
+}
+
+/**
  * Setup default time signature mock (4/4) for playback tests.
  * Registers live_set and default tracks. Use in beforeEach to initialize standard test state.
  * @returns RegisteredMockObject for the live_set object
@@ -110,6 +127,7 @@ export function setupCuePointMocks({
   const {
     numerator = 4,
     denominator = 4,
+    startTime = 0,
     loop = 0,
     loopStart = 0,
     loopLength = 4,
@@ -121,6 +139,7 @@ export function setupCuePointMocks({
     liveSetProps: {
       signature_numerator: numerator,
       signature_denominator: denominator,
+      start_time: startTime,
       loop,
       loop_start: loopStart,
       loop_length: loopLength,
@@ -146,21 +165,41 @@ export function expectLiveSetProperty(
 }
 
 /**
- * Assert the arrangement loop length was left untouched — the guard against a
- * non-positive loop length skips the write rather than sending it to Live.
+ * Assert the loop was left untouched, all three writes of it. A loop that
+ * can't be had is refused whole: writing the start and then refusing the
+ * length would leave a loop the caller never asked for.
  * @param handle - RegisteredMockObject for the live_set object
  */
-export function expectLoopLengthNotWritten(handle: RegisteredMockObject): void {
-  expect(handle.set).not.toHaveBeenCalledWith("loop_length", expect.anything());
+export function expectLoopNotWritten(handle: RegisteredMockObject): void {
+  for (const property of ["loop", "loop_start", "loop_length"]) {
+    expect(handle.set).not.toHaveBeenCalledWith(property, expect.anything());
+  }
 }
 
 /**
- * Assert the loop-ordering warning was relayed to the LLM on outlet 1.
+ * Assert the loop a playback result reports: on or off, and the bounds when it
+ * names them.
+ * @param result - The playback result
+ * @param expected - The loop state the result should report
+ * @param expected.loop - Whether the result says the loop is on
+ * @param expected.start - Expected loopStart, omitted when none is reported
+ * @param expected.end - Expected loopEnd, omitted when none is reported
+ */
+export function expectReportedLoop(
+  result: { loop?: boolean; loopStart?: string; loopEnd?: string },
+  expected: { loop?: boolean; start?: string; end?: string },
+): void {
+  expect(result.loop).toBe(expected.loop);
+  expect(result.loopStart).toBe(expected.start);
+  expect(result.loopEnd).toBe(expected.end);
+}
+
+/**
+ * Assert the loop-ordering warning reached the model.
  */
 export function expectLoopOrderWarning(): void {
-  expect(outlet).toHaveBeenCalledWith(
-    1,
-    expect.stringContaining("loopEnd must be after loopStart"),
+  expect(capturedWarnings()).toContainEqual(
+    expect.stringContaining("is not after loopStart"),
   );
 }
 
@@ -206,7 +245,6 @@ export function setupMultiClipMocks(
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,
-      current_song_time: 5,
       loop: 0,
       loop_start: 0,
       loop_length: 4,

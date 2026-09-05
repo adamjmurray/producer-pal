@@ -34,41 +34,48 @@ export const toolDefSelect = defineTool("ppal-select", {
       ),
 
     // select is the one tool that takes every object type by id, so all four
-    // prefixed spellings are names a model reaches for here. Each folds onto
-    // `id`, which detects the type anyway — a guess costs a warning, not a
-    // dropped argument and a selection that never happened.
-    trackId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    // prefixed spellings are names a model reaches for here. Each is read as a
+    // target of its own and type-detected the way `id` is, so a guess costs
+    // nothing — and sending two at once selects both, the way trackIndex and
+    // sceneIndex already do.
+    trackId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    sceneId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    sceneId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    clipId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    clipId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    deviceId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    deviceId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based track index"),
-    trackType: z
-      .enum(["return", "master"])
-      .optional()
-      .describe("omit for audio/midi tracks, or: return, master"),
+    trackIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
+    trackType: deprecatedParam(
+      z.enum(["regular", "return", "master"]).optional(),
+      { replacedBy: "path" },
+    ),
 
-    sceneIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based scene index"),
+    sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
 
     path: z.coerce
       .string()
       .optional()
       .describe(
         "select by path, 0-based: 't0/s3' a clip slot, 't0' a track, 'rt0' a return track, " +
-          "'mt' the master track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
+          "'mt' the main track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
           "'t0/d0/pC1' a drum pad",
       ),
 

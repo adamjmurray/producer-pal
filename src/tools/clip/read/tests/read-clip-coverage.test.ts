@@ -6,7 +6,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as consoleModule from "#src/shared/max/v8-max-console.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -14,6 +13,7 @@ import {
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
+  registerDrumRackTrack,
   setupAudioClipMock,
   setupMidiClipMock,
   setupNotesMock,
@@ -311,7 +311,7 @@ describe("readClip - include flag gating", () => {
     const result = readClip({ id: "id arr_clip", include: [] });
 
     expect(result.view).toBe("arrangement");
-    expect(result.arrangementStart).toBe("3|1"); // start_time 8 in 4/4
+    expect(result.path).toBe("t2[3|1]"); // start_time 8 in 4/4
     expect(result.arrangementLength).toBeUndefined();
   });
 });
@@ -323,14 +323,7 @@ describe("readClip - drum mode resolution", () => {
   });
 
   it("uses drum notation for a standalone read of a Drum Rack track", () => {
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      properties: { devices: children("drumRack") },
-    });
-    registerMockObject("drumRack", {
-      type: "Device",
-      properties: { can_have_drum_pads: 1 },
-    });
+    registerDrumRackTrack();
 
     expect(readDrumChordNotes()).toBe(DRUM_MODE_OUTPUT);
   });

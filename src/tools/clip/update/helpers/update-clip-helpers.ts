@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -14,6 +15,7 @@ import {
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
   forceWarpForLooping,
@@ -27,7 +29,9 @@ import {
   handleQuantization,
 } from "./update-clip-notes-helpers.ts";
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
+import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
@@ -71,12 +75,17 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   duplicateLoop?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
-  toSlot?: { trackIndex: number; sceneIndex: number } | null;
+  /** Where this clip moves, from toPath (or the deprecated toSlot). */
+  destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
+  /** Which written `l+` the destination lands on, for an `l=` sharing it. */
+  newLaneOrdinal?: number;
   nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
+  /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
+  appendedLanes: Map<string, number>;
 }
 
 /**
@@ -109,11 +118,24 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.arrangementStartBeats - Arrangement start in beats
  * @param params.context - Context object
  * @param params.updatedClips - Array to collect updated clips
- * @param params.tracksWithMovedClips - Map of tracks with moved clips
+ * @param params.movedClipGroups - Tally of clips landing on each lane and position
  */
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
 ): void {
+  // The transform evaluators warn per clip but have no LiveAPI to name it with,
+  // so the label comes from here. Everything inside is synchronous, which is
+  // what makes a scope safe to use instead of a parameter.
+  withClipWarningLabel(`clip ${targetLabel(params.clip)}`, () =>
+    updateOneClip(params),
+  );
+}
+
+/**
+ * Apply one clip's update, with transform warnings already labelled.
+ * @param params - The full single-clip update params
+ */
+function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   const {
     clip,
     clipIndex,
@@ -135,7 +157,7 @@ export function processSingleClipUpdate(
     quantizePitch,
     context,
     updatedClips,
-    tracksWithMovedClips,
+    movedClipGroups,
   } = params;
 
   const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
@@ -159,7 +181,10 @@ export function processSingleClipUpdate(
     });
     forceWarpForLooping(clip, looping, warping);
   } else {
-    warnIgnoredParams({ gainDb, pitchShift, warpMode, warping }, "MIDI clips");
+    warnIgnoredParams(
+      { gainDb, pitchShift, warpMode, warping },
+      `MIDI clip ${targetLabel(clip)}`,
+    );
   }
 
   // Determine looping state. Read `wasLooping` here, after the audio params:
@@ -169,7 +194,9 @@ export function processSingleClipUpdate(
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
-    console.warn("firstStart parameter ignored for non-looping clips");
+    console.warn(
+      `firstStart parameter ignored for non-looping clip ${targetLabel(clip)}`,
+    );
   }
 
   writeClipProperties(params, {
@@ -190,7 +217,9 @@ export function processSingleClipUpdate(
     // note write throw (mirrors create-clip's guard) so a multi-clip batch
     // keeps going. Transforms are still applied above by handleAudioClipUpdate.
     if (notationString != null) {
-      console.warn("notes parameter ignored for audio clip");
+      console.warn(
+        `notes parameter ignored for audio clip ${targetLabel(clip)}`,
+      );
     }
   }
 
@@ -220,15 +249,17 @@ export function processSingleClipUpdate(
     );
   }
 
-  // Handle position operations (session toSlot or arrangement start/length)
+  // Handle position operations (a move from toPath, or arrangement start/length)
   handlePositionOperations({
     clip,
     isAudioClip,
-    toSlot: params.toSlot,
+    destination: params.destination,
     destinationParam: params.destinationParam,
+    newLaneOrdinal: params.newLaneOrdinal,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
-    tracksWithMovedClips,
+    movedClipGroups,
+    appendedLanes: params.appendedLanes,
     context,
     updatedClips,
     noteResult,
@@ -406,6 +437,8 @@ function handleAudioClipUpdate(
   applyAudioTransforms(clip, params.transformString, clipContext);
 
   if (params.preTransformString != null) {
-    console.warn("preTransforms parameter ignored for audio clips");
+    console.warn(
+      `preTransforms parameter ignored for audio clip ${targetLabel(clip)}`,
+    );
   }
 }

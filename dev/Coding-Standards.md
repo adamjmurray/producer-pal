@@ -188,6 +188,27 @@ a chain group with no pad object either.
 Don't "fix" this by falling back to another lookup, and don't assert a pad id in
 a test for a rack nested on a pad.
 
+A nested rack's pads therefore **move but never delete**. `DrumChain` offers
+only `delete_device`/`insert_device`, and the API's one chain-removal primitive
+is `DrumPad.delete_all_chains` — which such a rack has no pad to call. Writing
+`in_note` works fine, so a pad can be re-pointed but not emptied out of
+existence. The closest real action is deleting the chain's devices.
+
+### A Chainless Drum Pad Ignores Every Write
+
+Verified against Live 12.4.3. A pad with no chains takes `mute` and `solo`
+writes and drops them — `set` returns 1 and the read-back stays 0, where the
+same write on a pad that has a chain lands. So a chainless pad is inert, not
+merely hidden: reporting a write to one as successful is reporting a lie.
+
+### `pad.name` Is a UI Label, Not Data
+
+It reads the chain's name at one chain, the note name (`"C♯1"`) at zero, and
+`"Multi"` at two or more — and a user can name a chain "Multi", so a layered pad
+and a single-chain one are indistinguishable by name alone. Count the chains to
+tell them apart. Writes to it are silently dropped, and Live's `set` still
+returns 1.
+
 ### Live API Paths — Use `livePath` Builders
 
 **Never hardcode Live API path strings.** Use `livePath` from

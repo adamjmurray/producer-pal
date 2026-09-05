@@ -8,22 +8,72 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   clipCopyBlocker,
   copyClipToSlot,
-} from "#src/tools/shared/copy-clip-to-slot.ts";
-import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
-  getColorForIndex,
-  parseCommaSeparatedColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+  claimLabels,
+  labelColor,
+  labelName,
+  type CopyLabels,
+} from "../sources/duplicate-label-helpers.ts";
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
 } from "../duplicate-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+
+/** The source objects every copy in one call shares. */
+export interface SlotCopySource {
+  /** The slot the clip is copied from */
+  sourceClipSlot: LiveAPI;
+  /** The clip in that slot */
+  sourceClip: LiveAPI;
+  /** The destination tracks, keyed by index */
+  tracks: Map<number, LiveAPI>;
+}
+
+/**
+ * Resolves everything a batch of copies shares: the slot it reads from and the
+ * tracks it writes to. Copying a clip into a slot moves neither, so one
+ * resolution of each serves the whole call.
+ * @param sourceTrackIndex - Source track index
+ * @param sourceSceneIndex - Source scene index
+ * @param destinationTrackIndices - Track index of each destination slot
+ * @returns The source slot, its clip, and the destination tracks
+ */
+export function resolveSlotCopySource(
+  sourceTrackIndex: number,
+  sourceSceneIndex: number,
+  destinationTrackIndices: number[] = [],
+): SlotCopySource {
+  const sourceClipSlot = LiveAPI.from(
+    livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
+  );
+
+  if (!sourceClipSlot.exists()) {
+    throw new Error(
+      `no clip slot at ${slotPath(sourceTrackIndex, sourceSceneIndex)}`,
+    );
+  }
+
+  if (!sourceClipSlot.getProperty("has_clip")) {
+    throw new Error(
+      `no clip at ${slotPath(sourceTrackIndex, sourceSceneIndex)}`,
+    );
+  }
+
+  return {
+    sourceClipSlot,
+    sourceClip: sourceClipSlot.child("clip"),
+    tracks: new Map(
+      [...new Set(destinationTrackIndices)].map((trackIndex) => [
+        trackIndex,
+        LiveAPI.from(livePath.track(trackIndex)),
+      ]),
+    ),
+  };
+}
 
 /**
  * Duplicate a clip slot to another slot
@@ -33,6 +83,7 @@ import {
  * @param toSceneIndex - Destination scene index
  * @param name - Optional name for the duplicated clip
  * @param color - Optional color for the duplicated clip
+ * @param shared - Source objects the caller already resolved for this call
  * @returns Minimal clip info object, or null when Live made no copy
  */
 export function duplicateClipSlot(
@@ -42,25 +93,12 @@ export function duplicateClipSlot(
   toSceneIndex: number,
   name?: string,
   color?: string,
+  shared: SlotCopySource = resolveSlotCopySource(
+    sourceTrackIndex,
+    sourceSceneIndex,
+  ),
 ): MinimalClipInfo | null {
-  // Get source clip slot
-  const sourceClipSlot = LiveAPI.from(
-    livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
-  );
-
-  if (!sourceClipSlot.exists()) {
-    throw new Error(
-      `duplicate failed: source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex} does not exist`,
-    );
-  }
-
-  if (!sourceClipSlot.getProperty("has_clip")) {
-    throw new Error(
-      `duplicate failed: no clip in source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex}`,
-    );
-  }
-
-  const sourceClip = sourceClipSlot.child("clip");
+  const { sourceClipSlot, sourceClip, tracks } = shared;
 
   // Get destination clip slot
   const destClipSlot = LiveAPI.from(
@@ -71,7 +109,7 @@ export function duplicateClipSlot(
   // the copies they already made.
   if (!destClipSlot.exists()) {
     console.warn(
-      `clip ${sourceClip.id} was not duplicated: no clip slot at ${slotPath(toTrackIndex, toSceneIndex)}`,
+      `clip ${targetLabel(sourceClip)} was not duplicated: no clip slot at ${slotPath(toTrackIndex, toSceneIndex)}`,
     );
 
     return null;
@@ -80,11 +118,15 @@ export function duplicateClipSlot(
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
   // of failing, so check first rather than reporting a copy that never happened.
   const clipIsMidi = (sourceClip.getProperty("is_midi_clip") as number) > 0;
-  const blocker = clipCopyBlocker(clipIsMidi, toTrackIndex);
+  const blocker = clipCopyBlocker(
+    clipIsMidi,
+    toTrackIndex,
+    tracks.get(toTrackIndex),
+  );
 
   if (blocker != null) {
     console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${sourceClip.id} was not duplicated: ${blocker}`,
+      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(sourceClip)} was not duplicated: ${blocker}`,
     );
 
     return null;
@@ -96,7 +138,7 @@ export function duplicateClipSlot(
 
   if (newClip == null) {
     console.warn(
-      `clip ${sourceClip.id} was not duplicated: no clip landed at ${slotPath(toTrackIndex, toSceneIndex)}`,
+      `clip ${targetLabel(sourceClip)} was not duplicated: no clip landed at ${slotPath(toTrackIndex, toSceneIndex)}`,
     );
 
     return null;
@@ -113,16 +155,14 @@ export function duplicateClipSlot(
  * @param slots - Destination slots, in order
  * @param object - Live API object to duplicate
  * @param id - ID of the object
- * @param name - Base name for duplicated clips
- * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @param labels - The call's names and colors
  * @returns Array of result objects
  */
 export function duplicateClipToSlots(
-  slots: SlotPosition[],
+  slots: ClipSlotPosition[],
   object: LiveAPI,
   id: string,
-  name: string | undefined,
-  color: string | undefined,
+  labels: CopyLabels,
 ): object[] {
   const trackIndex = object.trackIndex;
   const sourceSceneIndex = object.sceneIndex;
@@ -133,10 +173,13 @@ export function duplicateClipToSlots(
     );
   }
 
-  const parsedNames = parseCommaSeparatedNames(name, slots.length);
-  const parsedColors = parseCommaSeparatedColors(color, slots.length);
+  claimLabels(labels, slots.length);
 
-  warnExtraNames(parsedNames, slots.length, "duplicate");
+  const shared = resolveSlotCopySource(
+    trackIndex,
+    sourceSceneIndex,
+    slots.map((slot) => slot.trackIndex),
+  );
 
   // A copy Live declined warns and reports nothing, so the results only list
   // the copies that exist.
@@ -147,8 +190,9 @@ export function duplicateClipToSlots(
         sourceSceneIndex,
         slot.trackIndex,
         slot.sceneIndex,
-        getNameForIndex(name, i, parsedNames),
-        getColorForIndex(color, i, parsedColors),
+        labelName(labels, i),
+        labelColor(labels, i),
+        shared,
       ),
     )
     .filter((clipInfo) => clipInfo != null);

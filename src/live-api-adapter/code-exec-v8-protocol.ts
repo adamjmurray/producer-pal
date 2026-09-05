@@ -157,7 +157,6 @@ export function handleCodeExecResult(
  * @param clipIndex - 0-based position in the current batch (for clip.index in user code)
  * @param clipCount - Total clips in the current batch (for clip.count in user code)
  * @param sceneIndex - Scene index (session only)
- * @param arrangementStartBeats - Arrangement start position (arrangement only)
  * @returns Promise resolving to validated CodeExecutionResult
  */
 export async function executeNoteCode(
@@ -167,7 +166,6 @@ export async function executeNoteCode(
   clipIndex: number,
   clipCount: number,
   sceneIndex?: number,
-  arrangementStartBeats?: number,
 ): Promise<CodeExecutionResult> {
   const notes = extractNotesFromClip(clip);
   const context = buildCodeExecutionContext(
@@ -176,7 +174,6 @@ export async function executeNoteCode(
     clipIndex,
     clipCount,
     sceneIndex,
-    arrangementStartBeats,
   );
 
   return await executeNoteCodeWithData(userCode, notes, context);

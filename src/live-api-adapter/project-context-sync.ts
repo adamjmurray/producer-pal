@@ -9,7 +9,7 @@
 // something might have changed — a first sync this session, a file_path change
 // (first save / Save-As to a new folder), or an edited blob. Node owns the
 // filesystem side (project-context-backup-node-routes.ts); this decides when to
-// ask and applies a restore back into the device param. See dev/Memory-System.md.
+// ask and applies a restore back into the device param. See dev/memory-system/ppal-context-tool.md.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";

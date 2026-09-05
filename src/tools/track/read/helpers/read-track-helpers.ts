@@ -15,15 +15,20 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
+  readReturnTrackInfo,
+  type ReturnTrackInfo,
+} from "#src/tools/shared/sends/return-track-info.ts";
+import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { roundPan, stripFields } from "#src/tools/shared/utils.ts";
-import { arrangementPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { roundGainDb, roundPan, stripFields } from "#src/tools/shared/utils.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {
@@ -37,6 +42,8 @@ export interface ReadTakeLaneResult {
 interface SendInfo {
   gainDb: unknown;
   return: string;
+  /** Omitted when no return track lines up with this send */
+  returnId?: string;
 }
 
 interface MixerResult {
@@ -179,10 +186,11 @@ export function readTakeLanes(
       )
       .filter((clip) => clip.id != null);
 
-    // Strip fields redundant with the parent context (take lane clips are
-    // always arrangement clips on this track, matching its MIDI/audio type, and
-    // the lane's own path is on the parent ReadTakeLaneResult).
-    stripFields(clips, "path", "view", "type");
+    // Strip fields redundant with the parent context: a take lane clip is
+    // always an arrangement clip on this track, matching its MIDI/audio type.
+    // The path stays — it carries where the clip starts, which the lane's own
+    // path doesn't say.
+    stripFields(clips, "view", "type");
 
     return {
       path: arrangementPath(trackIndex as number, i),
@@ -225,7 +233,7 @@ export function handleNonExistentTrack(
 ): never {
   const indexType = category === "return" ? "returnTrackIndex" : "trackIndex";
 
-  throw new Error(`readTrack: ${indexType} ${trackIndex} does not exist`);
+  throw new Error(`${indexType} ${trackIndex} does not exist`);
 }
 
 /**
@@ -255,24 +263,6 @@ export function addOptionalBooleanProperties(
 
   if (isGroupMember) {
     result.isGroupMember = isGroupMember;
-  }
-}
-
-/**
- * Add track index property based on category
- * @param result - Result object to modify
- * @param category - Track category (regular, return, or master)
- * @param trackIndex - Track index
- */
-export function addCategoryIndex(
-  result: Record<string, unknown>,
-  category: string,
-  trackIndex: number | null,
-): void {
-  if (category === "regular") {
-    result.trackIndex = trackIndex;
-  } else if (category === "return") {
-    result.returnTrackIndex = trackIndex;
   }
 }
 
@@ -370,12 +360,12 @@ export function addProducerPalHostInfo(
 /**
  * Read mixer device properties (gain, panning, and sends)
  * @param track - Track object
- * @param returnTrackNames - Array of return track names for sends
+ * @param returnTracks - The Live Set's return tracks, when the caller already read them
  * @returns Object with gain, pan, and sends properties, or empty if mixer doesn't exist
  */
 export function readMixerProperties(
   track: LiveAPI,
-  returnTrackNames?: string[],
+  returnTracks?: ReturnTrackInfo[],
 ): MixerResult {
   const mixer = track.child("mixer_device");
 
@@ -389,7 +379,7 @@ export function readMixerProperties(
   const volume = mixer.child("volume");
 
   if (volume.exists()) {
-    result.gainDb = volume.getProperty("display_value");
+    result.gainDb = readGainDb(volume);
   }
 
   // Read panning mode
@@ -425,31 +415,25 @@ export function readMixerProperties(
   const sends = mixer.getChildren("sends");
 
   if (sends.length > 0) {
-    // Fetch return track names if not provided
-    let names = returnTrackNames;
-
-    if (!names) {
-      const liveSet = LiveAPI.from(livePath.liveSet);
-      const returnTrackIds = liveSet.getChildIds("return_tracks");
-
-      names = returnTrackIds.map((_, idx) => {
-        const rt = LiveAPI.from(livePath.returnTrack(idx));
-
-        return rt.getProperty("name") as string;
-      });
-    }
+    const returns = returnTracks ?? readReturnTrackInfo();
 
     // Warn if send count doesn't match return track count
-    if (sends.length !== names.length) {
+    if (sends.length !== returns.length) {
       console.warn(
-        `Send count (${sends.length}) doesn't match return track count (${names.length})`,
+        `Send count (${sends.length}) on track ${targetLabel(track)} doesn't match return track count (${returns.length})`,
       );
     }
 
-    result.sends = sends.map((send, i) => ({
-      gainDb: send.getProperty("display_value"),
-      return: names[i] ?? `Return ${i + 1}`,
-    }));
+    result.sends = sends.map((send, i) => {
+      const info = returns[i];
+
+      return {
+        gainDb: readGainDb(send),
+        return: info?.name ?? `Return ${i + 1}`,
+        // Names collide and get renamed, so the id is what a write quotes back.
+        ...(info == null ? {} : { returnId: info.id }),
+      };
+    });
   }
 
   return result;
@@ -464,6 +448,17 @@ function readPan(param: LiveAPI): unknown {
   const pan = param.getProperty("value");
 
   return typeof pan === "number" ? roundPan(pan) : pan;
+}
+
+/**
+ * Read a gain parameter, rounded to Live's 0.01 dB display steps
+ * @param param - Volume or send DeviceParameter
+ * @returns Gain in dB
+ */
+function readGainDb(param: LiveAPI): unknown {
+  const gainDb = param.getProperty("display_value");
+
+  return typeof gainDb === "number" ? roundGainDb(gainDb) : gainDb;
 }
 
 /**

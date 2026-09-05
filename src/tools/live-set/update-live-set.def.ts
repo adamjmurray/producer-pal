@@ -36,12 +36,12 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
         "Locator ID for delete/rename (e.g. locator-0). Positional — shifts if locators are added/removed, so prefer locatorTime or locatorName",
       smallModel: null,
     }),
-    locatorTime: param(z.string().optional(), {
+    locatorTime: param(z.coerce.string().optional(), {
       default:
         "Bar|beat position, song meter (required for create, alt ID for delete/rename)",
       smallModel: null,
     }),
-    locatorName: param(z.string().optional(), {
+    locatorName: param(z.coerce.string().optional(), {
       default: "Name for create/rename, or name-match filter for delete",
       smallModel: null,
     }),

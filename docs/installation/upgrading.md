@@ -80,7 +80,7 @@ you replace it.
 
 ## 4. Restart Your AI App
 
-Restart your AI application to ensure it picks up the changes.
+Restart your AI application so it picks up the changes.
 
 ## Troubleshooting After Upgrade
 

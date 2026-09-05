@@ -21,6 +21,7 @@ import {
   registerSessionClipForArrangementDup,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", async () => {
@@ -28,7 +29,7 @@ describe("duplicate - clip duplication", () => {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     await expect(duplicate({ type: "clip", id: "clip1" })).rejects.toThrow(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
+      'clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
   });
 
@@ -183,8 +184,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(0).arrangementClip(0),
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
       });
     });
 
@@ -222,8 +222,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(2).arrangementClip(0),
-        path: "t2",
-        arrangementStart: "3|1",
+        path: "t2[3|1]",
       });
     });
 
@@ -262,13 +261,11 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(2).arrangementClip(0),
-          path: "t2",
-          arrangementStart: "3|1",
+          path: "t2[3|1]",
         },
         {
           id: livePath.track(3).arrangementClip(0),
-          path: "t3",
-          arrangementStart: "3|1",
+          path: "t3[3|1]",
         },
       ]);
     });
@@ -304,9 +301,12 @@ describe("duplicate - clip duplication", () => {
       expect(result).toHaveLength(2);
     });
 
-    // 3 positions over 2 tracks doesn't divide, and the shorter list has to
-    // cycle PAST its end (t2, t3, t2) rather than run out at two copies.
-    it("cycles tracks past the end when the two counts don't divide", async () => {
+    // 3 positions over 2 tracks used to cycle (t2, t3, t2), making a copy at a
+    // destination the caller never paired with bar 7. It pairs now: the third
+    // position has no track of its own, so no third copy is made.
+    // It never cycled — two copies were made for three positions asked for.
+    // Now the uneven call is refused before any copy is made.
+    it("refuses uneven destinations and positions", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
@@ -318,20 +318,16 @@ describe("duplicate - clip duplication", () => {
       registerArrangementClip(2, 1, 24);
       registerArrangementClip(3, 0, 16);
 
-      const result = (await duplicate({
-        type: "clip",
-        id: "clip1",
-        arrangementStart: "3|1,5|1,7|1",
-        toPath: "t2,t3",
-      })) as Array<{ path: string; arrangementStart: string }>;
-
-      expect(
-        result.map((copy) => [copy.path, copy.arrangementStart]),
-      ).toStrictEqual([
-        ["t2", "3|1"],
-        ["t3", "5|1"],
-        ["t2", "7|1"],
-      ]);
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1,5|1,7|1",
+          toPath: "t2,t3",
+        }),
+      ).rejects.toThrow(
+        "toPath names 2 entries but arrangementStart names 3 entries.",
+      );
     });
 
     it("rejects a bare track in toPath with no position, naming both options", async () => {
@@ -363,9 +359,8 @@ describe("duplicate - clip duplication", () => {
         toPath: "t2/s0",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("arrangementStart/locator ignored"),
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("arrangementStart ignored"),
       );
     });
 
@@ -440,13 +435,16 @@ describe("duplicate - clip duplication", () => {
         toPath,
       });
 
-      expect(outlet).toHaveBeenCalledWith(1, 'toPath "null" names nothing');
+      expect(capturedWarnings()).toContain('toPath "null" names nothing');
       expect(track0.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id clip1",
         8,
       );
-      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
+      expect(result).toStrictEqual({
+        id: "live_set tracks 0 arrangement_clips 0",
+        path: "t0[3|1]",
+      });
     });
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
@@ -461,10 +459,9 @@ describe("duplicate - clip duplication", () => {
         toSlot: "2/0",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          "arrangementStart/locator ignored — toSlot names a clip slot",
+          "arrangementStart ignored — toSlot names a clip slot",
         ),
       );
     });
@@ -491,11 +488,10 @@ describe("duplicate - clip duplication", () => {
         arrangementStart: "3|1",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to duplicate clip"),
       );
-      expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+      expect(result).toStrictEqual({ path: "t0", clips: [] });
     });
 
     it("skips a silent duplicate failure on the with-length path too (no phantom clip)", async () => {
@@ -529,11 +525,10 @@ describe("duplicate - clip duplication", () => {
         arrangementLength: "1bar", // 4 beats == clip length → Case 2 (exact)
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to duplicate clip"),
       );
-      expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+      expect(result).toStrictEqual({ path: "t0", clips: [] });
     });
 
     it("routes a self-overlapping duplicate through the holding area instead of skipping", async () => {
@@ -555,7 +550,10 @@ describe("duplicate - clip duplication", () => {
       });
 
       expect(duplicateSelfOverlappingClipMock).toHaveBeenCalled();
-      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
+      expect(result).toStrictEqual({
+        id: "live_set tracks 0 arrangement_clips 0",
+        path: "t0[3|1]",
+      });
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
@@ -593,18 +591,15 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(0).arrangementClip(0),
-          path: "t0",
-          arrangementStart: "3|1",
+          path: "t0[3|1]",
         },
         {
           id: livePath.track(0).arrangementClip(1),
-          path: "t0",
-          arrangementStart: "4|1",
+          path: "t0[4|1]",
         },
         {
           id: livePath.track(0).arrangementClip(2),
-          path: "t0",
-          arrangementStart: "5|1",
+          path: "t0[5|1]",
         },
       ]);
 
@@ -640,8 +635,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual([]);
       expect(track0.call).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "Ran out of time after duplicating 0 of 3. " +
           "Not duplicated: t0 3|1, t0 4|1, t0 5|1. Re-run for those positions.",
       );
@@ -669,8 +663,7 @@ describe("duplicate - clip duplication", () => {
         { deadline: Date.now() - 1 },
       );
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "Ran out of time after duplicating 0 of 3. " +
           "Not duplicated: t1 3|1, t2 3|1, t3 3|1. Re-run for those positions.",
       );

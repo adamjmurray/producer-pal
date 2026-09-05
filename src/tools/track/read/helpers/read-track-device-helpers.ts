@@ -9,6 +9,7 @@ import {
   readDevice,
   type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
+import { resultLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface CategorizedDevices {
   midiEffects: DeviceWithDrumPads[];
@@ -77,7 +78,7 @@ export function categorizeDevices(
   // Validate instrument count
   if (instruments.length > 1) {
     console.warn(
-      `Track has ${instruments.length} instruments, which is unusual. Expected 0 or 1.`,
+      `Track has ${instruments.length} instruments (${instruments.map(resultLabel).join(", ")}), which is unusual. Expected 0 or 1.`,
     );
   }
 

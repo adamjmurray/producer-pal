@@ -11,10 +11,10 @@ import {
   isDivisionLabel,
   isPanLabel,
   normalizePan,
-  parseLabel,
   readParameter,
   readParameterBasic,
 } from "../device-display-helpers.ts";
+import { parseLabel } from "../device-label-helpers.ts";
 
 describe("device-display-helpers", () => {
   const mockGet = vi.fn();
@@ -89,50 +89,6 @@ describe("device-display-helpers", () => {
         expect(parseLabel("25 PERCENT")).toStrictEqual({
           value: 25,
           unit: "%",
-        });
-      });
-    });
-
-    describe("semitones (st)", () => {
-      it("parses semitone values", () => {
-        expect(parseLabel("0 st")).toStrictEqual({
-          value: 0,
-          unit: "semitones",
-        });
-        expect(parseLabel("+12 st")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-        expect(parseLabel("-24 st")).toStrictEqual({
-          value: -24,
-          unit: "semitones",
-        });
-        expect(parseLabel("7 st")).toStrictEqual({
-          value: 7,
-          unit: "semitones",
-        });
-      });
-
-      it("parses 'semitones', 'semitone', 'semi', 'semis' as st", () => {
-        expect(parseLabel("12 semitones")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-        expect(parseLabel("1 semitone")).toStrictEqual({
-          value: 1,
-          unit: "semitones",
-        });
-        expect(parseLabel("+5 semi")).toStrictEqual({
-          value: 5,
-          unit: "semitones",
-        });
-        expect(parseLabel("-7 semis")).toStrictEqual({
-          value: -7,
-          unit: "semitones",
-        });
-        expect(parseLabel("12SEMITONES")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
         });
       });
     });

@@ -16,18 +16,19 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import {
   takeLaneKey,
   takeLaneLabel,
   type TakeLaneTarget,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
@@ -36,14 +37,15 @@ import {
   resolveClipTransform,
 } from "./create-clip-transform-helpers.ts";
 import { calculateClipLength } from "./create-clip-validation-helpers.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 export interface CreateClipsParams {
   view: string;
-  sessionSlots: SlotPosition[];
+  clipSlots: ClipSlotPosition[];
   arrangementPositions: ArrangementPosition[];
   baseName: string | null;
-  parsedNames: string[] | null;
-  parsedColors: string[] | null;
+  parsedNames: ListEntries | null;
+  parsedColors: ListEntries | null;
   nameStartIndex: number;
   initialClipLength: number;
   liveSet: LiveAPI;
@@ -67,6 +69,8 @@ export interface CreateClipsParams {
   code: string | null;
   /** Take lane per arrangement destination; no entry means the main lane */
   takeLanes: Map<string, LiveAPI>;
+  /** Every destination track, resolved once for the call */
+  tracks: Map<number, LiveAPI>;
   /** Requested audio warp state, or null to keep Live's own choice */
   warping: boolean | null;
   /** Audio clip gain in decibels; omitted leaves it alone */
@@ -85,10 +89,10 @@ export interface CreateClipsParams {
 export async function createClips(
   params: CreateClipsParams,
 ): Promise<object[]> {
-  const { view, sessionSlots, arrangementPositions, deadline } = params;
+  const { view, clipSlots, arrangementPositions, deadline } = params;
   const createdClips: object[] = [];
   const count =
-    view === "session" ? sessionSlots.length : arrangementPositions.length;
+    view === "session" ? clipSlots.length : arrangementPositions.length;
 
   // Constant transform inputs for this view; read the scale mask once (it is a
   // Live Set global). Per-clip context (index/count/position) is applied below.
@@ -150,11 +154,11 @@ async function createClipAtIndex(
   // batch, not just this view: a single call mixing clip slots and
   // arrangement positions runs createClips once per view, so the global index
   // is nameStartIndex + i (session view starts at 0, arrangement at
-  // sessionSlots.length) and the count is the combined total. This mirrors the
+  // clipSlots.length) and the count is the combined total. This mirrors the
   // continuous indexing already used for names/colors below.
   const globalIndex = nameStartIndex + i;
   const totalCount =
-    params.sessionSlots.length + params.arrangementPositions.length;
+    params.clipSlots.length + params.arrangementPositions.length;
 
   const clipName = getNameForIndex(
     baseName ?? undefined,
@@ -167,18 +171,27 @@ async function createClipAtIndex(
     parsedColors,
   );
   const pos = resolveIterationPosition(params, i);
+  const position = clipPositionLabel(view, pos);
 
   // Apply the transform with this clip's context (clipseq/clip.index/etc.).
   // Falls back to the shared notes/length when there is no transform.
+  //
+  // The clip doesn't exist yet, so a transform warning can't name it by id the
+  // way update-clip does. The destination plus the ordinal (which is the
+  // clip.index the transform saw) says which one it was.
   const {
     notes: clipNotes,
     clipLength,
     transformedCount,
-  } = resolveClipTransform(
-    transformInputs,
-    globalIndex,
-    totalCount,
-    pos.arrangementStartBeats,
+  } = withClipWarningLabel(
+    `clip ${position}${ordinalSuffix(globalIndex, totalCount)}`,
+    () =>
+      resolveClipTransform(
+        transformInputs,
+        globalIndex,
+        totalCount,
+        pos.arrangementStartBeats,
+      ),
   );
 
   try {
@@ -187,7 +200,6 @@ async function createClipAtIndex(
       pos.trackIndex,
       pos.sceneIndex,
       pos.arrangementStartBeats,
-      pos.arrangementStart,
       clipLength,
       params.liveSet,
       params.startBeats,
@@ -212,6 +224,7 @@ async function createClipAtIndex(
         warpMode: params.warpMode,
       },
       params.timeSignature,
+      params.tracks.get(pos.trackIndex) ?? null,
     );
 
     createdClips.push(clipResult);
@@ -232,15 +245,34 @@ async function createClipAtIndex(
       }
     }
   } catch (error) {
-    const position =
-      view === "session"
-        ? slotPath(pos.trackIndex, pos.sceneIndex as number)
-        : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
-
     console.warn(
       `Failed to create clip at ${position}: ${errorMessage(error)}`,
     );
   }
+}
+
+/**
+ * Which clip of the batch this is, for a call creating more than one.
+ * @param index - 0-based index of this clip across the whole create call
+ * @param count - Total clips the call creates
+ * @returns ` (3 of 5)`, or "" when the call creates a single clip
+ */
+function ordinalSuffix(index: number, count: number): string {
+  return count > 1 ? ` (${index + 1} of ${count})` : "";
+}
+
+/**
+ * Where a clip is being created, for warnings raised before it has an id.
+ * @param view - "session" or "arrangement"
+ * @param pos - The resolved position for this iteration
+ * @returns A destination like `t0/s1` or `t0/l1[5|1]`
+ */
+function clipPositionLabel(view: string, pos: IterationPosition): string {
+  if (view === "session") {
+    return slotPath(pos.trackIndex, pos.sceneIndex as number);
+  }
+
+  return `${arrangementPath(pos.trackIndex, pos.takeLane)}[${pos.arrangementStart}]`;
 }
 
 /**
@@ -254,7 +286,7 @@ function resolveIterationPosition(
   i: number,
 ): IterationPosition {
   if (params.view === "session") {
-    const slot = params.sessionSlots[i] as SlotPosition;
+    const slot = params.clipSlots[i] as ClipSlotPosition;
 
     return {
       trackIndex: slot.trackIndex,

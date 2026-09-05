@@ -235,9 +235,12 @@ function collectMcpCall(
 
   if (item.result != null) recordToolResult(call, item.result);
 
+  // Only stamp true — a status Codex never reports as failed says nothing about
+  // success, so leave `isError` unset there and let grading fall back.
   if (item.status === "failed") {
     const message = getErrorMessage(item);
 
+    call.isError = true;
     call.result ??= `ERROR: ${message}`;
   }
 

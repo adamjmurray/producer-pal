@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import {
   afterAll,
   afterEach,
@@ -662,7 +663,7 @@ describe("useVoiceSession.disconnect", () => {
     });
 
     expect(() => unmount()).not.toThrow();
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(mocks.FakeSession.instances[0]!.close).toHaveBeenCalled();
     });
   });

@@ -64,6 +64,7 @@ beforeEach(() => {
     tools: [...TOOL_NAMES],
     notation: "barbeat",
     smallModelMode: false,
+    liveApiEnabled: false,
     projectContext: "",
   };
   liveSet = { content: [{ type: "text", text: LIVE_SET_TEXT }] };
