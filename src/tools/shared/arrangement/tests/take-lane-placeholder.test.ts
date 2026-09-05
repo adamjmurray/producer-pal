@@ -24,14 +24,19 @@ const CLIP = `t0/l1[1|1] (id ${CLIP_ID})`;
  * Register a clip at the given path and hand it back.
  * @param path - The clip's Live path
  * @param isMidi - 1 for a MIDI clip, 0 for audio
+ * @param name - The clip's name, or null for one Live won't report
  * @returns The clip LiveAPI
  */
-function registerClip(path: PathLike, isMidi: number): LiveAPI {
+function registerClip(
+  path: PathLike,
+  isMidi: number,
+  name: string | null = "Take",
+): LiveAPI {
   mockNonExistentObjects();
   registerMockObject(CLIP_ID, {
     path,
     type: "Clip",
-    properties: { is_midi_clip: isMidi, length: 8, name: "Take" },
+    properties: { is_midi_clip: isMidi, length: 8, name },
     methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
   });
 
@@ -74,6 +79,43 @@ describe("take-lane placeholders", () => {
     expect(capturedWarnings()).toContain(
       `clip ${CLIP} was emptied instead of deleted: Live's API can't remove a clip from a take lane. A muted "(moved) Take" was left there — delete it in Live's UI`,
     );
+  });
+
+  // Emptying a clip that is already a placeholder would otherwise read
+  // "(moved) (moved) Take", in the name and in the warning.
+  it.each([
+    ["(moved) Take", "(moved) Take"],
+    ["(moved)", "(moved)"],
+    ["", "(moved)"],
+    // Only a leading prefix counts.
+    ["a (moved) take", "(moved) a (moved) take"],
+  ])("marks a take named %o as %o", (name, expected) => {
+    const clip = registerClip(
+      livePath.track(0).takeLane(1).arrangementClip(0),
+      1,
+      name,
+    );
+
+    emptyTakeLaneClip(clip);
+
+    expect(clip.set).toHaveBeenCalledWith("name", expected);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(`A muted "${expected}" was left there`),
+    );
+  });
+
+  // Emptying runs after the destination copy is committed, so a throw on a
+  // name Live doesn't report would strand that copy.
+  it("marks a take whose name Live doesn't report", () => {
+    const clip = registerClip(
+      livePath.track(0).takeLane(1).arrangementClip(0),
+      1,
+      null,
+    );
+
+    emptyTakeLaneClip(clip);
+
+    expect(clip.set).toHaveBeenCalledWith("name", "(moved)");
   });
 
   // An audio clip's sample can't be cleared and a silent clip can't be

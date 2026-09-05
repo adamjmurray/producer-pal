@@ -139,6 +139,54 @@ describe("arrangement clip moved to another lane", () => {
     expect(leftover.muted).toBe(true);
   });
 
+  // An emptied leftover is still a clip, so it can be moved off its lane
+  // again. The second emptying must not stack a second mark on it.
+  it("marks a MIDI leftover only once when it is moved again", async () => {
+    const source = await createClip("37|1", "Twice", `/l+`);
+
+    await moveOffTakeLane(ctx.client!, source, `t${RACKS_TRACK}[41|1]`);
+
+    const placed = await moveOffTakeLane(
+      ctx.client!,
+      source,
+      `t${RACKS_TRACK}[45|1]`,
+    );
+
+    expect(placed.name).toBe("(moved) Twice");
+
+    const leftover = await readClipFully(ctx.client!, { id: source.id });
+
+    expect(leftover.name).toBe("(moved) Twice");
+    expect(leftover.muted).toBe(true);
+  });
+
+  // Audio is the surer case: the sample is kept, so a leftover take is a whole
+  // clip that moves again like any other.
+  it("marks an audio leftover only once when it is moved again", async () => {
+    const source = await createAudioClip("13|1", "Audio Twice");
+
+    const { warnings } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${AUDIO_TRACK}[17|1]`,
+    });
+
+    expect(warnings.join(" ")).toContain(
+      `clip ${source.path} (id ${source.id}) was muted instead of deleted`,
+    );
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${AUDIO_TRACK}[21|1]`,
+    });
+
+    expect((await readClipFully(ctx.client!, { id: moved.id })).name).toBe(
+      "(moved) Audio Twice",
+    );
+
+    const leftover = await readClipFully(ctx.client!, { id: source.id });
+
+    expect(leftover.name).toBe("(moved) Audio Twice");
+    expect(leftover.muted).toBe(true);
+  });
+
   // An audio take can't be emptied — its sample can't be cleared, and a silent
   // clip can't be stretched over it — so it is muted and marked instead.
   it("moves an audio take off its lane, leaving the take muted", async () => {
