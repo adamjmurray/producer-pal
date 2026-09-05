@@ -10,9 +10,10 @@
  * phase expression instead. Both mistakes land on one phase for every note, so
  * every note gets the same value: `sin(1)` on quarter notes samples phase 0
  * each beat, and `sin(note.start * k)` is constant by construction, since
- * `start / (start * k)` is `1/k` whatever the note. Nothing else notices — the
- * write succeeds and reports the full `transformed` count, which reads as
- * success and has talked a model out of a working LFO.
+ * `start / (start * k)` is `1/k` whatever the note. A flat LFO is never what
+ * the caller asked for — with `=` it flattens the dynamics it was meant to
+ * shape, with `+=` it adds a constant offset nobody asked for — so the
+ * assignment is warned about and skipped rather than written.
  */
 
 import * as console from "../transform-warning-label.ts";
@@ -55,24 +56,31 @@ export function findWaveformName(expr: ExpressionNode): string | null {
 }
 
 /**
- * Warn when a waveform gave every note it touched the same value.
+ * Report whether a waveform gave every note it touched the same value, warning
+ * when it did. The caller skips the assignment on true.
  *
- * Exact equality on purpose: a real LFO that happens to land near one value
- * still varies, so only a genuinely degenerate period trips this.
+ * Detection is on the OUTCOME, never the syntax: a constant period is the
+ * normal idiom (`cos(1bar)`), so only the values it produced can tell. Exact
+ * equality on purpose — a real LFO that happens to land near one value still
+ * varies, so only a genuinely degenerate period trips this.
  *
  * @param name - Waveform function name, for the message
- * @param values - Values the assignment produced, one per transformed note
+ * @param values - Values the assignment would have written, one per note
+ * @returns True when every value is identical, i.e. the LFO came out flat
  */
-export function warnIfFlatWaveform(name: string, values: number[]): void {
-  if (values.length < 2) return;
+export function isFlatWaveform(name: string, values: number[]): boolean {
+  if (values.length < 2) return false;
 
   const first = values[0] as number;
 
-  if (values.some((value) => value !== first)) return;
+  if (values.some((value) => value !== first)) return false;
 
   console.warn(
-    `${name}() gave all ${values.length} notes the same value — a flat LFO. ` +
-      `Its first argument is a period in beats, and a period that divides the ` +
-      `note spacing samples one phase. Try a longer period, e.g. ${name}(2bar).`,
+    `${name}() gave all ${values.length} notes the same value — a flat LFO, ` +
+      `so nothing was written. Its first argument is a period in beats, and a ` +
+      `period that divides the note spacing samples one phase. Try a longer ` +
+      `period, e.g. ${name}(2bar).`,
   );
+
+  return true;
 }

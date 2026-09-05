@@ -12,7 +12,7 @@ import {
   evaluateTransformAST,
 } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
-import { evaluateMathFunction } from "#src/notation/transform/helpers/transform-functions-helpers.ts";
+import { evaluateMathFunction } from "#src/notation/transform/helpers/functions/transform-functions-helpers.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {
   createTestNote,

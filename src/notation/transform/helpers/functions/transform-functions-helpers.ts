@@ -3,14 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "../transform-warning-label.ts";
-import { type ExpressionNode } from "../parser/transform-parser.ts";
-import { type EvaluateExpressionFn } from "../transform-functions.ts";
-import * as waveforms from "../transform-waveforms.ts";
+import * as console from "../../transform-warning-label.ts";
+import { type ExpressionNode } from "../../parser/transform-parser.ts";
+import { type EvaluateExpressionFn } from "../../transform-functions.ts";
+import * as waveforms from "../../transform-waveforms.ts";
 import {
   type TimeRange,
   type NoteProperties,
-} from "./transform-evaluator-helpers.ts";
+} from "../transform-evaluator-helpers.ts";
 
 /**
  * Evaluate multiple arguments by index, returning results as a tuple.

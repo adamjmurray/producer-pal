@@ -124,18 +124,45 @@ describe("ppal-clip-transforms-waveforms", () => {
   });
 
   // A period that divides the note spacing samples ONE phase, so every note
-  // gets the same value. The write still succeeds and still reports a full
-  // note count, so the warning is the only thing that says the LFO is flat.
-  it("warns when the period lands every note on one phase", async () => {
-    const clipId = await createWaveformClip(41);
+  // would get the same value. The assignment is warned about and skipped —
+  // the clip is created with four DIFFERENT velocities precisely so a skip is
+  // distinguishable from a flattening write.
+  it("warns and writes nothing when the period lands every note on one phase", async () => {
+    const clipId = await createMidiClip(
+      41,
+      "v40 C3 1|1\nv70 C3 1|2\nv100 C3 1|3\nv120 C3 1|4",
+    );
     const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
       await applyTransform(clipId, "velocity = 64 + 50 * sin(1)"),
     );
 
     expect(warnings.join("\n")).toContain("flat LFO");
-    // Quarter notes are 1 beat apart, so a 1-beat period gives all four the
-    // phase-0 value: 64 + 50 * sin(0) = 64.
-    expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([64]);
+    expect(warnings.join("\n")).toContain("nothing was written");
+    expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([
+      40, 70, 100, 120,
+    ]);
+  });
+
+  // Skipping is per assignment, not per call: the flat line is dropped and
+  // every other line in the same transform still lands.
+  it("skips only the flat assignment, not the whole transform", async () => {
+    const clipId = await createMidiClip(
+      44,
+      "v40 C3 1|1\nv70 C3 1|2\nv100 C3 1|3\nv120 C3 1|4",
+    );
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(
+        clipId,
+        "velocity = 64 + 50 * sin(1)\nprobability = 0.5",
+      ),
+    );
+
+    expect(warnings.join("\n")).toContain("flat LFO");
+
+    const notes = await readClipNotes(clipId);
+
+    expect(extractVelocities(notes)).toStrictEqual([40, 70, 100, 120]);
+    expect(notes).toContain("p0.5");
   });
 
   it("stays quiet when the waveform actually varies the notes", async () => {

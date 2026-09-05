@@ -3,16 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "../transform-warning-label.ts";
-import { type ExpressionNode } from "../parser/transform-parser.ts";
+import * as console from "../../transform-warning-label.ts";
+import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import {
   type EvaluateExpressionFn,
   parsePeriod,
-} from "../transform-functions.ts";
+} from "../../transform-functions.ts";
 import {
   type TimeRange,
   type NoteProperties,
-} from "./transform-evaluator-helpers.ts";
+} from "../transform-evaluator-helpers.ts";
 
 /**
  * Evaluate swing function (delay off-beat notes for swing feel).

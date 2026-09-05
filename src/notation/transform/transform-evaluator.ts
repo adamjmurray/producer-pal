@@ -20,9 +20,11 @@ import {
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
 import {
-  findWaveformName,
-  warnIfFlatWaveform,
-} from "./helpers/transform-flat-waveform-helpers.ts";
+  type DeferredWrite,
+  applyTransformResult,
+  commitWaveformWrites,
+} from "./helpers/transform-apply-helpers.ts";
+import { findWaveformName } from "./helpers/transform-flat-waveform-helpers.ts";
 import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
 import {
   buildNoteContext,
@@ -260,11 +262,12 @@ function applyAssignmentToNotes(
   // single malformed line doesn't relay N copies of the same WARNING.
   const warnedFailures = new Set<string>();
 
-  // A waveform that lands on one phase for every note assigns one value and
-  // still reports a full transformed count. Collect what it produced so the
-  // flat case can be reported after the loop.
+  // A waveform that lands on one phase for every note is a mistake whatever it
+  // was aiming at, so its writes are held back until the whole selection has
+  // been evaluated and the flat case can be ruled out. Only waveforms defer;
+  // everything else applies as it goes, which is what lets transforms stack.
   const waveformName = findWaveformName(assignment.expression);
-  const waveformValues: number[] = [];
+  const deferred: DeferredWrite[] = [];
 
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
@@ -308,6 +311,11 @@ function applyAssignmentToNotes(
         noteProperties,
       );
 
+      if (waveformName != null) {
+        deferred.push({ note, index: i, value });
+        continue;
+      }
+
       // Apply transform immediately (enables stacked transforms)
       applyTransformResult(
         note,
@@ -316,8 +324,6 @@ function applyAssignmentToNotes(
         value,
         timeSigDenominator,
       );
-
-      if (waveformName != null) waveformValues.push(value);
 
       transformedIndices.add(i);
     } catch (error) {
@@ -330,73 +336,14 @@ function applyAssignmentToNotes(
     }
   }
 
-  if (waveformName != null) warnIfFlatWaveform(waveformName, waveformValues);
-}
-
-/**
- * Apply a single transform result to a note in-place.
- * Handles clamping and conversion between musical and Ableton beats.
- * @param note - Note to modify
- * @param parameter - Transform parameter name
- * @param operator - Transform operator ("set" or "add")
- * @param value - Evaluated expression value (in musical beats for timing/duration)
- * @param timeSigDenominator - Time signature denominator for beat conversion
- */
-function applyTransformResult(
-  note: NoteEvent,
-  parameter: string,
-  operator: "add" | "set",
-  value: number,
-  timeSigDenominator: number,
-): void {
-  switch (parameter) {
-    case "velocity":
-      note.velocity =
-        operator === "set"
-          ? Math.min(127, value)
-          : Math.min(127, note.velocity + value);
-      break;
-
-    case "timing": {
-      const tv = value * (4 / timeSigDenominator);
-
-      note.start_time = operator === "set" ? tv : note.start_time + tv;
-      break;
-    }
-
-    case "duration": {
-      const dv = value * (4 / timeSigDenominator);
-
-      note.duration = operator === "set" ? dv : note.duration + dv;
-      break;
-    }
-
-    case "probability":
-      note.probability = Math.max(
-        0,
-        Math.min(
-          1,
-          operator === "set" ? value : (note.probability ?? 1) + value,
-        ),
-      );
-      break;
-
-    case "deviation":
-      note.velocity_deviation = Math.max(
-        -127,
-        Math.min(
-          127,
-          operator === "set" ? value : (note.velocity_deviation ?? 0) + value,
-        ),
-      );
-      break;
-
-    case "pitch": {
-      const raw = operator === "set" ? value : note.pitch + value;
-
-      note.pitch = Math.max(0, Math.min(127, Math.round(raw)));
-      break;
-    }
+  if (waveformName != null) {
+    commitWaveformWrites(
+      waveformName,
+      deferred,
+      assignment,
+      timeSigDenominator,
+      transformedIndices,
+    );
   }
 }
 

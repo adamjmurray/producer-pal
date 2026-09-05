@@ -82,6 +82,80 @@ describe("flat waveform detection", () => {
     ).toStrictEqual([]);
   });
 
+  it("says nothing was written", () => {
+    expect(flatWarnings("velocity = 70 + 30 * sin(1)")[0]).toContain(
+      "nothing was written",
+    );
+  });
+});
+
+describe("flat waveform skipping", () => {
+  it("leaves the notes untouched and counts none of them", () => {
+    const notes = eighths();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const transformed = applyTransforms(
+      notes,
+      "velocity = 70 + 30 * sin(1)",
+      4,
+      4,
+    );
+
+    warn.mockRestore();
+
+    expect(transformed).toBe(0);
+    expect(notes.map((note) => note.velocity)).toStrictEqual(
+      Array.from({ length: 8 }, () => 100),
+    );
+  });
+
+  it("skips a `+=` waveform too — a constant offset is no more asked for", () => {
+    const notes = eighths();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    applyTransforms(notes, "velocity += 10 * sin(1)", 4, 4);
+    warn.mockRestore();
+
+    expect(notes.map((note) => note.velocity)).toStrictEqual(
+      Array.from({ length: 8 }, () => 100),
+    );
+  });
+
+  it("still writes a waveform that varies", () => {
+    const notes = eighths();
+    const transformed = applyTransforms(
+      notes,
+      "velocity = 70 + 30 * sin(2bar)",
+      4,
+      4,
+    );
+
+    expect(transformed).toBe(8);
+    expect(new Set(notes.map((note) => note.velocity)).size).toBeGreaterThan(1);
+  });
+
+  it("skips only the flat assignment, not the whole transform", () => {
+    const notes = eighths();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const transformed = applyTransforms(
+      notes,
+      "velocity = 70 + 30 * sin(1)\nprobability = 0.5",
+      4,
+      4,
+    );
+
+    warn.mockRestore();
+
+    expect(transformed).toBe(8);
+    expect(notes.map((note) => note.velocity)).toStrictEqual(
+      Array.from({ length: 8 }, () => 100),
+    );
+    expect(notes.map((note) => note.probability)).toStrictEqual(
+      Array.from({ length: 8 }, () => 0.5),
+    );
+  });
+});
+
+describe("waveform expression walking", () => {
   it("finds every waveform the evaluator dispatches, however nested", () => {
     for (const name of ["cos", "sin", "tri", "saw", "square"]) {
       const notes = eighths();
