@@ -151,7 +151,10 @@ export function resolveMoveDestinations(
       param: toSlot == null ? "toPath" : "toSlot",
       noun: "destination",
       item: "clip",
-      shortfall: "were not moved",
+      // Say only that these clips got no destination to pair with — not that
+      // the paired clips moved. A named destination can still fail to parse
+      // (a device path, say), so pairing alone doesn't mean a clip moved.
+      shortfall: "have nowhere to go",
     };
     // A bare "[5|1]" doesn't fully determine a location — each clip keeps its
     // own lane — so one of them covers every clip, exactly as the

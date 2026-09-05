@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
   getToolWarnings,
+  getToolErrorMessage,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -449,6 +450,48 @@ describe("ppal-update-clip", () => {
     expect(isToolError(result)).toBe(false);
     expect(warnings).toContain("device paths hold no clips");
     expect(warnings).not.toContain("destination for");
+  });
+
+  // Naming fewer destinations than clips is refused before anything runs, so
+  // the pairing warning that used to describe the shortfall never gets to
+  // speak. Nothing moves, and the error names both counts.
+  it("refuses fewer destinations than clips instead of moving some", async () => {
+    const clip0Id = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s8`, {
+      notes: "C3 1|1",
+    });
+    const clip1Id = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s9`, {
+      notes: "D3 1|1",
+    });
+    const clip2Id = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s10`, {
+      notes: "E3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: `${clip0Id},${clip1Id},${clip2Id}`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s0,t${EMPTY_MIDI_TRACK}/s1`,
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("names 3 entries");
+    expect(getToolErrorMessage(result)).toContain("toPath names 2 entries");
+
+    await sleep(100);
+
+    for (const [clipId, slot] of [
+      [clip0Id, `t${EMPTY_MIDI_TRACK}/s8`],
+      [clip1Id, `t${EMPTY_MIDI_TRACK}/s9`],
+      [clip2Id, `t${EMPTY_MIDI_TRACK}/s10`],
+    ] as const) {
+      const verify = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: clipId },
+      });
+
+      expect(parseToolResult<ReadClipResult>(verify).path).toBe(slot);
+    }
   });
 
   it("still honors the deprecated toSlot, and says so", async () => {
