@@ -23,14 +23,17 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 // Deprecation is the other way a param leaves the published schema, and it
 // applies in every mode — so both axes run here.
 //
-// Two carve-outs, both Live's own vocabulary rather than a param name, blanked
-// out of the text before matching so a bare "set slot to ..." or a real
-// reference to the retired `locator` param still gets caught:
+// Three carve-outs, none of them a param name, blanked out of the text before
+// matching so a bare "set slot to ..." or a real reference to the retired
+// `locator` param still gets caught:
 //
 //   "clip slot" — Live's name for a `t0/s1` location, said constantly and
 //     nothing to do with the deprecated `slot`/`slots` params.
 //   `loc:<locator ...>` — the placeholder inside the song-position prefix,
 //     nothing to do with the deprecated `locator` param.
+//   `split()` — the note-count transform op. update-clip deprecated a `split`
+//     param, and dodging the word left the op unnamed where models pick one.
+//     The parens are the whole distinction: a param is never written with them.
 //
 // Every other surviving description is clean under a plain word-boundary match,
 // including the removed params whose names are also ordinary English (`count`,
@@ -92,6 +95,30 @@ describe("published param references", () => {
     expect(
       danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
     ).toStrictEqual([]);
+  });
+
+  it("allows `split()` on a tool that deprecated `split`", () => {
+    const def = slotDef(
+      "note ops: ratchet()/repeat()/split()/merge()",
+      "split",
+    );
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([]);
+  });
+
+  it("still catches a bare `split` next to the allowed op", () => {
+    const def = slotDef(
+      "use split() in transforms, or the split param",
+      "split",
+    );
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([
+      "fake (barbeat): tool description names removed param `split`",
+    ]);
   });
 
   it("still catches a bare `locator` next to the allowed placeholder", () => {
@@ -169,13 +196,15 @@ function danglingReferences(
 }
 
 /**
- * Blanks out the two Live terms that collide with a retired param name: "clip
- * slot" for a `t0/s1` location, and the placeholder inside a `loc:` position.
+ * Blanks out the three terms that collide with a retired param name: "clip
+ * slot" for a `t0/s1` location, the placeholder inside a `loc:` position, and
+ * `split()` for the transform op.
  * @param text - Published description text
  * @returns The same text with those terms removed
  */
 function searchable(text: string): string {
   return text
     .replaceAll(/\bclip slots?\b/gi, "")
-    .replaceAll(/\bloc:<[^>]*>/gi, "");
+    .replaceAll(/\bloc:<[^>]*>/gi, "")
+    .replaceAll(/\bsplit\(\)/gi, "");
 }

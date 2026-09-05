@@ -92,6 +92,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     arrangementSplit: param(z.string().optional(), {
       default:
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
+        "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
         "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
       smallModel: null,
     }),
@@ -115,7 +116,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged
     // for callers that scripted against it; arrangementSplit is the published
-    // param and reads song-timeline positions.
+    // param and reads song-timeline positions. Never published, so naming the
+    // split() note op in the transforms description points at nothing retired.
     split: deprecatedParam(z.string().optional(), {
       replacedBy: "arrangementSplit",
     }),
@@ -164,7 +166,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation. Note-count operations (ratchet, repeat, merge, and cutting notes at given positions - see Skills) change how many notes exist; prefer them over rewriting notes by hand",
+        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation. Note-count operations (ratchet()/repeat()/split()/merge() - see Skills) change how many notes exist; prefer them over rewriting notes by hand",
       smallModel: null,
     }),
     preTransforms: param(z.string().optional(), {
