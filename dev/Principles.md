@@ -6,8 +6,7 @@
    object being created doesn't have an `id` yet, so it can only be referenced
    by `path`. Results report both `path` and `id`, but `path` should be omitted
    to save tokens when it is unambiguous from the containing structure. Paths
-   also address positions within objects. When multiple path strings can resolve
-   to the same object, the result uses the same spelling as the input.
+   also address positions within objects.
 
 2. Multi-operation: Every tool that could possibly operate on multiple objects
    supports it by allowing a single value or a comma-separated list in any
@@ -52,18 +51,22 @@
 
 8. Vocabulary: Everything a tool returns (results, errors, and warnings) uses
    only names the caller could have written: the tool and param names the schema
-   published, and the spellings the call supplied. Internal function names,
-   internal field names, and a normalized path the caller didn't use must never
-   appear. Every object it names is named by both `path` and `id`, or by `path`
-   alone where there is no id.
+   published, and the spellings the call supplied. Internal function names and
+   internal field names must never appear. Every object it names is named by
+   both `path` and `id`, or by `path` alone where there is no id.
 
-9. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
-   as few tokens as the other principles allow. A leaf object that is really a
-   property of its container is modeled as one, not as an object with a path: a
-   device parameter belongs to a device and carries only `id`, `name`, `value`,
-   and metadata. Validation that needs to read from the API happens at the item,
-   inside the loop, not up front, except when a partial failure would result in
-   cleanup (e.g. when duplicating a list of objects).
+9. Spelling: When more than one path refers to the same object, the result uses
+   the input spelling. When the call had no path, or one that won't keep
+   referring to the same object or position (`l+`, a locator), the result uses
+   the spelling that stays valid longest.
+
+10. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
+    as few tokens as the other principles allow. A leaf object that is really a
+    property of its container is modeled as one, not as an object with a path: a
+    device parameter belongs to a device and carries only `id`, `name`, `value`,
+    and metadata. Validation that needs to read from the API happens at the
+    item, inside the loop, not up front, except when a partial failure would
+    result in cleanup (e.g. when duplicating a list of objects).
 
 ---
 
