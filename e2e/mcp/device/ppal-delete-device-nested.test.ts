@@ -60,12 +60,11 @@ describe("ppal-delete nested rack device ordering", () => {
       }),
     );
 
-    // Sibling of the Simpler at d0. A device inside a pad reports the
-    // rack-relative spelling rather than the pad one the call used — naming the
-    // pad costs a rack read per chain segment, and both spellings reach it.
-    expect(reverb.path).toMatch(
-      new RegExp(`^${rack.replaceAll("/", "\\/")}\\/c\\d+\\/d1$`),
-    );
+    // Sibling of the Simpler at d0. The call spelled the container through a
+    // pad, so the result echoes that spelling back rather than converting to
+    // the rack-relative one. (A device whose container wasn't spelled through a
+    // pad still reports rack-relative — converting costs a rack read.)
+    expect(reverb.path).toBe(`${rack}/pC1/c0/d1`);
 
     await sleep(150);
 
