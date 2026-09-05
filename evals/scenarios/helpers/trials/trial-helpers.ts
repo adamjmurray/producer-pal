@@ -37,10 +37,19 @@ export function parseRepeatCount(value: string | undefined): number {
  */
 export function printTrialSummary(trials: JsonEvalResult[]): void {
   const passed = trials.filter((r) => r.result === "pass").length;
-  const color = passed === trials.length ? "green" : "red";
+  const graded = trials.filter((r) => r.result !== "error");
+  const color = passed === graded.length ? "green" : "red";
+  // Errored trials never reached the model, so they are not out of N.
+  const errorNote =
+    trials.length === graded.length
+      ? ""
+      : ` (${trials.length - graded.length} never ran)`;
 
   console.log(
-    styleText(color, `  Trials: ${passed}/${trials.length} passed\n`),
+    styleText(
+      color,
+      `  Trials: ${passed}/${graded.length} passed${errorNote}\n`,
+    ),
   );
 }
 
@@ -61,13 +70,20 @@ interface SummaryPart {
 export function buildMultiTrialParts(trials: JsonEvalResult[]): SummaryPart[] {
   const parts: SummaryPart[] = [];
 
-  // Trial pass rate
+  // Trial pass rate, over the trials that actually ran. A trial that errored
+  // before the model's first turn tested nothing, so it is not in the
+  // denominator — otherwise a Live outage prints as a confident 0/3.
   const trialsPassed = trials.filter((r) => r.result === "pass").length;
+  const trialsGraded = trials.filter((r) => r.result !== "error").length;
+  const errorSuffix =
+    trialsGraded === trials.length
+      ? ""
+      : ` (+${trials.length - trialsGraded} err)`;
 
   parts.push({
     label: "trials",
-    value: `${trialsPassed}/${trials.length}`,
-    color: trialsPassed === trials.length ? "green" : "red",
+    value: `${trialsPassed}/${trialsGraded}${errorSuffix}`,
+    color: trialsPassed === trialsGraded ? "green" : "red",
   });
 
   // Checks: total across all trials

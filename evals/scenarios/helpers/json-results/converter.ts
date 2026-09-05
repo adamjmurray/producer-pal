@@ -70,7 +70,7 @@ export function toJsonResult(
     model,
     configProfileId,
     ...(result.instructions && { instructions: result.instructions }),
-    result: derivePassFail(checks, judge),
+    result: deriveOutcome(result, checks, judge),
     turns: result.turns.map(convertTurn),
     checks,
     ...(signals.length > 0 && { signals }),
@@ -196,6 +196,27 @@ function buildJudge(
   }
 
   return { pass: details.pass, issues: details.issues, ...advisoryFlag };
+}
+
+/**
+ * Classify a run's outcome. A run that errored before the model took a single
+ * turn never tested anything: the Live Set would not open, or the config would
+ * not apply. That is infrastructure, not a model failure, and calling it one
+ * turns an outage into a wall of convincing-looking zeros.
+ *
+ * @param result - Internal scenario result
+ * @param checks - Checks result
+ * @param judge - Judge result (if any)
+ * @returns The run's outcome
+ */
+function deriveOutcome(
+  result: EvalScenarioResult,
+  checks: JsonChecks,
+  judge: JsonJudge | undefined,
+): "pass" | "fail" | "error" {
+  if (result.error != null && result.turns.length === 0) return "error";
+
+  return derivePassFail(checks, judge);
 }
 
 /**

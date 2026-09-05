@@ -17,7 +17,7 @@ import {
   type EvalSession,
 } from "./eval-session.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
-import { openLiveSet } from "./open-live-set.ts";
+import { openLiveSetWithRecovery } from "./helpers/open-live-set-recovery.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
 import {
   computeTotalUsage,
@@ -84,7 +84,7 @@ export async function runScenario(
         console.log(
           "\n" + styleText("gray", "Opening Live Set: " + liveSetPath),
         );
-      await openLiveSet(liveSetPath);
+      await openLiveSetWithRecovery(liveSetPath);
     }
 
     // 2. Apply the run environment (CLI-driven) merged with scenario-bound config

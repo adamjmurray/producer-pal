@@ -34,9 +34,12 @@ export interface JsonEvalResult {
   /** Total number of trials (present when using -r flag) */
   totalTrials?: number;
   /** Overall result. `skipped` means the scenario's `requires` weren't
-   *  satisfied by the active run environment, so it never ran (kept out of
-   *  pass/fail counts and score averages). */
-  result: "pass" | "fail" | "skipped";
+   *  satisfied by the active run environment, so it never ran. `error` means it
+   *  tried and never got started — the Live Set would not open, or the config
+   *  would not apply, so the model never saw a turn. Both are kept out of
+   *  pass/fail counts and score averages: scoring them as failures reads as a
+   *  clean 0/3 on scenarios nothing was ever asked of. */
+  result: "pass" | "fail" | "skipped" | "error";
   /** Why the scenario was skipped (present only when `result` is `skipped`) */
   skipReason?: string;
   /** Conversation turns */

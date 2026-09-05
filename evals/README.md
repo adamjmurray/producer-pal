@@ -221,6 +221,13 @@ environment can't satisfy a requirement — e.g. a transforms scenario under
 scenario is **skipped** (reported as `skipped`, not `fail`) so scores stay
 apples-to-apples.
 
+A run that never got started is reported as `error`, and is likewise kept out of
+pass/fail counts. That means Live would not open the Set or the config would not
+apply, so the model never took a turn — scoring it would turn an outage into a
+wall of convincing zeros. The harness retries a failed open three times, waiting
+once and then killing Live for a cold launch, and stops the whole run after
+three scenarios in a row fail to start.
+
 ```bash
 # Default environment
 scripts/eval -t connect-to-ableton -m gemini-3-flash-preview

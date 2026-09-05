@@ -61,15 +61,19 @@ export function printSummary(
   let passCount = 0;
   let failCount = 0;
   let skipCount = 0;
+  let errorCount = 0;
 
   for (const results of allResultGroups) {
     const passed = results.filter((r) => r.result === "pass").length;
     const skipped = results.filter((r) => r.result === "skipped").length;
+    const errored = results.filter((r) => r.result === "error").length;
 
     passCount += passed;
     skipCount += skipped;
-    // Skipped runs never executed, so they count as neither pass nor fail.
-    failCount += results.length - passed - skipped;
+    errorCount += errored;
+    // Skipped and errored runs never executed, so they count as neither pass
+    // nor fail — an outage would otherwise read as a clean sweep of zeros.
+    failCount += results.length - passed - skipped - errored;
 
     // Show summary for the last trial (or only trial)
     const lastResult = results.at(-1) as JsonEvalResult;
@@ -81,11 +85,13 @@ export function printSummary(
     }
   }
 
-  const totalRuns = passCount + failCount + skipCount;
+  const totalRuns = passCount + failCount + skipCount + errorCount;
   const skipText = skipCount > 0 ? `, ${skipCount} skipped` : "";
+  const errorText =
+    errorCount > 0 ? styleText("red", `, ${errorCount} never ran (error)`) : "";
 
   console.log(
-    `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}`,
+    `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,
   );
 }
 
