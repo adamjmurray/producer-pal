@@ -16,17 +16,17 @@
  * from the same state even when it inherits an already-open Live Set.
  */
 
-import { argText } from "../arg-text.ts";
+import { argText } from "../../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { getToolCalls } from "../../assertions/index.ts";
-import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
+import { type EvalScenario, type EvalTurnResult } from "../../../types.ts";
 import {
   assertNotesRead,
   clearClipSlots,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";

@@ -164,44 +164,6 @@ function pathAccepted(
 }
 
 /**
- * Assert a call names its target with `id` — the canonical param since 2.2.0 —
- * and not with a path or a hidden alias.
- *
- * @param options - What to grade
- * @param options.turn - Turn index containing the call
- * @param options.tool - Tool name
- * @returns A custom assertion
- */
-export function assertAddressedById(options: {
-  turn: number;
-  tool: string;
-}): EvalAssertion {
-  const { turn, tool } = options;
-
-  return {
-    type: "custom",
-    description: `${tool} turn ${turn}: names its target with id`,
-    assert: (turns) => {
-      const call = requireCall(turns, turn, tool);
-
-      if (call.args.path != null) {
-        throw new Error(
-          `named the target with path '${argText(call.args.path)}' instead of id`,
-        );
-      }
-
-      if (argText(call.args.id) === "") {
-        throw new Error(
-          `no id — hidden location params: ${hiddenSpellings(call)}`,
-        );
-      }
-
-      return true;
-    },
-  };
-}
-
-/**
  * The opening of a "did the model spell the path right?" clip scenario:
  * connect, create a clip in turn 1, and grade the `path` it wrote.
  *
@@ -218,14 +180,15 @@ export function assertClipCreatedAtPath(
   ];
 }
 
-/** The ways every tool can name a scene. Both are equally correct. */
-const SCENE_LOCATION_PARAMS = ["id", "path"];
+/** The ways every tool can name its target. Both are equally correct. */
+const PUBLISHED_LOCATION_PARAMS = ["id", "path"];
 
 /**
- * Assert a call names its scene with a published location param. `id` and
- * `path` ("s1") both pass everywhere — only a hidden alias, or naming nothing,
- * fails. Which one a model picks is a counting question over saved runs;
- * grading one would mark the other wrong.
+ * Assert a call names its target with a published location param. `id` and
+ * `path` both pass everywhere — only a hidden alias, or naming nothing, fails.
+ * Which one a model picks is a counting question over saved runs; grading one
+ * would mark the other wrong, and the skills tell models to reuse the `path` a
+ * read just handed back.
  *
  * `params` is for a tool that publishes a third way: `ppal-playback` still
  * offers `sceneIndex`, while `ppal-select` retired it, so the accepted set
@@ -238,18 +201,18 @@ const SCENE_LOCATION_PARAMS = ["id", "path"];
  * @param options.params - Published location params for this tool
  * @returns A custom assertion
  */
-export function assertNamesScene(options: {
+export function assertNamesTarget(options: {
   turn: number;
   tool: string;
   action?: string;
   params?: string[];
 }): EvalAssertion {
-  const { turn, tool, action, params = SCENE_LOCATION_PARAMS } = options;
+  const { turn, tool, action, params = PUBLISHED_LOCATION_PARAMS } = options;
   const prefix = action == null ? "" : `${action} `;
 
   return {
     type: "custom",
-    description: `${tool} turn ${turn}: ${prefix}names the scene with a published param`,
+    description: `${tool} turn ${turn}: ${prefix}names its target with a published param`,
     assert: (turns) => {
       const call = requireCall(turns, turn, tool);
 
@@ -259,9 +222,9 @@ export function assertNamesScene(options: {
         );
       }
 
-      if (!params.some((key) => call.args[key] != null)) {
+      if (!params.some((key) => argText(call.args[key]) !== "")) {
         throw new Error(
-          `no ${params.join("/")} — args: ${JSON.stringify(call.args)}`,
+          `no ${params.join("/")} — hidden location params: ${hiddenSpellings(call)}`,
         );
       }
 

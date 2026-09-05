@@ -8,13 +8,13 @@
  * fuzzy legato to handle the humanized chord pairs.
  */
 
-import { argText } from "../arg-text.ts";
+import { argText } from "../../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { type EvalScenario } from "../../types.ts";
+import { type EvalScenario } from "../../../types.ts";
 import {
   assertNotesRead,
   getTransforms,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 

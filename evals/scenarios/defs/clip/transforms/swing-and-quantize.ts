@@ -7,11 +7,12 @@
  * Scenario: Apply swing and quantize to existing MIDI clips.
  */
 
-import { argText } from "../arg-text.ts";
+import { argText } from "../../arg-text.ts";
 import { expect } from "vitest";
-import { getToolCalls } from "../../assertions/index.ts";
-import { type EvalScenario } from "../../types.ts";
-import { assertNotesRead } from "./helpers/clip-scenario-helpers.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
+import { type EvalScenario } from "../../../types.ts";
+import { assertNamesTarget } from "../../path/path-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -25,7 +26,7 @@ export const swingAndQuantize: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Find the drum clip in the first scene and read the notes",
-    "Add swing to the closed hats",
+    "Add swing to the hi-hats in that clip",
     "That's a little too much. Lower the amount of swing",
     "I changed my mind. Quantize the hats to the 16th note grid",
   ],
@@ -43,12 +44,12 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 2,
       args: expect.objectContaining({
-        id: expect.any(String),
         // transforms is a single newline-separated string (de-arrayed);
         // stringMatching does a substring search across all transform lines.
         transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
       }) as Record<string, unknown>,
     },
+    assertNamesTarget({ turn: 2, tool: TOOL_UPDATE_CLIP }),
 
     // Turn 3: Swing re-applied with lower amount (auto-quantize handles grid alignment)
     {
@@ -56,12 +57,12 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 3,
       args: expect.objectContaining({
-        id: expect.any(String),
         // transforms is a single newline-separated string (de-arrayed);
         // stringMatching does a substring search across all transform lines.
         transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
       }) as Record<string, unknown>,
     },
+    assertNamesTarget({ turn: 3, tool: TOOL_UPDATE_CLIP }),
 
     // Turn 3: Swing amount is lower than turn 2
     {
@@ -108,7 +109,6 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 4,
       args: expect.objectContaining({
-        id: expect.any(String),
         // 16th-note grid: n/16 (absolute note value) or 0.25 (bare beats, =
         // a 16th in 4/4). The old synced-period form 1/4t was removed.
         transforms: expect.stringMatching(
@@ -116,5 +116,6 @@ export const swingAndQuantize: EvalScenario = {
         ),
       }) as Record<string, unknown>,
     },
+    assertNamesTarget({ turn: 4, tool: TOOL_UPDATE_CLIP }),
   ],
 };

@@ -8,11 +8,11 @@
  * LFO, randomization) targeting specific instruments by pitch.
  */
 
-import { type EvalScenario } from "../../types.ts";
+import { type EvalScenario } from "../../../types.ts";
 import {
   assertNotesRead,
   getTransforms,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -44,6 +44,16 @@ function selectorTargeting(
   return selector;
 }
 
+/**
+ * The closed hats, either way a model spells the pitch. `G#1` and `Ab1` are the
+ * same key and the parser takes both — luna wrote `G#1` and the transform
+ * landed (`transformed: 8`), so grading one spelling fails a working call.
+ */
+const HAT = /Ab1|G#1/;
+
+/** The snare pitch. E has no enharmonic a model would reach for. */
+const SNARE = /E1/;
+
 export const drumTransforms: EvalScenario = {
   id: "drum-transforms",
   description: "Apply velocity transforms to drum clip notes",
@@ -54,9 +64,9 @@ export const drumTransforms: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Find the drum clip in the first scene and read the notes",
-    "Add a crescendo to the hats in the last two beats of the last bar: very quiet to max volume",
+    "Add a crescendo to the hats in the last two beats of the last bar: very quiet to max volume. Do it in as few tokens as you can.",
     "Apply a velocity LFO to the hats before the crescendo",
-    "Slightly randomize the snare velocities",
+    "Slightly randomize the snare velocities. Lock a value into each hit so it plays back the same way every time.",
   ],
 
   assertions: [
@@ -75,11 +85,20 @@ export const drumTransforms: EvalScenario = {
         "crescendo uses velocity ramp scoped to hats in last 2 beats",
       assert: (turns) => {
         const transforms = getTransforms(turns, 2, TOOL_UPDATE_CLIP);
-        // Selector must include Ab1 pitch and 2|3-2|4.75 time range
-        const selector = selectorTargeting(transforms, /Ab1/, "Ab1");
+        const selector = selectorTargeting(
+          transforms,
+          HAT,
+          "the hats (Ab1/G#1)",
+        );
 
-        if (!/2\|3-2\|4\.75/.test(selector)) {
-          throw new Error(`time range 2|3-2|4.75 not in selector: ${selector}`);
+        // "The last two beats" ends where bar 2 does, and both spellings say
+        // so: the closed `2|3-2|4.75` and the half-open `2|3-<3|1` ("up to, not
+        // including, bar 3"). The LFO turn below already accepts `-<`; pinning
+        // one literal here made the two turns disagree.
+        if (!/2\|3-(2\|4\.75|<3\|1)/.test(selector)) {
+          throw new Error(
+            `time range should cover 2|3 to the end of bar 2: ${selector}`,
+          );
         }
 
         // velocity = ramp(start, end) where start < 50 and end > 120
@@ -117,12 +136,28 @@ export const drumTransforms: EvalScenario = {
       assert: (turns) => {
         const transforms = getTransforms(turns, 3, TOOL_UPDATE_CLIP);
         // Selector must target Ab1 (hats)
-        const selector = selectorTargeting(transforms, /Ab1/, "Ab1");
+        const selector = selectorTargeting(
+          transforms,
+          HAT,
+          "the hats (Ab1/G#1)",
+        );
 
         // Must use a waveform function on velocity (= or += both valid)
         if (!/velocity\s*\+?=\s*.*\b(sin|cos|tri|saw)\b/.test(transforms)) {
           throw new Error(
             `expected velocity [+]= ... waveform(): ${transforms}`,
+          );
+        }
+
+        // The waveform argument has to vary per note. `sin(2)` is a constant —
+        // it flattens every hit to one velocity, the opposite of an LFO, and
+        // models do write it after a first attempt errors out.
+        const waveformArg = /\b(?:sin|cos|tri|saw)\(([^)]*)\)/.exec(transforms);
+        const waveformExpr = waveformArg?.[1] ?? "";
+
+        if (waveformArg && !/[a-z]/i.test(waveformExpr)) {
+          throw new Error(
+            `waveform argument '${waveformExpr}' is constant — an LFO has to vary per note: ${transforms}`,
           );
         }
 
@@ -178,29 +213,32 @@ export const drumTransforms: EvalScenario = {
 
     {
       type: "custom",
-      description: "snare randomization targets snare pitch with rand()",
+      description:
+        "snare randomization bakes a fixed rand() value into each snare",
       assert: (turns) => {
         const transforms = getTransforms(turns, 4, TOOL_UPDATE_CLIP);
 
         // Must target snare pitch (E1 in this drum rack)
-        selectorTargeting(transforms, /E1/, "E1 (snare)");
+        selectorTargeting(transforms, SNARE, "E1 (snare)");
 
-        // Must randomize velocity relative to its current value with rand().
-        // Accept `velocity += rand(...)` and the equivalent (and MIDI-safe)
-        // assignment `velocity = clamp(... note.velocity ... rand(...) ...)`.
-        // The assignment branch is order-independent: `rand(8) + note.velocity`
-        // and `note.velocity + rand(8)` are equally correct, so require only
-        // that the assignment references both note.velocity and rand, in any
-        // order (an order-sensitive regex would re-introduce this commit's bug).
-        const relativeRand =
-          /velocity\s*\+=\s*.*\brand\b/.test(transforms) ||
-          (/velocity\s*=/.test(transforms) &&
-            /note\.velocity/.test(transforms) &&
-            /\brand\b/.test(transforms));
-
-        if (!relativeRand) {
+        // `vA-B` is wrong HERE and only here: it sets Live's velocity_deviation,
+        // which re-rolls on every playback, and the prompt asks for a value
+        // locked into each note. `velocity-shaping` grades the other direction.
+        // Check it before rand() so the failure names the real reason instead
+        // of reading as "no rand()".
+        if (/\bv\d+-\d+\b/.test(transforms)) {
           throw new Error(
-            `expected velocity randomized with rand() relative to its current value: ${transforms}`,
+            `vA-B re-randomizes on every playback; the prompt asks for a fixed value per hit: ${transforms}`,
+          );
+        }
+
+        // Any rand() on velocity passes. Jitter added to the current value and
+        // a pick from an absolute range are both fine — the prompt doesn't say,
+        // and every snare here is v100 so neither loses anything. `random()` is
+        // a documented alias.
+        if (!/velocity\s*[-+*/]?=\s*.*\b(?:rand|random)\(/.test(transforms)) {
+          throw new Error(
+            `expected velocity randomized with rand(): ${transforms}`,
           );
         }
 

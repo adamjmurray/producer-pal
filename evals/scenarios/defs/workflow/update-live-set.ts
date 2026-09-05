@@ -7,20 +7,9 @@
  * Scenario: Update Live Set global properties and delete a track
  */
 
+import { trackNames } from "../live-set-helpers.ts";
 import { type EvalScenario } from "../../types.ts";
-import { assertAddressedById } from "../path/path-scenario-helpers.ts";
-
-/**
- * Track names from a read-live-set result.
- *
- * @param result - The parsed read-live-set result
- * @returns The names, in track order
- */
-function trackNames(result: unknown): string[] {
-  const tracks = (result as { tracks?: Array<{ name?: string }> }).tracks ?? [];
-
-  return tracks.map((track) => track.name ?? "");
-}
+import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
 
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
@@ -79,7 +68,7 @@ export const updateLiveSet: EvalScenario = {
     },
 
     // The only place delete's target arg is graded. 2.2.0 renamed it to `id`.
-    assertAddressedById({ turn: 2, tool: "ppal-delete" }),
+    assertNamesTarget({ turn: 2, tool: "ppal-delete" }),
     { type: "response_contains", pattern: /delet/i, turn: 2 },
 
     {

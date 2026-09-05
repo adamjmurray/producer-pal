@@ -37,12 +37,12 @@
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { getToolCalls } from "../../assertions/index.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
-} from "../../types.ts";
+} from "../../../types.ts";
 import {
   assertNotesRead,
   clearClipSlots,
@@ -51,7 +51,7 @@ import {
   readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** 4-track Live Set used by the split scenarios (Lead + Bass tracks). */

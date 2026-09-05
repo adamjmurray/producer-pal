@@ -31,7 +31,7 @@ export {
   barBeatVelocityAccent,
   barBeatZipStreams,
 } from "./clip/notation/bar-beat/bar-beat-value-streams.ts";
-export { drumTransforms } from "./clip/drum-transforms.ts";
+export { drumTransforms } from "./clip/transforms/drum-transforms.ts";
 export {
   contextFollowGlobal,
   contextFollowProject,
@@ -72,9 +72,9 @@ export {
   noteOpsRatchetRoll,
   noteOpsRepeat,
   noteOpsSplit,
-} from "./clip/note-ops-roll-and-merge.ts";
-export { legatoTransforms } from "./clip/legato-transforms.ts";
-export { melodyTransforms } from "./clip/melody-transforms.ts";
+} from "./clip/transforms/note-ops-roll-and-merge.ts";
+export { legatoTransforms } from "./clip/transforms/legato-transforms.ts";
+export { melodyTransforms } from "./clip/transforms/melody-transforms.ts";
 export { rangeClearBoundaries } from "./clip/notation/range-bound-clears.ts";
 export {
   pretransformsHatFillsBaseline,
@@ -92,8 +92,9 @@ export {
   rhythmGridMatrix,
 } from "./clip/notation/notation-matrix-scenarios.ts";
 export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";
-export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
-export { whereTransforms } from "./clip/where-transforms.ts";
+export { swingAndQuantize } from "./clip/transforms/swing-and-quantize.ts";
+export { velocityShaping } from "./clip/transforms/velocity-shaping.ts";
+export { whereTransforms } from "./clip/transforms/where-transforms.ts";
 export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invariance.ts";
 export { projectContextWorkflow } from "./workflow/project-context-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";
@@ -116,3 +117,5 @@ export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";
 export { updateLiveSet } from "./workflow/update-live-set.ts";
+export { pathInsertPosition } from "./path/path-insert-position.ts";
+export { pathLocatorCoordinate } from "./path/path-locator-coordinate.ts";

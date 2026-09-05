@@ -8,14 +8,14 @@
  * transposition using scale steps.
  */
 
-import { argText } from "../arg-text.ts";
+import { argText } from "../../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { getToolCalls } from "../../assertions/index.ts";
-import { type EvalScenario } from "../../types.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
+import { type EvalScenario } from "../../../types.ts";
 import {
   assertNotesRead,
   getTransforms,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -164,7 +164,7 @@ export const melodyTransforms: EvalScenario = {
     // Turn 5: Random duration shortening
     {
       type: "custom",
-      description: "durations shortened by random amount using rand()",
+      description: "durations shortened by random amount using rand()/random()",
       assert: (turns) => {
         const transforms = getTransforms(turns, 5, TOOL_UPDATE_CLIP);
 
@@ -174,7 +174,9 @@ export const melodyTransforms: EvalScenario = {
           );
         }
 
-        if (!/rand\(/i.test(transforms)) {
+        // `random()` is a documented alias for `rand()` and the parser accepts
+        // it, so grading only the taught spelling would fail a working call.
+        if (!/\b(?:rand|random)\(/i.test(transforms)) {
           throw new Error(
             `expected rand() function: ${transforms.slice(0, 120)}`,
           );
