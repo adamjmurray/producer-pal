@@ -85,12 +85,7 @@ describe("ppal-update-track", () => {
       arguments: { id: trackId, gainDb: -6 },
     });
 
-    await sleep(100);
-    const afterGain = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const gainTrack = parseToolResult<ReadTrackResult>(afterGain);
+    const gainTrack = await readTrackMixer(trackId);
 
     expect(gainTrack.gainDb).toBeCloseTo(-6, 1);
   });
@@ -181,12 +176,7 @@ describe("ppal-update-track", () => {
       arguments: { id: trackId, pan: 0.5 },
     });
 
-    await sleep(100);
-    const afterPan = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const panTrack = parseToolResult<ReadTrackResult>(afterPan);
+    const panTrack = await readTrackMixer(trackId);
 
     expect(panTrack.pan).toBeCloseTo(0.5, 1);
 
@@ -201,12 +191,7 @@ describe("ppal-update-track", () => {
       },
     });
 
-    await sleep(100);
-    const afterSplit = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const splitTrack = parseToolResult<ReadTrackResult>(afterSplit);
+    const splitTrack = await readTrackMixer(trackId);
 
     expect(splitTrack.panningMode).toBe("split");
     expect(splitTrack.leftPan).toBeCloseTo(-0.5, 1);
@@ -304,12 +289,7 @@ describe("ppal-update-track", () => {
       arguments: { id: trackId, sendGainDb: -12, sendReturn: "A" },
     });
 
-    await sleep(100);
-    const afterSend = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const sendTrack = parseToolResult<ReadTrackResult>(afterSend);
+    const sendTrack = await readTrackMixer(trackId);
 
     // Verify sends array contains the return
     expect(sendTrack.sends).toBeDefined();
@@ -329,14 +309,7 @@ describe("ppal-update-track", () => {
       arguments: { id: trackId, sendGainDb: -24, sendReturn: returnTrack.id },
     });
 
-    await sleep(100);
-
-    const byId = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["mixer"] },
-      }),
-    );
+    const byId = await readTrackMixer(trackId);
 
     // Sends are index-aligned with the return tracks, so the new one is last.
     expect(byId.sends!.at(-1)!.gainDb).toBeCloseTo(-24, 1);

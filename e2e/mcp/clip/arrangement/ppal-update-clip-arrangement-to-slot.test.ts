@@ -28,6 +28,7 @@ import {
 import {
   arrangementClipAt,
   expectRefusedUpdate,
+  moveOffTakeLane,
   readClipFully,
   updateClip,
 } from "../helpers/clip-io-test-helpers.ts";
@@ -178,8 +179,6 @@ describe("arrangement clip moved into a session slot", () => {
     ).toBe("Takes Over");
   });
 
-  // Live's delete_clip no-ops on a take-lane clip, so the take is emptied in
-  // place rather than deleted.
   it("moves a take-lane source into a slot, leaving an emptied clip behind", async () => {
     const source = await createClip({
       path: `t${EMPTY_MIDI_TRACK}/l+[21|1]`,
@@ -188,15 +187,11 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${EMPTY_MIDI_TRACK}/s5`,
-    });
-
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was emptied instead of deleted`,
+    const placed = await moveOffTakeLane(
+      ctx.client!,
+      source,
+      `t${EMPTY_MIDI_TRACK}/s5`,
     );
-
-    const placed = await readClipFully(ctx.client!, { id: moved.id });
 
     expect(placed.view).toBe("session");
     expect(placed.name).toBe("On A Lane");

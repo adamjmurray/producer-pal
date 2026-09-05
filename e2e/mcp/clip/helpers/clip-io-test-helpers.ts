@@ -116,3 +116,28 @@ export async function expectRefusedUpdate(
   expect(warnings.join(" ")).toContain(warning);
   expect(kept.id).toBe(id);
 }
+
+/**
+ * Move a take-lane clip and check Live emptied the source instead of deleting
+ * it — delete_clip no-ops on a take-lane clip, so the move copies the content
+ * and leaves an emptied clip where it stood.
+ * @param client - The connected MCP client
+ * @param source - The take-lane clip being moved
+ * @param toPath - Where the clip is going
+ * @returns The clip as read back at its new home
+ */
+export async function moveOffTakeLane(
+  client: Client,
+  source: Pick<ReadClipResult, "id" | "path">,
+  toPath: string,
+): Promise<ReadClipResult> {
+  const { data: moved, warnings } = await updateClip(client, source.id, {
+    toPath,
+  });
+
+  expect(warnings.join(" ")).toContain(
+    `clip ${source.path} (id ${source.id}) was emptied instead of deleted`,
+  );
+
+  return readClipFully(client, { id: moved.id });
+}

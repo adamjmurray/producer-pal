@@ -29,6 +29,7 @@ import {
 import {
   arrangementClipAt,
   expectRefusedUpdate,
+  moveOffTakeLane,
   readClipFully,
   updateClip,
 } from "../helpers/clip-io-test-helpers.ts";
@@ -115,20 +116,14 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(source.id);
   });
 
-  // Live's delete_clip no-ops on a take-lane clip, so the move copies the
-  // content and empties the original where it stands.
   it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {
     const source = await createClip("29|1", "Lane Bound", `/l+`);
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${RACKS_TRACK}[33|1]`,
-    });
-
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was emptied instead of deleted`,
+    const placed = await moveOffTakeLane(
+      ctx.client!,
+      source,
+      `t${RACKS_TRACK}[33|1]`,
     );
-
-    const placed = await readClipFully(ctx.client!, { id: moved.id });
 
     expect(placed.path).toBe(`t${RACKS_TRACK}[33|1]`);
     expect(placed.name).toBe("Lane Bound");

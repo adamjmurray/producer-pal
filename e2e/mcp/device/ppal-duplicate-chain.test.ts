@@ -116,12 +116,7 @@ describe("ppal-duplicate type=chain", () => {
     const KIT = `${OUTER}/c0/d0`;
     const SUB_KIT = `${KIT}/pF1/d0`;
 
-    const clap = parseToolResult<RackRead>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { path: `${KIT}/pE1`, include: ["chains"], maxDepth: 0 },
-      }),
-    ).chains?.[0];
+    const clap = (await readChains(`${KIT}/pE1`))[0];
 
     expect(clap?.id).toBeDefined();
 
@@ -158,12 +153,7 @@ describe("ppal-duplicate type=chain", () => {
   it("puts a copied drum chain on the same pad as its source", async () => {
     const KIT = `${OUTER}/c0/d0`;
 
-    const clap = parseToolResult<RackRead>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { path: `${KIT}/pE1`, include: ["chains"], maxDepth: 0 },
-      }),
-    ).chains?.[0];
+    const clap = (await readChains(`${KIT}/pE1`))[0];
 
     await ctx.client!.callTool({
       name: "ppal-duplicate",
