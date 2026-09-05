@@ -32,9 +32,9 @@ describe("moveDeviceToPath", () => {
   });
 
   it("blames toPath, the param every caller took the path from", () => {
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toBe(
-      "unresolvable",
-    );
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toStrictEqual({
+      outcome: "unresolvable",
+    });
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'device not moved: invalid toPath "x9/d0" - "x9" is not a track or scene',
@@ -47,9 +47,9 @@ describe("moveDeviceToPath", () => {
     // lose the whole batch over one bad destination.
     mockNonExistentObjects();
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99/d0/c0")).toBe(
-      "unresolvable",
-    );
+    expect(
+      moveDeviceToPath(LiveAPI.from(device.path), "t99/d0/c0"),
+    ).toStrictEqual({ outcome: "unresolvable" });
     expect(capturedWarnings()).toContain(
       'device not moved: Track in path "t99/d0/c0" does not exist',
     );
@@ -67,7 +67,7 @@ describe("moveDeviceToPath", () => {
         LiveAPI.from(device.path),
         "t99/d0/c0",
       ),
-    ).toBe("unresolvable");
+    ).toStrictEqual({ outcome: "unresolvable" });
     expect(capturedWarnings()).toContain(
       'device not moved: Track in path "t99/d0/c0" does not exist',
     );
@@ -84,7 +84,12 @@ describe("moveDeviceToPath", () => {
       properties: { devices: children("device-0") },
     });
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe("moved");
+    const move = moveDeviceToPath(LiveAPI.from(device.path), "t1/d0");
+
+    // The container comes back so a result can name the device by where the
+    // call spelled it landing, without re-resolving toPath.
+    expect(move.outcome).toBe("moved");
+    expect(move.container?.id).toBe("track-1");
     expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-0",
@@ -99,9 +104,9 @@ describe("moveDeviceToPath", () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
-      "refused",
-    );
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
+      outcome: "refused",
+    });
     expect(capturedWarnings()).toContain(
       "Live refused the move of t0/d0 (id device-0)",
     );
@@ -125,9 +130,9 @@ describe("moveDeviceToPath", () => {
       properties: { devices: children("resident") },
     });
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
-      "refused",
-    );
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
+      outcome: "refused",
+    });
     expect(capturedWarnings()).toContain(
       "Live refused the move of t0/d0 (id device-0): the destination already has an instrument, and only one is allowed",
     );
@@ -139,9 +144,9 @@ describe("moveDeviceToPath", () => {
 
     mockNonExistentObjects();
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99")).toBe(
-      "no-destination",
-    );
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99")).toStrictEqual({
+      outcome: "no-destination",
+    });
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toHaveLength(0);
   });

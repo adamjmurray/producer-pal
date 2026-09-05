@@ -14,7 +14,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
   () => ({
-    moveDeviceToPath: vi.fn((): DeviceMoveOutcome => "moved"),
+    moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
   }),
 );
 
@@ -25,7 +25,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import {
-  type DeviceMoveOutcome,
+  type DeviceMove,
   moveDeviceToPath as moveDeviceToPathMock,
 } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 
@@ -69,16 +69,13 @@ describe("duplicate — drum chain path spelling", () => {
       path: livePath.track(1).device(1),
     });
 
-    vi.mocked(moveDeviceToPathMock).mockImplementationOnce(
-      (_device, _toPath, _source, _reportPath, onMoved) => {
-        registerMockObject("temp-copy", {
-          path: livePath.track(0).device(0).chain(2).device(0),
-        });
-        onMoved?.(LiveAPI.from("chain-2"));
+    vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
+      registerMockObject("temp-copy", {
+        path: livePath.track(0).device(0).chain(2).device(0),
+      });
 
-        return "moved";
-      },
-    );
+      return { outcome: "moved", container: LiveAPI.from("chain-2") };
+    });
 
     expect(
       await duplicate({

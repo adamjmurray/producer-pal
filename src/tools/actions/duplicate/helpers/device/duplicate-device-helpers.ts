@@ -185,13 +185,11 @@ function duplicateDevice(
       // survives: the copy is still on the temp track, which the cleanup deletes.
       // Live confirms the device is in this container before the move reports
       // "moved", which is what makes the destination safe to name it by.
-      let containerId: string | undefined;
-      const outcome = moveDeviceToPath(
+      const { outcome, container } = moveDeviceToPath(
         tempDevice,
         adjustedDestination,
         device,
         destination,
-        (container) => (containerId = container.id),
       );
 
       if (outcome === "no-destination") {
@@ -220,7 +218,7 @@ function duplicateDevice(
       }
 
       // Read the device's id before the temp track goes away.
-      return { id: tempDevice.id, destination, containerId };
+      return { id: tempDevice.id, destination, containerId: container?.id };
     },
   );
 }

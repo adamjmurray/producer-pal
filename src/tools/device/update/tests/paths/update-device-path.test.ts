@@ -14,7 +14,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { updateDevice } from "../update-device.ts";
+import { updateDevice } from "../../update-device.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice with path parameter", () => {

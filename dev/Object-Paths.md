@@ -322,8 +322,19 @@ and is why only a chain result gets the treatment.
 A **device** inside a pad is the exception: naming it pad-relative would cost
 the same rack read for a path that is reachable either way, so it reports the
 rack-relative form — unless the call spelled its container through a pad, and
-then that spelling is echoed back. `ppal-create-device` and a device or chain
-copy's `toPath` do this; `ppal-update-device` does not yet.
+then that spelling is echoed back. `ppal-create-device`, `ppal-update-device`
+and a device or chain copy's `toPath` all do this.
+
+An update echoes whichever spelling still names where the object is. Only a
+device move replaces the address the call reached the object by, and only once
+Live confirms the device arrived — a refused move, a skipped Producer Pal
+device, and a drum chain's pad re-map all keep the addressing spelling. The
+re-map leaves the chain's path stale, but harmlessly: a container spelled
+through a pad always resolves to a chain, and a chain's parent is the rack, so
+the check below never matches and the path is re-derived from the new `in_note`.
+A target named only by `id` spelled no container, so its path stays derived —
+what a result owes a call that supplied no spelling is a separate question,
+still open.
 
 Echoing only ever replaces the container the call actually named. A chain copy
 whose destination rack is spelled rack-relative (`toPath: "t0/d0/c2/d0"`) still
@@ -333,9 +344,19 @@ way out of `objectPathForApi` and there is no pad spelling to echo in its place.
 `pathField` does the substitution, and takes the resolved container along with
 its spelling so it can check the spelling really names the object's parent
 before trusting it (`insertionContainerPath` trims a trailing `d<n>` off an
-insertion path to get the spelling). Only a parent written through a pad is
-substituted: every other path has one spelling, and the derived path is read
-from the object itself.
+insertion path to get the spelling; a path naming the object itself drops its
+last segment instead). Two things about that check are load-bearing. The
+container has to be resolved from the spelling: one taken off the object proves
+nothing. And it has to be identity, not containment, in either direction —
+`pC1/c1` minus its last segment is `pC1`, which resolves to the pad's _first_
+layer, so a descendant test accepts a sibling chain, and an ancestor test would
+graft the object's segments onto its grandparent. Only a parent written through
+a pad is substituted: every other path has one spelling, and the derived path is
+read from the object itself.
+
+A **drum pad** result needs none of this. A Drum Rack nested inside a drum pad
+has no pads of its own, so a rack with pads is always reachable without a pad
+segment above it, and the pad path a result derives has only one spelling.
 
 Beware the two chain orders. `pC1/cN` counts the rack's chains filtered by
 `in_note`, **not** `pad.chains` — measured on 12.4.3 the two disagree once a pad

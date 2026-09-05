@@ -11,7 +11,8 @@ import {
   mockNonExistentObjects,
   registerMockObject,
   updateDevice,
-} from "./update-device-test-helpers.ts";
+  writesThroughSets,
+} from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - moving a drum chain", () => {
@@ -63,6 +64,11 @@ describe("updateDevice - moving a drum chain", () => {
       type: "DrumChain",
       properties: { in_note: 38 },
     });
+
+    // A retarget is a write to in_note, and in_note is what a chain's pad path
+    // is derived from — so a mock that swallowed the write would report the
+    // chain still on the pad it just left.
+    for (const chain of [chain0, chain1, chain2]) writesThroughSets(chain);
   });
 
   // The result an unmoved C1 pad reports.
@@ -97,7 +103,10 @@ describe("updateDevice - moving a drum chain", () => {
     // An explicit chain path (pC1/c0) moves ONLY that chain, not the whole pad,
     // so the sibling chain on the same in_note is untouched.
     expect(chain1.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pC1/c0" });
+    // Named through the pad it left, reported on the pad it reached: the path
+    // the call addressed it by is stale the moment the retarget lands, so the
+    // result re-derives it. Rack order puts it ahead of pD1's other chain.
+    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pD1/c0" });
   });
 
   it("should resolve a sharp-accidental target pad note", () => {

@@ -297,7 +297,11 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
 
       // Append: the destination slot is whatever index the chain is up to,
       // which keeps the copies in the source's order.
-      const outcome = moveDeviceToPath(source, `${adjusted}/d${index}`, source);
+      const { outcome } = moveDeviceToPath(
+        source,
+        `${adjusted}/d${index}`,
+        source,
+      );
 
       if (outcome !== "moved") {
         console.warn(

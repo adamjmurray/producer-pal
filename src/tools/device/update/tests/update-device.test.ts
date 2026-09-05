@@ -595,7 +595,7 @@ describe("updateDevice", () => {
         "id track1",
         0,
       );
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
     });
 
     it("should move device to a specific position", () => {
@@ -610,7 +610,7 @@ describe("updateDevice", () => {
         "id track1",
         2,
       );
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
     });
 
     it("should move device into a rack chain", () => {
@@ -625,7 +625,7 @@ describe("updateDevice", () => {
         "id chain1",
         0,
       );
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t0/d0/c1/d0" });
     });
 
     it("should warn and skip when trying to move a Chain", () => {
@@ -693,7 +693,7 @@ describe("updateDevice", () => {
       // Should also set name
       expect(device123.set).toHaveBeenCalledWith("name", "Moved Device");
 
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
     });
   });
 

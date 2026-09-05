@@ -36,6 +36,14 @@ export type DeviceMoveOutcome =
   | "refused"
   | "unresolvable";
 
+/** What a move did, and where it put the device. */
+export interface DeviceMove {
+  outcome: DeviceMoveOutcome;
+  /** The container the device landed in, so a caller that has to name it
+   * afterwards doesn't re-resolve toPath. Only a "moved" outcome has one. */
+  container?: LiveAPI;
+}
+
 /**
  * Move a device to a new location. Never throws: a toPath naming no place a
  * device can go warns and reports "unresolvable", so the other ids and
@@ -47,29 +55,27 @@ export type DeviceMoveOutcome =
  *   left-behind chain mixer warning
  * @param reportPath - How to spell toPath in warnings, when the caller adjusted
  *   it (device duplication shifts track indices past its temp track)
- * @param onMoved - Called with the container the device landed in, for a
- *   caller that has to name it afterwards and can't re-resolve toPath cheaply
  * @returns "moved" once the device is at the destination, "no-destination" when
  *   toPath names nothing, "refused" when Live wouldn't take it, or
- *   "unresolvable" when toPath doesn't resolve at all
+ *   "unresolvable" when toPath doesn't resolve at all — with the container it
+ *   landed in when it moved
  */
 export function moveDeviceToPath(
   device: LiveAPI,
   toPath: string,
   source: LiveAPI = device,
   reportPath: string = toPath,
-  onMoved?: (container: LiveAPI) => void,
-): DeviceMoveOutcome {
+): DeviceMove {
   const destination = resolveMoveDestination(toPath, reportPath);
 
   if (destination == null) {
-    return "unresolvable";
+    return { outcome: "unresolvable" };
   }
 
   const { container, position } = destination;
 
   if (!container?.exists()) {
-    return "no-destination";
+    return { outcome: "no-destination" };
   }
 
   // Read the chain before the move: on a plain move the source is the device
@@ -97,10 +103,8 @@ export function moveDeviceToPath(
       `Live refused the move of ${targetLabel(device)}${refusalReason(device, container)}`,
     );
 
-    return "refused";
+    return { outcome: "refused" };
   }
-
-  onMoved?.(container);
 
   if (carry != null) {
     carryChainMixer(carry, container);
@@ -110,7 +114,7 @@ export function moveDeviceToPath(
     warnIfChainMixerLeftBehind(chain, container, source.id !== device.id);
   }
 
-  return "moved";
+  return { outcome: "moved", container };
 }
 
 /**

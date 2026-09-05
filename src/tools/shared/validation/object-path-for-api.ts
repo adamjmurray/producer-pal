@@ -73,11 +73,12 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
 
 /** A container a call named by path, with the object that spelling resolved to. */
 export interface WrittenContainer {
-  /** The object the spelling resolved to — must be `api`'s direct parent.
+  /** The object the spelling resolved to — must be `api`'s direct parent, and
+   * null when the spelling resolved to nothing.
    * A thunk, because most calls never reach the check: building a LiveAPI is
    * the expensive path the object pool exists to avoid, and a
    * comma-separated toPath would pay it once per destination. */
-  container: () => LiveAPI;
+  container: () => LiveAPI | null;
   /** How the call spelled it. */
   path: string;
 }
@@ -109,7 +110,7 @@ export function pathField(
   // Substitute only a spelling that really is this object's parent, or it
   // would rename the object rather than respell it. An unchanged path means
   // the strip found no segment of the object's own to remove.
-  return parentPath !== api.path && parentPath === written.container().path
+  return parentPath !== api.path && parentPath === written.container()?.path
     ? { path: written.path + ownSegments(path) }
     : { path };
 }

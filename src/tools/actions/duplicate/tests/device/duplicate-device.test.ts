@@ -17,7 +17,7 @@ vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
   () => ({
     // Reports a completed move; tests that need a failed one override it.
-    moveDeviceToPath: vi.fn((): DeviceMoveOutcome => "moved"),
+    moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
   }),
 );
 
@@ -30,7 +30,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 
 // Import the mocks after vi.mock
 import {
-  type DeviceMoveOutcome,
+  type DeviceMove,
   moveDeviceToPath as moveDeviceToPathMock,
 } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
@@ -100,7 +100,6 @@ describe("duplicate - device duplication", () => {
       "t0/d3",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
 
     // Should delete the temp track
@@ -129,7 +128,6 @@ describe("duplicate - device duplication", () => {
       "t3/d0",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -166,7 +164,6 @@ describe("duplicate - device duplication", () => {
       "t1/d0/c0/d2",
       expect.objectContaining({ _id: "rack_device1" }),
       expect.any(String),
-      expect.any(Function),
     );
 
     // Should delete the temp track at index 2
@@ -239,7 +236,6 @@ describe("duplicate - device duplication", () => {
       "t2/d0",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -257,7 +253,6 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       // Warnings keep the spelling the caller sent.
       "2",
-      expect.any(Function),
     );
   });
 
@@ -304,7 +299,9 @@ describe("duplicate - device duplication", () => {
     // that the cleanup was about to delete.
     const { liveSet } = setupDeviceDuplicationMocks();
 
-    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("no-destination");
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({
+      outcome: "no-destination",
+    });
 
     // The path handed to the move is t100 (shifted past the temp track); the
     // warning names the t99 the caller sent.
@@ -324,7 +321,6 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       // The move reports failures in the caller's own coordinates, not t100's.
       "t99",
-      expect.any(Function),
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -334,7 +330,7 @@ describe("duplicate - device duplication", () => {
     // reporting its id named a device that no longer existed.
     const { liveSet } = setupDeviceDuplicationMocks();
 
-    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("refused");
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({ outcome: "refused" });
 
     const result = await duplicate({
       type: "device",
@@ -353,9 +349,9 @@ describe("duplicate - device duplication", () => {
     setupDeviceDuplicationMocks(1);
 
     vi.mocked(moveDeviceToPathMock)
-      .mockReturnValueOnce("moved")
-      .mockReturnValueOnce("refused")
-      .mockReturnValueOnce("moved");
+      .mockReturnValueOnce({ outcome: "moved" })
+      .mockReturnValueOnce({ outcome: "refused" })
+      .mockReturnValueOnce({ outcome: "moved" });
 
     const result = await duplicate({
       type: "device",
@@ -391,7 +387,6 @@ describe("duplicate - device duplication", () => {
       "t0/d2",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -419,7 +414,6 @@ describe("duplicate - device duplication", () => {
       "t3/d0",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -435,7 +429,6 @@ describe("duplicate - device duplication", () => {
       "r0/d0",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -490,7 +483,6 @@ describe("duplicate - device duplication", () => {
       "t12/d1",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -514,7 +506,6 @@ describe("duplicate - device duplication", () => {
       "t13/d0",
       expect.anything(),
       "t12/d0",
-      expect.any(Function),
     );
   });
 
@@ -540,7 +531,6 @@ describe("duplicate - device duplication", () => {
       "t0/d0/c0",
       expect.anything(),
       expect.any(String),
-      expect.any(Function),
     );
   });
 
@@ -585,7 +575,7 @@ describe("duplicate - device duplication", () => {
         type: "PluginDevice",
       });
 
-      return "moved";
+      return { outcome: "moved" };
     });
 
     await duplicate({

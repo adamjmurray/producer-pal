@@ -26,30 +26,128 @@ export {
 } from "#src/test/mocks/mock-registry.ts";
 export { updateDevice } from "../update-device.ts";
 
+/** The collection segment a device sits in, so the rest names its container. */
+const OWN_DEVICE_SEGMENT = / devices \d+$/;
+
 /**
- * Register a live_set whose move_device puts the device in the destination, the
- * way Live does when it takes the move. The registry answers statically, so
- * without this the destination never lists the device and moveDeviceToPath
- * reads every move as refused. Leave it out to test a refusal.
+ * Register a live_set whose move_device relocates the device the way Live does:
+ * out of its old container, into the destination at the position asked for
+ * (clamped to the end), with every device either list re-pathed to the index it
+ * now sits at. The registry answers statically, so without this the destination
+ * never lists the device and moveDeviceToPath reads every move as refused.
+ * Leave it out to test a refusal.
  * @returns The live_set mock
  */
 export function mockWorkingDeviceMoves(): RegisteredMockObject {
   return registerMockObject("live-set", {
     path: livePath.liveSet,
     methods: {
-      move_device: (device, container) => {
+      move_device: (device, container, position) => {
         const target = lookupMockObject(bareId(container));
+        const moved = lookupMockObject(bareId(device));
 
-        if (target != null) {
-          const devices =
-            (target.properties.devices as string[] | undefined) ?? [];
-
-          target.properties.devices = [...devices, "id", bareId(device)];
+        if (target != null && moved != null) {
+          relocateDevice(moved, target, position);
         }
 
         return null;
       },
     },
+  });
+}
+
+/**
+ * Take a device out of the container it is in and put it in another at the
+ * position asked for, re-pathing everything either list still holds.
+ * @param moved - The device being moved
+ * @param target - The container it is moving into
+ * @param position - The index move_device asked for
+ */
+function relocateDevice(
+  moved: RegisteredMockObject,
+  target: RegisteredMockObject,
+  position: unknown,
+): void {
+  const source = lookupMockObject(
+    undefined,
+    moved.path.replace(OWN_DEVICE_SEGMENT, ""),
+  );
+
+  if (source != null && source !== target) {
+    setDeviceIds(
+      source,
+      deviceIds(source).filter((id) => id !== moved.id),
+    );
+  }
+
+  const ids = deviceIds(target).filter((id) => id !== moved.id);
+
+  ids.splice(clamp(position, ids.length), 0, moved.id);
+  setDeviceIds(target, ids);
+}
+
+/**
+ * Make every `set` write through to the property, the way a Live object that
+ * takes the write does. The default mock stores only param values, so a test
+ * asserting on something read back after a write needs this.
+ * @param mock - The registered mock to make writable
+ */
+export function writesThroughSets(mock: RegisteredMockObject): void {
+  mock.set.mockImplementation((property: string, value: unknown) => {
+    mock.properties[property] = value;
+  });
+}
+
+/**
+ * The device ids a container lists, without Live's interleaved "id" markers.
+ * @param container - The registered container mock
+ * @returns The ids, in order
+ */
+function deviceIds(container: RegisteredMockObject): string[] {
+  const devices = (container.properties.devices as string[] | undefined) ?? [];
+
+  return devices.filter((_, index) => index % 2 === 1);
+}
+
+/**
+ * Put a container's device list in a given order, and move each device to the
+ * path its new index names.
+ * @param container - The registered container mock
+ * @param ids - The device ids it now holds, in order
+ */
+function setDeviceIds(container: RegisteredMockObject, ids: string[]): void {
+  container.properties.devices = ids.flatMap((id) => ["id", id]);
+
+  for (const [index, id] of ids.entries()) {
+    const device = lookupMockObject(id);
+
+    if (device != null) repath(device, `${container.path} devices ${index}`);
+  }
+}
+
+/**
+ * Where a move lands, given Live takes any index past the end as the end.
+ * @param position - The position argument move_device was called with
+ * @param length - How many devices the destination already holds
+ * @returns The index to insert at
+ */
+function clamp(position: unknown, length: number): number {
+  return Math.min(Math.max(Number(position) || 0, 0), length);
+}
+
+/**
+ * Move a registered object, the way Live does: only its path changes, and
+ * anything holding it reads the new one.
+ * @param mock - The object that moved
+ * @param path - Where it landed
+ */
+function repath(mock: RegisteredMockObject, path: string): void {
+  registerMockObject(mock.id, {
+    path,
+    type: mock.type,
+    properties: mock.properties,
+    methods: mock.methods,
+    returnPath: mock.returnPath,
   });
 }
 

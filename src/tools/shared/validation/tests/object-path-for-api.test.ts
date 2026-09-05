@@ -246,6 +246,19 @@ describe("pathField", () => {
     ).toStrictEqual({ path: "t1/d2" });
   });
 
+  // The check has to be identity, not containment. This spelling names the rack
+  // the object's chain sits in — an ancestor, so the object really does hang
+  // below it — and grafting the object's own segments onto it would name a
+  // device on the pad's first layer instead of the one being reported.
+  it("keeps the derived path when the spelling names an ancestor", () => {
+    expect(
+      pathField(
+        api(String(livePath.track(0).device(0).chain(2).device(0))),
+        written("t0/d0/pC1", livePath.track(0).device(0)),
+      ),
+    ).toStrictEqual({ path: "t0/d0/c2/d0" });
+  });
+
   it("keeps the derived path when it doesn't hang off a parent at all", () => {
     expect(
       pathField(

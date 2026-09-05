@@ -15,7 +15,7 @@ import {
 vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
   () => ({
-    moveDeviceToPath: vi.fn((): DeviceMoveOutcome => "moved"),
+    moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
   }),
 );
 
@@ -26,7 +26,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import {
-  type DeviceMoveOutcome,
+  type DeviceMove,
   moveDeviceToPath as moveDeviceToPathMock,
 } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
@@ -198,7 +198,7 @@ describe("duplicate - chain", () => {
     registerMockObject("temp-device", {
       path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
     });
-    vi.mocked(moveDeviceToPathMock).mockReturnValue("refused");
+    vi.mocked(moveDeviceToPathMock).mockReturnValue({ outcome: "refused" });
 
     await duplicate({ type: "chain", id: "chain-0" });
 
