@@ -4,15 +4,29 @@
   "ignorePattern": ["```[\\s\\S]*?```"],
   "ignore": [
     "**/node_modules/**",
-    "**/.claude/**",
     "**/coverage/**",
     "**/dist/**",
     "**/docs/_generated/**",
     "**/docs/public/markdown/**",
     "**/docs/.vitepress/cache/**",
-    "**/docs/.vitepress/dist/**",
-    "**/examples/**"
+    "**/docs/.vitepress/dist/**"
   ],
   "pattern": "**/*.md",
-  "path": [".."]
+  "path": [
+    "../docs",
+    "../dev",
+    "../e2e",
+    "../evals",
+    "../README.md",
+    "../AGENTS.md",
+    "../CLAUDE.md",
+    "../CONTRIBUTING.md",
+    "../DEVELOPERS.md",
+    "../GEMINI.md",
+    "../SECURITY.md",
+    "../TRADEMARK.md",
+    "../.github/pull_request_template.md",
+    "../licenses/README.md",
+    "../npm/README.md"
+  ]
 }

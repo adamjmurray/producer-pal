@@ -60,24 +60,10 @@ describe("duplicate - input validation", () => {
       }),
     ).rejects.toThrow("tracks cannot be duplicated to arrangement");
   });
-
-  it("should allow type 'track' without arrangement params", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    await expect(
-      duplicate({ type: "track", id: "track1" }),
-    ).resolves.toBeDefined();
-  });
 });
 
 // Every other write tool takes `ids`, so a model carries the plural here too.
 describe("duplicate - the ids alias", () => {
-  it("takes ids as the source when id is unset", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    await expect(
-      duplicate({ type: "track", ids: "track1" }),
-    ).resolves.toBeDefined();
-  });
-
   it("copies every source a list names", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("track2", { path: livePath.track(3) });

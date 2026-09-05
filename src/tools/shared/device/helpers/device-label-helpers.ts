@@ -101,7 +101,7 @@ export function parseLabel(label: string): ParsedLabel {
 
     if (!match) continue;
 
-    if (pattern.fixedValue !== undefined) {
+    if (pattern.fixedValue != null) {
       return { value: pattern.fixedValue, unit: pattern.unit };
     }
 
