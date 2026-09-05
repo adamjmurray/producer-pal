@@ -122,10 +122,12 @@ describe("arrangement clip moved to another lane", () => {
     const first = await createClip("49|1", "Refused One");
     const second = await createClip("53|1", "Refused Two");
 
+    // A destination each: a coordinate in toPath is the clip's own position,
+    // so one of them covers one clip and leaves the other unaimed.
     const { warnings } = await updateClip(
       ctx.client!,
       `${first.id},${second.id}`,
-      { toPath: `t${AUDIO_TRACK}[57|1]` },
+      { toPath: `t${AUDIO_TRACK}[57|1],t${AUDIO_TRACK}[57|1]` },
     );
 
     // Both of them, not just one: a single refusal leaves a lone landing,
