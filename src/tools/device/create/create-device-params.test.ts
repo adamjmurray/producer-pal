@@ -41,6 +41,35 @@ function registerSimplerCreationFixture(): RegisteredMockObject {
   return simpler;
 }
 
+/**
+ * Register a freshly-created device at track 0 / device 2 holding a Threshold
+ * param that displays -60 to 0 dB, plus the track that inserts it.
+ */
+function registerThresholdDevice(): void {
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: { insert_device: () => ["id", "comp-new"] },
+  });
+  registerMockObject("comp-new", {
+    path: livePath.track(0).device(2),
+    type: "Device",
+    properties: { parameters: children("threshold") },
+  });
+  registerMockObject("threshold", {
+    properties: {
+      name: "Threshold",
+      original_name: "Threshold",
+      is_quantized: 0,
+      value: 0,
+      min: 0,
+      max: 1,
+    },
+    methods: {
+      str_for_value: (v: unknown) => `${Math.round(Number(v) * 60) - 60} dB`,
+    },
+  });
+}
+
 describe("createDevice params", () => {
   describe("params after creation", () => {
     it("loads a sample on a created Simpler via params", () => {
@@ -59,29 +88,7 @@ describe("createDevice params", () => {
     });
 
     it("reports what each written param reads as after creation", () => {
-      registerMockObject("track-0", {
-        path: livePath.track(0),
-        methods: { insert_device: () => ["id", "comp-new"] },
-      });
-      registerMockObject("comp-new", {
-        path: livePath.track(0).device(2),
-        type: "Device",
-        properties: { parameters: children("threshold") },
-      });
-      registerMockObject("threshold", {
-        properties: {
-          name: "Threshold",
-          original_name: "Threshold",
-          is_quantized: 0,
-          value: 0,
-          min: 0,
-          max: 1,
-        },
-        methods: {
-          str_for_value: (v: unknown) =>
-            `${Math.round(Number(v) * 60) - 60} dB`,
-        },
-      });
+      registerThresholdDevice();
 
       const result = createDevice({
         deviceName: "Compressor",
@@ -96,22 +103,57 @@ describe("createDevice params", () => {
       });
     });
 
-    it("warns when a param names nothing on the new device", async () => {
+    it("reports a param that names nothing on the new device", async () => {
       const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
       vi.mocked(mockConsole.warn).mockClear();
 
       registerSimplerCreationFixture();
 
-      createDevice({
+      const result = createDevice({
         deviceName: "Simpler",
         path: "t0",
         params: [{ name: "nonexistent", value: "42" }],
       });
 
+      expect(result).toStrictEqual({
+        id: "simpler-new",
+        path: "t0/d2",
+        params: [
+          {
+            name: "nonexistent",
+            reason: "not found on t0/d2 (id simpler-new)",
+          },
+        ],
+      });
+
       const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
 
       expect(calls).toMatch(/param "nonexistent" not found/);
+    });
+
+    it("keeps the params the caller sent paired with the list it sent", () => {
+      registerThresholdDevice();
+
+      const result = createDevice({
+        deviceName: "Compressor",
+        path: "t0",
+        params: [
+          { name: "nope", value: "1" },
+          // Below the param's floor, so the entry can only say -60 dB by
+          // reading Live back — an echo of the argument would say -100.
+          { name: "Threshold", value: "-100 dB" },
+        ],
+      });
+
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        path: "t0/d2",
+        params: [
+          { name: "nope", reason: "not found on t0/d2 (id comp-new)" },
+          { id: "threshold", name: "Threshold", value: -60 },
+        ],
+      });
     });
 
     // Refused before the device is created, so a bad params list doesn't leave

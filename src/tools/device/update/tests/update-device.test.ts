@@ -153,7 +153,7 @@ describe("updateDevice", () => {
       });
     });
 
-    it("should log error for invalid param ID but continue", () => {
+    it("reports an id that reached no param, in the entry and a warning", () => {
       mockNonExistentObjects();
 
       const result = updateDevice({
@@ -164,7 +164,11 @@ describe("updateDevice", () => {
       expect(capturedWarnings()).toContain(
         'param "999" not found on t0/d0 (id 123)',
       );
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [{ name: "999", reason: "not found on t0/d0 (id 123)" }],
+      });
     });
 
     // A hole in the params list, the same shape a hole in a comma-separated

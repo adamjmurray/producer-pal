@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -118,6 +119,30 @@ describe("ppal-update-device", () => {
 
     expect(byPathArray.length).toBeGreaterThan(0);
     expect(byPathArray[0]!.id).toBeDefined();
+  });
+
+  // A params list that came back a name short leaves the caller diffing its
+  // own request to work out which entry vanished.
+  it("reports a param name that matched nothing, beside one that landed", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    const updated = parseToolResultWithWarnings<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          id: deviceId,
+          params: [
+            { name: "Nope", value: "1" },
+            { name: "Ratio", value: "4" },
+          ],
+        },
+      }),
+    );
+
+    expect(updated.data.params).toStrictEqual([
+      { name: "Nope", reason: expect.stringContaining("not found on") },
+      { id: expect.any(String), name: "Ratio", value: 4 },
+    ]);
+    expect(updated.warnings.join("\n")).toContain('param "Nope" not found');
   });
 
   it("updates multiple devices in batch", async () => {
@@ -260,6 +285,12 @@ interface ReadDeviceResult {
 
 interface UpdateDeviceResult {
   id: string;
+  params?: Array<{
+    id?: string;
+    name: string;
+    value?: number | string;
+    reason?: string;
+  }>;
 }
 
 interface WrapResult {

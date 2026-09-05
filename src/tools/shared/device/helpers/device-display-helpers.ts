@@ -319,10 +319,25 @@ export interface WrittenParam {
   name: string;
 }
 
+/**
+ * A param the call named that resolved to nothing writable, named the way the
+ * call spelled it. It has no id and no value, so `reason` says why.
+ */
+export interface UnresolvedParam {
+  name: string;
+  reason: string;
+}
+
+/** One param the call named: what a write landed on, or why nothing did. */
+export type ParamOutcome = WrittenParam | UnresolvedParam;
+
 /** What create-device and update-device report for each param they wrote. */
 export interface ParamValueResult extends WrittenParam {
   value: unknown;
 }
+
+/** One entry of the `params` a create-device or update-device result reports. */
+export type ParamResult = ParamValueResult | UnresolvedParam;
 
 /**
  * Read the values of the params a call wrote, once everything else in that call
@@ -336,15 +351,15 @@ export interface ParamValueResult extends WrittenParam {
  * removes a device.
  *
  * The name stays as reported — a path-prefixed write is named by the path the
- * caller used, not by the param's own name.
- * @param written - The params the writes landed on
- * @returns Those params with their current values
+ * caller used, not by the param's own name. An entry that resolved to nothing
+ * passes through: it has no id to read.
+ * @param outcomes - Every param the call named
+ * @returns The written ones with their current values, the rest unchanged
  */
-export function refreshParamValues(
-  written: WrittenParam[],
-): ParamValueResult[] {
-  return written.map((entry) => ({
-    ...entry,
-    value: readParameter(LiveAPI.from(entry.id)).value,
-  }));
+export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
+  return outcomes.map((entry) =>
+    "id" in entry
+      ? { ...entry, value: readParameter(LiveAPI.from(entry.id)).value }
+      : entry,
+  );
 }

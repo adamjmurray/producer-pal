@@ -43,7 +43,7 @@ import {
 } from "./helpers/update-device-helpers.ts";
 import { validateParamEntries } from "./helpers/param-entry-validation.ts";
 import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
-import { type ParamValueResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   type UpdateTargetOptions,
@@ -76,7 +76,7 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
 interface UpdateTargetResult extends ChainMixerApplied {
   id: string;
   path?: string;
-  params?: ParamValueResult[];
+  params?: ParamResult[];
 }
 
 /** A bare pad path names the whole pad, so it resolves to a group of objects

@@ -6,7 +6,7 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
-  type ParamValueResult,
+  type ParamResult,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import {
@@ -57,13 +57,13 @@ export interface UpdateTargetOptions extends UpdatePropertyOptions {
  * @param target - Device to update
  * @param type - Device type
  * @param options - Update options
- * @returns What each written param reads as after the write
+ * @returns Every param the call named: what it reads as, or why it named nothing
  */
 export function updateDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
-): ParamValueResult[] {
+): ParamResult[] {
   const {
     params,
     actions,

@@ -312,11 +312,19 @@ describe("updateDevice - param value conversion", () => {
         properties: { name: "my-set" },
       });
 
-      updateDevice({ id: "dev1", params: [{ name: "1", value: "5" }] });
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "1", value: "5" }],
+      });
 
       expect(capturedWarnings()).toContain(
         'param "1" not found on t0/d0 (id dev1)',
       );
+      expect(result).toStrictEqual({
+        id: "dev1",
+        path: "t0/d0",
+        params: [{ name: "1", reason: "not found on t0/d0 (id dev1)" }],
+      });
       expect(liveSet.set).not.toHaveBeenCalled();
     });
 
@@ -332,7 +340,17 @@ describe("updateDevice - param value conversion", () => {
       });
 
       expect(foreign.set).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "dev1", path: "t0/d0" });
+      expect(result).toStrictEqual({
+        id: "dev1",
+        path: "t0/d0",
+        params: [
+          {
+            name: "143",
+            reason:
+              "id 143 is on t10/d0, not t0/d0 (id dev1), so it was not written",
+          },
+        ],
+      });
     });
 
     it("names where the param actually lives, so the call can be corrected", () => {
@@ -536,11 +554,11 @@ describe("updateDevice - param value conversion", () => {
     });
   });
 
-  describe("param not found warning", () => {
-    it("should warn when param name does not match any device parameter", () => {
+  describe("a param name that matches nothing", () => {
+    it("comes back as an entry saying so, and a warning", () => {
       registerDeviceWithParams();
 
-      updateDevice({
+      const result = updateDevice({
         id: "dev1",
         params: [{ name: "NonExistentParam", value: "0.5" }],
       });
@@ -548,6 +566,16 @@ describe("updateDevice - param value conversion", () => {
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('"NonExistentParam" not found'),
       );
+      expect(result).toStrictEqual({
+        id: "dev1",
+        path: "t0/d0",
+        params: [
+          {
+            name: "NonExistentParam",
+            reason: "not found on t0/d0 (id dev1)",
+          },
+        ],
+      });
     });
   });
 });

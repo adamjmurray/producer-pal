@@ -56,7 +56,7 @@ Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` o
  */
 export const devicesWrite = `### Setting Parameters
 
-A parameter often accepts only a coarse ladder of values even when its range looks continuous — Glue Compressor's Attack has seven steps between 0.01 and 30 ms — so a request lands on the nearest value Live allows. Send a value in the \`unit\` read-device reports for that param, or with no unit at all — a param reporting no \`unit\` shows a bare number whose quantity Live never states, so send a plain number there. A wrong or uncheckable unit is refused, not guessed. create-device and update-device return a \`params\` array with each written param's \`id\`, \`name\` and the value it reads as afterward: check that rather than following a write with a read-device.
+A parameter often accepts only a coarse ladder of values even when its range looks continuous — Glue Compressor's Attack has seven steps between 0.01 and 30 ms — so a request lands on the nearest value Live allows. Send a value in the \`unit\` read-device reports for that param, or with no unit at all — a param reporting no \`unit\` shows a bare number whose quantity Live never states, so send a plain number there. A wrong or uncheckable unit is refused, not guessed. create-device and update-device return a \`params\` array: each **parameter** that was written carries \`id\`, \`name\` and the value it reads as afterward — check that rather than following a write with a read-device — and a name that matched no parameter carries a \`reason\` in place of the value. Any other failure warns, and a pseudo-param like \`sample\` is not a parameter and reports nothing, so a missing entry is not a failed write.
 
 ### Simpler & Drum Racks
 

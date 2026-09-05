@@ -241,6 +241,30 @@ describe("ppal-create-device", () => {
     expect((await readDeviceAt(byPad.path)).id).toBe(byPad.id);
   });
 
+  // A params list that came back a name short leaves the caller diffing its
+  // own request to work out which entry vanished.
+  it("reports a param name that matched nothing, beside one that landed", async () => {
+    const created = parseToolResultWithWarnings<CreateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Compressor",
+          path: "t0",
+          params: [
+            { name: "Nope", value: "1" },
+            { name: "Ratio", value: "4" },
+          ],
+        },
+      }),
+    );
+
+    expect(created.data.params).toStrictEqual([
+      { name: "Nope", reason: expect.stringContaining("not found on") },
+      { id: expect.any(String), name: "Ratio", value: 4 },
+    ]);
+    expect(created.warnings.join("\n")).toContain('param "Nope" not found');
+  });
+
   it("creates a device at position 0 in an empty rack chain", async () => {
     const trackIndex = await createTrack("audio");
     // An Audio Effect Rack arrives with one empty chain
@@ -263,6 +287,12 @@ interface ListDevicesResult {
 interface CreateDeviceResult {
   id: string;
   path: string;
+  params?: Array<{
+    id?: string;
+    name: string;
+    value?: number | string;
+    reason?: string;
+  }>;
 }
 
 interface ReadDeviceResult {

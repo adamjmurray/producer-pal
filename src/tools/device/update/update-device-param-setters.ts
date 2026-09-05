@@ -8,6 +8,7 @@ import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
+  type ParamOutcome,
   type WrittenParam,
   extractMaxPanValue,
   isDivisionParam,
@@ -54,14 +55,14 @@ const PARAMETER_TAIL = / parameters \d+$/;
  * @param device - LiveAPI device object to update
  * @param params - Array of {name, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
- * @returns The params the writes landed on
+ * @returns The params the writes landed on, plus the ones that named nothing
  */
 export function setParamValues(
   device: LiveAPI,
   params: ParamEntry[],
   force = false,
-): WrittenParam[] {
-  const results: WrittenParam[] = [];
+): ParamOutcome[] {
+  const results: ParamOutcome[] = [];
   // Read once per device, not per param: it only names the device for the
   // recorded-unit lookup.
   const deviceName = device.getProperty("class_display_name") as
@@ -98,7 +99,7 @@ export function setParamValues(
  * @param rawValue - Trimmed value
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param deviceName - The device's class_display_name
- * @returns The params the writes landed on
+ * @returns The params the writes landed on, plus the ones that named nothing
  */
 function setOneParam(
   device: LiveAPI,
@@ -106,7 +107,7 @@ function setOneParam(
   rawValue: string,
   force: boolean,
   deviceName: string | undefined,
-): WrittenParam[] {
+): ParamOutcome[] {
   // A name containing "/" is normally a path-prefixed pseudo-param
   // (e.g. "pC1/sample"): resolve the prefix relative to this device, then
   // write the trailing param to the target. But some real DeviceParameters
@@ -149,18 +150,31 @@ function setOneParam(
   if (warnIfAmbiguousName(matches, key, device)) return [];
 
   const named = matches[0];
-  const param = named?.exists() ? named : resolveParamById(key, device);
 
-  if (param == null) return [];
+  if (named?.exists()) {
+    return toEntries(
+      setParamValue(named, inputValue, rawValue, device, deviceName),
+    );
+  }
+
+  const lookup = resolveParamById(key, device);
+
+  // The key reached no parameter of this device, so the entry says so instead
+  // of dropping out: a list that came back a name short is one the caller has
+  // to diff against its own request to read.
+  if ("reason" in lookup) return [{ name: key, reason: lookup.reason }];
 
   return toEntries(
-    setParamValue(param, inputValue, rawValue, device, deviceName),
+    setParamValue(lookup.param, inputValue, rawValue, device, deviceName),
   );
 }
 
+/** A param key that reached a parameter, or the reason it reached none. */
+type ParamLookup = { param: LiveAPI } | { reason: string };
+
 /**
- * Resolve a purely numeric param key as an absolute Live API object id, warning
- * when it reaches nothing this device owns.
+ * Resolve a purely numeric param key as an absolute Live API object id, saying
+ * why when it reaches nothing this device owns.
  *
  * Every object id resolves, so the type is checked: a non-parameter reads as a
  * plain enabled parameter with no range (Live answers nothing rather than
@@ -173,11 +187,16 @@ function setOneParam(
  * addressed. Naming where the param actually lives turns that into a one-step
  * correction; the path-prefixed form (`c0/d0/Volume`) is how one call reaches a
  * nested device's param on purpose.
+ *
+ * The reason is said twice on purpose. The param's own entry carries it, which
+ * is where the caller reads what happened to that param; the warning stays
+ * until every way a param write can fail has an entry of its own, so one
+ * channel still covers all of them.
  * @param key - The trimmed param name
  * @param device - The device the call addressed
- * @returns The parameter, or null after warning
+ * @returns The parameter, or the reason there is none
  */
-function resolveParamById(key: string, device: LiveAPI): LiveAPI | null {
+function resolveParamById(key: string, device: LiveAPI): ParamLookup {
   const object = /^\d+$/.test(key) ? LiveAPI.from(key) : null;
 
   if (object?.exists() && object.type === "DeviceParameter") {
@@ -185,18 +204,23 @@ function resolveParamById(key: string, device: LiveAPI): LiveAPI | null {
     // is the whole of its parent path.
     const ownerPath = object.path.replace(PARAMETER_TAIL, "");
 
-    if (ownerPath === device.path) return object;
+    if (ownerPath === device.path) return { param: object };
 
-    console.warn(
-      `param id ${key} is on ${extractDevicePath(ownerPath) ?? "another object"}, not ${targetLabel(device)}, so it was not written`,
-    );
+    const elsewhere = `id ${key} is on ${extractDevicePath(ownerPath) ?? "another object"}, not ${targetLabel(device)}, so it was not written`;
 
-    return null;
+    console.warn(`param ${elsewhere}`);
+
+    return { reason: elsewhere };
   }
 
-  console.warn(`param "${key}" not found on ${targetLabel(device)}`);
+  // Named by the device the key was looked up on, not "this device": a
+  // path-prefixed miss (pC1/Cutoff) is looked up on the pad's own device while
+  // the entry sits in the rack's result.
+  const missing = `not found on ${targetLabel(device)}`;
 
-  return null;
+  console.warn(`param "${key}" ${missing}`);
+
+  return { reason: missing };
 }
 
 /**
@@ -218,14 +242,14 @@ function toEntries(result: WrittenParam | null): WrittenParam[] {
  * @param key - Full path-prefixed param name (e.g. "pC1/sample")
  * @param rawValue - Trimmed value to write
  * @param force - Allow a destructive pad-device swap a `sample` write needs
- * @returns The params the writes landed on
+ * @returns The params the writes landed on, plus the ones that named nothing
  */
 function applyNestedParam(
   device: LiveAPI,
   key: string,
   rawValue: string,
   force: boolean,
-): WrittenParam[] {
+): ParamOutcome[] {
   const slashIndex = key.lastIndexOf("/");
   const prefix = key.slice(0, slashIndex);
   // Refused up front, so there is a name after the last "/".

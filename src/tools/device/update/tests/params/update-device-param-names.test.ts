@@ -97,8 +97,8 @@ describe("updateDevice - params by name", () => {
     expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
   });
 
-  it("should warn for unresolvable non-integer key", () => {
-    updateDevice({
+  it("reports an unresolvable non-integer key in the entry and a warning", () => {
+    const result = updateDevice({
       id: "123",
       params: [{ name: "Nonexistent", value: "0.5" }],
     });
@@ -106,6 +106,11 @@ describe("updateDevice - params by name", () => {
     expect(capturedWarnings()).toContain(
       'param "Nonexistent" not found on t0/d0 (id 123)',
     );
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/d0",
+      params: [{ name: "Nonexistent", reason: "not found on t0/d0 (id 123)" }],
+    });
   });
 });
 
