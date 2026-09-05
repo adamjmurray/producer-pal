@@ -25,25 +25,26 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                  | Description                                       |
-| --------------------- | ------------------------------------------------- |
-| `-m, --model <model>` | Model to test (required, repeatable)              |
-| `-t, --test <id>`     | Run specific scenario by ID (repeatable)          |
-| `-a, --all`           | Run all scenarios                                 |
-| `--small-model`       | Enable small-model mode (basic skills + schemas)  |
-| `--json`              | JSON tool-result output (default: compact)        |
-| `--tools <list>`      | Tool subset, comma-separated (default: all)       |
-| `--live-api`          | Enable the Direct Live API tool (`ppal-live-api`) |
-| `-j, --judge <model>` | Judge model (default: `gemini-3-flash-preview`)   |
-| `-s, --skip-setup`    | Skip Live Set setup (reuse existing connection)   |
-| `--skip-judge`        | Skip the LLM-as-judge step (checks only)          |
-| `--skip-reflection`   | Skip the self-reflection turn after a failure     |
-| `--no-seed-connect`   | Let the model run the opening connect turn        |
-| `-q, --quiet`         | Suppress detailed AI and judge responses          |
-| `-r, --repeat <N>`    | Run each scenario N times (for flakiness)         |
-| `-u, --usage`         | Show token usage per turn                         |
-| `--no-save`           | Skip writing JSON result files to disk            |
-| `-l, --list`          | List available scenarios                          |
+| Flag                   | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `-m, --model <model>`  | Model to test (required, repeatable)              |
+| `-t, --test <id>`      | Run specific scenario by ID (repeatable)          |
+| `-a, --all`            | Run all scenarios                                 |
+| `--small-model`        | Enable small-model mode (basic skills + schemas)  |
+| `--json`               | JSON tool-result output (default: compact)        |
+| `--tools <list>`       | Tool subset, comma-separated (default: all)       |
+| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`) |
+| `-j, --judge <model>`  | Judge model (default: `gemini-3-flash-preview`)   |
+| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)   |
+| `--skip-judge`         | Skip the LLM-as-judge step (checks only)          |
+| `--skip-reflection`    | Skip the self-reflection turn after a failure     |
+| `--no-seed-connect`    | Let the model run the opening connect turn        |
+| `-q, --quiet`          | Suppress detailed AI and judge responses          |
+| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)         |
+| `-u, --usage`          | Show token usage per turn                         |
+| `--no-save`            | Skip writing JSON result files to disk            |
+| `-b, --base-url <url>` | Base URL for the `local` provider                 |
+| `-l, --list`           | List available scenarios                          |
 
 ### Model format
 
@@ -66,6 +67,10 @@ be inferred from the prefix:
 | `claude-code/fable`             | claude-code |
 | `openrouter/some-model`         | openrouter  |
 | `local/model-name`              | local       |
+
+Only the first `/` splits provider from model, so a model name can contain
+slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
+the `local` provider.
 
 ### Examples
 
@@ -104,8 +109,13 @@ scripts/eval -m local/qwen3-8b -t duplicate --small-model
 ```
 
 The local provider connects to `http://localhost:11434/v1` by default (Ollama).
-Override with `-b` / `--base-url` in the chat CLI, or set `LOCAL_BASE_URL` in
-`.env` for evals.
+Override with `-b` / `--base-url` — both CLIs take it — or set `LOCAL_BASE_URL`
+in `.env`. LM Studio's default port is 1234, so it always needs one of the two:
+
+```bash
+scripts/eval -m local/qwen/qwen3.8-27b -t connect-to-ableton \
+  -b http://localhost:1234/v1 --small-model
+```
 
 ### Testing subscription CLIs
 
@@ -404,6 +414,8 @@ which executable is spawned (see
 - Ableton Live running with the Producer Pal Max for Live device
 - The MCP server must be responsive (eval auto-opens Live Sets and waits for the
   server)
+- **Nothing you care about open in Live.** A run opens Live Sets without saving
+  the current one, so work in progress is lost.
 - API keys configured for the providers you want to test
 - For local models: Ollama, LM Studio, or another OpenAI-compatible server
   running
