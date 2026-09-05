@@ -322,3 +322,27 @@ describe("tool error response shape", () => {
     ]);
   });
 });
+
+// The "Response too large" fallback used to send its error plus every
+// captured warning as one unchunked atom, so a call that overflows AND warns
+// per item (the exact case MAX_CAPTURED_WARNINGS is sized for) could blow the
+// Max IPC atom limit and lose the warnings along with the real error.
+describe("oversized response fallback", () => {
+  it("chunks the fallback so an oversized response still carries its warnings", async () => {
+    vi.mocked(readTrack).mockImplementation(() => {
+      warn("warning from an oversized response");
+
+      return { text: "x".repeat(3_500_000) };
+    });
+
+    await mcp_request("req-oversized", "ppal-read-track", "{}");
+
+    const response = responseFor("req-oversized");
+
+    expect(response?.isError).toBe(true);
+    expect(response?.content?.[0]?.text).toMatch(/Response too large/);
+    expect(response?.warnings).toStrictEqual([
+      "warning from an oversized response",
+    ]);
+  });
+});

@@ -348,6 +348,26 @@ export function liveApiEnabled(): void {}
 export function tools(): void {}
 
 /**
+ * Chunk one payload for the Max IPC boundary and send it, as:
+ * ["mcp_response", requestId, chunk1, ..., chunkN, END_OF_CHUNKS].
+ *
+ * @param requestId - Request identifier
+ * @param payload - Object to stringify, chunk, and send
+ * @returns null once sent, or planChunks' overflow message if it didn't fit
+ */
+function sendChunked(requestId: string, payload: object): string | null {
+  const { chunks, tooLargeError } = planChunks(JSON.stringify(payload));
+
+  if (tooLargeError != null) {
+    return tooLargeError;
+  }
+
+  outlet(0, "mcp_response", requestId, ...chunks, END_OF_CHUNKS);
+
+  return null;
+}
+
+/**
  * Send a response back to the MCP server. Warnings ride inside the JSON as a
  * `warnings` sidecar; Node strips it and turns it into WARNING: content items.
  * Nothing follows END_OF_CHUNKS.
@@ -364,23 +384,33 @@ function sendResponse(
   const withWarnings = (payload: object): object =>
     warnings.length > 0 ? { ...payload, warnings } : payload;
 
-  const jsonString = JSON.stringify(withWarnings(result));
-  const { chunks, tooLargeError } = planChunks(jsonString);
+  const tooLargeError = sendChunked(requestId, withWarnings(result));
 
-  if (tooLargeError != null) {
-    outlet(
-      0,
-      "mcp_response",
-      requestId,
-      JSON.stringify(withWarnings(formatErrorResponse(tooLargeError))),
-      END_OF_CHUNKS,
-    );
+  if (tooLargeError == null) return;
 
-    return;
-  }
+  // The result alone overflowed. Chunk the fallback too, rather than send it
+  // as one atom: a multi-target call that overflows is exactly the case that
+  // also warns per item (up to MAX_CAPTURED_WARNINGS), so the error-plus-
+  // warnings payload can itself need several chunks. Dropping the warnings
+  // here would destroy the only copy of what they carried (see Principles.md
+  // on warnings).
+  const fallbackTooLargeError = sendChunked(
+    requestId,
+    withWarnings(formatErrorResponse(tooLargeError)),
+  );
 
-  // Send as: ["mcp_response", requestId, chunk1, ..., chunkN, END_OF_CHUNKS]
-  outlet(0, "mcp_response", requestId, ...chunks, END_OF_CHUNKS);
+  if (fallbackTooLargeError == null) return;
+
+  // The warnings alone overflowed the chunk ceiling — MAX_CAPTURED_WARNINGS
+  // bounds their count, not their length. formatErrorResponse's own message is
+  // short and fixed-size, so this last resort always fits a single atom.
+  outlet(
+    0,
+    "mcp_response",
+    requestId,
+    JSON.stringify(formatErrorResponse(fallbackTooLargeError)),
+    END_OF_CHUNKS,
+  );
 }
 
 /**
