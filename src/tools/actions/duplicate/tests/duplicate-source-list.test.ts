@@ -81,6 +81,21 @@ function registerTwoSlotSources(destinations: [number, number][]): void {
   }
 }
 
+/**
+ * Two session clips to copy into the arrangement, in scene 0 of tracks 0 and 1.
+ * No duplicate_clip_to here: the arrangement copy runs off the track.
+ */
+function registerTwoArrangementSources(): void {
+  registerMockObject("clipA", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: { is_midi_clip: 1 },
+  });
+  registerMockObject("clipB", {
+    path: livePath.track(1).clipSlot(0).clip(),
+    properties: { is_midi_clip: 1 },
+  });
+}
+
 describe("duplicate - a list of sources", () => {
   describe("clip slots", () => {
     it("gives each source its own share of the destinations", async () => {
@@ -317,14 +332,7 @@ describe("duplicate - a list of sources", () => {
     ])(
       "drops every source at %s's position on its own track",
       async (_label, position) => {
-        registerMockObject("clipA", {
-          path: livePath.track(0).clipSlot(0).clip(),
-          properties: { is_midi_clip: 1 },
-        });
-        registerMockObject("clipB", {
-          path: livePath.track(1).clipSlot(0).clip(),
-          properties: { is_midi_clip: 1 },
-        });
+        registerTwoArrangementSources();
         registerTrackWithArrangementDup(0, { has_midi_input: 1 });
         registerTrackWithArrangementDup(1, { has_midi_input: 1 });
         registerArrangementClip(0, 0, 16);
@@ -358,14 +366,7 @@ describe("duplicate - a list of sources", () => {
     // several sources always piles them onto the same spots, however many
     // positions the list names.
     it("warns when a container toPath is broadcast to every source", async () => {
-      registerMockObject("clipA", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
-      registerMockObject("clipB", {
-        path: livePath.track(1).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerTwoArrangementSources();
 
       const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
 
@@ -394,14 +395,7 @@ describe("duplicate - a list of sources", () => {
     // Each source is placed on its own, with no view of the others, so nothing
     // downstream can see that they all land on the same span.
     it("warns when every source lands on one track at one position", async () => {
-      registerMockObject("clipA", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
-      registerMockObject("clipB", {
-        path: livePath.track(1).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerTwoArrangementSources();
       registerTrackWithArrangementDup(2, { has_midi_input: 1 });
 
       for (const clipIndex of [0, 1]) {

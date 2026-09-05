@@ -9,11 +9,31 @@ import {
   children,
   expectValueSet,
   livePath,
+  registerDeviceWithParams,
   registerMockObject,
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/**
+ * Registration options for a mock "Volume" param. Fresh objects each call —
+ * set() writes into `properties`, so two mocks must not share one.
+ * @returns The properties and str_for_value a Volume param mock needs
+ */
+function volumeParamOptions() {
+  return {
+    properties: {
+      name: "Volume",
+      original_name: "Volume",
+      is_quantized: 0,
+      value: 0.5,
+      min: 0,
+      max: 1,
+    },
+    methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+  };
+}
 
 /**
  * Register a device holding one 0–1 continuous param whose min/max labels are
@@ -29,11 +49,7 @@ function registerBinarySearchParam(
   name: string,
   midLabel: string,
 ): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children(paramId) },
-  });
+  registerDeviceWithParams(paramId);
 
   return registerMockObject(paramId, {
     properties: {
@@ -62,11 +78,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("env-param") },
-      });
+      registerDeviceWithParams("env-param");
       // Simulate exponential envelope time: raw 0-1 → display 5-15000 ms
       param = registerMockObject("env-param", {
         properties: {
@@ -118,11 +130,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("time-param") },
-      });
+      registerDeviceWithParams("time-param");
       param = registerMockObject("time-param", {
         properties: {
           name: "Decay",
@@ -156,11 +164,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("weird-param") },
-      });
+      registerDeviceWithParams("weird-param");
       param = registerMockObject("weird-param", {
         properties: {
           name: "Special",
@@ -190,11 +194,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("half-param") },
-      });
+      registerDeviceWithParams("half-param");
       param = registerMockObject("half-param", {
         properties: {
           name: "HalfParsed",
@@ -226,11 +226,7 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("str-param") },
-      });
+      registerDeviceWithParams("str-param");
       param = registerMockObject("str-param", {
         properties: {
           name: "Mode",
@@ -292,25 +288,11 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children() },
-      });
+      registerDeviceWithParams();
       param = registerMockObject("42", {
         path: livePath.track(0).device(0).parameter(1),
         type: "DeviceParameter",
-        properties: {
-          name: "Volume",
-          original_name: "Volume",
-          is_quantized: 0,
-          value: 0.5,
-          min: 0,
-          max: 1,
-        },
-        methods: {
-          str_for_value: (v: unknown) => `${Number(v)} dB`,
-        },
+        ...volumeParamOptions(),
       });
     });
 
@@ -420,11 +402,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("note name out of MIDI range", () => {
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("note-param") },
-      });
+      registerDeviceWithParams("note-param");
       registerMockObject("note-param", {
         properties: {
           name: "Pitch",
@@ -477,11 +455,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("pan param with non-standard scale labels", () => {
     it("falls back to a 50 pan scale when neither min nor max label is parseable", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("pan-param") },
-      });
+      registerDeviceWithParams("pan-param");
       const param = registerMockObject("pan-param", {
         properties: {
           name: "Pan",
@@ -515,11 +489,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("division param with numeric str_for_value labels", () => {
     it("matches a division option when str_for_value returns a number", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("div-param") },
-      });
+      registerDeviceWithParams("div-param");
       const param = registerMockObject("div-param", {
         properties: {
           name: "Div",
@@ -545,11 +515,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("numeric param with zero raw range", () => {
     it("uses the flat tolerance and sets the display value directly", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("fixed-param") },
-      });
+      registerDeviceWithParams("fixed-param");
       const param = registerMockObject("fixed-param", {
         properties: {
           name: "Fixed",
@@ -572,11 +538,7 @@ describe("updateDevice - param value conversion", () => {
 
   describe("param not found warning", () => {
     it("should warn when param name does not match any device parameter", () => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children() },
-      });
+      registerDeviceWithParams();
 
       updateDevice({
         id: "dev1",
@@ -621,17 +583,7 @@ describe("updateDevice - sample pseudo-param", () => {
 
   it("loads sample alongside regular DeviceParameters in one params block", () => {
     const simpler = registerSimplerDevice("vol-param");
-    const param = registerMockObject("vol-param", {
-      properties: {
-        name: "Volume",
-        original_name: "Volume",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
-    });
+    const param = registerMockObject("vol-param", volumeParamOptions());
 
     updateDevice({
       id: "simpler-1",
@@ -699,14 +651,6 @@ function registerForeignParam(): RegisteredMockObject {
   return registerMockObject("143", {
     path: livePath.track(10).device(0).parameter(2),
     type: "DeviceParameter",
-    properties: {
-      name: "Volume",
-      original_name: "Volume",
-      is_quantized: 0,
-      value: 0.5,
-      min: 0,
-      max: 1,
-    },
-    methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+    ...volumeParamOptions(),
   });
 }

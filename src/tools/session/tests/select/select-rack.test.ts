@@ -37,19 +37,22 @@ interface DrumRackMocks {
 }
 
 /**
- * Register a Drum Rack on t0/d0 with one populated pad.
+ * Register a rack on t0/d0, its view, and one pad, each with the properties
+ * the caller gives it. The rack and the pad keep their own chain lists.
+ * @param rackProperties - Properties for the rack device
+ * @param padProperties - Properties for the pad
  * @param note - The pad's MIDI note (default 36, C1)
- * @param withPads - false builds a rack with no DrumPad objects
- * @returns The rack view, the pad, and its chain
+ * @returns The rack view and the pad
  */
-function registerDrumRack(note = 36, withPads = true): DrumRackMocks {
+function registerRackWithPad(
+  rackProperties: Record<string, unknown>,
+  padProperties: Record<string, unknown>,
+  note = 36,
+): { rackView: RegisteredMockObject; pad: RegisteredMockObject } {
   registerMockObject("rack-id", {
     path: RACK_PATH,
     type: "RackDevice",
-    properties: {
-      chains: children("chain-0"),
-      ...(withPads ? { drum_pads: children("pad-0") } : {}),
-    },
+    properties: rackProperties,
   });
 
   const rackView = registerMockObject("rack-view", {
@@ -60,8 +63,27 @@ function registerDrumRack(note = 36, withPads = true): DrumRackMocks {
   const pad = registerMockObject("pad-0", {
     path: livePath.track(0).device(0).drumPad(note),
     type: "DrumPad",
-    properties: { note, chains: children("chain-0") },
+    properties: padProperties,
   });
+
+  return { rackView, pad };
+}
+
+/**
+ * Register a Drum Rack on t0/d0 with one populated pad.
+ * @param note - The pad's MIDI note (default 36, C1)
+ * @param withPads - false builds a rack with no DrumPad objects
+ * @returns The rack view, the pad, and its chain
+ */
+function registerDrumRack(note = 36, withPads = true): DrumRackMocks {
+  const { rackView, pad } = registerRackWithPad(
+    {
+      chains: children("chain-0"),
+      ...(withPads ? { drum_pads: children("pad-0") } : {}),
+    },
+    { note, chains: children("chain-0") },
+    note,
+  );
 
   const chain = registerMockObject("chain-0", {
     path: livePath.track(0).device(0).chain(0),
@@ -125,26 +147,14 @@ describe("select inside a rack", () => {
   // and last in the pad's. Paths resolve against the rack's, so revealing the
   // pad's would open a layer the reported path doesn't name.
   it("reveals the layer a layered pad's c0 path names", () => {
-    registerMockObject("rack-id", {
-      path: RACK_PATH,
-      type: "RackDevice",
-      properties: {
+    const { rackView } = registerRackWithPad(
+      {
         chains: children("layer-a", "layer-b"),
         drum_pads: children("pad-0"),
       },
-    });
-
-    const rackView = registerMockObject("rack-view", {
-      path: `${RACK_PATH} view`,
-      type: "RackDevice.View",
-    });
-
-    registerMockObject("pad-0", {
-      path: livePath.track(0).device(0).drumPad(36),
-      type: "DrumPad",
       // The pad lists them the other way round — this is the disagreement.
-      properties: { note: 36, chains: children("layer-b", "layer-a") },
-    });
+      { note: 36, chains: children("layer-b", "layer-a") },
+    );
 
     for (const [index, id] of ["layer-a", "layer-b"].entries()) {
       registerMockObject(id, {
@@ -306,22 +316,10 @@ describe("select inside a rack", () => {
   });
 
   it("selects a pad with nothing on it", () => {
-    registerMockObject("rack-id", {
-      path: RACK_PATH,
-      type: "RackDevice",
-      properties: { drum_pads: children("pad-0") },
-    });
-
-    const rackView = registerMockObject("rack-view", {
-      path: `${RACK_PATH} view`,
-      type: "RackDevice.View",
-    });
-
-    registerMockObject("pad-0", {
-      path: livePath.track(0).device(0).drumPad(36),
-      type: "DrumPad",
-      properties: { note: 36 },
-    });
+    const { rackView } = registerRackWithPad(
+      { drum_pads: children("pad-0") },
+      { note: 36 },
+    );
 
     setupSongViewMock();
 

@@ -39,6 +39,24 @@ function expectNoteUpdateCalls(
   });
 }
 
+/**
+ * Answer get_notes_extended with these notes, and nothing else.
+ * @param clip - The clip mock
+ * @param notes - Notes already in the clip
+ */
+function stubExistingNotes(
+  clip: UpdateClipMocks["clip123"],
+  notes: unknown[],
+): void {
+  clip.call.mockImplementation((method: string) => {
+    if (method === "get_notes_extended") {
+      return JSON.stringify({ notes });
+    }
+
+    return {};
+  });
+}
+
 describe("updateClip - Advanced note operations", () => {
   let mocks: UpdateClipMocks;
 
@@ -61,19 +79,11 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in the clip
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            note(60, 0), // C3 at 1|1 - should be deleted
-            note(62, 1, { velocity: 80 }), // D3 at 1|2 - should remain
-            note(64, 0, { velocity: 90 }), // E3 at 1|1 - should remain
-          ],
-        });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, [
+      note(60, 0), // C3 at 1|1 - should be deleted
+      note(62, 1, { velocity: 80 }), // D3 at 1|2 - should remain
+      note(64, 0, { velocity: 90 }), // E3 at 1|1 - should remain
+    ]);
 
     const result = await updateClip({
       id: "123",
@@ -119,15 +129,7 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes that don't match the v0 note
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [note(62, 1, { velocity: 80 })], // D3 at 1|2 - no match
-        });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, [note(62, 1, { velocity: 80 })]); // D3 at 1|2 - no match
 
     await updateClip({
       id: "123",
@@ -142,13 +144,7 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, []);
 
     await updateClip({
       id: "123",
@@ -258,18 +254,10 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({
-          notes: [
-            note(60, 0), // C3 at 1|1
-            note(64, 1, { velocity: 80 }), // E3 at 1|2
-          ],
-        });
-      }
-
-      return {};
-    });
+    stubExistingNotes(mocks.clip123, [
+      note(60, 0), // C3 at 1|1
+      note(64, 1, { velocity: 80 }), // E3 at 1|2
+    ]);
 
     const result = await updateClip({
       id: "123",

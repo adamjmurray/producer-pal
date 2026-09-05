@@ -5,7 +5,7 @@
 
 import { streamText } from "ai";
 import { type vi } from "vitest";
-import { type ChatClientConfig } from "#webui/chat/sdk/types";
+import { type ChatMessage, type ChatClientConfig } from "#webui/chat/sdk/types";
 
 /**
  * Create a mock ChatClientConfig. Defaults to the openai provider; pass a
@@ -69,4 +69,25 @@ export function abortError(): Error {
   return Object.assign(new Error("The operation was aborted."), {
     name: "AbortError",
   });
+}
+
+/**
+ * A history ending in a completed tool step: the assistant announced a call
+ * and its result came back. On the wire that ends on tool results, not on an
+ * assistant turn.
+ * @param prompt - The user turn that opened the exchange
+ * @returns The two-message history
+ */
+export function toolStepHistory(prompt: string): ChatMessage[] {
+  return [
+    { role: "user", content: prompt },
+    {
+      role: "assistant",
+      content: "Creating it.",
+      toolCalls: [{ id: "t1", name: "ppal-create-clip", args: {} }],
+      toolResults: [
+        { id: "t1", name: "ppal-create-clip", args: {}, result: "ok" },
+      ],
+    },
+  ];
 }

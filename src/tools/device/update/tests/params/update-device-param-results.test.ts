@@ -8,6 +8,7 @@ import {
   type RegisteredMockObject,
   children,
   livePath,
+  registerDeviceWithParams,
   registerMockObject,
   registerSimplerDevice,
   updateDevice,
@@ -22,11 +23,7 @@ const ATTACK_STEPS = [0.01, 0.1, 0.3, 1, 3, 10, 30];
  * @returns The param mock
  */
 function registerLadderParam(): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children("attack") },
-  });
+  registerDeviceWithParams("attack");
 
   return registerMockObject("attack", {
     properties: {

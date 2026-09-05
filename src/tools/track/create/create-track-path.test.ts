@@ -4,13 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "./create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -22,24 +21,7 @@ describe("createTrack by path", () => {
   let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
-    liveSet = registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: {
-        tracks: children("existing1", "existing2"),
-        return_tracks: children("returnA", "returnB"),
-      },
-      methods: {
-        create_midi_track: (index: unknown) => [
-          "id",
-          `midi_track_${String(index)}`,
-        ],
-        create_audio_track: (index: unknown) => [
-          "id",
-          `audio_track_${String(index)}`,
-        ],
-        create_return_track: () => ["id", "return_track_0"],
-      },
-    });
+    liveSet = registerCreateTrackLiveSet(() => ["id", "return_track_0"]);
   });
 
   it("appends with t+", () => {

@@ -209,6 +209,22 @@ describe("applyAudioTransforms", () => {
     };
   });
 
+  /**
+   * Read gain 0.4 and the given pitch off the clip; every other property is
+   * null.
+   * @param pitchCoarse - pitch_coarse, in semitones
+   * @param pitchFine - pitch_fine, in cents
+   */
+  function stubGainAndPitch(pitchCoarse: number, pitchFine: number): void {
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return pitchCoarse;
+      if (prop === "pitch_fine") return pitchFine;
+
+      return null;
+    });
+  }
+
   it("should return false when no transform string provided", () => {
     const result = applyAudioTransforms(mockClip, undefined);
 
@@ -254,13 +270,7 @@ describe("applyAudioTransforms", () => {
   });
 
   it("should apply pitchShift transform and return true", () => {
-    mockClip.getProperty.mockImplementation((prop: string) => {
-      if (prop === "gain") return 0.4;
-      if (prop === "pitch_coarse") return 0;
-      if (prop === "pitch_fine") return 0;
-
-      return null;
-    });
+    stubGainAndPitch(0, 0);
 
     const result = applyAudioTransforms(mockClip, "pitchShift = 5.25");
 
@@ -270,13 +280,7 @@ describe("applyAudioTransforms", () => {
   });
 
   it("should return false when pitchShift is unchanged", () => {
-    mockClip.getProperty.mockImplementation((prop: string) => {
-      if (prop === "gain") return 0.4;
-      if (prop === "pitch_coarse") return 5;
-      if (prop === "pitch_fine") return 0;
-
-      return null;
-    });
+    stubGainAndPitch(5, 0);
 
     // Current pitchShift is 5.0, set to same value
     const result = applyAudioTransforms(
@@ -289,13 +293,7 @@ describe("applyAudioTransforms", () => {
   });
 
   it("should apply both gain and pitchShift transforms", () => {
-    mockClip.getProperty.mockImplementation((prop: string) => {
-      if (prop === "gain") return 0.4;
-      if (prop === "pitch_coarse") return 0;
-      if (prop === "pitch_fine") return 0;
-
-      return null;
-    });
+    stubGainAndPitch(0, 0);
 
     const result = applyAudioTransforms(mockClip, "gain = -6\npitchShift = 5");
 
@@ -310,13 +308,7 @@ describe("applyAudioTransforms", () => {
     // 3.5 is therefore a no-op → returns false. A `-` (→ 2.5) or `* 100`
     // (→ 5003) mutation of the currentPitchShift formula makes 3.5 look like a
     // change and would write pitch_coarse.
-    mockClip.getProperty.mockImplementation((prop: string) => {
-      if (prop === "gain") return 0.4;
-      if (prop === "pitch_coarse") return 3;
-      if (prop === "pitch_fine") return 50;
-
-      return null;
-    });
+    stubGainAndPitch(3, 50);
 
     const result = applyAudioTransforms(mockClip, "pitchShift = 3.5");
 

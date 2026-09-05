@@ -60,6 +60,27 @@ function rackWithReturns(id: string, path: PathLike, returnNames: string[]) {
   return LiveAPI.from(id);
 }
 
+/**
+ * Copy a mixer onto a freshly registered destination chain.
+ * @param mixer - readChainMixer output from the source chain
+ * @param source - The rack the source chain belongs to
+ * @param destination - The rack the copy landed in
+ * @returns The new chain the mixer was written to
+ */
+function copyMixerToNewChain(
+  mixer: Record<string, unknown>,
+  source: LiveAPI,
+  destination: LiveAPI,
+) {
+  registerMockObject("chain-new", { type: "Chain" });
+
+  const created = LiveAPI.from("chain-new");
+
+  copyChainMixerTo(created, mixer, source, destination);
+
+  return created;
+}
+
 describe("copyChainMixerTo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,11 +89,7 @@ describe("copyChainMixerTo", () => {
   it("carries gain and pan", () => {
     const rack = rackWithReturns("rack-0", SOURCE_RACK, []);
 
-    registerMockObject("chain-new", { type: "Chain" });
-
-    const created = LiveAPI.from("chain-new");
-
-    copyChainMixerTo(created, { gainDb: -6, pan: 0.4 }, rack, rack);
+    const created = copyMixerToNewChain({ gainDb: -6, pan: 0.4 }, rack, rack);
 
     expect(applyChainMixer).toHaveBeenCalledWith(created, {
       gainDb: -6,
@@ -83,12 +100,7 @@ describe("copyChainMixerTo", () => {
   it("carries every send when the copy stays in the same rack", () => {
     const rack = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
 
-    registerMockObject("chain-new", { type: "Chain" });
-
-    const created = LiveAPI.from("chain-new");
-
-    copyChainMixerTo(
-      created,
+    const created = copyMixerToNewChain(
       { sends: [{ return: "a Verb", gainDb: -9 }] },
       rack,
       rack,
@@ -105,12 +117,7 @@ describe("copyChainMixerTo", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, ["A VERB"]);
 
-    registerMockObject("chain-new", { type: "Chain" });
-
-    const created = LiveAPI.from("chain-new");
-
-    copyChainMixerTo(
-      created,
+    const created = copyMixerToNewChain(
       { sends: [{ return: "a Verb", gainDb: -9 }] },
       source,
       destination,
@@ -127,12 +134,7 @@ describe("copyChainMixerTo", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, ["b Delay"]);
 
-    registerMockObject("chain-new", { type: "Chain" });
-
-    const created = LiveAPI.from("chain-new");
-
-    copyChainMixerTo(
-      created,
+    const created = copyMixerToNewChain(
       { sends: [{ return: "a Verb", gainDb: -9 }] },
       source,
       destination,
@@ -151,12 +153,7 @@ describe("copyChainMixerTo", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb", "b Del"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, []);
 
-    registerMockObject("chain-new", { type: "Chain" });
-
-    const created = LiveAPI.from("chain-new");
-
-    copyChainMixerTo(
-      created,
+    copyMixerToNewChain(
       {
         sends: [
           { return: "a Verb", gainDb: -9 },

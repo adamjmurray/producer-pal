@@ -13,6 +13,7 @@ import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import {
   deferred,
   type Deferred,
+  expectWriteErrorSurfaced,
   installFetchMock,
   jsonResponse,
   raceTwoWrites,
@@ -343,19 +344,12 @@ describe("useSkillOverrides", () => {
   it("surfaces a save error when the write is not ok", async () => {
     const result = await renderReady();
 
-    fetchMock.mockResolvedValueOnce(
-      new Response("nope", { status: 403, statusText: "Forbidden" }),
+    await expectWriteErrorSurfaced(
+      fetchMock,
+      result,
+      () => result.current.saveSlot("barbeat-standard", "x"),
+      "Skills update failed",
     );
-
-    let ok: boolean | undefined;
-
-    await act(async () => {
-      ok = await result.current.saveSlot("barbeat-standard", "x");
-    });
-
-    expect(ok).toBe(false);
-    expect(result.current.saveStatus).toBe("error");
-    expect(result.current.saveError).toContain("Skills update failed");
   });
 
   it("resetSaveStatus clears the indicator when the edited slot changes", async () => {

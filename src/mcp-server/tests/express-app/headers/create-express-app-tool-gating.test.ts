@@ -19,6 +19,18 @@ import {
 const LIBRARY_SECTION = "## Finding Library Content";
 
 /**
+ * Assert a skills block lost the library fragment and nothing else — the rest
+ * of the document is intact.
+ *
+ * @param blob - The skills block the gated request received
+ */
+function expectLibraryGatedOut(blob: string): void {
+  expect(blob.startsWith(SKILLS_HEADER)).toBe(true);
+  expect(blob).not.toContain(LIBRARY_SECTION);
+  expect(blob).toContain("## Devices & Instruments");
+}
+
+/**
  * Headers withholding the given tools, or none when the list is empty.
  *
  * @param disabled - Tool names this request withholds
@@ -78,10 +90,7 @@ describe("POST /mcp per-request disabled-tools header", () => {
         headers("ppal-library"),
       );
 
-      expect(gated.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(gated).not.toContain(LIBRARY_SECTION);
-      // Only that fragment goes — the rest of the document is intact.
-      expect(gated).toContain("## Devices & Instruments");
+      expectLibraryGatedOut(gated);
     });
 
     it("keeps every fragment when the header is absent", async () => {
@@ -227,9 +236,7 @@ describe("REST API per-request disabled-tools header", () => {
       // REST API pays for the skills blob on every session's bootstrap.
       const gated = await restConnectSkillsBlock(headers("ppal-library"));
 
-      expect(gated.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(gated).not.toContain(LIBRARY_SECTION);
-      expect(gated).toContain("## Devices & Instruments");
+      expectLibraryGatedOut(gated);
     });
 
     it("keeps every fragment when the header is absent", async () => {

@@ -505,6 +505,16 @@ describe("updateDevice with path parameter", () => {
       mockNonExistentObjects();
     });
 
+    // t0/d0 and t1/d0 were both renamed, and they are the only two reported.
+    function expectBothDevicesRenamed(result: unknown, name: string): void {
+      expect(device100.set).toHaveBeenCalledWith("name", name);
+      expect(device200.set).toHaveBeenCalledWith("name", name);
+      expect(result).toStrictEqual([
+        { id: "device-100", path: "t0/d0" },
+        { id: "device-200", path: "t1/d0" },
+      ]);
+    }
+
     it("should update multiple devices by comma-separated paths", () => {
       const result = updateDevice({
         path: "t0/d0, t0/d1, t1/d0",
@@ -527,12 +537,7 @@ describe("updateDevice with path parameter", () => {
         name: "Updated",
       });
 
-      expect(device100.set).toHaveBeenCalledWith("name", "Updated");
-      expect(device200.set).toHaveBeenCalledWith("name", "Updated");
-      expect(result).toStrictEqual([
-        { id: "device-100", path: "t0/d0" },
-        { id: "device-200", path: "t1/d0" },
-      ]);
+      expectBothDevicesRenamed(result, "Updated");
     });
 
     it("should return empty array when all paths are invalid", () => {
@@ -562,12 +567,7 @@ describe("updateDevice with path parameter", () => {
         name: "Trimmed",
       });
 
-      expect(device100.set).toHaveBeenCalledWith("name", "Trimmed");
-      expect(device200.set).toHaveBeenCalledWith("name", "Trimmed");
-      expect(result).toStrictEqual([
-        { id: "device-100", path: "t0/d0" },
-        { id: "device-200", path: "t1/d0" },
-      ]);
+      expectBothDevicesRenamed(result, "Trimmed");
     });
 
     it("should skip invalid path formats gracefully", () => {
@@ -577,12 +577,7 @@ describe("updateDevice with path parameter", () => {
       });
 
       // "t0" is invalid (no device index), but "t0/d0" and "t1/d0" should work
-      expect(device100.set).toHaveBeenCalledWith("name", "Updated");
-      expect(device200.set).toHaveBeenCalledWith("name", "Updated");
-      expect(result).toStrictEqual([
-        { id: "device-100", path: "t0/d0" },
-        { id: "device-200", path: "t1/d0" },
-      ]);
+      expectBothDevicesRenamed(result, "Updated");
     });
   });
 

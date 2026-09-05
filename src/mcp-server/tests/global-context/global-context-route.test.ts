@@ -11,6 +11,7 @@ import { join } from "node:path";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerGlobalContextRoutes } from "#src/mcp-server/routes/config/global-context-route.ts";
+import { putJson } from "../config-dir-test-helpers.ts";
 
 const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;
 
@@ -56,13 +57,7 @@ afterAll(async () => {
  * @returns The fetch Response
  */
 function putContext(body: unknown, origin?: string): Promise<Response> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (origin != null) headers.Origin = origin;
-
-  return fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+  return putJson(url, body, origin);
 }
 
 describe("global-context route", () => {

@@ -12,6 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import {
+  registerClipSlot,
   setupDefaultTimeSignature,
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
@@ -22,9 +23,7 @@ describe("playback path param", () => {
   });
 
   it("fires the clips a path names", () => {
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "t0/s1" });
 
@@ -32,12 +31,8 @@ describe("playback path param", () => {
   });
 
   it("takes a comma-separated list", () => {
-    const first = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
-    const second = registerMockObject(livePath.track(1).clipSlot(1), {
-      path: livePath.track(1).clipSlot(1),
-    });
+    const first = registerClipSlot(0, 0);
+    const second = registerClipSlot(1, 1);
 
     playback({ action: "play-session-clips", path: "t0/s0,t1/s1" });
 
@@ -56,9 +51,7 @@ describe("playback path param", () => {
   // well-founded guess: honor it, and warn to teach the spelling.
   it("honors the old unprefixed spelling, with a warning", () => {
     const warn = vi.spyOn(console, "warn");
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "0/1" });
 
@@ -72,9 +65,7 @@ describe("playback path param", () => {
   // counting the coerced "null" as a second target refused the call.
   it("fires what slots names when path is a coerced null", () => {
     const warn = vi.spyOn(console, "warn");
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "null", slots: "0/1" });
 
@@ -92,9 +83,7 @@ describe("playback path param", () => {
   // target, so refusing the call reported a conflict the caller never made.
   it("fires what path names when slots names nothing", () => {
     const warn = vi.spyOn(console, "warn");
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "t0/s1", slots: "," });
 
@@ -217,9 +206,7 @@ describe("transport", () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
-      registerMockObject(livePath.track(0).clipSlot(0), {
-        path: livePath.track(0).clipSlot(0),
-      });
+      registerClipSlot(0, 0);
 
       playback({
         action: "play-session-clips",

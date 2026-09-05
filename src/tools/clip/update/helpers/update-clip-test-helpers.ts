@@ -11,6 +11,7 @@ import {
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
+  lookupMockObject,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -451,4 +452,32 @@ export function assertBoundaryDetection(
 ): void {
   expect(mockCreate).toHaveBeenCalledWith(expect.anything(), 1, filePath);
   expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
+}
+
+/**
+ * Stand in for what rescanSplitClips sees after a split: the track's
+ * arrangement_clips answers with one real fresh clip plus a non-existent one
+ * (id "0") that the exists() filter has to drop.
+ * @param freshClipId - Id to register the real fresh clip under
+ */
+export function stubSplitRescan(freshClipId: string): void {
+  registerMockObject(freshClipId, {
+    path: livePath.track(0).arrangementClip(2),
+    type: "Clip",
+    properties: {
+      start_time: 0.0,
+      is_midi_clip: 1,
+      is_audio_clip: 0,
+      is_arrangement_clip: 1,
+    },
+  });
+
+  const trackMock = lookupMockObject("track_0", livePath.track(0));
+  const origGet = trackMock?.get.getMockImplementation();
+
+  trackMock?.get.mockImplementation((prop: string) => {
+    if (prop === "arrangement_clips") return ["id", freshClipId, "id", "0"];
+
+    return origGet ? origGet(prop) : [0];
+  });
 }

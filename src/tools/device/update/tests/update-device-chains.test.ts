@@ -578,16 +578,28 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
   });
 
-  it("carries the trim onto an untouched destination chain", () => {
-    // chain-1 holds no devices and sits at defaults, so writing its fader
-    // re-levels nothing — the trim follows the sound instead of stranding.
-    const destinationVolume = registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-    });
-
+  /**
+   * Register chain 1's mixer — the destination the trim would be carried to.
+   * @param volumeProperties - Property overrides for its volume parameter
+   * @returns The destination volume mock
+   */
+  function registerDestinationMixer(
+    volumeProperties?: Record<string, unknown>,
+  ): RegisteredMockObject {
     registerMockObject("mixer-1", {
       path: `${rackPath.chain(1)} mixer_device`,
     });
+
+    return registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+      properties: volumeProperties,
+    });
+  }
+
+  it("carries the trim onto an untouched destination chain", () => {
+    // chain-1 holds no devices and sits at defaults, so writing its fader
+    // re-levels nothing — the trim follows the sound instead of stranding.
+    const destinationVolume = registerDestinationMixer();
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
@@ -622,13 +634,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
   });
 
   it("warns instead of overwriting a destination chain with its own trim", () => {
-    registerMockObject("mixer-1", {
-      path: `${rackPath.chain(1)} mixer_device`,
-    });
-    registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-      properties: { display_value: 6 },
-    });
+    registerDestinationMixer({ display_value: 6 });
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
@@ -714,13 +720,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
   it("names what landed rather than what it set out to carry", () => {
     // A macro-mapped destination gain is skipped with its own warning, so
     // announcing the carry up front contradicted the very next line.
-    registerMockObject("mixer-1", {
-      path: `${rackPath.chain(1)} mixer_device`,
-    });
-    registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-      properties: { is_enabled: 0 },
-    });
+    registerDestinationMixer({ is_enabled: 0 });
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
@@ -738,13 +738,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     // fader would re-level a chain nothing moved into.
     registerMockObject("live-set", { path: livePath.liveSet });
 
-    const destinationVolume = registerMockObject("volume-1", {
-      path: `${rackPath.chain(1)} mixer_device volume`,
-    });
-
-    registerMockObject("mixer-1", {
-      path: `${rackPath.chain(1)} mixer_device`,
-    });
+    const destinationVolume = registerDestinationMixer();
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 

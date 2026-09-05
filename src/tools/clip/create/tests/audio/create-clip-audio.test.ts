@@ -26,14 +26,19 @@ import {
   setupSessionMocks,
 } from "../create-clip-test-helpers.ts";
 
+/** The floor every case here needs: a 4/4 Live Set and an empty track 0. */
+function registerLiveSetAndTrack(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+  registerMockObject("track-0", { path: livePath.track(0) });
+}
+
 describe("createClip - audio clips", () => {
   describe("validation", () => {
     it("should throw error when both sampleFile and notes are provided", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerLiveSetAndTrack();
       registerMockObject("clip-slot-0-0", {
         path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
@@ -188,11 +193,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should emit warning and return empty array when scene index exceeds maximum", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerLiveSetAndTrack();
 
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
@@ -315,11 +316,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should emit warning and return empty array when arrangement position exceeds maximum", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerLiveSetAndTrack();
 
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
       // Runtime errors during clip creation are now warnings, not fatal errors

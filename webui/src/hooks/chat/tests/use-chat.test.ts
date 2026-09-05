@@ -94,12 +94,16 @@ async function expectQueueSurvivesError(
  * Render useChat with the given adapter, restore the standard history, then
  * compact the first turn. Returns the hook result for assertions.
  * @param adapter - The adapter whose client bootstraps from restored history
+ * @param overrides - Props to override on top of the defaults
  * @returns The renderHook result
  */
 async function renderRestoreCompact(
   adapter: ReturnType<typeof adapterWithClient>,
+  overrides: Partial<typeof defaultProps> = {},
 ) {
-  const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+  const { result } = renderHook(() =>
+    useChat({ ...defaultProps, adapter, ...overrides }),
+  );
 
   await act(() => {
     result.current.restoreChatHistory([...RESTORED_HISTORY]);
@@ -559,16 +563,7 @@ describe("useChat", () => {
       // from Settings leaves nothing to connect with — bootstrap must bail
       // rather than construct a client that can't authenticate.
       const adapter = adapterWithClient(() => {});
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter, apiKey: "" }),
-      );
-
-      await act(() => {
-        result.current.restoreChatHistory([...RESTORED_HISTORY]);
-      });
-      await act(async () => {
-        await result.current.compact(1);
-      });
+      const result = await renderRestoreCompact(adapter, { apiKey: "" });
 
       expect(adapter.createClient).not.toHaveBeenCalled();
       expect(result.current.isCompacting).toBe(false);
@@ -620,16 +615,7 @@ describe("useChat", () => {
         return { model, thinking };
       });
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter }),
-      );
-
-      await act(() => {
-        result.current.restoreChatHistory([...RESTORED_HISTORY]);
-      });
-      await act(async () => {
-        await result.current.compact(1);
-      });
+      const result = await renderRestoreCompact(adapter);
 
       expect(adapter.createClient).not.toHaveBeenCalled();
       // The conversation is still on screen, with the error behind it.

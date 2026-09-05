@@ -168,3 +168,13 @@ export async function dispatchNodeRoute(
 
   return parseSentNodeResponse();
 }
+
+/**
+ * Read the \`error\` field out of a route response body.
+ *
+ * @param res - The response whose JSON body carries the error
+ * @returns The error message
+ */
+export async function errorOf(res: Response): Promise<string> {
+  return ((await res.json()) as { error: string }).error;
+}

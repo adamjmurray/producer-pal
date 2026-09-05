@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
-  lookupMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -24,6 +23,7 @@ import {
   setupAudioClipMock,
   setupMidiClipMock,
   setupUpdateClipMocks,
+  stubSplitRescan,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
@@ -690,28 +690,9 @@ describe("updateClip - splitting mutation coverage", () => {
     const clipId = "clip_1";
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // rescanSplitClips reads arrangement_clips: return one real fresh clip plus
-    // a non-existent one (id "0") that clip.exists() must filter out.
     const freshClipId = "fresh_clip";
 
-    registerMockObject(freshClipId, {
-      path: livePath.track(0).arrangementClip(2),
-      type: "Clip",
-      properties: {
-        start_time: 0.0,
-        is_midi_clip: 1,
-        is_arrangement_clip: 1,
-      },
-    });
-
-    const trackMock = lookupMockObject("track_0", livePath.track(0));
-    const origGet = trackMock?.get.getMockImplementation();
-
-    trackMock?.get.mockImplementation((prop: string) => {
-      if (prop === "arrangement_clips") return ["id", freshClipId, "id", "0"];
-
-      return origGet ? origGet(prop) : [0];
-    });
+    stubSplitRescan(freshClipId);
 
     const result = await updateClip(
       { id: clipId, arrangementSplit: "2|1" },

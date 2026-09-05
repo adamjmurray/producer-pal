@@ -11,7 +11,10 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
-import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
+import {
+  registerClipSlot,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 describe("playback target params on actions that have no target", () => {
   let liveSet: RegisteredMockObject;
@@ -73,9 +76,7 @@ describe("playback paths alias", () => {
 
   beforeEach(() => {
     setupPlaybackLiveSet();
-    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    clipSlot = registerClipSlot(0, 1);
   });
 
   it("fires the clip paths names when path is unset", () => {
@@ -111,9 +112,7 @@ describe("playback ids that names no clip", () => {
 
   beforeEach(() => {
     setupPlaybackLiveSet();
-    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    clipSlot = registerClipSlot(0, 1);
   });
 
   // z.coerce.string() renders a JSON null as "null", so a caller that sent no
@@ -156,9 +155,7 @@ describe("playback ids that names no clip", () => {
     registerMockObject("clip1", {
       path: livePath.track(2).clipSlot(0).clip(),
     });
-    const byId = registerMockObject(livePath.track(2).clipSlot(0), {
-      path: livePath.track(2).clipSlot(0),
-    });
+    const byId = registerClipSlot(2, 0);
 
     playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" });
 
@@ -251,9 +248,7 @@ describe("playback slots that names no position", () => {
   });
 
   it("lets ids carry the call when slots names nothing", () => {
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(1).clip(),

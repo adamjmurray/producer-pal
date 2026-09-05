@@ -87,6 +87,32 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     mocks = setupUpdateClipMocks();
   });
 
+  /**
+   * Move both clips at once, with t1/s2 free for one of them to land in.
+   * @param toPath - Where the two clips are sent, in call order
+   * @returns The slot mocks and the per-clip results
+   */
+  async function moveBothClips(toPath: string): Promise<{
+    slots: Map<string, RegisteredMockObject>;
+    result: Array<{ id: string; path?: string }>;
+  }> {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    const slots = registerSlots([
+      [0, 0, 1],
+      [1, 1, 1],
+      [1, 2, 0],
+    ]);
+
+    const result = (await updateClip({
+      path: "t0/s0,t1/s1",
+      toPath,
+    })) as Array<{ id: string; path?: string }>;
+
+    return { slots, result };
+  }
+
   it("keeps each clip on the destination named at its own position", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
@@ -166,18 +192,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
   // A move onto a slot the batch's own clip sits in overwrote it, and the batch
   // then reported the destroyed clip as updated.
   it("does not move a clip onto another clip this call updates", async () => {
-    setupMidiClipMock(mocks.clip123);
-    setupMidiClipMock(mocks.clip456);
-    const slots = registerSlots([
-      [0, 0, 1],
-      [1, 1, 1],
-      [1, 2, 0],
-    ]);
-
-    const result = (await updateClip({
-      path: "t0/s0,t1/s1",
-      toPath: "t1/s1,t1/s2",
-    })) as Array<{ id: string; path?: string }>;
+    const { slots, result } = await moveBothClips("t1/s1,t1/s2");
 
     expect(capturedWarnings()).toContain(
       "clip t0/s0 (id 123) was not moved: t1/s1 holds clip t1/s1 (id 456), which this call also " +
@@ -223,18 +238,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
   // Both clips landing in one slot means the second overwrites the first, and
   // the response claims two clips are in it.
   it("moves only the first clip when toPath names one slot twice", async () => {
-    setupMidiClipMock(mocks.clip123);
-    setupMidiClipMock(mocks.clip456);
-    const slots = registerSlots([
-      [0, 0, 1],
-      [1, 1, 1],
-      [1, 2, 0],
-    ]);
-
-    const result = (await updateClip({
-      path: "t0/s0,t1/s1",
-      toPath: "t1/s2,t1/s2",
-    })) as Array<{ id: string; path?: string }>;
+    const { slots, result } = await moveBothClips("t1/s2,t1/s2");
 
     expect(result[0]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
     // The second clip stayed put, so its path is still its own slot.

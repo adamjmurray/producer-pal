@@ -11,7 +11,10 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
-import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
+import {
+  registerClipSlot,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 /** The actions that work the session or the transport, not the arrangement. */
 const SESSION_ACTIONS = [
@@ -25,9 +28,7 @@ const SESSION_ACTIONS = [
 function registerTargets(): void {
   registerMockObject(livePath.scene(3), { path: livePath.scene(3) });
   registerMockObject(livePath.track(0), { path: livePath.track(0) });
-  registerMockObject(livePath.track(0).clipSlot(1), {
-    path: livePath.track(0).clipSlot(1),
-  });
+  registerClipSlot(0, 1);
 }
 
 /** The target param each action needs, so the call gets as far as the timeline. */

@@ -11,7 +11,11 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  masterTrackMockObject,
+  readLiveSetTracks,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 const SYNTH_DEVICE = {
   name: "Analog",
@@ -278,11 +282,7 @@ describe("readLiveSet - basic reading", () => {
           return_tracks: children(),
           scenes: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          devices: [],
-        },
+        ...masterTrackMockObject(),
         [String(livePath.track(0))]: {
           has_midi_input: 1,
           name: "Synth Track",
@@ -299,11 +299,7 @@ describe("readLiveSet - basic reading", () => {
       },
     });
 
-    const result = readLiveSet({
-      include: ["tracks"],
-    });
-
-    const tracks = result.tracks as Record<string, unknown>[];
+    const tracks = readLiveSetTracks();
 
     // Track with instrument shows instrument name as string
     expect(tracks[0]).toStrictEqual(

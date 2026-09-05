@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
+  registerBareTrackDuplication,
   registerMockObject,
   registerSessionClipDuplication,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
@@ -148,12 +149,7 @@ describe("duplicate - transforms/code", () => {
     });
 
     it("warns and skips transforms for non-clip types", async () => {
-      registerMockObject("track1", { path: livePath.track(0) });
-      registerMockObject("live_set", { path: livePath.liveSet });
-      registerMockObject("live_set/tracks/1", {
-        path: livePath.track(1),
-        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-      });
+      registerBareTrackDuplication();
 
       await duplicate({
         type: "track",
@@ -170,12 +166,7 @@ describe("duplicate - transforms/code", () => {
     it("warns and skips code (no transforms) for non-clip types", async () => {
       // Exercises the `code != null` arm of the ignore condition independently
       // of transforms, so a mutated `code == null` no longer suppresses the warn.
-      registerMockObject("track1", { path: livePath.track(0) });
-      registerMockObject("live_set", { path: livePath.liveSet });
-      registerMockObject("live_set/tracks/1", {
-        path: livePath.track(1),
-        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-      });
+      registerBareTrackDuplication();
 
       await duplicate({
         type: "track",

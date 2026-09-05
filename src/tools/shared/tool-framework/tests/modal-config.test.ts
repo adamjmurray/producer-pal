@@ -6,11 +6,23 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  type ParamModeMap,
   getParamModes,
   param,
   resolveModalDescription,
   resolveParamModes,
 } from "../modal-config.ts";
+
+/**
+ * A one-param schema whose `notes` description varies by mode.
+ * @param overrides - Mode keys to their override, over `default: "base"`
+ * @returns The schema to pass to resolveParamModes
+ */
+function notesSchema(overrides: Omit<ParamModeMap, "default">) {
+  return {
+    notes: param(z.string().optional(), { default: "base", ...overrides }),
+  };
+}
 
 describe("param / getParamModes", () => {
   it("applies the default description and tags the schema with its modes", () => {
@@ -42,13 +54,10 @@ describe("resolveParamModes", () => {
   });
 
   it("leaves modal params untouched when no mode is active", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "short",
-        "midi-json": "json",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "short",
+      "midi-json": "json",
+    });
 
     // barbeat is the default notation and applies no overrides.
     const result = resolveParamModes(schema, {
@@ -201,13 +210,10 @@ describe("resolveParamModes", () => {
   });
 
   it("lets the active notation win over small-model for the description", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small-model text",
-        "midi-json": "json text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small-model text",
+      "midi-json": "json text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -218,13 +224,10 @@ describe("resolveParamModes", () => {
   });
 
   it("falls back to the small-model override when the notation has no entry", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small-model text",
-        "midi-json": "json text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small-model text",
+      "midi-json": "json text",
+    });
 
     // stark has no entry, so the small-model override still applies.
     const result = resolveParamModes(schema, {
@@ -238,14 +241,11 @@ describe("resolveParamModes", () => {
   });
 
   it("uses the compound smallModel:notation cell when both axes are active", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small barbeat text",
-        stark: "large stark text",
-        "smallModel:stark": "small stark text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small barbeat text",
+      stark: "large stark text",
+      "smallModel:stark": "small stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -258,13 +258,10 @@ describe("resolveParamModes", () => {
   });
 
   it("ignores the compound cell for a large model (bare notation wins)", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        stark: "large stark text",
-        "smallModel:stark": "small stark text",
-      }),
-    };
+    const schema = notesSchema({
+      stark: "large stark text",
+      "smallModel:stark": "small stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: false,
@@ -277,13 +274,10 @@ describe("resolveParamModes", () => {
   });
 
   it("ignores the compound cell in the barbeat default (smallModel wins)", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small barbeat text",
-        "smallModel:stark": "small stark text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small barbeat text",
+      "smallModel:stark": "small stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -296,13 +290,10 @@ describe("resolveParamModes", () => {
   });
 
   it("falls back to the bare notation when the compound cell is absent", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        smallModel: "small barbeat text",
-        stark: "large stark text",
-      }),
-    };
+    const schema = notesSchema({
+      smallModel: "small barbeat text",
+      stark: "large stark text",
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,
@@ -315,13 +306,10 @@ describe("resolveParamModes", () => {
   });
 
   it("hides a param whose compound cell is null", () => {
-    const schema = {
-      notes: param(z.string().optional(), {
-        default: "base",
-        stark: "large stark text",
-        "smallModel:stark": null,
-      }),
-    };
+    const schema = notesSchema({
+      stark: "large stark text",
+      "smallModel:stark": null,
+    });
 
     const result = resolveParamModes(schema, {
       smallModelMode: true,

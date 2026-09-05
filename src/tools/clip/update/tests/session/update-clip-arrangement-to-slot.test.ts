@@ -235,6 +235,20 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
   return updatedClips;
 }
 
+/** The move landed: the new clip at the destination is all that came back. */
+function expectMovedToDestination(updatedClips: ClipResult[]): void {
+  expect(updatedClips).toStrictEqual([
+    { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
+  ]);
+}
+
+/** The destination's occupant was replaced, and the caller was told. */
+function expectOverwriteWarning(): void {
+  expect(capturedWarnings()).toContain(
+    `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+  );
+}
+
 describe("handleArrangementToSlotMove", () => {
   it("re-creates the clip in the slot and deletes the original", () => {
     const updatedClips = runMove();
@@ -250,9 +264,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
-    expect(updatedClips).toStrictEqual([
-      { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
-    ]);
+    expectMovedToDestination(updatedClips);
   });
 
   it("carries the source's name and color", () => {
@@ -297,9 +309,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
-    );
+    expectOverwriteWarning();
   });
 
   // The occupant is never predeleted here: the replacement is built and
@@ -318,12 +328,8 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
-    );
-    expect(updatedClips).toStrictEqual([
-      { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
-    ]);
+    expectOverwriteWarning();
+    expectMovedToDestination(updatedClips);
   });
 
   // Distinct from the "clears the slot" case above: here the track's other
@@ -347,12 +353,8 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
-    );
-    expect(updatedClips).toStrictEqual([
-      { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
-    ]);
+    expectOverwriteWarning();
+    expectMovedToDestination(updatedClips);
   });
 
   // add_new_notes throws after Live already created a real clip: the

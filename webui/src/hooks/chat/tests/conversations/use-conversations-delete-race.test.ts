@@ -7,13 +7,12 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, renderHook } from "@testing-library/preact";
+import { act } from "@testing-library/preact";
 import {
   waitForHookState,
   openGate,
 } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
   listAllConversationSummaries,
@@ -23,12 +22,10 @@ import { importConversations } from "#webui/lib/conversation-transfer";
 import {
   type ConversationsResult,
   type ConversationsState,
-  createConversationsProps,
   resetConversationsTestState,
   saveWithMessage,
   setupConversationsHook as setupHook,
-  waitForEffects,
-  useConversationsWithUndo,
+  setupForkHook,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -156,13 +153,8 @@ async function expectBulkDeleteDropsNeverSavedLateAutosave(
 async function expectForkDroppedOnDelete(
   deleteOp: (result: HookHandle["result"], savedId: string) => Promise<void>,
 ): Promise<void> {
-  const { props, state } = createConversationsProps();
-  const pendingForkRef = { current: null as PendingFork | null };
-  const { result } = renderHook(() =>
-    useConversationsWithUndo({ ...props, pendingForkRef }),
-  );
+  const { props, state, result, pendingForkRef } = await setupForkHook();
 
-  await waitForEffects();
   await saveWithMessage(state, result, "original");
 
   const savedId = result.current.activeConversationId!;

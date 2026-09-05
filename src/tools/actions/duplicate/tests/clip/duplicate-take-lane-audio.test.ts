@@ -120,6 +120,24 @@ describe("duplicate an audio clip to a take lane", () => {
     );
   }
 
+  /**
+   * Register the audio source, then copy it onto a fresh take lane at 1|1.
+   * @param sourceProps - Clip properties merged over the audio defaults
+   */
+  async function duplicateSourceToNewLane(
+    sourceProps: Record<string, unknown> = {},
+  ): Promise<void> {
+    registerAudioSource(sourceProps);
+    registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      arrangementStart: "1|1",
+      takeLane: "new",
+    });
+  }
+
   it("re-creates the clip from its sample", async () => {
     registerAudioSource();
     registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
@@ -170,15 +188,7 @@ describe("duplicate an audio clip to a take lane", () => {
   // sample unless `looping` is already set. Getting either wrong loses the
   // setting with no error.
   it("sets warping before the markers, and looping before the loop points", async () => {
-    registerAudioSource();
-    registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
-
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "1|1",
-      takeLane: "new",
-    });
+    await duplicateSourceToNewLane();
 
     const newClip = lookupMockObject(
       undefined,
@@ -201,15 +211,7 @@ describe("duplicate an audio clip to a take lane", () => {
   // hand-edited on the source is gone. Live has no working way to write them
   // back, so the warning is all we can offer.
   it("names the warp markers a warped source loses", async () => {
-    registerAudioSource();
-    registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
-
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "1|1",
-      takeLane: "new",
-    });
+    await duplicateSourceToNewLane();
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
@@ -219,15 +221,7 @@ describe("duplicate an audio clip to a take lane", () => {
   });
 
   it("names both losses when a warped source also has envelopes", async () => {
-    registerAudioSource({ has_envelopes: 1 });
-    registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
-
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "1|1",
-      takeLane: "new",
-    });
+    await duplicateSourceToNewLane({ has_envelopes: 1 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
@@ -240,15 +234,7 @@ describe("duplicate an audio clip to a take lane", () => {
   // An unwarped clip plays the sample as recorded, so the copy's markers match
   // and there is nothing to warn about.
   it("names no loss for an unwarped source with no envelopes", async () => {
-    registerAudioSource({ warping: 0 });
-    registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
-
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "1|1",
-      takeLane: "new",
-    });
+    await duplicateSourceToNewLane({ warping: 0 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(`created on take lane "t0/l0". Expand`),

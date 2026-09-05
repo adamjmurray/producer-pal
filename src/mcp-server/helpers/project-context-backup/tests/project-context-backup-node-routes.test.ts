@@ -79,6 +79,15 @@ async function sync(args: {
   });
 }
 
+/**
+ * Sync a Set whose project context was not edited this session.
+ * @param content - The content the sync carries
+ * @returns The route response
+ */
+async function syncUnedited(content: string) {
+  return await sync({ content, allowRestore: false, isEdit: false });
+}
+
 describe("projectContext.sync — unsaved set", () => {
   it("does nothing when filePath is null", async () => {
     const res = await dispatchNodeRoute("projectContext.sync", {
@@ -191,22 +200,14 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   it("leaves an existing, differing sidecar alone when nothing was written", async () => {
     seedSidecar("newer notes from another Set in this folder");
 
-    const res = await sync({
-      content: "stale blob saved in this older .als",
-      allowRestore: false,
-      isEdit: false,
-    });
+    const res = await syncUnedited("stale blob saved in this older .als");
 
     expect(res.result).toStrictEqual({ action: "none" });
     expect(sidecarText()).toBe("newer notes from another Set in this folder");
   });
 
   it("creates a missing sidecar even when nothing was written", async () => {
-    const res = await sync({
-      content: "Genre: jungle",
-      allowRestore: false,
-      isEdit: false,
-    });
+    const res = await syncUnedited("Genre: jungle");
 
     expect(res.result).toStrictEqual({ action: "backup" });
     expect(sidecarText()).toBe("Genre: jungle");
@@ -215,11 +216,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   it("treats an empty sidecar as no backup, so a passing sync fills it", async () => {
     seedSidecar("   ");
 
-    const res = await sync({
-      content: "Genre: jungle",
-      allowRestore: false,
-      isEdit: false,
-    });
+    const res = await syncUnedited("Genre: jungle");
 
     expect(res.result).toStrictEqual({ action: "backup" });
     expect(sidecarText()).toBe("Genre: jungle");

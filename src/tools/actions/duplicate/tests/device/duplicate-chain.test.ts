@@ -85,6 +85,34 @@ function setupRack(
   return { rack, created };
 }
 
+/**
+ * Register a Drum Rack holding one drum chain, plus the chain insert_chain
+ * will produce — which always arrives on the catch-all note.
+ * @param name - The source chain's name
+ * @param inNote - The source chain's pad note, or -1 for the catch-all
+ * @returns The chain the copy lands in
+ */
+function setupDrumRack(name: string, inNote: number) {
+  registerMockObject("live_set", { path: livePath.liveSet });
+  registerMockObject("rack-0", {
+    path: RACK,
+    type: "RackDevice",
+    properties: { class_name: "DrumGroupDevice", return_chains: [] },
+    methods: { insert_chain: () => ["id", "chain-new"] },
+  });
+  registerMockObject("chain-0", {
+    path: `${RACK} chains 0`,
+    type: "DrumChain",
+    properties: { name, mute: 0, solo: 0, in_note: inNote, devices: [] },
+  });
+
+  return registerMockObject("chain-new", {
+    path: `${RACK} chains 1`,
+    type: "DrumChain",
+    properties: { name: "", mute: 0, solo: 0, in_note: -1, devices: [] },
+  });
+}
+
 describe("duplicate - chain", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -237,24 +265,7 @@ describe("duplicate - chain", () => {
   // A Drum Rack's insert_chain appends on the catch-all pad, so the copy has to
   // be put on the source's own note or it lands somewhere nobody asked for.
   it("puts a copied drum chain on its source's pad", async () => {
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("rack-0", {
-      path: RACK,
-      type: "RackDevice",
-      properties: { class_name: "DrumGroupDevice", return_chains: [] },
-      methods: { insert_chain: () => ["id", "chain-new"] },
-    });
-    registerMockObject("chain-0", {
-      path: `${RACK} chains 0`,
-      type: "DrumChain",
-      properties: { name: "Kick", mute: 0, solo: 0, in_note: 36, devices: [] },
-    });
-
-    const created = registerMockObject("chain-new", {
-      path: `${RACK} chains 1`,
-      type: "DrumChain",
-      properties: { name: "", mute: 0, solo: 0, in_note: -1, devices: [] },
-    });
+    const created = setupDrumRack("Kick", 36);
 
     await duplicate({ type: "chain", id: "chain-0" });
 
@@ -264,24 +275,7 @@ describe("duplicate - chain", () => {
   // Live clamps a drum chain's in_note to 0-127, so a source already on the
   // catch-all has no note to hand over.
   it("leaves a catch-all drum chain's note alone", async () => {
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("rack-0", {
-      path: RACK,
-      type: "RackDevice",
-      properties: { class_name: "DrumGroupDevice", return_chains: [] },
-      methods: { insert_chain: () => ["id", "chain-new"] },
-    });
-    registerMockObject("chain-0", {
-      path: `${RACK} chains 0`,
-      type: "DrumChain",
-      properties: { name: "Any", mute: 0, solo: 0, in_note: -1, devices: [] },
-    });
-
-    const created = registerMockObject("chain-new", {
-      path: `${RACK} chains 1`,
-      type: "DrumChain",
-      properties: { name: "", mute: 0, solo: 0, in_note: -1, devices: [] },
-    });
+    const created = setupDrumRack("Any", -1);
 
     await duplicate({ type: "chain", id: "chain-0" });
 

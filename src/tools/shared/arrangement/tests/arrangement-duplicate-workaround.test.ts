@@ -27,6 +27,25 @@ afterEach(() => {
 });
 
 /**
+ * Clear the duplicate target for source clip "100" on a track.
+ * @param trackMock - The destination track's mock
+ * @param targetPosition - Beat the source is duplicated to
+ * @returns Whether the duplicate was reported as safe
+ */
+function clearTargetForSource(
+  trackMock: ReturnType<typeof setupTrack>,
+  targetPosition: number,
+): boolean {
+  return clearClipAtDuplicateTarget(
+    LiveAPI.from(trackMock.path),
+    "100",
+    targetPosition,
+    true,
+    mockContext,
+  );
+}
+
+/**
  * Sets up a source clip, existing arrangement clip, and holding clip with
  * a track mock that supports duplicate/create/delete operations.
  * Used by tests that exercise the holding-clip workaround (after-only and
@@ -85,13 +104,7 @@ describe("clearClipAtDuplicateTarget", () => {
     });
     const trackMock = setupTrack(0);
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      0,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 0);
 
     expect(trackMock.call).not.toHaveBeenCalled();
   });
@@ -135,13 +148,7 @@ describe("clearClipAtDuplicateTarget", () => {
       },
     });
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 8);
 
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 200");
   });
@@ -156,13 +163,7 @@ describe("clearClipAtDuplicateTarget", () => {
       { start: 114, end: 118 },
     );
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 8);
 
     // Step 1: Dup to holding (maxEnd=14 + 100 = 114)
     expect(trackMock.call).toHaveBeenCalledWith(
@@ -195,13 +196,7 @@ describe("clearClipAtDuplicateTarget", () => {
       { start: 120, end: 132 },
     );
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      12,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 12);
 
     // Step 1: Duplicate to holding area (maxEnd=20 + 100 = 120)
     expect(trackMock.call).toHaveBeenCalledWith(
@@ -246,13 +241,7 @@ describe("clearClipAtDuplicateTarget", () => {
       },
     });
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 8);
 
     expect(trackMock.call).not.toHaveBeenCalled();
   });
@@ -313,13 +302,7 @@ describe("clearClipAtDuplicateTarget", () => {
       methods: { delete_clip: () => null },
     });
 
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
+    const safe = clearTargetForSource(trackMock, 8);
 
     expect(safe).toBe(true);
   });
@@ -344,13 +327,7 @@ describe("clearClipAtDuplicateTarget", () => {
       },
     });
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      6,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 6);
 
     expect(trackMock.call).not.toHaveBeenCalled();
   });
@@ -412,13 +389,7 @@ describe("clearClipAtDuplicateTarget", () => {
       },
     });
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      16,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 16);
 
     // Full containment: clip [16,20] fully within target [16,20] — delete
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 201");
@@ -453,13 +424,7 @@ describe("clearClipAtDuplicateTarget", () => {
       },
     });
 
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      12,
-      true,
-      mockContext,
-    );
+    const safe = clearTargetForSource(trackMock, 12);
 
     expect(safe).toBe(false);
     // The source must be untouched: no trim, no delete, no duplicate.
@@ -489,13 +454,7 @@ describe("clearClipAtDuplicateTarget", () => {
       methods: { delete_clip: () => null },
     });
 
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      12,
-      true,
-      mockContext,
-    );
+    const safe = clearTargetForSource(trackMock, 12);
 
     expect(safe).toBe(true);
     // The destination track's own overlapping clip is still cleared.
@@ -517,13 +476,7 @@ describe("clearClipAtDuplicateTarget", () => {
       methods: tilingTrackMethods(),
     });
 
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      12,
-      true,
-      mockContext,
-    );
+    const safe = clearTargetForSource(trackMock, 12);
 
     expect(safe).toBe(false);
     expect(trackMock.call).not.toHaveBeenCalled();
@@ -560,13 +513,7 @@ describe("clearClipAtDuplicateTarget", () => {
       },
     });
 
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      16,
-      true,
-      mockContext,
-    );
+    const safe = clearTargetForSource(trackMock, 16);
 
     expect(safe).toBe(true);
     // The non-source overlapping clip [16,20] is fully contained → deleted.
@@ -623,13 +570,7 @@ describe("clearClipAtDuplicateTarget", () => {
       methods: tilingTrackMethods(),
     });
 
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
+    clearTargetForSource(trackMock, 8);
 
     // After-only overlap on [10,20] → dup to holding at max(300,20) + 100 = 400.
     expect(trackMock.call).toHaveBeenCalledWith(
@@ -651,15 +592,9 @@ describe("clearClipAtDuplicateTarget", () => {
       existingEnd: 14,
     });
 
-    expect(() =>
-      clearClipAtDuplicateTarget(
-        LiveAPI.from(trackMock.path),
-        "100",
-        8,
-        true,
-        mockContext,
-      ),
-    ).toThrow(/dup-to-holding for clip 200/);
+    expect(() => clearTargetForSource(trackMock, 8)).toThrow(
+      /dup-to-holding for clip 200/,
+    );
 
     expect(trackMock.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
     expect(trackMock.call).not.toHaveBeenCalledWith(
@@ -680,15 +615,9 @@ describe("clearClipAtDuplicateTarget", () => {
       existingEnd: 20,
     });
 
-    expect(() =>
-      clearClipAtDuplicateTarget(
-        LiveAPI.from(trackMock.path),
-        "100",
-        12,
-        true,
-        mockContext,
-      ),
-    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+    expect(() => clearTargetForSource(trackMock, 12)).toThrow(
+      /duplicate_clip_to_arrangement returned no clip/,
+    );
 
     expect(trackMock.call).not.toHaveBeenCalledWith(
       "create_midi_clip",
@@ -727,13 +656,7 @@ function runClearTargetExpectingNoOp(
     },
   });
 
-  clearClipAtDuplicateTarget(
-    LiveAPI.from(trackMock.path),
-    "100",
-    opts.targetPosition,
-    true,
-    mockContext,
-  );
+  clearTargetForSource(trackMock, opts.targetPosition);
 
   return trackMock;
 }
@@ -766,13 +689,7 @@ function runClearTargetOnEmptyTrack(opts: {
 
   const trackMock = setupTrack(0);
 
-  return clearClipAtDuplicateTarget(
-    LiveAPI.from(trackMock.path),
-    "100",
-    opts.targetPosition,
-    true,
-    mockContext,
-  );
+  return clearTargetForSource(trackMock, opts.targetPosition);
 }
 
 /**
@@ -798,13 +715,7 @@ function runClearTargetOnTrimmableTrack(
     },
   });
 
-  clearClipAtDuplicateTarget(
-    LiveAPI.from(trackMock.path),
-    "100",
-    opts.targetPosition,
-    true,
-    mockContext,
-  );
+  clearTargetForSource(trackMock, opts.targetPosition);
 
   return trackMock;
 }

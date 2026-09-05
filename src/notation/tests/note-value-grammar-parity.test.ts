@@ -186,6 +186,28 @@ const OFFSET_SITES = [
 const REJECTION =
   /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|beat (offsets|positions)|use note names|positions use a pipe)/;
 
+// Registers one test per token: no duration site accepts it.
+function itRejectsDurations(tokens: string[]): void {
+  for (const token of tokens) {
+    it(`duration "${token}" is rejected by every duration site`, () => {
+      for (const site of DURATION_SITES) {
+        expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
+      }
+    });
+  }
+}
+
+// Registers one test per beat: no offset site accepts it.
+function itRejectsOffsets(beats: string[]): void {
+  for (const beat of beats) {
+    it(`offset "1|${beat}" is rejected by every offset site`, () => {
+      for (const site of OFFSET_SITES) {
+        expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
+      }
+    });
+  }
+}
+
 describe("note-value grammar parity across all parse sites", () => {
   describe("canonical note-value durations agree across all duration sites", () => {
     // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar±n<frac> form
@@ -330,21 +352,9 @@ describe("note-value grammar parity across all parse sites", () => {
     // The grammars' denominator is `[1-9][0-9]*`; the regexes match it with
     // `0|[1-9]\d*`. A leading-zero denominator (`n/08`) parses on no site. (A lone
     // `n/0` is a division-by-zero — rejected too, see barbeat-time-basic tests.)
-    for (const token of ["n/08", "n/016", "n1/08"]) {
-      it(`duration "${token}" is rejected by every duration site`, () => {
-        for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsDurations(["n/08", "n/016", "n1/08"]);
 
-    for (const beat of ["1+n/08", "1-n/016", "1+n1/08"]) {
-      it(`offset "1|${beat}" is rejected by every offset site`, () => {
-        for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsOffsets(["1+n/08", "1-n/016", "1+n1/08"]);
   });
 
   describe("leading-zero bar counts are rejected as note values (L2)", () => {
@@ -352,13 +362,7 @@ describe("note-value grammar parity across all parse sites", () => {
     // matches it with `0|[1-9]\d*`. A leading-zero count (`01bar`, `007bar`)
     // parses on no duration site — previously the regex accepted `01bar` → 4
     // while both grammars rejected it (the unguarded half of the parity gap).
-    for (const token of ["01bar", "007bar", "01bar+n/4"]) {
-      it(`duration "${token}" is rejected by every duration site`, () => {
-        for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsDurations(["01bar", "007bar", "01bar+n/4"]);
 
     it("`0bar` → 0 on the regex site only (documented intentional divergence)", () => {
       // A lone `0bar` is the one bar-count value where the sites legitimately
@@ -425,20 +429,8 @@ describe("note-value grammar parity across all parse sites", () => {
     // `("d"/"t")?` matches at most one. A doubled or mixed suffix leaves a stray
     // letter that no site can consume, so it is a parse error everywhere (the
     // "no stacking / mutually exclusive" contract from the note-value grammar).
-    for (const token of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
-      it(`duration "${token}" is rejected by every duration site`, () => {
-        for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsDurations(["n/4dt", "n/4dd", "n/4td", "n/4tt"]);
 
-    for (const beat of ["1+n/4dt", "1+n/8tt", "1-n/8td"]) {
-      it(`offset "1|${beat}" is rejected by every offset site`, () => {
-        for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsOffsets(["1+n/4dt", "1+n/8tt", "1-n/8td"]);
   });
 });

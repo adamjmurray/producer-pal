@@ -93,6 +93,37 @@ async function postVoiceToken(
   });
 }
 
+/**
+ * Stub a 200 upstream, post a token request, and return the JSON body the route
+ * forwarded to OpenAI.
+ *
+ * @param baseUrl - Base URL of the test Express server
+ * @param opts - Key/body/origin overrides for the local request
+ * @returns The parsed request body OpenAI received
+ */
+async function sentUpstreamBody(
+  baseUrl: string,
+  opts: Pick<PostTokenOptions, "key" | "body" | "origin"> = {},
+): Promise<unknown> {
+  const { calls } = mockOpenAIFetch(async () =>
+    jsonResponse(200, { value: "ek_x", expires_at: 0 }),
+  );
+
+  await postVoiceToken(baseUrl, opts);
+
+  return JSON.parse(calls[0]!.init!.body as string);
+}
+
+/**
+ * Read the `error` field out of a route error response.
+ *
+ * @param res - The response to read
+ * @returns The error message
+ */
+async function errorText(res: Response): Promise<string> {
+  return ((await res.json()) as { error: string }).error;
+}
+
 describe("voice-token route", () => {
   const appState = setupExpressAppServer();
 
@@ -148,33 +179,21 @@ describe("voice-token route", () => {
     const res = await postVoiceToken(appState.baseUrl);
 
     expect(res.status).toBe(502);
-    const json = (await res.json()) as { error: string };
-
-    expect(json.error).toContain("missing 'value'");
+    expect(await errorText(res)).toContain("missing 'value'");
   });
 
   it("defaults to gpt-realtime-2.1 when no model is provided", async () => {
-    const { calls } = mockOpenAIFetch(async () =>
-      jsonResponse(200, { value: "ek_x", expires_at: 0 }),
-    );
-
-    await postVoiceToken(appState.baseUrl);
-    const sentBody = JSON.parse(calls[0]!.init!.body as string);
-
-    expect(sentBody).toStrictEqual({
+    expect(await sentUpstreamBody(appState.baseUrl)).toStrictEqual({
       session: { type: "realtime", model: "gpt-realtime-2.1" },
     });
   });
 
   it("falls back to default model when model field is non-string", async () => {
-    const { calls } = mockOpenAIFetch(async () =>
-      jsonResponse(200, { value: "ek_x", expires_at: 0 }),
-    );
+    const sent = await sentUpstreamBody(appState.baseUrl, {
+      body: { model: 12345 },
+    });
 
-    await postVoiceToken(appState.baseUrl, { body: { model: 12345 } });
-    const sentBody = JSON.parse(calls[0]!.init!.body as string);
-
-    expect(sentBody).toStrictEqual({
+    expect(sent).toStrictEqual({
       session: { type: "realtime", model: "gpt-realtime-2.1" },
     });
   });
@@ -220,9 +239,7 @@ describe("voice-token route", () => {
     const res = await postVoiceToken(appState.baseUrl);
 
     expect(res.status).toBe(502);
-    const json = (await res.json()) as { error: string };
-
-    expect(json.error).toContain("network down");
+    expect(await errorText(res)).toContain("network down");
   });
 
   it("returns 504 when the upstream fetch times out", async () => {
@@ -237,9 +254,7 @@ describe("voice-token route", () => {
     const res = await postVoiceToken(appState.baseUrl);
 
     expect(res.status).toBe(504);
-    const json = (await res.json()) as { error: string };
-
-    expect(json.error).toMatch(/timed out/i);
+    expect(await errorText(res)).toMatch(/timed out/i);
   });
 
   it("returns 500 with null detail when upstream response body is unreadable", async () => {

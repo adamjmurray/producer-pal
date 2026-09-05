@@ -66,6 +66,21 @@ export function setupPlaybackLiveSet(
 }
 
 /**
+ * Register a session clip slot, keyed by its own path.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ * @returns RegisteredMockObject for the clip slot
+ */
+export function registerClipSlot(
+  trackIndex: number,
+  sceneIndex: number,
+): RegisteredMockObject {
+  const path = livePath.track(trackIndex).clipSlot(sceneIndex);
+
+  return registerMockObject(path, { path });
+}
+
+/**
  * Setup default time signature mock (4/4) for playback tests.
  * Registers live_set and default tracks. Use in beforeEach to initialize standard test state.
  * @returns RegisteredMockObject for the live_set object

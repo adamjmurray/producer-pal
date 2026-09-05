@@ -24,6 +24,13 @@ import {
   waitForEffects,
 } from "./use-conversations-test-helpers";
 
+// The two-turn history each case holds in flight. A fresh array per call, so
+// no test can see another's.
+const twoTurns = () => [
+  { role: "user", content: "first turn" },
+  { role: "assistant", content: "second turn" },
+];
+
 describe("useConversations save guards", () => {
   beforeEach(resetConversationsTestState);
 
@@ -38,10 +45,7 @@ describe("useConversations save guards", () => {
     const { release, restore } = gateNextSave();
 
     await act(async () => {
-      handle.state.chatHistory = [
-        { role: "user", content: "first turn" },
-        { role: "assistant", content: "second turn" },
-      ];
+      handle.state.chatHistory = twoTurns();
 
       const save = handle.result.current.saveCurrentConversation();
 
@@ -79,10 +83,7 @@ describe("useConversations save guards", () => {
     const id = handle.result.current.activeConversationId!;
     const { release, restore } = gateNextSave();
 
-    handle.state.chatHistory = [
-      { role: "user", content: "first turn" },
-      { role: "assistant", content: "second turn" },
-    ];
+    handle.state.chatHistory = twoTurns();
 
     let save!: Promise<unknown>;
 
@@ -119,10 +120,7 @@ describe("useConversations save guards", () => {
     const { release, restore } = gateNextSave();
 
     await act(async () => {
-      handle.state.chatHistory = [
-        { role: "user", content: "first turn" },
-        { role: "assistant", content: "second turn" },
-      ];
+      handle.state.chatHistory = twoTurns();
 
       const save = handle.result.current.saveCurrentConversation();
 

@@ -6,39 +6,66 @@
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  type ClipDestinations,
   resolveClipDestinations,
   warnInapplicableClipParams,
   warnUnusedDestination,
 } from "./duplicate-destination-helpers.ts";
+
+/**
+ * The resolved shape for a session destination.
+ * @param slots - The clip slots the copies go to
+ * @returns A ClipDestinations to compare against
+ */
+function sessionResult(slots: ClipDestinations["slots"]): ClipDestinations {
+  return {
+    destination: "session",
+    slots,
+    arrangementTargets: [],
+    arrangementPositions: [],
+  };
+}
+
+/**
+ * The resolved shape for an arrangement destination.
+ * @param arrangementTargets - The tracks and lanes the copies go to
+ * @param arrangementPositions - The position each target's own path named
+ * @returns A ClipDestinations to compare against
+ */
+function arrangementResult(
+  arrangementTargets: ClipDestinations["arrangementTargets"],
+  arrangementPositions: ClipDestinations["arrangementPositions"],
+): ClipDestinations {
+  return {
+    destination: "arrangement",
+    slots: [],
+    arrangementTargets,
+    arrangementPositions,
+  };
+}
 
 describe("resolveClipDestinations", () => {
   describe("session destinations", () => {
     it("reads slots off toPath", () => {
       expect(
         resolveClipDestinations("t2/s1,t3/s0", undefined, false),
-      ).toStrictEqual({
-        destination: "session",
-        slots: [
+      ).toStrictEqual(
+        sessionResult([
           { trackIndex: 2, sceneIndex: 1 },
           { trackIndex: 3, sceneIndex: 0 },
-        ],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+        ]),
+      );
     });
 
     it("still reads the deprecated toSlot", () => {
       expect(
         resolveClipDestinations(undefined, "2/1, 3/0", false),
-      ).toStrictEqual({
-        destination: "session",
-        slots: [
+      ).toStrictEqual(
+        sessionResult([
           { trackIndex: 2, sceneIndex: 1 },
           { trackIndex: 3, sceneIndex: 0 },
-        ],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+        ]),
+      );
     });
 
     // A toSlot that names nothing reads as unset, so the caller is told what to
@@ -55,23 +82,17 @@ describe("resolveClipDestinations", () => {
     // z.coerce.string() turns a JSON null into "null" before we see it, so a
     // caller unsetting toSlot must not read as naming a second destination.
     it("reads a coerced null alongside a real toPath as omitted", () => {
-      expect(resolveClipDestinations("t2/s1", "null", false)).toStrictEqual({
-        destination: "session",
-        slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+      expect(resolveClipDestinations("t2/s1", "null", false)).toStrictEqual(
+        sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
+      );
     });
 
     // The conflict check asks whether both params named a destination. A toSlot
     // of "," named none, so honoring toPath is not picking between two.
     it("honors toPath when toSlot names nothing", () => {
-      expect(resolveClipDestinations("t2/s1", ",", false)).toStrictEqual({
-        destination: "session",
-        slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+      expect(resolveClipDestinations("t2/s1", ",", false)).toStrictEqual(
+        sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
+      );
     });
 
     // A blank param names nothing, so it reads as omitted — which is what lets
@@ -81,37 +102,29 @@ describe("resolveClipDestinations", () => {
         "clip requires toPath",
       );
 
-      expect(resolveClipDestinations("t2/s1", "  ", false)).toStrictEqual({
-        destination: "session",
-        slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+      expect(resolveClipDestinations("t2/s1", "  ", false)).toStrictEqual(
+        sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
+      );
     });
   });
 
   describe("arrangement destinations", () => {
     it("reads tracks off toPath", () => {
-      expect(resolveClipDestinations("t2,t3", undefined, true)).toStrictEqual({
-        destination: "arrangement",
-        slots: [],
-        arrangementTargets: [
-          { trackIndex: 2, takeLane: null },
-          { trackIndex: 3, takeLane: null },
-        ],
-        arrangementPositions: [null, null],
-      });
+      expect(resolveClipDestinations("t2,t3", undefined, true)).toStrictEqual(
+        arrangementResult(
+          [
+            { trackIndex: 2, takeLane: null },
+            { trackIndex: 3, takeLane: null },
+          ],
+          [null, null],
+        ),
+      );
     });
 
     it("leaves the track list empty when toPath is omitted", () => {
       // Empty means the source clip's own track, resolved later against the clip.
       expect(resolveClipDestinations(undefined, undefined, true)).toStrictEqual(
-        {
-          destination: "arrangement",
-          slots: [],
-          arrangementTargets: [],
-          arrangementPositions: [],
-        },
+        arrangementResult([], []),
       );
     });
 
@@ -120,12 +133,9 @@ describe("resolveClipDestinations", () => {
     it("drops an arrangement position when toPath names only clip slots", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
-      expect(resolveClipDestinations("t2/s1", undefined, true)).toStrictEqual({
-        destination: "session",
-        slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+      expect(resolveClipDestinations("t2/s1", undefined, true)).toStrictEqual(
+        sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
+      );
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("arrangementStart ignored"),
       );
@@ -139,12 +149,12 @@ describe("resolveClipDestinations", () => {
 
       expect(
         resolveClipDestinations("t2/s1,t3", undefined, true),
-      ).toStrictEqual({
-        destination: "arrangement",
-        slots: [],
-        arrangementTargets: [null, { trackIndex: 3, takeLane: null }],
-        arrangementPositions: [null, null],
-      });
+      ).toStrictEqual(
+        arrangementResult(
+          [null, { trackIndex: 3, takeLane: null }],
+          [null, null],
+        ),
+      );
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('toPath "t2/s1" ignored'),
       );
@@ -157,16 +167,16 @@ describe("resolveClipDestinations", () => {
 
       expect(
         resolveClipDestinations("t2/s1,t3/l+,t3/l+", undefined, true),
-      ).toStrictEqual({
-        destination: "arrangement",
-        slots: [],
-        arrangementTargets: [
-          null,
-          { trackIndex: 3, takeLane: "new", newLaneOrdinal: 0 },
-          { trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 },
-        ],
-        arrangementPositions: [null, null, null],
-      });
+      ).toStrictEqual(
+        arrangementResult(
+          [
+            null,
+            { trackIndex: 3, takeLane: "new", newLaneOrdinal: 0 },
+            { trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 },
+          ],
+          [null, null, null],
+        ),
+      );
     });
 
     // Warn, don't throw: the same conflict on toPath drops the weaker of the
@@ -174,12 +184,9 @@ describe("resolveClipDestinations", () => {
     it("drops the arrangement position when the deprecated toSlot names a slot", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
-      expect(resolveClipDestinations(undefined, "2/1", true)).toStrictEqual({
-        destination: "session",
-        slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+      expect(resolveClipDestinations(undefined, "2/1", true)).toStrictEqual(
+        sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
+      );
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
           "arrangementStart ignored — toSlot names a clip slot",
@@ -193,12 +200,9 @@ describe("resolveClipDestinations", () => {
     it("honors the arrangement position when toSlot names nothing", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
-      expect(resolveClipDestinations(undefined, ",", true)).toStrictEqual({
-        destination: "arrangement",
-        slots: [],
-        arrangementTargets: [],
-        arrangementPositions: [],
-      });
+      expect(resolveClipDestinations(undefined, ",", true)).toStrictEqual(
+        arrangementResult([], []),
+      );
       expect(warnSpy).toHaveBeenCalledWith('toSlot "," names nothing');
     });
   });

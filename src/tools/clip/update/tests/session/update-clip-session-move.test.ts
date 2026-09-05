@@ -139,6 +139,25 @@ function runSessionMove(opts: {
   };
 }
 
+/**
+ * The move was refused before it touched anything: the source slot was left
+ * alone and the unmoved source clip is all that came back.
+ * @param moved - What runSessionMove returned
+ * @param warning - The refusal warning the caller should have been given
+ */
+function expectMoveRefused(
+  moved: ReturnType<typeof runSessionMove>,
+  warning: string,
+): void {
+  const { updatedClips, sourceSlot } = moved;
+
+  expect(capturedWarnings()).toContain(warning);
+  expect(sourceSlot.call).not.toHaveBeenCalled();
+  expect(updatedClips).toHaveLength(1);
+  expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
+  expect(updatedClips[0]).not.toHaveProperty("slot");
+}
+
 describe("handleClipSlotMove", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -305,26 +324,23 @@ describe("handleClipSlotMove", () => {
   // duplicate_clip_to no-ops on a type mismatch and the source is deleted right
   // after, so without this guard the clip is destroyed and reported as moved.
   it("should not move (or delete) a MIDI clip to an audio track", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+    const moved = runSessionMove({
       toTrackIndex: 1,
       toSceneIndex: 2,
       destIsMidi: 0,
     });
 
-    expect(capturedWarnings()).toContain(
+    expectMoveRefused(
+      moved,
       "MIDI clip t0/s0 (id 123) was not moved: track 1 is audio",
     );
-    expect(sourceSlot.call).not.toHaveBeenCalled();
-    expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
-    expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
   // A frozen track still reports has_midi_input, so the type check passes and
   // Live refuses the copy anyway. Naming the reason beats the generic
   // "no clip landed" backstop below.
   it("should not move (or delete) a clip to a frozen track", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+    const moved = runSessionMove({
       toTrackIndex: 17,
       toSceneIndex: 0,
       destHasClip: 1,
@@ -332,13 +348,10 @@ describe("handleClipSlotMove", () => {
       copyLands: false,
     });
 
-    expect(capturedWarnings()).toContain(
+    expectMoveRefused(
+      moved,
       "MIDI clip t0/s0 (id 123) was not moved: track 17 is frozen",
     );
-    expect(sourceSlot.call).not.toHaveBeenCalled();
-    expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
-    expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
   it("should move a clip to an unfrozen track", () => {

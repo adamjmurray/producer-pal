@@ -16,7 +16,10 @@ import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
-import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
+import {
+  registerClipSlot,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 /**
  * Register a scene, reachable by the given id and by its own path.
@@ -128,9 +131,7 @@ describe("playback play-scene target agreement", () => {
   // Only play-scene fires one, so nothing else may claim it did.
   it("names no scene for a clip action", () => {
     mockSessionClip("clip1", 0, 3);
-    registerMockObject(livePath.track(0).clipSlot(3), {
-      path: livePath.track(0).clipSlot(3),
-    });
+    registerClipSlot(0, 3);
 
     const result = playback({ action: "play-session-clips", id: "clip1" });
 
@@ -408,9 +409,7 @@ describe("playback play-scene ids that name no scene", () => {
 describe("playback sceneIndex on an action that acts on clips", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();
-    registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    registerClipSlot(0, 1);
   });
 
   it("warns that play-session-clips ignored it", () => {

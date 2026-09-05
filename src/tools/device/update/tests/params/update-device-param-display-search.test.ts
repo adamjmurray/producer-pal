@@ -6,9 +6,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
-  children,
   expectValueSet,
-  livePath,
+  registerDeviceWithParams,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -26,11 +25,7 @@ function displayFor(raw: number): number {
 }
 
 function registerDbParam(): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children("db-param") },
-  });
+  registerDeviceWithParams("db-param");
 
   return registerMockObject("db-param", {
     properties: {
@@ -120,11 +115,7 @@ describe("updateDevice - display-value search", () => {
 const RUNGS = [0.01, 0.1, 0.3, 1, 3, 10, 30];
 
 function registerLadderParam(): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children("ladder-param") },
-  });
+  registerDeviceWithParams("ladder-param");
 
   return registerMockObject("ladder-param", {
     properties: {
@@ -175,11 +166,7 @@ describe("updateDevice - display-value search on a discrete ladder", () => {
 });
 
 function registerLinearParam(): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children("linear-param") },
-  });
+  registerDeviceWithParams("linear-param");
 
   return registerMockObject("linear-param", {
     properties: {
@@ -236,11 +223,7 @@ describe("updateDevice - a request Live silently drops", () => {
   let param: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("dev1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { parameters: children("word-param") },
-    });
+    registerDeviceWithParams("word-param");
 
     param = registerMockObject("word-param", {
       properties: {
@@ -295,11 +278,7 @@ describe("updateDevice - a request Live silently drops", () => {
 // below it reachable — before, the whole param fell back to raw units and
 // asking for 0.4 gave 0.1.
 function registerSentinelParam(): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children("sentinel-param") },
-  });
+  registerDeviceWithParams("sentinel-param");
 
   return registerMockObject("sentinel-param", {
     properties: {
@@ -373,11 +352,7 @@ function descendingDisplayFor(raw: number): number {
 function registerRatioParam(
   strForValue: (v: unknown) => string,
 ): RegisteredMockObject {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: { parameters: children("ratio-param") },
-  });
+  registerDeviceWithParams("ratio-param");
 
   return registerMockObject("ratio-param", {
     properties: {

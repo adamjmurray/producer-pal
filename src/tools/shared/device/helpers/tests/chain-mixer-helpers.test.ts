@@ -94,6 +94,23 @@ function registerChainWithMixer({
 }
 
 /**
+ * Register the rack holding the chain, with one return chain per name. Sends
+ * are matched to returns by position, so the order is the send order.
+ * @param names - Return chain names
+ */
+function registerReturnChains(...names: string[]): void {
+  registerMockObject("rack-1", {
+    path: rackPath,
+    type: "RackDevice",
+    properties: { return_chains: children(...names.map((_, i) => `rc-${i}`)) },
+  });
+
+  for (const [i, name] of names.entries()) {
+    registerMockObject(`rc-${i}`, { type: "Chain", properties: { name } });
+  }
+}
+
+/**
  * Point a fresh LiveAPI at the registered chain
  * @returns The chain object
  */
@@ -140,19 +157,7 @@ describe("readChainMixer", () => {
         { value: 0.6, display_value: -12.333000183105469 },
       ],
     });
-    registerMockObject("rack-1", {
-      path: rackPath,
-      type: "RackDevice",
-      properties: { return_chains: children("rc-0", "rc-1") },
-    });
-    registerMockObject("rc-0", {
-      type: "Chain",
-      properties: { name: "Delay" },
-    });
-    registerMockObject("rc-1", {
-      type: "Chain",
-      properties: { name: "Reverb" },
-    });
+    registerReturnChains("Delay", "Reverb");
 
     expect(readChainMixer(chainApi())).toStrictEqual({
       // The id rides along so a read round-trips straight back into `sends`.
@@ -163,11 +168,7 @@ describe("readChainMixer", () => {
 
   it("falls back to a numbered return name when the rack has none", () => {
     registerChainWithMixer({ sends: [{ value: 0.5, display_value: -14 }] });
-    registerMockObject("rack-1", {
-      path: rackPath,
-      type: "RackDevice",
-      properties: { return_chains: [] },
-    });
+    registerReturnChains();
 
     expect(readChainMixer(chainApi())).toStrictEqual({
       sends: [{ return: "Return 1", gainDb: -14 }],
@@ -254,20 +255,7 @@ describe("applyChainMixer", () => {
       returnNames: string[] = ["a Delay", "b Reverb"],
     ): RegisteredMockObject[] {
       registerChainWithMixer({ sends: [silent, silent] });
-      registerMockObject("rack-1", {
-        path: rackPath,
-        type: "RackDevice",
-        properties: {
-          return_chains: children(...returnNames.map((_, i) => `rc-${i}`)),
-        },
-      });
-
-      for (const [i, name] of returnNames.entries()) {
-        registerMockObject(`rc-${i}`, {
-          type: "Chain",
-          properties: { name },
-        });
-      }
+      registerReturnChains(...returnNames);
 
       return [
         registerMockObject("send-0", { type: "DeviceParameter" }),
@@ -605,13 +593,7 @@ describe("warnIfChainMixerLeftBehind", () => {
         { value: 0.5, display_value: -6 },
       ],
     });
-    registerMockObject("rack-1", {
-      path: rackPath,
-      type: "RackDevice",
-      properties: { return_chains: children("rc-0", "rc-1") },
-    });
-    registerMockObject("rc-0", { type: "Chain", properties: { name: "a D" } });
-    registerMockObject("rc-1", { type: "Chain", properties: { name: "b R" } });
+    registerReturnChains("a D", "b R");
 
     warnIfChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
@@ -699,15 +681,7 @@ describe("carryChainMixer", () => {
     disabled: ("volume" | "panning")[] = [],
   ): RegisteredMockObject[] {
     registerChainWithMixer({ sends: [silent, silent], disabled });
-    registerMockObject("rack-1", {
-      path: rackPath,
-      type: "RackDevice",
-      properties: { return_chains: children("rc-0", "rc-1") },
-    });
-
-    for (const [i, name] of ["a Delay", "b Reverb"].entries()) {
-      registerMockObject(`rc-${i}`, { type: "Chain", properties: { name } });
-    }
+    registerReturnChains("a Delay", "b Reverb");
 
     return [0, 1].map((i) =>
       registerMockObject(`send-${i}`, {

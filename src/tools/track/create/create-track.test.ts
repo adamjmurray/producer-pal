@@ -12,6 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
+import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "./create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -25,27 +26,10 @@ describe("createTrack", () => {
 
   beforeEach(() => {
     returnTrackCounter = 0;
-    liveSet = registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: {
-        tracks: children("existing1", "existing2"),
-        return_tracks: children("returnA", "returnB"),
-      },
-      methods: {
-        create_midi_track: (index: unknown) => [
-          "id",
-          `midi_track_${String(index)}`,
-        ],
-        create_audio_track: (index: unknown) => [
-          "id",
-          `audio_track_${String(index)}`,
-        ],
-        create_return_track: () => [
-          "id",
-          `return_track_${returnTrackCounter++}`,
-        ],
-      },
-    });
+    liveSet = registerCreateTrackLiveSet(() => [
+      "id",
+      `return_track_${returnTrackCounter++}`,
+    ]);
   });
 
   it("should create a single MIDI track at the specified index", () => {

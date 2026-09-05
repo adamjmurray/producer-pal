@@ -18,6 +18,7 @@ import {
   renderVoicePersistence,
   resetConversationsDb,
   saveVoiceRecord,
+  setupLiveRecordWithDeletionSpy,
   userTextItem,
   waitForEffects,
 } from "./voice-persistence-test-helpers";
@@ -26,6 +27,25 @@ beforeEach(async () => {
   window.location.hash = "";
   await resetConversationsDb();
 });
+
+/**
+ * Hold the unbookmarked sweep open until the returned release is called, so a
+ * test can act while it is still in flight.
+ * @returns release (let the sweep finish) and restore (undo the spy)
+ */
+function gateNextSweep(): { release: () => void; restore: () => void } {
+  const sweep = conversationDb.deleteUnbookmarkedConversations;
+  const [gate, release] = openGate();
+  const spy = vi
+    .spyOn(conversationDb, "deleteUnbookmarkedConversations")
+    .mockImplementationOnce(async () => {
+      await gate;
+
+      return await sweep();
+    });
+
+  return { release, restore: () => spy.mockRestore() };
+}
 
 describe("useVoicePersistence delete vs. switch", () => {
   it("keeps the conversation opened while the delete was running", async () => {
@@ -86,15 +106,7 @@ describe("useVoicePersistence bulk delete vs. switch", () => {
     await waitForEffects();
     expect(result.current.activeConversationId).toBe(bookmarked.id);
 
-    const original = conversationDb.deleteUnbookmarkedConversations;
-    const [gate, release] = openGate();
-    const spy = vi
-      .spyOn(conversationDb, "deleteUnbookmarkedConversations")
-      .mockImplementationOnce(async () => {
-        await gate;
-
-        return await original();
-      });
+    const { release, restore } = gateNextSweep();
     let sweeping!: Promise<void>;
 
     await act(async () => {
@@ -112,7 +124,7 @@ describe("useVoicePersistence bulk delete vs. switch", () => {
       await conversationDb.loadConversation(unbookmarked.id),
     ).toBeUndefined();
     expect(result.current.activeConversationId).toBeNull();
-    spy.mockRestore();
+    restore();
   });
 });
 
@@ -121,27 +133,17 @@ describe("useVoicePersistence bulk delete vs. bookmark", () => {
     // The sweep's pre-await mark blocks patchActiveMeta, so the bookmark this
     // test toggles mid-flight lands in the DB but can't reach metaRef — the
     // exact staleness a metaRef-derived decision would get wrong.
-    const live = await saveVoiceRecord({
+    const {
+      record: live,
+      onLiveRecordDeleted,
+      result,
+    } = await setupLiveRecordWithDeletionSpy({
       voiceHistory: [userTextItem("keep me now")],
     });
 
-    window.location.hash = live.id;
-
-    const onLiveRecordDeleted = vi.fn();
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     expect(result.current.activeConversationId).toBe(live.id);
 
-    const original = conversationDb.deleteUnbookmarkedConversations;
-    const [gate, release] = openGate();
-    const spy = vi
-      .spyOn(conversationDb, "deleteUnbookmarkedConversations")
-      .mockImplementationOnce(async () => {
-        await gate;
-
-        return await original();
-      });
+    const { release, restore } = gateNextSweep();
     let sweeping!: Promise<void>;
 
     await act(async () => {
@@ -157,22 +159,20 @@ describe("useVoicePersistence bulk delete vs. bookmark", () => {
     const reloaded = await conversationDb.loadConversation(live.id);
 
     expect(reloaded?.bookmarked).toBe(true);
-    spy.mockRestore();
+    restore();
   });
 });
 
 describe("useVoicePersistence bulk delete vs. a failed survival check", () => {
   it("leaves the live session alone and resolves the slot when the DB read fails", async () => {
-    const live = await saveVoiceRecord({
+    const {
+      record: live,
+      onLiveRecordDeleted,
+      result,
+    } = await setupLiveRecordWithDeletionSpy({
       voiceHistory: [userTextItem("keep me")],
     });
 
-    window.location.hash = live.id;
-
-    const onLiveRecordDeleted = vi.fn();
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     expect(result.current.activeConversationId).toBe(live.id);
 
     // Only the sweep's own survival check should see this: it's the next

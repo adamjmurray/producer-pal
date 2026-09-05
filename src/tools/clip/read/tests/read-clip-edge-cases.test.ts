@@ -4,12 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   expectGetNotesExtendedCall,
+  registerDrumRackTrack,
   setupMidiClipMock,
 } from "./read-clip-test-helpers.ts";
 
@@ -38,14 +36,7 @@ function setupAndReadClipWithStateFlags(
 describe("readClip", () => {
   // E2E test with real bar|beat notation
   it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      properties: { devices: children("drumRack") },
-    });
-    registerMockObject("drumRack", {
-      type: "Device",
-      properties: { can_have_drum_pads: 1 },
-    });
+    registerDrumRackTrack();
     const clip = setupMidiClipMock({
       trackIndex: 0,
       sceneIndex: 0,

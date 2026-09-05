@@ -19,6 +19,7 @@ import {
   expectLoopNotWritten,
   expectLoopOrderWarning,
   expectQuantizationFixApplied,
+  registerClipSlot,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
@@ -227,9 +228,7 @@ describe("transport", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
+    const clipSlot0 = registerClipSlot(0, 0);
 
     const result = playback({
       action: "play-session-clips",
@@ -255,9 +254,7 @@ describe("transport", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
+    const clipSlot0 = registerClipSlot(0, 0);
 
     playback({ action: "play-session-clips", ids: "clip1" });
 
@@ -600,12 +597,8 @@ describe("transport", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(1).clip(),
     });
-    const byId = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
-    const bySlots = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
+    const byId = registerClipSlot(0, 1);
+    const bySlots = registerClipSlot(0, 0);
 
     playback({ action: "play-session-clips", id: "clip1", slots: "0/0" });
 
@@ -615,9 +608,7 @@ describe("transport", () => {
 
   it("should handle play-session-clips via slots with single slot", () => {
     liveSet = setupPlaybackLiveSet();
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     const result = playback({
       action: "play-session-clips",
@@ -635,12 +626,8 @@ describe("transport", () => {
 
   it("should handle play-session-clips via slots with multiple slots", () => {
     liveSet = setupPlaybackLiveSet();
-    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
-      path: livePath.track(0).clipSlot(0),
-    });
-    const clipSlot1 = registerMockObject(livePath.track(1).clipSlot(1), {
-      path: livePath.track(1).clipSlot(1),
-    });
+    const clipSlot0 = registerClipSlot(0, 0);
+    const clipSlot1 = registerClipSlot(1, 1);
 
     playback({
       action: "play-session-clips",

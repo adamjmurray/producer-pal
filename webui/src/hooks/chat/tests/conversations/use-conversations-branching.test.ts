@@ -7,10 +7,10 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, act } from "@testing-library/preact";
+import { act } from "@testing-library/preact";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_FORK_SAVE_ATTEMPTS } from "#webui/hooks/chat/helpers/conversations/write-conversation";
-import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
   listConversations,
@@ -19,30 +19,10 @@ import {
 import {
   type ConversationsResult,
   type ConversationsState,
-  createConversationsProps,
+  type PendingForkRef,
   resetConversationsTestState,
-  waitForEffects,
-  useConversationsWithUndo,
+  setupForkHook,
 } from "./use-conversations-test-helpers";
-
-/** The injectable pending-fork signal the hook consumes on save. */
-type PendingForkRef = { current: PendingFork | null };
-
-/**
- * Render useConversations with an injectable pending-fork signal.
- * @returns Hook result, the mutable chat-history state, and the fork ref
- */
-async function setupForkHook() {
-  const { props, state } = createConversationsProps();
-  const pendingForkRef = { current: null as PendingFork | null };
-  const { result } = renderHook(() =>
-    useConversationsWithUndo({ ...props, pendingForkRef }),
-  );
-
-  await waitForEffects();
-
-  return { result, state, pendingForkRef };
-}
 
 /**
  * Save the current chat history through the hook.
@@ -103,6 +83,57 @@ const FORKED = [
   { role: "assistant", content: "new answer" },
 ];
 
+/**
+ * Make the next saveConversation hang until released, then fail.
+ * @returns The release trigger and the spy, so the caller can restore it
+ */
+function failNextWriteWhenReleased() {
+  const [gate, releaseWrite] = openGate();
+  const failing = vi
+    .spyOn(conversationDb, "saveConversation")
+    .mockImplementationOnce(async () => {
+      await gate;
+      throw new Error("quota");
+    });
+
+  return { releaseWrite, failing };
+}
+
+/**
+ * Assert the active conversation is a fresh branch of the trunk, anchored at
+ * index 0 and holding the given messages.
+ * @param result - Hook result ref
+ * @param originalId - The trunk conversation's id
+ * @param messages - Messages the fork must hold
+ */
+async function expectForkedFrom(
+  result: ConversationsResult,
+  originalId: string,
+  messages: { role: string; content: string }[],
+): Promise<void> {
+  const forkId = result.current.activeConversationId!;
+
+  expect(forkId).not.toBe(originalId);
+
+  const fork = await loadConversation(forkId);
+
+  expect(fork?.forkParentId).toBe(originalId);
+  expect(fork?.forkedAtIndex).toBe(0);
+  expect(fork?.messages).toStrictEqual(messages);
+}
+
+/**
+ * Assert the trunk still holds ORIGINAL and the branch family collapses to a
+ * single list entry.
+ * @param originalId - The trunk conversation's id
+ */
+async function expectTrunkIntact(originalId: string): Promise<void> {
+  const original = await loadConversation(originalId);
+
+  expect(original?.messages).toStrictEqual(ORIGINAL);
+  expect(await listConversations()).toHaveLength(1);
+}
+
 describe("useConversations branching", () => {
   beforeEach(resetConversationsTestState);
 
@@ -155,28 +186,13 @@ describe("useConversations branching", () => {
   // A tool step's autosave can fire between the fork claiming its id and that
   // first write settling, queuing behind it as a plain continuation of the
   // same (not-yet-written) id. If the fork's write then fails and rolls back,
-  // that queued continuation must not resurrect the dead id as an orphaned,
-  // unlinked record — the fork instead retries with a fresh id.
-  // A tool step's autosave can fire between the fork claiming its id and that
-  // first write settling, queuing behind it as a plain continuation of the
-  // same (not-yet-written) id. If the fork's write then fails and rolls back,
   // that queued continuation must not resurrect the dead id as an orphaned
   // record — nor may it sit and wait, since nothing guarantees another save
   // ever comes. It takes over the retry itself.
   it("recovers immediately when a queued autosave finds its fork rolled back", async () => {
     const { result, state, pendingForkRef, originalId } =
       await setupWithSavedOriginal();
-
-    let releaseWrite: () => void;
-    const gate = new Promise<void>((resolve) => {
-      releaseWrite = resolve;
-    });
-    const failing = vi
-      .spyOn(conversationDb, "saveConversation")
-      .mockImplementationOnce(async () => {
-        await gate;
-        throw new Error("quota");
-      });
+    const { releaseWrite, failing } = failNextWriteWhenReleased();
 
     const FOLLOWUP = [...FORKED, { role: "assistant", content: "more" }];
 
@@ -198,20 +214,8 @@ describe("useConversations branching", () => {
     // The follow-up took over the retry itself — no further save was needed.
     expect(pendingForkRef.current).toBeNull();
 
-    const forkId = result.current.activeConversationId!;
-
-    expect(forkId).not.toBe(originalId);
-
-    const fork = await loadConversation(forkId);
-
-    expect(fork?.forkParentId).toBe(originalId);
-    expect(fork?.forkedAtIndex).toBe(0);
-    expect(fork?.messages).toStrictEqual(FOLLOWUP);
-
-    const original = await loadConversation(originalId);
-
-    expect(original?.messages).toStrictEqual(ORIGINAL);
-    expect(await listConversations()).toHaveLength(1);
+    await expectForkedFrom(result, originalId, FOLLOWUP);
+    await expectTrunkIntact(originalId);
   });
 
   // The full shape of a multi-step turn: tool steps 2 and 3 autosave while the
@@ -223,16 +227,7 @@ describe("useConversations branching", () => {
     const { result, state, pendingForkRef, originalId } =
       await setupWithSavedOriginal();
 
-    let releaseWrite: () => void;
-    const gate = new Promise<void>((resolve) => {
-      releaseWrite = resolve;
-    });
-    const failing = vi
-      .spyOn(conversationDb, "saveConversation")
-      .mockImplementationOnce(async () => {
-        await gate;
-        throw new Error("quota");
-      });
+    const { releaseWrite, failing } = failNextWriteWhenReleased();
 
     const STEP2 = [...FORKED, { role: "assistant", content: "tool step 2" }];
     const STEP3 = [...STEP2, { role: "assistant", content: "tool step 3" }];
@@ -261,20 +256,8 @@ describe("useConversations branching", () => {
 
     expect(pendingForkRef.current).toBeNull();
 
-    const forkId = result.current.activeConversationId!;
-
-    expect(forkId).not.toBe(originalId);
-
-    const fork = await loadConversation(forkId);
-
-    expect(fork?.forkParentId).toBe(originalId);
-    expect(fork?.forkedAtIndex).toBe(0);
-    expect(fork?.messages).toStrictEqual(FINAL);
-
-    const original = await loadConversation(originalId);
-
-    expect(original?.messages).toStrictEqual(ORIGINAL);
-    expect(await listConversations()).toHaveLength(1);
+    await expectForkedFrom(result, originalId, FINAL);
+    await expectTrunkIntact(originalId);
   });
 
   it("gives up after repeated fork-write failures instead of retrying forever, and surfaces it", async () => {
@@ -313,10 +296,7 @@ describe("useConversations branching", () => {
     expect(result.current.activeConversationId).toBe(originalId);
     expect(result.current.notification?.type).toBe("error");
 
-    const original = await loadConversation(originalId);
-
-    expect(original?.messages).toStrictEqual(ORIGINAL);
-    expect(await listConversations()).toHaveLength(1);
+    await expectTrunkIntact(originalId);
   });
 
   it("keeps branch linkage on a later (post-response) save", async () => {
@@ -361,15 +341,7 @@ describe("useConversations branching", () => {
       await Promise.all([forkSave, followUp]);
     });
 
-    const forkId = result.current.activeConversationId!;
-
-    expect(forkId).not.toBe(originalId);
-
-    const fork = await loadConversation(forkId);
-
-    expect(fork?.forkParentId).toBe(originalId);
-    expect(fork?.forkedAtIndex).toBe(0);
-    expect(fork?.messages).toStrictEqual([
+    await expectForkedFrom(result, originalId, [
       ...FORKED,
       { role: "assistant", content: "more" },
     ]);

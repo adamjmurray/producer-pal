@@ -37,24 +37,13 @@ describe("updateClip - unwarped audio clip region", () => {
     });
   }
 
-  it("writes seconds, not beats, when the clip is unwarped", async () => {
-    setTempo(120);
-    setupAudioClipMock(mocks.clip123, {
-      warping: 0,
-      looping: 0,
-      start_marker: 0,
-      end_marker: 1.0909, // seconds — the whole sample
-    });
-
-    await updateClip({ id: "123", start: "1|1", length: "n/4" });
-
-    // n/4 is one beat, which is half a second at 120 BPM.
-    expect(mocks.clip123.set).toHaveBeenCalledWith("end_marker", 0.5);
-    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 0);
-  });
-
-  it("scales by the Set tempo, since unwarped audio plays in real time", async () => {
-    setTempo(60);
+  /**
+   * Write a one-beat region onto an unwarped clip holding the whole sample
+   * (end_marker in seconds).
+   * @param tempo - Live Set tempo in BPM
+   */
+  async function writeOneBeatRegion(tempo: number): Promise<void> {
+    setTempo(tempo);
     setupAudioClipMock(mocks.clip123, {
       warping: 0,
       looping: 0,
@@ -63,6 +52,18 @@ describe("updateClip - unwarped audio clip region", () => {
     });
 
     await updateClip({ id: "123", start: "1|1", length: "n/4" });
+  }
+
+  it("writes seconds, not beats, when the clip is unwarped", async () => {
+    await writeOneBeatRegion(120);
+
+    // n/4 is one beat, which is half a second at 120 BPM.
+    expect(mocks.clip123.set).toHaveBeenCalledWith("end_marker", 0.5);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 0);
+  });
+
+  it("scales by the Set tempo, since unwarped audio plays in real time", async () => {
+    await writeOneBeatRegion(60);
 
     // Same one beat, but a beat is a whole second at 60 BPM.
     expect(mocks.clip123.set).toHaveBeenCalledWith("end_marker", 1);

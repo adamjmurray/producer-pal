@@ -94,6 +94,22 @@ function setupPendingRequest(
 }
 
 /**
+ * Fire a request, hand Max its reply back in one chunk, and resolve it.
+ *
+ * @param mockResult - The tool result Max sends back
+ * @returns The resolved MCP response
+ */
+async function resolveWithResult(
+  mockResult: unknown,
+): Promise<Awaited<PendingRequestResult["promise"]>> {
+  const { promise, requestId } = setupPendingRequest();
+
+  handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
+
+  return await promise;
+}
+
+/**
  * Fire a `callLiveApi` call and return the parsed contextJSON Max received.
  * Re-installs `Max.outlet` as a fresh mock for each call.
  *
@@ -372,15 +388,10 @@ describe("Max API Adapter", () => {
     });
 
     it("should turn the warnings sidecar into content items", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = {
+      const result = await resolveWithResult({
         content: [{ type: "text", text: "success" }],
         warnings: ["Warning 1", "Warning 2"],
-      };
-
-      handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
-
-      const result = await promise;
+      });
 
       expect(result).toStrictEqual({
         content: [
@@ -392,15 +403,10 @@ describe("Max API Adapter", () => {
     });
 
     it("should filter out empty warnings", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = {
+      const result = await resolveWithResult({
         content: [{ type: "text", text: "success" }],
         warnings: ["Real warning", ""],
-      };
-
-      handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
-
-      const result = await promise;
+      });
 
       expect(result.content).toStrictEqual([
         { type: "text", text: "success" },
@@ -409,8 +415,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should collapse repeats of the same warning into one, with a count", async () => {
-      const { promise, requestId } = setupPendingRequest();
-      const mockResult = {
+      const result = await resolveWithResult({
         content: [{ type: "text", text: "success" }],
         warnings: [
           "ignoring 1 invalid note",
@@ -418,11 +423,7 @@ describe("Max API Adapter", () => {
           "something else",
           "ignoring 1 invalid note",
         ],
-      };
-
-      handleLiveApiResult(requestId, JSON.stringify(mockResult), END_OF_CHUNKS);
-
-      const result = await promise;
+      });
 
       expect(result.content).toStrictEqual([
         { type: "text", text: "success" },

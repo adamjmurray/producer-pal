@@ -568,6 +568,16 @@ describe("updateDevice", () => {
       });
     });
 
+    // No move was attempted, whatever else the call did.
+    function expectNoMove(): void {
+      expect(liveSet.call).not.toHaveBeenCalledWith(
+        "move_device",
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+    }
+
     it("should move device to a different track", () => {
       const result = updateDevice({
         id: "123",
@@ -625,12 +635,7 @@ describe("updateDevice", () => {
 
       // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
       expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
-      expect(liveSet.call).not.toHaveBeenCalledWith(
-        "move_device",
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-      );
+      expectNoMove();
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
@@ -662,12 +667,7 @@ describe("updateDevice", () => {
       expect(capturedWarnings()).toContain(
         'move target at path "t99" does not exist',
       );
-      expect(liveSet.call).not.toHaveBeenCalledWith(
-        "move_device",
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-      );
+      expectNoMove();
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 

@@ -10,7 +10,7 @@ import {
   callToolRequestContext,
   connectSkillsBlock,
   connectWithHeaders,
-  SKILLS_HEADER,
+  expectDifferentSkillsVariants,
 } from "./mcp-header-test-helpers.ts";
 
 /**
@@ -127,9 +127,7 @@ describe("POST /mcp per-request notation header", () => {
       );
       const global = await connectSkillsBlock(appState.serverUrl, {});
 
-      expect(stark.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(global.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(stark).not.toBe(global);
+      expectDifferentSkillsVariants(stark, global);
     });
   });
 });

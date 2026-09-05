@@ -95,6 +95,21 @@ export function registerParamMock(
 }
 
 /**
+ * Register a device at t0/d0 holding the given parameter mocks.
+ * @param paramIds - Parameter mock ids, in the device's parameter order
+ * @returns The registered device mock
+ */
+export function registerDeviceWithParams(
+  ...paramIds: string[]
+): RegisteredMockObject {
+  return registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children(...paramIds) },
+  });
+}
+
+/**
  * Register a Simpler device mock at track 0, device 0.
  * @param paramIds - Optional parameter mock IDs to attach
  * @returns The registered Simpler device mock

@@ -117,6 +117,24 @@ function setupSessionClip(
   return { clipSlot, clip };
 }
 
+// Sets up the live set, track 0, and one 4/4 length-4 session clip at 0/0.
+function setupDefaultSessionClip(): {
+  clipSlot: RegisteredMockObject;
+  clip: RegisteredMockObject;
+} {
+  setupLiveSet();
+  setupTrack(0);
+
+  return setupSessionClip(0, 0, {
+    clipId: "clip_0_0",
+    clipProperties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      length: 4,
+    },
+  });
+}
+
 // Sets up the live set, track 0, and `count` length-4 session clips starting at
 // scene 1 (clip ids clip_0_1, clip_0_2, ...). Returns the clip handles in order.
 function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
@@ -167,16 +185,7 @@ describe("createClip - session view", () => {
   );
 
   it("should create a single clip with notes", async () => {
-    setupLiveSet();
-    setupTrack(0);
-    const { clipSlot, clip } = setupSessionClip(0, 0, {
-      clipId: "clip_0_0",
-      clipProperties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    const { clipSlot, clip } = setupDefaultSessionClip();
 
     const result = await createClip({
       slot: "0/0",
@@ -209,16 +218,7 @@ describe("createClip - session view", () => {
   });
 
   it("should create a clip from midi-json notation", async () => {
-    setupLiveSet();
-    setupTrack(0);
-    const { clip } = setupSessionClip(0, 0, {
-      clipId: "clip_0_0",
-      clipProperties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    const { clip } = setupDefaultSessionClip();
 
     await createClip(
       {
@@ -235,16 +235,7 @@ describe("createClip - session view", () => {
   });
 
   it("resolves a midi-json v:0 before writing (nothing to delete on create)", async () => {
-    setupLiveSet();
-    setupTrack(0);
-    const { clip } = setupSessionClip(0, 0, {
-      clipId: "clip_0_0",
-      clipProperties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    const { clip } = setupDefaultSessionClip();
 
     // The v:0 deletes the C3 written earlier in the same array (last wins) and
     // never reaches Live, which rejects velocity 0.

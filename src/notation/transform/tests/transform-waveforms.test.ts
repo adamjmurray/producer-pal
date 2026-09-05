@@ -16,6 +16,13 @@ import {
 } from "#src/notation/transform/transform-waveforms.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+// A waveform value outside [-1, 1] can drive a velocity negative and silently
+// drop the note.
+function expectInUnitRange(value: number): void {
+  expect(value).toBeGreaterThanOrEqual(-1.0);
+  expect(value).toBeLessThanOrEqual(1.0);
+}
+
 describe("Transform Waveforms", () => {
   describe("cos()", () => {
     it("starts at 1.0 at phase 0", () => {
@@ -45,10 +52,7 @@ describe("Transform Waveforms", () => {
 
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.1) {
-        const value = cos(phase);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(cos(phase));
       }
     });
   });
@@ -81,10 +85,7 @@ describe("Transform Waveforms", () => {
 
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.1) {
-        const value = sin(phase);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(sin(phase));
       }
     });
   });
@@ -152,19 +153,13 @@ describe("Transform Waveforms", () => {
       expect(tri(-1.3)).toBeCloseTo(tri(0.7), 10);
 
       for (let phase = -2; phase < 0; phase += 0.05) {
-        const value = tri(phase);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(tri(phase));
       }
     });
 
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
-        const value = tri(phase);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(tri(phase));
       }
     });
   });
@@ -219,19 +214,13 @@ describe("Transform Waveforms", () => {
       expect(saw(-1.5)).toBeCloseTo(saw(0.5), 10);
 
       for (let phase = -2; phase < 0; phase += 0.05) {
-        const value = saw(phase);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(saw(phase));
       }
     });
 
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
-        const value = saw(phase);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(saw(phase));
       }
     });
   });
@@ -303,10 +292,7 @@ describe("Transform Waveforms", () => {
   describe("rand()", () => {
     it("returns a value in range [-1.0, 1.0] with default range", () => {
       for (let i = 0; i < 100; i++) {
-        const value = rand(-1, 1);
-
-        expect(value).toBeGreaterThanOrEqual(-1.0);
-        expect(value).toBeLessThanOrEqual(1.0);
+        expectInUnitRange(rand(-1, 1));
       }
     });
 

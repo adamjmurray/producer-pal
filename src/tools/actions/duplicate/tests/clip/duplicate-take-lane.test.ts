@@ -6,10 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../duplicate-mocks-test-helpers.ts";
-import {
-  lookupMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   expectTakeLaneMidiClip,
@@ -31,7 +28,10 @@ import {
   registerTakeLaneSource,
   SOURCE_NOTE,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
-import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerBareTrackDuplication,
+  registerSessionClipDuplication,
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   registerArrangementClip,
   registerTrackWithArrangementDup,
@@ -287,12 +287,7 @@ describe("duplicate take lane", () => {
   });
 
   it("warns and ignores takeLane for non-clip types", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
+    registerBareTrackDuplication();
 
     await duplicate({ type: "track", id: "track1", takeLane: "new" });
 
@@ -322,12 +317,7 @@ describe("duplicate take lane", () => {
   });
 
   it("ignores (does not validate) an invalid takeLane for non-clip types", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
+    registerBareTrackDuplication();
 
     // "garbage" would throw if normalized; for a non-clip type it is dropped
     // (this await would reject if the value were still validated).

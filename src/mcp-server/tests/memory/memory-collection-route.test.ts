@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerMemoryCollectionRoutes } from "#src/mcp-server/routes/memory-collection-route.ts";
 import {
   type MarkdownRouteServer,
+  errorOf,
   putJson,
   startMarkdownRouteServer,
   useTempConfigDir,
@@ -138,9 +139,7 @@ describe("memory-collection route", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /description must not be empty/i,
-    );
+    expect(await errorOf(res)).toMatch(/description must not be empty/i);
   });
 
   it("DELETE removes an entry and reports whether it existed", async () => {
@@ -164,9 +163,7 @@ describe("memory-collection route", () => {
     });
 
     expect(res.status).toBe(409);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /already exists/i,
-    );
+    expect(await errorOf(res)).toMatch(/already exists/i);
 
     const entries = await listEntries();
     const kept = entries.find((e) => e.name === "collide");
@@ -197,34 +194,28 @@ describe("memory-collection route", () => {
     const res = await fetch(`${base}/no-body`, { method: "PUT" });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /content must be a string/i,
-    );
+    expect(await errorOf(res)).toMatch(/content must be a string/i);
   });
 
   it("rename PUT with no JSON body rejects with 400, not 500", async () => {
     const res = await fetch(`${base}/no-body/rename`, { method: "PUT" });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(/newname/i);
+    expect(await errorOf(res)).toMatch(/newname/i);
   });
 
   it("rejects an empty body with 400 (store validation)", async () => {
     const res = await putMemory("blank", { content: "   " });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /body must not be empty/i,
-    );
+    expect(await errorOf(res)).toMatch(/body must not be empty/i);
   });
 
   it("rejects an unslugifiable name with 400", async () => {
     const res = await putMemory("!!!", { content: "x" });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /name must contain/i,
-    );
+    expect(await errorOf(res)).toMatch(/name must contain/i);
   });
 
   it("blocks genuinely cross-site writes with 403", async () => {
@@ -276,9 +267,7 @@ describe("memory-collection route", () => {
     });
 
     expect(res.status).toBe(409);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /already exists/i,
-    );
+    expect(await errorOf(res)).toMatch(/already exists/i);
     // Both survive.
     const entries = await listEntries();
     const names = entries.map((e) => e.name);
@@ -293,7 +282,7 @@ describe("memory-collection route", () => {
     });
 
     expect(res.status).toBe(404);
-    expect(((await res.json()) as { error: string }).error).toMatch(
+    expect(await errorOf(res)).toMatch(
       /no memory named "never-created" exists/i,
     );
     // No phantom entry under either name.
@@ -310,7 +299,7 @@ describe("memory-collection route", () => {
     const res = await putRename("rn-missing", { content: "x" });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(/newname/i);
+    expect(await errorOf(res)).toMatch(/newname/i);
   });
 
   it("rejects a rename whose body fails buildInput (non-string content, 400)", async () => {
@@ -322,9 +311,7 @@ describe("memory-collection route", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /content must be a string/i,
-    );
+    expect(await errorOf(res)).toMatch(/content must be a string/i);
   });
 
   it("rejects a rename to an unslugifiable name with the store's error (400)", async () => {
@@ -336,9 +323,7 @@ describe("memory-collection route", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /must contain letters or digits/i,
-    );
+    expect(await errorOf(res)).toMatch(/must contain letters or digits/i);
     // The original survives untouched.
     const entries = await listEntries();
     const names = entries.map((e) => e.name);

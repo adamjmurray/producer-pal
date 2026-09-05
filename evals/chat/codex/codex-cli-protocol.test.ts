@@ -112,26 +112,24 @@ describe("scrubAgentCliEnv", () => {
 
 describe("parseCodexStream", () => {
   it("collects text, MCP calls, results, session id and usage", () => {
+    // The started and completed events describe the same call, so they share
+    // its identity and differ only in what the completion adds.
+    const mcpCall = {
+      id: "call-1",
+      type: "mcp_tool_call",
+      server: "producer-pal",
+      tool: "ppal-connect",
+    };
     const stdout = [
       { type: "thread.started", thread_id: "thread-abc" },
       {
         type: "item.started",
-        item: {
-          id: "call-1",
-          type: "mcp_tool_call",
-          server: "producer-pal",
-          tool: "ppal-connect",
-          arguments: "{}",
-          status: "in_progress",
-        },
+        item: { ...mcpCall, arguments: "{}", status: "in_progress" },
       },
       {
         type: "item.completed",
         item: {
-          id: "call-1",
-          type: "mcp_tool_call",
-          server: "producer-pal",
-          tool: "ppal-connect",
+          ...mcpCall,
           arguments: {},
           status: "completed",
           result: { content: [{ type: "text", text: "connected" }] },

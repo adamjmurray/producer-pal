@@ -56,6 +56,29 @@ function duplicatesTo(position: number): number {
   ).length;
 }
 
+/** Two full tiles, the holding copy, then the partial tile's copy back. */
+const HOLDING_AREA_QUEUES = {
+  duplicate_clip_to_arrangement: [
+    ["id", "200"],
+    ["id", "201"],
+    ["id", "300"],
+    ["id", "302"],
+  ],
+  create_midi_clip: [["id", "301"]],
+};
+
+/**
+ * Register the clips HOLDING_AREA_QUEUES hands back.
+ * @param holdingEndTime - End of the holding copy, a full-length copy of the
+ *   source before shortening
+ */
+function setupTilesAndHoldingCopy(holdingEndTime: number): void {
+  setupTileClip("200");
+  setupTileClip("201");
+  setupTileClip("302");
+  setupClip("300", { properties: { end_time: holdingEndTime } });
+}
+
 describe("tileClipToRange holding area", () => {
   it("keeps the holding area clear of the tiles it just placed", () => {
     // In Live the holding area is song_length, a few bars past the last event,
@@ -66,21 +89,9 @@ describe("tileClipToRange holding area", () => {
       start_time: 0,
       end_time: 4,
     });
-    const track = setupTrackWithQueuedMethods(0, {
-      duplicate_clip_to_arrangement: [
-        ["id", "200"],
-        ["id", "201"],
-        ["id", "300"],
-        ["id", "302"],
-      ],
-      create_midi_clip: [["id", "301"]],
-    });
+    const track = setupTrackWithQueuedMethods(0, HOLDING_AREA_QUEUES);
 
-    setupTileClip("200");
-    setupTileClip("201");
-    setupTileClip("302");
-    // The holding copy is a full-length copy of the source before shortening.
-    setupClip("300", { properties: { end_time: 118 } });
+    setupTilesAndHoldingCopy(118);
 
     // Tiles at 4 and 8, a 2-beat partial at 12: the span ends at 14.
     const result = tileClipToRange(sourceClip, track, 4, 10, mockContext);
@@ -106,20 +117,9 @@ describe("tileClipToRange holding area", () => {
 
     setupArrangementClip("900", 0, { start_time: 100, end_time: 600 }, 1);
 
-    const track = setupTrackWithClips(["100", "900"], {
-      duplicate_clip_to_arrangement: [
-        ["id", "200"],
-        ["id", "201"],
-        ["id", "300"],
-        ["id", "302"],
-      ],
-      create_midi_clip: [["id", "301"]],
-    });
+    const track = setupTrackWithClips(["100", "900"], HOLDING_AREA_QUEUES);
 
-    setupTileClip("200");
-    setupTileClip("201");
-    setupTileClip("302");
-    setupClip("300", { properties: { end_time: 704 } });
+    setupTilesAndHoldingCopy(704);
 
     tileClipToRange(sourceClip, track, 4, 10, mockContext);
 

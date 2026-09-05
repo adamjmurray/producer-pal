@@ -23,7 +23,8 @@ import { toolDefReadTrack } from "../read-track.def.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
-function createMasterTrackProperties(
+// An empty audio track that can't be armed — the master and return tracks.
+function createBareTrackProperties(
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
@@ -246,25 +247,11 @@ describe("readTrack", () => {
           trackPath: String(livePath.returnTrack(1)),
           trackId: "return_track_1",
           objects: {
-            Track: {
+            // The defaults already match a return track: audio in, unarmable.
+            Track: createBareTrackProperties({
               name: "Return B",
-              has_midi_input: 0, // Return tracks are typically audio
               color: 65280, // Green
-              mute: 0,
-              solo: 0,
-              arm: 0,
-              can_be_armed: 0, // Return tracks cannot be armed
-              is_foldable: 0,
-              is_grouped: 0,
-              group_track: ["id", 0],
-              devices: [],
-              clip_slots: [],
-              arrangement_clips: [],
-              back_to_arranger: 0,
-              playing_slot_index: -1,
-              fired_slot_index: -1,
-              muted_via_solo: 0,
-            },
+            }),
           },
         });
 
@@ -296,7 +283,7 @@ describe("readTrack", () => {
           trackPath: String(livePath.returnTrack(0)),
           trackId: "return_track_1",
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               name: "Return A",
               ...createOutputOnlyRoutingMock(),
               available_input_routing_channels: null,
@@ -340,7 +327,7 @@ describe("readTrack", () => {
             [String(livePath.masterTrack().device(0))]: "compressor1",
           },
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               color: 16777215, // White
               devices: children("compressor1"),
             }),
@@ -388,7 +375,7 @@ describe("readTrack", () => {
             [String(livePath.masterTrack().device(1))]: "limiter1",
           },
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               devices: children("compressor1", "limiter1"),
             }),
             compressor1: {
@@ -437,7 +424,7 @@ describe("readTrack", () => {
           trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           objects: {
-            Track: createMasterTrackProperties(),
+            Track: createBareTrackProperties(),
           },
         });
 
@@ -463,7 +450,7 @@ describe("readTrack", () => {
           trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               color: 16777215, // White
             }),
           },

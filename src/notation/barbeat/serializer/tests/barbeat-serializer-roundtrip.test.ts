@@ -9,7 +9,11 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { drumPatternNotes } from "../../barbeat-test-helpers.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
-import { expectRoundTripNotes as expectRoundTrip } from "./barbeat-serializer-test-helpers.ts";
+import {
+  cMajorAt,
+  dMinorAt,
+  expectRoundTripNotes as expectRoundTrip,
+} from "./barbeat-serializer-test-helpers.ts";
 
 describe("round-trip: serialize → parse → interpret", () => {
   it("round-trips simple melody", () => {
@@ -40,14 +44,7 @@ describe("round-trip: serialize → parse → interpret", () => {
   });
 
   it("round-trips chord progression", () => {
-    expectRoundTrip([
-      createNote({ start_time: 0 }),
-      createNote({ pitch: 64, start_time: 0 }),
-      createNote({ pitch: 67, start_time: 0 }),
-      createNote({ pitch: 62, start_time: 1 }),
-      createNote({ pitch: 65, start_time: 1 }),
-      createNote({ pitch: 69, start_time: 1 }),
-    ] as NoteEvent[]);
+    expectRoundTrip([...cMajorAt(0), ...dMinorAt(1)]);
   });
 
   it("round-trips notes with velocity changes", () => {
@@ -117,14 +114,7 @@ describe("round-trip: serialize → parse → interpret", () => {
   });
 
   it("round-trips comma-merged chords", () => {
-    expectRoundTrip([
-      createNote({ start_time: 0 }),
-      createNote({ pitch: 64, start_time: 0 }),
-      createNote({ pitch: 67, start_time: 0 }),
-      createNote({ start_time: 2 }),
-      createNote({ pitch: 64, start_time: 2 }),
-      createNote({ pitch: 67, start_time: 2 }),
-    ] as NoteEvent[]);
+    expectRoundTrip([...cMajorAt(0), ...cMajorAt(2)]);
   });
 
   it("round-trips interleaved chord pattern", () => {

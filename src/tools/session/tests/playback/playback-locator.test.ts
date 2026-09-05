@@ -16,6 +16,17 @@ const VERSE_CHORUS_CUE_POINTS = [
   { id: "cue2", time: 32, name: "Chorus" },
 ] as const;
 
+/**
+ * The Verse/Chorus locators over an arrangement already looping 5|1-9|1.
+ * @returns The registered live_set mock
+ */
+function setupLoopedCuePoints(): RegisteredMockObject {
+  return setupCuePointMocks({
+    cuePoints: [...VERSE_CHORUS_CUE_POINTS],
+    liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
+  });
+}
+
 describe("playback - song positions", () => {
   describe("loc: on startTime", () => {
     let liveSet: RegisteredMockObject;
@@ -111,10 +122,7 @@ describe("playback - song positions", () => {
     let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
-      liveSet = setupCuePointMocks({
-        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
-        liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
-      });
+      liveSet = setupLoopedCuePoints();
     });
 
     // Every spelling of the same 5|1-9|1 loop: two locator ids, two names, and
@@ -165,10 +173,7 @@ describe("playback - song positions", () => {
     let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
-      liveSet = setupCuePointMocks({
-        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
-        liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
-      });
+      liveSet = setupLoopedCuePoints();
     });
 
     it("should fold startLocator into startTime", () => {

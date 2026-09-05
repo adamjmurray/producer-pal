@@ -10,8 +10,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type RegisteredMockObject,
-  registerMockObject,
-  lookupMockObject,
   clearMockRegistry,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -23,8 +21,23 @@ import {
   setupSplittingClipGetMock,
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
+import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
+
+/**
+ * Register a splittable clip that sits on a take lane instead of the track's
+ * main arrangement lane.
+ * @param clipId - Id to register the clip under
+ */
+function setupTakeLaneClipMocks(clipId: string): void {
+  clearMockRegistry();
+  setupSplittingClipBaseMocks(clipId, {
+    path: livePath.track(0).takeLane(0).arrangementClip(0),
+  });
+  setupSplittingClipGetMock(clipId);
+  createSplittingCallMock();
+}
 
 function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
   expect(trackMock.call).toHaveBeenCalledWith(
@@ -141,33 +154,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // Register fresh clips that rescanSplitClips will find.
-    // One valid clip and one that will be non-existent (id "0").
-    const freshClipId = "fresh_clip";
-
-    registerMockObject(freshClipId, {
-      path: livePath.track(0).arrangementClip(2),
-      type: "Clip",
-      properties: {
-        start_time: 0.0,
-        is_midi_clip: 1,
-        is_audio_clip: 0,
-        is_arrangement_clip: 1,
-      },
-    });
-
-    // Set up track mock to return arrangement clips including the fresh one
-    const trackMock = lookupMockObject("track_0", livePath.track(0));
-    const origGet = trackMock!.get.getMockImplementation();
-
-    trackMock!.get.mockImplementation((prop: string) => {
-      if (prop === "arrangement_clips") {
-        // Return fresh clip + a non-existent clip (id 0)
-        return ["id", freshClipId, "id", "0"];
-      }
-
-      return origGet ? origGet(prop) : [0];
-    });
+    stubSplitRescan("fresh_clip");
 
     const result = await updateClip(
       {
@@ -191,12 +178,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     // A take-lane arrangement clip cannot be split via
     // duplicate_clip_to_arrangement, so it is warned-and-skipped.
-    clearMockRegistry();
-    setupSplittingClipBaseMocks(clipId, {
-      path: livePath.track(0).takeLane(0).arrangementClip(0),
-    });
-    setupSplittingClipGetMock(clipId);
-    createSplittingCallMock();
+    setupTakeLaneClipMocks(clipId);
 
     const result = await updateClip(
       {
@@ -218,12 +200,7 @@ describe("updateClip - splitting smoke tests", () => {
     const clipId = "take_lane_clip";
     const consoleSpy = vi.spyOn(console, "warn");
 
-    clearMockRegistry();
-    setupSplittingClipBaseMocks(clipId, {
-      path: livePath.track(0).takeLane(0).arrangementClip(0),
-    });
-    setupSplittingClipGetMock(clipId);
-    createSplittingCallMock();
+    setupTakeLaneClipMocks(clipId);
 
     await updateClip({ id: clipId, name: "renamed" }, {});
 

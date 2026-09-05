@@ -65,6 +65,27 @@ describe("updateDevice - moving a drum chain", () => {
     });
   });
 
+  // The result an unmoved C1 pad reports.
+  const unmovedPadC1 = {
+    id: "pad-36",
+    path: "t0/d0/pC1",
+    chainIds: ["chain-0", "chain-1"],
+  };
+
+  // Asks C1 to move to toPath and checks the move was refused: a warning, and
+  // neither of C1's chains re-mapped. Returns what updateDevice reported.
+  function expectPadMoveRefused(toPath: string): unknown {
+    const result = updateDevice({ path: "t0/d0/pC1", toPath });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("does not name a pad in this rack"),
+    );
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+
+    return result;
+  }
+
   it("should move a single drum chain to a different pad", () => {
     const result = updateDevice({
       path: "t0/d0/pC1/c0",
@@ -173,21 +194,9 @@ describe("updateDevice - moving a drum chain", () => {
   it("should warn and skip when toPath names a different rack", () => {
     // A pad move is an in_note re-map inside one rack. Honoring only the note
     // would land the pad on D1 of the SOURCE rack and report success.
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      toPath: "t1/d0/pD1",
-    });
+    const result = expectPadMoveRefused("t1/d0/pD1");
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("does not name a pad in this rack"),
-    );
-    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({
-      id: "pad-36",
-      path: "t0/d0/pC1",
-      chainIds: ["chain-0", "chain-1"],
-    });
+    expect(result).toStrictEqual(unmovedPadC1);
   });
 
   // A chain of a pad in this rack names that pad — the move is an in_note
@@ -206,21 +215,9 @@ describe("updateDevice - moving a drum chain", () => {
     // The trailing "/d0/pE1" says the pad meant is in a rack under D1, and no
     // such rack exists. Honoring the first pad name instead lands C1 on D1 of
     // this rack and reports it as the move they asked for.
-    const result = updateDevice({
-      path: "t0/d0/pC1",
-      toPath: "t0/d0/pD1/d0/pE1",
-    });
+    const result = expectPadMoveRefused("t0/d0/pD1/d0/pE1");
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("does not name a pad in this rack"),
-    );
-    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({
-      id: "pad-36",
-      path: "t0/d0/pC1",
-      chainIds: ["chain-0", "chain-1"],
-    });
+    expect(result).toStrictEqual(unmovedPadC1);
   });
 
   it("should warn and skip when toPath nests under the pad being moved", () => {
@@ -389,13 +386,7 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     it("refuses a move from the outer rack into the nested one", () => {
-      updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1/c0/d0/pE1" });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("does not name a pad in this rack"),
-      );
-      expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-      expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+      expectPadMoveRefused("t0/d0/pC1/c0/d0/pE1");
     });
   });
 });

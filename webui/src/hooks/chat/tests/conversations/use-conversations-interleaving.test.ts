@@ -103,6 +103,24 @@ const OPS: DestructiveOp[] = [
   },
 ];
 
+/**
+ * Run a brand-new conversation's first save so it lands after `opName` took
+ * the user away, and assert the save survived carrying its late content.
+ * @param opName - Name of the op that leaves the conversation mid-save
+ */
+async function expectFirstSaveSurvivesLeaving(opName: string): Promise<void> {
+  const outcome = await runInterleaving(
+    OPS.find((op) => op.name === opName)!,
+    FLAVORS.find((flavor) => flavor.name.startsWith("a brand-new"))!,
+    "write-last",
+  );
+
+  const saved = outcome.ids.filter((id) => id !== outcome.bystanderId);
+
+  expect(saved).toHaveLength(1);
+  expect(await conversationCarries(saved[0]!, LATE_MARKER)).toBe(true);
+}
+
 describe("useConversations save/operation interleavings", () => {
   beforeEach(resetConversationsTestState);
 
@@ -134,29 +152,11 @@ describe("useConversations save/operation interleavings", () => {
     // Leaving a conversation is not a reason to drop its save: the write
     // carries the id it was started for, and losing the turn the user just
     // sent because they moved on is data loss, not a race being closed.
-    const outcome = await runInterleaving(
-      OPS.find((op) => op.name === "starting a new conversation")!,
-      FLAVORS.find((flavor) => flavor.name.startsWith("a brand-new"))!,
-      "write-last",
-    );
-
-    const saved = outcome.ids.filter((id) => id !== outcome.bystanderId);
-
-    expect(saved).toHaveLength(1);
-    expect(await conversationCarries(saved[0]!, LATE_MARKER)).toBe(true);
+    await expectFirstSaveSurvivesLeaving("starting a new conversation");
   });
 
   it("keeps a first save that lands after the user switches away", async () => {
-    const outcome = await runInterleaving(
-      OPS.find((op) => op.name === "switching to another conversation")!,
-      FLAVORS.find((flavor) => flavor.name.startsWith("a brand-new"))!,
-      "write-last",
-    );
-
-    const saved = outcome.ids.filter((id) => id !== outcome.bystanderId);
-
-    expect(saved).toHaveLength(1);
-    expect(await conversationCarries(saved[0]!, LATE_MARKER)).toBe(true);
+    await expectFirstSaveSurvivesLeaving("switching to another conversation");
   });
 
   it("keeps a bookmarked conversation through the unbookmarked sweep", async () => {

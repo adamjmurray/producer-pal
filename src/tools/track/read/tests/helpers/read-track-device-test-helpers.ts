@@ -275,6 +275,30 @@ export function setupEmptyRackMocks(): void {
 }
 
 /**
+ * Register track1 on track(0) with one device per entry, in order, named
+ * device1, device2, ... at the matching device index.
+ * @param devices - Per-device mock properties
+ */
+export function setupTrackWithDevices(
+  devices: DeviceMockPropertiesOptions[],
+): void {
+  setupTrackMock({
+    trackId: "track1",
+    properties: {
+      devices: children(...devices.map((_, index) => `device${index + 1}`)),
+    },
+  });
+
+  for (const [index, options] of devices.entries()) {
+    registerMockObject(`device${index + 1}`, {
+      path: livePath.track(0).device(index),
+      type: "Device",
+      properties: createDeviceMockProperties(options),
+    });
+  }
+}
+
+/**
  * Setup track with a drum rack device and a reverb audio effect.
  * Registers track1 on track(0) with device1 (drum rack) and device2 (reverb).
  */
@@ -309,17 +333,19 @@ export function setupDrumRackWithReverbMocks(): void {
 }
 
 /**
- * Setup track1 on track(0) with a single rack device registered as "rack1".
+ * Setup track1 on track(0) with a single rack device.
  * @param options - Rack device mock properties
+ * @param deviceId - Mock id to register the rack under
  */
-function setupTrackWithSingleRack(
+export function setupTrackWithSingleRack(
   options: RackDeviceMockPropertiesOptions,
+  deviceId = "rack1",
 ): void {
   setupTrackMock({
     trackId: "track1",
-    properties: { devices: children("rack1") },
+    properties: { devices: children(deviceId) },
   });
-  registerMockObject("rack1", {
+  registerMockObject(deviceId, {
     path: livePath.track(0).device(0),
     type: "Device",
     properties: createRackDeviceMockProperties(options),

@@ -74,17 +74,29 @@ describe("clip-result-helpers", () => {
   });
 
   describe("prepareSessionClipSlot", () => {
-    function registerLiveSet(sceneCount: number): void {
+    function registerLiveSet(sceneCount: number) {
       const scenes: (string | number)[] = [];
 
       for (let i = 0; i < sceneCount; i++) {
         scenes.push("id", i + 1);
       }
 
-      registerMockObject("live-set", {
+      return registerMockObject("live-set", {
         path: livePath.liveSet,
         type: "Song",
         properties: { scenes },
+      });
+    }
+
+    /**
+     * Register t0/s1 as a clip slot.
+     * @param hasClip - Whether the slot already holds a clip
+     */
+    function registerSlot(hasClip: number): void {
+      registerMockObject(livePath.track(0).clipSlot(1), {
+        path: livePath.track(0).clipSlot(1),
+        type: "ClipSlot",
+        properties: { has_clip: hasClip },
       });
     }
 
@@ -103,17 +115,9 @@ describe("clip-result-helpers", () => {
 
     it("does not auto-create scenes when the slot already exists", () => {
       // sceneIndex 1 < currentSceneCount 3 → no scenes created; the slot is empty.
-      const liveSet = registerMockObject("live-set", {
-        path: livePath.liveSet,
-        type: "Song",
-        properties: { scenes: ["id", 1, "id", 2, "id", 3] },
-      });
+      const liveSet = registerLiveSet(3);
 
-      registerMockObject(livePath.track(0).clipSlot(1), {
-        path: livePath.track(0).clipSlot(1),
-        type: "ClipSlot",
-        properties: { has_clip: 0 },
-      });
+      registerSlot(0);
 
       const slot = prepareSessionClipSlot(
         0,
@@ -127,16 +131,8 @@ describe("clip-result-helpers", () => {
     });
 
     it("throws when a clip already exists in the target slot", () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        type: "Song",
-        properties: { scenes: ["id", 1, "id", 2, "id", 3] },
-      });
-      registerMockObject(livePath.track(0).clipSlot(1), {
-        path: livePath.track(0).clipSlot(1),
-        type: "ClipSlot",
-        properties: { has_clip: 1 },
-      });
+      registerLiveSet(3);
+      registerSlot(1);
 
       expect(() =>
         prepareSessionClipSlot(0, 1, LiveAPI.from(livePath.liveSet), 1000),

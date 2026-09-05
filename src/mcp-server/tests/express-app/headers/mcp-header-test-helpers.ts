@@ -9,6 +9,7 @@
 // enrich-connect appends to ppal-connect, and (notation only) the context blob
 // handed to V8 — so the plumbing lives here once.
 
+import { expect } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
@@ -116,4 +117,17 @@ export async function connectSkillsBlock(
   } finally {
     await transport.close();
   }
+}
+
+/**
+ * Assert both connect calls got a skills block, and that the header picked a
+ * different variant for each.
+ *
+ * @param a - The skills block one request received
+ * @param b - The skills block the other request received
+ */
+export function expectDifferentSkillsVariants(a: string, b: string): void {
+  expect(a.startsWith(SKILLS_HEADER)).toBe(true);
+  expect(b.startsWith(SKILLS_HEADER)).toBe(true);
+  expect(a).not.toBe(b);
 }

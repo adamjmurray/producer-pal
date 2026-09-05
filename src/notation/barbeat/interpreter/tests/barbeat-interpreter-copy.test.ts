@@ -6,6 +6,14 @@ import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
+// What `C3 1|1 @2=1 D3 2|2` yields: C3 in bar 1, its copy in bar 2, and the D3
+// overlaid at bar 2 beat 2.
+const OVERLAID_COPY = [
+  createNote(),
+  createNote({ start_time: 4 }),
+  createNote({ pitch: 62, start_time: 5 }),
+];
+
 describe("bar|beat interpretNotation() - bar copy operations", () => {
   describe("bar copy", () => {
     it("copies a single bar to a different position", () => {
@@ -53,11 +61,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("overlays notes after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 2|2");
 
-      expect(result).toStrictEqual([
-        createNote(), // Bar 1
-        createNote({ start_time: 4 }), // Bar 2 (copied C3)
-        createNote({ pitch: 62, start_time: 5 }), // Bar 2 beat 2 (added D3)
-      ]);
+      expect(result).toStrictEqual(OVERLAID_COPY);
     });
     it("accumulates notes in chained copies", () => {
       // Without auto-clear: bar 2 gets C3 from bar 1, then D3 is added
@@ -126,11 +130,7 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
     it("updates current time position after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 2|2");
 
-      expect(result).toStrictEqual([
-        createNote(),
-        createNote({ start_time: 4 }),
-        createNote({ pitch: 62, start_time: 5 }),
-      ]);
+      expect(result).toStrictEqual(OVERLAID_COPY);
     });
     it("only copies notes within bar time range, not all notes from multi-bar beat list", () => {
       // Regression test for "copy bleeding" bug

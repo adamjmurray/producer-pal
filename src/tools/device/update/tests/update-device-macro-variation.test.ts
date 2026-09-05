@@ -37,6 +37,26 @@ describe("updateDevice - macroVariation", () => {
     });
   });
 
+  // An out-of-range index warns and aborts the whole action — not just the
+  // index-set — and the device is still reported.
+  function expectVariationIndexRejected(index: number): void {
+    const result = updateDevice({
+      id: "123",
+      macroVariation: "load",
+      macroVariationIndex: index,
+    });
+
+    expect(capturedWarnings()).toContain(
+      `variation index ${index} out of range on t0/d0 (id 123) (3 available)`,
+    );
+    expect(rackDevice.set).not.toHaveBeenCalledWith(
+      "selected_variation_index",
+      expect.anything(),
+    );
+    expect(rackDevice.call).not.toHaveBeenCalled();
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+  }
+
   it("should reject non-rack devices with error", () => {
     const result = updateDevice({
       id: "456",
@@ -51,42 +71,13 @@ describe("updateDevice - macroVariation", () => {
   });
 
   it("should reject out-of-range variation index", () => {
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "load",
-      macroVariationIndex: 5,
-    });
-
-    expect(capturedWarnings()).toContain(
-      "variation index 5 out of range on t0/d0 (id 123) (3 available)",
-    );
-    expect(rackDevice.set).not.toHaveBeenCalledWith(
-      "selected_variation_index",
-      expect.anything(),
-    );
-    // Out of range must also abort the action, not just skip the index-set.
-    expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    expectVariationIndexRejected(5);
   });
 
   it("should reject an index equal to variation_count (boundary)", () => {
     // variation_count is 3, so valid indices are 0-2; index 3 is out of range.
     // This pins the `>=` bound: a `>` mutant would accept index 3.
-    const result = updateDevice({
-      id: "123",
-      macroVariation: "load",
-      macroVariationIndex: 3,
-    });
-
-    expect(capturedWarnings()).toContain(
-      "variation index 3 out of range on t0/d0 (id 123) (3 available)",
-    );
-    expect(rackDevice.set).not.toHaveBeenCalledWith(
-      "selected_variation_index",
-      expect.anything(),
-    );
-    expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    expectVariationIndexRejected(3);
   });
 
   it("should call store_variation for 'create'", () => {

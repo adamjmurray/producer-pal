@@ -9,11 +9,8 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
-import {
-  DEFAULT_META,
-  createConversationStore,
-} from "#webui/lib/conversation-store";
-import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+import { DEFAULT_META } from "#webui/lib/conversation-store";
+import { storeWithPersistedTrunk } from "#webui/test-utils/conversation-test-helpers";
 import { getConversationDb, resetDbCache } from "#webui/lib/conversation-db";
 
 /** A no-op SaveNotifier, so tests only assert the calls they care about. */
@@ -40,10 +37,7 @@ describe("writeConversation", () => {
     // an empty map, unlike every hook-level race test, which always seeds it
     // via a prior failure. And the conversation can be deleted in the gap
     // between the claim dying and this recovery running.
-    const store = createConversationStore();
-    const trunk = store.beginSave(false)!;
-
-    store.markPersisted(trunk, createTestRecord({ id: trunk.id }));
+    const { store } = storeWithPersistedTrunk();
 
     const fork = store.beginSave(true)!;
     const followUp = store.beginSave(false)!;

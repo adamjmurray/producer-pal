@@ -30,15 +30,15 @@ async function renderAndNotify(params: {
   return result;
 }
 
+/** renderHook's result ref for a rendered useLimitNotification. */
+type LimitHook = { current: ReturnType<typeof useLimitNotification> };
+
 /**
  * Assert a notification is showing, advance past the 4s dismiss timer, and
  * assert it cleared. Restores real timers before returning.
  * @param result - Hook result ref (fake timers must already be installed)
- * @param result.current - The current hook return value
  */
-async function expectAutoDismissAfter4s(result: {
-  current: ReturnType<typeof useLimitNotification>;
-}): Promise<void> {
+async function expectAutoDismissAfter4s(result: LimitHook): Promise<void> {
   expect(result.current.limitNotification).not.toBeNull();
 
   await act(() => {
@@ -54,15 +54,50 @@ async function expectAutoDismissAfter4s(result: {
  * Raise the ordinary "deleted 2, under the limit" warning.
  * @param result - The rendered hook
  */
-async function showWarning(result: {
-  current: ReturnType<typeof useLimitNotification>;
-}): Promise<void> {
+async function showWarning(result: LimitHook): Promise<void> {
   await act(() => {
     result.current.showLimitNotification({
       deletedCount: 2,
       limitReached: false,
     });
   });
+}
+
+/**
+ * Raise the standing "this conversation no longer saves" banner.
+ * @param result - The rendered hook
+ */
+async function showRefusal(result: LimitHook): Promise<void> {
+  await act(() => {
+    result.current.showSaveRefused();
+  });
+}
+
+/**
+ * End the refusal condition, as leaving the conversation does.
+ * @param result - The rendered hook
+ */
+async function retireRefusal(result: LimitHook): Promise<void> {
+  await act(() => {
+    result.current.retireSaveRefused();
+  });
+}
+
+/**
+ * Advance a minute of fake timers and assert the refusal banner is still up.
+ * Restores real timers before returning.
+ * @param result - Hook result ref (fake timers must already be installed)
+ */
+async function expectRefusalStandsAfter60s(result: LimitHook): Promise<void> {
+  await act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+
+  expect(result.current.limitNotification?.message).toContain(
+    "no longer in storage",
+  );
+
+  vi.useRealTimers();
 }
 
 describe("useLimitNotification", () => {
@@ -256,18 +291,8 @@ describe("useLimitNotification", () => {
 
       const { result } = renderHook(() => useLimitNotification());
 
-      await act(() => {
-        result.current.showSaveRefused();
-      });
-
-      await act(() => {
-        vi.advanceTimersByTime(60_000);
-      });
-
-      expect(result.current.limitNotification?.message).toContain(
-        "no longer in storage",
-      );
-      vi.useRealTimers();
+      await showRefusal(result);
+      await expectRefusalStandsAfter60s(result);
     });
 
     // The refusal is about one conversation. Leaving it ends the condition;
@@ -275,15 +300,11 @@ describe("useLimitNotification", () => {
     it("retires when the refused conversation is left", async () => {
       const { result } = renderHook(() => useLimitNotification());
 
-      await act(() => {
-        result.current.showSaveRefused();
-      });
+      await showRefusal(result);
 
       expect(result.current.limitNotification).not.toBeNull();
 
-      await act(() => {
-        result.current.retireSaveRefused();
-      });
+      await retireRefusal(result);
 
       expect(result.current.limitNotification).toBeNull();
     });
@@ -292,10 +313,7 @@ describe("useLimitNotification", () => {
       const { result } = renderHook(() => useLimitNotification());
 
       await showWarning(result);
-
-      await act(() => {
-        result.current.retireSaveRefused();
-      });
+      await retireRefusal(result);
 
       expect(result.current.limitNotification).not.toBeNull();
     });
@@ -305,14 +323,9 @@ describe("useLimitNotification", () => {
     it("leaves a banner raised after the refusal alone", async () => {
       const { result } = renderHook(() => useLimitNotification());
 
-      await act(() => {
-        result.current.showSaveRefused();
-      });
+      await showRefusal(result);
       await showWarning(result);
-
-      await act(() => {
-        result.current.retireSaveRefused();
-      });
+      await retireRefusal(result);
 
       expect(result.current.limitNotification).not.toBeNull();
     });
@@ -320,17 +333,12 @@ describe("useLimitNotification", () => {
     it("does not re-clear a banner raised after a dismissed refusal", async () => {
       const { result } = renderHook(() => useLimitNotification());
 
-      await act(() => {
-        result.current.showSaveRefused();
-      });
+      await showRefusal(result);
       await act(() => {
         result.current.dismissLimitNotification();
       });
       await showWarning(result);
-
-      await act(() => {
-        result.current.retireSaveRefused();
-      });
+      await retireRefusal(result);
 
       expect(result.current.limitNotification).not.toBeNull();
     });
@@ -341,19 +349,10 @@ describe("useLimitNotification", () => {
       const { result } = renderHook(() => useLimitNotification());
 
       await showWarning(result);
-      await act(() => {
-        result.current.showSaveRefused();
-      });
-
-      await act(() => {
-        vi.advanceTimersByTime(60_000);
-      });
+      await showRefusal(result);
 
       // The warning's timer must not clear the standing refusal.
-      expect(result.current.limitNotification?.message).toContain(
-        "no longer in storage",
-      );
-      vi.useRealTimers();
+      await expectRefusalStandsAfter60s(result);
     });
   });
 

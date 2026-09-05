@@ -9,7 +9,7 @@ import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import {
   connectSkillsBlock,
   connectWithHeaders,
-  SKILLS_HEADER,
+  expectDifferentSkillsVariants,
 } from "./mcp-header-test-helpers.ts";
 
 /**
@@ -92,12 +92,9 @@ describe("POST /mcp per-request small-model-mode header", () => {
         headers("false"),
       );
 
-      // Both connect requests inject a skills block...
-      expect(basic.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(standard.startsWith(SKILLS_HEADER)).toBe(true);
-      // ...but the small-model (basic) variant differs from the standard one,
-      // proving the per-request header — not just the global — selects it.
-      expect(basic).not.toBe(standard);
+      // The small-model (basic) variant differs from the standard one, proving
+      // the per-request header — not just the global — selects it.
+      expectDifferentSkillsVariants(basic, standard);
     });
   });
 });

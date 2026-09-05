@@ -203,13 +203,7 @@ describe("useConversations", () => {
     const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
-
-    // Create a current conversation first
-    state.chatHistory = [{ role: "user", content: "current" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
+    await saveWithMessage(state, result, "current");
 
     // Switch to existing
     await act(async () => {
@@ -432,17 +426,9 @@ describe("useConversations", () => {
       messages: [{ role: "user", content: "other" }],
     });
 
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversationsWithUndo(props));
+    const { props, state, result } = await setupHook();
 
-    await waitForEffects();
-
-    // Save a current conversation
-    state.chatHistory = [{ role: "user", content: "current" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
+    await saveWithMessage(state, result, "current");
 
     expect(result.current.conversations).toHaveLength(2);
 

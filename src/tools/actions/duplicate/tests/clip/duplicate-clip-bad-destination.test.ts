@@ -18,6 +18,15 @@ import {
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+/** Register the MIDI source clip and the live_set. */
+function registerMidiSource(): void {
+  registerMockObject("clip1", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: { is_midi_clip: 1 },
+  });
+  registerMockObject("live_set", { path: livePath.liveSet });
+}
+
 // A toPath entry that names nowhere must cost only its own copy. Before this,
 // the first entry's copy was made and then thrown away with the whole call, so
 // the model never learned it existed and made it a second time on retry.
@@ -58,11 +67,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
   it("keeps the arrangement copy that landed when a later track is missing", async () => {
     mockNonExistentObjects();
 
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMidiSource();
 
     const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
 
@@ -90,11 +95,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
   it("copies nowhere, without failing, when every track is missing", async () => {
     mockNonExistentObjects();
 
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMidiSource();
 
     const result = await duplicate({
       type: "clip",
@@ -112,15 +113,6 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
 // copies wrong, and shrinking the count could stop a color list from splitting
 // at all.
 describe("duplicate clip - a toPath entry the clip can't go to", () => {
-  /** Register the MIDI source clip and the live_set. */
-  function registerMidiSource(): void {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
-  }
-
   /**
    * Register a destination track and the clip a copy to it would land on.
    * @param trackIndex - Track index

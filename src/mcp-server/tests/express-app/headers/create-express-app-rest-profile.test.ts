@@ -21,7 +21,10 @@ import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { TOOL_NAMES } from "../../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
-import { SKILLS_HEADER } from "./mcp-header-test-helpers.ts";
+import {
+  expectDifferentSkillsVariants,
+  SKILLS_HEADER,
+} from "./mcp-header-test-helpers.ts";
 
 // The harness leaves the globals at their defaults: barbeat, small-model off.
 const appState = setupExpressAppServer();
@@ -164,9 +167,7 @@ describe("REST API per-request notation header", () => {
       const stark = await connectSkillsBlock({ [NOTATION_HEADER]: "stark" });
       const global = await connectSkillsBlock({});
 
-      expect(stark.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(global.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(stark).not.toBe(global);
+      expectDifferentSkillsVariants(stark, global);
     });
   });
 });
@@ -242,9 +243,7 @@ describe("REST API per-request small-model-mode header", () => {
         [SMALL_MODEL_MODE_HEADER]: "false",
       });
 
-      expect(basic.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(standard.startsWith(SKILLS_HEADER)).toBe(true);
-      expect(basic).not.toBe(standard);
+      expectDifferentSkillsVariants(basic, standard);
     });
   });
 

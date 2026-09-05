@@ -56,6 +56,29 @@ async function runSearchBatch(
   return result;
 }
 
+/**
+ * The names of the items one labeled result carries.
+ * @param result - A fan-out search result
+ * @param index - Which labeled result to read
+ * @returns Item names, or undefined if there is no result at that index
+ */
+function itemNamesAt(
+  result: SearchBatchResult,
+  index: number,
+): string[] | undefined {
+  return result.results[index]?.items.map((item) => item.name);
+}
+
+/**
+ * Spy on the Max console's warn, silencing the output.
+ * @returns The spy
+ */
+async function spyOnMaxWarn() {
+  const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+
+  return vi.spyOn(consoleModule, "warn").mockImplementation(() => {});
+}
+
 describe("library tool — searches fan-out", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -98,28 +121,40 @@ describe("library tool — searches fan-out", () => {
     };
   }
 
-  it("returns results per query in order, grouped under their labels", async () => {
+  /** A DB holding one kick and one snare, keyed by their tags. */
+  function mockKickAndSnare(): void {
     mockSearchByFilter({
       Kick: [dbItem("kick.wav")],
       Snare: [dbItem("snare.wav")],
     });
+  }
 
-    const result = await library({
-      action: "search",
-      searches: [
-        { label: "Kick", tags: "Kick" },
-        { label: "Snare", tags: "Snare" },
-      ],
-    });
+  /**
+   * Fan out `count` numbered queries against an empty DB.
+   * @param count - How many queries to send
+   * @returns The library result
+   */
+  async function runNumberedSearchBatch(
+    count: number,
+  ): Promise<SearchBatchResult> {
+    mockSearchByFilter({});
 
-    if (!("results" in result)) throw new Error("expected results");
+    return await runSearchBatch(
+      Array.from({ length: count }, (_, index) => ({ query: String(index) })),
+    );
+  }
+
+  it("returns results per query in order, grouped under their labels", async () => {
+    mockKickAndSnare();
+
+    const result = await runSearchBatch([
+      { label: "Kick", tags: "Kick" },
+      { label: "Snare", tags: "Snare" },
+    ]);
+
     expect(result.results.map((r) => r.label)).toStrictEqual(["Kick", "Snare"]);
-    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
-      "kick.wav",
-    ]);
-    expect(result.results[1]?.items.map((i) => i.name)).toStrictEqual([
-      "snare.wav",
-    ]);
+    expect(itemNamesAt(result, 0)).toStrictEqual(["kick.wav"]);
+    expect(itemNamesAt(result, 1)).toStrictEqual(["snare.wav"]);
     expect(result.dbAvailable).toBe(true);
   });
 
@@ -193,12 +228,8 @@ describe("library tool — searches fan-out", () => {
       expect.objectContaining({ query: "808" }),
     );
     if (!("results" in result)) throw new Error("expected results");
-    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
-      "kick.wav",
-    ]);
-    expect(result.results[1]?.items.map((i) => i.name)).toStrictEqual([
-      "808.wav",
-    ]);
+    expect(itemNamesAt(result, 0)).toStrictEqual(["kick.wav"]);
+    expect(itemNamesAt(result, 1)).toStrictEqual(["808.wav"]);
   });
 
   it("threads inFolder per query through to the library.search route", async () => {
@@ -225,17 +256,8 @@ describe("library tool — searches fan-out", () => {
   });
 
   it("truncates to the first 20 queries and warns", async () => {
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
-    mockSearchByFilter({});
-
-    const queries = Array.from({ length: 25 }, (_, i) => ({
-      query: String(i),
-    }));
-    const result = await runSearchBatch(queries);
+    const warnSpy = await spyOnMaxWarn();
+    const result = await runNumberedSearchBatch(25);
 
     expect(result.results).toHaveLength(20);
     expect(protocolMock.requestNode).toHaveBeenCalledTimes(20);
@@ -252,17 +274,8 @@ describe("library tool — searches fan-out", () => {
 
   it("does not warn when the batch is exactly at the cap of 20", async () => {
     // Boundary of the > cap guard: 20 queries is allowed in full, so no warn.
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
-    mockSearchByFilter({});
-
-    const queries = Array.from({ length: 20 }, (_, i) => ({
-      query: String(i),
-    }));
-    const result = await runSearchBatch(queries);
+    const warnSpy = await spyOnMaxWarn();
+    const result = await runNumberedSearchBatch(20);
 
     expect(result.results).toHaveLength(20);
     expect(warnSpy).not.toHaveBeenCalled();
@@ -346,10 +359,7 @@ describe("library tool — searches fan-out", () => {
   });
 
   it("prefers searches when a caller sends both names", async () => {
-    mockSearchByFilter({
-      Kick: [dbItem("kick.wav")],
-      Snare: [dbItem("snare.wav")],
-    });
+    mockKickAndSnare();
 
     const result = await library({
       action: "search",

@@ -5,7 +5,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { createConversationStore } from "#webui/lib/conversation-store";
-import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+import {
+  createTestRecord,
+  storeWithPersistedTrunk,
+} from "#webui/test-utils/conversation-test-helpers";
 
 describe("createConversationStore", () => {
   it("hides a brand-new conversation's id until a save claims it", () => {
@@ -206,10 +209,7 @@ describe("createConversationStore", () => {
     // write then fails and rolls back, that queued continuation must not be
     // able to write under the dead id — it would land as an orphaned record
     // with no branch linkage.
-    const store = createConversationStore();
-    const trunk = store.beginSave(false)!;
-
-    store.markPersisted(trunk, createTestRecord({ id: trunk.id }));
+    const { store, trunk } = storeWithPersistedTrunk();
 
     const fork = store.beginSave(true)!;
     const followUp = store.beginSave(false)!;
@@ -228,10 +228,7 @@ describe("createConversationStore", () => {
   });
 
   it("leaves an unrelated save's id alone when a fork rolls back", () => {
-    const store = createConversationStore();
-    const trunk = store.beginSave(false)!;
-
-    store.markPersisted(trunk, createTestRecord({ id: trunk.id }));
+    const { store } = storeWithPersistedTrunk();
 
     const fork = store.beginSave(true)!;
 
