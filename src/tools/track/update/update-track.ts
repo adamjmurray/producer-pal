@@ -14,10 +14,14 @@ import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
 import { applyMixerProperties } from "./helpers/update-track-mixer-helpers.ts";
 import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
 import {
-  applyTrackSend,
+  applyTrackSends,
   resolveTrackSends,
 } from "./helpers/update-track-send-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import {
+  type SendResult,
+  warnSendCollisions,
+} from "#src/tools/shared/sends/send-list-helpers.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import {
   unwrapSingleResult,
@@ -81,6 +85,8 @@ interface UpdateTrackArgs {
 interface UpdateTrackResult {
   id: string;
   path?: string;
+  /** Every send the call wrote, read back off the track */
+  sends?: SendResult[];
 }
 
 /**
@@ -217,6 +223,9 @@ export function updateTrack(
   const parsedColors = parseColors(color, trackIds.length, "track");
 
   const updatedTracks: UpdateTrackResult[] = [];
+  // The collisions belong to the call, not to a track, so they are announced
+  // once — off the first track that actually wrote something to name.
+  let announcedCollisions = false;
 
   for (let i = 0; i < trackIds.length; i++) {
     const trackId = trackIds[i];
@@ -282,14 +291,18 @@ export function updateTrack(
     // Handle monitoring state
     applyMonitoringState(track, monitoringState);
 
-    for (const send of resolvedSends) {
-      applyTrackSend(track, send);
+    const landed = applyTrackSends(track, resolvedSends.winners);
+
+    if (!announcedCollisions && landed.size > 0) {
+      warnSendCollisions(resolvedSends.collisions, landed);
+      announcedCollisions = true;
     }
 
-    // Build optimistic result object
+    // Optimistic except for the sends, which are read back off the track.
     updatedTracks.push({
       id: track.id,
       ...pathField(track),
+      ...(landed.size > 0 ? { sends: [...landed.values()] } : {}),
     });
   }
 

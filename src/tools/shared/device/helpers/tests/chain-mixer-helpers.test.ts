@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  keepsParamValue,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -186,6 +187,29 @@ describe("applyChainMixer", () => {
     expect(panning.set).toHaveBeenCalledWith("value", 0.25);
   });
 
+  it("reports the gain and pan Live kept, not the ones asked for", () => {
+    const { volume, panning } = registerChainWithMixer();
+
+    keepsParamValue(volume, -6.02);
+    keepsParamValue(panning, 0.25999999046325684);
+
+    const applied = applyChainMixer(chainApi(), { gainDb: -6, pan: 0.25 });
+
+    expect(applied).toStrictEqual({ gainDb: -6.02, pan: 0.26 });
+  });
+
+  // Max serializes an exponent-notation float as a string. The pan landed, so
+  // reporting nothing for it would read as "no write".
+  it("falls back to the written pan when Live answers with a string", () => {
+    const { panning } = registerChainWithMixer();
+
+    keepsParamValue(panning, "9.999999747378752e-05");
+
+    expect(applyChainMixer(chainApi(), { pan: 0.0001 })).toStrictEqual({
+      pan: 0.0001,
+    });
+  });
+
   it("leaves the other setting alone when only one is given", () => {
     const { volume, panning } = registerChainWithMixer();
 
@@ -356,6 +380,9 @@ describe("applyChainMixer", () => {
       it("sets every send in one call", () => {
         const [first, second] = registerChainWithSends();
 
+        keepsParamValue(first as RegisteredMockObject, -6.02);
+        keepsParamValue(second as RegisteredMockObject, -11.98);
+
         const applied = applyChainMixer(chainApi(), {
           sends: [
             { return: "a Delay", gainDb: -6 },
@@ -365,14 +392,18 @@ describe("applyChainMixer", () => {
 
         expect(first?.set).toHaveBeenCalledWith("display_value", -6);
         expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+        // Keyed by the return that resolved, with the id a write can quote
+        // back, and the level read off the send — Live kept neither argument.
         expect(applied.sends).toStrictEqual([
-          { return: "a Delay", gainDb: -6 },
-          { return: "b Reverb", gainDb: -12 },
+          { return: "a Delay", returnId: "rc-0", gainDb: -6.02 },
+          { return: "b Reverb", returnId: "rc-1", gainDb: -11.98 },
         ]);
       });
 
       it("reports only the entries that landed, and warns about the rest", () => {
         const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -6.02);
 
         const applied = applyChainMixer(chainApi(), {
           sends: [
@@ -383,7 +414,7 @@ describe("applyChainMixer", () => {
 
         expect(first?.set).toHaveBeenCalledWith("display_value", -6);
         expect(applied.sends).toStrictEqual([
-          { return: "a Delay", gainDb: -6 },
+          { return: "a Delay", returnId: "rc-0", gainDb: -6.02 },
         ]);
         expect(capturedWarnings().join()).toContain(
           'no return chain matching "nope"',
@@ -406,6 +437,8 @@ describe("applyChainMixer", () => {
       it("lets the list win when it names the same return as the pair", () => {
         const [first] = registerChainWithSends();
 
+        keepsParamValue(first as RegisteredMockObject, -11.98);
+
         const applied = applyChainMixer(chainApi(), {
           sendGainDb: -3,
           sendReturn: "a Delay",
@@ -415,19 +448,21 @@ describe("applyChainMixer", () => {
         expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
         // Both writes succeeded, so both used to be reported — naming a level
         // the send does not have, to a model that reads this back.
-        expect(applied.sendGainDb).toBeUndefined();
-        expect(applied.sendReturn).toBeUndefined();
         expect(applied.sends).toStrictEqual([
-          { return: "a Delay", gainDb: -12 },
+          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
         ]);
+        // "ended up at" is a claim about the final state, so it names the
+        // level read back — not the one that won the argument list.
         expect(capturedWarnings().join()).toContain(
-          'sends overrides sendGainDb/sendReturn: "a Delay" ended up at -12 dB',
+          'sends overrides sendGainDb/sendReturn: "a Delay" ended up at -11.98 dB',
         );
       });
 
       // A send holds one value, so the second write overwrites the first.
       it("reports one entry per return when the list names one twice", () => {
         const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -11.98);
 
         const applied = applyChainMixer(chainApi(), {
           sends: [
@@ -438,16 +473,20 @@ describe("applyChainMixer", () => {
 
         expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
         expect(applied.sends).toStrictEqual([
-          { return: "a Delay", gainDb: -12 },
+          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
         ]);
         expect(capturedWarnings().join()).toContain(
-          'sends names one return more than once: "a Delay" ended up at -12 dB',
+          'sends names one return more than once: "a Delay" ended up at -11.98 dB',
         );
       });
 
-      // Warning once per write would name the level each one lost to the next.
-      it("names the level that survived the whole call, not each write", () => {
-        registerChainWithSends();
+      // Warning once per write would name the level each one lost to the next,
+      // and quoting any of them would contradict the result beside it: Live
+      // clamped every one of these to -70.
+      it("names the level the send ended up at, not any that were asked for", () => {
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -70);
 
         applyChainMixer(chainApi(), {
           sends: [
@@ -460,15 +499,18 @@ describe("applyChainMixer", () => {
         const warnings = capturedWarnings().join();
 
         expect(warnings).toContain(
-          'sends names one return more than once: "a Delay" ended up at -12 dB',
+          'sends names one return more than once: "a Delay" ended up at -70 dB',
         );
         expect(warnings).not.toContain("-6 dB");
         expect(warnings).not.toContain("-9 dB");
+        expect(warnings).not.toContain("-12 dB");
       });
 
       // Two spellings of one return are still one send.
       it("collapses two spellings of the same return", () => {
-        registerChainWithSends();
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -11.98);
 
         const applied = applyChainMixer(chainApi(), {
           sends: [
@@ -477,7 +519,68 @@ describe("applyChainMixer", () => {
           ],
         });
 
-        expect(applied.sends).toStrictEqual([{ return: "a", gainDb: -12 }]);
+        // Reported by the return that resolved, not by either spelling.
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
+        ]);
+        // And the warning names it the same way. Naming the winner's own
+        // spelling ("a") would point at a return the result never mentions.
+        expect(capturedWarnings().join()).toContain(
+          'sends names one return more than once: "a Delay" ended up at -11.98 dB',
+        );
+      });
+
+      // Live clamps a send to -70..0 and hands the level back as a 32-bit
+      // float, so the argument is not what the send ends up holding.
+      describe("read back off the send", () => {
+        it("reports the level Live kept, not the one asked for", () => {
+          const [first] = registerChainWithSends();
+
+          keepsParamValue(first as RegisteredMockObject, -70);
+
+          const applied = applyChainMixer(chainApi(), {
+            sends: [{ return: "a Delay", gainDb: -100 }],
+          });
+
+          expect(applied.sends).toStrictEqual([
+            { return: "a Delay", returnId: "rc-0", gainDb: -70 },
+          ]);
+        });
+
+        it("rounds the raw float32 to Live's display resolution", () => {
+          const [first] = registerChainWithSends();
+
+          // Live snapped the request to a nearby step and handed back its raw
+          // float32, so the rounded read-back is not the rounded argument.
+          keepsParamValue(first as RegisteredMockObject, -6.333000183105469);
+
+          const applied = applyChainMixer(chainApi(), {
+            sends: [{ return: "a Delay", gainDb: -6.5 }],
+          });
+
+          expect(applied.sends).toStrictEqual([
+            { return: "a Delay", returnId: "rc-0", gainDb: -6.33 },
+          ]);
+        });
+
+        // Max serializes an exponent-notation float as a string. The level
+        // landed, so reporting nothing for it would read as "no write".
+        it("falls back to the written level when Live answers with a string", () => {
+          const [first] = registerChainWithSends();
+
+          keepsParamValue(
+            first as RegisteredMockObject,
+            "-1.000000013351432e-01",
+          );
+
+          const applied = applyChainMixer(chainApi(), {
+            sends: [{ return: "a Delay", gainDb: -0.1 }],
+          });
+
+          expect(applied.sends).toStrictEqual([
+            { return: "a Delay", returnId: "rc-0", gainDb: -0.1 },
+          ]);
+        });
       });
 
       it("writes nothing for an empty list", () => {

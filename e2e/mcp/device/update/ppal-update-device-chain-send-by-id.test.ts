@@ -75,6 +75,58 @@ describe("update-device sendReturn by id", () => {
     );
   });
 
+  // Principle 5: the write result says what landed. Live clamps and snaps the
+  // level, so the argument alone doesn't say what the send ends up holding.
+  it("reports the sends it wrote, read back at Live's display resolution", async () => {
+    const returns = await readReturnChains(ctx.client!);
+    const saturator = returns.find((rc) => rc.name === "A Saturator");
+
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-update-device",
+      { path: CLAP, sends: [{ return: saturator!.id, gainDb: -6.333333 }] },
+    );
+
+    expect(warnings).toStrictEqual([]);
+    // Live hands back a 32-bit float, so an unrounded read reports
+    // -6.333000183105469. The id is the one a read reports, so the result
+    // round-trips straight back into `sends`.
+    expect(data.sends).toStrictEqual([
+      { return: "A Saturator", returnId: saturator!.id, gainDb: -6.33 },
+    ]);
+  });
+
+  it("reports the sendGainDb/sendReturn pair under sends too", async () => {
+    const returns = await readReturnChains(ctx.client!);
+    const reverb = returns.find((rc) => rc.name === "B Reverb");
+
+    // One send has one shape in the result, whichever param spelled it.
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-update-device",
+      { path: CLAP, sendGainDb: -11, sendReturn: reverb!.id },
+    );
+
+    expect(warnings).toStrictEqual([]);
+    expect(data.sends).toStrictEqual([
+      { return: "B Reverb", returnId: reverb!.id, gainDb: -11 },
+    ]);
+  });
+
+  it("reports no send for a return name that matches none", async () => {
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-update-device",
+      { path: CLAP, sends: [{ return: "ZZZ", gainDb: -6 }] },
+    );
+
+    expect(
+      warnings.some((w) => w.includes('no return chain matching "ZZZ"')),
+    ).toBe(true);
+    // Nothing was written, so nothing is reported as though it had been.
+    expect(data.sends).toBeUndefined();
+  });
+
   // The multi-send write, and the round trip that makes it usable: what a read
   // reports as `returnId` is what `sends` takes back.
   it("sets both sends in one call, addressed by the ids a read reported", async () => {

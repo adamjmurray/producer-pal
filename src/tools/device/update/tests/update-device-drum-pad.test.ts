@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  keepsParamValue,
   livePath,
   registerMockObject,
   updateDevice,
@@ -47,13 +48,23 @@ function registerDrumRack(chainCount: number, withPads = true): RackMocks {
       })
     : null;
 
-  const chains = chainIds.map((id, index) =>
-    registerMockObject(id, {
-      path: livePath.track(0).device(0).chain(index),
+  const chains = chainIds.map((id, index) => {
+    const chainPath = livePath.track(0).device(0).chain(index);
+    const volume = registerMockObject(`volume-${index}`, {
+      path: `${chainPath} mixer_device volume`,
+      type: "DeviceParameter",
+      properties: { display_value: 0 },
+    });
+
+    // Live snaps a gain write, so a result that echoed it gets caught.
+    keepsParamValue(volume, -6.02);
+
+    return registerMockObject(id, {
+      path: chainPath,
       type: "DrumChain",
       properties: { in_note: 36, name: `Layer ${index}` },
-    }),
-  );
+    });
+  });
 
   return { pad, chains };
 }
@@ -131,7 +142,13 @@ describe("updateDevice - bare drum pad paths", () => {
     });
 
     expect(chains[0]?.set).toHaveBeenCalledWith("name", "Kick");
-    expect(result).toStrictEqual({ id: "pad-36", chainIds: ["chain-0"] });
+    // The chain's mixer read-back rides along, so a single-layer pad reports
+    // the level that landed the same way a chain path does.
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      chainIds: ["chain-0"],
+      gainDb: -6.02,
+    });
   });
 
   it("omits the id for a virtual pad and writes mute to the chains", () => {

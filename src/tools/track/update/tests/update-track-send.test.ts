@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  keepsParamValue,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
@@ -286,7 +287,9 @@ describe("updateTrack - send properties", () => {
     });
 
     it("skips the entry whose return matches nothing and keeps the rest", () => {
-      updateTrack({
+      keepsParamValue(send2, -11.98);
+
+      const result = updateTrack({
         id: "123",
         sends: [
           { return: "ZZZ", gainDb: -6 },
@@ -300,6 +303,13 @@ describe("updateTrack - send properties", () => {
       );
       expect(send1.set).not.toHaveBeenCalled();
       expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+      // Only the send that landed is reported, so the entry that went nowhere
+      // can't be read back as though it had.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "B-Delay", returnId: "return_B", gainDb: -11.98 }],
+      });
     });
 
     it("honors the scalar pair alongside a list naming another return", () => {
@@ -331,6 +341,9 @@ describe("updateTrack - send properties", () => {
     });
 
     it("keeps the last entry when two name the same return", () => {
+      // Live clamped both requests, so a warning quoting either is caught.
+      keepsParamValue(send1, -70);
+
       updateTrack({
         id: "123",
         sends: [
@@ -339,11 +352,136 @@ describe("updateTrack - send properties", () => {
         ],
       });
 
+      // "ended up at" is a claim about the final state, so it names the level
+      // read back — not the one that won the argument list.
       expect(capturedWarnings()).toContain(
-        'sends names one return more than once: "A-Reverb" ended up at -12 dB',
+        'sends names one return more than once: "A-Reverb" ended up at -70 dB',
       );
       expect(send1.set).toHaveBeenCalledTimes(1);
       expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("announces a collision once for a multi-track call", () => {
+      // The returns belong to the Live Set, so the clash is a fact about the
+      // call — repeating it down the track list says nothing new.
+      updateTrack({
+        id: "123,456",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "A-Reverb", gainDb: -12 },
+        ],
+      });
+
+      expect(
+        capturedWarnings().filter((warning) =>
+          warning.includes("names one return more than once"),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it("says nothing about a collision on a send that never landed", () => {
+      // A rack macro owns the first send, so Live ignored that write. There is
+      // no level it ended up at, and the refusal warned for itself.
+      registerMockObject("send_1", { properties: { is_enabled: 0 } });
+
+      updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "A-Reverb", gainDb: -12 },
+          { return: "B", gainDb: -9 },
+        ],
+      });
+
+      const warnings = capturedWarnings().join();
+
+      expect(warnings).toContain("is disabled and was not changed");
+      expect(warnings).not.toContain("names one return more than once");
+    });
+  });
+
+  // The write used to land with the result saying nothing about it, so a
+  // clamped or snapped level was invisible to the model that asked for it.
+  describe("result", () => {
+    it("reports every send it wrote, keyed by the return that resolved", () => {
+      keepsParamValue(send1, -11.98);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -12 }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "A-Reverb", returnId: "return_A", gainDb: -11.98 }],
+      });
+    });
+
+    it("reports the sendGainDb/sendReturn pair under sends as well", () => {
+      keepsParamValue(send1, -6.02);
+
+      const result = updateTrack({
+        id: "123",
+        sendGainDb: -6,
+        sendReturn: "A",
+      });
+
+      // One send has one shape, whichever param spelled it.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "A-Reverb", returnId: "return_A", gainDb: -6.02 }],
+      });
+    });
+
+    it("reports the level Live kept, not the one asked for", () => {
+      keepsParamValue(send1, -70);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -100 }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "A-Reverb", returnId: "return_A", gainDb: -70 }],
+      });
+    });
+
+    it("rounds the raw float32 to Live's display resolution", () => {
+      // Live snapped the request to a nearby step and handed back its raw
+      // float32, so the rounded read-back is not the rounded argument.
+      keepsParamValue(send1, -6.333000183105469);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -6.5 }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "A-Reverb", returnId: "return_A", gainDb: -6.33 }],
+      });
+    });
+
+    // Max serializes an exponent-notation float as a string. The level landed,
+    // so reporting nothing for it would read as "no write".
+    it("falls back to the written level when Live answers with a string", () => {
+      keepsParamValue(send1, "-1.000000013351432e-01");
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -0.1 }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "A-Reverb", returnId: "return_A", gainDb: -0.1 }],
+      });
     });
   });
 

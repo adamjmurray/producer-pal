@@ -74,6 +74,26 @@ export function registerMockObject(
 }
 
 /**
+ * Make a parameter keep something other than the value written to it, the way
+ * Live clamps and snaps a DeviceParameter.
+ *
+ * The set mock stores a `display_value` write verbatim, so a test that writes a
+ * level and asserts the same number back passes just as well against code that
+ * echoes the argument instead of reading it. Use this wherever the assertion is
+ * meant to prove a read-back.
+ * @param param - The registered DeviceParameter mock
+ * @param kept - What the parameter reads as after a write
+ */
+export function keepsParamValue(
+  param: RegisteredMockObject,
+  kept: unknown,
+): void {
+  param.set.mockImplementation((property: string) => {
+    param.properties[property] = kept;
+  });
+}
+
+/**
  * Look up a registered mock object by ID or path.
  * @param id - Bare ID (e.g., "123")
  * @param path - Object path (e.g., "live_set tracks 0")

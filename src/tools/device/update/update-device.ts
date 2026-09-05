@@ -42,6 +42,7 @@ import {
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
 import { validateParamEntries } from "./helpers/param-entry-validation.ts";
+import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { type ParamValueResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
@@ -69,6 +70,13 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
   paths?: string;
   wrapInRack?: boolean;
   focus?: boolean;
+}
+
+/** One target's result: what it is, plus whatever the call wrote on it. */
+interface UpdateTargetResult extends ChainMixerApplied {
+  id: string;
+  path?: string;
+  params?: ParamValueResult[];
 }
 
 /** A bare pad path names the whole pad, so it resolves to a group of objects
@@ -422,7 +430,7 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
 function updateTarget(
   target: LiveAPI,
   options: UpdateTargetOptions,
-): { id: string; path?: string; params?: ParamValueResult[] } | null {
+): UpdateTargetResult | null {
   const type = target.type;
 
   // Validate type is updatable
@@ -465,13 +473,15 @@ function updateTarget(
   }
 
   if (!isDeviceType(type)) {
-    updateNonDeviceProperties(target, type, options);
+    // The chain's own mixer reads back here, so a clamped or snapped level is
+    // visible instead of the caller's argument being assumed to have landed.
+    const mixer = updateNonDeviceProperties(target, type, options);
 
-    return { id: target.id, ...pathField(target) };
+    return { id: target.id, ...pathField(target), ...mixer };
   }
 
   const params = updateDeviceProperties(target, type, options);
-  const result: { id: string; path?: string; params?: ParamValueResult[] } = {
+  const result: UpdateTargetResult = {
     id: target.id,
     ...pathField(target),
   };

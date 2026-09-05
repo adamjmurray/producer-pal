@@ -6,8 +6,11 @@
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  type MatchedSend,
+  type IndexedSend,
+  type SendResult,
   dedupeSendsByReturn,
+  readSendBack,
+  warnSendCollisions,
 } from "#src/tools/shared/sends/send-list-helpers.ts";
 import {
   findReturnIndex,
@@ -30,6 +33,21 @@ export interface ChainMixerParams {
   sendGainDb?: number;
   sendReturn?: string;
   sends?: ChainSend[];
+}
+
+/** What a chain mixer write landed, read back off the chain. */
+export interface ChainMixerApplied {
+  gainDb?: number;
+  pan?: number;
+  sends?: SendResult[];
+}
+
+/** One send that was written, and the return chain it went to. */
+interface WrittenChainSend extends IndexedSend {
+  /** The return chain's id, for the result entry */
+  returnId: string;
+  /** The send parameter, ready to read back */
+  param: LiveAPI;
 }
 
 export interface ChainMixerCarry {
@@ -81,19 +99,21 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 }
 
 /**
- * Set a chain's own gain, pan, and send level. A write Live ignores (a disabled
- * parameter, an unmatched return) warns and is left out of the result, so a
- * caller can report what landed rather than what it asked for.
+ * Set a chain's own gain, pan, and send levels. A write Live ignores (a disabled
+ * parameter, an unmatched return) warns and is left out of the result.
+ *
+ * Every reported value is read back off the chain, not echoed from the
+ * argument: Live clamps and snaps what it is given. The sendGainDb/sendReturn
+ * pair reports under `sends` alongside the list, so one send has one shape.
  * @param chain - Chain or DrumChain LiveAPI object
  * @param params - Mixer values to set
- * @returns The subset of params that were actually written
+ * @returns What landed, read back
  */
 export function applyChainMixer(
   chain: LiveAPI,
   params: ChainMixerParams,
-): ChainMixerParams {
-  const { gainDb, pan, sendGainDb, sendReturn } = params;
-  const applied: ChainMixerParams = {};
+): ChainMixerApplied {
+  const applied: ChainMixerApplied = {};
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
@@ -102,47 +122,34 @@ export function applyChainMixer(
     return applied;
   }
 
-  if (
-    gainDb != null &&
-    setParamIfEnabled(
-      mixer.child("volume"),
-      "display_value",
-      gainDb,
-      `${chainLabel(chain)} gainDb`,
-    )
-  ) {
+  const gainDb = writeMixerParam(
+    mixer.child("volume"),
+    "display_value",
+    params.gainDb,
+    `${chainLabel(chain)} gainDb`,
+    roundGainDb,
+  );
+
+  if (gainDb != null) {
     applied.gainDb = gainDb;
   }
 
-  if (
-    pan != null &&
-    setParamIfEnabled(
-      mixer.child("panning"),
-      "value",
-      pan,
-      `${chainLabel(chain)} pan`,
-    )
-  ) {
+  const pan = writeMixerParam(
+    mixer.child("panning"),
+    "value",
+    params.pan,
+    `${chainLabel(chain)} pan`,
+    roundPan,
+  );
+
+  if (pan != null) {
     applied.pan = pan;
   }
 
-  // A half pair was refused up front, so either both are set or neither is.
-  const scalarSend =
-    sendGainDb != null && sendReturn != null
-      ? applyChainSend(chain, mixer, sendGainDb, sendReturn)
-      : null;
+  const sends = applyChainSends(chain, mixer, params);
 
-  if (scalarSend != null) {
-    applied.sendGainDb = sendGainDb;
-    applied.sendReturn = sendReturn;
-  }
-
-  // After the scalar pair, so a call using both honors both. They only collide
-  // when they name the same return, and then the list is the later word.
-  const landed = applySendList(chain, mixer, params.sends, scalarSend, applied);
-
-  if (landed.length > 0) {
-    applied.sends = landed;
+  if (sends.length > 0) {
+    applied.sends = sends;
   }
 
   return applied;
@@ -270,12 +277,12 @@ export function carryChainMixer(
     pan: mixer.pan as number | undefined,
   });
   const sends = (mixer.sends ?? []) as { return: string; gainDb: number }[];
-  const landedSends = sends.filter(
+  const landedSends = sends.flatMap(
     (send) =>
       applyChainMixer(destination, {
         sendGainDb: send.gainDb,
         sendReturn: send.return,
-      }).sendGainDb != null,
+      }).sends ?? [],
   );
 
   // applied holds only gainDb and pan — the sends went through their own calls.
@@ -363,25 +370,23 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
 }
 
 /**
- * Set one send on a chain's mixer, matched to the rack's return chains by name
+ * Write one send on a chain's mixer, matched to the rack's return chains by
+ * name or id
  * @param chain - Chain the mixer belongs to
  * @param mixer - The chain's mixer device
- * @param sendGainDb - Send level in dB
- * @param sendReturn - Return chain id, name, or letter
- * @returns The return chain's index when the level was written, else null.
- *   Index, not a boolean, so two spellings of one return can be compared.
+ * @param send - The send to write, with the return spelled as the caller wrote it
+ * @returns The send and the return it went to, or null when nothing was written
  */
 function applyChainSend(
   chain: LiveAPI,
   mixer: LiveAPI,
-  sendGainDb: number,
-  sendReturn: string,
-): number | null {
+  send: ChainSend,
+): WrittenChainSend | null {
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
   const index = findReturnIndex(
     names,
-    sendReturn,
+    send.return,
     returns.map((rc) => rc.id),
   );
 
@@ -394,61 +399,110 @@ function applyChainSend(
         : " (rack has no return chains; they can only be added in Live)";
 
     console.warn(
-      `${chainLabel(chain)}: no return chain matching "${sendReturn}"${available}`,
+      `${chainLabel(chain)}: no return chain matching "${send.return}"${available}`,
     );
 
     return null;
   }
 
-  const send = mixer.getChildAt("sends", index);
+  const param = mixer.getChildAt("sends", index);
 
-  if (send == null) {
-    console.warn(`${chainLabel(chain)} has no send for return "${sendReturn}"`);
+  if (param == null) {
+    console.warn(
+      `${chainLabel(chain)} has no send for return "${send.return}"`,
+    );
 
     return null;
   }
 
-  const written = setParamIfEnabled(
-    send,
-    "display_value",
-    sendGainDb,
-    `${chainLabel(chain)} send "${names[index]}"`,
-  );
+  const info = returns[index] as { name: string; id: string };
 
-  return written ? index : null;
+  if (
+    !setParamIfEnabled(
+      param,
+      "display_value",
+      send.gainDb,
+      `${chainLabel(chain)} send "${info.name}"`,
+    )
+  ) {
+    return null;
+  }
+
+  return { ...send, index, name: info.name, returnId: info.id, param };
 }
 
 /**
- * Write a `sends` list and report only the entries that still hold. Two entries
- * naming the same return both write, and the later one wins.
+ * Write the sendGainDb/sendReturn pair and the `sends` list, and report one
+ * entry per return, read back off the chain
  * @param chain - Chain or DrumChain LiveAPI object
  * @param mixer - The chain's mixer device
- * @param sends - The `sends` list, as the caller sent it
- * @param scalarSend - Return index the sendGainDb/sendReturn pair wrote, or null
- * @param applied - Result so far, so an overridden scalar pair drops back out
- * @returns One entry per return that landed, holding the value that won
+ * @param params - Mixer values to set
+ * @returns One entry per return that landed
  */
-function applySendList(
+function applyChainSends(
   chain: LiveAPI,
   mixer: LiveAPI,
-  sends: ChainSend[] | undefined,
-  scalarSend: number | null,
-  applied: ChainMixerParams,
-): ChainSend[] {
-  const matched: MatchedSend<ChainSend>[] = [];
+  params: ChainMixerParams,
+): SendResult[] {
+  const { sendGainDb, sendReturn } = params;
 
-  for (const send of sends ?? []) {
-    const index = applyChainSend(chain, mixer, send.gainDb, send.return);
+  // A half pair was refused up front, so either both are set or neither is.
+  const scalar =
+    sendGainDb != null && sendReturn != null
+      ? applyChainSend(chain, mixer, { return: sendReturn, gainDb: sendGainDb })
+      : null;
 
-    if (index != null) matched.push({ index, send });
+  // After the scalar pair, so a call using both honors both. They only collide
+  // when they name the same return, and then the list is the later word.
+  const list: WrittenChainSend[] = [];
+
+  for (const send of params.sends ?? []) {
+    const written = applyChainSend(chain, mixer, send);
+
+    if (written != null) list.push(written);
   }
 
-  return dedupeSendsByReturn(matched, scalarSend, () => {
-    // The scalar pair wrote first and the list overwrote it, so the pair no
-    // longer describes the send — stop reporting a value it doesn't have.
-    delete applied.sendGainDb;
-    delete applied.sendReturn;
-  });
+  const { winners, collisions } = dedupeSendsByReturn(scalar, list);
+  const landed = new Map(
+    winners.map((send) => [
+      send.index,
+      readSendBack(send.param, send.name, send.returnId, send.gainDb),
+    ]),
+  );
+
+  // After the read-back, so a collision names the level the send ended up at
+  // rather than the one that won the argument list.
+  warnSendCollisions(collisions, landed);
+
+  return [...landed.values()];
+}
+
+/**
+ * Write one of the chain's own mixer parameters and read the result back
+ * @param param - The DeviceParameter to write
+ * @param property - Which property carries the value
+ * @param value - Value to write, or undefined to leave it alone
+ * @param label - How to name the parameter in a warning
+ * @param round - Rounds the read-back to the resolution reads report
+ * @returns What the parameter now reads, or undefined when nothing was written
+ */
+function writeMixerParam(
+  param: LiveAPI,
+  property: "value" | "display_value",
+  value: number | undefined,
+  label: string,
+  round: (value: number) => number,
+): number | undefined {
+  if (value == null || !setParamIfEnabled(param, property, value, label)) {
+    return undefined;
+  }
+
+  const landed = param.getProperty(property);
+
+  // Max hands some floats back as strings (a pan of 0.0001 comes back as
+  // "9.999999747378752e-05"), and a value that landed must not vanish from the
+  // result over that — an omission reads as "no write".
+  return typeof landed === "number" ? round(landed) : value;
 }
 
 /**
@@ -467,12 +521,9 @@ function chainLabel(chain: LiveAPI): string {
  * Read the sends that are turned up, named after the rack's return chains
  * @param chain - Chain the mixer belongs to
  * @param mixer - The chain's mixer device
- * @returns Active sends as {return, gainDb}
+ * @returns Active sends as {return, returnId, gainDb}
  */
-function readActiveSends(
-  chain: LiveAPI,
-  mixer: LiveAPI,
-): Record<string, unknown>[] {
+function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
   const active = mixer
     .getChildren("sends")
     .map((send, index) => ({ send, index }))
@@ -490,15 +541,8 @@ function readActiveSends(
 
   return active.map(({ send, index }) => {
     const info = returns[index];
-    const gainDb = send.getProperty("display_value");
 
-    return {
-      return: info?.name ?? `Return ${index + 1}`,
-      // The id is what a write should quote back: names collide and get
-      // renamed, and `sends` accepts either.
-      ...(info == null ? {} : { returnId: info.id }),
-      gainDb: typeof gainDb === "number" ? roundGainDb(gainDb) : gainDb,
-    };
+    return readSendBack(send, info?.name ?? `Return ${index + 1}`, info?.id);
   });
 }
 

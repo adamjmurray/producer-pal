@@ -12,6 +12,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  keepsParamValue,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../update-device.ts";
@@ -401,11 +402,68 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   it("sets a chain's own gain and pan", () => {
+    // Live snaps both, so the result can only match by reading them back.
+    keepsParamValue(volume, -15.02);
+    keepsParamValue(panning, -0.30000001192092896);
+
     const result = updateDevice({ id: "chain-0", gainDb: -15, pan: -0.3 });
 
     expect(volume.set).toHaveBeenCalledWith("display_value", -15);
     expect(panning.set).toHaveBeenCalledWith("value", -0.3);
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      gainDb: -15.02,
+      pan: -0.3,
+    });
+  });
+
+  // The write used to land with the result saying nothing about it, so a
+  // clamped or snapped level was invisible to the model that asked for it.
+  it("reports every send it wrote, keyed by the return that resolved", () => {
+    keepsParamValue(send, -11.98);
+
+    const result = updateDevice({
+      id: "chain-0",
+      sends: [{ return: "a", gainDb: -12 }],
+    });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      sends: [{ return: "a Reverb", returnId: "rc-0", gainDb: -11.98 }],
+    });
+  });
+
+  it("reports the sendGainDb/sendReturn pair under sends as well", () => {
+    keepsParamValue(send, -6.02);
+
+    const result = updateDevice({
+      id: "chain-0",
+      sendGainDb: -6,
+      sendReturn: "a",
+    });
+
+    // One send has one shape, whichever param spelled it.
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      sends: [{ return: "a Reverb", returnId: "rc-0", gainDb: -6.02 }],
+    });
+  });
+
+  it("reports no send for a return name that matches none", () => {
+    const result = updateDevice({
+      id: "chain-0",
+      sends: [{ return: "nope", gainDb: -12 }],
+    });
+
+    expect(send.set).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
+    expect(capturedWarnings().join()).toContain(
+      'no return chain matching "nope"',
+    );
   });
 
   it("sets a chain's send to a rack return chain", () => {

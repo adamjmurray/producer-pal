@@ -11,6 +11,7 @@ import {
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import {
   applyChainMixer,
+  type ChainMixerApplied,
   type ChainSend,
 } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
@@ -130,12 +131,13 @@ export function updateDeviceProperties(
  * @param target - Chain or drum pad to update
  * @param type - Target type
  * @param options - Update options
+ * @returns What the chain's mixer write landed, read back off the chain
  */
 export function updateNonDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
-): void {
+): ChainMixerApplied {
   warnIfSet("params", options.params, type, target);
   warnIfSet("actions", options.actions, type, target);
   warnIfSet("macroVariation", options.macroVariation, type, target);
@@ -151,13 +153,15 @@ export function updateNonDeviceProperties(
     target.set("solo", options.solo ? 1 : 0);
   }
 
+  let mixer: ChainMixerApplied = {};
+
   if (isChainType(type)) {
     if (options.color != null) {
       target.setColor(options.color);
     }
 
     if (hasChainMixerParams(options)) {
-      applyChainMixer(target, options);
+      mixer = applyChainMixer(target, options);
     }
   } else {
     warnIfSet("color", options.color, type, target);
@@ -174,6 +178,8 @@ export function updateNonDeviceProperties(
     warnIfSet("chokeGroup", options.chokeGroup, type, target);
     warnIfSet("mappedPitch", options.mappedPitch, type, target);
   }
+
+  return mixer;
 }
 
 /**

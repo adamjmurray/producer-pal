@@ -184,24 +184,30 @@ export function storedParamValue(raw: number): number {
 }
 
 /**
- * Create a set() mock. Writes to `value` land in `properties` so a later get()
- * sees them: code that reads a parameter back to check the write took would
- * otherwise see every write as rejected. Every other property stays a pure spy.
+ * Create a set() mock. Writes to `value` and `display_value` land in
+ * `properties` so a later get() sees them: code that reads a parameter back to
+ * check the write took would otherwise see every write as rejected. Every other
+ * property stays a pure spy.
  *
  * `value` is quantized the way Live quantizes a DeviceParameter write: rounded
  * to six significant digits, then snapped to a 32-bit float. A raw 0.8 reads
  * back as 0.800000011920929, and the display label rounds from there.
+ *
+ * `display_value` is stored verbatim — Live clamps and snaps it, and we have no
+ * measurement of how. So this mock echoes, and a test that means to exercise a
+ * read-back must make the parameter keep something else (override its `set`),
+ * or it passes just as well against code that echoes the argument.
  * @param mock - The registration to write into
  * @returns Configured vi.fn() mock
  */
 function createSetMock(mock: RegisteredMockObject): Mock {
   return vi.fn().mockImplementation((property: string, ...args: unknown[]) => {
-    if (
-      property === "value" &&
-      args.length === 1 &&
-      typeof args[0] === "number"
-    ) {
+    if (args.length !== 1 || typeof args[0] !== "number") return;
+
+    if (property === "value") {
       mock.properties.value = storedParamValue(args[0]);
+    } else if (property === "display_value") {
+      mock.properties.display_value = args[0];
     }
   }) as Mock;
 }

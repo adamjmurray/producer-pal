@@ -7,19 +7,20 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
-  type MatchedSend,
+  type DedupedSends,
+  type IndexedSend,
+  type SendResult,
   dedupeSendsByReturn,
+  readSendBack,
 } from "#src/tools/shared/sends/send-list-helpers.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { findReturnIndex } from "#src/tools/shared/utils.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
-export interface ResolvedSend extends SendEntry {
-  /** Position in a track's send list */
-  index: number;
-  /** The return track's own name, for the write label */
-  name: string;
+export interface ResolvedSend extends IndexedSend {
+  /** The return track's id, for the result entry */
+  returnId: string;
 }
 
 /**
@@ -36,16 +37,19 @@ export interface ResolvedSend extends SendEntry {
  * @param sendGainDb - Send level in dB, if given
  * @param sendReturn - Return track id, name, or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
- * @returns The sends to write, one per return, in the order they were named
+ * @returns The sends to write, one per return, in the order they were named,
+ *   and the returns more than one of them named
  */
 export function resolveTrackSends(
   sendGainDb: number | undefined,
   sendReturn: string | undefined,
   sends: SendEntry[] | undefined,
-): ResolvedSend[] {
+): DedupedSends<ResolvedSend> {
   // Nothing to resolve, so nothing to read: every update-track call would
   // otherwise pay for the Live Set's return tracks.
-  if (sendReturn == null && (sends ?? []).length === 0) return [];
+  if (sendReturn == null && (sends ?? []).length === 0) {
+    return { winners: [], collisions: [] };
+  }
 
   const returns = returnTrackInfo();
 
@@ -59,7 +63,7 @@ export function resolveTrackSends(
         )
       : null;
 
-  const matched: MatchedSend<ResolvedSend>[] = [];
+  const list: ResolvedSend[] = [];
 
   for (const send of sends ?? []) {
     const resolved = matchReturn(
@@ -68,31 +72,50 @@ export function resolveTrackSends(
       `sends entry "${send.return}" names no return track, so its gainDb was not written`,
     );
 
-    if (resolved != null)
-      matched.push({ index: resolved.index, send: resolved });
+    if (resolved != null) list.push(resolved);
   }
 
-  let scalarHeld = scalar != null;
-  const winners = dedupeSendsByReturn(matched, scalar?.index ?? null, () => {
-    scalarHeld = false;
-  });
+  return dedupeSendsByReturn(scalar, list);
+}
 
-  return scalar != null && scalarHeld ? [scalar, ...winners] : winners;
+/**
+ * Write every resolved send on one track and read them back.
+ * @param track - Track object
+ * @param sends - The winners from {@link resolveTrackSends}
+ * @returns What each send that landed now reads, by its position in the list
+ */
+export function applyTrackSends(
+  track: LiveAPI,
+  sends: ResolvedSend[],
+): Map<number, SendResult> {
+  const landed = new Map<number, SendResult>();
+
+  for (const send of sends) {
+    const result = applyTrackSend(track, send);
+
+    if (result != null) landed.set(send.index, result);
+  }
+
+  return landed;
 }
 
 /**
  * Write one resolved send on one track. Whether the track has that send is a
  * fact about the track, so it is checked here rather than once for the call.
+ *
+ * The level is read back rather than echoed: Live clamps it and hands back a
+ * 32-bit float, so the argument is not what the send holds.
  * @param track - Track object
  * @param send - One send from {@link resolveTrackSends}
+ * @returns What the send now reads, or null when nothing was written
  */
-export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
+function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult | null {
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
     console.warn(`track ${targetLabel(track)} has no mixer device`);
 
-    return;
+    return null;
   }
 
   const sends = mixer.getChildren("sends");
@@ -100,7 +123,7 @@ export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
   if (sends.length === 0) {
     console.warn(`track ${targetLabel(track)} has no sends`);
 
-    return;
+    return null;
   }
 
   const target = sends[send.index];
@@ -110,15 +133,19 @@ export function applyTrackSend(track: LiveAPI, send: ResolvedSend): void {
       `track ${targetLabel(track)} has no send for return "${send.return}"`,
     );
 
-    return;
+    return null;
   }
 
-  setParamIfEnabled(
+  const written = setParamIfEnabled(
     target,
     "display_value",
     send.gainDb,
     `track ${targetLabel(track)} send "${send.name}"`,
   );
+
+  return written
+    ? readSendBack(target, send.name, send.returnId, send.gainDb)
+    : null;
 }
 
 /** Name and id of each of the Live Set's return tracks, in send order. */
@@ -167,5 +194,10 @@ function matchReturn(
     return null;
   }
 
-  return { ...send, index, name: returns.names[index] as string };
+  return {
+    ...send,
+    index,
+    name: returns.names[index] as string,
+    returnId: returns.ids[index] as string,
+  };
 }

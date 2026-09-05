@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { type DrumPadGroup } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   pathField,
@@ -39,7 +40,7 @@ const CHAIN_WRITE_PROPS = [
   ...PER_LAYER_PROPS,
 ] as const;
 
-export interface DrumPadUpdateResult {
+export interface DrumPadUpdateResult extends ChainMixerApplied {
   /** The DrumPad's id, absent on a virtual pad that has no DrumPad object */
   id?: string;
   /** The pad's path, so a whole-pad write names its target the way every other
@@ -101,9 +102,11 @@ export function updateDrumPadGroup(
     ? { ...applicable, mute: undefined, solo: undefined }
     : applicable;
 
-  applyToChains(chains, chainOptions);
+  // Only a single-layer pad reaches the chain mixer — the per-layer settings
+  // are dropped above once a pad is stacked — so this is one chain's read-back.
+  const mixer = applyToChains(chains, chainOptions);
 
-  const result: DrumPadUpdateResult = {};
+  const result: DrumPadUpdateResult = { ...mixer };
 
   if (pad != null) Object.assign(result, { id: pad.id }, pathField(pad));
 
@@ -118,8 +121,12 @@ export function updateDrumPadGroup(
  * Write the pad's properties to its chains.
  * @param chains - The pad's chains, in rack order
  * @param options - Update options, already filtered for this pad
+ * @returns The first chain's mixer read-back; the rest only take pad-wide props
  */
-function applyToChains(chains: LiveAPI[], options: UpdateTargetOptions): void {
+function applyToChains(
+  chains: LiveAPI[],
+  options: UpdateTargetOptions,
+): ChainMixerApplied {
   const first = chains[0] as LiveAPI;
 
   // in_note is what puts a chain on a pad, and this already retargets every
@@ -133,15 +140,21 @@ function applyToChains(chains: LiveAPI[], options: UpdateTargetOptions): void {
     first.set("name", stripReturnChainLetter(first, options.name));
   }
 
+  let mixer: ChainMixerApplied = {};
+
   for (const [index, chain] of chains.entries()) {
     // The first chain carries the full options so the "not applicable to
     // DrumChain" warnings are emitted once, not once per layer.
-    updateNonDeviceProperties(
+    const applied = updateNonDeviceProperties(
       chain,
       "DrumChain",
       index === 0 ? options : broadcastOnly(options),
     );
+
+    if (index === 0) mixer = applied;
   }
+
+  return mixer;
 }
 
 /**

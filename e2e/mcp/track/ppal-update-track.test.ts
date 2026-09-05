@@ -16,6 +16,7 @@ import {
   getToolWarnings,
   parseBatchResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -367,6 +368,68 @@ describe("ppal-update-track", () => {
     expect(track.sends![0]!.gainDb).toBe(-9.55);
   });
 
+  // Principle 5: the write result says what landed. The level is clamped and
+  // snapped by Live, so the argument alone doesn't say what the send holds.
+  it("reports the sends it wrote, read back at Live's display resolution", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: {
+        id: trackId,
+        sends: [{ return: returnTrack.id, gainDb: -6.333333 }],
+      },
+    });
+
+    // Live hands back a 32-bit float, so an unrounded read reports
+    // -6.333000183105469. The id is the one a read reports, so the result
+    // round-trips straight back into `sends`.
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
+      {
+        return: returnTrack.name,
+        returnId: returnTrack.id,
+        gainDb: -6.33,
+      },
+    ]);
+  });
+
+  it("reports the sendGainDb/sendReturn pair under sends too", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+    const returnTrack = liveSet.returnTracks![1]!;
+
+    // One send has one shape in the result, whichever param spelled it.
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: trackId, sendGainDb: -18, sendReturn: returnTrack.id },
+    });
+
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
+      { return: returnTrack.name, returnId: returnTrack.id, gainDb: -18 },
+    ]);
+  });
+
+  it("reports no send for a return name that matches none", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: trackId, sends: [{ return: "ZZZ", gainDb: -6 }] },
+    });
+
+    const { data, warnings } =
+      parseToolResultWithWarnings<UpdateTrackResult>(result);
+
+    expect(warnings).toContainEqual(
+      expect.stringContaining('sends entry "ZZZ" names no return track'),
+    );
+    // Nothing was written, so nothing is reported as though it had been.
+    expect(data.sends).toBeUndefined();
+  });
+
   it("lets a sends entry override the scalar pair naming the same return", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![2]!.id;
@@ -406,6 +469,7 @@ interface CreateTrackResult {
 
 interface UpdateTrackResult {
   id: string;
+  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
 }
 
 interface ReadTrackResult {

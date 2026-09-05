@@ -20,6 +20,7 @@ export { livePath } from "#src/shared/live-api-path-builders.ts";
 export { children } from "#src/test/mocks/mock-live-api.ts";
 export {
   type RegisteredMockObject,
+  keepsParamValue,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
