@@ -19,7 +19,6 @@ const SESSION_ACTIONS = [
   "play-session-clips",
   "stop-session-clips",
   "stop-all-session-clips",
-  "stop",
 ];
 
 /** Everything any of the actions might fire, so each call gets that far. */
@@ -108,7 +107,7 @@ describe("playback arrangement params on a session action", () => {
       loop: true,
     });
 
-    expect(result.arrangementLoop).toBeUndefined();
+    expect(result.loop).toBeUndefined();
   });
 
   // A locator resolves against the arrangement too, so it goes the same way.
@@ -151,7 +150,8 @@ describe("playback arrangement params on a session action", () => {
 
     registerTargets();
     playback({
-      action: "stop",
+      action: "play-scene",
+      sceneIndex: 3,
       startTime: "5|1",
       loop: false,
       loopEnd: "9|1",
@@ -166,18 +166,9 @@ describe("playback arrangement params on a session action", () => {
     const warn = vi.spyOn(console, "warn");
 
     registerTargets();
-    playback({ action: "stop" });
+    playback({ action: "stop-all-session-clips" });
 
     expect(warn).not.toHaveBeenCalled();
-  });
-
-  // stop resets the playhead as part of stopping. That is the action's own
-  // behavior, not the dropped param leaking through.
-  it("still lets stop reset the playhead itself", () => {
-    registerTargets();
-    playback({ action: "stop", startTime: "5|1" });
-
-    expect(liveSet.set).toHaveBeenCalledWith("start_time", 0);
   });
 });
 
@@ -188,7 +179,7 @@ describe("playback arrangement params on an arrangement action", () => {
     liveSet = setupPlaybackLiveSet();
   });
 
-  it.each(["play-arrangement", "update-arrangement"])(
+  it.each(["play-arrangement", "update-arrangement", "stop"])(
     "still applies startTime on %s",
     (action) => {
       const warn = vi.spyOn(console, "warn");

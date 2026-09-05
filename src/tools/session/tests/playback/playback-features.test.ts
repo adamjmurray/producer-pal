@@ -18,7 +18,7 @@ import {
 
 describe("playback path param", () => {
   beforeEach(() => {
-    setupPlaybackLiveSet({ current_song_time: 5 });
+    setupPlaybackLiveSet();
   });
 
   it("fires the clips a path names", () => {

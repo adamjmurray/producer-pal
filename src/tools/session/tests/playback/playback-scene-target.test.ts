@@ -98,7 +98,6 @@ describe("playback play-scene target agreement", () => {
     mockSessionClip("clip1", 0, 3);
 
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
-      currentTime: "NaN|NaN+nNaN/4",
       playing: true,
       scene: { id: "scene3", path: "s3", name: "Chorus" },
     });
@@ -109,7 +108,6 @@ describe("playback play-scene target agreement", () => {
     mockScene(3, undefined, "");
 
     expect(playback({ action: "play-scene", sceneIndex: 3 })).toStrictEqual({
-      currentTime: "NaN|NaN+nNaN/4",
       playing: true,
       scene: { id: "scene3", path: "s3", name: "4" },
     });
@@ -122,7 +120,6 @@ describe("playback play-scene target agreement", () => {
     mockSessionClip("clip1", 2, 5);
 
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
-      currentTime: "NaN|NaN+nNaN/4",
       playing: true,
       scene: { id: "scene5", path: "s5", name: "Bridge" },
     });

@@ -43,8 +43,11 @@ interface AnyResult {
   selectedClip?: { id: string; path?: string };
   selectedDevice?: { id: string; path?: string };
   playing?: boolean;
-  currentTime?: string;
-  arrangementLoop?: { start: string; end: string };
+  startTime?: string;
+  scene?: { id: string; path?: string; name: string };
+  loop?: boolean;
+  loopStart?: string;
+  loopEnd?: string;
 }
 
 interface TrackRouting {
@@ -505,14 +508,13 @@ const CASES: Case[] = [
     args: () => ({ devicePath: "t0/d0" }),
     verify: (d) => expect(d.selectedDevice?.path).toBe("t0/d0"),
   },
-  // The playhead is all startLocator sets, and currentTime only reports it once
-  // the transport is at it — hence play-arrangement, and first, before the
-  // session cases below leave it running somewhere else.
+  // The start position is all startLocator sets, and only the arrangement
+  // actions report it — hence play-arrangement.
   {
     tool: "ppal-playback",
     param: "startLocator",
     args: () => ({ action: "play-arrangement", startLocator: "Verse" }),
-    verify: (d) => expect(d.currentTime).toBe("9|1"),
+    verify: (d) => expect(d.startTime).toBe("9|1"),
   },
   {
     tool: "ppal-playback",
@@ -548,7 +550,7 @@ const CASES: Case[] = [
       loopStartLocator: "Verse",
       loopEnd: "33|1",
     }),
-    verify: (d) => expect(d.arrangementLoop?.start).toBe("9|1"),
+    verify: (d) => expect(d.loopStart).toBe("9|1"),
   },
   {
     tool: "ppal-playback",
@@ -559,13 +561,13 @@ const CASES: Case[] = [
       loopStart: "9|1",
       loopEndLocator: "Bridge",
     }),
-    verify: (d) => expect(d.arrangementLoop?.end).toBe("33|1"),
+    verify: (d) => expect(d.loopEnd).toBe("33|1"),
   },
   {
     tool: "ppal-playback",
     param: "sceneIndex",
     args: () => ({ action: "play-scene", sceneIndex: 0 }),
-    verify: (d) => expect(d.sceneIndex).toBe(0),
+    verify: (d) => expect(d.scene?.path).toBe("s0"),
   },
   {
     tool: "ppal-library",

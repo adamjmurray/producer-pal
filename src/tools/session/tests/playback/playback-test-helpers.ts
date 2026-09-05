@@ -150,12 +150,33 @@ export function expectLiveSetProperty(
 }
 
 /**
- * Assert the arrangement loop length was left untouched — the guard against a
- * non-positive loop length skips the write rather than sending it to Live.
+ * Assert the loop was left untouched, all three writes of it. A loop that
+ * can't be had is refused whole: writing the start and then refusing the
+ * length would leave a loop the caller never asked for.
  * @param handle - RegisteredMockObject for the live_set object
  */
-export function expectLoopLengthNotWritten(handle: RegisteredMockObject): void {
-  expect(handle.set).not.toHaveBeenCalledWith("loop_length", expect.anything());
+export function expectLoopNotWritten(handle: RegisteredMockObject): void {
+  for (const property of ["loop", "loop_start", "loop_length"]) {
+    expect(handle.set).not.toHaveBeenCalledWith(property, expect.anything());
+  }
+}
+
+/**
+ * Assert the loop a playback result reports: on or off, and the bounds when it
+ * names them.
+ * @param result - The playback result
+ * @param expected - The loop state the result should report
+ * @param expected.loop - Whether the result says the loop is on
+ * @param expected.start - Expected loopStart, omitted when none is reported
+ * @param expected.end - Expected loopEnd, omitted when none is reported
+ */
+export function expectReportedLoop(
+  result: { loop?: boolean; loopStart?: string; loopEnd?: string },
+  expected: { loop?: boolean; start?: string; end?: string },
+): void {
+  expect(result.loop).toBe(expected.loop);
+  expect(result.loopStart).toBe(expected.start);
+  expect(result.loopEnd).toBe(expected.end);
 }
 
 /**
@@ -163,7 +184,7 @@ export function expectLoopLengthNotWritten(handle: RegisteredMockObject): void {
  */
 export function expectLoopOrderWarning(): void {
   expect(capturedWarnings()).toContainEqual(
-    expect.stringContaining("loopEnd must be after loopStart"),
+    expect.stringContaining("is not after loopStart"),
   );
 }
 
@@ -209,7 +230,6 @@ export function setupMultiClipMocks(
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,
-      current_song_time: 5,
       loop: 0,
       loop_start: 0,
       loop_length: 4,

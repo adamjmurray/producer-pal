@@ -46,9 +46,13 @@ describe("playback - arrangement start position", () => {
     expect(result.startTime).toBe("4|1");
   });
 
-  it("reports the playhead separately from the start position", () => {
+  it("reports the start position, never the playhead", () => {
     // Setting the start position leaves the playhead alone, so the two
-    // disagree and both belong in the result.
+    // disagree — and the playhead is the one that can't be reported. Live
+    // updates it asynchronously, so a read in this same request would answer
+    // wherever it was before the call.
+    // The playhead sits at bar 3+ and the start position at bar 9. Nothing
+    // reads current_song_time any more — that's the point of the case.
     liveSet = setupPlaybackLiveSet({
       is_playing: 1,
       current_song_time: 10,
@@ -60,8 +64,8 @@ describe("playback - arrangement start position", () => {
       startTime: "9|1",
     });
 
-    expect(result.currentTime).toBe("3|3");
     expect(result.startTime).toBe("9|1");
+    expect(result).not.toHaveProperty("currentTime");
   });
 
   it("uses the song time signature for the start position", () => {
@@ -82,7 +86,10 @@ describe("playback - arrangement start position", () => {
     expect(result.startTime).toBe("4|1");
   });
 
-  it("omits the start position when the call didn't set it", () => {
+  it("omits the start position when update-arrangement only set the loop", () => {
+    // Nothing moved it, so there's nothing to report.
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
     const result = playback({ action: "update-arrangement", loop: true });
 
     expect(liveSet.set).not.toHaveBeenCalledWith(
@@ -93,16 +100,45 @@ describe("playback - arrangement start position", () => {
   });
 
   it("omits the start position for session actions", () => {
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
     const result = playback({ action: "stop-all-session-clips" });
 
     expect(result.startTime).toBeUndefined();
   });
 
-  it("reports the start position play-arrangement reset to the song start", () => {
-    // No startTime given, so play-arrangement plays from bar 1 — and says so.
+  it("puts the start position back after stopping, and says nothing", () => {
+    // Live's second press of stop sends the start position to the top, so
+    // stop writes back what it read. The caller's position outlives the
+    // transport, and a call that changed nothing reports nothing.
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
+    const result = playback({ action: "stop" });
+
+    expectLiveSetProperty(liveSet, "start_time", 32);
+    expect(result.startTime).toBeUndefined();
+  });
+
+  it("reports where play-arrangement began without being told", () => {
+    // The start position governs where playback starts, and the caller may
+    // never have read it, so play-arrangement reports it either way.
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
     const result = playback({ action: "play-arrangement" });
 
-    expectLiveSetProperty(liveSet, "start_time", 0);
-    expect(result.startTime).toBe("1|1");
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "start_time",
+      expect.anything(),
+    );
+    expect(result.startTime).toBe("9|1");
+  });
+
+  it("parks the start position on stop, for the next play", () => {
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
+    const result = playback({ action: "stop", startTime: "9|1" });
+
+    expectLiveSetProperty(liveSet, "start_time", 32);
+    expect(result.startTime).toBe("9|1");
   });
 });

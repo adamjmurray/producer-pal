@@ -37,8 +37,10 @@
    tries to change is reported with the new value from the actual object, so a
    value the API snapped, clamped, rounded, or silently refused is visible with
    a reason when it's not self-explanatory. Properties the call didn't touch are
-   not returned to save tokens. A successful call never returns a result that
-   reads as "nothing happened."
+   not returned to save tokens, with two exceptions. State that governs what the
+   operation just did is reported even when the call didn't set it, because the
+   caller may never have read it. And a property the API moved on its own is
+   reported with the value read back, because nothing else would reveal it.
 
 6. Warnings: A warning is only for what no result can carry: a whole-call arg
    that couldn't be applied, an effect on objects the caller didn't name (such

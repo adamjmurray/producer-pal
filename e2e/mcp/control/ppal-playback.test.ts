@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   isToolError,
   getToolErrorMessage,
+  getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -69,16 +70,40 @@ describe("ppal-playback", () => {
     const stopped = await playback({ action: "stop" });
 
     expect(stopped.playing).toBe(false);
-    expect(stopped.currentTime).toBe("1|1");
-    expect(stopped.startTime).toBe("1|1");
   });
 
-  it("plays the arrangement from the start", async () => {
+  it("keeps the start position across a stop, and says nothing about it", async () => {
+    await playback({ action: "play-arrangement", startTime: "5|1" });
+    await sleep(100);
+
+    const stopped = await playback({ action: "stop" });
+
+    // Nothing moved it, so nothing reports it.
+    expect(stopped.playing).toBe(false);
+    expect(stopped.startTime).toBeUndefined();
+
+    // Live's second press of stop sends the start position to the top. Two
+    // more stops, then the only thing that reports the position: it survived.
+    await playback({ action: "stop" });
+    await sleep(100);
+    await playback({ action: "stop" });
+
     const playing = await playback({ action: "play-arrangement" });
 
+    expect(playing.startTime).toBe("5|1");
+
+    await playback({ action: "stop" });
+  });
+
+  it("plays the arrangement from wherever the start position is", async () => {
+    await playback({ action: "update-arrangement", startTime: "5|1" });
+
+    const playing = await playback({ action: "play-arrangement" });
+
+    // No startTime given, so it plays from the position already set — and
+    // reports it, because the caller may never have read it.
     expect(playing.playing).toBe(true);
-    expect(playing.currentTime).toBe("1|1");
-    expect(playing.startTime).toBe("1|1");
+    expect(playing.startTime).toBe("5|1");
 
     await playback({ action: "stop" });
   });
@@ -90,7 +115,6 @@ describe("ppal-playback", () => {
     });
 
     expect(playFrom.playing).toBe(true);
-    expect(playFrom.currentTime).toBe("5|1");
     expect(playFrom.startTime).toBe("5|1");
 
     await playback({ action: "stop" });
@@ -102,9 +126,9 @@ describe("ppal-playback", () => {
       startTime: "9|1",
     });
 
-    // The point of reporting it: without startTime this call answers with a
-    // currentTime it didn't touch, and reads as a no-op. currentTime itself is
-    // wherever the last play left the playhead, so it isn't asserted here.
+    // Where the next play begins, which is the whole point of the call. The
+    // playhead doesn't move, and isn't reported: Live updates it too late for
+    // this request to read it back.
     expect(set.startTime).toBe("9|1");
     expect(set.playing).toBe(false);
 
@@ -119,14 +143,109 @@ describe("ppal-playback", () => {
       loopEnd: "7|1",
     });
 
-    expect(looped.arrangementLoop?.start).toBe("3|1");
-    expect(looped.arrangementLoop?.end).toBe("7|1");
+    expect(looped.loop).toBe(true);
+    expect(looped.loopStart).toBe("3|1");
+    expect(looped.loopEnd).toBe("7|1");
+    // Nothing moved the start position, so nothing reports it.
     expect(looped.startTime).toBeUndefined();
 
     const stopped = await playback({ action: "stop" });
 
     expect(stopped.playing).toBe(false);
-    expect(stopped.currentTime).toBe("1|1");
+  });
+
+  it("parks a start position on stop and plays from it next time", async () => {
+    await playback({ action: "play-arrangement", startTime: "5|1" });
+    await sleep(100);
+
+    // The write has to land after the transport call: Live's own second stop
+    // sends the start position to the top, so writing it first would be wiped.
+    const stopped = await playback({ action: "stop", startTime: "9|1" });
+
+    expect(stopped.playing).toBe(false);
+    expect(stopped.startTime).toBe("9|1");
+
+    const playing = await playback({ action: "play-arrangement" });
+
+    expect(playing.startTime).toBe("9|1");
+
+    await playback({ action: "stop" });
+  });
+
+  it("turns the arrangement loop on when only its bounds are named", async () => {
+    const looped = await playback({
+      action: "update-arrangement",
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
+    expect(looped.loop).toBe(true);
+    expect(looped.loopStart).toBe("3|1");
+    expect(looped.loopEnd).toBe("7|1");
+
+    await playback({ action: "update-arrangement", loop: false });
+  });
+
+  it("slides the whole loop when only one end is named", async () => {
+    await playback({
+      action: "update-arrangement",
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
+    // Like dragging the loop brace in Live: it keeps its length and moves.
+    const slid = await playback({
+      action: "update-arrangement",
+      loopEnd: "9|1",
+    });
+
+    expect(slid.loopStart).toBe("5|1");
+    expect(slid.loopEnd).toBe("9|1");
+
+    await playback({ action: "update-arrangement", loop: false });
+  });
+
+  it("refuses an inverted loop whole, leaving the loop off", async () => {
+    await playback({
+      action: "update-arrangement",
+      loop: false,
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: {
+        action: "update-arrangement",
+        loopStart: "9|1",
+        loopEnd: "5|1",
+      },
+    });
+
+    // Writing the start and then refusing the length would leave a loop nobody
+    // asked for, and turn it on to boot.
+    expect(getToolWarnings(refused)).toContain(
+      "WARNING: loopEnd 5|1 is not after loopStart 9|1 — leaving the loop as it was",
+    );
+
+    const after = await playback({
+      action: "update-arrangement",
+      loopStart: "3|1",
+    });
+
+    expect(after.loop).toBe(false);
+
+    await playback({ action: "update-arrangement", loop: false });
+  });
+
+  it("says nothing about the loop when the call didn't touch it", async () => {
+    const set = await playback({
+      action: "update-arrangement",
+      startTime: "5|1",
+    });
+
+    expect(set.startTime).toBe("5|1");
+    expect(set.loop).toBeUndefined();
   });
 
   it("plays and stops session clips", async () => {
@@ -143,6 +262,9 @@ describe("ppal-playback", () => {
     expect(playingClips.playing).toBe(true);
     // Only play-scene fires a scene, so a clip action names none
     expect(playingClips.scene).toBeUndefined();
+    // A session action leaves the arrangement start position alone, so it
+    // isn't in the result either.
+    expect(playingClips.startTime).toBeUndefined();
 
     await sleep(100);
     await playback({ action: "stop-session-clips", id: clip1 });
@@ -227,7 +349,6 @@ describe("ppal-playback", () => {
     });
 
     expect(playing.playing).toBe(true);
-    expect(playing.currentTime).toBe("9|1");
     expect(playing.startTime).toBe("9|1");
 
     await playback({ action: "stop" });
@@ -239,7 +360,6 @@ describe("ppal-playback", () => {
       startTime: "loc:locator-2",
     });
 
-    expect(playing.currentTime).toBe("17|1");
     expect(playing.startTime).toBe("17|1");
 
     await playback({ action: "stop" });
@@ -253,8 +373,8 @@ describe("ppal-playback", () => {
       loopEnd: "loc:Chorus",
     });
 
-    expect(looped.arrangementLoop?.start).toBe("9|1");
-    expect(looped.arrangementLoop?.end).toBe("17|1");
+    expect(looped.loopStart).toBe("9|1");
+    expect(looped.loopEnd).toBe("17|1");
     expect(looped.startTime).toBeUndefined();
   });
 
@@ -284,8 +404,9 @@ describe("ppal-playback", () => {
 
 interface PlaybackResult {
   playing: boolean;
-  currentTime: string;
   startTime?: string;
   scene?: { id: string; path?: string; name: string };
-  arrangementLoop?: { start: string; end: string };
+  loop?: boolean;
+  loopStart?: string;
+  loopEnd?: string;
 }

@@ -31,19 +31,21 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         "stop",
       ])
       .describe(
-        `play-arrangement: from startTime
-update-arrangement: set startTime (where play begins) and/or loop, without playing
+        `play-arrangement: from startTime, or from wherever it already is
+update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s)
 stop-session-clips: by id(s) or path(s)
 stop-all-session-clips: all
-stop: session and arrangement`,
+stop: session and arrangement; takes startTime to park the next play`,
       ),
     startTime: z
       .string()
       .optional()
       .describe(
-        "arrangement position: bar|beat in song meter, or loc:<locator name or id> (e.g. '5|1' or 'loc:Verse')",
+        "where arrangement playback starts, and restarts from if it's already " +
+          "playing. Stays put until something changes it: bar|beat in song " +
+          "meter, or loc:<locator name or id> (e.g. '5|1' or 'loc:Verse')",
       ),
     startLocator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "startTime",
@@ -52,14 +54,14 @@ stop: session and arrangement`,
     loopStart: z
       .string()
       .optional()
-      .describe("bar|beat (song meter) or loc:<locator>"),
+      .describe("bar|beat (song meter) or loc:<locator>; turns the loop on"),
     loopStartLocator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "loopStart",
     }),
     loopEnd: z
       .string()
       .optional()
-      .describe("bar|beat (song meter) or loc:<locator>"),
+      .describe("bar|beat (song meter) or loc:<locator>; turns the loop on"),
     loopEndLocator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "loopEnd",
     }),

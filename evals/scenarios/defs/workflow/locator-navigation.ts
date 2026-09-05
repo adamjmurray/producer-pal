@@ -195,20 +195,14 @@ export const locatorNavigation: EvalScenario = {
       1,
       ["startTime"],
       `the chorus (${CHORUS})`,
-      (result) => result.currentTime === CHORUS,
+      (result) => result.startTime === CHORUS,
     ),
 
     assertNavigatedByLocator(
       2,
       ["loopStart", "loopEnd"],
       `a ${BRIDGE}-${OUTRO} loop`,
-      (result) => {
-        const loop = result.arrangementLoop as
-          | { start?: string; end?: string }
-          | undefined;
-
-        return loop?.start === BRIDGE && loop.end === OUTRO;
-      },
+      (result) => result.loopStart === BRIDGE && result.loopEnd === OUTRO,
     ),
 
     assertDuplicatedToLocator(3),

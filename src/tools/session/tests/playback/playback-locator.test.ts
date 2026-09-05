@@ -7,6 +7,7 @@ import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import {
   expectLiveSetProperty,
+  expectReportedLoop,
   setupCuePointMocks,
 } from "./playback-test-helpers.ts";
 
@@ -36,28 +37,40 @@ describe("playback - song positions", () => {
       expect(liveSet.call).toHaveBeenCalledWith("start_playing");
       expect(result).toStrictEqual({
         playing: true,
-        currentTime: "5|1",
         startTime: "5|1",
+        loop: false,
       });
     });
 
     it("should start playback from a locator name", () => {
+      // The mock answers 32 beats, so the reported position is read back off
+      // the Live Set rather than echoed from the request.
+      liveSet = setupCuePointMocks({
+        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
+        liveSet: { startTime: 32 },
+      });
+
       const result = playback({
         action: "play-arrangement",
         startTime: "loc:Chorus",
       });
 
       expectLiveSetProperty(liveSet, "start_time", 32);
-      expect(result.currentTime).toBe("9|1");
+      expect(result.startTime).toBe("9|1");
     });
 
     it("should accept the undocumented locator: spelling", () => {
+      liveSet = setupCuePointMocks({
+        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
+        liveSet: { startTime: 32 },
+      });
+
       const result = playback({
         action: "play-arrangement",
         startTime: "locator:Chorus",
       });
 
-      expect(result.currentTime).toBe("9|1");
+      expect(result.startTime).toBe("9|1");
     });
 
     it("should accept the prefix in any case", () => {
@@ -66,7 +79,7 @@ describe("playback - song positions", () => {
         startTime: "LOC:Verse",
       });
 
-      expect(result.currentTime).toBe("5|1");
+      expect(result.startTime).toBe("5|1");
     });
 
     it("should throw when the prefix names no locator", () => {
@@ -100,7 +113,7 @@ describe("playback - song positions", () => {
     beforeEach(() => {
       liveSet = setupCuePointMocks({
         cuePoints: [...VERSE_CHORUS_CUE_POINTS],
-        liveSet: { startTime: 16, loopStart: 16, loopLength: 16 },
+        liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -120,7 +133,8 @@ describe("playback - song positions", () => {
 
       expectLiveSetProperty(liveSet, "loop_start", 16);
       expectLiveSetProperty(liveSet, "loop_length", 16);
-      expect(result.arrangementLoop).toStrictEqual({
+      expectReportedLoop(result, {
+        loop: true,
         start: "5|1",
         end: "9|1",
       });
@@ -153,7 +167,7 @@ describe("playback - song positions", () => {
     beforeEach(() => {
       liveSet = setupCuePointMocks({
         cuePoints: [...VERSE_CHORUS_CUE_POINTS],
-        liveSet: { startTime: 16, loopStart: 16, loopLength: 16 },
+        liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -164,10 +178,13 @@ describe("playback - song positions", () => {
       });
 
       expectLiveSetProperty(liveSet, "start_time", 16);
+      // play-arrangement reports the loop it will obey, set here or not.
       expect(result).toStrictEqual({
         playing: true,
-        currentTime: "5|1",
         startTime: "5|1",
+        loop: true,
+        loopStart: "5|1",
+        loopEnd: "9|1",
       });
     });
 
@@ -181,7 +198,8 @@ describe("playback - song positions", () => {
 
       expectLiveSetProperty(liveSet, "loop_start", 16);
       expectLiveSetProperty(liveSet, "loop_length", 16);
-      expect(result.arrangementLoop).toStrictEqual({
+      expectReportedLoop(result, {
+        loop: true,
         start: "5|1",
         end: "9|1",
       });
@@ -228,7 +246,7 @@ describe("playback - song positions", () => {
           { id: "cue2", time: 16, name: "Verse" },
           { id: "cue3", time: 32, name: "Chorus" },
         ],
-        liveSet: { startTime: 16, loopStart: 16, loopLength: 16 },
+        liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
       });
     });
 
@@ -247,9 +265,10 @@ describe("playback - song positions", () => {
       expect(liveSet.call).toHaveBeenCalledWith("start_playing");
       expect(result).toStrictEqual({
         playing: true,
-        currentTime: "5|1",
         startTime: "5|1",
-        arrangementLoop: { start: "5|1", end: "9|1" },
+        loop: true,
+        loopStart: "5|1",
+        loopEnd: "9|1",
       });
     });
   });

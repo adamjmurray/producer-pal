@@ -5,6 +5,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { applyArrangementLoop } from "./arrangement-loop.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
@@ -38,8 +39,15 @@ const LOCATOR_PARAM_PAIRS = [
   ["loopEnd", "loopEndLocator"],
 ] as const;
 
+/** The action that plays the arrangement, named in a few places. */
+export const PLAY_ARRANGEMENT = "play-arrangement";
+
 /** The actions that read the arrangement timeline. The rest work the session. */
-const ARRANGEMENT_ACTIONS = new Set(["play-arrangement", "update-arrangement"]);
+const ARRANGEMENT_ACTIONS = new Set([
+  PLAY_ARRANGEMENT,
+  "update-arrangement",
+  "stop",
+]);
 
 /**
  * Drop the arrangement-timeline params on an action that doesn't use them.
@@ -121,44 +129,31 @@ export function applyArrangementTimeline(
     timeSigDenominator,
   );
 
-  if (timeline.loop != null) {
-    liveSet.set("loop", timeline.loop);
-  }
-
-  const loopStartBeats = resolveLoopStart(
-    liveSet,
-    timeline,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  resolveLoopEnd(
-    liveSet,
-    timeline,
-    loopStartBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  applyArrangementLoop(liveSet, timeline, timeSigNumerator, timeSigDenominator);
 
   return startTimeBeats;
 }
 
 /**
  * Read the arrangement start position back after the action, so a value Live
- * snapped is what the caller sees. Actions that didn't write it don't report it.
+ * snapped is what the caller sees. Reported when the call set it, and on
+ * play-arrangement, which is governed by it — that's where playback just
+ * began, and the caller may never have read it. Nothing else moves it.
  * @param liveSet - The live_set LiveAPI object
- * @param state - The playback state the action returned
+ * @param action - The playback action that just ran
+ * @param wroteStartTime - Whether the call set the start position itself
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns The start position in bar|beat, or undefined when the call left it alone
+ * @returns The start position in bar|beat, or undefined when nothing moved it
  */
 export function readStartTime(
   liveSet: LiveAPI,
-  state: PlaybackState,
+  action: string,
+  wroteStartTime: boolean,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): string | undefined {
-  if (!state.wroteStartTime) return undefined;
+  if (!wroteStartTime && action !== PLAY_ARRANGEMENT) return undefined;
 
   return abletonBeatsToBarBeat(
     liveSet.getProperty("start_time") as number,
@@ -229,75 +224,6 @@ export function resolveStartTime(
   return startTimeBeats;
 }
 
-/**
- * Resolve the arrangement loop start and write it.
- * @param liveSet - The live_set LiveAPI object
- * @param params - The timeline params
- * @param params.loopStart - Song position, bar|beat or `loc:<name>`
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns The loop start in beats, or undefined when none was given
- */
-export function resolveLoopStart(
-  liveSet: LiveAPI,
-  { loopStart }: ArrangementParams,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): number | undefined {
-  if (loopStart == null) return undefined;
-
-  const loopStartBeats = songPositionToBeats(liveSet, loopStart, {
-    paramName: "loopStart",
-    timeSigNumerator,
-    timeSigDenominator,
-  });
-
-  liveSet.set("loop_start", loopStartBeats);
-
-  return loopStartBeats;
-}
-
-/**
- * Resolve loop end time and set loop length
- * @param liveSet - The live_set LiveAPI object
- * @param params - The timeline params
- * @param params.loopEnd - Song position, bar|beat or `loc:<name>`
- * @param loopStartBeats - Resolved loop start in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- */
-export function resolveLoopEnd(
-  liveSet: LiveAPI,
-  { loopEnd }: ArrangementParams,
-  loopStartBeats: number | undefined,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): void {
-  if (loopEnd == null) return;
-
-  const loopEndBeats = songPositionToBeats(liveSet, loopEnd, {
-    paramName: "loopEnd",
-    timeSigNumerator,
-    timeSigDenominator,
-  });
-  const actualLoopStartBeats =
-    loopStartBeats ?? (liveSet.getProperty("loop_start") as number);
-  const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
-
-  // loopStart and loopEnd are independent params, so loopEnd can land at or
-  // before loopStart. A non-positive loop_length is invalid in Live; warn and
-  // skip rather than writing it.
-  if (loopLengthBeats <= 0) {
-    console.warn(
-      `loopEnd must be after loopStart: loop length ${loopLengthBeats} beats (loopStart ${actualLoopStartBeats}, loopEnd ${loopEndBeats}) — skipping loop length update`,
-    );
-
-    return;
-  }
-
-  liveSet.set("loop_length", loopLengthBeats);
-}
-
 /** The scene play-scene fired, for the response */
 export interface FiredScene {
   id: string;
@@ -307,16 +233,6 @@ export interface FiredScene {
 
 export interface PlaybackState {
   isPlaying: boolean;
-  currentTimeBeats: number;
-  /**
-   * True when the action wrote the arrangement start position, so the result
-   * reports it. Actions that didn't touch it don't report it.
-   *
-   * The session handlers build a fresh state and drop this, which is only safe
-   * because resolveArrangementParams strips the timeline params for them. An
-   * arrangement action routed through one would have to carry it.
-   */
-  wroteStartTime?: boolean;
   /**
    * Set by play-scene only. The scene can be named by a scene id or by a clip
    * in it, so the caller doesn't always know which one fired.
@@ -325,44 +241,24 @@ export interface PlaybackState {
 }
 
 /**
- * Handle playing the arrangement view
+ * Handle playing the arrangement view. Playback begins at the arrangement
+ * start position, which the caller sets with startTime or leaves as it is.
  * @param liveSet - LiveAPI instance for live_set
- * @param startTimeBeats - Resolved start position, or undefined for none
- * @param _state - Current playback state (unused)
  * @returns Updated playback state
  */
-export function handlePlayArrangement(
-  liveSet: LiveAPI,
-  startTimeBeats: number | undefined,
-  _state: PlaybackState,
-): PlaybackState {
-  let resolvedStartTimeBeats = startTimeBeats;
-
-  if (startTimeBeats == null) {
-    liveSet.set("start_time", 0);
-    resolvedStartTimeBeats = 0;
-  }
-
+export function handlePlayArrangement(liveSet: LiveAPI): PlaybackState {
   liveSet.set("back_to_arranger", 0);
   liveSet.call("start_playing");
 
-  return {
-    isPlaying: true,
-    currentTimeBeats: resolvedStartTimeBeats ?? 0,
-    wroteStartTime: true,
-  };
+  return { isPlaying: true };
 }
 
 /**
  * Handle playing a scene in session view
  * @param sceneIndex - Scene index to play
- * @param state - Current playback state
  * @returns Updated playback state
  */
-export function handlePlayScene(
-  sceneIndex: number | undefined,
-  state: PlaybackState,
-): PlaybackState {
+export function handlePlayScene(sceneIndex: number | undefined): PlaybackState {
   if (sceneIndex == null) {
     throw new Error(
       `path "s<scene>" or a scene id is required for action "play-scene"`,
@@ -379,7 +275,6 @@ export function handlePlayScene(
 
   return {
     isPlaying: true,
-    currentTimeBeats: state.currentTimeBeats,
     scene: {
       id: scene.id,
       ...pathField(scene),
