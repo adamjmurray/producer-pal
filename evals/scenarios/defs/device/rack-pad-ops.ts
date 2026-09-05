@@ -248,6 +248,6 @@ export const rackPadOps: EvalScenario = {
         chains[0]?.chokeGroup === HAT_CHOKE_GROUP,
     ),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+    { type: "token_usage", maxTokens: 6_000 },
   ],
 };

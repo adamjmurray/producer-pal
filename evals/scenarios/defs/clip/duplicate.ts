@@ -116,8 +116,7 @@ export const duplicate: EvalScenario = {
     // Token usage
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 100_000,
+      maxTokens: 5_000,
     },
 
     // LLM quality check
@@ -260,10 +259,6 @@ export const duplicateLoop: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     assertDoubledInPlace(),
     clipStateAssertion(LOOP_SLOT, "4/4", secondHalfMirrorsFirst),
-    // Heavier than the notation scenarios: 3 turns each carrying the full
-    // connect skills blob, plus the state assertion's extra read-clip. ~144k is
-    // the validated baseline (2026-06-11, gemini-3.5-flash); target leaves a
-    // little headroom so a real regression still trips it.
-    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+    { type: "token_usage", maxTokens: 2_000 },
   ],
 };

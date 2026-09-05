@@ -65,6 +65,6 @@ export const pathToPathPairing: EvalScenario = {
     ...DESTINATION_SLOTS.map((slot) => assertSlotOccupancy(slot, true)),
     ...SOURCE_SLOTS.map((slot) => assertSlotOccupancy(slot, false)),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 90_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };

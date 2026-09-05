@@ -112,7 +112,7 @@ export function notationNeutralScenarios(
       { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
       midiJsonNotesAssertion(spec.meter, spec.expected),
       correctPathAssertion(correctSlot),
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+      { type: "token_usage", maxTokens: 1_500 },
     ],
   }));
 }

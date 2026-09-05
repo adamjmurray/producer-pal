@@ -216,7 +216,7 @@ export const melodyTransforms: EvalScenario = {
     { type: "response_contains", pattern: /legato/i, turn: 6 },
 
     // Token usage
-    { type: "token_usage", metric: "inputTokens", maxTokens: 150_000 },
+    { type: "token_usage", maxTokens: 10_000 },
 
     // LLM quality check
   ],

@@ -108,7 +108,7 @@ export function leadClipNotationScenario(config: {
     clearSlots: [LEAD_SLOT_1],
     assertions: [
       clipStateAssertion(LEAD_SLOT_1, "4/4", config.check),
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+      { type: "token_usage", maxTokens: 1_500 },
     ],
   });
 }

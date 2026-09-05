@@ -108,8 +108,7 @@ export const deviceDrumKit: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 80_000,
+      maxTokens: 2_500,
     },
   ],
 };

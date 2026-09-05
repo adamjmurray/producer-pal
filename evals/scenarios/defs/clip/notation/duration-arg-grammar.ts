@@ -157,6 +157,6 @@ export const durationArgGrammar: EvalScenario = {
       "length arg is `n/4` (note value), not bare 1/4",
     ),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 200_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };

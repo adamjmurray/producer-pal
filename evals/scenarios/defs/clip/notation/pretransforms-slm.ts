@@ -184,7 +184,7 @@ function buildSlmScenario(spec: {
       assertNotesRead(1),
       { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
       recordSlmPath(2),
-      { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+      { type: "token_usage", maxTokens: 2_500 },
     ],
   };
 }

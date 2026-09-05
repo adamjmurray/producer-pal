@@ -114,6 +114,6 @@ export const sceneUpdateAndSelect: EvalScenario = {
     assertNamesTarget({ turn: 2, tool: TOOL_SELECT }),
     assertSceneSelected(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

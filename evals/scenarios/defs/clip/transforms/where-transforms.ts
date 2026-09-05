@@ -224,6 +224,6 @@ export const whereTransforms: EvalScenario = {
       turn: 3,
     },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 120_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };

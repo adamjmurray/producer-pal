@@ -49,8 +49,7 @@ export const negativeCases: EvalScenario = {
     // Token usage
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 80_000,
+      maxTokens: 1_500,
     },
 
     // LLM quality check

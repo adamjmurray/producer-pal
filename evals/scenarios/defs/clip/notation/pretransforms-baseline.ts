@@ -194,7 +194,7 @@ export const pretransformsMelodyReplaceBaseline: EvalScenario = {
   assertions: [
     ...rewriteAssertionHead(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };
 
@@ -223,7 +223,7 @@ export const pretransformsHatFillsBaseline: EvalScenario = {
   assertions: [
     ...rewriteAssertionHead(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 2_000 },
   ],
 };
 
@@ -250,6 +250,6 @@ export const pretransformsSnareSwapBaseline: EvalScenario = {
   assertions: [
     ...rewriteAssertionHead(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };

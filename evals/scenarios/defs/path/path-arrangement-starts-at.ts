@@ -88,6 +88,6 @@ export const pathArrangementStartsAt: EvalScenario = {
       name: CLIP_NAME,
     }),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };

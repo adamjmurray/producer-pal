@@ -358,19 +358,18 @@ describe("toJsonResult", () => {
         makeAssertion({
           assertion: {
             type: "token_usage",
-            metric: "inputTokens",
             maxTokens: 20_000,
           },
           earned: 0,
           maxScore: 0,
-          message: "inputTokens 15.5k / 20k target (77%)",
+          message: "outputTokens 15.5k / 20k target (77%)",
           details: { total: 15500, target: 20000, percentage: 77 },
         }),
       ],
     });
 
     expect(result.efficiency).toStrictEqual({
-      inputTokens: 15500,
+      outputTokens: 15500,
       targetTokens: 20000,
       percentage: 77,
     });

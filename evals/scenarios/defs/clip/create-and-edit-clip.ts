@@ -110,8 +110,7 @@ export const createAndEditClip: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 100_000,
+      maxTokens: 4_500,
     },
   ],
 };

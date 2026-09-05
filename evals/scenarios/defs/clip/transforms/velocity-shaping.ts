@@ -208,6 +208,6 @@ export const velocityShaping: EvalScenario = {
       turn: 3,
     },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 4_500 },
   ],
 };

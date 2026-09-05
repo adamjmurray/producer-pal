@@ -146,6 +146,6 @@ export const pathLocatorCoordinate: EvalScenario = {
     }),
     assertBassClipsAt(AFTER_MOVE),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };

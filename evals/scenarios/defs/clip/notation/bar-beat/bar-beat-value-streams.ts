@@ -221,6 +221,6 @@ export const barBeatZipStreams: EvalScenario = createClipScenario({
     clipStateAssertion(LEAD_SLOT_1, "4/4", checkZip),
     usesStreamZip,
     zipUsesRepeatNotation,
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 });

@@ -196,6 +196,6 @@ export const drumPadForceGuard: EvalScenario = {
     assertReplacedAfterGoAhead(4),
     assertKickLoaded(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 140_000 },
+    { type: "token_usage", maxTokens: 9_000 },
   ],
 };

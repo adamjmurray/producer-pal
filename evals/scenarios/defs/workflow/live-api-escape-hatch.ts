@@ -124,7 +124,7 @@ export const liveApiEscapeHatch: EvalScenario = {
         `expected metronome on, got ${String((result as LiveApiResult).results?.[0]?.result)}`,
     },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_000 },
 
     {
       type: "llm_judge",

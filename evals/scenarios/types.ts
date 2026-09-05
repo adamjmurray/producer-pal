@@ -235,14 +235,20 @@ export interface ResponseContainsAssertion {
 }
 
 /**
- * Track token usage relative to a target budget. Informational only — does not
- * contribute to pass/fail. Displayed as a percentage of target in the efficiency section.
+ * Track output-token usage relative to a target budget. Informational only —
+ * does not contribute to pass/fail. Displayed as a percentage of target in the
+ * efficiency section.
+ *
+ * Output only, deliberately. Input tokens measure the harness, not the
+ * scenario: the fixed prefix (system prompt + skills + tool schemas) is re-sent
+ * on every internal model request, and one conversation turn makes one request
+ * per tool-call round trip, so summing them scales with turns x tool calls
+ * whatever the scenario actually costs. Reasoning tokens are already a subset
+ * of output. Raw per-turn usage stays in the result JSON either way.
  */
 export interface TokenUsageAssertion {
   type: "token_usage";
-  /** Which token metric to check */
-  metric: "inputTokens" | "outputTokens" | "reasoningTokens";
-  /** Target token budget */
+  /** Target output-token budget */
   maxTokens: number;
   /** Which turn to check (0-indexed), or "all" for combined (default: "all") */
   turn?: number | "all";

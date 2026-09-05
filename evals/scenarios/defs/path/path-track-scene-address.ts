@@ -103,6 +103,6 @@ export const pathTrackSceneAddress: EvalScenario = {
       check: (result) => resultPath(result) === "s8",
     }),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 120_000 },
+    { type: "token_usage", maxTokens: 3_500 },
   ],
 };

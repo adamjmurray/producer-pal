@@ -148,7 +148,7 @@ function toCheckResult(a: EvalAssertionResult): JsonCheckResult {
 }
 
 /**
- * Build efficiency object from token_usage assertion
+ * Build output-token efficiency from the token_usage assertion
  *
  * @param assertions - All assertion results
  * @returns Efficiency object, or undefined if no token_usage assertion
@@ -167,7 +167,7 @@ function buildEfficiency(
     | undefined;
 
   return {
-    inputTokens: details?.total ?? 0,
+    outputTokens: details?.total ?? 0,
     targetTokens: details?.target ?? 0,
     percentage: details?.percentage ?? 0,
   };

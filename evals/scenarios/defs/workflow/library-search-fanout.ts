@@ -138,7 +138,7 @@ export const librarySearchFanout: EvalScenario = {
     { type: "response_contains", pattern: /snare/i, turn: SEARCH_TURN },
     { type: "response_contains", pattern: /hat/i, turn: SEARCH_TURN },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 60_000 },
+    { type: "token_usage", maxTokens: 1_500 },
 
     {
       type: "llm_judge",

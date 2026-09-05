@@ -154,6 +154,6 @@ export const pathToPathClipDestinations: EvalScenario = {
     }),
     assertArrangementLayout(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 120_000 },
+    { type: "token_usage", maxTokens: 6_000 },
   ],
 };

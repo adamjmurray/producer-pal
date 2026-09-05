@@ -181,6 +181,6 @@ export const syncedLfoMeterInvariance: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     recordLfoReach(2),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 7_000 },
   ],
 };

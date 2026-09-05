@@ -169,14 +169,14 @@ function printEfficiencySection(result: JsonEvalResult): void {
   console.log("");
 
   const color = efficiencyColor(eff.percentage);
-  const actual = formatTokenLabel(eff.inputTokens);
+  const actual = formatTokenLabel(eff.outputTokens);
   const target = formatTokenLabel(eff.targetTokens);
 
   console.log(
     "  " +
       styleText(
         color,
-        `inputTokens ${actual} / ${target} target (${eff.percentage}%)`,
+        `outputTokens ${actual} / ${target} target (${eff.percentage}%)`,
       ),
   );
 }
@@ -252,7 +252,7 @@ export function printResultBlock(result: JsonEvalResult): void {
   if (result.efficiency) {
     const eff = result.efficiency;
     const effColor = efficiencyColor(eff.percentage);
-    const actual = formatTokenLabel(eff.inputTokens);
+    const actual = formatTokenLabel(eff.outputTokens);
     const target = formatTokenLabel(eff.targetTokens);
     const effText = `${eff.percentage}% (${actual} / ${target})`;
 

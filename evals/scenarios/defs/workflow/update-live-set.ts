@@ -73,8 +73,7 @@ export const updateLiveSet: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 60_000,
+      maxTokens: 1_500,
     },
 
     {

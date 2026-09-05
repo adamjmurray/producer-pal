@@ -58,8 +58,7 @@ export const sceneAndPlayback: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 110_000,
+      maxTokens: 3_000,
     },
 
     {

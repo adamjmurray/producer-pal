@@ -142,6 +142,6 @@ export const durationReachForQuarter: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     recordDurationReach(2),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 2_000 },
   ],
 };

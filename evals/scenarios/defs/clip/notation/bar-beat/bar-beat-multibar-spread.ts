@@ -101,6 +101,6 @@ export const barBeatPerBarSpread: EvalScenario = createClipScenario({
     clipStateAssertion(LEAD_SLOT_1, "4/4", chordPerBar),
     { type: "tool_called", tool: "ppal-create-clip", turn: 2 },
     clipStateAssertion(LEAD_SLOT_2, "4/4", notePerBar),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 });

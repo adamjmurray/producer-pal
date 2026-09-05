@@ -237,6 +237,6 @@ export const rangeClearBoundaries: EvalScenario = {
       "first half of bar 1 cleared, midpoint note (and all else) intact",
     ),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 200_000 },
+    { type: "token_usage", maxTokens: 4_500 },
   ],
 };

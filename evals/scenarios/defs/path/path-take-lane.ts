@@ -89,6 +89,6 @@ export const pathTakeLaneFirst: EvalScenario = {
     ...assertClipCreatedAtPath(ACCEPTED_PATHS),
     assertClipOnFirstLane(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 60_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

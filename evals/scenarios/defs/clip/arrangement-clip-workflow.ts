@@ -162,8 +162,7 @@ export const arrangementClipWorkflow: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 110_000,
+      maxTokens: 8_000,
     },
 
     // No llm_judge: the clip layout above pins every outcome it used to grade,

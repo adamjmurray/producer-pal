@@ -137,7 +137,7 @@ export const barBeatTriplets: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "4/4", EIGHTH_TRIPLET_STARTS),
     assertClipNotes(`${DRUMS_TRACK}/1`, "4/4", QUARTER_TRIPLET_STARTS),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_000 },
   ],
 };
 
@@ -177,7 +177,7 @@ export const barBeatMeterFill: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "5/4", [0], 5),
     assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0], 3),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };
 
@@ -224,7 +224,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "6/8", COMPOUND_TWO_FEEL_STARTS),
     assertClipNotes(`${DRUMS_TRACK}/1`, "12/8", COMPOUND_FOUR_FEEL_STARTS),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };
 
@@ -269,6 +269,6 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0, 1, 2], 1),
     assertClipNotes(`${DRUMS_TRACK}/2`, "5/4", [0, 1, 2, 3, 4], 1),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

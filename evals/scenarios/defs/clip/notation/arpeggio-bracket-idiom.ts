@@ -218,6 +218,6 @@ export const arpeggioBracketIdiom: EvalScenario = createClipScenario({
     usesBracketCycling(2),
     usesRepeatNotation(2),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 });

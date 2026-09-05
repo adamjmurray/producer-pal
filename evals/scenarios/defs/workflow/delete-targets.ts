@@ -162,7 +162,7 @@ export const deleteTargets: EvalScenario = {
     { type: "response_contains", pattern: /scene/i, turn: 2 },
     { type: "response_contains", pattern: /shaker|pad/i, turn: 3 },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 3_000 },
 
     {
       type: "llm_judge",

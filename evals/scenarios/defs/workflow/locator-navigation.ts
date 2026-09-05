@@ -222,8 +222,7 @@ export const locatorNavigation: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 120_000,
+      maxTokens: 5_000,
     },
   ],
 };

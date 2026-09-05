@@ -314,8 +314,13 @@ Plus:
   unbounded and drifts with every model, so a run that made the right edit and
   called it "turned those up" instead of "boosted" is not a regression. Pin the
   outcome with `state` or `custom`; keep the pattern for drift signal.
-- **`token_usage`** - Tracks token efficiency against a target budget
-  (informational only)
+- **`token_usage`** - Tracks OUTPUT tokens against a target budget
+  (informational only). Output, not input: the fixed prefix (system prompt,
+  skills, tool schemas) is re-sent on every internal model request, and one
+  conversation turn makes one request per tool-call round trip, so an input
+  total measures the harness rather than the scenario. Set a budget from real
+  runs, not by guess: about 1.3x the median output of a few passing trials, so a
+  normal run reads 60-85% and a run that spirals reads over 100%.
 
 **Failed tool calls.** A model that hits a tool error, fixes its arguments and
 calls again still lands the outcome, so it still passes — but the run reports

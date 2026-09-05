@@ -98,6 +98,6 @@ export const pathInsertPosition: EvalScenario = {
         `tracks are ${trackNames(result).join(", ")}, expected them to start ${TRACKS_AFTER_INSERT.join(", ")}`,
     },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

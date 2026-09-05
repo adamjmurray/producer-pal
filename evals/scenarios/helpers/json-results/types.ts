@@ -83,13 +83,13 @@ export interface JsonToolErrors {
   errors: Array<{ turnIndex: number; name: string; message: string }>;
 }
 
-/** Token usage efficiency relative to target */
+/** Output-token efficiency relative to target */
 export interface JsonEfficiency {
-  /** Actual input tokens used */
-  inputTokens: number;
+  /** Actual output tokens produced */
+  outputTokens: number;
   /** Target token budget */
   targetTokens: number;
-  /** inputTokens / targetTokens as percentage */
+  /** outputTokens / targetTokens as percentage */
   percentage: number;
 }
 

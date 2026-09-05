@@ -190,7 +190,7 @@ export const colorListPairing: EvalScenario = {
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
     assertAlternatingColors(),
     assertNoShortList("color", "path"),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };
 
@@ -213,7 +213,7 @@ export const arrangementDestinationPairing: EvalScenario = {
     assertArrangementBars(0, ["1|1", "9|1"]),
     assertArrangementBars(1, ["5|1", "13|1"]),
     assertNoShortList("path", "arrangementStart"),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_000 },
   ],
 };
 
@@ -235,6 +235,6 @@ export const duplicateDestinationPairing: EvalScenario = {
     assertArrangementBars(0, ["1|1", "9|1"]),
     assertArrangementBars(1, ["5|1", "13|1"]),
     assertNoShortList("toPath", "arrangementStart"),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

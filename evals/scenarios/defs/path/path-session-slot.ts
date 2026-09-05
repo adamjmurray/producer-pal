@@ -54,7 +54,7 @@ export const pathSessionSlot: EvalScenario = {
     assertSlotOccupancy(TARGET_PATH, true),
     assertSlotOccupancy(TRANSPOSED_PATH, false),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 60_000 },
+    { type: "token_usage", maxTokens: 1_500 },
 
     // No llm_judge: the two slot reads pin the outcome exactly.
   ],

@@ -144,7 +144,7 @@ export const legatoTransforms: EvalScenario = {
     { type: "response_contains", pattern: /legato/i, turn: 5 },
 
     // Token usage
-    { type: "token_usage", metric: "inputTokens", maxTokens: 150_000 },
+    { type: "token_usage", maxTokens: 9_000 },
 
     // LLM quality check
   ],

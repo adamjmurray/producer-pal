@@ -74,8 +74,7 @@ export const connectToAbleton: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 20_000,
+      maxTokens: 300,
     },
 
     // LLM judges the quality of the response

@@ -253,6 +253,6 @@ export const drumTransforms: EvalScenario = {
     { type: "response_contains", pattern: /random|snare/i, turn: 4 },
 
     // Token usage
-    { type: "token_usage", metric: "inputTokens", maxTokens: 120_000 },
+    { type: "token_usage", maxTokens: 11_000 },
   ],
 };

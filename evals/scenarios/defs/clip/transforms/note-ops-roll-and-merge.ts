@@ -280,12 +280,12 @@ const CREATE_THEN_UPDATE: EvalAssertion[] = [
 ];
 
 /**
- * Input-token ceiling for a note-op scenario.
+ * Output-token ceiling for a note-op scenario.
  * @param maxTokens - The ceiling
  * @returns A token-usage assertion
  */
 function tokenBudget(maxTokens: number): EvalAssertion {
-  return { type: "token_usage", metric: "inputTokens", maxTokens };
+  return { type: "token_usage", maxTokens };
 }
 
 export const noteOpsRatchetRoll: EvalScenario = {
@@ -304,7 +304,7 @@ export const noteOpsRatchetRoll: EvalScenario = {
   assertions: [
     ...READ_THEN_UPDATE,
     assertNoteOp(1, 2, /ratchet\(/, "grow"),
-    tokenBudget(100_000),
+    tokenBudget(2_500),
   ],
 };
 
@@ -325,7 +325,7 @@ export const noteOpsMerge: EvalScenario = {
   assertions: [
     ...READ_THEN_UPDATE,
     assertNoteOp(1, 2, /merge\(/, "shrink"),
-    tokenBudget(100_000),
+    tokenBudget(4_000),
   ],
 };
 
@@ -347,10 +347,7 @@ export const noteOpsRepeat: EvalScenario = {
   assertions: [
     ...CREATE_THEN_UPDATE,
     assertRepeatGrew(1, 2),
-    // Three turns (connect + create + update), each carrying the full skills
-    // blob; ~122k is the validated baseline (2026-06-11, gemini-3.5-flash).
-    // Target leaves headroom so a real regression still trips it.
-    tokenBudget(140_000),
+    tokenBudget(2_500),
   ],
 };
 
@@ -380,6 +377,6 @@ export const noteOpsSplit: EvalScenario = {
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 3 },
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 4 },
     assertSplitGrew(4),
-    tokenBudget(220_000),
+    tokenBudget(6_000),
   ],
 };

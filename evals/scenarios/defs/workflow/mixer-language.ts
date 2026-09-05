@@ -96,7 +96,7 @@ export const mixerLanguage: EvalScenario = {
     { type: "response_contains", pattern: /pan|left/i, turn: 2 },
     { type: "response_contains", pattern: /solo/i, turn: 3 },
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
 
     {
       type: "llm_judge",

@@ -79,8 +79,7 @@ export const deviceSoundDesign: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 100_000,
+      maxTokens: 3_000,
     },
   ],
 };

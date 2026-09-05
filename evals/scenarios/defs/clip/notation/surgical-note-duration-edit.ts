@@ -227,6 +227,6 @@ export const surgicalNoteDurationEdit: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     assertSurgicalNotRewrite(1, 2),
     assertShortenOutcome(1, 3),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };
