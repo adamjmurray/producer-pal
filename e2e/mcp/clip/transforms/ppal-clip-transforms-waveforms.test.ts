@@ -12,7 +12,11 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-waveforms
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import {
+  parseToolResultWithWarnings,
+  setupMcpTestContext,
+  type UpdateClipResult,
+} from "../../mcp-test-helpers.ts";
 import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
@@ -117,5 +121,29 @@ describe("ppal-clip-transforms-waveforms", () => {
     expect(notes).toMatch(/^v114\b/);
     expect(notes).toMatch(/v14\b.*1\|3/);
     expect(notes).not.toMatch(/v64/); // No notes at mid-velocity
+  });
+
+  // A period that divides the note spacing samples ONE phase, so every note
+  // gets the same value. The write still succeeds and still reports a full
+  // note count, so the warning is the only thing that says the LFO is flat.
+  it("warns when the period lands every note on one phase", async () => {
+    const clipId = await createWaveformClip(41);
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(clipId, "velocity = 64 + 50 * sin(1)"),
+    );
+
+    expect(warnings.join("\n")).toContain("flat LFO");
+    // Quarter notes are 1 beat apart, so a 1-beat period gives all four the
+    // phase-0 value: 64 + 50 * sin(0) = 64.
+    expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([64]);
+  });
+
+  it("stays quiet when the waveform actually varies the notes", async () => {
+    const clipId = await createWaveformClip(42);
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(clipId, "velocity = 64 + 50 * sin(n/1)"),
+    );
+
+    expect(warnings.join("\n")).not.toContain("flat LFO");
   });
 });
