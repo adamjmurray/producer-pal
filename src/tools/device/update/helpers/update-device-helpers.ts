@@ -47,6 +47,8 @@ export type DeviceMoveOutcome =
  *   left-behind chain mixer warning
  * @param reportPath - How to spell toPath in warnings, when the caller adjusted
  *   it (device duplication shifts track indices past its temp track)
+ * @param onMoved - Called with the container the device landed in, for a
+ *   caller that has to name it afterwards and can't re-resolve toPath cheaply
  * @returns "moved" once the device is at the destination, "no-destination" when
  *   toPath names nothing, "refused" when Live wouldn't take it, or
  *   "unresolvable" when toPath doesn't resolve at all
@@ -56,6 +58,7 @@ export function moveDeviceToPath(
   toPath: string,
   source: LiveAPI = device,
   reportPath: string = toPath,
+  onMoved?: (container: LiveAPI) => void,
 ): DeviceMoveOutcome {
   const destination = resolveMoveDestination(toPath, reportPath);
 
@@ -96,6 +99,8 @@ export function moveDeviceToPath(
 
     return "refused";
   }
+
+  onMoved?.(container);
 
   if (carry != null) {
     carryChainMixer(carry, container);

@@ -6,7 +6,10 @@
 import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  extractDevicePath,
+  insertionContainerPath,
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   claimLabels,
@@ -23,6 +26,14 @@ import {
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+
+/** A finished device copy: what it is, where it was sent, and what it landed in. */
+interface DeviceCopy {
+  id: string;
+  destination: string;
+  /** The container the move reported; absent when Live never confirmed one. */
+  containerId?: string;
+}
 
 /**
  * Duplicates a device to one or more destination paths.
@@ -75,15 +86,34 @@ export function duplicateDeviceWithPaths(
  * Name the copy by where it ended up. Read after duplicateDevice returns, not
  * inside it: the temp track it works through shifts every later track index,
  * so a path read before the cleanup is one track off.
- * @param result - The copy's id, or null when the copy was skipped
+ *
+ * The container is rebuilt from the id the move reported, not reused: it was
+ * resolved while the temp track still shifted every later track index, so only
+ * an id survives the cleanup. Rebuilt lazily — nothing but a drum-pad spelling
+ * ever looks at it.
+ * @param result - The copy's id, destination and landing container, or null
+ *   when the copy was skipped
  * @returns The result with its path, or null
  */
 function withDevicePath(
-  result: { id: string } | null,
+  result: DeviceCopy | null,
 ): { id: string; path?: string } | null {
   if (result == null) return null;
 
-  return { id: result.id, ...pathField(LiveAPI.from(result.id)) };
+  const { destination, containerId } = result;
+
+  return {
+    id: result.id,
+    ...pathField(
+      LiveAPI.from(result.id),
+      containerId == null
+        ? undefined
+        : {
+            container: () => LiveAPI.from(`id ${containerId}`),
+            path: insertionContainerPath(destination, "toPath"),
+          },
+    ),
+  };
 }
 
 /**
@@ -97,14 +127,15 @@ function withDevicePath(
  * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param name - Optional name for the duplicated device
  * @param count - Number of duplicates (only 1 supported, warns if > 1)
- * @returns The new device, or null when the copy was skipped
+ * @returns The new device and where it was sent, or null when the copy was
+ *   skipped
  */
 function duplicateDevice(
   device: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
   count = 1,
-): { id: string } | null {
+): DeviceCopy | null {
   if (count > 1) {
     console.warn(
       "count parameter ignored for device duplication (only single copy supported)",
@@ -152,11 +183,15 @@ function duplicateDevice(
       // toPath still get their copies. Name the caller's toPath, not the adjusted
       // one — the temp track shifted its track index. Either way nothing
       // survives: the copy is still on the temp track, which the cleanup deletes.
+      // Live confirms the device is in this container before the move reports
+      // "moved", which is what makes the destination safe to name it by.
+      let containerId: string | undefined;
       const outcome = moveDeviceToPath(
         tempDevice,
         adjustedDestination,
         device,
         destination,
+        (container) => (containerId = container.id),
       );
 
       if (outcome === "no-destination") {
@@ -185,7 +220,7 @@ function duplicateDevice(
       }
 
       // Read the device's id before the temp track goes away.
-      return { id: tempDevice.id };
+      return { id: tempDevice.id, destination, containerId };
     },
   );
 }

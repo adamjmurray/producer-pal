@@ -309,12 +309,33 @@ every other kind formats from indices already in hand. Hoist the meter once per
 request, not once per clip.
 
 A drum chain has two spellings that both resolve — pad-relative `t0/d0/pC1/c1`
-and rack-relative `t0/d0/c3` — and results always give the pad-relative one. It
-survives longer: the layer index shifts only when that pad's own layers change,
-where a rack index shifts on any chain added or removed anywhere in the rack.
-Live's own path is the rack-relative one, so `objectPathForApi` converts it,
-which costs a rack read and is why only a chain result gets the treatment. A
-device inside a pad still reports the rack-relative form.
+and rack-relative `t0/d0/c3` — and they number the rack differently, because the
+rack's flat chain list is in creation order while the pad listing groups by pad.
+Once a pad is layered, `c1` and `pC1/c1` name different chains.
+
+A chain result gives the pad-relative spelling. It survives longer: the layer
+index shifts only when that pad's own layers change, where a rack index shifts
+on any chain added or removed anywhere in the rack. Live's own path is the
+rack-relative one, so `objectPathForApi` converts it, which costs a rack read
+and is why only a chain result gets the treatment.
+
+A **device** inside a pad is the exception: naming it pad-relative would cost
+the same rack read for a path that is reachable either way, so it reports the
+rack-relative form — unless the call spelled its container through a pad, and
+then that spelling is echoed back. `ppal-create-device` and a device or chain
+copy's `toPath` do this; `ppal-update-device` does not yet.
+
+Echoing only ever replaces the container the call actually named. A chain copy
+whose destination rack is spelled rack-relative (`toPath: "t0/d0/c2/d0"`) still
+gets pad-relative ancestors in its result, because the conversion happens on the
+way out of `objectPathForApi` and there is no pad spelling to echo in its place.
+
+`pathField` does the substitution, and takes the resolved container along with
+its spelling so it can check the spelling really names the object's parent
+before trusting it (`insertionContainerPath` trims a trailing `d<n>` off an
+insertion path to get the spelling). Only a parent written through a pad is
+substituted: every other path has one spelling, and the derived path is read
+from the object itself.
 
 Beware the two chain orders. `pC1/cN` counts the rack's chains filtered by
 `in_note`, **not** `pad.chains` — measured on 12.4.3 the two disagree once a pad

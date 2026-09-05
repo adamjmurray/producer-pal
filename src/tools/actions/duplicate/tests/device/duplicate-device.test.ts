@@ -100,6 +100,7 @@ describe("duplicate - device duplication", () => {
       "t0/d3",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
 
     // Should delete the temp track
@@ -128,6 +129,7 @@ describe("duplicate - device duplication", () => {
       "t3/d0",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 
@@ -164,6 +166,7 @@ describe("duplicate - device duplication", () => {
       "t1/d0/c0/d2",
       expect.objectContaining({ _id: "rack_device1" }),
       expect.any(String),
+      expect.any(Function),
     );
 
     // Should delete the temp track at index 2
@@ -236,6 +239,7 @@ describe("duplicate - device duplication", () => {
       "t2/d0",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 
@@ -253,6 +257,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       // Warnings keep the spelling the caller sent.
       "2",
+      expect.any(Function),
     );
   });
 
@@ -319,6 +324,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       // The move reports failures in the caller's own coordinates, not t100's.
       "t99",
+      expect.any(Function),
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -385,6 +391,7 @@ describe("duplicate - device duplication", () => {
       "t0/d2",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 
@@ -412,6 +419,7 @@ describe("duplicate - device duplication", () => {
       "t3/d0",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 
@@ -427,6 +435,7 @@ describe("duplicate - device duplication", () => {
       "r0/d0",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 
@@ -481,6 +490,7 @@ describe("duplicate - device duplication", () => {
       "t12/d1",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 
@@ -504,6 +514,7 @@ describe("duplicate - device duplication", () => {
       "t13/d0",
       expect.anything(),
       "t12/d0",
+      expect.any(Function),
     );
   });
 
@@ -529,6 +540,7 @@ describe("duplicate - device duplication", () => {
       "t0/d0/c0",
       expect.anything(),
       expect.any(String),
+      expect.any(Function),
     );
   });
 

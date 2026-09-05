@@ -22,6 +22,7 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../mcp-test-helpers";
+import { createLayeredPad } from "./drum/drum-pad-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -74,6 +75,22 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-read-device",
         arguments: { id },
+      }),
+    );
+  }
+
+  /**
+   * Read a device back by path, to check the path a result handed out works.
+   * @param path - Producer Pal path to the device
+   * @returns The device
+   */
+  async function readDeviceAt(path: string): Promise<ReadDeviceResult> {
+    await sleep(100);
+
+    return parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path },
       }),
     );
   }
@@ -194,6 +211,34 @@ describe("ppal-create-device", () => {
     expect(result.warnings.join("\n")).toContain(
       "past the end of the device chain",
     );
+  });
+
+  // A drum chain answers to a pad-relative path and a rack-relative one, and
+  // once a pad is layered the two number the rack differently: D1 holds two
+  // layers here, so pD1/c1 is the rack's chain 2 while the rack's chain 1 is
+  // pD1/c0. A result that answered in the other spelling would hand the model
+  // two numberings for one rack with nothing saying so.
+  it("echoes the pad spelling a call used for a layered drum chain", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const device = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c1`);
+
+    expect(device.path).toMatch(new RegExp(`^${rackPath}/pD1/c1/d\\d+$`));
+    expect((await readDeviceAt(device.path)).id).toBe(device.id);
+  });
+
+  it("echoes the rack-relative spelling, and keeps the two apart", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const byRack = await createDevice("Chorus-Ensemble", `${rackPath}/c1`);
+
+    expect(byRack.path).toMatch(new RegExp(`^${rackPath}/c1/d\\d+$`));
+
+    const byPad = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c1`);
+
+    // Rack chain 1 is D1's first layer; pD1/c1 is its second.
+    expect(byPad.id).not.toBe(byRack.id);
+    expect(byPad.path).toContain(`${rackPath}/pD1/c1/`);
+    expect((await readDeviceAt(byRack.path)).id).toBe(byRack.id);
+    expect((await readDeviceAt(byPad.path)).id).toBe(byPad.id);
   });
 
   it("creates a device at position 0 in an empty rack chain", async () => {

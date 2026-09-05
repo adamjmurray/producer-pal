@@ -281,7 +281,7 @@ function createDeviceAtPath(
   deviceName: string,
   path: string,
 ): CreateDeviceResult & { device: LiveAPI } {
-  const { container, position } = resolveInsertionPath(path);
+  const { container, position, containerPath } = resolveInsertionPath(path);
 
   if (!container?.exists()) {
     throw new Error(`container at path "${path}" does not exist`);
@@ -332,7 +332,7 @@ function createDeviceAtPath(
 
   return {
     id,
-    ...pathField(device),
+    ...pathField(device, { container: () => container, path: containerPath }),
     device,
   };
 }

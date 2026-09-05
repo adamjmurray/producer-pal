@@ -9,6 +9,7 @@ import {
   endLiveApiScope,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   objectPathForApi,
@@ -17,6 +18,7 @@ import {
   pathTargetLabel,
   resultLabel,
   targetLabel,
+  type WrittenContainer,
 } from "../object-path-for-api.ts";
 
 // start_time is 16 Ableton beats, which the song's 4/4 makes bar 5 beat 1.
@@ -26,6 +28,11 @@ function api(path: unknown, note?: number, id = "7"): LiveAPI {
     path,
     getProperty: (prop: string) => (prop === "start_time" ? 16 : note),
   } as unknown as LiveAPI;
+}
+
+/** A container the call named, paired with the object it resolved to. */
+function written(path: string, containerPath: unknown): WrittenContainer {
+  return { container: () => api(String(containerPath)), path };
 }
 
 describe("objectPathForApi", () => {
@@ -143,6 +150,109 @@ describe("pathField", () => {
 
   it("spreads nothing when there isn't", () => {
     expect(pathField(api(livePath.liveSet))).toStrictEqual({});
+  });
+
+  // A drum chain answers to `pC1/c1` and to the rack-relative `c2`, and the two
+  // number the rack differently. A result derived from Live's own path hands
+  // back the numbering the call never wrote, with nothing saying the two belong
+  // to the same rack.
+  it("echoes the pad spelling the call wrote for the container", () => {
+    expect(
+      pathField(
+        api(String(livePath.track(17).device(0).chain(2).device(0))),
+        written("t17/d0/pC1/c1", livePath.track(17).device(0).chain(2)),
+      ),
+    ).toStrictEqual({ path: "t17/d0/pC1/c1/d0" });
+  });
+
+  // A drum chain's own spelling is two segments, not one, so the substitution
+  // has to keep both. The container here is a rack nested in the outer rack's
+  // C1 pad — the only shape whose own spelling goes through a pad — so the
+  // derived path carries a pad segment mid-path too, and only the trailing one
+  // belongs to the object being named.
+  it("echoes the pad spelling for a drum chain in a rack under a pad", () => {
+    const nestedRack = livePath.track(0).device(0).chain(2).device(0);
+
+    registerMockObject("outer-rack", {
+      path: livePath.track(0).device(0),
+      properties: { chains: children("outer-0", "outer-1", "outer-2") },
+    });
+
+    // C1 (36) is layered across chains 0 and 2, so the nested rack sits at
+    // pC1/c1; D1 (38) holds chain 1, which is what makes the numberings differ.
+    for (const [index, note] of [36, 38, 36].entries()) {
+      registerMockObject(`outer-${index}`, {
+        path: livePath.track(0).device(0).chain(index),
+        type: "DrumChain",
+        properties: { in_note: note },
+      });
+    }
+
+    registerMockObject("nested-rack", {
+      path: nestedRack,
+      properties: { chains: children("inner-0", "inner-1") },
+    });
+
+    // Both nested chains sound on F1 (41), making the leaf its second layer.
+    for (const index of [0, 1]) {
+      registerMockObject(`inner-${index}`, {
+        path: livePath.track(0).device(0).chain(2).device(0).chain(index),
+        type: "DrumChain",
+        properties: { in_note: 41 },
+      });
+    }
+
+    expect(
+      pathField(
+        LiveAPI.from(
+          String(livePath.track(0).device(0).chain(2).device(0).chain(1)),
+        ),
+        written("t0/d0/pC1/c1/d0", nestedRack),
+      ),
+    ).toStrictEqual({ path: "t0/d0/pC1/c1/d0/pF1/c1" });
+  });
+
+  it("echoes the rack-relative spelling when the call wrote that one", () => {
+    expect(
+      pathField(
+        api(String(livePath.track(17).device(0).chain(2).device(0))),
+        written("t17/d0/c2", livePath.track(17).device(0).chain(2)),
+      ),
+    ).toStrictEqual({ path: "t17/d0/c2/d0" });
+  });
+
+  // Only a pad path has a second spelling, so a written parent without one is
+  // left alone: the derived path is read from the object itself, and is the
+  // better answer anywhere the two could disagree.
+  it("keeps the derived path for a container written without a pad", () => {
+    expect(
+      pathField(api(String(livePath.track(1).device(2))), {
+        // Never built for a spelling that can't be substituted: construction is
+        // the expensive path the object pool exists to avoid.
+        container: () => expect.unreachable("built the container anyway"),
+        path: "t0",
+      }),
+    ).toStrictEqual({ path: "t1/d2" });
+  });
+
+  // The guard is the point: a spelling that names some other container would
+  // rename the object rather than respell it.
+  it("keeps the derived path when the spelling names another container", () => {
+    expect(
+      pathField(
+        api(String(livePath.track(1).device(2))),
+        written("t0/d0/pC1/c1", livePath.track(0).device(0).chain(2)),
+      ),
+    ).toStrictEqual({ path: "t1/d2" });
+  });
+
+  it("keeps the derived path when it doesn't hang off a parent at all", () => {
+    expect(
+      pathField(
+        api(String(livePath.track(3))),
+        written("t0/d0/pC1", livePath.track(0).device(0)),
+      ),
+    ).toStrictEqual({ path: "t3" });
   });
 });
 

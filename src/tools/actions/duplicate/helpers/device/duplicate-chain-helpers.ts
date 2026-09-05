@@ -124,7 +124,15 @@ function duplicateChain(
   copyChainDevices(chain, created);
   warnIfMacrosLeftBehind(sourceRack);
 
-  return { id: created.id, ...pathField(created) };
+  return {
+    id: created.id,
+    ...pathField(
+      created,
+      toPath == null
+        ? undefined
+        : { container: () => destinationRack, path: canonicalPath(toPath) },
+    ),
+  };
 }
 
 /**

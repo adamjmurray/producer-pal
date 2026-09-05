@@ -18,6 +18,12 @@ const TAKE_LANE = /^live_set tracks (\d+) take_lanes (\d+)$/;
 const ARRANGEMENT_CLIP =
   /^live_set tracks (\d+)(?: take_lanes (\d+))? arrangement_clips \d+$/;
 const DRUM_PAD_TAIL = / drum_pads \d+$/;
+/** The collection segment an object sits in, so its parent's path is the rest. */
+const OWN_LIVE_SEGMENT = / (?:devices|(?:return_)?chains) \d+$/;
+/** A drum pad segment: the one place a path has a second spelling. */
+const DRUM_PAD_SEGMENT = /(?:^|\/)p[^/]/;
+/** A drum chain's own spelling, which takes two segments where others take one. */
+const OWN_DRUM_CHAIN = /\/p[^/]+\/c\d+$/;
 /** A path the device grammar spells in full — nothing hangs below its last segment. */
 const WHOLE_DEVICE_PATH =
   /^live_set (?:tracks \d+|return_tracks \d+|master_track)(?: (?:devices|chains|return_chains) \d+)*$/;
@@ -65,16 +71,47 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
   return devicePathForApi(api, path);
 }
 
+/** A container a call named by path, with the object that spelling resolved to. */
+export interface WrittenContainer {
+  /** The object the spelling resolved to — must be `api`'s direct parent.
+   * A thunk, because most calls never reach the check: building a LiveAPI is
+   * the expensive path the object pool exists to avoid, and a
+   * comma-separated toPath would pay it once per destination. */
+  container: () => LiveAPI;
+  /** How the call spelled it. */
+  path: string;
+}
+
 /**
  * The path as a spreadable field, so a result omits the key entirely rather
  * than carrying an undefined one.
+ *
+ * `written` names the object's direct parent as the call spelled it, and that
+ * spelling is used in place of the derived one. Only a pad spelling is
+ * substituted — it is the one path with a second numbering. See
+ * dev/Object-Paths.md.
  * @param api - The object to name
+ * @param written - The call's spelling of the object's parent, if any
  * @returns `{ path }`, or `{}` for an object the grammar can't spell
  */
-export function pathField(api: LiveAPI): { path?: string } {
+export function pathField(
+  api: LiveAPI,
+  written?: WrittenContainer,
+): { path?: string } {
   const path = objectPathForApi(api);
 
-  return path == null ? {} : { path };
+  if (path == null) return {};
+
+  if (written == null || !DRUM_PAD_SEGMENT.test(written.path)) return { path };
+
+  const parentPath = api.path.replace(OWN_LIVE_SEGMENT, "");
+
+  // Substitute only a spelling that really is this object's parent, or it
+  // would rename the object rather than respell it. An unchanged path means
+  // the strip found no segment of the object's own to remove.
+  return parentPath !== api.path && parentPath === written.container().path
+    ? { path: written.path + ownSegments(path) }
+    : { path };
 }
 
 /**
@@ -146,6 +183,20 @@ export function pathPrefix(api: LiveAPI): string {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The tail of a derived path that names the object itself, so everything above
+ * it can be replaced by the call's own spelling of the parent.
+ * @param path - The derived path
+ * @returns The object's own segment(s), e.g. "/d0" or "/pC1/c1"
+ */
+function ownSegments(path: string): string {
+  const last = path.lastIndexOf("/");
+
+  return path.slice(
+    OWN_DRUM_CHAIN.test(path) ? path.lastIndexOf("/", last - 1) : last,
+  );
+}
 
 /**
  * The path an arrangement clip spells: its lane, plus where it starts.
