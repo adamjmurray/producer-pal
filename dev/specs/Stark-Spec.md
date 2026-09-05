@@ -190,6 +190,11 @@ from here), using the Ableton convention (C3 = MIDI 60):
 | melody | C3          | 60   |
 | chords | C2          | 48   |
 
+> The register default holds for every bare letter in the line, so a melodic
+> line does not climb across the octave on its own: `G A B C` returns to the
+> same `C` it started from, and an ascending run past `B` needs an octave mark
+> (`G A B C'`). This is legal notation either way, so nothing warns.
+>
 > The register default only sets where a **bare** `C` lands. A note token may
 > instead pin its pitch with an absolute octave (`C3`), the same Ableton
 > convention (C3 = 60) drum pitch-name headers use. The **serializer** always
