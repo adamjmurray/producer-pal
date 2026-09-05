@@ -5,27 +5,28 @@ They stay high-level on purpose: secondary rules and implementation requirements
 should follow from them unambiguously, without being spelled out here.
 
 1. Addressing: All Live API objects can be referred to by `path` or by `id`,
-   except leaf objects the tools model as properties of their container (see
-   Efficiency), which are named within their container by `id` or `name`. An
-   object being created doesn't have an `id` yet, so it can only be referenced
-   by `path`. Paths also address positions within objects. Results, errors, and
-   warnings report an object's `id` explicitly, and its `path` explicitly unless
-   the nesting around it already gives it, where it's omitted to save tokens.
-   Anything with no `id` is named by `path` alone. A `path` or `id` a tool
-   returns can be sent straight back as input and names the same object.
+   except a leaf object that is really a property of its container. That one is
+   modeled as a property, not as an object with a path: it is named within its
+   container by `id` or `name`, and carries only what names it and what the call
+   is about — a device parameter belongs to a device. An object being created
+   doesn't have an `id` yet, so it can only be referenced by `path`. Paths also
+   address positions within objects. Results, errors, and warnings report an
+   object's `id` explicitly, and its `path` explicitly unless the nesting around
+   it already gives it, where it's omitted to save tokens. Anything with no `id`
+   is named by `path` alone. A `path` or `id` a tool returns can be sent
+   straight back as input and names the same object.
 
 2. Multi-target: Every tool that could possibly operate on multiple objects
    supports it by allowing a single value or a comma-separated list in any
    relevant args, which are always named in the singular. Lists pair 1:1 with
-   their targets, so all lists must be the same length. A value that fully
-   determines a location pairs 1:1 with the targets; any other single value
-   applies to all of them. Broadcasting a value that pins one place would
-   overwrite all but the last. Lists contain values, not placeholders: an empty
-   entry is refused rather than guessed at, because dropping it shifts every
-   later pairing and keeping it names nothing. A call that named N targets
-   returns N entries in the order they were named. A single target returns its
-   entry unwrapped: an array where they asked for one object confuses small
-   models.
+   their targets, so all lists must be the same length. A single value applies
+   to all of them, unless it fully determines a location — one place holds one
+   object, so it must be named once per target rather than broadcast. Lists
+   contain values, not placeholders: an empty entry is refused rather than
+   guessed at, because dropping it shifts every later pairing and keeping it
+   names nothing. A call that named N targets returns N entries in the order
+   they were named. A single target returns its entry unwrapped: an array where
+   they asked for one object confuses small models.
 
 3. Relocation: Any object that can exist at different paths always supports
    moving and duplicating to a different location. When the API does not support
@@ -84,10 +85,7 @@ should follow from them unambiguously, without being spelled out here.
    that stays valid longest.
 
 10. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
-    as few tokens as the other principles allow. A leaf object that is really a
-    property of its container is modeled as one, not as an object with a path: a
-    device parameter belongs to a device and carries only what names it and what
-    the call is about.
+    as few tokens as the other principles allow.
 
 ---
 
