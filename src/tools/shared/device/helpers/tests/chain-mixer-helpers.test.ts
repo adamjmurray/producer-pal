@@ -198,15 +198,17 @@ describe("applyChainMixer", () => {
     expect(applied).toStrictEqual({ gainDb: -6.02, pan: 0.26 });
   });
 
-  // Max serializes an exponent-notation float as a string. The pan landed, so
-  // reporting nothing for it would read as "no write".
+  // Max serializes an exponent-notation float as a string. Nothing came back to
+  // read, so the argument stands in rather than vanishing from the result, and
+  // it is rounded the way a read-back would be — reporting the centered pan the
+  // argument amounts to, not the sub-1% number the caller wrote.
   it("falls back to the written pan when Live answers with a string", () => {
     const { panning } = registerChainWithMixer();
 
     keepsParamValue(panning, "9.999999747378752e-05");
 
     expect(applyChainMixer(chainApi(), { pan: 0.0001 })).toStrictEqual({
-      pan: 0.0001,
+      pan: 0,
     });
   });
 

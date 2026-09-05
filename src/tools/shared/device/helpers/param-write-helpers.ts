@@ -6,6 +6,12 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { strForValue } from "./device-label-helpers.ts";
 
+/** What a mixer write landed, read back off the object it was written to. */
+export interface MixerApplied {
+  gainDb?: number;
+  pan?: number;
+}
+
 /**
  * Whether a parameter accepts writes. Live disables a parameter when something
  * else owns it — almost always a rack macro mapped to it. Only a positive "no"
@@ -42,6 +48,39 @@ export function setParamIfEnabled(
   param.set(property, value);
 
   return true;
+}
+
+/**
+ * Write a parameter and report what it now reads. Live clamps and snaps what it
+ * is given, so echoing the argument would report a value the parameter doesn't
+ * hold.
+ * @param param - DeviceParameter LiveAPI object
+ * @param property - Which property carries the value
+ * @param value - Value to write, or undefined to leave the parameter alone
+ * @param label - How to name the parameter in a warning
+ * @param round - Rounds the read-back to the resolution reads report
+ * @returns What the parameter now reads, or undefined when nothing was written
+ */
+export function setParamAndReadBack(
+  param: LiveAPI,
+  property: "value" | "display_value",
+  value: number | undefined,
+  label: string,
+  round: (value: number) => number,
+): number | undefined {
+  if (value == null || !setParamIfEnabled(param, property, value, label)) {
+    return undefined;
+  }
+
+  const landed = param.getProperty(property);
+
+  // Max hands some floats back as strings (a pan of 0.0001 comes back as
+  // "9.999999747378752e-05"), and omitting a value that landed would read as
+  // "no write", so the argument stands in — rounded, like a real read-back.
+  // It is a stand-in, not a reading: where the property answers with something
+  // else entirely (a volume at the bottom of its range reads "-inf"), the
+  // number reported is not what the parameter holds.
+  return round(typeof landed === "number" ? landed : value);
 }
 
 /**

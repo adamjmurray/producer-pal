@@ -11,7 +11,10 @@ import {
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
 import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
-import { applyMixerProperties } from "./helpers/update-track-mixer-helpers.ts";
+import {
+  type TrackMixerApplied,
+  applyMixerProperties,
+} from "./helpers/update-track-mixer-helpers.ts";
 import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
 import {
   applyTrackSends,
@@ -82,7 +85,7 @@ interface UpdateTrackArgs {
   sends?: SendEntry[];
 }
 
-interface UpdateTrackResult {
+interface UpdateTrackResult extends TrackMixerApplied {
   id: string;
   path?: string;
   /** Every send the call wrote, read back off the track */
@@ -264,6 +267,8 @@ export function updateTrack(
     }
 
     // Handle mixer properties
+    let mixer: TrackMixerApplied = {};
+
     if (
       gainDb != null ||
       pan != null ||
@@ -271,7 +276,7 @@ export function updateTrack(
       leftPan != null ||
       rightPan != null
     ) {
-      applyMixerProperties(track, {
+      mixer = applyMixerProperties(track, {
         gainDb,
         pan,
         panningMode,
@@ -298,10 +303,11 @@ export function updateTrack(
       announcedCollisions = true;
     }
 
-    // Optimistic except for the sends, which are read back off the track.
+    // Optimistic except for the mixer and sends, read back off the track.
     updatedTracks.push({
       id: track.id,
       ...pathField(track),
+      ...mixer,
       ...(landed.size > 0 ? { sends: [...landed.values()] } : {}),
     });
   }

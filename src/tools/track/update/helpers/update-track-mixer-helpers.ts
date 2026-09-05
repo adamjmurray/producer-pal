@@ -4,41 +4,105 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
+import {
+  type MixerApplied,
+  setParamAndReadBack,
+} from "#src/tools/shared/device/helpers/param-write-helpers.ts";
+import { roundGainDb, roundPan } from "#src/tools/shared/utils.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
-interface MixerParams {
+interface MixerParams extends PanParams {
   gainDb?: number;
-  pan?: number;
   panningMode?: string;
+}
+
+/** The pan values from a call, which apply in one panning mode or the other. */
+interface PanParams {
+  pan?: number;
+  leftPan?: number;
+  rightPan?: number;
+}
+
+/** What a track mixer write landed, read back off the track. */
+export interface TrackMixerApplied extends MixerApplied {
   leftPan?: number;
   rightPan?: number;
 }
 
 /**
- * Apply stereo panning and warn about invalid params
+ * Apply mixer properties (gain and panning) to a track.
+ *
+ * The reported values are read back off the track, not echoed from the
+ * arguments: Live clamps and snaps what it is given.
+ * @param track - Track object
+ * @param params - Mixer properties
+ * @returns What landed, read back
+ */
+export function applyMixerProperties(
+  track: LiveAPI,
+  params: MixerParams,
+): TrackMixerApplied {
+  const { gainDb, pan, panningMode, leftPan, rightPan } = params;
+  const applied: TrackMixerApplied = {};
+
+  const mixer = track.child("mixer_device");
+
+  if (!mixer.exists()) {
+    return applied;
+  }
+
+  // Gain is independent of panning mode.
+  setIfLanded(
+    applied,
+    "gainDb",
+    writeMixerChild(mixer, "volume", "display_value", gainDb, {
+      label: "gainDb",
+      round: roundGainDb,
+    }),
+  );
+
+  const currentIsSplit = mixer.getProperty("panning_mode") === 1;
+
+  if (panningMode != null) {
+    mixer.set("panning_mode", panningMode === "split" ? 1 : 0);
+  }
+
+  // The mode the pan params are written under: the one just set, else the
+  // track's own.
+  const effectiveMode = panningMode ?? (currentIsSplit ? "split" : "stereo");
+
+  if (effectiveMode === "stereo") {
+    applyStereoPan(mixer, track, applied, { pan, leftPan, rightPan });
+  } else {
+    applySplitPan(mixer, track, applied, { pan, leftPan, rightPan });
+  }
+
+  return applied;
+}
+
+/**
+ * Apply stereo panning and warn about the split-only params
  * @param mixer - Mixer device object
  * @param track - The track being updated, for the warning
- * @param pan - Pan value
- * @param leftPan - Left pan value
- * @param rightPan - Right pan value
+ * @param applied - Collects what landed
+ * @param params - The pan values from the call
  */
 function applyStereoPan(
   mixer: LiveAPI,
   track: LiveAPI,
-  pan: number | undefined,
-  leftPan: number | undefined,
-  rightPan: number | undefined,
+  applied: TrackMixerApplied,
+  params: PanParams,
 ): void {
-  if (pan != null) {
-    const panning = mixer.child("panning");
+  setIfLanded(
+    applied,
+    "pan",
+    writeMixerChild(mixer, "panning", "value", params.pan, {
+      label: "pan",
+      round: roundPan,
+    }),
+  );
 
-    if (panning.exists()) {
-      setParamIfEnabled(panning, "value", pan, "pan");
-    }
-  }
-
-  if (leftPan != null || rightPan != null) {
+  if (params.leftPan != null || params.rightPan != null) {
     console.warn(
       `track ${targetLabel(track)} is in stereo panning mode, so leftPan/rightPan ` +
         "had no effect; set panningMode to 'split', or use pan",
@@ -47,37 +111,37 @@ function applyStereoPan(
 }
 
 /**
- * Apply split panning and warn about invalid params
+ * Apply split panning and warn about the stereo-only param
  * @param mixer - Mixer device object
  * @param track - The track being updated, for the warning
- * @param pan - Pan value
- * @param leftPan - Left pan value
- * @param rightPan - Right pan value
+ * @param applied - Collects what landed
+ * @param params - The pan values from the call
  */
 function applySplitPan(
   mixer: LiveAPI,
   track: LiveAPI,
-  pan: number | undefined,
-  leftPan: number | undefined,
-  rightPan: number | undefined,
+  applied: TrackMixerApplied,
+  params: PanParams,
 ): void {
-  if (leftPan != null) {
-    const leftSplit = mixer.child("left_split_stereo");
+  setIfLanded(
+    applied,
+    "leftPan",
+    writeMixerChild(mixer, "left_split_stereo", "value", params.leftPan, {
+      label: "leftPan",
+      round: roundPan,
+    }),
+  );
 
-    if (leftSplit.exists()) {
-      setParamIfEnabled(leftSplit, "value", leftPan, "leftPan");
-    }
-  }
+  setIfLanded(
+    applied,
+    "rightPan",
+    writeMixerChild(mixer, "right_split_stereo", "value", params.rightPan, {
+      label: "rightPan",
+      round: roundPan,
+    }),
+  );
 
-  if (rightPan != null) {
-    const rightSplit = mixer.child("right_split_stereo");
-
-    if (rightSplit.exists()) {
-      setParamIfEnabled(rightSplit, "value", rightPan, "rightPan");
-    }
-  }
-
-  if (pan != null) {
+  if (params.pan != null) {
     console.warn(
       `track ${targetLabel(track)} is in split panning mode, so pan had no ` +
         "effect; set panningMode to 'stereo', or use leftPan/rightPan",
@@ -86,49 +150,43 @@ function applySplitPan(
 }
 
 /**
- * Apply mixer properties (gain and panning) to a track
- * @param track - Track object
- * @param params - Mixer properties
+ * Write one of the mixer's parameters and read it back. The parameter is only
+ * looked up when there is something to write — every update-track call would
+ * otherwise build all four.
+ * @param mixer - Mixer device object
+ * @param name - Which mixer child holds the parameter
+ * @param property - Which property carries the value
+ * @param value - Value to write, or undefined to leave it alone
+ * @param naming - How to name the parameter in a warning, and how to round the
+ *   read-back to the resolution reads report
+ * @returns What the parameter now reads, or undefined when nothing was written
  */
-export function applyMixerProperties(
-  track: LiveAPI,
-  params: MixerParams,
+function writeMixerChild(
+  mixer: LiveAPI,
+  name: string,
+  property: "value" | "display_value",
+  value: number | undefined,
+  naming: { label: string; round: (value: number) => number },
+): number | undefined {
+  if (value == null) return undefined;
+
+  const param = mixer.child(name);
+
+  return param.exists()
+    ? setParamAndReadBack(param, property, value, naming.label, naming.round)
+    : undefined;
+}
+
+/**
+ * Record a value that landed, leaving the field out when nothing was written
+ * @param applied - Collects what landed
+ * @param field - Which result field the value belongs to
+ * @param landed - The value read back, or undefined when nothing was written
+ */
+function setIfLanded(
+  applied: TrackMixerApplied,
+  field: keyof TrackMixerApplied,
+  landed: number | undefined,
 ): void {
-  const { gainDb, pan, panningMode, leftPan, rightPan } = params;
-
-  const mixer = track.child("mixer_device");
-
-  if (!mixer.exists()) {
-    return;
-  }
-
-  // Handle gain (independent of panning mode)
-  if (gainDb != null) {
-    const volume = mixer.child("volume");
-
-    if (volume.exists()) {
-      setParamIfEnabled(volume, "display_value", gainDb, "gainDb");
-    }
-  }
-
-  // Get current panning mode
-  const currentMode = mixer.getProperty("panning_mode");
-  const currentIsSplit = currentMode === 1;
-
-  // Set new panning mode if provided
-  if (panningMode != null) {
-    const newMode = panningMode === "split" ? 1 : 0;
-
-    mixer.set("panning_mode", newMode);
-  }
-
-  // Determine effective mode for validation
-  const effectiveMode = panningMode ?? (currentIsSplit ? "split" : "stereo");
-
-  // Handle panning based on effective mode
-  if (effectiveMode === "stereo") {
-    applyStereoPan(mixer, track, pan, leftPan, rightPan);
-  } else {
-    applySplitPan(mixer, track, pan, leftPan, rightPan);
-  }
+  if (landed != null) applied[field] = landed;
 }

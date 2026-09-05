@@ -17,7 +17,11 @@ import {
   roundGainDb,
   roundPan,
 } from "#src/tools/shared/utils.ts";
-import { setParamIfEnabled } from "./param-write-helpers.ts";
+import {
+  type MixerApplied,
+  setParamAndReadBack,
+  setParamIfEnabled,
+} from "./param-write-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ChainSend {
@@ -36,9 +40,7 @@ export interface ChainMixerParams {
 }
 
 /** What a chain mixer write landed, read back off the chain. */
-export interface ChainMixerApplied {
-  gainDb?: number;
-  pan?: number;
+export interface ChainMixerApplied extends MixerApplied {
   sends?: SendResult[];
 }
 
@@ -122,7 +124,7 @@ export function applyChainMixer(
     return applied;
   }
 
-  const gainDb = writeMixerParam(
+  const gainDb = setParamAndReadBack(
     mixer.child("volume"),
     "display_value",
     params.gainDb,
@@ -134,7 +136,7 @@ export function applyChainMixer(
     applied.gainDb = gainDb;
   }
 
-  const pan = writeMixerParam(
+  const pan = setParamAndReadBack(
     mixer.child("panning"),
     "value",
     params.pan,
@@ -475,34 +477,6 @@ function applyChainSends(
   warnSendCollisions(collisions, landed);
 
   return [...landed.values()];
-}
-
-/**
- * Write one of the chain's own mixer parameters and read the result back
- * @param param - The DeviceParameter to write
- * @param property - Which property carries the value
- * @param value - Value to write, or undefined to leave it alone
- * @param label - How to name the parameter in a warning
- * @param round - Rounds the read-back to the resolution reads report
- * @returns What the parameter now reads, or undefined when nothing was written
- */
-function writeMixerParam(
-  param: LiveAPI,
-  property: "value" | "display_value",
-  value: number | undefined,
-  label: string,
-  round: (value: number) => number,
-): number | undefined {
-  if (value == null || !setParamIfEnabled(param, property, value, label)) {
-    return undefined;
-  }
-
-  const landed = param.getProperty(property);
-
-  // Max hands some floats back as strings (a pan of 0.0001 comes back as
-  // "9.999999747378752e-05"), and a value that landed must not vanish from the
-  // result over that — an omission reads as "no write".
-  return typeof landed === "number" ? round(landed) : value;
 }
 
 /**

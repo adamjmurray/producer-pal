@@ -368,8 +368,64 @@ describe("ppal-update-track", () => {
     expect(track.sends![0]!.gainDb).toBe(-9.55);
   });
 
-  // Principle 5: the write result says what landed. The level is clamped and
-  // snapped by Live, so the argument alone doesn't say what the send holds.
+  // Principle 5: the write result says what landed. Asserted against a read of
+  // the same track rather than a hardcoded number, so no fader position has to
+  // be guessed. The values carry the discrimination: Live keeps a float32 of
+  // the 6-significant-digit value, so a result that echoed the argument would
+  // report -6.333333 where a read reports -6.33. A value like -6 or -0.3
+  // round-trips to itself and would pass either way.
+  it("reports the gain and pan it wrote, read back off the track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: trackId, gainDb: -6.333333, pan: -0.333333 },
+    });
+
+    const data = parseToolResult<UpdateTrackResult>(result);
+    const track = await readTrackMixer(trackId);
+
+    expect(data.gainDb).toBe(track.gainDb);
+    expect(data.pan).toBe(track.pan);
+  });
+
+  it("reports the split pans it wrote, read back off the track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    try {
+      // Split mode writes two params and refuses `pan`, so a result carrying
+      // only the gain would read as "the pans did not land".
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-track",
+        arguments: {
+          id: trackId,
+          panningMode: "split",
+          gainDb: -12.333333,
+          leftPan: -0.333333,
+          rightPan: 0.666667,
+        },
+      });
+
+      const data = parseToolResult<UpdateTrackResult>(result);
+      const track = await readTrackMixer(trackId);
+
+      expect(data.gainDb).toBe(track.gainDb);
+      expect(data.leftPan).toBe(track.leftPan);
+      expect(data.rightPan).toBe(track.rightPan);
+      // `pan` doesn't apply in split mode, so nothing may report as landed.
+      expect(data.pan).toBeUndefined();
+    } finally {
+      // In a finally so a failed assertion can't strand the track in split
+      // mode for the rest of the file.
+      await ctx.client!.callTool({
+        name: "ppal-update-track",
+        arguments: { id: trackId, panningMode: "stereo", pan: 0 },
+      });
+    }
+  });
+
   it("reports the sends it wrote, read back at Live's display resolution", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
@@ -469,6 +525,10 @@ interface CreateTrackResult {
 
 interface UpdateTrackResult {
   id: string;
+  gainDb?: number;
+  pan?: number;
+  leftPan?: number;
+  rightPan?: number;
   sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
 }
 
