@@ -593,7 +593,13 @@ describe("updateDevice - sample pseudo-param", () => {
       "replace_sample",
       "/tmp/kick.wav",
     );
-    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
+    // The call went through and nothing loaded, so the entry says the value
+    // never arrived rather than leaving the write looking like it worked.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [{ name: "sample", reason: "written, but no value reads back" }],
+    });
   });
 
   it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {

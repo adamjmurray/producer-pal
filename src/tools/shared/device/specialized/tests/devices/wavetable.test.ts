@@ -230,7 +230,9 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes osc1Category by name and warns on invalid", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Category", "Pads");
+    expect(
+      applySpecializedParamWrite(device, "osc1Category", "Pads"),
+    ).toHaveLength(1);
 
     expect(device.set).toHaveBeenCalledWith(
       "oscillator_1_wavetable_category",
@@ -239,7 +241,9 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc1Category", "Unknown");
+    expect(
+      applySpecializedParamWrite(device, "osc1Category", "Unknown"),
+    ).toStrictEqual([]);
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
@@ -270,13 +274,17 @@ describe("Wavetable pseudo-params — write", () => {
   it("writes osc1Wavetable by name and warns on invalid", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Wavetable", "Pulse");
+    expect(
+      applySpecializedParamWrite(device, "osc1Wavetable", "Pulse"),
+    ).toHaveLength(1);
 
     expect(device.set).toHaveBeenCalledWith("oscillator_1_wavetable_index", 2);
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc1Wavetable", "No Wave");
+    expect(
+      applySpecializedParamWrite(device, "osc1Wavetable", "No Wave"),
+    ).toStrictEqual([]);
 
     expect(device.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(

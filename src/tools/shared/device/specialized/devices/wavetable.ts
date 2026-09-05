@@ -126,10 +126,12 @@ function buildOscParams(
           `"${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`,
         );
 
-        return;
+        return false;
       }
 
       device.set(categoryProp, index);
+
+      return true;
     },
   };
 
@@ -150,10 +152,12 @@ function buildOscParams(
           `"${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`,
         );
 
-        return;
+        return false;
       }
 
       device.set(wavetableIndexProp, index);
+
+      return true;
     },
   };
 

@@ -59,7 +59,9 @@ describe("Roar pseudo-params", () => {
     it("maps the enum label to its index", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(device, "routingMode", "delay");
+      expect(
+        applySpecializedParamWrite(device, "routingMode", "delay"),
+      ).toHaveLength(1);
 
       expect(device.set).toHaveBeenCalledWith("routing_mode_index", 6);
     });
@@ -75,7 +77,9 @@ describe("Roar pseudo-params", () => {
     it("warns and skips an invalid routing mode", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(device, "routingMode", "bogus");
+      expect(
+        applySpecializedParamWrite(device, "routingMode", "bogus"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -88,7 +92,9 @@ describe("Roar pseudo-params", () => {
     it("writes 1 for true", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(device, "envListen", "true");
+      expect(
+        applySpecializedParamWrite(device, "envListen", "true"),
+      ).toHaveLength(1);
 
       expect(device.set).toHaveBeenCalledWith("env_listen", 1);
     });
@@ -104,7 +110,9 @@ describe("Roar pseudo-params", () => {
     it("warns naming envListen and skips uninterpretable input", () => {
       const device = registerRoar();
 
-      applySpecializedParamWrite(device, "envListen", "maybe");
+      expect(
+        applySpecializedParamWrite(device, "envListen", "maybe"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

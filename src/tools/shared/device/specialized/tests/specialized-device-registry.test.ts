@@ -7,6 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type WrittenPseudoParam } from "../../helpers/device-display-helpers.ts";
 import { driftSpec } from "../devices/drift.ts";
 import {
   autoFilterSpec,
@@ -81,25 +82,57 @@ describe("getSpecForDevice", () => {
 });
 
 describe("applySpecializedParamWrite", () => {
-  it("returns false for a generic device", () => {
+  it("returns null for a generic device", () => {
     const device = registerDevice("Operator");
 
-    expect(applySpecializedParamWrite(device, "foo", 1)).toBe(false);
+    expect(applySpecializedParamWrite(device, "foo", 1)).toBeNull();
   });
 
-  it("returns false for an unknown key on a specialized device", () => {
+  it("returns null for an unknown key on a specialized device", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    expect(applySpecializedParamWrite(device, "notAParam", 1)).toBe(false);
+    expect(applySpecializedParamWrite(device, "notAParam", 1)).toBeNull();
   });
 
-  it("returns true and applies a recognized pseudo-param", () => {
+  it("applies a recognized pseudo-param and reports how to read it back", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    expect(applySpecializedParamWrite(device, "routingMode", "serial")).toBe(
-      true,
-    );
+    const outcome = applySpecializedParamWrite(device, "routingMode", "serial");
+
     expect(device.set).toHaveBeenCalledWith("routing_mode_index", 1);
+    // The device keeps what it keeps — this one ignored the write — so the
+    // read, not the written value, is what the entry ends up reporting.
+    expect(outcome).toStrictEqual([
+      { name: "routingMode", read: expect.any(Function) },
+    ]);
+    expect((outcome![0] as WrittenPseudoParam).read()).toBe("single");
+  });
+
+  it("reports no entry for a value the pseudo-param refused", () => {
+    const device = registerDevice("Roar", { routing_mode_index: 0 });
+
+    // "bogus" is not a routing mode: nothing was written, so nothing may say
+    // it reads as "single" — that would report the untouched value as written.
+    expect(
+      applySpecializedParamWrite(device, "routingMode", "bogus"),
+    ).toStrictEqual([]);
+    expect(device.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("not a valid routingMode"),
+    );
+  });
+
+  it("reports a read-only pseudo-param as written by nothing", () => {
+    const device = registerDevice("Simpler", { multi_sample_mode: 1 });
+
+    const outcome = applySpecializedParamWrite(device, "multiSampleMode", 0);
+
+    expect(outcome).toStrictEqual([
+      { name: "multiSampleMode", reason: "read-only" },
+    ]);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("read-only"),
+    );
   });
 });
 

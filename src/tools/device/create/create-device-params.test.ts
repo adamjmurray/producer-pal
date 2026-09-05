@@ -282,9 +282,16 @@ describe("createDevice params", () => {
         ],
       });
 
+      // Each pad's entry carries the path it was addressed by and the sample
+      // its Simpler reports — the fixture's Simplers keep their own loaded
+      // path, so an entry echoing the written value would not match.
       expect(result).toStrictEqual({
         path: "t0/d0",
         id: "drum-rack",
+        params: [
+          { name: "pC1/sample", value: "/loaded.wav" },
+          { name: "pC#1/d0/sample", value: "/loaded.wav" },
+        ],
       });
       expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(
         "replace_sample",

@@ -320,24 +320,49 @@ export interface WrittenParam {
 }
 
 /**
- * A param the call named that resolved to nothing writable, named the way the
- * call spelled it. It has no id and no value, so `reason` says why.
+ * A param the call named that has no value to report, named the way the call
+ * spelled it. It has no id and no value, so `reason` says why.
  */
 export interface UnresolvedParam {
   name: string;
   reason: string;
 }
 
+/**
+ * A pseudo-param a write landed on (Simpler's `sample`, Roar's `routingMode`).
+ * It is a device property, not a DeviceParameter, so it has no id to read
+ * through and carries its own read instead. The read runs before the call
+ * returns, so the device it closes over is still this request's. A forced pad
+ * swap later in the same call can still delete that device, and the read then
+ * comes back empty — the same staleness the id path already has.
+ */
+export interface WrittenPseudoParam {
+  name: string;
+  read: () => unknown;
+}
+
 /** One param the call named: what a write landed on, or why nothing did. */
-export type ParamOutcome = WrittenParam | UnresolvedParam;
+export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
 
 /** What create-device and update-device report for each param they wrote. */
 export interface ParamValueResult extends WrittenParam {
   value: unknown;
 }
 
+/** What they report for a written pseudo-param, which has no id. */
+export interface PseudoParamValueResult {
+  name: string;
+  value: unknown;
+}
+
 /** One entry of the `params` a create-device or update-device result reports. */
-export type ParamResult = ParamValueResult | UnresolvedParam;
+export type ParamResult =
+  | ParamValueResult
+  | PseudoParamValueResult
+  | UnresolvedParam;
+
+/** Why a pseudo-param a write landed on still has nothing to report. */
+const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
 
 /**
  * Read the values of the params a call wrote, once everything else in that call
@@ -357,9 +382,27 @@ export type ParamResult = ParamValueResult | UnresolvedParam;
  * @returns The written ones with their current values, the rest unchanged
  */
 export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
-  return outcomes.map((entry) =>
-    "id" in entry
-      ? { ...entry, value: readParameter(LiveAPI.from(entry.id)).value }
-      : entry,
-  );
+  return outcomes.flatMap((entry): ParamResult[] => {
+    if ("id" in entry) {
+      return [{ ...entry, value: readParameter(LiveAPI.from(entry.id)).value }];
+    }
+
+    // A pseudo-param brings its own read; the read itself is not reported. A
+    // meaningful null (e.g. Compressor's "No Input" sidechain source) reports
+    // as a value. undefined means the param does not apply in the device's
+    // current state — and only a param a write landed on gets here, so the
+    // write went in and the device still shows nothing. That is a silent
+    // refusal (an absolute `sample` path naming no file loads nothing), and
+    // read-device omits the param too, so dropping the entry would leave
+    // nothing anywhere to say the value never arrived.
+    if ("read" in entry) {
+      const value = entry.read();
+
+      return value === undefined
+        ? [{ name: entry.name, reason: NO_VALUE_AFTER_WRITE }]
+        : [{ name: entry.name, value }];
+    }
+
+    return [entry];
+  });
 }

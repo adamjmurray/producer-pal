@@ -212,7 +212,7 @@ describe("Simpler pseudo-params", () => {
     it("warns on a voices value not in the allowed set", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "voices", 9);
+      expect(applySpecializedParamWrite(device, "voices", 9)).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -229,7 +229,9 @@ describe("Simpler pseudo-params", () => {
         "true",
       );
 
-      expect(handled).toBe(true);
+      expect(handled).toStrictEqual([
+        { name: "multiSampleMode", reason: "read-only" },
+      ]);
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("read-only"),

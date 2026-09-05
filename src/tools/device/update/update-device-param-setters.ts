@@ -139,10 +139,13 @@ function setOneParam(
 
   const inputValue = normalizeParamValue(rawValue, deviceName, key);
 
-  // A specialized pseudo-param (e.g. Simpler's `sample`) is not a
-  // DeviceParameter, so there is no value to read back.
-  if (applySpecializedParamWrite(device, key, inputValue)) {
-    return [];
+  // A specialized pseudo-param (e.g. Simpler's `sample`) is a device property
+  // rather than a DeviceParameter, so it reports a name and a value but no id.
+  // Empty means the key was a pseudo-param whose write was refused.
+  const pseudoParam = applySpecializedParamWrite(device, key, inputValue);
+
+  if (pseudoParam != null) {
+    return pseudoParam;
   }
 
   const matches = resolveParamsByName(device, key);

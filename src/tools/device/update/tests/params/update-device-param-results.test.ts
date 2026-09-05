@@ -13,6 +13,7 @@ import {
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Glue Compressor's Attack: seven reachable values across a range that looks
 // continuous, so a request between steps lands on one of them.
@@ -261,15 +262,117 @@ describe("updateDevice - written param values", () => {
     });
   });
 
-  it("reports nothing for a specialized pseudo-param write", () => {
-    // `sample` is not a DeviceParameter, so there is no value to read back.
-    registerSimplerDevice();
+  it("reports the value a pseudo-param reads back, not the one written", () => {
+    const simpler = registerSimplerDevice();
+
+    registerMockObject("kick-sample", {
+      type: "Sample",
+      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
+    });
+    // The device keeps its own path, the way Live reports the file it resolved
+    // to: an entry echoing the written value would not match.
+    simpler.properties.sample = children("kick-sample");
 
     const result = updateDevice({
       id: "simpler-1",
       params: [{ name: "sample", value: "/snare.wav" }],
     });
 
+    // A pseudo-param is a device property, so it has no id of its own.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [{ name: "sample", value: "/Library/kick.aif" }],
+    });
+  });
+
+  it("reads a pseudo-param back after a later write in the call changes it", () => {
+    const simpler = registerSimplerDevice();
+    const sample = registerMockObject("kick-sample", {
+      type: "Sample",
+      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
+    });
+
+    simpler.properties.sample = children("kick-sample");
+    sample.set.mockImplementation((property: string, value: unknown) => {
+      sample.properties[property] = value;
+    });
+    // A loaded sample brings its own gain, so the gainDb write above it is
+    // gone by the time the call returns.
+    simpler.call.mockImplementation((method: string) => {
+      if (method === "replace_sample") sample.properties.gain = 1;
+    });
+
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [
+        { name: "gainDb", value: "-6" },
+        { name: "sample", value: "/snare.wav" },
+      ],
+    });
+
+    // -6 is what the gainDb write landed; 24 dB is what the same call left.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [
+        { name: "gainDb", value: 24 },
+        { name: "sample", value: "/Library/kick.aif" },
+      ],
+    });
+  });
+
+  it("reports no entry for a pseudo-param value the device refused", () => {
+    registerSimplerDevice();
+
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [{ name: "retrigger", value: "sometimes" }],
+    });
+
+    // Nothing was written, so nothing may report what `retrigger` reads as: an
+    // entry with no reason says the write landed.
     expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("is not a valid retrigger"),
+    );
+  });
+
+  it("reports a reason when a pseudo-param write leaves nothing to read", () => {
+    const simpler = registerSimplerDevice();
+
+    // An absolute path naming no file: Live takes `replace_sample` and loads
+    // nothing, so the write reports success and the device stays empty.
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [{ name: "sample", value: "/nowhere/missing.wav" }],
+    });
+
+    expect(simpler.call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/nowhere/missing.wav",
+    );
+    // read-device omits an empty Simpler's `sample` too, so an omitted entry
+    // here would leave the caller nothing anywhere that says it never landed.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [{ name: "sample", reason: "written, but no value reads back" }],
+    });
+  });
+
+  it("reports a read-only pseudo-param with the reason in place of a value", () => {
+    registerSimplerDevice();
+
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [{ name: "multiSampleMode", value: "true" }],
+    });
+
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [{ name: "multiSampleMode", reason: "read-only" }],
+    });
   });
 });

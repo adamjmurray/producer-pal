@@ -67,24 +67,25 @@ export function probeSimplerSample(
  * devices and for Simpler in multi-sample mode.
  * @param device - LiveAPI device object
  * @param filePath - Absolute file path to load
+ * @returns True when the sample was loaded, false when the write was skipped
  */
-export function setSimplerSample(device: LiveAPI, filePath: string): void {
+export function setSimplerSample(device: LiveAPI, filePath: string): boolean {
   const trimmed = filePath.trim();
 
   if (trimmed.length === 0) {
     console.warn(`'sample' requires a non-empty file path`);
 
-    return;
+    return false;
   }
 
   if (!isAbsolutePath(trimmed)) {
     console.warn(`'sample' must be an absolute file path (got "${trimmed}")`);
 
-    return;
+    return false;
   }
 
   if (!isWritableSimpler(device, "sample")) {
-    return;
+    return false;
   }
 
   if (!supportsReplaceSample()) {
@@ -92,10 +93,12 @@ export function setSimplerSample(device: LiveAPI, filePath: string): void {
       `'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`,
     );
 
-    return;
+    return false;
   }
 
   device.call("replace_sample", trimmed);
+
+  return true;
 }
 
 /**
@@ -105,16 +108,17 @@ export function setSimplerSample(device: LiveAPI, filePath: string): void {
  * (`liveGainToDb`).
  * @param device - LiveAPI device object
  * @param dB - Gain in decibels
+ * @returns True when the gain was written, false when the write was skipped
  */
-export function setSimplerGain(device: LiveAPI, dB: number): void {
+export function setSimplerGain(device: LiveAPI, dB: number): boolean {
   if (!Number.isFinite(dB)) {
     console.warn(`'gainDb' must be a number (got "${dB}")`);
 
-    return;
+    return false;
   }
 
   if (!isWritableSimpler(device, "gainDb")) {
-    return;
+    return false;
   }
 
   const sample = device.getChildAt("sample", 0);
@@ -122,10 +126,12 @@ export function setSimplerGain(device: LiveAPI, dB: number): void {
   if (sample?.getProperty("file_path") == null) {
     console.warn(`'gainDb' requires a loaded sample`);
 
-    return;
+    return false;
   }
 
   sample.set("gain", dbToLiveGain(dB));
+
+  return true;
 }
 
 /**

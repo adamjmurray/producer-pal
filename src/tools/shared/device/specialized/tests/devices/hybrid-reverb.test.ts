@@ -107,7 +107,9 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets index for a single-word category", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irCategory", "Halls");
+      expect(
+        applySpecializedParamWrite(device, "irCategory", "Halls"),
+      ).toHaveLength(1);
 
       expect(device.set).toHaveBeenCalledWith("ir_category_index", 1);
     });
@@ -115,7 +117,9 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns and skips for an invalid category", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irCategory", "Bogus Category");
+      expect(
+        applySpecializedParamWrite(device, "irCategory", "Bogus Category"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -167,15 +171,26 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("finds the file name and sets the index", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irFile", "Town Hall Long");
+      const outcome = applySpecializedParamWrite(
+        device,
+        "irFile",
+        "Town Hall Long",
+      );
 
       expect(device.set).toHaveBeenCalledWith("ir_file_index", 1);
+      // A write that landed owes the caller an entry; no entry is how a
+      // refused write reports, and the two must not look alike.
+      expect(outcome).toStrictEqual([
+        { name: "irFile", read: expect.any(Function) },
+      ]);
     });
 
     it("warns and skips for an unknown file", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irFile", "Nonexistent File");
+      expect(
+        applySpecializedParamWrite(device, "irFile", "Nonexistent File"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -188,7 +203,9 @@ describe("Hybrid Reverb pseudo-params", () => {
         ir_file_list: ["<empty>"],
       });
 
-      applySpecializedParamWrite(device, "irFile", "Any File");
+      expect(
+        applySpecializedParamWrite(device, "irFile", "Any File"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
@@ -238,7 +255,9 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("sets a valid number passed as a string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irAttackTime", "1.5");
+      expect(
+        applySpecializedParamWrite(device, "irAttackTime", "1.5"),
+      ).toHaveLength(1);
 
       expect(device.set).toHaveBeenCalledWith("ir_attack_time", 1.5);
     });
@@ -246,7 +265,9 @@ describe("Hybrid Reverb pseudo-params", () => {
     it("warns and skips for a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irAttackTime", "abc");
+      expect(
+        applySpecializedParamWrite(device, "irAttackTime", "abc"),
+      ).toStrictEqual([]);
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

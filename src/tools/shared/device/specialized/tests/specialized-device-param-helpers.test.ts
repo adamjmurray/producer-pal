@@ -190,9 +190,19 @@ describe("writeIntInRange", () => {
   it("writes a value inside the range", () => {
     const device = registerDevice({ count: 1 });
 
-    writeIntInRange(LiveAPI.from("id dev-1"), "count", 3, 1, 6, "count");
+    const wrote = writeIntInRange(
+      LiveAPI.from("id dev-1"),
+      "count",
+      3,
+      1,
+      6,
+      "count",
+    );
 
     expect(device.set).toHaveBeenCalledWith("count", 3);
+    // The return decides whether the param gets a result entry, so a write
+    // that landed and reported false would go missing from the response.
+    expect(wrote).toBe(true);
   });
 
   it("warns and skips a value outside the range", () => {
@@ -221,15 +231,22 @@ describe("writeIntFromSet", () => {
   it("writes the value when it is in the set", () => {
     const device = registerDevice({ voices: 4 });
 
-    writeIntFromSet(LiveAPI.from("id dev-1"), "voices", 16, ALLOWED, "voices");
+    const wrote = writeIntFromSet(
+      LiveAPI.from("id dev-1"),
+      "voices",
+      16,
+      ALLOWED,
+      "voices",
+    );
 
     expect(device.set).toHaveBeenCalledWith("voices", 16);
+    expect(wrote).toBe(true);
   });
 
   it("writes the catalog index when asIndex is true", () => {
     const device = registerDevice({ voice_count_index: 0 });
 
-    writeIntFromSet(
+    const wrote = writeIntFromSet(
       LiveAPI.from("id dev-1"),
       "voice_count_index",
       16,
@@ -239,6 +256,7 @@ describe("writeIntFromSet", () => {
     );
 
     expect(device.set).toHaveBeenCalledWith("voice_count_index", 2);
+    expect(wrote).toBe(true);
   });
 
   it("warns and skips a value not in the set", () => {

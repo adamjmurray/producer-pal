@@ -43,9 +43,12 @@ export interface PseudoParam {
   read: (device: LiveAPI) => unknown;
   /**
    * Apply a new value. Follow update-tool conventions: warn-and-skip on
-   * invalid input rather than throwing.
+   * invalid input rather than throwing. Return false for a value that was
+   * skipped — the `params` result reports a value only for a write that ran,
+   * so a refusal that returned true would report the unchanged value as if the
+   * write had landed.
    */
-  write?: (device: LiveAPI, value: string | number) => void;
+  write?: (device: LiveAPI, value: string | number) => boolean;
 }
 
 /** A parsed `actions` entry: a name plus positional literal args. */

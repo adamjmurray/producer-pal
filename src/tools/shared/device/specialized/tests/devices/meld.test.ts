@@ -119,7 +119,9 @@ describe("Meld pseudo-params", () => {
     it("warns and skips when polyVoices is above range (7)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 7);
+      expect(applySpecializedParamWrite(device, "polyVoices", 7)).toStrictEqual(
+        [],
+      );
 
       expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(

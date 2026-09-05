@@ -39,6 +39,7 @@ export function readEnumByIndex(
  * @param value - Incoming value (a label string)
  * @param labels - User-facing labels in internal-index order
  * @param paramName - Pseudo-param name for warning text
+ * @returns True when the value was written, false when it was skipped
  */
 export function writeEnumByIndex(
   device: LiveAPI,
@@ -46,7 +47,7 @@ export function writeEnumByIndex(
   value: string | number,
   labels: readonly string[],
   paramName: string,
-): void {
+): boolean {
   const target = String(value).trim().toLowerCase();
   const index = labels.findIndex((label) => label.toLowerCase() === target);
 
@@ -55,10 +56,12 @@ export function writeEnumByIndex(
       `"${value}" is not a valid ${paramName}. Options: ${labels.join(", ")}`,
     );
 
-    return;
+    return false;
   }
 
   device.set(property, index);
+
+  return true;
 }
 
 /**
@@ -127,13 +130,14 @@ export function coerceBool(value: string | number): boolean | null {
  * @param property - Live API property name
  * @param value - Incoming value
  * @param paramName - Pseudo-param name for warning text
+ * @returns True when the value was written, false when it was skipped
  */
 export function writeBoolProp(
   device: LiveAPI,
   property: string,
   value: string | number,
   paramName: string,
-): void {
+): boolean {
   const bool = coerceBool(value);
 
   if (bool == null) {
@@ -141,10 +145,12 @@ export function writeBoolProp(
       `"${value}" is not a valid ${paramName} (expected true/false)`,
     );
 
-    return;
+    return false;
   }
 
   device.set(property, bool ? 1 : 0);
+
+  return true;
 }
 
 /**
@@ -168,6 +174,7 @@ export function coerceInt(value: string | number): number | null {
  * @param min - Minimum allowed (inclusive)
  * @param max - Maximum allowed (inclusive)
  * @param paramName - Pseudo-param name for warning text
+ * @returns True when the value was written, false when it was skipped
  */
 export function writeIntInRange(
   device: LiveAPI,
@@ -176,7 +183,7 @@ export function writeIntInRange(
   min: number,
   max: number,
   paramName: string,
-): void {
+): boolean {
   const int = coerceInt(value);
 
   if (int == null || int < min || int > max) {
@@ -184,10 +191,12 @@ export function writeIntInRange(
       `${paramName} must be an integer ${min}-${max} (got "${value}")`,
     );
 
-    return;
+    return false;
   }
 
   device.set(property, int);
+
+  return true;
 }
 
 /**
@@ -199,6 +208,7 @@ export function writeIntInRange(
  * @param allowed - Allowed values in catalog order
  * @param paramName - Pseudo-param name for warning text
  * @param asIndex - When true, write the catalog index instead of the value
+ * @returns True when the value was written, false when it was skipped
  */
 export function writeIntFromSet(
   device: LiveAPI,
@@ -207,7 +217,7 @@ export function writeIntFromSet(
   allowed: readonly number[],
   paramName: string,
   asIndex = false,
-): void {
+): boolean {
   const int = coerceInt(value);
   const pos = int == null ? -1 : allowed.indexOf(int);
 
@@ -216,8 +226,10 @@ export function writeIntFromSet(
       `${paramName} must be one of ${allowed.join(", ")} (got "${value}")`,
     );
 
-    return;
+    return false;
   }
 
   device.set(property, asIndex ? pos : allowed[pos]);
+
+  return true;
 }
