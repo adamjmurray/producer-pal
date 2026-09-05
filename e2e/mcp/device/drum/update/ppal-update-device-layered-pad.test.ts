@@ -22,12 +22,12 @@ import {
   parseToolResult,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers";
+} from "../../../mcp-test-helpers";
 import {
   createLayeredPad,
   createTrackWithDrumRack,
   readDrumPad,
-} from "./drum-pad-test-helpers.ts";
+} from "../drum-pad-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 

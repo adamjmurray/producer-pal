@@ -22,9 +22,9 @@ import {
   parseToolResult,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers.ts";
-import { callWithWarnings } from "../helpers/racks-test-helpers.ts";
-import { createLayeredPad } from "./drum-pad-test-helpers.ts";
+} from "../../../mcp-test-helpers.ts";
+import { callWithWarnings } from "../../helpers/racks-test-helpers.ts";
+import { createLayeredPad } from "../drum-pad-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 

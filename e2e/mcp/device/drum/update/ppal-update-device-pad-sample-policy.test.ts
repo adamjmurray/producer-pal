@@ -19,14 +19,14 @@ import {
   createTestDeviceAt,
   KICK_FILE,
   setupMcpTestContext,
-} from "../../mcp-test-helpers.ts";
+} from "../../../mcp-test-helpers.ts";
 import {
   callWithWarnings,
   type DeviceInfo,
   KIT,
   RACKS_TEST_PATH,
   readKitPads,
-} from "../helpers/racks-test-helpers.ts";
+} from "../../helpers/racks-test-helpers.ts";
 
 // Not `once: true`: the force cases destroy the pad's instrument, so each test
 // needs the Set reloaded from disk.
@@ -143,10 +143,10 @@ describe("a MIDI effect in front of the pad's instrument", () => {
       `${KIT}/pC1/c0`,
     );
 
-    // Live spells a pad's chain rack-relatively, so the same device is
-    // `<kit>/c0/d0` and `<kit>/pC1/c0/d0`. What matters is the d0: the
-    // Arpeggiator went in ahead of the instrument.
-    expect(arp).toBe(`${KIT}/c0/d0`);
+    // The result echoes the pad spelling the call used, so this is the same
+    // device as `<kit>/c0/d0`. What matters is the d0: the Arpeggiator went
+    // in ahead of the instrument.
+    expect(arp).toBe(`${KIT}/pC1/c0/d0`);
 
     const warnings = await writeSample("pC1");
 

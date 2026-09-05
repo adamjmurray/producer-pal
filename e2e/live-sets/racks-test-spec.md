@@ -247,7 +247,7 @@ Suites that read this Set — change the fixture and these are what break:
 
 - `e2e/mcp/device/update/ppal-update-device-disabled-params.test.ts`
 - `e2e/mcp/device/ppal-read-device-nested-racks.test.ts`
-- `e2e/mcp/device/drum/ppal-update-device-pad-sample-policy.test.ts`
+- `e2e/mcp/device/drum/update/ppal-update-device-pad-sample-policy.test.ts`
 - `e2e/mcp/device/drum/nested-rack-drum-detection.test.ts` — asserts both clips'
   serializations verbatim, in barbeat and stark, so editing either clip breaks
   it
