@@ -65,8 +65,7 @@ observability problem shows up in a different shape.
 
 - **The loop is reported as `loop`, `loopStart` and `loopEnd`** — the names the
   schema publishes. It used to come back as `arrangementLoop: {start, end}`,
-  three params renamed into words the caller could not have written, against
-  principle 8.
+  three params renamed into words the caller could not have written.
 - **It's reported when the call set it, and on `play-arrangement`**, which obeys
   it. A call that only moved the start position says nothing about the loop. A
   loop that's off and wasn't moved reports `loop: false` alone — bounds that do
@@ -95,6 +94,6 @@ observability problem shows up in a different shape.
   the same start position, not from the top. Playing from the top is
   `startTime: "1|1"`, said out loud. The action description says so, because a
   model that assumes the old behavior would report the wrong bar.
-- Principle 5 gained the rule this rests on: a property an operation moves on
-  its own is not an untouched property, and is reported with the value read
-  back.
+- The Observability principle gained the rule this rests on: a property an
+  operation moves on its own is not an untouched property, and is reported with
+  the value read back.

@@ -157,7 +157,7 @@ export function deleteObject(
     ({ id, requestPath }) => ({ id, requestPath, object: LiveAPI.from(id) }),
   );
   // The caller's own spelling, keyed by what it resolved to, so the result can
-  // echo it back (Principle 9) after the sort has reordered the targets. Keyed
+  // echo it back after the sort has reordered the targets. Keyed
   // on the resolved id: only objects that exist reach the delete loop, so two
   // targets can't collide here on a dead object's shared id.
   const requestPaths = new Map(

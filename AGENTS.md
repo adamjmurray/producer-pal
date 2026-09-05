@@ -108,13 +108,15 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   at a different Live object. Build them where you use them. See
   `src/live-api-adapter/live-api-release.ts`.
 
-- **Tool interface behavior follows `dev/Principles.md`** — addressing,
-  multi-operation, relocation, partial completion, observability, warnings,
-  destruction, vocabulary, spelling, efficiency. Read it before changing a
-  tool's inputs, outputs, or failure behavior. Anything about a target goes in
-  that target's result entry; a warning is only for what no result can carry,
-  and is appended to the response as a `WARNING:` block the model reads. See
-  ADR-0035 for the calls that are refused up front instead.
+- **Tool design follows `dev/Principles.md`** — addressing, multi-target,
+  relocation, partial completion, observability, warnings, destruction,
+  vocabulary, spelling, efficiency. Read it before changing a tool's inputs,
+  outputs, or failure behavior. Anything about a target goes in that target's
+  result entry; a warning is only for what no result can carry, and is appended
+  to the response as a `WARNING:` block the model reads. See ADR-0035 for the
+  calls that are refused up front instead. Never cite a principle by number
+  outside that file — numbering shifts as principles merge and split; state the
+  idea instead.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
@@ -287,8 +289,9 @@ we support. `src/test/meta/versions/live-set-versions.test.ts` catches it.
 These encode standards the project is held to — **don't relax or rewrite any of
 them without asking:**
 
-- `dev/Principles.md` — the tool interface principles. It states the intended
-  future state, so editing one to match today's code retires a goal silently.
+- `dev/Principles.md` — the first principles for tool design. It states the
+  intended future state, so editing one to match today's code retires a goal
+  silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
   `@ts-expect-error`, and v8-ignore comments.
 - `vitest.config.ts` (thresholds) — coverage.
@@ -297,7 +300,7 @@ them without asking:**
 ## Documentation
 
 Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
-find one. The main ones: `dev/Principles.md` (the tool interface principles —
+find one. The main ones: `dev/Principles.md` (first principles for tool design —
 read first), `dev/Architecture.md` (system design), `dev/Coding-Standards.md`
 (full style guide + Live API reference), `dev/Testing.md`,
 `dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/` (bar|beat and transform

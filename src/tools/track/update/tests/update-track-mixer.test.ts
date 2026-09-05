@@ -309,7 +309,7 @@ describe("updateTrack - mixer properties", () => {
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
   });
 
-  // Principle 5: the result says what landed. Live clamps and snaps both, so
+  // The result says what landed. Live clamps and snaps both, so
   // these can only match by reading the parameters back after the write.
   it("reports the gain and pan Live kept, not the ones asked for", () => {
     keepsParamValue(volumeParam1, -6.02);

@@ -103,3 +103,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0036](0036-paths-address-tracks-and-scenes.md)          | Paths address tracks and scenes too                                   |
 | [0037](0037-arrangement-time-is-part-of-the-path.md)     | Arrangement time is part of the path                                  |
 | [0038](0038-l-equals-names-the-lane-l-plus-made.md)      | `l=` names the lane the `l+` before it appended                       |
+| [0039](0039-the-arrangement-timeline-is-state.md)        | The arrangement timeline is state, the playhead is not                |

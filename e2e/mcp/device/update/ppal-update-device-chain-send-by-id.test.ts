@@ -75,7 +75,7 @@ describe("update-device sendReturn by id", () => {
     );
   });
 
-  // Principle 5: the write result says what landed. Live clamps and snaps the
+  // The write result says what landed. Live clamps and snaps the
   // level, so the argument alone doesn't say what the send ends up holding.
   it("reports the sends it wrote, read back at Live's display resolution", async () => {
     const returns = await readReturnChains(ctx.client!);

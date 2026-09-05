@@ -368,7 +368,7 @@ describe("ppal-update-track", () => {
     expect(track.sends![0]!.gainDb).toBe(-9.55);
   });
 
-  // Principle 5: the write result says what landed. Asserted against a read of
+  // The write result says what landed. Asserted against a read of
   // the same track rather than a hardcoded number, so no fader position has to
   // be guessed. The values carry the discrimination: Live keeps a float32 of
   // the 6-significant-digit value, so a result that echoed the argument would
