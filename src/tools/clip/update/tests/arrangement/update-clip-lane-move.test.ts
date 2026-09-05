@@ -21,6 +21,20 @@ import {
 } from "../../helpers/arrangement/update-clip-move-groups.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+// Wraps the real recreateClip so most tests get its actual behavior; one test
+// below overrides it to return a clip that doesn't exist, a shape Live's own
+// create guard normally rules out but the caller still has to handle safely.
+vi.mock(
+  import("#src/tools/shared/clip/recreate-clip.ts"),
+  async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return { ...actual, recreateClip: vi.fn(actual.recreateClip) };
+  },
+);
+
+import { recreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
+
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
 const SOURCE_ID = "123";
@@ -52,6 +66,18 @@ const TAKE_LANE_SOURCE = livePath
   .arrangementClip(0);
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
+
+/** Gives a source clip something for add_new_notes to actually write. */
+const NOTES = [
+  {
+    pitch: 60,
+    start_time: 0,
+    duration: 1,
+    velocity: 100,
+    probability: 1,
+    velocity_deviation: 0,
+  },
+];
 
 /** Every way placeMovedClip turns a move down before it writes anything. */
 const REFUSALS: Array<[string, MoveOptions, string]> = [
@@ -95,6 +121,12 @@ interface MoveOptions {
   movedClipGroups?: Map<string, MoveGroup>;
   /** Answer the duplicate with an id that doesn't exist, as Live can */
   duplicateFails?: boolean;
+  /** Every create_midi_clip/create_audio_clip call answers with no clip, as Live can */
+  clipCreationFails?: boolean;
+  /** Live creates a real clip, then its add_new_notes throws — a post-creation failure. */
+  postCreateFails?: boolean;
+  /** Give the source clip notes, so add_new_notes actually runs (and can fail). */
+  hasNotes?: boolean;
 }
 
 /**
@@ -112,6 +144,7 @@ function runMove(opts: MoveOptions = {}): string | null {
     destHasMidiInput = 1,
     arrangementStartBeats = 32,
     destination = { trackIndex: DEST_TRACK, takeLane: null },
+    hasNotes = false,
   } = opts;
 
   mockNonExistentObjects();
@@ -137,7 +170,10 @@ function runMove(opts: MoveOptions = {}): string | null {
       name: "Verse",
       color: 16711680,
     },
-    methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
+    methods: {
+      get_notes_extended: () =>
+        JSON.stringify({ notes: hasNotes ? NOTES : [] }),
+    },
   });
 
   registerMockObject(`track_${SOURCE_TRACK}`, {
@@ -150,6 +186,8 @@ function runMove(opts: MoveOptions = {}): string | null {
     trackIndex: DEST_TRACK,
     initialLanes,
     hasMidiInput: destHasMidiInput,
+    clipCreationFails: opts.clipCreationFails,
+    postCreateFails: opts.postCreateFails,
   });
 
   // registerTakeLaneTrack answers the lane creates; the main lane's move goes
@@ -234,6 +272,84 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).not.toBe(SOURCE_ID);
+  });
+
+  // recreateClip throws when Live's create call lands nothing (a stale
+  // file_path is the real-world trigger, but a MIDI clip exercises the same
+  // throw more simply). The throw must be caught and reported per-clip, not
+  // escape uncaught, and it must never look like a success.
+  it("reports a failed re-create on a take lane instead of throwing", () => {
+    const result = runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      initialLanes: 1,
+      clipCreationFails: true,
+    });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        `clip ${SOURCE} was not moved: failed to create Arrangement clip`,
+      ),
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("was re-created"),
+    );
+    expect(result).toBe(SOURCE_ID);
+    expect(
+      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
+    ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
+  });
+
+  // add_new_notes throws AFTER Live already created a real clip: the
+  // destination now holds a real, if incomplete, clip — not nothing — so the
+  // move must be reported (and counted) as landed, not refused, and the
+  // source must still be cleared to complete it.
+  it("reports and counts a partial re-create, keeping the source untouched", () => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+    const result = runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      initialLanes: 1,
+      postCreateFails: true,
+      hasNotes: true,
+      movedClipGroups,
+    });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        `clip ${SOURCE} left an incomplete clip on t${DEST_TRACK}/l0 (notes failed); the original clip was kept`,
+      ),
+    );
+    // The source is kept, not deleted: the failure could have been in the
+    // color write, after the notes had already landed on the broken clip.
+    expect(result).toBe(SOURCE_ID);
+    expect(
+      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
+    ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
+    expect(landedCount(movedClipGroups)).toBe(1);
+  });
+
+  // A non-empty file_path only means Live once saw a sample there, so the
+  // create can land nothing even though recreateClip doesn't throw. The
+  // success message must not fire until the clip is confirmed to exist —
+  // the caller's own exists() check is what reports the refusal.
+  it("does not report success when the re-created clip doesn't exist", () => {
+    vi.mocked(recreateClip).mockReturnValueOnce({
+      exists: () => false,
+    } as unknown as LiveAPI);
+
+    const result = runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      initialLanes: 1,
+    });
+
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("was re-created"),
+    );
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        `failed to duplicate clip ${SOURCE} - original preserved`,
+      ),
+    );
+    expect(result).toBe(SOURCE_ID);
   });
 
   it("appends a lane for l+ and says what the re-created clip loses", () => {
@@ -372,6 +488,57 @@ describe("moving a clip off a take lane", () => {
       `clip ${SOURCE_ON_LANE} was re-created on t${DEST_TRACK}`,
     );
     expect(result).not.toBe(SOURCE_ID);
+  });
+
+  // Same throw as the take-lane-destination case, but on the promote path:
+  // a source ON a take lane being moved to a main lane.
+  it("reports a failed promote to the main lane instead of throwing", () => {
+    const result = runMove({
+      sourcePath: TAKE_LANE_SOURCE,
+      clipCreationFails: true,
+    });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        `clip ${SOURCE_ON_LANE} was not moved: failed to create Arrangement clip`,
+      ),
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("was re-created"),
+    );
+    expect(result).toBe(SOURCE_ID);
+  });
+
+  // Same as the take-lane-destination case above, but on the promote path: a
+  // real (if incomplete) clip lands on the main lane, so it must be reported
+  // (and treated) as landed, not as a refusal.
+  it("reports a partial promote, keeping the take-lane source untouched", () => {
+    const result = runMove({
+      sourcePath: TAKE_LANE_SOURCE,
+      postCreateFails: true,
+      hasNotes: true,
+    });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        `clip ${SOURCE_ON_LANE} left an incomplete clip on t${DEST_TRACK} (notes failed); the original clip was kept`,
+      ),
+    );
+    expect(result).toBe(SOURCE_ID);
+
+    // Unlike a completed promote, the take isn't emptied or marked: nothing
+    // safe to keep was proven to have moved, so the source is left exactly
+    // as it was.
+    const source = lookupMockObject(SOURCE_ID);
+
+    expect(source?.call).not.toHaveBeenCalledWith(
+      "remove_notes_extended",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(source?.set).not.toHaveBeenCalledWith("muted", 1);
   });
 
   it("empties and marks the MIDI original instead of deleting it", () => {

@@ -179,7 +179,30 @@ function recreateViaScratchSlot(
   const attempt = attemptRecreate(clip, scratch.slot);
 
   if (!attempt.ok) {
-    reportMoveFailure(clip, attempt, scratch.path, "preserved", destPath);
+    // The scratch slot is one this function picked, not one the caller
+    // named, so clean up any partial clip rather than leaving debris in a
+    // slot nothing points at. Live already misbehaved once in this slot, so
+    // don't assume the delete lands either — read back what's really there.
+    let wasCleared = false;
+
+    if (attempt.incomplete) {
+      try {
+        scratch.slot.call("delete_clip");
+      } catch {
+        // Reported below either way: wasCleared reads back the real outcome.
+      }
+
+      wasCleared = !scratch.slot.child("clip").exists();
+    }
+
+    reportMoveFailure(
+      clip,
+      attempt,
+      scratch.path,
+      "preserved",
+      destPath,
+      wasCleared,
+    );
     keepClip(clip, updatedClips, noteResult);
 
     return null;
@@ -244,13 +267,15 @@ function recreateOverOccupant(
 
 /**
  * Warn about a failed recreate, naming exactly what's true afterward: whether
- * the destination's occupant survived, was lost, or was never touched, and
- * whether the attempt left an incomplete clip behind.
+ * the destination's occupant survived, was lost, or was never touched;
+ * whether the attempt left an incomplete clip behind; and whether that
+ * incomplete clip was already cleaned up.
  * @param clip - The arrangement clip being moved
  * @param attempt - The failed attempt
  * @param attemptPath - Where the create was tried
  * @param occupant - Whether the destination's occupant is lost, preserved, or never had one
  * @param destPath - The destination, formatted for a warning
+ * @param wasCleared - Whether an incomplete clip left behind was already deleted
  */
 function reportMoveFailure(
   clip: LiveAPI,
@@ -258,9 +283,13 @@ function reportMoveFailure(
   attemptPath: string,
   occupant: "n/a" | "lost" | "preserved",
   destPath: string,
+  wasCleared = false,
 ): void {
   const outcome = attempt.incomplete
-    ? `create at ${attemptPath} started but didn't finish (${errorMessage(attempt.error)}); an incomplete clip is there now`
+    ? `create at ${attemptPath} started but didn't finish (${errorMessage(attempt.error)}); ` +
+      (wasCleared
+        ? "the incomplete clip left there was deleted"
+        : "an incomplete clip is there now")
     : `create failed at ${attemptPath} (${errorMessage(attempt.error)})`;
 
   const occupantNote =

@@ -131,10 +131,12 @@ export function handleArrangementStartOperation({
     isMidiClip,
     context,
     appendedLanes,
+    movedClipGroups,
   });
 
-  // Refused before the placement touched anything, and already warned. It
-  // overwrote nothing, so it stays out of the tally.
+  // Null covers two cases, both already warned: refused before anything was
+  // touched (nothing to tally), or a partial re-create that tallied itself
+  // before returning here. Either way the source is left alone.
   if (newClip == null) {
     return clip.id;
   }

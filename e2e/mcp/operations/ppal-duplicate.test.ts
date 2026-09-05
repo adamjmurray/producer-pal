@@ -526,6 +526,49 @@ describe("ppal-duplicate", () => {
 
     expect(readDupDevice2.type).toContain("Compressor");
   });
+
+  // A malformed color only reaches Live after the clip itself was created —
+  // canRecreateClip and Live's own create guard already rule out "nothing
+  // landed" by this point — so a real, incomplete clip is left at the
+  // destination. The report has to say that instead of claiming the copy
+  // failed outright.
+  it("reports an incomplete copy instead of a failure when the color write fails", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
+        notes: "C3 D3 E3 F3 1|1",
+        length: "1bar",
+      },
+    });
+    const createdClip = parseToolResult<{ id: string; path: string }>(
+      createResult,
+    );
+
+    await sleep(100);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: createdClip.id,
+        toPath: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
+        color: "not-a-hex-color",
+      },
+    });
+
+    // The incomplete clip isn't reported as a landed copy: it stays out of
+    // the result the same way a full refusal does.
+    expect(parseToolResultWithWarnings<object[]>(result).data).toStrictEqual(
+      [],
+    );
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining("left an incomplete take-lane copy at beat"),
+    );
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining("Invalid color format"),
+    );
+  });
 });
 
 // Type interfaces

@@ -18,6 +18,9 @@
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-arrangement-move
  */
+import { copyFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
@@ -113,6 +116,34 @@ describe("arrangement clip moved to another lane", () => {
 
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "21|1"))?.id,
+    ).toBe(source.id);
+  });
+
+  // A non-empty file_path only means Live once saw a sample there — not that
+  // the file is still on disk. Delete it after the clip is created and
+  // canRecreateClip has nothing to rebuild from, so the move is refused
+  // before recreateClip is ever called (confirmed against real Live: a
+  // negative-time pickup note, tried as a trigger for a throw *after* the
+  // clip exists, turned out not to be one — add_new_notes accepts it fine).
+  it("refuses to move an audio clip whose sample has gone missing", async () => {
+    const offlineSample = copyToTempSample();
+    const source = await createAudioClipAt(
+      `t${AUDIO_TRACK}[61|1]`,
+      "Ghost Sample",
+      offlineSample,
+    );
+
+    rmSync(offlineSample);
+
+    await expectRefusedUpdate(
+      ctx.client!,
+      source.id,
+      { toPath: `t${AUDIO_TRACK}/l+` },
+      `clip ${source.path} (id ${source.id}) was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
+    );
+
+    expect(
+      (await arrangementClipAt(ctx.client!, AUDIO_TRACK, "61|1"))?.id,
     ).toBe(source.id);
   });
 
@@ -253,18 +284,47 @@ async function createAudioClip(
   position: string,
   name: string,
 ): Promise<CreateClipResult> {
+  return createAudioClipAt(
+    `t${AUDIO_TRACK}/l+[${position}]`,
+    name,
+    SAMPLE_FILE,
+  );
+}
+
+/**
+ * Create an audio clip at an exact path.
+ * @param path - Full clip path, e.g. `t5[9|1]`
+ * @param name - Clip name
+ * @param sampleFile - Sample file to build the clip from
+ * @returns The created clip
+ */
+async function createAudioClipAt(
+  path: string,
+  name: string,
+  sampleFile: string,
+): Promise<CreateClipResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
-    arguments: {
-      path: `t${AUDIO_TRACK}/l+[${position}]`,
-      name,
-      sampleFile: SAMPLE_FILE,
-    },
+    arguments: { path, name, sampleFile },
   });
 
   await sleep(100);
 
   return parseToolResultWithWarnings<CreateClipResult>(result).data;
+}
+
+/**
+ * Copy the shared sample fixture to a throwaway temp path, so a test can
+ * delete it after Live has already seen it — simulating a sample that's gone
+ * offline without touching the fixture other tests rely on.
+ * @returns The temp file's path
+ */
+function copyToTempSample(): string {
+  const dest = join(tmpdir(), `ppal-e2e-offline-${Date.now()}.aiff`);
+
+  copyFileSync(SAMPLE_FILE, dest);
+
+  return dest;
 }
 
 /**

@@ -3,9 +3,32 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { requireCreatedSessionClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { rawNotesToNoteEvents, readAllClipNotes } from "./clip-notes.ts";
+
+/**
+ * Thrown when the clip itself was created but a later step — writing notes,
+ * properties, or color — failed. Unlike a straight refusal, a real clip is
+ * now sitting at the destination; {@link partialClip} is it, so a caller that
+ * cares can report and count it instead of treating the move as a no-op.
+ */
+export class PartialRecreateError extends Error {
+  // Assigned in the body, not as a parameter property: Node's strip-only
+  // TypeScript mode can't parse those, and the build scripts run under it.
+  readonly partialClip: LiveAPI;
+
+  /**
+   * @param message - What failed, from the step that threw
+   * @param partialClip - The clip that landed before the failure
+   */
+  constructor(message: string, partialClip: LiveAPI) {
+    super(message);
+    this.name = "PartialRecreateError";
+    this.partialClip = partialClip;
+  }
+}
 
 /** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
@@ -152,6 +175,11 @@ export function recreatedClipLosses(sourceClip: LiveAPI): string {
  * and lands intact itself. That existing clip can be the source (copying a take
  * onto its own lane), which is why everything is read off the source first;
  * reading after would copy the truncation, or nothing at all.
+ *
+ * The create itself either lands a real clip or throws (see
+ * {@link createdArrangementClip}), so once it returns, everything after is
+ * wrapped: a failure there still leaves that clip behind, which
+ * {@link PartialRecreateError} carries out to the caller.
  * @param sourceClip - The clip being copied
  * @param name - Name override, or undefined to keep the source's
  * @param color - Color override, or undefined to keep the source's
@@ -168,12 +196,16 @@ function recreateInto(
     const snapshot = snapshotClip(sourceClip, name, color);
     const newClip = target.createMidi(snapshot.length);
 
-    if (snapshot.notes.length > 0) {
-      newClip.call("add_new_notes", { notes: snapshot.notes });
-    }
+    try {
+      if (snapshot.notes.length > 0) {
+        newClip.call("add_new_notes", { notes: snapshot.notes });
+      }
 
-    newClip.setAll(snapshot.properties);
-    applyColor(newClip, color, snapshot.color);
+      newClip.setAll(snapshot.properties);
+      applyColor(newClip, color, snapshot.color);
+    } catch (error) {
+      throw new PartialRecreateError(errorMessage(error), newClip);
+    }
 
     return newClip;
   }
@@ -181,8 +213,12 @@ function recreateInto(
   const snapshot = snapshotAudioClip(sourceClip, name, color);
   const newClip = target.createAudio(snapshot.filePath);
 
-  newClip.setAll(snapshot.properties);
-  applyColor(newClip, color, snapshot.color);
+  try {
+    newClip.setAll(snapshot.properties);
+    applyColor(newClip, color, snapshot.color);
+  } catch (error) {
+    throw new PartialRecreateError(errorMessage(error), newClip);
+  }
 
   return newClip;
 }

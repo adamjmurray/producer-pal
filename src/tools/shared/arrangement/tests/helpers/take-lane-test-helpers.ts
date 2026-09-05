@@ -41,6 +41,8 @@ export interface TakeLaneTrackOptions {
   clipLength?: number;
   /** Make each lane's create_*_clip return a non-existent ref (id 0) */
   clipCreationFails?: boolean;
+  /** Live creates a real clip, then its add_new_notes throws — a post-creation failure. */
+  postCreateFails?: boolean;
   /** 0 makes it an audio track, which an audio source can be copied to */
   hasMidiInput?: number;
   /**
@@ -70,6 +72,7 @@ export function registerTakeLaneTrack(
     initialLanes = 0,
     clipLength = 4,
     clipCreationFails = false,
+    postCreateFails = false,
     hasMidiInput = 1,
     initialLaneClips = [],
   } = options;
@@ -100,6 +103,7 @@ export function registerTakeLaneTrack(
         livePath.track(trackIndex).takeLane(laneIndex).arrangementClip(index),
       clipLength,
       clipCreationFails,
+      postCreateFails,
     };
     const createClip = (
       kind: string,
@@ -139,6 +143,7 @@ export function registerTakeLaneTrack(
     pathFor: (index) => livePath.track(trackIndex).arrangementClip(index),
     clipLength,
     clipCreationFails,
+    postCreateFails,
   };
 
   return registerMockObject(`tl_track_${trackIndex}`, {
@@ -172,6 +177,7 @@ interface ClipOwner {
   pathFor: (index: number) => PathLike;
   clipLength: number;
   clipCreationFails: boolean;
+  postCreateFails: boolean;
 }
 
 /**
@@ -211,6 +217,13 @@ function createOwnedClip(
       start_time: start,
       end_time: start + length,
     },
+    ...(owner.postCreateFails && {
+      methods: {
+        add_new_notes: () => {
+          throw new Error("notes failed");
+        },
+      },
+    }),
   });
   owner.clips.push(clipId);
   owner.props.arrangement_clips = children(...owner.clips);

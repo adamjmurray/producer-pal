@@ -72,6 +72,10 @@ interface MoveOptions {
   scratchCreateFails?: boolean;
   /** The scratch slot's duplicate_clip_to declines — nothing lands at the destination. */
   scratchCopyDeclines?: boolean;
+  /** Live creates a real clip in the scratch slot, then add_new_notes throws. */
+  scratchIncompleteCreate?: boolean;
+  /** The scratch slot's own cleanup delete_clip throws (only meaningful with scratchIncompleteCreate). */
+  scratchDeleteFails?: boolean;
 }
 
 /**
@@ -94,6 +98,8 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
     incompleteCreate = false,
     scratchCreateFails = false,
     scratchCopyDeclines = false,
+    scratchIncompleteCreate = false,
+    scratchDeleteFails = false,
   } = opts;
 
   mockNonExistentObjects();
@@ -191,7 +197,17 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
     const createScratchClip = (): null => {
       if (!scratchCreateFails) {
-        registerMockObject(SCRATCH_CLIP_ID, { path: clipPath, type: "Clip" });
+        registerMockObject(SCRATCH_CLIP_ID, {
+          path: clipPath,
+          type: "Clip",
+          ...(scratchIncompleteCreate && {
+            methods: {
+              add_new_notes: () => {
+                throw new Error("notes failed");
+              },
+            },
+          }),
+        });
       }
 
       return null;
@@ -211,7 +227,21 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
           return null;
         },
-        delete_clip: () => null,
+        // A genuine no-op everywhere else — nothing here reads the scratch
+        // clip back afterward. The incomplete-create case is the exception:
+        // the fix under test reads back whether the clip is really gone, so
+        // this has to actually vacate it rather than just being called.
+        delete_clip: () => {
+          if (scratchDeleteFails) {
+            throw new Error("delete failed");
+          }
+
+          if (scratchIncompleteCreate) {
+            registerMockObject(SCRATCH_CLIP_ID, { path: "" });
+          }
+
+          return null;
+        },
       },
     });
   }
@@ -415,6 +445,60 @@ describe("handleArrangementToSlotMove", () => {
     expect(warning).toContain(`t${DEST_TRACK}/s0`);
     expect(warning).toContain(`t${DEST_TRACK}/s${DEST_SCENE} was not touched`);
     expect(warning).toContain("source clip in the arrangement is untouched");
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
+  });
+
+  // add_new_notes throwing after the scratch slot's create leaves a partial
+  // clip in a slot the caller never named. The scratch slot must be cleared
+  // before the caller could ever see it, and the warning must not claim an
+  // incomplete clip is still there once it's gone.
+  it("clears an incomplete clip left in the scratch slot", () => {
+    const updatedClips = runMove({
+      destHasClip: 1,
+      otherScenes: [0],
+      scratchIncompleteCreate: true,
+    });
+
+    const scratch = lookupMockObject("scratch_slot_0");
+
+    expect(scratch?.call).toHaveBeenCalledWith("delete_clip");
+    expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+    );
+
+    const warning = capturedWarnings().find((w) =>
+      w.includes(`clip ${SOURCE} was not moved`),
+    );
+
+    expect(warning).toContain("was deleted");
+    expect(warning).not.toContain("is there now");
+    expect(warning).toContain(`t${DEST_TRACK}/s${DEST_SCENE} was not touched`);
+    expect(warning).toContain("source clip in the arrangement is untouched");
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
+  });
+
+  // Live just misbehaved once in this slot (the create didn't finish), so the
+  // cleanup delete can't be assumed to work either. It must not escape and take
+  // the rest of the call down with it, and the warning must read back the real
+  // outcome instead of assuming the delete landed.
+  it("keeps going when the scratch slot's own cleanup delete fails", () => {
+    const updatedClips = runMove({
+      destHasClip: 1,
+      otherScenes: [0],
+      scratchIncompleteCreate: true,
+      scratchDeleteFails: true,
+    });
+
+    expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+    );
+
+    const warning = capturedWarnings().find((w) =>
+      w.includes(`clip ${SOURCE} was not moved`),
+    );
+
+    expect(warning).toContain("is there now");
+    expect(warning).not.toContain("was deleted");
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 

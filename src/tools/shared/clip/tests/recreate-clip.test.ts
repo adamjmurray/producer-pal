@@ -9,7 +9,7 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { recreateClip } from "../recreate-clip.ts";
+import { PartialRecreateError, recreateClip } from "../recreate-clip.ts";
 
 const SOURCE_PATH = livePath.track(0).takeLane(0).arrangementClip(0);
 const LANE_PATH = livePath.track(0).takeLane(0);
@@ -230,4 +230,58 @@ describe("recreateClip on an audio source with no sample", () => {
     ).toThrow("audio clip has no sample file");
     expect(lookupMockObject("audio_lane")?.call).not.toHaveBeenCalled();
   });
+});
+
+// The create itself either lands a real clip or throws (canRecreateClip and
+// createdArrangementClip's own guard rule out anything else), so once it
+// returns, a later step failing still leaves that clip behind — a real,
+// partial one, not nothing. The caller needs it back to report and count the
+// placement instead of treating it like a refusal.
+describe("recreateClip when a later step fails after creating", () => {
+  it.each([
+    ["MIDI", { is_midi_clip: 1 }, "create_midi_clip"],
+    [
+      "audio",
+      { is_midi_clip: 0, is_audio_clip: 1, file_path: "/samples/loop.wav" },
+      "create_audio_clip",
+    ],
+  ])(
+    "throws PartialRecreateError carrying the clip that landed (%s)",
+    (_kind, extraProps, createMethod) => {
+      registerMockObject("later_src", {
+        path: SOURCE_PATH,
+        type: "Clip",
+        properties: { is_arrangement_clip: 1, length: 4, ...extraProps },
+      });
+      registerMockObject("later_copy", {
+        path: livePath.track(0).takeLane(0).arrangementClip(1),
+        type: "Clip",
+        properties: { is_arrangement_clip: 1 },
+      });
+      registerMockObject("later_lane", {
+        path: LANE_PATH,
+        type: "TakeLane",
+        methods: { [createMethod]: () => ["id", "later_copy"] },
+      });
+
+      let caught: unknown;
+
+      try {
+        recreateClip(
+          LiveAPI.from(SOURCE_PATH),
+          LiveAPI.from(LANE_PATH),
+          0,
+          undefined,
+          "not-a-color", // setColor throws on a malformed hex
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(PartialRecreateError);
+      expect((caught as PartialRecreateError).partialClip.id).toBe(
+        "later_copy",
+      );
+    },
+  );
 });

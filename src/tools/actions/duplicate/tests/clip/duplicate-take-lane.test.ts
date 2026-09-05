@@ -696,4 +696,35 @@ describe("duplicate take lane", () => {
       duplicate({ type: "clip", id: "src_clip", toPath: "t0/l=[1|1]" }),
     ).rejects.toThrow('toPath "l=" names the lane the "l+" before it appended');
   });
+
+  // Unlike the create-outright failure above, the create itself succeeds and
+  // add_new_notes is what throws: a real, incomplete clip lands at the
+  // destination, so the warning has to say that instead of claiming the
+  // create failed. Placed last: registerTakeLaneTrack's shared id counter
+  // would otherwise shift every hardcoded id in the tests above it.
+  it("warns about an incomplete copy when a later step fails", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 0, postCreateFails: true });
+
+    const created = (await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l+",
+      arrangementStart: "1|1",
+    })) as object[];
+
+    // The incomplete clip isn't reported as a landed copy: it's real, but not
+    // what was asked for, so it stays out of the result the same way a full
+    // refusal does.
+    expect(created).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "clip t0[1|1] (id src_clip) left an incomplete take-lane copy at beat 0 (notes failed)",
+      ),
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("failed to create"),
+    );
+  });
 });

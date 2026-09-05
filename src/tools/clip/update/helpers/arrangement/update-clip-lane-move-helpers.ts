@@ -18,11 +18,13 @@ import {
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
   canRecreateClip,
+  PartialRecreateError,
   recreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { tallyMovedClip, type MoveGroup } from "./update-clip-move-groups.ts";
 
 interface PlaceMovedClipArgs {
   clip: LiveAPI;
@@ -34,6 +36,8 @@ interface PlaceMovedClipArgs {
   context: TilingContext;
   /** Lanes an `l+` in this call appended, keyed by {@link takeLaneKey}. */
   appendedLanes: Map<string, number>;
+  /** Tally of clips landing on each lane and position. */
+  movedClipGroups: Map<string, MoveGroup>;
 }
 
 /**
@@ -50,7 +54,9 @@ interface PlaceMovedClipArgs {
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
  * @param args.appendedLanes - Lanes this call has already appended, shared by `l=`
- * @returns The placed clip, or null when the move was refused (already warned)
+ * @param args.movedClipGroups - Tally of clips landing on each lane and position
+ * @returns The placed clip, or null when the move was refused or only partly
+ *   landed (already warned; either way the source is untouched)
  */
 export function placeMovedClip({
   clip,
@@ -60,6 +66,7 @@ export function placeMovedClip({
   isMidiClip,
   context,
   appendedLanes,
+  movedClipGroups,
 }: PlaceMovedClipArgs): LiveAPI | null {
   // Only for a named destination: an unnamed one is the clip's own track, which
   // already holds it. Live declines a type mismatch without reporting anything,
@@ -88,10 +95,21 @@ export function placeMovedClip({
     }
 
     if (destination?.takeLane != null) {
-      return recreateOnTakeLane(clip, destination, targetBeats, appendedLanes);
+      return recreateOnTakeLane(
+        clip,
+        destination,
+        targetBeats,
+        appendedLanes,
+        movedClipGroups,
+      );
     }
 
-    return promoteToMainLane(clip, destTrackIndex, targetBeats);
+    return promoteToMainLane(
+      clip,
+      destTrackIndex,
+      targetBeats,
+      movedClipGroups,
+    );
   }
 
   return duplicateToArrangementTarget(
@@ -115,13 +133,16 @@ export function placeMovedClip({
  * @param destination - The lane the clip lands on, `l+`/`l=` still unresolved
  * @param targetBeats - Arrangement position to land at, in Ableton beats
  * @param appendedLanes - Lanes this call has already appended, shared by `l=`
- * @returns The re-created clip, or null when the move was refused
+ * @param movedClipGroups - Tally of clips landing on each lane and position
+ * @returns The re-created clip, or null when the move was refused or only
+ *   partly landed (either way, nothing further should touch the source)
  */
 function recreateOnTakeLane(
   clip: LiveAPI,
   destination: ArrangementTrack,
   targetBeats: number,
   appendedLanes: Map<string, number>,
+  movedClipGroups: Map<string, MoveGroup>,
 ): LiveAPI | null {
   const destTrackIndex = destination.trackIndex;
   // An `l=` lands on the lane its `l+` appended earlier in this same call, so
@@ -151,7 +172,22 @@ function recreateOnTakeLane(
     return null;
   }
 
-  return recreateForMove(clip, lane, targetBeats, destTrackIndex, laneIndex);
+  try {
+    return recreateForMove(
+      clip,
+      lane,
+      targetBeats,
+      destTrackIndex,
+      laneIndex,
+      movedClipGroups,
+    );
+  } catch (error) {
+    console.warn(
+      `clip ${targetLabel(clip)} was not moved: ${errorMessage(error)}`,
+    );
+
+    return null;
+  }
 }
 
 /**
@@ -160,30 +196,58 @@ function recreateOnTakeLane(
  * @param clip - The take-lane clip being moved
  * @param destTrackIndex - The track whose main lane the clip lands on
  * @param targetBeats - Arrangement position to land at, in Ableton beats
- * @returns The re-created clip
+ * @param movedClipGroups - Tally of clips landing on each lane and position
+ * @returns The re-created clip, or null when the move was refused or only
+ *   partly landed (either way, nothing further should touch the source)
  */
 function promoteToMainLane(
   clip: LiveAPI,
   destTrackIndex: number,
   targetBeats: number,
-): LiveAPI {
-  return recreateForMove(
-    clip,
-    LiveAPI.from(livePath.track(destTrackIndex)),
-    targetBeats,
-    destTrackIndex,
-    null,
-  );
+  movedClipGroups: Map<string, MoveGroup>,
+): LiveAPI | null {
+  try {
+    return recreateForMove(
+      clip,
+      LiveAPI.from(livePath.track(destTrackIndex)),
+      targetBeats,
+      destTrackIndex,
+      null,
+      movedClipGroups,
+    );
+  } catch (error) {
+    console.warn(
+      `clip ${targetLabel(clip)} was not moved: ${errorMessage(error)}`,
+    );
+
+    return null;
+  }
 }
 
 /**
  * Build the copy and report what re-creating it cost.
+ *
+ * The success message only fires once the clip is confirmed to exist —
+ * belt-and-braces, since recreateClip's own create step already throws rather
+ * than returning a clip that doesn't exist. That guard is for whoever edits
+ * recreateClip next, not a path reachable today.
+ *
+ * A failure after the clip was created — writing notes, properties, or color
+ * — still leaves a real, partial clip at the destination, which
+ * {@link PartialRecreateError} carries out. The failure could be the note
+ * write or the color write, either of which may have already landed, so
+ * neither clip is safe to touch: the partial clip is left exactly as it is,
+ * and so is the source. The position was still cleared for it, so the tally
+ * has to count it even though nothing here returns a clip. Any other failure
+ * is left for the caller's own try/catch to report as a full refusal.
  * @param clip - The arrangement clip being moved
  * @param destination - The TakeLane, or the Track for the main lane
  * @param targetBeats - Arrangement position to land at, in Ableton beats
  * @param destTrackIndex - The track the clip lands on, for the message
  * @param laneIndex - The lane it lands on, or null for the main lane
- * @returns The re-created clip
+ * @param movedClipGroups - Tally of clips landing on each lane and position
+ * @returns The re-created clip, or null when it only partly landed (already
+ *   warned; the source is left in place either way)
  */
 function recreateForMove(
   clip: LiveAPI,
@@ -191,21 +255,38 @@ function recreateForMove(
   targetBeats: number,
   destTrackIndex: number,
   laneIndex: number | null,
-): LiveAPI {
+  movedClipGroups: Map<string, MoveGroup>,
+): LiveAPI | null {
   // Read before the clip is touched: the re-create is what changes it.
   const losses = recreatedClipLosses(clip);
-  const newClip = recreateClip(
-    clip,
-    destination,
-    targetBeats,
-    undefined,
-    undefined,
-  );
 
-  console.warn(
-    `clip ${targetLabel(clip)} was re-created on ${arrangementPath(destTrackIndex, laneIndex)}` +
-      (losses ? ` (${losses})` : ""),
-  );
+  try {
+    const newClip = recreateClip(
+      clip,
+      destination,
+      targetBeats,
+      undefined,
+      undefined,
+    );
 
-  return newClip;
+    if (newClip.exists()) {
+      console.warn(
+        `clip ${targetLabel(clip)} was re-created on ${arrangementPath(destTrackIndex, laneIndex)}` +
+          (losses ? ` (${losses})` : ""),
+      );
+    }
+
+    return newClip;
+  } catch (error) {
+    if (error instanceof PartialRecreateError) {
+      tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
+      console.warn(
+        `clip ${targetLabel(clip)} left an incomplete clip on ${arrangementPath(destTrackIndex, laneIndex)} (${error.message}); the original clip was kept`,
+      );
+
+      return null;
+    }
+
+    throw error;
+  }
 }

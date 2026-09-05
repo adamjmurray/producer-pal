@@ -15,7 +15,10 @@ import {
   duplicateClipToArrangement,
   getMinimalClipInfo,
 } from "../duplicate-helpers.ts";
-import { recreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
+import {
+  PartialRecreateError,
+  recreateClip,
+} from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -106,10 +109,17 @@ export async function duplicateOneCopy(
 /**
  * Re-creates one copy, warning and skipping if Live refuses it so the rest of a
  * multi-position call still lands.
+ *
+ * A failure after the clip was created still leaves a real, partial clip at
+ * the destination ({@link PartialRecreateError}), which gets its own message:
+ * saying the create "failed" would be wrong when something is actually there.
+ * Unlike the move path this feeds into no delete, so there's no "original was
+ * kept" half to add — the source was never at risk.
  * @param options - Everything the copy needs
  * @param destination - The TakeLane, or the Track for a promoted copy
  * @param kind - What to call this copy in the warning
- * @returns The created clip info, or null when Live refused it
+ * @returns The created clip info, or null when Live refused it or the copy
+ *   only partly landed (either way, already warned)
  */
 function recreateCopy(
   options: CopyOptions,
@@ -127,6 +137,14 @@ function recreateCopy(
       ),
     );
   } catch (error) {
+    if (error instanceof PartialRecreateError) {
+      console.warn(
+        `clip ${targetLabel(options.object)} left an incomplete ${kind} copy at beat ${options.startBeats} (${error.message})`,
+      );
+
+      return null;
+    }
+
     console.warn(
       `failed to create ${kind} copy of clip ${targetLabel(options.object)} at beat ${options.startBeats}: ${errorMessage(error)}`,
     );
