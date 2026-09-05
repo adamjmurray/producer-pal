@@ -358,6 +358,23 @@ describe("library tool — searches fan-out", () => {
     });
   });
 
+  it("warns when a caller still sends the searchBatch action", async () => {
+    const warnSpy = await spyOnMaxWarn();
+
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    await library({
+      action: "searchBatch",
+      searches: [{ label: "Kick", tags: "Kick" }],
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+    );
+
+    warnSpy.mockRestore();
+  });
+
   it("prefers searches when a caller sends both names", async () => {
     mockKickAndSnare();
 

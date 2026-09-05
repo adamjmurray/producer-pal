@@ -223,14 +223,20 @@ export async function runSearch(
 
 /**
  * The action to dispatch on. searchBatch is what the fan-out shipped as before
- * it folded into search + `searches`, so a caller still naming it gets the
- * fan-out rather than an error.
+ * it folded into search + `searches`; still honored so a caller on the old
+ * spelling gets the fan-out instead of an error, but warned since it's retired.
  *
  * @param action - The action as the caller sent it
  * @returns The action to run
  */
 function resolveAction(action: string | undefined): string {
-  if (action === "searchBatch") return "search";
+  if (action === "searchBatch") {
+    console.warn(
+      'action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+    );
+
+    return "search";
+  }
 
   return action ?? "search";
 }

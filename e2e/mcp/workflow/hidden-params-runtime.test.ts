@@ -644,6 +644,28 @@ describe("hidden params at runtime", () => {
     await verify?.(data);
   });
 
+  // searchBatch is a retired action *value*, not a hidden param — it's kept out
+  // of the action enum, not tagged via deprecatedParam/aliasParam — so it has
+  // no entry in CASES and isn't covered by "has a case for every hidden param".
+  it("still runs the fan-out for a caller on the retired searchBatch action", async () => {
+    const { data, warnings } = parseToolResultWithWarnings<{
+      results?: unknown;
+    }>(
+      await ctx.client!.callTool({
+        name: "ppal-library",
+        arguments: {
+          action: "searchBatch",
+          searches: [{ query: "kick", limit: 1 }],
+        },
+      }),
+    );
+
+    expect(data.results).toBeDefined();
+    expect(warnings).toStrictEqual([
+      'WARNING: action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+    ]);
+  });
+
   it("has a case for every hidden param", () => {
     const declared = Object.entries(hiddenByTool()).flatMap(([tool, params]) =>
       Object.keys(params).map((param) => `${tool}.${param}`),
