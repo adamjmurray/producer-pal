@@ -165,6 +165,13 @@ export function defaultMockCall(
       return MOCK_LIVE_VERSION;
     case "get_notes_extended":
       return JSON.stringify({ notes: [] });
+    // Rounded the same six significant digits as storedParamValue, and a
+    // number, which is what Max returns for a label with no unit. Code that
+    // checks a write compares the label asked for against the label read back,
+    // so a constant would pass every write and an unrounded value would fail
+    // every fractional one.
+    case "str_for_value":
+      return Number(Number(args[0]).toPrecision(6));
     default:
       if (_simulateDeletes) applyMockDelete(method, args, path);
 

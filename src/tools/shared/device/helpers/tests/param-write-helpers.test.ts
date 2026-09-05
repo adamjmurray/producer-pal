@@ -126,6 +126,32 @@ describe("setParamValueAndVerify", () => {
     );
   });
 
+  // The next two guard the mock registry's default str_for_value, which has to
+  // discriminate in both directions. A constant makes every write look like it
+  // landed; an unrounded value makes every fractional write look ignored,
+  // because the mock stores what Live stores and that is never what we wrote.
+  it("stays silent for a fractional write, without a str_for_value fixture", () => {
+    registerParam({ value: 0.5 });
+
+    const landed = setParamValueAndVerify(paramApi(), 0.1, 'param "Volume"');
+
+    expect(landed).toBe(true);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("warns when Live ignores the write, without a str_for_value fixture", () => {
+    const param = registerParam({ value: 0.5 });
+
+    param.set.mockImplementation(() => undefined);
+
+    const landed = setParamValueAndVerify(paramApi(), 99, 'param "Volume"');
+
+    expect(landed).toBe(false);
+    expect(capturedWarnings()).toContain(
+      'param "Volume" was not changed — it still reads "0.5". Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
   it("compares labels, because the raw value read back is never the one we wrote", () => {
     // Live rounds to six significant digits and keeps a 32-bit float, so 0.1
     // reads back as 0.10000000149011612. Comparing raw values would warn on

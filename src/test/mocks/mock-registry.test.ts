@@ -178,6 +178,11 @@ describe("mock-registry", () => {
       expect(mock.call("get_notes_extended")).toBe(
         JSON.stringify({ notes: [] }),
       );
+      // Rounds like storedParamValue so a landed write verifies, and stays a
+      // function of the value so an ignored one still fails.
+      expect(mock.call("str_for_value", 0.1)).toBe(0.1);
+      expect(mock.call("str_for_value", 0.10000000149011612)).toBe(0.1);
+      expect(mock.call("str_for_value", 99)).toBe(99);
       expect(mock.call("unknown_method")).toBeNull();
     });
 
