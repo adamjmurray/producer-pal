@@ -41,6 +41,18 @@ function mockLiveSetWithTracks(trackIds: string[] = ["track-1"]): LiveAPI {
   } as unknown as LiveAPI;
 }
 
+/** A live_set mock that stores what applyScale writes and reads it back. */
+function mockLiveSetWithScaleState(): LiveAPI {
+  const stored: Record<string, unknown> = {};
+
+  return {
+    set: vi.fn((property: string, value: unknown) => {
+      stored[property] = value;
+    }),
+    getProperty: vi.fn((property: string) => stored[property]),
+  } as unknown as LiveAPI;
+}
+
 describe("update-live-set-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -414,7 +426,7 @@ describe("update-live-set-helpers", () => {
     });
 
     it("should set scale properties for valid scale string", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
       applyScale(mockLiveSet, "C Major", result);
@@ -425,19 +437,21 @@ describe("update-live-set-helpers", () => {
       expect(result.scale).toBe("C Major");
     });
 
-    it("should handle sharp root notes", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+    it("reports a sharp root by the flat name Live stores", () => {
+      // Live keeps only root_note, a pitch class number, so the result must
+      // name it the way every read of it will.
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
       applyScale(mockLiveSet, "F# Minor", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
-      expect(result.scale).toBe("F# Minor");
+      expect(result.scale).toBe("Gb Minor");
     });
 
     it("should handle flat root notes", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
       applyScale(mockLiveSet, "Bb Dorian", result);
@@ -445,6 +459,20 @@ describe("update-live-set-helpers", () => {
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
       expect(result.scale).toBe("Bb Dorian");
+    });
+
+    it("falls back to the requested spelling when Live reports no usable root", () => {
+      const mockLiveSet = {
+        set: vi.fn(),
+        getProperty: vi.fn((property: string) =>
+          property === "scale_name" ? "Major" : -1,
+        ),
+      } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      applyScale(mockLiveSet, "C Major", result);
+
+      expect(result.scale).toBe("C Major");
     });
 
     it("should warn and return when pitchClassToNumber returns null", () => {

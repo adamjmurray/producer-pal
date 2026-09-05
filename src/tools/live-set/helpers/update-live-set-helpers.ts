@@ -256,5 +256,13 @@ export function applyScale(
   liveSet.set("root_note", scaleRootNumber);
   liveSet.set("scale_name", scaleName);
   liveSet.set("scale_mode", 1);
-  result.scale = `${scaleRoot} ${scaleName}`;
+
+  // Report the name Live stores, not the spelling asked for. Live keeps only a
+  // pitch class number, so every read of it comes back flat ("F#" -> "Gb") —
+  // echoing the request here would disagree with every later read.
+  const storedRoot =
+    numberToPitchClass(liveSet.getProperty("root_note") as number) ?? scaleRoot;
+  const storedName = liveSet.getProperty("scale_name");
+
+  result.scale = `${storedRoot} ${String(storedName)}`;
 }

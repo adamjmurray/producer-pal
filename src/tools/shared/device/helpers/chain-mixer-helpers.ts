@@ -9,7 +9,11 @@ import {
   type MatchedSend,
   dedupeSendsByReturn,
 } from "#src/tools/shared/sends/send-list-helpers.ts";
-import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
+import {
+  findReturnIndex,
+  roundGainDb,
+  roundPan,
+} from "#src/tools/shared/utils.ts";
 import { setParamIfEnabled } from "./param-write-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -52,8 +56,11 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 
   const gainDb = mixer.child("volume").getProperty("display_value");
 
-  if (typeof gainDb === "number" && gainDb !== 0) {
-    info.gainDb = gainDb;
+  // Round before the check, same as pan below.
+  const roundedGainDb = typeof gainDb === "number" ? roundGainDb(gainDb) : null;
+
+  if (roundedGainDb != null && roundedGainDb !== 0) {
+    info.gainDb = roundedGainDb;
   }
 
   const pan = mixer.child("panning").getProperty("value");
@@ -483,13 +490,14 @@ function readActiveSends(
 
   return active.map(({ send, index }) => {
     const info = returns[index];
+    const gainDb = send.getProperty("display_value");
 
     return {
       return: info?.name ?? `Return ${index + 1}`,
       // The id is what a write should quote back: names collide and get
       // renamed, and `sends` accepts either.
       ...(info == null ? {} : { returnId: info.id }),
-      gainDb: send.getProperty("display_value"),
+      gainDb: typeof gainDb === "number" ? roundGainDb(gainDb) : gainDb,
     };
   });
 }

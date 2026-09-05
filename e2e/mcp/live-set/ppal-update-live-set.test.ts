@@ -154,6 +154,30 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  it("reports a sharp scale root by the flat name Live stores", async () => {
+    // Live keeps only a pitch class number, so it has no sharp spelling to give
+    // back. The write result has to say what every later read will say.
+    const update = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { scale: "F# Dorian" },
+    });
+
+    expect(parseToolResult<UpdateResult>(update).scale).toBe("Gb Dorian");
+
+    await sleep(100);
+    const after = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+
+    expect(parseToolResult<ReadResult>(after).scale).toBe("Gb Dorian");
+
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { scale: "" },
+    });
+  });
+
   it("creates, renames, and deletes locators", async () => {
     // Locator IDs are positional and assignment only sticks against real Live,
     // so this exercises the full create/rename/delete cycle end-to-end. The set

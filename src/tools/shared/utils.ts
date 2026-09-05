@@ -363,6 +363,16 @@ export function roundPan(pan: number): number {
 }
 
 /**
+ * Round a gain to Live's 0.01 dB display resolution; the raw float32 carries
+ * noise like -6.333000183105469.
+ * @param gainDb - Raw gain in dB
+ * @returns Gain rounded to two decimals
+ */
+export function roundGainDb(gainDb: number): number {
+  return Math.round(gainDb * 100) / 100;
+}
+
+/**
  * Find the return (track or rack chain) a send refers to, by id or by name.
  *
  * An id wins: it is exact, and unlike a name it can't be shared by two returns

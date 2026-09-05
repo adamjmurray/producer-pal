@@ -22,7 +22,7 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { roundPan, stripFields } from "#src/tools/shared/utils.ts";
+import { roundGainDb, roundPan, stripFields } from "#src/tools/shared/utils.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   processAvailableRouting,
@@ -379,7 +379,7 @@ export function readMixerProperties(
   const volume = mixer.child("volume");
 
   if (volume.exists()) {
-    result.gainDb = volume.getProperty("display_value");
+    result.gainDb = readGainDb(volume);
   }
 
   // Read panning mode
@@ -428,7 +428,7 @@ export function readMixerProperties(
       const info = returns[i];
 
       return {
-        gainDb: send.getProperty("display_value"),
+        gainDb: readGainDb(send),
         return: info?.name ?? `Return ${i + 1}`,
         // Names collide and get renamed, so the id is what a write quotes back.
         ...(info == null ? {} : { returnId: info.id }),
@@ -448,6 +448,17 @@ function readPan(param: LiveAPI): unknown {
   const pan = param.getProperty("value");
 
   return typeof pan === "number" ? roundPan(pan) : pan;
+}
+
+/**
+ * Read a gain parameter, rounded to Live's 0.01 dB display steps
+ * @param param - Volume or send DeviceParameter
+ * @returns Gain in dB
+ */
+function readGainDb(param: LiveAPI): unknown {
+  const gainDb = param.getProperty("display_value");
+
+  return typeof gainDb === "number" ? roundGainDb(gainDb) : gainDb;
 }
 
 /**

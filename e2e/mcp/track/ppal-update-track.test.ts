@@ -31,6 +31,18 @@ async function readTracks(): Promise<LiveSetResult> {
   return parseToolResult<LiveSetResult>(result);
 }
 
+/** Read a track's mixer after giving Live a moment to settle. */
+async function readTrackMixer(trackId: string): Promise<ReadTrackResult> {
+  await sleep(100);
+
+  return parseToolResult<ReadTrackResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { id: trackId, include: ["mixer"] },
+    }),
+  );
+}
+
 describe("ppal-update-track", () => {
   it("updates track name, color, and gain", async () => {
     const liveSet = await readTracks();
@@ -353,19 +365,33 @@ describe("ppal-update-track", () => {
       },
     });
 
-    await sleep(100);
-
-    const track = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["mixer"] },
-      }),
-    );
+    const track = await readTrackMixer(trackId);
 
     expect(track.sends![0]!.return).toBe(first!.name);
     expect(track.sends![0]!.gainDb).toBeCloseTo(-9, 1);
     expect(track.sends![1]!.return).toBe(second!.name);
     expect(track.sends![1]!.gainDb).toBeCloseTo(-21, 1);
+  });
+
+  it("reports track and send gain at Live's display resolution", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![2]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    // Live hands back a 32-bit float, so an unrounded read reports -6.333000183105469.
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: {
+        id: trackId,
+        gainDb: -6.333333,
+        sends: [{ return: returnTrack.id, gainDb: -9.55 }],
+      },
+    });
+
+    const track = await readTrackMixer(trackId);
+
+    expect(track.gainDb).toBe(-6.33);
+    expect(track.sends![0]!.gainDb).toBe(-9.55);
   });
 
   it("lets a sends entry override the scalar pair naming the same return", async () => {
@@ -389,14 +415,7 @@ describe("ppal-update-track", () => {
       expect.stringContaining("sends overrides sendGainDb/sendReturn"),
     );
 
-    await sleep(100);
-
-    const track = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["mixer"] },
-      }),
-    );
+    const track = await readTrackMixer(trackId);
 
     // The list is the later word, so the pair's -30 must not be what stuck.
     expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);

@@ -115,11 +115,14 @@ describe("readChainMixer", () => {
     expect(readChainMixer(chainApi())).toStrictEqual({});
   });
 
-  it("reports a non-zero gain and pan, rounding pan to Live's 1% steps", () => {
-    registerChainWithMixer({ gainDb: -15, pan: -0.30000001192092896 });
+  it("reports a non-zero gain and pan, rounding both to Live's display steps", () => {
+    registerChainWithMixer({
+      gainDb: -6.333000183105469,
+      pan: -0.30000001192092896,
+    });
 
     expect(readChainMixer(chainApi())).toStrictEqual({
-      gainDb: -15,
+      gainDb: -6.33,
       pan: -0.3,
     });
   });
@@ -134,7 +137,7 @@ describe("readChainMixer", () => {
     registerChainWithMixer({
       sends: [
         { value: 0, display_value: -70 },
-        { value: 0.6, display_value: -12 },
+        { value: 0.6, display_value: -12.333000183105469 },
       ],
     });
     registerMockObject("rack-1", {
@@ -153,7 +156,8 @@ describe("readChainMixer", () => {
 
     expect(readChainMixer(chainApi())).toStrictEqual({
       // The id rides along so a read round-trips straight back into `sends`.
-      sends: [{ return: "Reverb", returnId: "rc-1", gainDb: -12 }],
+      // The gain is rounded: Live's raw float32 is -12.333000183105469.
+      sends: [{ return: "Reverb", returnId: "rc-1", gainDb: -12.33 }],
     });
   });
 

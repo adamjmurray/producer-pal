@@ -19,11 +19,16 @@ const scaleDisabledNote =
 
 describe("updateLiveSet", () => {
   let liveSet: RegisteredMockObject;
-  let mockRootNote = 0; // Track the root note state across tests
+  // Track the scale state across tests. Live stores root_note as a pitch class
+  // number with no spelling, so the mock must too — that's what makes the
+  // write result render "Gb" for an "F#" request, like every read does.
+  let mockRootNote = 0;
+  let mockScaleName = "Major";
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set_id", { path: livePath.liveSet });
     mockRootNote = 0; // Reset to C for each test
+    mockScaleName = "Major";
 
     // Mock scale_intervals and root_note for tests that need it
     liveSet.get.mockImplementation(function (property: string) {
@@ -35,13 +40,21 @@ describe("updateLiveSet", () => {
         return [mockRootNote]; // Return array with the current mock root note
       }
 
+      if (property === "scale_name") {
+        return [mockScaleName];
+      }
+
       return [0];
     });
 
-    // Mock the set method to update our mock root note
+    // Mock the set method to update our mock scale state
     liveSet.set.mockImplementation(function (property: string, value: unknown) {
       if (property === "root_note") {
         mockRootNote = value as number;
+      }
+
+      if (property === "scale_name") {
+        mockScaleName = value as string;
       }
     });
   });
@@ -166,14 +179,22 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should handle sharp and flat scale roots", async () => {
-    const result1 = await updateLiveSet({ scale: "F# Minor" });
+  it("reports a sharp root by the flat name Live stores", async () => {
+    // Live keeps root_note, a pitch class number with no spelling, so reads
+    // always render it flat. The write result must agree with them.
+    const sharp = await updateLiveSet({ scale: "F# Dorian" });
 
-    expect(result1.scale).toBe("F# Minor");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 6);
+    expect(sharp.scale).toBe("Gb Dorian");
 
-    const result2 = await updateLiveSet({ scale: "Bb Major" });
+    const flat = await updateLiveSet({ scale: "Bb Major" });
 
-    expect(result2.scale).toBe("Bb Major");
+    expect(flat.scale).toBe("Bb Major");
+
+    // A root with no enharmonic spelling comes back unchanged.
+    const natural = await updateLiveSet({ scale: "C Major" });
+
+    expect(natural.scale).toBe("C Major");
   });
 
   it("should handle case insensitive scale input and normalize the output", async () => {
@@ -187,7 +208,7 @@ describe("updateLiveSet", () => {
 
     expect(liveSet.set).toHaveBeenCalledWith("root_note", 3);
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
-    expect(result2.scale).toBe("D# Minor");
+    expect(result2.scale).toBe("Eb Minor");
 
     const result3 = await updateLiveSet({ scale: "bB DoRiAn" });
 
@@ -216,7 +237,7 @@ describe("updateLiveSet", () => {
 
     expect(liveSet.set).toHaveBeenCalledWith("root_note", 6);
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
-    expect(result3.scale).toBe("F# Dorian");
+    expect(result3.scale).toBe("Gb Dorian");
   });
 
   it("should disable scale when given empty string", async () => {

@@ -362,6 +362,23 @@ describe("readTrack - mixer properties", () => {
     });
   });
 
+  it("rounds track and send gain to Live's 0.01 dB steps", () => {
+    // Live's raw float32 reads back as -6.333000183105469.
+    setupTrackMixerMocks({
+      volumeProperties: { display_value: -6.333000183105469 },
+      sendIds: ["send_1"],
+      sendValues: [-6.333000183105469],
+    });
+    setupReturnTrackNames(["Reverb"]);
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -6.33);
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends[0]).toHaveProperty("gainDb", -6.33);
+  });
+
   it("warns when send count doesn't match return track count", () => {
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
