@@ -53,9 +53,9 @@ export function applyTimeSignatureProperty(
  * @returns The scene's name, or its number when unnamed
  */
 export function sceneDisplayName(scene: LiveAPI, sceneIndex: number): string {
-  const name = scene.getProperty("name") as string | null;
+  const name = scene.getName();
 
-  return name == null || name === "" ? `${sceneIndex + 1}` : name;
+  return name === "" ? `${sceneIndex + 1}` : name;
 }
 
 /**

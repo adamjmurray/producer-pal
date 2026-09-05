@@ -296,6 +296,7 @@ export class LiveAPI {
   declare deviceIndex: number | null;
   declare timeSignature: string | null;
   declare getColor: () => string | null;
+  declare getName: () => string;
   declare setColor: (cssColor: string) => void;
   declare setProperty: (property: string, value: unknown) => void;
   declare setAll: (properties: Record<string, unknown>) => void;

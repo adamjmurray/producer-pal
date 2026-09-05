@@ -142,6 +142,17 @@ describe("readDevice with drum pad path", () => {
     });
   });
 
+  it("reports an all-digit drum pad name as a string", () => {
+    setupDrumPadMocks({
+      padIds: ["pad-36"],
+      padProperties: { "pad-36": { note: 36, name: 5678 } },
+    });
+
+    const result = readDevice({ path: "t1/d0/pC1", include: [] });
+
+    expect(result.name).toBe("5678");
+  });
+
   // Live's two chain lists disagree once a pad holds layers: a copied-on layer
   // comes first in the rack's `chains` and last in the pad's. Every path
   // resolves against the rack's, so reading the pad's would hand back paths

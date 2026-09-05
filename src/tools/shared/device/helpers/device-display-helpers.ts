@@ -34,8 +34,12 @@ export const AUTOMATION_STATE_MAP: Record<number, string> = {
  * @returns Formatted name like "Reverb (Macro 1)" or just "Device On"
  */
 function formatParamName(paramApi: LiveAPI): string {
-  const name = paramApi.getProperty("name") as string;
-  const originalName = paramApi.getProperty("original_name") as string;
+  const name = paramApi.getName();
+  const rawOriginalName = paramApi.getProperty("original_name") as
+    | string
+    | number
+    | undefined;
+  const originalName = String(rawOriginalName ?? "");
 
   return originalName !== name ? `${name} (${originalName})` : name;
 }

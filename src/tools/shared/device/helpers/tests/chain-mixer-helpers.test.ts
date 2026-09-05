@@ -96,10 +96,11 @@ function registerChainWithMixer({
 
 /**
  * Register the rack holding the chain, with one return chain per name. Sends
- * are matched to returns by position, so the order is the send order.
+ * are matched to returns by position, so the order is the send order. A
+ * number simulates Live returning an all-digit name as a number, not a string.
  * @param names - Return chain names
  */
-function registerReturnChains(...names: string[]): void {
+function registerReturnChains(...names: (string | number)[]): void {
   registerMockObject("rack-1", {
     path: rackPath,
     type: "RackDevice",
@@ -167,12 +168,35 @@ describe("readChainMixer", () => {
     });
   });
 
+  it("reports an all-digit return chain name as a string", () => {
+    // The send result must report it like every other name.
+    registerChainWithMixer({
+      sends: [{ value: 0.6, display_value: -12 }],
+    });
+    registerReturnChains(5678);
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "5678", returnId: "rc-0", gainDb: -12 }],
+    });
+  });
+
   it("falls back to a numbered return name when the rack has none", () => {
     registerChainWithMixer({ sends: [{ value: 0.5, display_value: -14 }] });
     registerReturnChains();
 
     expect(readChainMixer(chainApi())).toStrictEqual({
       sends: [{ return: "Return 1", gainDb: -14 }],
+    });
+  });
+
+  it("falls back to a numbered return name when the return chain has no name", () => {
+    // getName() reports "" for a nameless return chain — `??` would keep that
+    // "" instead of falling back, so this must use `||`.
+    registerChainWithMixer({ sends: [{ value: 0.5, display_value: -14 }] });
+    registerReturnChains("");
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "Return 1", returnId: "rc-0", gainDb: -14 }],
     });
   });
 });

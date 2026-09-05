@@ -60,6 +60,61 @@ describe("updateDevice - params by name", () => {
     expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
   });
 
+  it("resolves a param whose name is all-digit (Live reports it as a number)", () => {
+    // `.toLowerCase()` on that used to throw during the name match.
+    const paramDigits = registerMockObject("p-digits", {
+      properties: {
+        name: 5678,
+        original_name: 5678,
+        is_quantized: 0,
+        value: 1,
+        min: 0,
+        max: 1,
+      },
+      methods: { str_for_value: (v: unknown) => String(v) },
+    });
+
+    registerMockObject("123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        parameters: children("p-freq", "p-macro", "p-digits"),
+      },
+    });
+
+    updateDevice({ id: "123", params: [{ name: "5678", value: "0.5" }] });
+
+    expect(paramDigits.set).toHaveBeenCalledWith("value", 0.5);
+  });
+
+  it("formats a param with no original_name as 'name ()', not 'name (undefined)'", () => {
+    // A param with no original_name property reads back undefined from
+    // getProperty. The formatted-name fallback must read that as "" — if it
+    // read "undefined" instead, this search would find nothing.
+    const paramNoOriginal = registerMockObject("p-no-original", {
+      properties: {
+        name: "Drive",
+        is_quantized: 0,
+        value: 0.2,
+        min: 0,
+        max: 1,
+      },
+      methods: { str_for_value: (v: unknown) => String(v) },
+    });
+
+    registerMockObject("123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        parameters: children("p-freq", "p-macro", "p-no-original"),
+      },
+    });
+
+    updateDevice({ id: "123", params: [{ name: "Drive ()", value: "1" }] });
+
+    expect(paramNoOriginal.set).toHaveBeenCalledWith("value", 1);
+  });
+
   it("should resolve param by name case-insensitively", () => {
     updateDevice({
       id: "123",

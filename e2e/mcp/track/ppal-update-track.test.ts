@@ -512,6 +512,39 @@ describe("ppal-update-track", () => {
     // The list is the later word, so the pair's -30 must not be what stuck.
     expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);
   });
+
+  it("can never give a return track an all-digit name", async () => {
+    // Checked here, rather than adding an all-digit-return-name send test:
+    // Live prepends a return's own send letter to its name (see
+    // stripReturnTrackLetter) and re-asserts it even over an explicit rename,
+    // so a return track's name can never read back as pure digits — the
+    // numeric-name risk that hits locators, chains, and regular tracks
+    // doesn't reach return-track sends at all.
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", name: "1" },
+      }),
+    );
+
+    await sleep(100);
+
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: created.id, name: "1" },
+    });
+
+    await sleep(100);
+
+    const probe = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: created.id },
+      }),
+    );
+
+    expect(probe.name).toMatch(/^[A-Z]-1$/);
+  });
 });
 
 interface LiveSetResult {

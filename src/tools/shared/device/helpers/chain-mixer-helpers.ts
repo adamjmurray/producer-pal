@@ -515,8 +515,13 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
 
   return active.map(({ send, index }) => {
     const info = returns[index];
+    const rawName = info?.name;
+    // getName() reports "" (not null/undefined) for a nameless return chain,
+    // so an empty name needs the fallback too, not just a missing one.
+    const name =
+      rawName == null || rawName === "" ? `Return ${index + 1}` : rawName;
 
-    return readSendBack(send, info?.name ?? `Return ${index + 1}`, info?.id);
+    return readSendBack(send, name, info?.id);
   });
 }
 
@@ -540,7 +545,7 @@ function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
   );
 
   return chains.map((rc) => ({
-    name: rc.getProperty("name") as string,
+    name: rc.getName(),
     id: rc.id,
   }));
 }

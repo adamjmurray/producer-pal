@@ -13,7 +13,9 @@ import {
 } from "./read-live-set-path-mapped-test-helpers.ts";
 
 interface SetupLocatorReadMocksOptions {
-  cuePoints?: Record<string, { name: string; time: number }>;
+  // number simulates Live returning an all-digit name as a number, not a
+  // string; omitting name simulates a missing name property
+  cuePoints?: Record<string, { name?: string | number; time: number }>;
   cueChildren?: string[];
   signatureNumerator?: number;
 }
@@ -76,6 +78,32 @@ describe("readLiveSet - locators", () => {
     expect(result.locators).toStrictEqual([
       { id: "locator-0", name: "Intro", time: "1|1" },
       { id: "locator-1", name: "Verse", time: "5|1" },
+    ]);
+  });
+
+  it("reads an all-digit locator name as a string", () => {
+    setupLocatorReadMocks({
+      cuePoints: { cue1: { name: 5678, time: 0 } },
+    });
+
+    const result = readLiveSet({ include: ["locators"] });
+
+    expect(result.locators).toStrictEqual([
+      { id: "locator-0", name: "5678", time: "1|1" },
+    ]);
+  });
+
+  it("reads a locator with no name property as an empty string", () => {
+    // Guards the `?? ""` fallback: a missing name must not read back as the
+    // literal string "undefined".
+    setupLocatorReadMocks({
+      cuePoints: { cue1: { time: 0 } },
+    });
+
+    const result = readLiveSet({ include: ["locators"] });
+
+    expect(result.locators).toStrictEqual([
+      { id: "locator-0", name: "", time: "1|1" },
     ]);
   });
 

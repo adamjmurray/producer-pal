@@ -367,11 +367,9 @@ export function readDeviceParameters(
   if (search) {
     const searchLower = search.toLowerCase().trim();
 
-    parameters = parameters.filter((p) => {
-      const name = p.getProperty("name") as string;
-
-      return name.toLowerCase().includes(searchLower);
-    });
+    parameters = parameters.filter((p) =>
+      p.getName().toLowerCase().includes(searchLower),
+    );
   }
 
   if (!includeValues) {

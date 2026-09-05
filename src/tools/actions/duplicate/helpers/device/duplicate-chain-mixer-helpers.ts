@@ -70,7 +70,7 @@ function carriedSends(
   const available = new Set(
     destinationRack
       .getChildren("return_chains")
-      .map((rc) => (rc.getProperty("name") as string).toLowerCase()),
+      .map((rc) => rc.getName().toLowerCase()),
   );
 
   const carried: ChainSend[] = [];

@@ -18,5 +18,5 @@ export interface ReturnTrackInfo {
 export function readReturnTrackInfo(): ReturnTrackInfo[] {
   return LiveAPI.from(livePath.liveSet)
     .getChildren("return_tracks")
-    .map((rt) => ({ name: rt.getProperty("name") as string, id: rt.id }));
+    .map((rt) => ({ name: rt.getName(), id: rt.id }));
 }

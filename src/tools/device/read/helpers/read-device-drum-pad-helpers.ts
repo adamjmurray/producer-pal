@@ -236,7 +236,7 @@ export function buildDrumPadInfo(
   const drumPadInfo = buildDrumPadFields({
     id: pad.id,
     path,
-    name: pad.getProperty("name"),
+    name: pad.getName(),
     note: pad.getProperty("note") as number,
     // Counted off the pad, not chainsOnDrumPad: the two collections hold the
     // same chains in different orders, and only the count is wanted here.

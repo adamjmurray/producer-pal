@@ -628,6 +628,7 @@ describe("device-reader", () => {
 
           return null;
         },
+        getName: () => DEVICE_CLASS.SIMPLER,
         getChildren: (kind: string) => {
           if (kind === "sample" && opts.samplePath) return [sampleChild];
 
@@ -666,6 +667,7 @@ describe("device-reader", () => {
 
           return null;
         },
+        getName: () => "Operator",
         getChildren: () => [],
       };
     }

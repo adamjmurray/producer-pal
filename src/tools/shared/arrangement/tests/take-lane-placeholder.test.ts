@@ -24,13 +24,14 @@ const CLIP = `t0/l1[1|1] (id ${CLIP_ID})`;
  * Register a clip at the given path and hand it back.
  * @param path - The clip's Live path
  * @param isMidi - 1 for a MIDI clip, 0 for audio
- * @param name - The clip's name, or null for one Live won't report
+ * @param name - The clip's name, null for one Live won't report, or a number
+ *   simulating Live's all-digit-name quirk
  * @returns The clip LiveAPI
  */
 function registerClip(
   path: PathLike,
   isMidi: number,
-  name: string | null = "Take",
+  name: string | number | null = "Take",
 ): LiveAPI {
   mockNonExistentObjects();
   registerMockObject(CLIP_ID, {
@@ -116,6 +117,20 @@ describe("take-lane placeholders", () => {
     emptyTakeLaneClip(clip);
 
     expect(clip.set).toHaveBeenCalledWith("name", "(moved)");
+  });
+
+  // Live hands back an all-digit name as a number, not a string — `.startsWith`
+  // on that used to throw, stranding the destination copy beside the original.
+  it("marks a take with an all-digit name", () => {
+    const clip = registerClip(
+      livePath.track(0).takeLane(1).arrangementClip(0),
+      1,
+      5678,
+    );
+
+    emptyTakeLaneClip(clip);
+
+    expect(clip.set).toHaveBeenCalledWith("name", "(moved) 5678");
   });
 
   // An audio clip's sample can't be cleared and a silent clip can't be

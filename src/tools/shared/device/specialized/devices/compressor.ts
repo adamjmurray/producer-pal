@@ -72,7 +72,7 @@ function readRoutableTracks(): Array<{ id: string; name: string }> {
 
   return tracks.map((track) => ({
     id: track.id,
-    name: track.getProperty("name") as string,
+    name: track.getName(),
   }));
 }
 
@@ -125,7 +125,7 @@ function writeSidechainSourceTrackId(
     return false;
   }
 
-  const trackName = track.getProperty("name") as string;
+  const trackName = track.getName();
   const available = readAvailableTypes(device);
   const entry = available.find((e) => e.display_name === trackName);
 

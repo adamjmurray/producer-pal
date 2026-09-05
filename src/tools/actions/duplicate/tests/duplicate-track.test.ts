@@ -258,6 +258,26 @@ describe("duplicate - track duplication", () => {
       );
     });
 
+    it("routes output to an all-digit-named source track", async () => {
+      // getProperty("name") reports an all-digit source name as a number,
+      // which used to never match Live's string display_name — output
+      // routing silently never landed, blaming a type mismatch on Live.
+      const { newTrack } = setupRoutingMocks({
+        trackName: 5678,
+        monitoringState: 1,
+        inputRoutingName: "Audio In",
+      });
+
+      await duplicate({ type: "track", id: "track1", routeToSource: true });
+
+      expect(newTrack.set).toHaveBeenCalledWith(
+        "output_routing_type",
+        JSON.stringify({
+          output_routing_type: { identifier: "source_track_id" },
+        }),
+      );
+    });
+
     it("warns when the source track name is absent from the output routing options", async () => {
       // newTrack advertises only "Master" as an output — the source name has no
       // match, so no output routing is applied and the miss is reported.

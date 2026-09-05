@@ -64,7 +64,7 @@ export function readLocators(
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
-    const name = locator.getProperty("name") as string;
+    const name = locator.getName();
     const timeInBeats = locator.getProperty("time") as number;
     const timeFormatted = abletonBeatsToBarBeat(
       timeInBeats,
@@ -125,12 +125,18 @@ export function findLocatorsByName(
   liveSet: LiveAPI,
   locatorName: string,
 ): LocatorMatchWithTime[] {
+  // Every nameless locator reads back "", so without this guard an empty
+  // locatorName would match (and could delete) every one of them.
+  if (locatorName === "") {
+    return [];
+  }
+
   const locatorIds = liveSet.getChildIds("cue_points");
   const matches: LocatorMatchWithTime[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
-    const name = locator.getProperty("name");
+    const name = locator.getName();
 
     if (name === locatorName) {
       const time = locator.getProperty("time") as number;

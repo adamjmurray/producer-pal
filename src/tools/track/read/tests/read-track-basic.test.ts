@@ -122,6 +122,19 @@ describe("readTrack", () => {
     });
   });
 
+  it("reports an all-digit track name as a string", () => {
+    setupTrackPathMappedMocks({
+      trackId: "track1",
+      objects: {
+        Track: createSoloedMidiTrackProperties({ name: 5678 }),
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0 });
+
+    expect(result.name).toBe("5678");
+  });
+
   it("returns track information for audio tracks", () => {
     setupTrackPathMappedMocks({
       trackPath: String(livePath.track(1)),

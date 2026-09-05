@@ -318,6 +318,7 @@ describe("device-display-helpers", () => {
         id: "param_1",
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
       };
 
       const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
@@ -325,6 +326,31 @@ describe("device-display-helpers", () => {
       expect(result).toStrictEqual({
         id: "param_1",
         name: "Volume",
+      });
+    });
+
+    it("reports an all-digit parameter name as a string", () => {
+      // A rack macro name equal to its original_name too — the else-branch
+      // return used to pass that raw number straight through.
+      mockGet.mockImplementation((prop: string) => {
+        if (prop === "name") return [5678];
+        if (prop === "original_name") return [5678];
+
+        return [0];
+      });
+
+      const mockParamApi = {
+        id: "param_1b",
+        get: mockGet,
+        getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
+      };
+
+      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
+
+      expect(result).toStrictEqual({
+        id: "param_1b",
+        name: "5678",
       });
     });
 
@@ -340,6 +366,7 @@ describe("device-display-helpers", () => {
         id: "param_2",
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
       };
 
       const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
@@ -361,6 +388,7 @@ describe("device-display-helpers", () => {
         id,
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
         getPropertyList: (prop: string) => {
           const result: unknown = mockGet(prop);
 

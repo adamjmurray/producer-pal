@@ -207,6 +207,25 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
+    it("deletes a locator by an all-digit name", async () => {
+      // The match must still find it by its string name.
+      setupLocatorMocks(liveSet, {
+        cuePoints: [{ id: "cue1", time: 0, name: 5678 }],
+      });
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "5678",
+      });
+
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(result.locator).toStrictEqual({
+        operation: "deleted",
+        count: 1,
+        name: "5678",
+      });
+    });
+
     it("prefers locatorId over locatorName when both are given", async () => {
       // The name-delete branch requires BOTH id and time to be null; with an id
       // present we delete that single locator, never every cue sharing the name.
@@ -281,6 +300,30 @@ describe("updateLiveSet - locator operations", () => {
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("No locator found at position: 100|1"),
       );
+    });
+
+    it("does not delete every nameless locator when locatorName is empty", async () => {
+      // A nameless locator reads back "" — an empty locatorName must not
+      // match it (or any other nameless locator), or delete-by-name would
+      // wipe every unnamed locator in the Set.
+      setupLocatorMocks(liveSet, {
+        cuePoints: [
+          { id: "cue1", time: 0 },
+          { id: "cue2", time: 16 },
+        ],
+      });
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "",
+      });
+
+      expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "no_locators_found",
+        name: "",
+      });
     });
 
     it("should skip if no locators match name", async () => {

@@ -148,7 +148,7 @@ export function readClip(
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
   const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
-  const clipName = clip.getProperty("name") as string;
+  const clipName = clip.getName();
 
   const result: ReadClipResult = {
     id: clip.id,

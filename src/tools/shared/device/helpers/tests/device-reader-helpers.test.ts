@@ -37,7 +37,8 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 // Helper types used in tests
 type ChainOverrides = {
   type?: string;
-  name?: string;
+  // number simulates Live returning an all-digit name as a number
+  name?: string | number;
   mute?: number;
   solo?: number;
   muted_via_solo?: number;
@@ -62,6 +63,7 @@ describe("device-reader-helpers", () => {
 
           return 0;
         },
+        getName: () => String(overrides.name ?? "Test Chain"),
         getColor: () => overrides.color ?? null,
         // No mixer device: buildChainInfo adds no mixer fields.
         child: () => ({ exists: () => false }),
@@ -76,6 +78,13 @@ describe("device-reader-helpers", () => {
         type: "Chain",
         name: "My Chain",
       });
+    });
+
+    it("reports an all-digit chain name as a string", () => {
+      const chain = createMockChain({ name: 5678 });
+      const result = buildChainInfo(chain);
+
+      expect(result.name).toBe("5678");
     });
 
     it("includes type from chain.type property", () => {
@@ -548,11 +557,13 @@ describe("device-reader-helpers", () => {
   });
 
   describe("readDeviceParameters", () => {
-    const mockParam = (id: string, name: string) =>
+    // name as a number simulates Live returning an all-digit name as a number
+    const mockParam = (id: string, name: string | number) =>
       ({
         id,
         getProperty: (prop: string) =>
           prop === "name" || prop === "original_name" ? name : undefined,
+        getName: () => String(name),
       }) as unknown as LiveAPI;
 
     const mockDeviceWithParams = (params: LiveAPI[]) =>
@@ -581,6 +592,15 @@ describe("device-reader-helpers", () => {
       const result = readDeviceParameters(device, { search: "  rev  " });
 
       expect(result).toStrictEqual([{ id: "p1", name: "Reverb" }]);
+    });
+
+    it("matches an all-digit param name against a search term", () => {
+      // `.toLowerCase()` on that used to throw while filtering by paramSearch.
+      const device = mockDeviceWithParams([mockParam("p1", 5678)]);
+
+      const result = readDeviceParameters(device, { search: "567" });
+
+      expect(result).toStrictEqual([{ id: "p1", name: "5678" }]);
     });
   });
 

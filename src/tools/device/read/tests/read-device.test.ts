@@ -145,6 +145,17 @@ describe("readDevice", () => {
     });
   });
 
+  it("reports an all-digit device name as a string", () => {
+    setupBasicDeviceMock({
+      name: 5678,
+      class_display_name: "Operator",
+      type: 1,
+    });
+    const result = readDevice({ id: "device-123" });
+
+    expect(result.name).toBe("5678");
+  });
+
   it("should identify midi effect rack", () => {
     setupBasicDeviceMock({
       class_display_name: "MIDI Effect Rack",

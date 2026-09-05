@@ -266,6 +266,27 @@ describe("updateTrack - send properties", () => {
   });
 
   describe("sends list", () => {
+    it("matches and reports an all-digit return track name as a string", () => {
+      // The match, and the reported `return`, must both see a string.
+      registerMockObject("return_A", {
+        path: livePath.returnTrack(0),
+        properties: { name: 5678 },
+      });
+      keepsParamValue(send1, -6);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "5678", gainDb: -6 }],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [{ return: "5678", returnId: "return_A", gainDb: -6 }],
+      });
+    });
+
     it("sets several sends in one call", () => {
       updateTrack({
         id: "123",

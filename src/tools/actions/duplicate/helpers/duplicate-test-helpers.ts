@@ -86,7 +86,8 @@ export function registerClipSlot(
 }
 
 interface SourceTrackMock {
-  name: string;
+  // number simulates Live returning an all-digit name as a number
+  name: string | number;
   current_monitoring_state: number;
   // Live returns routing-type properties as JSON strings that getProperty()
   // parses (an object/array here would trip its JSON.parse and yield null,
@@ -143,7 +144,7 @@ export function createStandardMidiClipMock(
  */
 export function setupRouteToSourceMock(
   opts: {
-    trackName?: string;
+    trackName?: string | number;
     monitoringState?: number;
     inputRoutingName?: string;
     arm?: number;
@@ -155,6 +156,9 @@ export function setupRouteToSourceMock(
     inputRoutingName = "No Input",
     arm,
   } = opts;
+  // Live's routing display_name is always a string, even when the track's
+  // own name reads back as a number (trackName, above).
+  const trackNameStr = String(trackName);
 
   const sourceTrackMock: SourceTrackMock = {
     name: trackName,
@@ -185,7 +189,7 @@ export function setupRouteToSourceMock(
         "available_output_routing_types",
         [
           { display_name: "Master", identifier: "master_id" },
-          { display_name: trackName, identifier: "source_track_id" },
+          { display_name: trackNameStr, identifier: "source_track_id" },
         ],
       ),
     },

@@ -26,10 +26,12 @@ import {
   EXT_IN_ENTRY,
   MASTER_ENTRY,
   NO_INPUT_ENTRY,
+  NUMERIC_NAME_ENTRY,
   POST_FX_ENTRY,
   PRE_FX_ENTRY,
   registerCompressor,
   registerLiveSetTracks,
+  registerLiveSetWithNumericTrackName,
   registerLiveSetWithReturnsAndMaster,
   RETURN_ENTRY,
   routingProp,
@@ -70,6 +72,22 @@ describe("Compressor sidechainSourceTrackId read", () => {
     expect(readSpecializedParams(device)).toContainEqual({
       name: "sidechainSourceTrackId",
       value: "t1",
+    });
+  });
+
+  it("resolves an all-digit track name to its track id", () => {
+    // getProperty("name") reports an all-digit track name as a number, so
+    // this used to compare a number against Live's string display_name and
+    // always miss, falsely reporting no sidechain source.
+    registerLiveSetWithNumericTrackName();
+    const device = registerCompressor({
+      availableTypes: [...DEFAULT_AVAILABLE_TYPES, NUMERIC_NAME_ENTRY],
+      inputRoutingType: NUMERIC_NAME_ENTRY,
+    });
+
+    expect(readSpecializedParams(device)).toContainEqual({
+      name: "sidechainSourceTrackId",
+      value: "t3",
     });
   });
 
@@ -156,6 +174,31 @@ describe("Compressor sidechainSourceTrackId write", () => {
       "input_routing_type",
       JSON.stringify({ input_routing_type: { identifier: 16 } }),
     );
+  });
+
+  it("sets the routing type identifier for a track with an all-digit name", () => {
+    // Matching an all-digit track name against Live's string display_name
+    // used to always miss, wrongly reporting the track can't be a sidechain
+    // source at all — a false reason, not just a silent skip.
+    registerLiveSetWithNumericTrackName();
+    const device = registerCompressor({
+      availableTypes: [...DEFAULT_AVAILABLE_TYPES, NUMERIC_NAME_ENTRY],
+    });
+
+    const outcome = applySpecializedParamWrite(
+      device,
+      "sidechainSourceTrackId",
+      "t3",
+    );
+
+    expect(device.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      JSON.stringify({ input_routing_type: { identifier: 31 } }),
+    );
+    expect(outcome).toStrictEqual([
+      { name: "sidechainSourceTrackId", read: expect.any(Function) },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("warns and skips when the track is not in available routing types", () => {

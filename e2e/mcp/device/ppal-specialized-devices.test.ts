@@ -408,6 +408,44 @@ describe("specialized devices: Compressor", () => {
     ).toBeNull();
   });
 
+  it("resolves a sidechain source track with an all-digit name", async () => {
+    // Live reports an all-digit track name as a number, not a string. The
+    // sidechain source is matched by name against Live's own (always-string)
+    // routing display_name, so this used to silently miss for any Set with a
+    // numerically-named track — the read claimed no source was set at all.
+    const sourceTrackIndex = await createTrack("audio");
+
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: `t${sourceTrackIndex}`, name: "5678" },
+    });
+    await sleep(100);
+
+    const sourceTrack = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${sourceTrackIndex}` },
+      }),
+    );
+
+    const compId = await createEffect("Compressor");
+    const sourceIds = (await readDevice(compId, ["options"])).options
+      ?.sidechainSourceTrackIds as string[];
+
+    expect(sourceIds).toContain(sourceTrack.id);
+
+    await updateDevice(compId, {
+      params: [{ name: "sidechainSourceTrackId", value: sourceTrack.id }],
+    });
+
+    expect(
+      paramValue(
+        await readDevice(compId, ["params"], "sidechainSourceTrackId"),
+        "sidechainSourceTrackId",
+      ),
+    ).toBe(sourceTrack.id);
+  });
+
   it("resolves a return-track sidechain source to its track id", async () => {
     // Return/master sources now resolve to a track id on read (they
     // previously read back as null). A return track only becomes a routable

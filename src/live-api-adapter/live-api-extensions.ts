@@ -289,6 +289,19 @@ if (typeof LiveAPI !== "undefined") {
   };
 
   /**
+   * Get the object's name as a string. Live hands back an all-digit name
+   * (e.g. a locator, chain, or track named "5678") as a number, not a
+   * string — this normalizes that, and reports "" instead of "undefined"
+   * for an object with no name property.
+   * @returns The name, always a string
+   */
+  LiveAPI.prototype.getName = function (this: LiveAPI): string {
+    const raw = this.getProperty("name") as string | number | undefined;
+
+    return String(raw ?? "");
+  };
+
+  /**
    * Set multiple properties at once
    * @param properties - Properties to set
    */

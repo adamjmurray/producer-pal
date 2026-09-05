@@ -163,6 +163,15 @@ describe("readScene", () => {
     });
   });
 
+  it("reports an all-digit scene name as a string", () => {
+    setupLiveSetTracks([]);
+    setupScene("scene4", 0, defaultSceneConfig({ name: 5678 }));
+
+    const result = readScene({ sceneIndex: 0 });
+
+    expect(result.name).toBe("5678");
+  });
+
   it("returns clipCount when not including clip details", () => {
     setupLiveSetTracks(["track1", "track2", "track3"]);
     setupScene(

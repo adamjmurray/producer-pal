@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -20,7 +21,8 @@ global.LiveAPI = MockLiveAPI;
 
 interface MockLocator {
   id: string;
-  name?: string;
+  // number simulates Live returning an all-digit name as a number, not a string
+  name?: string | number;
   time: number;
 }
 
@@ -164,6 +166,25 @@ describe("locator-helpers", () => {
       expect(() => {
         resolveLocatorToBeats(mockLiveSet, { locatorName: "NonExistent" });
       }).toThrow('no locator found with name "NonExistent"');
+    });
+
+    it("resolves locator by name when Live reports an all-digit name as a number", () => {
+      const liveSet = setupMockLocators({ id: "loc0", name: 5678, time: 8 });
+
+      const result = resolveLocatorToBeats(liveSet, { locatorName: "5678" });
+
+      expect(result).toBe(8);
+    });
+
+    it("never matches an empty locatorName, even against a nameless locator", () => {
+      // A nameless locator reads back "" (getName's fallback for a missing
+      // name), so without an explicit guard an empty locatorName would match
+      // every nameless locator — and delete-by-name would wipe them all.
+      const liveSet = setupMockLocators({ id: "loc0", time: 8 });
+
+      expect(() => {
+        resolveLocatorToBeats(liveSet, { locatorName: "" });
+      }).toThrow('no locator found with name ""');
     });
 
     it("appends the context suffix to the name-not-found message", () => {

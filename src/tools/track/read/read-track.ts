@@ -318,7 +318,7 @@ export function readTrackGeneric({
     id: track.id,
     ...pathField(track),
     ...trackTypeField(isMidiTrack, category),
-    name: track.getProperty("name"),
+    name: track.getName(),
     ...(includeColor && { color: track.getColor() }),
   };
 

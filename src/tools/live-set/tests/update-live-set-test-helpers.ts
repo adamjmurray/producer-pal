@@ -22,7 +22,8 @@ interface LocatorLiveSetConfig {
 }
 
 interface SetupLocatorMocksOptions {
-  cuePoints?: Array<{ id: string; time: number; name?: string }>;
+  // name as number simulates Live returning an all-digit name as a number
+  cuePoints?: Array<{ id: string; time: number; name?: string | number }>;
   liveSet?: LocatorLiveSetConfig;
 }
 

@@ -55,7 +55,7 @@ export function readLiveSet(
       ? sessionClipCounts(trackIds.length, sceneIds.length)
       : null;
 
-  const liveSetName = liveSet.getProperty("name");
+  const liveSetName = liveSet.getName();
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
     tempo: liveSet.getProperty("tempo"),

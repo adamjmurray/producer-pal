@@ -159,6 +159,7 @@ Keeping that sentinel out of tool code is most of what the wrapper is for:
 | `getPropertyList` | `[]`                    |
 | `getChildIds`     | `[]`                    |
 | `getColor`        | `null`                  |
+| `getName`         | `""`                    |
 | `exists()`        | `false`                 |
 
 So the `Array.isArray` checks in those methods are load-bearing, not defensive
@@ -200,6 +201,13 @@ Verified against Live 12.4.3. A pad with no chains takes `mute` and `solo`
 writes and drops them — `set` returns 1 and the read-back stays 0, where the
 same write on a pad that has a chain lands. So a chainless pad is inert, not
 merely hidden: reporting a write to one as successful is reporting a lie.
+
+### An All-Digit Name Comes Back as a Number
+
+Live hands back a `name` property as a number, not a string, when the name is
+all digits (a locator, track, chain, or clip named `"5678"`). Always read a name
+through `getName()`, never `getProperty("name")` — it normalizes the number to a
+string and reports `""` instead of `"undefined"` for an object with no name.
 
 ### `pad.name` Is a UI Label, Not Data
 

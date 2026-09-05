@@ -318,7 +318,7 @@ export function readDevice(
 
   const deviceType = getDeviceType(device);
   const className = device.getProperty("class_display_name") as string;
-  const userDisplayName = device.getProperty("name") as string;
+  const userDisplayName = device.getName();
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
   // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
   const path = parentPath ?? extractDevicePath(device.path);

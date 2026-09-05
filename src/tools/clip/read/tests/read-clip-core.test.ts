@@ -93,6 +93,14 @@ describe("readClip", () => {
     },
   );
 
+  it("reports an all-digit clip name as a string", () => {
+    setupMidiClipMock({ clipProps: { name: 5678 } });
+
+    const result = readClip({ trackIndex: 1, sceneIndex: 1 });
+
+    expect(result.name).toBe("5678");
+  });
+
   it("should format notes using clip's time signature", () => {
     const clip = setupMidiClipMock({
       trackIndex: 0,

@@ -49,6 +49,7 @@ describe("processDeviceChains", () => {
 
       return 0;
     },
+    getName: () => name,
     getColor: () => null,
     child: () => noMixer,
     getChildren: () => [],
@@ -69,6 +70,7 @@ describe("processDeviceChains", () => {
 
       return 0;
     },
+    getName: () => name,
     getColor: () => null,
     child: () => noMixer,
     getChildren: (child: string) => {
@@ -204,6 +206,7 @@ describe("processDeviceChains", () => {
 
         return 0;
       },
+      getName: () => name,
       getColor: () => null,
       child: () => noMixer,
       getChildren: (child: string) => {
@@ -265,6 +268,7 @@ describe("processDeviceChains", () => {
 
         return 0;
       },
+      getName: () => "Chain A",
       getColor: () => null,
       child: () => noMixer,
       getChildren: (child: string) => {

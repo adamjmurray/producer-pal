@@ -49,6 +49,12 @@ export const RETURN_ENTRY: RoutingEntry = {
   display_name: "A-Reverb",
   identifier: 30,
 };
+// Live's routing display_name is always a string; this represents a track
+// named all-digit, which getProperty("name") reports as a number.
+export const NUMERIC_NAME_ENTRY: RoutingEntry = {
+  display_name: "5678",
+  identifier: 31,
+};
 export const MASTER_ENTRY: RoutingEntry = {
   display_name: "Main",
   identifier: 40,
@@ -187,5 +193,29 @@ export function registerLiveSetWithReturnsAndMaster(): void {
     path: "live_set master_track",
     type: "Device",
     properties: { name: "Main" },
+  });
+}
+
+/**
+ * Register the live_set with two tracks: Drift (t1) and an all-digit-named
+ * track (t3, name `5678` — a number, the way Live reports it).
+ */
+export function registerLiveSetWithNumericTrackName(): void {
+  registerMockObject("live_set", {
+    path: "live_set",
+    type: "Device",
+    properties: {
+      tracks: ["id", "t1", "id", "t3"],
+    },
+  });
+
+  registerMockObject("t1", {
+    type: "Device",
+    properties: { name: "Drift" },
+  });
+
+  registerMockObject("t3", {
+    type: "Device",
+    properties: { name: 5678 },
   });
 }

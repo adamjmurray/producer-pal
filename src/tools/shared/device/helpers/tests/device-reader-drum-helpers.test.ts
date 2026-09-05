@@ -131,12 +131,17 @@ describe("device-reader-drum-helpers", () => {
 
     interface ChainConfig {
       inNote: number;
-      name: string;
+      // number simulates Live returning an all-digit name as a number
+      name: string | number;
       state?: string;
     }
 
-    // Helper to create mock chain
-    const createMockChain = (inNote: number, name = "Chain", state?: string) =>
+    // Helper to create mock chain.
+    const createMockChain = (
+      inNote: number,
+      name: string | number = "Chain",
+      state?: string,
+    ) =>
       ({
         _id: `chain-${inNote}`,
         _state: state,
@@ -148,6 +153,7 @@ describe("device-reader-drum-helpers", () => {
 
           return null;
         }),
+        getName: vi.fn(() => String(name)),
         // One device, so instrument detection has something to inspect
         getChildren: vi.fn((child: string) =>
           child === "devices" ? [{ id: `device-${inNote}` }] : [],
@@ -222,6 +228,13 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads).toHaveLength(1);
       expect(deviceInfo.drumPads![0]!.note).toBe(36);
       expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
+    });
+
+    it("reports an all-digit chain name as the pad's string name", () => {
+      // Feeds the pad's own `name` via drumPadChainSummary.
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: 5678 }]);
+
+      expect(deviceInfo.drumPads![0]!.name).toBe("5678");
     });
 
     it("names each pad by the id of the rack's pad for that note", () => {
@@ -366,6 +379,7 @@ describe("device-reader-drum-helpers", () => {
 
           return null;
         }),
+        getName: vi.fn(() => "Layer"),
         getChildren: vi.fn((child: string) =>
           child === "devices" ? [{ id: "nested" }] : [],
         ),

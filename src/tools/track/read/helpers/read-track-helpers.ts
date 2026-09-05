@@ -194,7 +194,7 @@ export function readTakeLanes(
 
     return {
       path: arrangementPath(trackIndex as number, i),
-      name: lane.getProperty("name") as string,
+      name: lane.getName(),
       clips,
     };
   });

@@ -96,6 +96,10 @@ export function findRoutingOptionForDuplicateNames(
       return {
         index,
         id: track.id,
+        // Raw getProperty is fine here: this only runs once matchingOptions
+        // above found 2+ display_name (string) matches for sourceTrackName,
+        // so an all-digit sourceTrackName already exited above and can never
+        // reach this comparison.
         name: track.getProperty("name"),
       };
     })
@@ -214,7 +218,7 @@ export function configureRouting(
 ): void {
   // sourceTrackIndex is guaranteed by caller when routeToSource is true
   const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex as number));
-  const sourceTrackName = sourceTrack.getProperty("name") as string;
+  const sourceTrackName = sourceTrack.getName();
 
   configureSourceTrackInput(sourceTrack, sourceTrackName);
 

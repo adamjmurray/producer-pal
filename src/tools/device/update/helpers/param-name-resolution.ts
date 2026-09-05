@@ -19,12 +19,16 @@ export function resolveParamsByName(device: LiveAPI, name: string): LiveAPI[] {
   const nameLower = name.toLowerCase();
 
   return device.getChildren("parameters").filter((param) => {
-    const paramName = param.getProperty("name") as string;
+    const paramName = param.getName();
 
     if (paramName.toLowerCase() === nameLower) return true;
 
     // Also match formatted name "name (original_name)" for rack macros
-    const originalName = param.getProperty("original_name") as string;
+    const rawOriginalName = param.getProperty("original_name") as
+      | string
+      | number
+      | undefined;
+    const originalName = String(rawOriginalName ?? "");
 
     return (
       originalName !== paramName &&

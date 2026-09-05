@@ -208,7 +208,7 @@ export function drumPadChainSummary(chain: LiveAPI): Record<string, unknown> {
   const state = computeState(chain);
 
   return {
-    name: chain.getProperty("name"),
+    name: chain.getName(),
     ...(state === STATE.ACTIVE ? {} : { state }),
     _hasInstrument: hasInstrumentLazily(chain),
   };

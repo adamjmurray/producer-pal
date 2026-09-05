@@ -21,7 +21,8 @@ vi.mock(
 );
 
 interface LiveSetConfigOverrides {
-  name?: string;
+  // number simulates Live returning an all-digit name as a number
+  name?: string | number;
   tempo?: number;
   signature_numerator?: number;
   signature_denominator?: number;
@@ -279,6 +280,14 @@ describe("connect", () => {
         isPlaying: true,
       },
     });
+  });
+
+  it("reports an all-digit Live Set name as a string", () => {
+    setupConnectScenario(createLiveSetConfig({ name: 5678 }));
+
+    const result = connect();
+
+    expect(result.liveSet.name).toBe("5678");
   });
 
   it("handles arrangement view correctly", () => {

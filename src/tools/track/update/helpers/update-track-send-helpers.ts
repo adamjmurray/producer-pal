@@ -164,7 +164,7 @@ function returnTrackInfo(): ReturnInfo {
   );
 
   return {
-    names: returnTracks.map((rt) => rt.getProperty("name") as string),
+    names: returnTracks.map((rt) => rt.getName()),
     ids: returnTracks.map((rt) => rt.id),
   };
 }

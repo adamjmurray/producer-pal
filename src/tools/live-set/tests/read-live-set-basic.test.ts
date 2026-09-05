@@ -222,6 +222,31 @@ describe("readLiveSet - basic reading", () => {
     });
   });
 
+  it("reports an all-digit Live Set name as a string", () => {
+    // Live hands back an all-digit project name as a number, not a string.
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      pathIdMap: {
+        [String(livePath.masterTrack())]: "master1",
+      },
+      objects: {
+        LiveSet: {
+          name: 5678,
+          scale_mode: 0,
+          tempo: 100,
+          tracks: [],
+          return_tracks: children(),
+          scenes: [],
+        },
+        [String(livePath.masterTrack())]: MASTER_TRACK_MOCK,
+      },
+    });
+
+    const result = readLiveSet({ include: [] });
+
+    expect(result.name).toBe("5678");
+  });
+
   it("handles when no tracks or scenes exist", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set",

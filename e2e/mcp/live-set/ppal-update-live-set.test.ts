@@ -304,12 +304,17 @@ describe("ppal-update-live-set", () => {
 
     await sleep(100);
 
-    // Deleted by time, not by name: Live hands an all-digit name back as a
-    // number, so no name match can find this locator again.
+    // Read back the name: the read path has to report it like every other name.
+    const locators = await readLocatorList();
+    const found = locators.find((l) => l.name === "4321");
+
+    expect(found).toBeDefined();
+
+    // Delete by that same name — proves the match casts it too, not just read.
     const deleted = parseToolResult<UpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-live-set",
-        arguments: { locatorOperation: "delete", locatorTime: "4|1" },
+        arguments: { locatorOperation: "delete", locatorName: "4321" },
       }),
     );
 

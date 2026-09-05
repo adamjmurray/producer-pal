@@ -32,9 +32,10 @@ const PLACEHOLDER_PREFIX = "(moved)";
 export function emptyTakeLaneClip(clip: LiveAPI): void {
   const label = targetLabel(clip);
   const isMidi = clip.getProperty("is_midi_clip") === 1;
-  // Never let a nullish name throw here: the destination copy is already
-  // committed, so a throw would strand it beside an untouched original.
-  const name = (clip.getProperty("name") as string | null) ?? "";
+  // getName() never throws on a missing or non-string name: the destination
+  // copy is already committed, so a throw here would strand it beside an
+  // untouched original.
+  const name = clip.getName();
   // Emptying an already-emptied clip must not stack the prefix.
   const placeholderName = name.startsWith(PLACEHOLDER_PREFIX)
     ? name

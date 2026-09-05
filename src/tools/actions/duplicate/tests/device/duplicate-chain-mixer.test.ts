@@ -37,10 +37,15 @@ const OTHER_RACK = livePath.track(1).device(0);
  * Register a rack with the named return chains.
  * @param id - Mock id for the rack
  * @param path - The rack's Live API path
- * @param returnNames - Return chain names, in send order
+ * @param returnNames - Return chain names, in send order. A number simulates
+ *   Live returning an all-digit name as a number, not a string.
  * @returns The rack mock
  */
-function rackWithReturns(id: string, path: PathLike, returnNames: string[]) {
+function rackWithReturns(
+  id: string,
+  path: PathLike,
+  returnNames: (string | number)[],
+) {
   const returnIds = returnNames.map((_, i) => `${id}-rc-${i}`);
 
   for (const [i, name] of returnNames.entries()) {
@@ -127,6 +132,24 @@ describe("copyChainMixerTo", () => {
       gainDb: undefined,
       pan: undefined,
       sends: [{ return: "a Verb", gainDb: -9 }],
+    });
+  });
+
+  it("carries a cross-rack send to a return chain with an all-digit name", () => {
+    // Used to crash `.toLowerCase()` while listing the destination's returns.
+    const source = rackWithReturns("rack-0", SOURCE_RACK, ["1"]);
+    const destination = rackWithReturns("rack-1", OTHER_RACK, [1]);
+
+    const created = copyMixerToNewChain(
+      { sends: [{ return: "1", gainDb: -9 }] },
+      source,
+      destination,
+    );
+
+    expect(applyChainMixer).toHaveBeenCalledWith(created, {
+      gainDb: undefined,
+      pan: undefined,
+      sends: [{ return: "1", gainDb: -9 }],
     });
   });
 
