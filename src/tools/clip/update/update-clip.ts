@@ -38,6 +38,7 @@ import { validateListLengths } from "#src/tools/shared/validation/lists/list-len
 import {
   targetCount,
   targetIds,
+  warnBlankTarget,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -153,15 +154,12 @@ export async function updateClip(
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
 
-  // Refuses a call whose lists disagree before resolving anything.
+  // Refuses a call whose lists disagree, or that names no clip at all, before
+  // resolving anything.
   const requestedIds = resolveClipTargets(
     { id, ids, path, paths },
     { name, color, arrangementStart, arrangementLength, toPath, toSlot },
   );
-
-  if (requestedIds.length === 0) {
-    throw new Error("id or path is required");
-  }
 
   refuseUnreadableCall(timeSignature, quantizePitch, toPath, arrangementStart);
 
@@ -186,6 +184,10 @@ export async function updateClip(
 
   const parsedNames = parseNames(name, mutableClips.length, "clip");
   const parsedColors = parseColors(color, mutableClips.length, "clip");
+
+  // Said here, not where the args are read: it claims what the call did, so a
+  // call refused above — or one whose paths found no clip — must not carry it.
+  warnBlankTarget({ id, ids, path, paths }, "clips", mutableClips.length);
 
   const updatedClips: ClipResult[] = [];
   const movedClipGroups = new Map<string, MoveGroup>();
@@ -269,7 +271,8 @@ function stopBatch(
 }
 
 /**
- * Refuse a call whose lists disagree, then resolve the clips it names.
+ * Refuse a call whose lists disagree or that names no clip, then resolve the
+ * clips it names.
  *
  * Every list is checked together, before any of them is split: once one is
  * split nothing knows whether the others are lists at all. `id` and `path` name
@@ -304,7 +307,13 @@ function resolveClipTargets(
     },
   ]);
 
-  return targetIds(targets, clipIdPerPath);
+  const requestedIds = targetIds(targets, clipIdPerPath);
+
+  if (requestedIds.length === 0) {
+    throw new Error("id or path is required");
+  }
+
+  return requestedIds;
 }
 
 /**

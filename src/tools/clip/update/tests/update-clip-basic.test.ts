@@ -79,6 +79,87 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
+  // The wording truth table is target-lists.test.ts; these pin WHEN update-clip
+  // says it. A blank is an unset param (ADR-0029), so the path carries the call
+  // — but nothing in the result would say the id the caller sent was dropped.
+  it("warns when a blank id is dropped and path carries the call", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    const result = await updateClip({
+      id: "   ",
+      path: "t1/s1",
+      name: "By Path",
+    });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'blank id ignored — "path" names the clips',
+    ]);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
+  });
+
+  it("warns when a blank path is dropped and id carries the call", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", path: "   ", name: "By Id" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'blank path ignored — "id" names the clips',
+    ]);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "By Id");
+  });
+
+  it("says nothing when only one of id and path was sent", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ path: "t1/s1", name: "By Path" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says nothing when id and path both name clips", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ id: "123", path: "t1/s1", name: "Both" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // The warning claims what the call did, and a refused call did nothing. V8
+  // attaches a request's warnings to its error response too, so saying it
+  // before the refusals would tell the model that a path it never used named
+  // the clips.
+  it.each([
+    ["a list has a hole", { path: "t1/s1,,t2/s1" }, "empty entry"],
+    [
+      "a whole-call param can't be read",
+      { path: "t1/s1", timeSignature: "x" },
+      "Time signature must be in format",
+    ],
+  ])(
+    "says nothing when the call is refused because %s",
+    async (_label, args, message) => {
+      setupMidiClipMock(mocks.clip456);
+
+      await expect(updateClip({ id: "   ", ...args })).rejects.toThrow(message);
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("blank id ignored"),
+      );
+    },
+  );
+
+  // Same reason: "path names the clips" is false when it named none, and the
+  // no-clip warning already says what went wrong.
+  it("says nothing when the path it names holds no clip", async () => {
+    mockNonExistentObjects();
+
+    const result = await updateClip({ id: "   ", path: "t9/s9" });
+
+    expect(capturedWarnings()).toStrictEqual(['no clip at path "t9/s9"']);
+    expect(result).toStrictEqual([]);
+  });
+
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still updates by the ids alias", async () => {

@@ -455,6 +455,33 @@ describe("ppal-update-clip", () => {
     );
   });
 
+  // A blank id reads as unset, so the path carries the call — but nothing in
+  // the result would say the id the caller sent was dropped.
+  it("warns when a blank id rides along with a path", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s6`;
+
+    await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: "   ", path, name: "Named By Path" },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining('blank id ignored — "path" names the clips'),
+    );
+
+    await sleep(100);
+
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path },
+    });
+
+    expect(parseToolResult<ReadClipResult>(verify).name).toBe("Named By Path");
+  });
+
   it("updates audio clip properties", async () => {
     // Setup: Create an audio track and audio clip
     const audioTrackResult = await ctx.client!.callTool({
