@@ -308,17 +308,20 @@ and rack-relative `t0/d0/c3` — and they number the rack differently, because t
 rack's flat chain list is in creation order while the pad listing groups by pad.
 Once a pad is layered, `c1` and `pC1/c1` name different chains.
 
-A chain result gives the pad-relative spelling. It survives longer: the layer
+A result always gives the pad-relative spelling — for the chain, and for
+anything hanging below it, a device included. It survives longer: the layer
 index shifts only when that pad's own layers change, where a rack index shifts
 on any chain added or removed anywhere in the rack. Live's own path is the
 rack-relative one, so `objectPathForApi` converts it, which costs a rack read
-and is why only a chain result gets the treatment.
+per drum-chain ancestor in the path. A path with no chain segment at all, or one
+under a non-drum rack, pays only a cheap type check to find that out and stops
+there.
 
-A **device** inside a pad is the exception: naming it pad-relative would cost
-the same rack read for a path that is reachable either way, so it reports the
-rack-relative form — unless the call spelled its container through a pad, and
-then that spelling is echoed back. `ppal-create-device`, `ppal-update-device`
-and a device or chain copy's `toPath` all do this.
+Rack-relative still resolves on input — it is Live's own numbering, and older
+results handed it out, so refusing it would break a caller holding one of those.
+Resolving one against a real drum chain warns once per request (see Errors and
+warnings), so the caller learns the pad spelling before a layered pad makes the
+two disagree.
 
 An update echoes whichever spelling still names where the object is. Only a
 device move replaces the address the call reached the object by, and only once
@@ -327,13 +330,13 @@ drum chain's pad re-map all keep the addressing spelling. The re-map leaves the
 chain's path stale, but harmlessly: a container spelled through a pad always
 resolves to a chain, and a chain's parent is the rack, so the check below never
 matches and the path is re-derived from the new `in_note`. A target named only
-by `id` spelled no container, so its path stays derived; what a result owes a
-call that supplied no spelling is still open.
+by `id` spelled no container, so its path stays derived — which is the same
+pad-relative answer echoing would have given.
 
-Echoing only ever replaces the container the call actually named. A chain copy
-whose destination rack is spelled rack-relative (`toPath: "t0/d0/c2/d0"`) still
-gets pad-relative ancestors in its result, because the conversion happens on the
-way out of `objectPathForApi` and there is no pad spelling to echo in its place.
+Echoing only ever replaces the container the call actually named, and it can
+only ever agree with the derived path now: a chain copy whose destination rack
+is spelled rack-relative (`toPath: "t0/d0/c2/d0"`) gets pad-relative ancestors
+either way.
 
 `pathField` does the substitution. It takes the resolved container as well as
 its spelling, so it can check that the spelling really names the object's parent
@@ -379,6 +382,12 @@ coordinate work — once `objectPathForApi` spells `t0[5|1]` every warning gets 
 free, so a large sweep means messages aren't going through the helper.
 
 Name the path and show the fix, never restate a requirement in index terms.
+
+A path that names a drum chain rack-relative — the chain itself or anything
+below it — warns once per request, even off a rack with no layered pad yet:
+teaching the rule only after it bites is too late. The warning carries the
+pad-relative spelling, so the caller can start writing it. A comma-separated
+list making the same point several times over only gets told once.
 
 ## Lists of paths
 

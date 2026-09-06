@@ -226,15 +226,25 @@ describe("ppal-create-device", () => {
     expect((await readDeviceAt(device.path)).id).toBe(device.id);
   });
 
-  it("echoes the rack-relative spelling, and keeps the two apart", async () => {
+  it("resolves the rack-relative spelling, but reports it pad-relative and warns", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
-    const byRack = await createDevice("Chorus-Ensemble", `${rackPath}/c1`);
+    const { data: byRack, warnings } =
+      parseToolResultWithWarnings<CreateDeviceResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-device",
+          arguments: { deviceName: "Chorus-Ensemble", path: `${rackPath}/c1` },
+        }),
+      );
 
-    expect(byRack.path).toMatch(new RegExp(`^${rackPath}/c1/d\\d+$`));
+    // Rack chain 1 is D1's first layer, so the result names it pD1/c0.
+    expect(byRack.path).toMatch(new RegExp(`^${rackPath}/pD1/c0/d\\d+$`));
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain(`${rackPath}/pD1/c0`);
 
     const byPad = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c1`);
 
-    // Rack chain 1 is D1's first layer; pD1/c1 is its second.
+    // Rack chain 1 is D1's first layer; pD1/c1 is its second — still two
+    // different chains, however either one gets addressed.
     expect(byPad.id).not.toBe(byRack.id);
     expect(byPad.path).toContain(`${rackPath}/pD1/c1/`);
     expect((await readDeviceAt(byRack.path)).id).toBe(byRack.id);

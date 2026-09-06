@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  alreadyWarnedOnce,
   beginWarningCapture,
   clearCapturedWarnings,
   detachWarningCapture,
@@ -226,6 +227,40 @@ describe("v8-warning-capture", () => {
       resetWarningCapture();
 
       expect(() => clearCapturedWarnings()).not.toThrow();
+    });
+  });
+
+  describe("alreadyWarnedOnce", () => {
+    it("reports the first call as new and every later one as seen", () => {
+      beginWarningCapture();
+
+      expect(alreadyWarnedOnce("lesson")).toBe(false);
+      expect(alreadyWarnedOnce("lesson")).toBe(true);
+      expect(alreadyWarnedOnce("lesson")).toBe(true);
+    });
+
+    it("keeps keys separate", () => {
+      beginWarningCapture();
+
+      expect(alreadyWarnedOnce("a")).toBe(false);
+      expect(alreadyWarnedOnce("b")).toBe(false);
+    });
+
+    it("does not dedupe across requests", () => {
+      const first = beginWarningCapture();
+
+      expect(alreadyWarnedOnce("lesson")).toBe(false);
+      endWarningCapture(first);
+      beginWarningCapture();
+
+      expect(alreadyWarnedOnce("lesson")).toBe(false);
+    });
+
+    it("lets every call through with no request in flight", () => {
+      resetWarningCapture();
+
+      expect(alreadyWarnedOnce("lesson")).toBe(false);
+      expect(alreadyWarnedOnce("lesson")).toBe(false);
     });
   });
 

@@ -14,6 +14,7 @@ import { createDevice } from "../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
+  warnOnce: vi.fn(),
 }));
 
 /** in_note per rack chain: C1 (36) layered twice, D1 (38) once. */
@@ -50,19 +51,22 @@ describe("createDevice — drum chain path spelling", () => {
     ).toStrictEqual({ id: "device-in-chain-2", path: "t0/d0/pC1/c1/d0" });
   });
 
-  it("echoes the rack-relative spelling the call supplied", () => {
+  // Rack-relative still resolves the input, but the result always teaches the
+  // pad spelling — that is the only one a comma-separated toPath can trust once
+  // a pad is layered.
+  it("reports the pad spelling even when the call supplied the rack-relative one", () => {
     expect(
       createDevice({ deviceName: "Simpler", path: "t0/d0/c2" }),
-    ).toStrictEqual({ id: "device-in-chain-2", path: "t0/d0/c2/d0" });
+    ).toStrictEqual({ id: "device-in-chain-2", path: "t0/d0/pC1/c1/d0" });
   });
 
-  // The two numberings disagree here: rack chain 1 is pD1's only layer, where
-  // pC1/c1 is rack chain 2. A result that swapped spellings would send a
-  // follow-up call to the wrong pad.
-  it("names different chains for c1 and pC1/c1", () => {
+  // "c1" and "pD1/c0" are two spellings of the same chain (rack chain 1 is
+  // pD1's only layer) — proof the two converge on one canonical, pad-relative
+  // result regardless of which one the caller wrote.
+  it("resolves c1 to the chain pD1/c0 names, and reports it that way either way", () => {
     expect(
       createDevice({ deviceName: "Simpler", path: "t0/d0/c1" }),
-    ).toStrictEqual({ id: "device-in-chain-1", path: "t0/d0/c1/d0" });
+    ).toStrictEqual({ id: "device-in-chain-1", path: "t0/d0/pD1/c0/d0" });
     expect(
       createDevice({ deviceName: "Simpler", path: "t0/d0/pD1/c0" }),
     ).toStrictEqual({ id: "device-in-chain-1", path: "t0/d0/pD1/c0/d0" });

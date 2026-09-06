@@ -19,6 +19,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../../../mcp-test-helpers";
@@ -90,22 +91,36 @@ describe("ppal-update-device drum chain path spelling", () => {
     // The rack's chains were created C1's first, then D1's, then the layer
     // duplicated onto D1 — so the rack's `c1` is D1's FIRST layer, where
     // `pD1/c1` is its second. Two spellings one digit apart, two chains.
-    const rackC1 = await rename({ path: `${rackPath}/c1` }, "Rack Chain One");
+    //
+    // c1 is rack-relative, so this call also warns — the point of Part 2 of
+    // this change — hence the direct call instead of the rename() helper,
+    // which treats an unexpected warning as a test failure.
+    const { data: rackC1, warnings } =
+      parseToolResultWithWarnings<UpdateResult>(
+        await ctx.client!.callTool({
+          name: "ppal-update-device",
+          arguments: { path: `${rackPath}/c1`, name: "Rack Chain One" },
+        }),
+      );
+
+    await sleep(100);
+
     const padC1 = await rename({ path: `${rackPath}/pD1/c1` }, "Pad Layer Two");
 
     expect(rackC1.id).toBe(layers?.[0]?.id);
     expect(padC1.id).toBe(layers?.[1]?.id);
     expect(rackC1.id).not.toBe(padC1.id);
 
-    // Still open: a chain addressed rack-relative is answered pad-relative
-    // anyway, so this one spelling is not echoed. Asserted as it stands so
-    // that closing the gap changes this line on purpose rather than in
-    // silence — the ids above are the part that must never move.
+    // A result always answers pad-relative now, whichever spelling the call
+    // used to get there.
     expect(rackC1.path).toBe(`${rackPath}/pD1/c0`);
     expect(padC1.path).toBe(`${rackPath}/pD1/c1`);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain(`${rackPath}/pD1/c0`);
   });
 
-  it("echoes either spelling for a device inside a layered pad's chain", async () => {
+  it("derives the pad spelling for a device inside a layered pad's chain too", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
 
     const byPad = await rename(
@@ -115,13 +130,13 @@ describe("ppal-update-device drum chain path spelling", () => {
 
     expect(byPad.path).toBe(`${rackPath}/pD1/c1/d0`);
 
-    // A device under a drum chain derives rack-relative, unlike the chain
-    // itself, and that spelling is echoed back when a call supplies it. Same
-    // id throughout, or one of the two spellings is landing somewhere else.
+    // Addressed by id the call spelled no container, so the path is derived —
+    // and a device under a drum chain now derives pad-relative too, same as
+    // the chain itself. Same id throughout, or one of the two spellings is
+    // landing somewhere else.
     const byId = await rename({ id: byPad.id }, "Layered Simpler Again");
 
-    expect(byId.id).toBe(byPad.id);
-    expect(byId.path).toMatch(/^t\d+\/d\d+\/c\d+\/d0$/);
+    expect(byId).toStrictEqual({ id: byPad.id, path: `${rackPath}/pD1/c1/d0` });
     expect(
       await rename({ path: byId.path }, "Layered Simpler Third"),
     ).toStrictEqual({ id: byPad.id, path: byId.path });

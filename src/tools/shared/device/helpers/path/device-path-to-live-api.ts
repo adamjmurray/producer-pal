@@ -13,6 +13,8 @@ import {
   requireDevicePath,
   trackSegmentPath,
 } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { warnRackRelativeDrumChainSpelling } from "./device-drumpad-navigation.ts";
+import { cachedDevicePath } from "./with-device-path-cache.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 
@@ -65,6 +67,10 @@ export function resolveDevicePath(
 
     liveApiPath += ` ${liveApiCollection(segment)} ${segment.index}`;
     targetType = segment.kind;
+
+    if (segment.kind === "chain") {
+      warnRackRelativeDrumChainSpelling(cachedDevicePath(liveApiPath));
+    }
   }
 
   return { liveApiPath, targetType, remainingSegments: [] };

@@ -18,6 +18,7 @@ import {
 import {
   navigateRemainingSegments,
   resolveDrumPadFromPath,
+  warnRackRelativeDrumChainSpelling,
 } from "./path/device-drumpad-navigation.ts";
 import { cachedDevicePath } from "./path/with-device-path-cache.ts";
 
@@ -108,11 +109,21 @@ function navigateToChain(
     return chain;
   }
 
+  // Check the spelling against the chain that is already there, so an
+  // existing chain costs one build for both jobs. A chain the next line
+  // creates has no type to check yet, and Live refuses to auto-create one in
+  // a Drum Rack anyway, so there is nothing to say about it.
+  const existing = cachedDevicePath(chainPath);
+
+  warnRackRelativeDrumChainSpelling(existing);
+
   if (segment.index >= parentDevice.getChildCount("chains")) {
     autoCreateChains(parentDevice, segment.index, fullPath);
+
+    return cachedDevicePath(chainPath);
   }
 
-  return cachedDevicePath(chainPath);
+  return existing;
 }
 
 /**

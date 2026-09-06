@@ -271,13 +271,9 @@ function devicePathForApi(api: LiveAPI, path: string): string | undefined {
   // that path with this object's id as if they named the same thing.
   if (!WHOLE_DEVICE_PATH.test(path)) return undefined;
 
-  // Name a drum chain the way reads do — "pC1/c0", not "c3". Only when the
-  // object named is itself a chain: working it out costs a rack read per chain
-  // segment, and a device inside a pad is reachable by either spelling.
-  return (
-    extractDevicePath(
-      path,
-      api.type === "DrumChain" ? drumChainSegmentNamer(api) : undefined,
-    ) ?? undefined
-  );
+  // Name a drum chain the way reads do — "pC1/c0", not "c3" — for the chain
+  // itself and anything hanging below it. The namer only costs a rack read
+  // where a "chains N" segment actually appears in path, so a plain device
+  // path (no chain ancestor) or one under a non-drum rack pays nothing extra.
+  return extractDevicePath(path, drumChainSegmentNamer(api)) ?? undefined;
 }

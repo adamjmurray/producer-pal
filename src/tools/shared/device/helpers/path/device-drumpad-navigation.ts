@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { fromLiveApiId } from "#src/tools/shared/utils.ts";
 import {
@@ -229,10 +230,12 @@ export function chainsOnDrumPad(pad: LiveAPI): LiveAPI[] {
  */
 export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
   return (livePathThroughChain, index) => {
+    // cachedDevicePath, not LiveAPI.from: a caller resolving the same path
+    // (input resolution, then this for the result) shares the one build.
     const chain =
       livePathThroughChain === leaf.path
         ? leaf
-        : LiveAPI.from(livePathThroughChain);
+        : cachedDevicePath(livePathThroughChain);
 
     if (chain.type !== "DrumChain") return `c${index}`;
 
@@ -241,13 +244,51 @@ export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
 
     if (noteName == null) return `c${index}`;
 
-    const rack = LiveAPI.from(livePathThroughChain.replace(CHAINS_TAIL, ""));
+    const rack = cachedDevicePath(
+      livePathThroughChain.replace(CHAINS_TAIL, ""),
+    );
     const layer = chainsForInNote(rack, inNote).findIndex(
       (sibling) => sibling.id === chain.id,
     );
 
     return layer < 0 ? `c${index}` : `p${noteName}/c${layer}`;
   };
+}
+
+/** This lesson stays true for the whole request; see alreadyWarnedOnce. */
+const RACK_RELATIVE_DRUM_CHAIN_WARNING_KEY = "drum-chain-rack-relative-input";
+
+/**
+ * Warn once per request when a path reached a drum chain by its rack-relative
+ * index (`cN`) rather than the pad-relative spelling results use. Both
+ * spellings resolve to the same chain today, so this never blocks anything —
+ * it teaches the address that stays correct once a pad holds more than one
+ * layer, before the two start naming different chains.
+ *
+ * Takes the resolved chain, not a path: a caller that has already built it
+ * must not pay a second build just to be told about the spelling.
+ * @param chain - The object the `cN` segment resolved to
+ */
+export function warnRackRelativeDrumChainSpelling(chain: LiveAPI): void {
+  if (chain.type !== "DrumChain") return;
+
+  const chainLiveApiPath = chain.path;
+
+  // chainLiveApiPath is always built from a parsed track root, so
+  // extractDevicePath never returns null here.
+  const padPath = extractDevicePath(
+    chainLiveApiPath,
+    drumChainSegmentNamer(chain),
+  ) as string;
+
+  console.warnOnce(
+    RACK_RELATIVE_DRUM_CHAIN_WARNING_KEY,
+    `${padPath} is the preferred spelling for this drum chain: the pad's ` +
+      "pitch is the note that plays it, so paths line up with the notes in " +
+      "a clip. A rack numbers its chains in creation order where a pad " +
+      "numbers its own layers, so a rack-relative index names a different " +
+      "chain as soon as a pad holds more than one.",
+  );
 }
 
 /**

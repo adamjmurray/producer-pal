@@ -51,6 +51,8 @@ export interface WarningCapture {
    * suspendWarningCapture.
    */
   ended: boolean;
+  /** Keys already handed to alreadyWarnedOnce this request. */
+  warnedOnce: Set<string>;
 }
 
 /**
@@ -68,7 +70,12 @@ let activeCapture: WarningCapture | null = null;
  * @returns The new capture, to pass to endWarningCapture
  */
 export function beginWarningCapture(): WarningCapture {
-  activeCapture = { messages: [], dropped: 0, ended: false };
+  activeCapture = {
+    messages: [],
+    dropped: 0,
+    ended: false,
+    warnedOnce: new Set(),
+  };
 
   return activeCapture;
 }
@@ -129,6 +136,29 @@ export function recordWarning(message: string): boolean {
   }
 
   return true;
+}
+
+/**
+ * Whether a key has already been warned about for the request in flight. Marks
+ * it seen either way, so a lesson that stays true for the whole request (a
+ * comma-separated list naming several targets it applies to) is only told
+ * once, however many targets trigger it.
+ *
+ * With no request in flight there is nothing to dedupe against — each call
+ * reports and goes to the Max console on its own, same as any other warning
+ * raised outside a request.
+ *
+ * @param key - Identifies the lesson, not the specific message
+ * @returns True when this key already warned this request
+ */
+export function alreadyWarnedOnce(key: string): boolean {
+  if (activeCapture == null) return false;
+
+  if (activeCapture.warnedOnce.has(key)) return true;
+
+  activeCapture.warnedOnce.add(key);
+
+  return false;
 }
 
 /**

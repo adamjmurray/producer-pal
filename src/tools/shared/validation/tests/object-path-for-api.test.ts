@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
 import {
   beginLiveApiScope,
   endLiveApiScope,
@@ -122,6 +123,70 @@ describe("objectPathForApi", () => {
 
   it("says nothing for a path with no track root", () => {
     expect(objectPathForApi(api(livePath.liveSet))).toBeUndefined();
+  });
+});
+
+// A device inside a drum chain used to keep the rack-relative "c3" spelling —
+// only the chain itself got the pad-relative treatment. Results now agree with
+// reads everywhere: a device under a drum chain is pad-relative too.
+describe("objectPathForApi and devices inside a drum rack", () => {
+  it("names a device under a layered pad's second chain pad-relative", () => {
+    registerMockObject("rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: children("chain-0", "chain-1", "chain-2") },
+    });
+    registerMockObject("chain-0", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+    registerMockObject("chain-1", {
+      path: livePath.track(0).device(0).chain(1),
+      type: "DrumChain",
+      properties: { in_note: 38 },
+    });
+    registerMockObject("chain-2", {
+      path: livePath.track(0).device(0).chain(2),
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    const device = api(String(livePath.track(0).device(0).chain(2).device(0)));
+
+    expect(objectPathForApi(device)).toBe("t0/d0/pC1/c1/d0");
+  });
+
+  it("costs no extra read for a device with no chain ancestor", () => {
+    const device = api(String(livePath.track(0).device(2)));
+
+    objectPathForApi(device);
+
+    expect(liveApiBuildStats().resolved).toBe(0);
+  });
+
+  it("costs a type check but no rack read for a device under a non-drum chain", () => {
+    const rack = registerMockObject("rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: children("chain-0") },
+    });
+
+    registerMockObject("chain-0", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "Chain",
+    });
+
+    const device = api(String(livePath.track(0).device(0).chain(0).device(1)));
+
+    expect(objectPathForApi(device)).toBe("t0/d0/c0/d1");
+
+    // One resolve (the chain, to check its type) and no walk of the rack's
+    // chain list — that walk is what a real drum chain would cost.
+    expect(liveApiBuildStats().resolved).toBe(1);
+    expect(
+      rack.get.mock.calls.filter(([prop]: unknown[]) => prop === "chains"),
+    ).toHaveLength(0);
   });
 });
 

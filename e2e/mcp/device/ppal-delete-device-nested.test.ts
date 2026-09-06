@@ -60,10 +60,8 @@ describe("ppal-delete nested rack device ordering", () => {
       }),
     );
 
-    // Sibling of the Simpler at d0. The call spelled the container through a
-    // pad, so the result echoes that spelling back rather than converting to
-    // the rack-relative one. (A device whose container wasn't spelled through a
-    // pad still reports rack-relative — converting costs a rack read.)
+    // Sibling of the Simpler at d0. Anything inside a pad is named by the
+    // pad's pitch, whichever spelling the call used to get there.
     expect(reverb.path).toBe(`${rack}/pC1/c0/d1`);
 
     await sleep(150);

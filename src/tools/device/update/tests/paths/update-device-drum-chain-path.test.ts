@@ -18,6 +18,7 @@ import {
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
+  warnOnce: vi.fn(),
 }));
 
 /** in_note per rack chain: C1 (36) layered twice, D1 (38) once. */
@@ -54,20 +55,23 @@ describe("updateDevice — drum chain path spelling", () => {
     ).toStrictEqual({ id: "dev-2", path: "t0/d0/pC1/c1/d0" });
   });
 
-  it("echoes the rack-relative spelling the call supplied", () => {
+  // Rack-relative still resolves the input, but the result always teaches the
+  // pad spelling — that is the only one a comma-separated toPath can trust once
+  // a pad is layered.
+  it("reports the pad spelling even when the call supplied the rack-relative one", () => {
     expect(updateDevice({ path: "t0/d0/c2/d0", name: "Kick" })).toStrictEqual({
       id: "dev-2",
-      path: "t0/d0/c2/d0",
+      path: "t0/d0/pC1/c1/d0",
     });
   });
 
-  // The two numberings disagree here: rack chain 1 is pD1's only layer, where
-  // pC1/c1 is rack chain 2. A result that swapped spellings would send a
-  // follow-up call to the wrong pad.
-  it("names different chains for c1 and pC1/c1", () => {
+  // "c1" and "pD1/c0" are two spellings of the same chain (rack chain 1 is
+  // pD1's only layer) — proof the two converge on one canonical, pad-relative
+  // result regardless of which one the caller wrote.
+  it("resolves c1 to the chain pD1/c0 names, and reports it that way either way", () => {
     expect(updateDevice({ path: "t0/d0/c1/d0", name: "Snare" })).toStrictEqual({
       id: "dev-1",
-      path: "t0/d0/c1/d0",
+      path: "t0/d0/pD1/c0/d0",
     });
     expect(
       updateDevice({ path: "t0/d0/pD1/c0/d0", name: "Snare" }),
@@ -91,11 +95,11 @@ describe("updateDevice — drum chain path spelling", () => {
   });
 
   // An id-addressed call spelled no container, so nothing is echoed and the
-  // path is derived as it always was.
+  // path is derived — pad-relative, same as any other derived drum chain path.
   it("keeps the derived spelling for a call that named no path", () => {
     expect(updateDevice({ id: "dev-2", name: "Kick" })).toStrictEqual({
       id: "dev-2",
-      path: "t0/d0/c2/d0",
+      path: "t0/d0/pC1/c1/d0",
     });
   });
 
@@ -203,7 +207,7 @@ describe("updateDevice — drum chain path spelling", () => {
     // The device it displaced answers with the index it shifted to.
     expect(updateDevice({ id: "dev-2" })).toStrictEqual({
       id: "dev-2",
-      path: "t0/d0/c2/d1",
+      path: "t0/d0/pC1/c1/d1",
     });
   });
 });

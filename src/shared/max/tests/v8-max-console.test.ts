@@ -12,7 +12,7 @@ import {
   vi,
   type MockInstance,
 } from "vitest";
-import { error, log, warn } from "#src/shared/max/v8-max-console.ts";
+import { error, log, warn, warnOnce } from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
   capturedWarnings,
@@ -263,6 +263,31 @@ describe("v8-max-console", () => {
       warn("first", 42, "third");
       // Multiple args are join(" ")-ed into one message, not concatenated.
       expect(capturedWarnings()).toContain("first 42 third");
+    });
+  });
+
+  describe("warnOnce", () => {
+    it("warns on the first call for a key", () => {
+      warnOnce("k", "first warning");
+
+      expect(capturedWarnings()).toStrictEqual(["first warning"]);
+    });
+
+    it("skips a later call for the same key", () => {
+      warnOnce("k", "first warning");
+      warnOnce("k", "second warning");
+
+      expect(capturedWarnings()).toStrictEqual(["first warning"]);
+    });
+
+    it("warns separately for a different key", () => {
+      warnOnce("k1", "first warning");
+      warnOnce("k2", "second warning");
+
+      expect(capturedWarnings()).toStrictEqual([
+        "first warning",
+        "second warning",
+      ]);
     });
   });
 

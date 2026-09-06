@@ -6,6 +6,7 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -18,6 +19,7 @@ import {
   navigateRemainingSegments,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
+  warnRackRelativeDrumChainSpelling,
 } from "./device-drumpad-navigation.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
@@ -397,6 +399,72 @@ describe("drumChainSegmentNamer", () => {
     expect(drumChainSegmentNamer(chain)(`${RACK_PATH} chains 1`, "1")).toBe(
       "c1",
     );
+  });
+});
+
+describe("warnRackRelativeDrumChainSpelling", () => {
+  const CHAIN_PATH = `${RACK_PATH} chains 0`;
+
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("warns with the pad-relative spelling for a rack-relative drum chain", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-0"] },
+    });
+    registerMockObject("chain-0", {
+      path: CHAIN_PATH,
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
+
+    expect(capturedWarnings()).toHaveLength(1);
+    expect(capturedWarnings()[0]).toContain("t0/d0/pC1/c0");
+    expect(capturedWarnings()[0]).toContain("preferred spelling");
+  });
+
+  it("stays quiet for a chain that is not a drum chain", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-0"] },
+    });
+    registerMockObject("chain-0", { path: CHAIN_PATH, type: "Chain" });
+
+    warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("stays quiet for a chain that does not exist", () => {
+    warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // A comma-separated toPath naming several drum chains must not repeat the
+  // lesson once per target.
+  it("warns once per request, not once per call", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-0"] },
+    });
+    registerMockObject("chain-0", {
+      path: CHAIN_PATH,
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
+    warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
+
+    expect(capturedWarnings()).toHaveLength(1);
   });
 });
 
