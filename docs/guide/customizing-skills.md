@@ -68,6 +68,7 @@ a whole area you never use:
 | `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                    |
 | `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                           |
 | `arrangement-basic`                              | What a take lane is and how a path names one, in small model mode                                                                |
+| `object-paths`                                   | Addressing tracks and scenes by path: `t0`, `s0`, `rt0`, `mt`, and the `+` spellings that create                                 |
 | `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                        |
 | `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                       |
 | `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                                  |

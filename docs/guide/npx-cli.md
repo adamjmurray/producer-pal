@@ -86,7 +86,7 @@ npx producer-pal@latest --tools clip,track --list-tools
 ```
 
 ```
-Producer Pal 2.1.0 tools and groups
+Producer Pal 2.3.0 tools and groups
 
 Pass any of these to --tools (keep only these) or --disable-tools (drop
 these), comma or space separated. Names work bare or ppal- prefixed.

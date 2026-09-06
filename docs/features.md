@@ -113,6 +113,22 @@ or `clipseq()` inside the string for per-clip variation:
 
 [Read the full transforms guide →](/features/midi-notation#transforms)
 
+## Paths {#paths}
+
+Everything in your Live Set has a short address, counting from 0: `t2` is the
+third track, `t2/s3` a clip slot, `s3` a scene, `rt0` the first return track,
+`mt` the main track, `t1/d0` a device, and `t1/d0/pC1` a Drum Rack pad. Reads
+report a path next to every id and the write tools accept one, so the AI can act
+on what it just read instead of looking it up again.
+
+An arrangement clip is addressed by where it starts: `t0[5|1]` is the clip at
+bar 5 on track 0, and `t0/l1[5|1]` the one on its second
+[take lane](#take-lanes). A position can name a locator rather than counting
+bars, `t0[loc:Chorus]`, which still lands right after you move that section.
+
+A `+` names a place that doesn't exist yet, for creating: `t+` appends a track,
+`s+` a scene, `t2/l+` a take lane.
+
 ## Take Lanes {#take-lanes}
 
 Live's take lanes stack alternate versions of an arrangement clip at the same
@@ -126,20 +142,24 @@ cluttering the timeline.
 - Every `l+` in a list appends its own lane, so `toPath: "t2/l+,t2/l+,t2/l+"` on
   one [Duplicate](/features/tools#ppal-duplicate) spreads three copies across
   three fresh lanes. Add [transforms](#transforms) to vary each one.
+- `t2/l=` names the lane the `l+` before it made, so
+  `toPath: "t2/l+[9|1],t2/l=[13|1]"` stacks both copies on a single fresh lane.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).
-- [Duplicate](/features/tools#ppal-duplicate) also promotes a take-lane clip
-  back to the main lane: give it a `toPath` with no `l` segment. It's a copy,
-  the take stays on its lane, since Live's API can't remove it.
-- Limits: 8 take lanes per track. Duplicating to or from a take lane re-creates
-  the clip: a MIDI clip from its notes, an audio clip from its sample. Envelope
-  automation isn't preserved, and a warped audio clip comes back with the
-  sample's default warp markers. Producer Pal warns when either applies. Once
-  placed, take-lane clips are append-only: they can't be split, moved, resized,
-  or deleted through tools, and Producer Pal can't pick the active take. All of
-  that stays in Live's UI. Expand the take-lane arrow on a track header to see
-  them.
+- A take-lane clip can leave its lane, for another lane, another track, or a
+  session slot: `toPath` on [Update Clip](/features/tools#ppal-update-clip)
+  moves it, and [Duplicate](/features/tools#ppal-duplicate) copies it. Live's
+  API can't remove a take-lane clip, so a move leaves a muted `(moved) ...` clip
+  behind for you to delete in Live.
+- Putting a clip on a lane, or taking one off, re-creates it: a MIDI clip from
+  its notes, an audio clip from its sample. Envelope automation isn't preserved,
+  and a warped audio clip comes back with the sample's default warp markers. The
+  response says which applied.
+- Limits: 8 take lanes per track. A take-lane clip can't be split, resized, or
+  deleted through tools, and Producer Pal can't pick the active take or comp
+  lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
+  header to see them.
 
 ## Network Control
 

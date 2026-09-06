@@ -59,12 +59,13 @@ clip (from its notes for MIDI, from its sample for audio), which leaves the
 envelopes behind:
 
 - duplicating a clip onto or off a take lane
-- moving an arrangement clip onto a take lane
+- moving an arrangement clip onto or off a take lane
+- moving an arrangement clip to another track
 - moving an arrangement clip back into a session slot
 
-A move along a track's own arrangement lane is not affected. Producer Pal warns
-whenever a re-create drops something, and a re-created audio clip also loses any
-warp markers you edited by hand.
+A move along a track's own arrangement lane is not affected. A re-created audio
+clip also loses any warp markers you edited by hand, and the result says which
+of the two applied.
 
 ## Audio Content Can't Be Analyzed or Generated
 

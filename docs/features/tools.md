@@ -155,11 +155,18 @@ Live, or make sure your standalone Max is up to date. See
   transpose copies, vary velocities) without a separate update step
 - Stack MIDI variations on [take lanes](/features#take-lanes) with
   `toPath: "t2/l+,t2/l+"` + transforms: one lane per `l+`, auditioned at the
-  same arrangement position
+  same arrangement position. `t2/l=` reuses the lane the `l+` before it made,
+  for a stack of takes on one new lane
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
   chain (and its trim) behind
+- Copy a chain of any rack with `type: "chain"`, carrying its name, color,
+  mute/solo, chain trim, and devices. `toPath` names the destination rack and
+  may cross racks of the same kind; omit it to append to the chain's own rack.
+  Sends carry when the destination rack has a return chain of the same name.
+  Macro mappings can't be reproduced through the Live API, so a rack that has
+  them says so
 - Route duplicated tracks to source instrument for MIDI layering
 
 Note: Return tracks and devices on return tracks cannot be duplicated (Live API
@@ -222,7 +229,9 @@ limitation).
 
 ### 🔧 Update Track (`ppal-update-track`) {#ppal-update-track}
 
-- Change track gain (volume), panning, and send levels
+- Change track gain (volume), panning, and send levels, several sends at once
+  with `sends: [{return, gainDb}]` (each return named by id, exact name, or
+  letter)
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
 - Update multiple tracks at once
@@ -312,7 +321,12 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   multiple)
 - Change audio clip gain, pitch shift, and warp settings (see
   [Audio Clips](#audio-clips))
-- Move clips and change their length in the Arrangement
+- Move clips and change their length in the Arrangement, addressing a clip by
+  where it starts (`t0[5|1]`, or `t0[loc:Chorus]`)
+- Move a clip with `toPath`: along its own track, to another track, onto or off
+  a [take lane](/features#take-lanes), or back into a session slot. A move Live
+  has no API for re-creates the clip, which costs its automation envelopes; the
+  result says when that applied
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 
@@ -389,7 +403,8 @@ sounding.
 - Create, load, delete, revert, and randomize rack macro variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
-- Set a rack chain's own volume, pan, and send levels
+- Set a rack chain's own volume, pan, and send levels, several sends at once
+  with the same `sends` argument update-track takes
 - Change the choke group and output MIDI note of drum chains
 - Move a drum pad to another pad, keeping its chain trim, choke group, and
   devices together
