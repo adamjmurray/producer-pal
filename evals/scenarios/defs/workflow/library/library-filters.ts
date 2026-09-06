@@ -41,6 +41,25 @@ const LIBRARY_SCENARIO = {
 } as const;
 
 /**
+ * Every filter set one call carries: the top-level args, plus each `searches[]`
+ * entry. A fan-out puts the same filters one level down, and answering with one
+ * is at least as good as a plain search — so a check that only read the top
+ * level would fail the better answer.
+ *
+ * @param args - One call's arguments
+ * @returns The top-level args followed by any per-query filter sets
+ */
+function filterSetsOf(
+  args: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const searches = Array.isArray(args.searches)
+    ? (args.searches as Record<string, unknown>[])
+    : [];
+
+  return [args, ...searches];
+}
+
+/**
  * Assert some `ppal-library` call in the ask turn sent the filter under test.
  *
  * A model may search more than once — a broad pass then a narrow one, say — so
@@ -48,7 +67,7 @@ const LIBRARY_SCENARIO = {
  * riding a default.
  *
  * @param description - What the filter is, for the report
- * @param predicate - Reads one call's args; true when the filter was sent
+ * @param predicate - Reads one filter set; true when the filter was sent
  * @returns A custom assertion over the ask turn
  */
 function assertLibraryArgs(
@@ -65,7 +84,7 @@ function assertLibraryArgs(
 
       if (calls.length === 0) throw new Error(`no ${TOOL_LIBRARY} call`);
 
-      if (!calls.some((call) => predicate(call.args))) {
+      if (!calls.some((call) => filterSetsOf(call.args).some(predicate))) {
         throw new Error(
           `${calls.length} call(s), none matching: ${calls
             .map((call) => JSON.stringify(call.args))
