@@ -68,9 +68,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
       default:
-        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Composes with edits in a defined order: start/length/firstStart set the loop region first (select a portion to double; any content past that region is pushed later, not deleted), preTransforms edit the source, then the double; notes/transforms then apply across the full doubled clip",
+        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - they set the region this doubles, so the clip would end up twice the length you asked for; to double a portion, send start/length in its own call first. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip",
       smallModel:
-        "double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Order: start/length pick the region to double, preTransforms edit it, then the double; notes merge across the full doubled clip",
+        "double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - send those in their own call first to pick the region. notes merge across the full doubled clip",
     }),
     firstStart: param(z.string().optional(), {
       default:

@@ -270,8 +270,10 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
 /**
  * Write the clip's name, color, meter, and loop region.
  *
- * Runs BEFORE duplicateLoop (see the caller), so the two compose: the region
- * selects a portion, then Live's native duplicate_loop doubles exactly that.
+ * Runs BEFORE duplicateLoop (see the caller). start/length can't reach here
+ * alongside it — they pick what gets doubled, so the combination is refused up
+ * front (ADR-0040) — but firstStart can, and it sets the playback marker
+ * without moving the region.
  *
  * @param params - The full single-clip update params
  * @param resolved - Derived per-clip values not present on params

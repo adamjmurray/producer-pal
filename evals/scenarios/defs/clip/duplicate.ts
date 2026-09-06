@@ -153,7 +153,11 @@ function assertDoubledInPlace(): EvalAssertion {
       const createCall = getToolCalls(turns, 1).find(
         (c) => c.name === TOOL_CREATE_CLIP,
       );
-      const updateCall = getToolCalls(turns, 2).find(
+      // The LAST update-clip call: start/length alongside duplicateLoop is
+      // refused, so a model that reaches for it first is expected to retry.
+      // The retry is the call that did the work, and the clip-state assertion
+      // below still catches a model that landed on the wrong length.
+      const updateCall = getToolCalls(turns, 2).findLast(
         (c) => c.name === TOOL_UPDATE_CLIP,
       );
 

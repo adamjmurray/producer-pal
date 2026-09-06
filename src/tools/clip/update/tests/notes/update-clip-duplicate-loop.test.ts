@@ -153,65 +153,50 @@ describe("updateClip - duplicateLoop", () => {
     ]);
   });
 
-  it("reports the doubled length, not the length the caller asked for", async () => {
-    // The measured failure: a model reads "double it to 4 bars" as
-    // `length: "4bar", duplicateLoop: true`, and gets 8 bars, because length
-    // picks the region to double. The result has to say so — the note count
-    // doubles either way, so nothing else tells the caller it overshot.
-    // length reads 32 (the post-double value Live would report).
+  // start/length set the loop region, which is exactly what duplicate_loop
+  // copies, so the pair reads two ways - "the region to double" or "the length
+  // to end up at" - and both look like success. Refused instead (ADR-0040).
+  it.each([
+    ["length", { length: "4bar" }, "combined with length: length sets"],
+    ["start", { start: "2|1" }, "combined with start: start sets"],
+    [
+      "both",
+      { start: "2|1", length: "4bar" },
+      "start or length: start/length set",
+    ],
+  ])("refuses %s alongside duplicateLoop", async (_case, region, message) => {
     setupMidiClipMock(mocks.clip123, {
       looping: 1,
       loop_start: 0,
       loop_end: 2,
-      length: 32,
     });
     mockNoteCount(mocks.clip123, 8);
 
-    const result = await updateClip({
-      id: "123",
-      duplicateLoop: true,
-      length: "4bar",
-    });
+    await expect(
+      updateClip({ id: "123", duplicateLoop: true, ...region }),
+    ).rejects.toThrow(message);
 
-    expect(result).toStrictEqual({
-      id: "123",
-      path: "t0/s0",
-      noteCount: 8,
-      length: "8bar",
-    });
+    // Refused on the args alone, so nothing ran: no region write, no double.
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith("duplicate_loop");
   });
 
-  it("applies length to select the region before doubling (no warning)", async () => {
-    setupMidiClipMock(mocks.clip123, {
-      looping: 1,
-      loop_start: 0,
-      loop_end: 2,
-    });
-    mockNoteCount(mocks.clip123, 8);
+  it("offers the whole-clip double before the sub-region one", async () => {
+    // Measured: a model handed "send two calls" first does exactly that, sets
+    // the region it never wanted, and overshoots again. The common case leads.
+    setupMidiClipMock(mocks.clip123);
 
-    const result = await updateClip({
-      id: "123",
-      duplicateLoop: true,
-      start: "1|1",
-      length: "4bar",
-    });
-
-    // length selects the loop region (loop_end = start 0 + 4 bars = 16) first,
-    // THEN the native double extends it - the two compose, no warning.
-    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_end", 16);
-    expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("duplicateLoop sets the clip length"),
+    await expect(
+      updateClip({ id: "123", duplicateLoop: true, length: "4bar" }),
+    ).rejects.toThrow(
+      /To double the whole clip, send duplicateLoop on its own\. To double just part of it, send length in a separate call first\./,
     );
-    expect(result).toStrictEqual({
-      id: "123",
-      path: "t0/s0",
-      noteCount: 8,
-      length: "2bar",
-    });
   });
 
-  it("applies length on both MIDI and audio clips in a mixed batch", async () => {
+  it("refuses the whole batch before touching any clip", async () => {
+    // Whole-call params, so a per-clip skip would repeat the message down the
+    // list. The audio clip would not even have doubled, and it still must not
+    // get the region write.
     setupMidiClipMock(mocks.clip123, {
       looping: 1,
       loop_start: 0,
@@ -222,23 +207,45 @@ describe("updateClip - duplicateLoop", () => {
       loop_start: 0,
       loop_end: 2,
     });
+
+    await expect(
+      updateClip({
+        id: "123, 456",
+        duplicateLoop: true,
+        start: "1|1",
+        length: "4bar",
+      }),
+    ).rejects.toThrow("duplicateLoop cannot be combined with start or length");
+
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
+  });
+
+  it("still composes firstStart, which does not move the region", async () => {
+    // firstStart is the playback marker, not the loop region, so it does not
+    // select what gets copied - probed against Live in all three orders.
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 8,
+      end_marker: 8,
+    });
     mockNoteCount(mocks.clip123, 8);
 
-    await updateClip({
-      id: "123, 456",
+    const result = await updateClip({
+      id: "123",
       duplicateLoop: true,
-      start: "1|1",
-      length: "4bar",
+      firstStart: "2|1",
     });
 
-    // MIDI clip: length selects the region (loop_end = start 0 + 4 bars = 16)
-    // first, then the native double extends it.
-    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_end", 16);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("start_marker", 4);
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    // Audio clip: duplicateLoop warn-skips (no MIDI to double), but the length
-    // edit still applies normally (loop_end = 16).
-    expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
-    expect(mocks.clip456.set).toHaveBeenCalledWith("loop_end", 16);
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+      length: "2bar",
+    });
   });
 
   it.each([
@@ -246,7 +253,7 @@ describe("updateClip - duplicateLoop", () => {
     // transforms nothing, so it reports no count.
     [
       "notes",
-      "1|1 C3",
+      "C3 1|1",
       { id: "123", path: "t0/s0", noteCount: 8, length: "2bar" },
     ],
     [
@@ -272,7 +279,7 @@ describe("updateClip - duplicateLoop", () => {
       },
     ],
   ])(
-    "doubles and composes %s without warning (no length conflict)",
+    "doubles and composes %s without warning",
     async (param, value, expected) => {
       setupMidiClipMock(mocks.clip123);
       mockNoteCount(mocks.clip123, 8);
@@ -284,9 +291,9 @@ describe("updateClip - duplicateLoop", () => {
       });
 
       expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("duplicateLoop sets the clip length"),
-      );
+      // These compose cleanly, so the call is silent - the params that don't
+      // are refused up front now, not warned about.
+      expect(capturedWarnings()).toStrictEqual([]);
       expect(result).toStrictEqual(expected);
     },
   );
@@ -372,9 +379,7 @@ describe("updateClip - duplicateLoop", () => {
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(executeNoteCode).toHaveBeenCalledOnce();
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("duplicateLoop sets the clip length"),
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(result).toStrictEqual({
       path: "t0/s0",
       noteCount: 8,

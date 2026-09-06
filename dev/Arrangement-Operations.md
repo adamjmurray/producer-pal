@@ -141,14 +141,14 @@ loop-length**. It inserts — it does not overwrite what already sits after the
 loop.
 
 This matters when you select a sub-region smaller than the clip's content and
-then double it. `update-clip` applies `start`/`length`/`firstStart` to the loop
-region _before_ calling `duplicate_loop` (in `processSingleClipUpdate`,
-`clip.setAll` runs before `resolveNoteResult`), so the flow is "select the
-portion, then Live doubles exactly that."
+then double it. That takes **two calls**: `update-clip` refuses `start`/`length`
+alongside `duplicateLoop`, because they set the region being doubled and the
+combined call reads two ways (ADR-0040). `firstStart` still composes — it moves
+the playback marker, not the loop region.
 
 Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
-`C3` at bar 1 and `E3` at bar 2, updated with
-`{ duplicateLoop: true, length: "1bar" }`:
+`C3` at bar 1 and `E3` at bar 2, then `{ length: "1bar" }` followed by
+`{ duplicateLoop: true }`:
 
 1. `length: "1bar"` sets the loop region to bar 1 only — the bar-2 `E3` is now
    outside the loop.

@@ -5,15 +5,11 @@
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
-import {
-  parseTimeSignature,
-  unwrapSingleResult,
-} from "#src/tools/shared/utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
   parseColors,
@@ -28,12 +24,15 @@ import {
 } from "./helpers/arrangement/update-clip-move-groups.ts";
 import { planClipUpdate } from "./helpers/update-clip-prep-helpers.ts";
 import {
+  refuseRegionWithDuplicateLoop,
+  refuseUnreadableCall,
+} from "./helpers/update-clip-refusal-helpers.ts";
+import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
-import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,
@@ -88,7 +87,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
  * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: start/length/firstStart set the loop region first (select the portion to double; duplicate_loop inserts the copy, so content past the region is pushed later, not deleted), preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
  * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: <count>bar, n<fraction>, or <count>bar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
@@ -162,6 +161,7 @@ export async function updateClip(
   );
 
   refuseUnreadableCall(timeSignature, quantizePitch, toPath, arrangementStart);
+  refuseRegionWithDuplicateLoop(start, length, duplicateLoop);
 
   const {
     clips: mutableClips,
@@ -317,26 +317,6 @@ function resolveClipTargets(
 }
 
 /**
- * Refuse a whole-call param the tool can't read, before any clip is touched.
- *
- * These are one value for every clip in the call, so a per-clip skip would
- * repeat the same message down the list — and the per-clip warn-and-skip
- * wrapper would swallow a throw from inside the loop.
- * @param timeSignature - Time signature to apply, if given
- * @param quantizePitch - Pitch to limit quantization to, if given
- */
-function validateWholeCallParams(
-  timeSignature: string | undefined,
-  quantizePitch: string | undefined,
-): void {
-  if (timeSignature != null) parseTimeSignature(timeSignature);
-
-  if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
-    throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);
-  }
-}
-
-/**
  * Select the last updated clip and show the clip detail view, when focus is set.
  * @param updatedClips - The clips updated this call
  * @param focus - Whether to focus the last updated clip
@@ -408,24 +388,6 @@ async function applyCodeExecToNewClips(
       clipResult.noteCount = noteCount;
     }
   }
-}
-
-/**
- * Refuses a call there is no reading of, before any clip is touched: a
- * whole-call param with no valid value, or one position spelled two ways.
- * @param timeSignature - Whole-call meter, if sent
- * @param quantizePitch - Whole-call quantize pitch, if sent
- * @param toPath - Destination path(s), if sent
- * @param arrangementStart - Deprecated destination position(s), if sent
- */
-function refuseUnreadableCall(
-  timeSignature: string | undefined,
-  quantizePitch: string | undefined,
-  toPath: string | undefined,
-  arrangementStart: string | undefined,
-): void {
-  validateWholeCallParams(timeSignature, quantizePitch);
-  refuseDoubledPosition(toPath, arrangementStart, "toPath");
 }
 
 /**
