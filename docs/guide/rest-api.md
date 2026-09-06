@@ -96,11 +96,22 @@ code that reads `body.result` unconditionally will break on exactly the case the
 
 :::
 
-Warnings from the Live API surface as a separate `warnings` string array (or
-inline in the `result` text under `?format=compact`). The `ppal-update-*` tools
-use this when updating multiple objects: if any individual operation fails or is
-inapplicable (e.g. setting quantize on an audio clip), it emits a warning and
-continues with the rest.
+Warnings surface as a separate `warnings` string array (or inline in the
+`result` text under `?format=compact`). The `ppal-update-*` tools use this when
+updating multiple objects: if any individual operation fails or is inapplicable
+(e.g. setting quantize on an audio clip), it emits a warning and continues with
+the rest.
+
+Read them. A misspelled optional param is dropped rather than refused, and the
+only sign is a warning naming it, so a script that ignores `warnings` reads a
+call that changed nothing as a success:
+
+```bash
+curl -X POST http://localhost:3350/api/tools/ppal-update-track \
+  -H 'Content-Type: application/json' -d '{"path":"t1","nmae":"Bass"}'
+# → {"result":{"id":"3","path":"t1"},"isError":false,
+#    "warnings":["ignored unexpected argument(s): nmae"]}
+```
 
 ### Response format: `?format=json` (default)
 
