@@ -35,34 +35,36 @@ interface OverwrittenClipResult {
 
 describe("ppal-duplicate with a source list", () => {
   /**
-   * Two source clips in scene 5, one per empty MIDI track. Their notes differ
-   * so a copy says which source it came from.
+   * Create one source clip.
+   * @param path - Where the clip goes
+   * @param notes - The clip's notes, so a copy says which source it came from
+   * @param length - The clip's length
+   * @returns The new clip's id
+   */
+  async function createSource(
+    path: string,
+    notes: string,
+    length = "1bar",
+  ): Promise<string> {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: { path, notes, length },
+    });
+
+    return parseToolResult<{ id: string }>(result).id;
+  }
+
+  /**
+   * Two source clips in scene 5, one per empty MIDI track.
    * @returns The two clip ids, in track order
    */
   async function createSources(): Promise<[string, string]> {
-    const first = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${EMPTY_MIDI_TRACK}/s5`,
-        notes: "C3 1|1",
-        length: "1bar",
-      },
-    });
-    const second = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${CHILD_TRACK}/s5`,
-        notes: "D3 1|1",
-        length: "1bar",
-      },
-    });
+    const first = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
+    const second = await createSource(`t${CHILD_TRACK}/s5`, "D3 1|1");
 
     await sleep(100);
 
-    return [
-      parseToolResult<{ id: string }>(first).id,
-      parseToolResult<{ id: string }>(second).id,
-    ];
+    return [first, second];
   }
 
   /**
@@ -139,22 +141,8 @@ describe("ppal-duplicate with a source list", () => {
   // them: the second copy lands on the first. Every id the result hands back
   // still has to name a clip that is there.
   it("hands back no id for a copy a later source landed on", async () => {
-    const first = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${EMPTY_MIDI_TRACK}/s5`,
-        notes: "C3 1|1",
-        length: "1bar",
-      },
-    });
-    const second = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${EMPTY_MIDI_TRACK}/s6`,
-        notes: "D3 1|1",
-        length: "1bar",
-      },
-    });
+    const first = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
+    const second = await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1");
 
     await sleep(100);
 
@@ -162,10 +150,7 @@ describe("ppal-duplicate with a source list", () => {
       (DuplicateClipResult | OverwrittenClipResult)[]
     >(
       await duplicateClips({
-        id: [
-          parseToolResult<{ id: string }>(first).id,
-          parseToolResult<{ id: string }>(second).id,
-        ].join(","),
+        id: [first, second].join(","),
         toPath: "[97|1]",
       }),
     );
@@ -192,14 +177,11 @@ describe("ppal-duplicate with a source list", () => {
   // the same beat. Both entries name a different bar here, and one of them is
   // still a clip that no longer exists.
   it("hands back no id for a copy the next one cleared", async () => {
-    const session = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${EMPTY_MIDI_TRACK}/s5`,
-        notes: "C3 1|1",
-        length: "4bar",
-      },
-    });
+    const session = await createSource(
+      `t${EMPTY_MIDI_TRACK}/s5`,
+      "C3 1|1",
+      "4bar",
+    );
 
     await sleep(100);
 
@@ -208,7 +190,7 @@ describe("ppal-duplicate with a source list", () => {
     // to Live.
     const source = parseToolResult<DuplicateClipResult>(
       await duplicateClips({
-        id: parseToolResult<{ id: string }>(session).id,
+        id: session,
         toPath: `t${EMPTY_MIDI_TRACK}[89|1]`,
       }),
     );

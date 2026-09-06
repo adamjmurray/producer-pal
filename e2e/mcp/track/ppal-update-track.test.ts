@@ -23,6 +23,15 @@ import {
 
 const ctx = setupMcpTestContext();
 
+/**
+ * Call ppal-update-track.
+ * @param args - The tool's arguments
+ * @returns The raw tool result
+ */
+function updateTrack(args: Record<string, unknown>): Promise<unknown> {
+  return ctx.client!.callTool({ name: "ppal-update-track", arguments: args });
+}
+
 async function readTracks(): Promise<LiveSetResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-live-set",
@@ -50,10 +59,7 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update track name
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, name: "Renamed Track" },
-    });
+    await updateTrack({ id: trackId, name: "Renamed Track" });
 
     await sleep(100);
     const afterName = await ctx.client!.callTool({
@@ -65,10 +71,7 @@ describe("ppal-update-track", () => {
     expect(namedTrack.name).toBe("Renamed Track");
 
     // Test 2: Update track color
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, color: "#0000FF" },
-    });
+    await updateTrack({ id: trackId, color: "#0000FF" });
 
     await sleep(100);
     const afterColor = await ctx.client!.callTool({
@@ -81,10 +84,7 @@ describe("ppal-update-track", () => {
     expect(coloredTrack.color).toBeDefined();
 
     // Test 3: Update gainDb
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, gainDb: -6 },
-    });
+    await updateTrack({ id: trackId, gainDb: -6 });
 
     const gainTrack = await readTrackMixer(trackId);
 
@@ -96,18 +96,12 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Unsolo t5 which is soloed by default in e2e-test-set
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: liveSet.tracks![5]!.id, solo: false },
-    });
+    await updateTrack({ id: liveSet.tracks![5]!.id, solo: false });
 
     await sleep(100);
 
     // Test 1: Update mute state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, mute: true },
-    });
+    await updateTrack({ id: trackId, mute: true });
 
     await sleep(100);
     const afterMute = await ctx.client!.callTool({
@@ -119,16 +113,10 @@ describe("ppal-update-track", () => {
     expect(mutedTrack.state).toBe("muted");
 
     // Unmute for further tests
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, mute: false },
-    });
+    await updateTrack({ id: trackId, mute: false });
 
     // Test 2: Update solo state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, solo: true },
-    });
+    await updateTrack({ id: trackId, solo: true });
 
     await sleep(100);
     const afterSolo = await ctx.client!.callTool({
@@ -140,16 +128,10 @@ describe("ppal-update-track", () => {
     expect(soloedTrack.state).toBe("soloed");
 
     // Unsolo
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, solo: false },
-    });
+    await updateTrack({ id: trackId, solo: false });
 
     // Test 3: Update arm state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, arm: true },
-    });
+    await updateTrack({ id: trackId, arm: true });
 
     await sleep(100);
     const afterArm = await ctx.client!.callTool({
@@ -161,10 +143,7 @@ describe("ppal-update-track", () => {
     expect(armedTrack.isArmed).toBe(true);
 
     // Disarm
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, arm: false },
-    });
+    await updateTrack({ id: trackId, arm: false });
   });
 
   it("updates track pan and panning mode", async () => {
@@ -172,24 +151,18 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update pan (stereo mode)
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, pan: 0.5 },
-    });
+    await updateTrack({ id: trackId, pan: 0.5 });
 
     const panTrack = await readTrackMixer(trackId);
 
     expect(panTrack.pan).toBeCloseTo(0.5, 1);
 
     // Test 2: Update panning mode to split
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        id: trackId,
-        panningMode: "split",
-        leftPan: -0.5,
-        rightPan: 0.5,
-      },
+    await updateTrack({
+      id: trackId,
+      panningMode: "split",
+      leftPan: -0.5,
+      rightPan: 0.5,
     });
 
     const splitTrack = await readTrackMixer(trackId);
@@ -199,10 +172,7 @@ describe("ppal-update-track", () => {
     expect(splitTrack.rightPan).toBeCloseTo(0.5, 1);
 
     // Return to stereo mode
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, panningMode: "stereo", pan: 0 },
-    });
+    await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
   });
 
   it("updates multiple tracks in batch", async () => {
@@ -211,17 +181,14 @@ describe("ppal-update-track", () => {
     const secondTrackId = liveSet.tracks![1]!.id;
 
     // Unsolo t5 which is soloed by default
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: liveSet.tracks![5]!.id, solo: false },
-    });
+    await updateTrack({ id: liveSet.tracks![5]!.id, solo: false });
 
     await sleep(100);
 
     // Test: Batch update multiple tracks
-    const batchResult = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: `${trackId}, ${secondTrackId}`, mute: true },
+    const batchResult = await updateTrack({
+      id: `${trackId}, ${secondTrackId}`,
+      mute: true,
     });
 
     parseBatchResult<UpdateTrackResult>(batchResult, 2);
@@ -242,10 +209,7 @@ describe("ppal-update-track", () => {
     expect(secondTrack.state).toBe("muted");
 
     // Unmute both
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: `${trackId}, ${secondTrackId}`, mute: false },
-    });
+    await updateTrack({ id: `${trackId}, ${secondTrackId}`, mute: false });
   });
 
   it("updates send levels and monitoring", async () => {
@@ -253,10 +217,7 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update monitoring state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, monitoringState: "in" },
-    });
+    await updateTrack({ id: trackId, monitoringState: "in" });
 
     await sleep(100);
     const afterMonitor = await ctx.client!.callTool({
@@ -268,10 +229,7 @@ describe("ppal-update-track", () => {
     expect(monitorTrack.monitoringState).toBe("in");
 
     // Return to auto
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, monitoringState: "auto" },
-    });
+    await updateTrack({ id: trackId, monitoringState: "auto" });
 
     // Test 2: Send operations - first create a return track
     const returnResult = await ctx.client!.callTool({
@@ -285,10 +243,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
 
     // Now update send level to the return track
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, sendGainDb: -12, sendReturn: "A" },
-    });
+    await updateTrack({ id: trackId, sendGainDb: -12, sendReturn: "A" });
 
     const sendTrack = await readTrackMixer(trackId);
 
@@ -305,9 +260,10 @@ describe("ppal-update-track", () => {
     // gets here reliably: "A" matches A-Delay first, and Live renames the
     // return it was asked to call "A-TestReturn". Only real Live proves the id
     // the read tools report is the one the send lookup matches on.
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, sendGainDb: -24, sendReturn: returnTrack.id },
+    await updateTrack({
+      id: trackId,
+      sendGainDb: -24,
+      sendReturn: returnTrack.id,
     });
 
     const byId = await readTrackMixer(trackId);
@@ -328,15 +284,12 @@ describe("ppal-update-track", () => {
     // different ways, so a list that landed by position or only matched names
     // would fail. Only real Live proves the id the read reports is the one the
     // send lookup matches on.
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        id: trackId,
-        sends: [
-          { return: second!.name, gainDb: -21 },
-          { return: first!.id, gainDb: -9 },
-        ],
-      },
+    await updateTrack({
+      id: trackId,
+      sends: [
+        { return: second!.name, gainDb: -21 },
+        { return: first!.id, gainDb: -9 },
+      ],
     });
 
     const track = await readTrackMixer(trackId);
@@ -353,13 +306,10 @@ describe("ppal-update-track", () => {
     const returnTrack = liveSet.returnTracks![0]!;
 
     // Live hands back a 32-bit float, so an unrounded read reports -6.333000183105469.
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        id: trackId,
-        gainDb: -6.333333,
-        sends: [{ return: returnTrack.id, gainDb: -9.55 }],
-      },
+    await updateTrack({
+      id: trackId,
+      gainDb: -6.333333,
+      sends: [{ return: returnTrack.id, gainDb: -9.55 }],
     });
 
     const track = await readTrackMixer(trackId);
@@ -378,9 +328,10 @@ describe("ppal-update-track", () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, gainDb: -6.333333, pan: -0.333333 },
+    const result = await updateTrack({
+      id: trackId,
+      gainDb: -6.333333,
+      pan: -0.333333,
     });
 
     const data = parseToolResult<UpdateTrackResult>(result);
@@ -397,15 +348,12 @@ describe("ppal-update-track", () => {
     try {
       // Split mode writes two params and refuses `pan`, so a result carrying
       // only the gain would read as "the pans did not land".
-      const result = await ctx.client!.callTool({
-        name: "ppal-update-track",
-        arguments: {
-          id: trackId,
-          panningMode: "split",
-          gainDb: -12.333333,
-          leftPan: -0.333333,
-          rightPan: 0.666667,
-        },
+      const result = await updateTrack({
+        id: trackId,
+        panningMode: "split",
+        gainDb: -12.333333,
+        leftPan: -0.333333,
+        rightPan: 0.666667,
       });
 
       const data = parseToolResult<UpdateTrackResult>(result);
@@ -419,10 +367,7 @@ describe("ppal-update-track", () => {
     } finally {
       // In a finally so a failed assertion can't strand the track in split
       // mode for the rest of the file.
-      await ctx.client!.callTool({
-        name: "ppal-update-track",
-        arguments: { id: trackId, panningMode: "stereo", pan: 0 },
-      });
+      await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
     }
   });
 
@@ -431,12 +376,9 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![3]!.id;
     const returnTrack = liveSet.returnTracks![0]!;
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        id: trackId,
-        sends: [{ return: returnTrack.id, gainDb: -6.333333 }],
-      },
+    const result = await updateTrack({
+      id: trackId,
+      sends: [{ return: returnTrack.id, gainDb: -6.333333 }],
     });
 
     // Live hands back a 32-bit float, so an unrounded read reports
@@ -457,9 +399,10 @@ describe("ppal-update-track", () => {
     const returnTrack = liveSet.returnTracks![1]!;
 
     // One send has one shape in the result, whichever param spelled it.
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, sendGainDb: -18, sendReturn: returnTrack.id },
+    const result = await updateTrack({
+      id: trackId,
+      sendGainDb: -18,
+      sendReturn: returnTrack.id,
     });
 
     expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
@@ -471,9 +414,9 @@ describe("ppal-update-track", () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, sends: [{ return: "ZZZ", gainDb: -6 }] },
+    const result = await updateTrack({
+      id: trackId,
+      sends: [{ return: "ZZZ", gainDb: -6 }],
     });
 
     const { data, warnings } =
@@ -493,14 +436,11 @@ describe("ppal-update-track", () => {
 
     // The pair and the list name one return by two different spellings, so the
     // collision is only seen if both resolve to the same index.
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        id: trackId,
-        sendGainDb: -30,
-        sendReturn: returnTrack.id,
-        sends: [{ return: returnTrack.name, gainDb: -15 }],
-      },
+    const result = await updateTrack({
+      id: trackId,
+      sendGainDb: -30,
+      sendReturn: returnTrack.id,
+      sends: [{ return: returnTrack.name, gainDb: -15 }],
     });
 
     expect(getToolWarnings(result)).toContainEqual(
@@ -529,10 +469,7 @@ describe("ppal-update-track", () => {
 
     await sleep(100);
 
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: created.id, name: "1" },
-    });
+    await updateTrack({ id: created.id, name: "1" });
 
     await sleep(100);
 

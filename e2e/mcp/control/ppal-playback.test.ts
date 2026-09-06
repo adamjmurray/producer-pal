@@ -34,6 +34,23 @@ async function playback(
   );
 }
 
+/**
+ * Check the next call reports the loop the write before it left. A write
+ * answers with the state from before itself, so only a later call can see it.
+ * @param loopStart - Expected loop start
+ * @param loopEnd - Expected loop end
+ */
+async function expectLoopReadsBack(
+  loopStart: string,
+  loopEnd: string,
+): Promise<void> {
+  const playing = await playback({ action: "play-arrangement" });
+
+  expect(playing.loop).toBe(true);
+  expect(playing.loopStart).toBe(loopStart);
+  expect(playing.loopEnd).toBe(loopEnd);
+}
+
 async function createSessionClip(
   sceneIndex: number,
   note: string,
@@ -153,11 +170,7 @@ describe("ppal-playback", () => {
 
     // Only a second call can see the write land: `live_set loop` answers a read
     // in the request that wrote it with the value from before the write.
-    const playing = await playback({ action: "play-arrangement" });
-
-    expect(playing.loop).toBe(true);
-    expect(playing.loopStart).toBe("3|1");
-    expect(playing.loopEnd).toBe("7|1");
+    await expectLoopReadsBack("3|1", "7|1");
 
     const stopped = await playback({ action: "stop" });
 
@@ -238,11 +251,7 @@ describe("ppal-playback", () => {
     expect(looped.loopStart).toBeUndefined();
     expect(looped.loopEnd).toBeUndefined();
 
-    const playing = await playback({ action: "play-arrangement" });
-
-    expect(playing.loop).toBe(true);
-    expect(playing.loopStart).toBe("3|1");
-    expect(playing.loopEnd).toBe("7|1");
+    await expectLoopReadsBack("3|1", "7|1");
 
     await playback({ action: "stop" });
     await playback({ action: "update-arrangement", loop: false });

@@ -54,16 +54,7 @@ describe("moving a row of arrangement clips", () => {
     expect(warnings.join(" ")).not.toContain("session clip");
 
     // All three survive, in the order they started in.
-    for (const [index, position] of ["205|1", "209|1", "213|1"].entries()) {
-      const placed = await arrangementClipAt(
-        ctx.client!,
-        EMPTY_MIDI_TRACK,
-        position,
-      );
-
-      expect(placed?.id).toBe(data[index]?.id);
-      expect(placed?.name).toBe(`Later ${String(index)}`);
-    }
+    await expectRowAt(["205|1", "209|1", "213|1"], data, "Later");
 
     expect(
       await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "201|1"),
@@ -84,16 +75,7 @@ describe("moving a row of arrangement clips", () => {
 
     expect(warnings.join(" ")).not.toContain("session clip");
 
-    for (const [index, position] of ["505|1", "509|1", "513|1"].entries()) {
-      const placed = await arrangementClipAt(
-        ctx.client!,
-        EMPTY_MIDI_TRACK,
-        position,
-      );
-
-      expect(placed?.id).toBe(data[index]?.id);
-      expect(placed?.name).toBe(`Sized ${String(index)}`);
-    }
+    await expectRowAt(["505|1", "509|1", "513|1"], data, "Sized");
 
     expect(
       await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "501|1"),
@@ -108,16 +90,7 @@ describe("moving a row of arrangement clips", () => {
       ["301|1", "305|1", "309|1"].map(destination),
     );
 
-    for (const [index, position] of ["301|1", "305|1", "309|1"].entries()) {
-      const placed = await arrangementClipAt(
-        ctx.client!,
-        EMPTY_MIDI_TRACK,
-        position,
-      );
-
-      expect(placed?.id).toBe(data[index]?.id);
-      expect(placed?.name).toBe(`Earlier ${String(index)}`);
-    }
+    await expectRowAt(["301|1", "305|1", "309|1"], data, "Earlier");
 
     expect(
       await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "313|1"),
@@ -153,6 +126,29 @@ describe("moving a row of arrangement clips", () => {
     ).toBe(second.id);
   });
 });
+
+/**
+ * Check the row landed at these positions, in call order, names intact.
+ * @param positions - Expected positions in bar|beat format, in call order
+ * @param data - The move's results, in call order
+ * @param namePrefix - The prefix the row was created with
+ */
+async function expectRowAt(
+  positions: string[],
+  data: MovedClip[],
+  namePrefix: string,
+): Promise<void> {
+  for (const [index, position] of positions.entries()) {
+    const placed = await arrangementClipAt(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+      position,
+    );
+
+    expect(placed?.id).toBe(data[index]?.id);
+    expect(placed?.name).toBe(`${namePrefix} ${String(index)}`);
+  }
+}
 
 /**
  * The clip path for a position on the scratch track.

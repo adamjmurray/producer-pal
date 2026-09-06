@@ -25,16 +25,31 @@ import { createTrackWithDrumRack } from "./drum-pad-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
+/**
+ * Create a device and return the warnings the call raised.
+ * @param deviceName - The device to create
+ * @param path - Where it goes
+ * @returns The call's warnings
+ */
+async function warningsForDeviceAt(
+  deviceName: string,
+  path: string,
+): Promise<string[]> {
+  const { warnings } = parseToolResultWithWarnings(
+    await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName, path },
+    }),
+  );
+
+  return warnings;
+}
+
 describe("rack-relative drum chain spelling", () => {
   it("warns with the pad spelling when a path names a drum chain rack-relatively", async () => {
     const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
-    const { warnings } = parseToolResultWithWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: { deviceName: "Utility", path: `${rackPath}/c0` },
-      }),
-    );
+    const warnings = await warningsForDeviceAt("Utility", `${rackPath}/c0`);
 
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain(`${rackPath}/pC1/c0`);
@@ -44,14 +59,9 @@ describe("rack-relative drum chain spelling", () => {
   it("stays quiet for the pad-relative spelling", async () => {
     const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
-    const { warnings } = parseToolResultWithWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: { deviceName: "Utility", path: `${rackPath}/pC1/c0` },
-      }),
-    );
-
-    expect(warnings).toStrictEqual([]);
+    expect(
+      await warningsForDeviceAt("Utility", `${rackPath}/pC1/c0`),
+    ).toStrictEqual([]);
   });
 
   it("stays quiet for a chain under a plain, non-drum rack", async () => {
@@ -62,13 +72,8 @@ describe("rack-relative drum chain spelling", () => {
       `t${trackIndex}`,
     );
 
-    const { warnings } = parseToolResultWithWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: { deviceName: "Operator", path: `${rackPath}/c0` },
-      }),
-    );
-
-    expect(warnings).toStrictEqual([]);
+    expect(
+      await warningsForDeviceAt("Operator", `${rackPath}/c0`),
+    ).toStrictEqual([]);
   });
 });
