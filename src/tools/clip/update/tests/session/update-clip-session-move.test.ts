@@ -17,7 +17,7 @@ import {
   handlePositionOperations,
   resolveMoveDestinations,
 } from "../../helpers/update-clip-session-helpers.ts";
-import { handleClipSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
+import { handleClipSlotMove } from "../../helpers/slot-move/update-clip-slot-move-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(

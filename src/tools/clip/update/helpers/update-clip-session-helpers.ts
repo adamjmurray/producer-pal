@@ -45,7 +45,7 @@ import {
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
-} from "./update-clip-slot-move-helpers.ts";
+} from "./slot-move/update-clip-slot-move-helpers.ts";
 import {
   targetLabel,
   targetLabelForId,

@@ -12,7 +12,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { handleArrangementToSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
+import { handleArrangementToSlotMove } from "../../helpers/slot-move/update-clip-slot-move-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const SOURCE_TRACK = 0;
