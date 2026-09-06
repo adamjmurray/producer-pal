@@ -12,8 +12,8 @@ import {
   type EvalAssertionResult,
   type EvalScenarioResult,
   type EvalTurnResult,
-} from "../../types.ts";
-import { toJsonResult } from "./converter.ts";
+} from "../../../types.ts";
+import { toJsonResult } from "../converter.ts";
 
 const PASSING_JUDGE = { pass: true, issues: [] };
 const FAILING_JUDGE = {

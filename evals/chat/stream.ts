@@ -20,7 +20,11 @@ import {
   formatWarning,
   startThought,
 } from "./shared/formatting.ts";
-import { mcpResultText, mcpResultWarnings } from "./shared/mcp-result-text.ts";
+import {
+  mcpResultInjectedBlocks,
+  mcpResultText,
+  mcpResultWarnings,
+} from "./shared/mcp-result-text.ts";
 import { type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */
@@ -370,6 +374,10 @@ function recordOutput(
   const warnings = mcpResultWarnings(output);
 
   if (warnings.length > 0) toolCall.warnings = warnings;
+
+  const injected = mcpResultInjectedBlocks(output);
+
+  if (injected.length > 0) toolCall.injectedBlocks = injected;
 }
 
 /**

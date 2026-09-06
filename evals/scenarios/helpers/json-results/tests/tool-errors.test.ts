@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { type EvalTurnResult, type ToolCall } from "../../types.ts";
-import { collectToolErrors } from "./tool-errors.ts";
+import { type EvalTurnResult, type ToolCall } from "../../../types.ts";
+import { collectToolErrors } from "../tool-errors.ts";
 
 /**
  * Build a turn holding the given tool calls.

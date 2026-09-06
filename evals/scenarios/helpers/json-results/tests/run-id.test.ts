@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { generateRunId } from "./run-id.ts";
+import { generateRunId } from "../run-id.ts";
 
 describe("generateRunId", () => {
   it("returns a string matching the expected format", () => {

@@ -53,6 +53,29 @@ export function mcpResultWarnings(value: unknown): string[] {
 }
 
 /**
+ * Extract the context blocks a tool appended after its payload.
+ *
+ * `ppal-connect` returns the skills, global context, memory index and next-step
+ * prompt as extra text blocks. The model reads all of them, so a transcript
+ * that keeps only block 0 cannot show whether the model was given what it
+ * needed - a context bug hid behind exactly that for eight days.
+ *
+ * @param value - Raw MCP result, or its content array
+ * @returns Every text block after the payload that is not a relayed warning
+ */
+export function mcpResultInjectedBlocks(value: unknown): string[] {
+  return contentBlocks(value)
+    .slice(1)
+    .map((block) => block.text)
+    .filter(
+      (text): text is string =>
+        typeof text === "string" &&
+        text.length > 0 &&
+        !text.startsWith(WARNING_PREFIX),
+    );
+}
+
+/**
  * Normalize either accepted shape down to the content-block array.
  *
  * @param value - Raw MCP result, or its content array

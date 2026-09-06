@@ -178,6 +178,9 @@ describe("parseClaudeCodeStream", () => {
         name: "ppal-connect",
         args: { greeting: "hi" },
         result: "connected",
+        // The blocks connect injects are kept too: the payload alone cannot
+        // show whether the model was given the skills and context it needed.
+        injectedBlocks: ["…skills…"],
       },
     ]);
     expect(parsed.usage).toStrictEqual({

@@ -125,6 +125,10 @@ export interface JsonToolCall {
   result?: string;
   /** Relayed `WARNING:` blocks from the same result, when the tool emitted any */
   warnings?: string[];
+  /** Content hashes of the context blocks the tool appended after its payload -
+   *  what `ppal-connect` injects. The text for each is in the run's
+   *  `blocks/<hash>.txt`, stored once per run rather than once per scenario. */
+  injectedBlocks?: string[];
   /** Present only when the transport reported MCP `isError: true` */
   isError?: boolean;
 }

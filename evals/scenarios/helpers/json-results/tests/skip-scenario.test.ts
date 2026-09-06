@@ -9,8 +9,11 @@
 
 import { describe, it, expect } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
-import { type EvalScenario, type ScenarioRequirements } from "../../types.ts";
-import { buildSkippedResult, shouldSkipScenario } from "./skip-scenario.ts";
+import {
+  type EvalScenario,
+  type ScenarioRequirements,
+} from "../../../types.ts";
+import { buildSkippedResult, shouldSkipScenario } from "../skip-scenario.ts";
 
 function makeScenario(requires?: ScenarioRequirements): EvalScenario {
   return {

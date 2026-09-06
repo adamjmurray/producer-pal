@@ -70,6 +70,12 @@ export interface ToolCall {
    */
   warnings?: string[];
   /**
+   * Context blocks the tool appended after its payload - what `ppal-connect`
+   * injects. Held as full text in memory; the JSON writer swaps each one for a
+   * content hash and stores the text once per run.
+   */
+  injectedBlocks?: string[];
+  /**
    * AI SDK tool-call id. Used to attach each tool-result to its originating
    * call so parallel same-name calls in one step don't get their results
    * swapped (the SDK emits both tool-call parts before either result).
