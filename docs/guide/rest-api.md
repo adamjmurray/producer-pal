@@ -289,6 +289,14 @@ curl http://localhost:3350/api/tools
 Zero-dependency client examples using only built-in HTTP libraries. Copy and
 modify them for your own integrations.
 
+::: tip Upgrading an existing script?
+
+Several response fields moved in 2.3, and the index params these examples once
+used are removed in 2.4. See the [migration guide](/guide/migration), which
+comes with an adapter script for the mechanical cases.
+
+:::
+
 ### Node.js
 
 The Node.js client doubles as the Producer Pal [Agent Skill](/guide/skills)

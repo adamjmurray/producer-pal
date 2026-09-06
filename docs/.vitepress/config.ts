@@ -147,6 +147,9 @@ export default defineConfig({
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
           { text: "Extending", link: "/extending" },
+          // Scripts only — a chat user reads the current schemas every session
+          // and never sees the old spellings.
+          { text: "Migration Guide", link: "/guide/migration" },
         ],
       },
       {

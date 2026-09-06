@@ -4,6 +4,10 @@
 
 ### 2.4
 
+The params deprecated in 2.2 and 2.3 are removed. If you drive Producer Pal from
+a script, the [migration guide](/guide/migration) covers what to change, plus
+the response changes that already shipped in 2.3.
+
 In consideration:
 
 - Read tools take a list so several clips or devices can be read in one call
