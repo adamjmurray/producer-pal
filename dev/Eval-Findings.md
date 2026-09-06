@@ -139,6 +139,28 @@ the specific case is closed. The general shape is not: **a param that competes
 with a value the model just read will lose, and no amount of schema prose fixes
 it.**
 
+## Wording changes that did work
+
+Both null results above tried to change a **preference**. These two taught a
+**spelling**, and the difference is the best predictor we have of whether a text
+change will move anything.
+
+**Stark octave: 1/3 to 3/3.** `middle-c-scale-stark` went green in every trial
+after the skill change, and every trial wrote the octave mark it taught
+(`melody: C D Eb F G Ab Bb C'`). It was the text, not luck.
+
+**The `n` prefix, diagnosed correctly the second time.** `<count>bar` did not
+move `note-ops-split`, and the first diagnosis was wrong. The prefix is wrong
+only in the **note-duration slot** (`notes: "n4bar C2 1|1"`): `length: "4bar"`
+is right in every trial, and the same call writes `n/2` correctly. The model
+over-generalizes the prefix from fractions to bars; it is not misreading `Nbar`.
+Cost is one round trip and the error is self-correcting, so the only remaining
+lever is a grammar alias accepting `n4bar` — judge that against round-trip cost,
+not tidiness.
+
+**So: teaching a spelling is worth trying; arguing a model out of a preference
+is not.**
+
 ## Scenarios that are red on purpose
 
 **`drum-backbeat-stark`.** The prompt asks for a four-on-the-floor kick; the
@@ -163,14 +185,21 @@ does not hold.
 
 ## What a transcript does not show you
 
-`stringifyToolResult` unwraps only the _first_ text block of a tool result. A
-recorded connect result is therefore a couple hundred characters of
-`{connected:true,…}`, and the skills, global context, memory index and next-step
-blocks never appear. The model saw them; the transcript did not.
+`stringifyToolResult` unwraps only the _first_ text block of a tool result, so a
+displayed connect result is a couple hundred characters of `{connected:true,…}`
+and the skills, global context, memory index and next-step blocks are not in it.
+The model saw them; the printed transcript did not. One context bug hid for
+eight days behind exactly this.
 
-So a report cannot tell you whether the model was given the context it needed.
-Read the injected blocks another way before concluding a context or onboarding
-failure is the model's. One such bug hid for eight days behind exactly this.
+**The JSON results now carry them.** Every tool call records `injectedBlocks` —
+each block after the payload that is not a relayed `WARNING:`. The writer stores
+each distinct block once per run as `blocks/<hash>.txt` and leaves the hash in
+the result, because the skills alone run ~90-145 KB and are byte-identical
+across scenarios; inlining them would cost megabytes per run.
+
+So: to check whether the model was given the context it needed, read
+`injectedBlocks` out of the JSON, not the printed transcript. Before concluding
+a context or onboarding failure is the model's, look there.
 
 ## Rack chain sends can't be covered by an eval yet
 
