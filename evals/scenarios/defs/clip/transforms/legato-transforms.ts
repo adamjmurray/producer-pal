@@ -102,7 +102,9 @@ export const legatoTransforms: EvalScenario = {
           );
         }
 
-        if (!/rand\(/i.test(transforms)) {
+        // `random()` is a documented alias for `rand()` and the parser accepts
+        // it, so grading only the taught spelling would fail a working call.
+        if (!/\b(?:rand|random)\(/i.test(transforms)) {
           throw new Error(
             `expected rand() for humanization: ${transforms.slice(0, 120)}`,
           );
