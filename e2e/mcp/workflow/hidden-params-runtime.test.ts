@@ -124,6 +124,25 @@ async function call(
   );
 }
 
+/**
+ * Read the arrangement loop back with a second call, then stop. A call that
+ * sets the loop reports none of it, and `live_set loop` doesn't read back
+ * inside the request that wrote it, so a later call is the only witness.
+ * @param start - The loopStart the write should have landed on
+ * @param end - The loopEnd the write should have landed on
+ */
+async function expectArrangementLoop(
+  start: string,
+  end: string,
+): Promise<void> {
+  const { data } = await call("ppal-playback", { action: "play-arrangement" });
+
+  expect(data.loopStart).toBe(start);
+  expect(data.loopEnd).toBe(end);
+
+  await call("ppal-playback", { action: "stop" });
+}
+
 async function seedClip(path: string): Promise<string> {
   const { data } = await call("ppal-create-clip", {
     path,
@@ -541,6 +560,9 @@ const CASES: Case[] = [
   },
   // The retired locator halves took a bare name where the param they folded
   // onto takes "loc:<name>". Verse is 9|1 and Bridge 33|1 in the e2e test set.
+  // The call names both ends, so it reports neither: the read-back is what
+  // shows the folded locator resolved. The two cases set different spans, so
+  // neither passes on the loop the other left.
   {
     tool: "ppal-playback",
     param: "loopStartLocator",
@@ -550,7 +572,7 @@ const CASES: Case[] = [
       loopStartLocator: "Verse",
       loopEnd: "33|1",
     }),
-    verify: (d) => expect(d.loopStart).toBe("9|1"),
+    verify: () => expectArrangementLoop("9|1", "33|1"),
   },
   {
     tool: "ppal-playback",
@@ -558,10 +580,10 @@ const CASES: Case[] = [
     args: () => ({
       action: "update-arrangement",
       loop: true,
-      loopStart: "9|1",
+      loopStart: "17|1",
       loopEndLocator: "Bridge",
     }),
-    verify: (d) => expect(d.loopEnd).toBe("33|1"),
+    verify: () => expectArrangementLoop("17|1", "33|1"),
   },
   {
     tool: "ppal-playback",

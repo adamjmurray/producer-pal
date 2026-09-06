@@ -27,16 +27,17 @@ type PlannedLoop = { plan: LoopPlan } | { refusal: string };
  * @param timeline - The timeline params, with locators already folded in
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @returns Whether the loop was written — a refused plan writes nothing
  */
 export function applyArrangementLoop(
   liveSet: LiveAPI,
   timeline: ArrangementParams,
   timeSigNumerator: number,
   timeSigDenominator: number,
-): void {
+): boolean {
   const { loop, loopStart, loopEnd } = timeline;
 
-  if (loop == null && loopStart == null && loopEnd == null) return;
+  if (loop == null && loopStart == null && loopEnd == null) return false;
 
   const namesABound = loopStart != null || loopEnd != null;
   const toBeats = (value: string, paramName: string): number =>
@@ -58,7 +59,7 @@ export function applyArrangementLoop(
   if (planned != null && "refusal" in planned) {
     console.warn(planned.refusal);
 
-    return;
+    return false;
   }
 
   // Bounds with the loop off do nothing audible, so naming either turns it on.
@@ -73,6 +74,8 @@ export function applyArrangementLoop(
     liveSet.set("loop_start", planned.plan.startBeats);
     liveSet.set("loop_length", planned.plan.lengthBeats);
   }
+
+  return true;
 }
 
 /**

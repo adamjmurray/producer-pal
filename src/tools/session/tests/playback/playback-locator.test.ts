@@ -7,7 +7,6 @@ import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import {
   expectLiveSetProperty,
-  expectReportedLoop,
   setupCuePointMocks,
 } from "./playback-test-helpers.ts";
 
@@ -141,11 +140,8 @@ describe("playback - song positions", () => {
 
       expectLiveSetProperty(liveSet, "loop_start", 16);
       expectLiveSetProperty(liveSet, "loop_length", 16);
-      expectReportedLoop(result, {
-        loop: true,
-        start: "5|1",
-        end: "9|1",
-      });
+      // Both ends came from the call, so the result repeats neither.
+      expect(result).toStrictEqual({ playing: false });
     });
 
     it("should throw if the loopStart locator is not found", () => {
@@ -203,11 +199,7 @@ describe("playback - song positions", () => {
 
       expectLiveSetProperty(liveSet, "loop_start", 16);
       expectLiveSetProperty(liveSet, "loop_length", 16);
-      expectReportedLoop(result, {
-        loop: true,
-        start: "5|1",
-        end: "9|1",
-      });
+      expect(result).toStrictEqual({ playing: false });
     });
 
     it("should not allow startTime with startLocator", () => {
@@ -268,12 +260,11 @@ describe("playback - song positions", () => {
       expectLiveSetProperty(liveSet, "loop_start", 16);
       expectLiveSetProperty(liveSet, "loop_length", 16);
       expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+      // The call set the loop it plays into, so the result only answers the
+      // one thing it didn't say: where the position landed.
       expect(result).toStrictEqual({
         playing: true,
         startTime: "5|1",
-        loop: true,
-        loopStart: "5|1",
-        loopEnd: "9|1",
       });
     });
   });

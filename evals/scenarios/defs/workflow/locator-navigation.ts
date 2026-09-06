@@ -14,10 +14,12 @@
  * The trap is that computing the bar WORKS. A model that reads the locator list,
  * works out that Chorus is bar 17, and passes `startTime: "17|1"` lands the
  * playhead in exactly the right place — so an outcome-only check passes a model
- * that never found the feature. That is why each turn grades the ARGUMENT as
- * well as the result. The e2e suite already proves the values resolve names and
- * ids against a real Set (`control/ppal-playback`, `operations/ppal-duplicate`);
- * what is unmeasured is whether a model reaches for them.
+ * that never found the feature. That is why each turn grades the ARGUMENT, and
+ * the result where there is one: a call that sets the loop reports none of it
+ * back, so the loop turn is graded on which locators it named. The e2e suite
+ * already proves the values resolve names and ids against a real Set
+ * (`control/ppal-playback`, `operations/ppal-duplicate`); what is unmeasured is
+ * whether a model reaches for them.
  *
  * `kind: "capability"` — this is an improvement target, not a regression guard.
  *
@@ -81,14 +83,17 @@ const LOCATOR_VALUE = /^\s*loc(?:ator)?:/i;
  * @param turn - Turn index to grade
  * @param positionParams - Song-position params the call should spell with loc:
  * @param expected - Human-readable description of the expected placement
- * @param check - Reads the playback result; returns true when the placement landed
+ * @param check - Reads the playback call; returns true when the placement landed
  * @returns A custom assertion
  */
 function assertNavigatedByLocator(
   turn: number,
   positionParams: string[],
   expected: string,
-  check: (result: Record<string, unknown>) => boolean,
+  check: (call: {
+    args: Record<string, unknown>;
+    result: Record<string, unknown>;
+  }) => boolean,
 ): EvalAssertion {
   return {
     type: "custom",
@@ -116,8 +121,14 @@ function assertNavigatedByLocator(
         );
       }
 
-      if (!check(call.result)) {
-        issues.push(`expected ${expected}, got ${JSON.stringify(call.result)}`);
+      if (!check(call)) {
+        const sent = positionParams
+          .map((p) => `${p}=${argText(call.args[p]) || "(unset)"}`)
+          .join(", ");
+
+        issues.push(
+          `expected ${expected}, sent ${sent}, got ${JSON.stringify(call.result)}`,
+        );
       }
 
       if (issues.length > 0) throw new Error(issues.join(" — "));
@@ -195,14 +206,16 @@ export const locatorNavigation: EvalScenario = {
       1,
       ["startTime"],
       `the chorus (${CHORUS})`,
-      (result) => result.startTime === CHORUS,
+      ({ result }) => result.startTime === CHORUS,
     ),
 
     assertNavigatedByLocator(
       2,
       ["loopStart", "loopEnd"],
-      `a ${BRIDGE}-${OUTRO} loop`,
-      (result) => result.loopStart === BRIDGE && result.loopEnd === OUTRO,
+      `a Bridge (${BRIDGE}) to Outro (${OUTRO}) loop`,
+      ({ args }) =>
+        /bridge|locator-3/i.test(argText(args.loopStart)) &&
+        /outro|locator-4/i.test(argText(args.loopEnd)),
     ),
 
     assertDuplicatedToLocator(3),

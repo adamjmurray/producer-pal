@@ -11,10 +11,19 @@ import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
-interface LoopState {
-  startBeats: number;
-  start: string;
-  end: string;
+/** What a timeline write actually landed. */
+export interface TimelineWrites {
+  /** The start position in beats, or undefined when the call named none. */
+  startTimeBeats?: number;
+  /** Whether the loop was written — a refused loop plan writes nothing. */
+  wroteLoop: boolean;
+}
+
+/** The loop fields a playback result can carry, by the names the schema publishes. */
+interface LoopReport {
+  loop?: boolean;
+  loopStart?: string;
+  loopEnd?: string;
 }
 
 /** The params that address the arrangement timeline: the start position and the loop. */
@@ -81,31 +90,96 @@ export function resolveArrangementParams<
 }
 
 /**
- * Get the current loop state from liveSet
+ * The loop fields a playback result carries.
+ *
+ * A result never says back what the call told it, and it can't check: a written
+ * `live_set loop` answers a read in the same request with the value from before
+ * the write. So a call that wrote the loop reports only what the caller didn't
+ * say — the end that slid because they named the other, and the bounds a
+ * play-arrangement will loop over. A call that wrote none of it reports the
+ * loop that governs the playback it just started, read off the Live Set.
+ * @param liveSet - The live_set LiveAPI object
+ * @param action - The playback action that just ran
+ * @param timeline - The timeline params, with locators already folded in
+ * @param wroteLoop - Whether the loop was written; a refused plan writes nothing
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns The loop fields for the result, empty when it has nothing to say
+ */
+export function reportArrangementLoop(
+  liveSet: LiveAPI,
+  action: string,
+  timeline: ArrangementParams,
+  wroteLoop: boolean,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): LoopReport {
+  const { loop, loopStart, loopEnd } = timeline;
+  const obeysLoop = action === PLAY_ARRANGEMENT;
+
+  // A refused loop lands nothing, so its params say nothing about the Set — the
+  // call is one that left the loop alone, whatever it asked for.
+  if (!wroteLoop) {
+    if (!obeysLoop) return {};
+
+    const loopEnabled = (liveSet.getProperty("loop") as number) > 0;
+
+    // Bounds a loop that's off won't use aren't worth the tokens.
+    return loopEnabled
+      ? {
+          loop: true,
+          ...loopBounds(liveSet, timeSigNumerator, timeSigDenominator),
+        }
+      : { loop: false };
+  }
+
+  // Naming one end slides the loop, so the end the caller didn't name moved.
+  // Otherwise the bounds are news only where the playback obeys them.
+  const namedStart = loopStart != null;
+  const namedEnd = loopEnd != null;
+  const worthReporting =
+    namedStart !== namedEnd || (obeysLoop && loop !== false);
+  const reportsStart = !namedStart && worthReporting;
+  const reportsEnd = !namedEnd && worthReporting;
+
+  if (!reportsStart && !reportsEnd) return {};
+
+  const bounds = loopBounds(liveSet, timeSigNumerator, timeSigDenominator);
+
+  return {
+    ...(reportsStart && { loopStart: bounds.loopStart }),
+    ...(reportsEnd && { loopEnd: bounds.loopEnd }),
+  };
+}
+
+/**
+ * The loop's bounds in bar|beat. `loop_start` and `loop_length` do read back
+ * inside the request that wrote them, unlike `loop` itself.
  * @param liveSet - The live_set LiveAPI object
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Loop state
+ * @returns The loop's two ends
  */
-export function getCurrentLoopState(
+function loopBounds(
   liveSet: LiveAPI,
   timeSigNumerator: number,
   timeSigDenominator: number,
-): LoopState {
+): { loopStart: string; loopEnd: string } {
   const startBeats = liveSet.getProperty("loop_start") as number;
   const lengthBeats = liveSet.getProperty("loop_length") as number;
-  const start = abletonBeatsToBarBeat(
-    startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const end = abletonBeatsToBarBeat(
-    startBeats + lengthBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
 
-  return { startBeats, start, end };
+  return {
+    loopStart: abletonBeatsToBarBeat(
+      startBeats,
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+    loopEnd: abletonBeatsToBarBeat(
+      startBeats + lengthBeats,
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+  };
 }
 
 /**
@@ -114,24 +188,28 @@ export function getCurrentLoopState(
  * @param timeline - The timeline params, with locators already folded in
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns The start position in beats, or undefined when none was given
+ * @returns What the write landed, which a refused loop plan changes
  */
 export function applyArrangementTimeline(
   liveSet: LiveAPI,
   timeline: ArrangementParams,
   timeSigNumerator: number,
   timeSigDenominator: number,
-): number | undefined {
+): TimelineWrites {
   const startTimeBeats = resolveStartTime(
     liveSet,
     timeline,
     timeSigNumerator,
     timeSigDenominator,
   );
+  const wroteLoop = applyArrangementLoop(
+    liveSet,
+    timeline,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
-  applyArrangementLoop(liveSet, timeline, timeSigNumerator, timeSigDenominator);
-
-  return startTimeBeats;
+  return { startTimeBeats, wroteLoop };
 }
 
 /**

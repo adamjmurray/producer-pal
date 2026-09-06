@@ -18,6 +18,7 @@ import {
   getToolErrorMessage,
   getToolWarnings,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -135,7 +136,7 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
-  it("sets the arrangement loop", async () => {
+  it("sets the arrangement loop, and a later call reads it back", async () => {
     const looped = await playback({
       action: "update-arrangement",
       loop: true,
@@ -143,15 +144,68 @@ describe("ppal-playback", () => {
       loopEnd: "7|1",
     });
 
-    expect(looped.loop).toBe(true);
-    expect(looped.loopStart).toBe("3|1");
-    expect(looped.loopEnd).toBe("7|1");
-    // Nothing moved the start position, so nothing reports it.
+    // The call said all three, so the result says none of them back. Nothing
+    // moved the start position either, so nothing reports it.
+    expect(looped.loop).toBeUndefined();
+    expect(looped.loopStart).toBeUndefined();
+    expect(looped.loopEnd).toBeUndefined();
     expect(looped.startTime).toBeUndefined();
+
+    // Only a second call can see the write land: `live_set loop` answers a read
+    // in the request that wrote it with the value from before the write.
+    const playing = await playback({ action: "play-arrangement" });
+
+    expect(playing.loop).toBe(true);
+    expect(playing.loopStart).toBe("3|1");
+    expect(playing.loopEnd).toBe("7|1");
 
     const stopped = await playback({ action: "stop" });
 
     expect(stopped.playing).toBe(false);
+
+    // The next test writes the loop and reads it back, so this cleanup has to
+    // land: a write issued right after a stop gets clobbered.
+    await sleep(100);
+    await playback({ action: "update-arrangement", loop: false });
+  });
+
+  // The regression this guards: the loop came back read from the Live Set in
+  // the call that wrote it, so every answer was the state of the call before.
+  // Each write says nothing back, and the call after it answers with what that
+  // write left. The first write establishes the loop this test reads, so it
+  // never inherits one — a failure partway skips the cleanup at the bottom.
+  it("reports the loop the last call left, not the one before it", async () => {
+    const turnedOn = await playback({
+      action: "update-arrangement",
+      loop: true,
+    });
+
+    expect(turnedOn.loop).toBeUndefined();
+
+    const on = await playback({ action: "play-arrangement" });
+
+    expect(on.loop).toBe(true);
+
+    // Let the transport calls land: a write issued right after a stop gets
+    // clobbered, the same way the stop in the test below moves a start
+    // position that was written before it.
+    await sleep(100);
+    await playback({ action: "stop" });
+    await sleep(100);
+
+    const turnedOff = await playback({
+      action: "update-arrangement",
+      loop: false,
+    });
+
+    expect(turnedOff.loop).toBeUndefined();
+
+    const off = await playback({ action: "play-arrangement" });
+
+    expect(off.loop).toBe(false);
+
+    await sleep(100);
+    await playback({ action: "stop" });
   });
 
   it("parks a start position on stop and plays from it next time", async () => {
@@ -179,10 +233,18 @@ describe("ppal-playback", () => {
       loopEnd: "7|1",
     });
 
-    expect(looped.loop).toBe(true);
-    expect(looped.loopStart).toBe("3|1");
-    expect(looped.loopEnd).toBe("7|1");
+    // Both ends came from the call, and so did the loop they turned on.
+    expect(looped.loop).toBeUndefined();
+    expect(looped.loopStart).toBeUndefined();
+    expect(looped.loopEnd).toBeUndefined();
 
+    const playing = await playback({ action: "play-arrangement" });
+
+    expect(playing.loop).toBe(true);
+    expect(playing.loopStart).toBe("3|1");
+    expect(playing.loopEnd).toBe("7|1");
+
+    await playback({ action: "stop" });
     await playback({ action: "update-arrangement", loop: false });
   });
 
@@ -199,8 +261,10 @@ describe("ppal-playback", () => {
       loopEnd: "9|1",
     });
 
+    // The end the caller named isn't repeated; the one that moved with it is
+    // the only thing the result reveals.
     expect(slid.loopStart).toBe("5|1");
-    expect(slid.loopEnd).toBe("9|1");
+    expect(slid.loopEnd).toBeUndefined();
 
     await playback({ action: "update-arrangement", loop: false });
   });
@@ -228,13 +292,46 @@ describe("ppal-playback", () => {
       "WARNING: loopEnd 5|1 is not after loopStart 9|1 — leaving the loop as it was",
     );
 
-    const after = await playback({
-      action: "update-arrangement",
-      loopStart: "3|1",
-    });
+    // The refusal left the loop off, which only a later call can show.
+    const after = await playback({ action: "play-arrangement" });
 
     expect(after.loop).toBe(false);
 
+    await playback({ action: "stop" });
+  });
+
+  it("reports the loop it refused to change, which the playback obeys", async () => {
+    await playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
+    // The refusal warns, so this one can't go through the plain helper.
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: {
+        action: "play-arrangement",
+        loopStart: "9|1",
+        loopEnd: "5|1",
+      },
+    });
+
+    expect(getToolWarnings(refused)).toContain(
+      "WARNING: loopEnd 5|1 is not after loopStart 9|1 — leaving the loop as it was",
+    );
+
+    const { data } = parseToolResultWithWarnings<PlaybackResult>(refused);
+
+    // Nothing was written, so the loop this playback obeys is still the old
+    // one — and saying so is the only way the caller learns where it is.
+    expect(data.loop).toBe(true);
+    expect(data.loopStart).toBe("3|1");
+    expect(data.loopEnd).toBe("7|1");
+
+    await sleep(100);
+    await playback({ action: "stop" });
     await playback({ action: "update-arrangement", loop: false });
   });
 
@@ -373,9 +470,18 @@ describe("ppal-playback", () => {
       loopEnd: "loc:Chorus",
     });
 
-    expect(looped.loopStart).toBe("9|1");
-    expect(looped.loopEnd).toBe("17|1");
+    // The call named both ends, so the result names neither.
+    expect(looped.loopStart).toBeUndefined();
     expect(looped.startTime).toBeUndefined();
+
+    // Where the locators resolved to, read back by a later call.
+    const playing = await playback({ action: "play-arrangement" });
+
+    expect(playing.loopStart).toBe("9|1");
+    expect(playing.loopEnd).toBe("17|1");
+
+    await playback({ action: "stop" });
+    await playback({ action: "update-arrangement", loop: false });
   });
 
   it("sets the arrangement start position from a locator", async () => {

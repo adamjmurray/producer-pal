@@ -371,6 +371,26 @@ Two more traps in the same write, which is why it moves the end first when the
 new start lands at or past either current end: Live rejects a `loop_start` past
 `loop_end`, and silently drops a `start_marker` past `end_marker`.
 
+### The Song Loop Doesn't Read Back In The Same Request
+
+Probed against Live 12 through the 2.3.0-rc2 build, on `e2e-test-set`, in both
+directions. This is the Set's own loop, not a clip's.
+
+`live_set loop` takes a `set` and lands it, but a `get` later in the **same**
+request still answers with the value from before the write. A tool that writes
+the song loop and reads it back reports the state it just replaced, one call
+behind forever.
+
+`live_set loop_start`, `live_set loop_length` and `live_set start_time` don't do
+this — they read back exactly, right after a write. `live_set is_playing` and
+`live_set current_song_time` do, for a different reason: Live updates the
+transport asynchronously, so a read in the request that started or stopped it
+answers with the old state.
+
+So a call that writes the song loop takes the new value from its own arg. A read
+is true only when nothing in the same request wrote it — which includes a write
+the tool refused to make.
+
 ## Coverage
 
 Function coverage is enforced at **100%** via `vitest.config.ts` thresholds.

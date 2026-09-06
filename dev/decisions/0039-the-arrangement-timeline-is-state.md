@@ -66,10 +66,21 @@ observability problem shows up in a different shape.
 - **The loop is reported as `loop`, `loopStart` and `loopEnd`** — the names the
   schema publishes. It used to come back as `arrangementLoop: {start, end}`,
   three params renamed into words the caller could not have written.
-- **It's reported when the call set it, and on `play-arrangement`**, which obeys
-  it. A call that only moved the start position says nothing about the loop. A
-  loop that's off and wasn't moved reports `loop: false` alone — bounds that do
-  nothing aren't worth the tokens.
+- **It's reported only where the caller didn't say it.** `play-arrangement`
+  obeys the loop, so a call that plays without setting one reports the whole
+  loop — bounds included when it's on, since bounds that do nothing aren't worth
+  the tokens. A call that sets the loop never repeats the on/off state, and
+  reports only the bounds the caller didn't name: the end that slid because they
+  named the other, and both ends when a bare `loop: true` left a
+  `play-arrangement` looping over bounds the caller never mentioned. A call that
+  only moved the start position says nothing about the loop at all.
+
+  Echoing the loop back was tried and dropped. `live_set loop` doesn't read back
+  inside the request that wrote it, so a result naming a loop the call had just
+  set was naming the state it replaced, one call behind. A refused write is not
+  a write: nothing landed, the read is true again, and a `play-arrangement`
+  reports the loop it's obeying.
+
 - **Naming either end turns the loop on.** Bounds with the loop off do nothing
   audible, so asking for a loop from bar 3 to bar 7 is asking for a loop. An
   explicit `loop: false` still wins, for setting bounds to use later.
@@ -83,6 +94,10 @@ observability problem shows up in a different shape.
 
 ## Consequences
 
+- The only call that reports the arrangement loop is `play-arrangement`, which
+  starts the transport. Nothing else reports it, `ppal-read-live-set` included,
+  so a caller who only wants to look has to play. Same shape as the playhead: if
+  a read-only answer is wanted, it belongs in a pure read.
 - A caller can't ask Producer Pal where the playhead is. Nothing else reports it
   either. If that capability is wanted, it belongs in a pure read like
   `ppal-read-live-set`, where no transport call in the same request makes the

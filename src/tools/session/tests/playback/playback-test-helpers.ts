@@ -177,6 +177,16 @@ export function expectLoopNotWritten(handle: RegisteredMockObject): void {
 }
 
 /**
+ * Assert the call never read the loop back. `live_set loop` answers a read in
+ * the same request with the value from before a set, so a call that wrote the
+ * loop and then read it reports the state it just replaced.
+ * @param handle - RegisteredMockObject for the live_set object
+ */
+export function expectLoopNotReadBack(handle: RegisteredMockObject): void {
+  expect(handle.get).not.toHaveBeenCalledWith("loop");
+}
+
+/**
  * Assert the loop a playback result reports: on or off, and the bounds when it
  * names them.
  * @param result - The playback result

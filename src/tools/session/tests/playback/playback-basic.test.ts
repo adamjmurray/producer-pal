@@ -16,6 +16,7 @@ import {
   expectAllClipSlotsFired,
   expectLiveSetProperty,
   expectReportedLoop,
+  expectLoopNotReadBack,
   expectLoopNotWritten,
   expectLoopOrderWarning,
   expectQuantizationFixApplied,
@@ -65,8 +66,6 @@ describe("transport", () => {
   });
 
   it("should handle update-arrangement action with loop settings", () => {
-    // loop_start/loop_length mirror the values this call sets (the mock's set()
-    // doesn't feed back into get), so the reported loop reflects actual state.
     liveSet = setupPlaybackLiveSet({
       is_playing: 1,
       loop: 1,
@@ -87,12 +86,9 @@ describe("transport", () => {
     // Only loop settings should be called - no back_to_arranger calls for update-arrangement
     expect(liveSet.set).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
 
-    expect(result).toStrictEqual({
-      playing: true,
-      loop: true,
-      loopStart: "3|1",
-      loopEnd: "7|1",
-    });
+    // The call said all three, so the result says none of them back.
+    expect(result).toStrictEqual({ playing: true });
+    expectLoopNotReadBack(liveSet);
   });
 
   it("skips a non-positive loop length (loopEnd at/before loopStart) and warns", () => {
@@ -128,11 +124,10 @@ describe("transport", () => {
     expectLoopOrderWarning();
   });
 
-  it("reports the actual loop bounds, not the rejected loopEnd, when loop length is non-positive", () => {
-    // The Live Set's real loop is bars 1–2. A loopEnd at/before loopStart is
-    // rejected (loop_length not written), so the response must echo the
-    // unchanged actual loop — not the rejected request. Before the fix it
-    // returned the rejected loopEnd, disagreeing with Live.
+  it("says nothing about a loop it refused to move", () => {
+    // A loopEnd at/before loopStart is refused whole, and the call named both
+    // ends, so there is nothing left to report: a result never repeats what the
+    // call said, and never claims a refused write landed.
     liveSet = setupPlaybackLiveSet({
       loop: 1,
       loop_start: 0,
@@ -147,11 +142,7 @@ describe("transport", () => {
     });
 
     expectLoopNotWritten(liveSet);
-    expectReportedLoop(result, {
-      loop: true,
-      start: "1|1",
-      end: "2|1",
-    });
+    expect(result).toStrictEqual({ playing: false });
   });
 
   it("turns the loop on when only its bounds are named", () => {
@@ -166,11 +157,10 @@ describe("transport", () => {
     });
 
     expectLiveSetProperty(liveSet, "loop", true);
-    expectReportedLoop(result, {
-      loop: true,
-      start: "3|1",
-      end: "7|1",
-    });
+    // Both ends came from the call, and so did the loop it turned on, so the
+    // result carries neither.
+    expect(result).toStrictEqual({ playing: false });
+    expectLoopNotReadBack(liveSet);
   });
 
   it("moves the loop points while leaving the loop off", () => {
@@ -536,12 +526,15 @@ describe("transport", () => {
   it("refuses a loopEnd that would slide the loop off the front", () => {
     liveSet = setupPlaybackLiveSet({ loop_start: 8, loop_length: 16 });
 
-    playback({ action: "update-arrangement", loopEnd: "3|1" });
+    const result = playback({ action: "update-arrangement", loopEnd: "3|1" });
 
     expectLoopNotWritten(liveSet);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("would start the loop before 1|1"),
     );
+    // Nothing slid, so there is no moved end to report — reporting one would
+    // read as half the request landing.
+    expect(result).toStrictEqual({ playing: false });
   });
 
   it("should handle 6/8 time signature conversions", () => {
@@ -564,14 +557,8 @@ describe("transport", () => {
     expectLiveSetProperty(liveSet, "loop_start", 0);
     expectLiveSetProperty(liveSet, "loop_length", 6); // 2 bars = 6 Ableton beats
 
-    expect(result.startTime).toBe("2|1");
-    // The mock's loop is off, but this call moved the bounds, so it reports
-    // where they landed.
-    expectReportedLoop(result, {
-      loop: false,
-      start: "1|1",
-      end: "2|1",
-    });
+    // Both ends came from the call, so the result repeats neither.
+    expect(result).toStrictEqual({ playing: true, startTime: "2|1" });
   });
 
   it("plays from the start position already set when given no startTime", () => {

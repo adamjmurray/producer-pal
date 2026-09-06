@@ -8,14 +8,15 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpe
 import {
   applyArrangementTimeline,
   foldLocatorParams,
-  getCurrentLoopState,
   handlePlayArrangement,
   handlePlayScene,
   PLAY_ARRANGEMENT,
   readStartTime,
+  reportArrangementLoop,
   resolveArrangementParams,
   type FiredScene,
   type PlaybackState,
+  type TimelineWrites,
 } from "./helpers/playback-helpers.ts";
 import {
   resolveClipSlotPositions,
@@ -57,17 +58,6 @@ interface PlaybackResult {
   loopStart?: string;
   loopEnd?: string;
   scene?: FiredScene;
-}
-
-interface BuildPlaybackResultParams {
-  isPlaying: boolean;
-  startTime?: string;
-  scene?: FiredScene;
-  reportsLoop: boolean;
-  namesLoopBounds: boolean;
-  currentLoopStart: string;
-  currentLoopEnd: string;
-  liveSet: LiveAPI;
 }
 
 /**
@@ -156,7 +146,7 @@ export function playback(
   // The timeline is written before the action, except on stop: Live's own
   // second stop sends the start position to the top, so a position written
   // first would be wiped by the stop that was supposed to park it.
-  const writeTimeline = (): number | undefined =>
+  const writeTimeline = (): TimelineWrites =>
     applyArrangementTimeline(
       liveSet,
       timeline,
@@ -164,7 +154,9 @@ export function playback(
       songTimeSigDenominator,
     );
   const timelineFollowsAction = action === "stop";
-  let startTimeBeats = timelineFollowsAction ? undefined : writeTimeline();
+  let writes: TimelineWrites = timelineFollowsAction
+    ? { wroteLoop: false }
+    : writeTimeline();
 
   // Read before the action, because an action that starts or stops the
   // transport can't read it after: Live updates is_playing asynchronously, so a
@@ -184,43 +176,34 @@ export function playback(
     { isPlaying: isPlayingBefore },
   );
 
-  if (timelineFollowsAction) startTimeBeats = writeTimeline();
+  if (timelineFollowsAction) writes = writeTimeline();
 
   // Where the next play begins. Not the playhead: writing this leaves the
   // playhead where it was, and starting playback jumps it here.
   const startTimePosition = readStartTime(
     liveSet,
     action,
-    startTimeBeats != null,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  // Get current loop state and convert to bar|beat
-  const currentLoop = getCurrentLoopState(
-    liveSet,
+    writes.startTimeBeats != null,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
 
   handleFocus(action, focus);
 
-  return buildPlaybackResult({
-    isPlaying: playbackState.isPlaying,
-    startTime: startTimePosition,
-    scene: playbackState.scene,
-    // Reported when the call set it, and when it governs what the call did:
-    // play-arrangement obeys the loop, and the caller may never have read it.
-    reportsLoop:
-      action === PLAY_ARRANGEMENT ||
-      timeline.loop != null ||
-      timeline.loopStart != null ||
-      timeline.loopEnd != null,
-    namesLoopBounds: timeline.loopStart != null || timeline.loopEnd != null,
-    currentLoopStart: currentLoop.start,
-    currentLoopEnd: currentLoop.end,
-    liveSet,
-  });
+  return {
+    playing: playbackState.isPlaying,
+    ...(startTimePosition != null && { startTime: startTimePosition }),
+    // Which scene fired, since a scene id or a clip in it can name it
+    ...(playbackState.scene && { scene: playbackState.scene }),
+    ...reportArrangementLoop(
+      liveSet,
+      action,
+      timeline,
+      writes.wroteLoop,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
+  };
 }
 
 /**
@@ -236,54 +219,6 @@ function handleFocus(action: string, focus?: boolean): void {
   } else if (action === "play-scene" || action === "play-session-clips") {
     select({ view: "session" });
   }
-}
-
-/**
- * Build the playback result object
- * @param params - Result parameters
- * @param params.isPlaying - Whether playback is active
- * @param params.startTime - Arrangement start position, for arrangement actions
- * @param params.scene - The scene play-scene fired, when the action fired one
- * @param params.reportsLoop - Whether the loop belongs in this result
- * @param params.namesLoopBounds - Whether the call named loopStart or loopEnd
- * @param params.currentLoopStart - Current loop start (post-set actual value)
- * @param params.currentLoopEnd - Current loop end (post-set actual value)
- * @param params.liveSet - The live_set LiveAPI object
- * @returns Playback result
- */
-function buildPlaybackResult({
-  isPlaying,
-  startTime,
-  scene,
-  reportsLoop,
-  namesLoopBounds,
-  currentLoopStart,
-  currentLoopEnd,
-  liveSet,
-}: BuildPlaybackResultParams): PlaybackResult {
-  const result: PlaybackResult = {
-    playing: isPlaying,
-    ...(startTime != null && { startTime }),
-    // Which scene fired, since a scene id or a clip in it can name it
-    ...(scene && { scene }),
-  };
-
-  if (!reportsLoop) return result;
-
-  const loopEnabled = (liveSet.getProperty("loop") as number) > 0;
-
-  result.loop = loopEnabled;
-
-  // Bounds are what a loop that's on will do, and what a call that moved them
-  // just did. A loop that's off and wasn't moved has none worth the tokens.
-  // They're read back after the writes, so a refused write can't be echoed as
-  // if it landed.
-  if (loopEnabled || namesLoopBounds) {
-    result.loopStart = currentLoopStart;
-    result.loopEnd = currentLoopEnd;
-  }
-
-  return result;
 }
 
 /**
