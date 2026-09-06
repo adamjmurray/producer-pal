@@ -7,11 +7,17 @@
  * Clearing a clip a later clip in the call will land on top of, without
  * betting on that landing.
  *
- * The move optimization can only predict the overwrite; four things refuse a
- * placement, and one of them — Live answering the duplicate with id 0 — can't
- * be predicted at all. So a clip it marks is left alone until a survivor of its
- * group is confirmed to have landed, and it is only then cleared. When nothing
- * lands, the clip stays where it was and its entry says so.
+ * The move optimization can only predict the overwrite, and a placement can
+ * refuse after the prediction is made. So a clip it marks is left alone until a
+ * survivor of its group is confirmed to have landed, and it is only then
+ * cleared. When nothing lands, the clip stays where it was and its entry says
+ * so.
+ *
+ * Waiting for the landing, rather than predicting every refusal, is what makes
+ * this safe without knowing the full list. The duplicate answering with id 0 is
+ * guarded for on that basis: nothing is known to provoke it — a frozen track,
+ * the usual suspect, takes the duplicate fine — so don't drop the guard on the
+ * grounds that you can't reproduce it.
  */
 
 import {

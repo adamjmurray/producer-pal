@@ -217,6 +217,36 @@ and a single-chain one are indistinguishable by name alone. Count the chains to
 tell them apart. Writes to it are silently dropped, and Live's `set` still
 returns 1.
 
+### A Frozen Track Still Takes Some Writes
+
+Verified against Live 12.4.3, on a track with `is_frozen` reading 1. Freezing
+blocks less through the API than it does in Live's UI:
+
+| Call                            | On a frozen track            |
+| ------------------------------- | ---------------------------- |
+| `duplicate_clip_to_arrangement` | works — returns the new clip |
+| `delete_clip`                   | works — the clip is gone     |
+| `create_midi_clip`              | refused — returns bare `1`   |
+
+So a frozen track stops a clip being _created_ and lets one be _duplicated_ or
+_deleted_. Don't assume a move onto a frozen track fails: `clipCopyBlocker`
+refuses a move whose destination is frozen, but a same-track move runs through
+duplicate and delete, and both go through.
+
+The refusal shows up as the bare `1` above — the same "no object, no answer"
+sentinel a call on a nonexistent object returns, so the two are
+indistinguishable from the return alone. Read back to tell them apart.
+
+`["id", 0]` is **not** a failure signal: it is Live's void return, and a
+successful `delete_clip` answers with it on an unfrozen track too. It only
+carries meaning from a call that otherwise returns an object, where it says no
+object came back.
+
+`is_frozen` is read-only and Track has no freeze function, so freezing a track
+in a probe means driving Live's **Edit → Freeze Track** menu. That acts on the
+UI's selected track, and writing `live_set view selected_track` does not move it
+— the write reports as applied and the menu still acts elsewhere.
+
 ### Live API Paths — Use `livePath` Builders
 
 **Never hardcode Live API path strings.** Use `livePath` from
