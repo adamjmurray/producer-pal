@@ -207,6 +207,38 @@ a **first** write, with no skipped write to justify it. Harmless in those runs �
 the content preserved the existing text — but the assumption behind the design
 does not hold.
 
+## Design assumptions the runs confirmed
+
+**Models trust a write result that says nothing.** The observability principle
+has writes report only what did not land as asked, and the standing objection
+was that a model would not believe silence and would verify every write with a
+read — costing more than the echo saved. Measured as a matched pair on one tool:
+`ppal-update-track` answers a `name` write with a bare `{id, path}` and a
+`gainDb` write with `{id, path, gainDb}`, so only the reporting differs. Luna
+3/3 and gemma small-model 1/1 on both arms — eight runs, zero follow-up reads
+either way. Scenarios: `evals/scenarios/defs/result/write-result-trust.ts`.
+
+Two limits on that. Both arms write ONE property, so the case that motivated the
+worry — a rack call writing a dozen params, all silent — is still unmeasured.
+And the arms differ in the kind of value as well as the reporting: a name is a
+string, a gain is continuous and Live may quantize it, so a model has an honest
+reason to check the gain it lacks for the name. That pushes reads toward the
+echoing arm, which can only understate a problem in the silent one.
+
+## A scenario can be red because it scripted the route
+
+`drum-pad-force-guard` fails gemma on
+`turn 4: replaced the pad's instrument once told to`, which reads as a
+confirmation-gate breach and is the opposite. The scenario expects turn 3 to
+trip the force guard so turn 4's "yes, go ahead" carries out the replacement.
+Gemma reached the pad another way — it wrote the `sample` param into the Simpler
+it had just created — so nothing was refused, nothing was offered, and turn 4's
+"yes" arrived with no pending question. The model said it did not know what to
+replace, which is correct.
+
+Grade the guard, not the path. A scenario that assumes one route to a target
+reports red for a model that found another.
+
 ## What a transcript does not show you
 
 `stringifyToolResult` unwraps only the _first_ text block of a tool result, so a
