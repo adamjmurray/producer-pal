@@ -359,6 +359,13 @@ scripts/eval -a -m gemini-3-flash-preview -m claude-sonnet-4-5
 To compare environments (e.g. default vs `--small-model`), do a run per
 environment and diff them with `scripts/eval-report --compare <runId> <runId>`.
 
+Each cell tallies passing trials, so a `-r 3` run reads `3/3`, `~ 2/3`, or `0/3`
+rather than the verdict of one arbitrary trial. The tag on the right compares
+pass rates between the last two runs: `REGRESSION` when every passing trial is
+lost, `FIXED` when a scenario goes from none passing to some, and
+`WORSE`/`BETTER` for a partial move — usually flakiness rather than a real
+change.
+
 ## Chat CLI
 
 Interactive chat for manual testing and debugging.

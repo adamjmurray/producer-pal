@@ -16,7 +16,6 @@ import {
   type JsonEvalResult,
   RESULTS_DIR,
 } from "./helpers/json-results/types.ts";
-import { checkTally } from "./helpers/reporting/result-format.ts";
 import { printResult } from "./helpers/reporting/result-printer.ts";
 
 const program = new Command();
@@ -167,28 +166,33 @@ async function showLatest(): Promise<void> {
 }
 
 /**
- * Compare two or more runs side by side
+ * Compare two or more runs side by side.
+ *
+ * Trial-aware: a run made with `-r N` writes one file per trial, so each cell
+ * tallies how many of a scenario's trials passed. Collapsing them to a single
+ * result would let the last file read win and hide flakiness, which is the
+ * main thing a comparison is looking for.
  *
  * @param runIds - Run identifiers to compare
  */
 async function compareRuns(runIds: string[]): Promise<void> {
-  // Load all results grouped by run
-  const runResults = new Map<string, Map<string, JsonEvalResult>>();
+  const runResults = new Map<string, Map<string, JsonEvalResult[]>>();
 
   for (const runId of runIds) {
     const files = await findResultsByRunId(runId);
-    const byScenario = new Map<string, JsonEvalResult>();
+    const byScenario = new Map<string, JsonEvalResult[]>();
 
     for (const file of files) {
       const result = await loadResult(file);
+      const trials = byScenario.get(result.scenarioId) ?? [];
 
-      byScenario.set(result.scenarioId, result);
+      trials.push(result);
+      byScenario.set(result.scenarioId, trials);
     }
 
     runResults.set(runId, byScenario);
   }
 
-  // Collect all scenario IDs
   const scenarioIds = new Set<string>();
 
   for (const byScenario of runResults.values()) {
@@ -206,9 +210,9 @@ async function compareRuns(runIds: string[]): Promise<void> {
 
   for (const scenarioId of [...scenarioIds].toSorted()) {
     const cells = runIds.map((runId) =>
-      formatRunCell(runResults, runId, scenarioId),
+      formatRunCell(runResults.get(runId)?.get(scenarioId)),
     );
-    const tag = regressionTag(runResults, runIds, scenarioId);
+    const tag = changeTag(runResults, runIds, scenarioId);
 
     if (tag) cells.push(tag);
 
@@ -217,57 +221,88 @@ async function compareRuns(runIds: string[]): Promise<void> {
 }
 
 /**
- * Format a single cell in the comparison table
+ * Count how many of a scenario's trials passed.
  *
- * @param runResults - All run results
- * @param runId - Run to look up
- * @param scenarioId - Scenario to look up
- * @returns Styled cell string
+ * @param trials - Every stored trial for one scenario in one run
+ * @returns Passed and total counts, or null when the cell has no gradable runs
  */
-function formatRunCell(
-  runResults: Map<string, Map<string, JsonEvalResult>>,
-  runId: string,
-  scenarioId: string,
-): string {
-  const result = runResults.get(runId)?.get(scenarioId);
+function passRate(
+  trials: JsonEvalResult[] | undefined,
+): { passed: number; total: number } | null {
+  if (!trials || trials.length === 0) return null;
 
-  if (!result) return styleText("gray", "—");
-  if (result.result === "skipped") return styleText("gray", "skip");
+  const graded = trials.filter((t) => t.result !== "skipped");
 
-  const icon = result.result === "pass" ? "✓" : "✗";
-  const color = result.result === "pass" ? "green" : "red";
-  const { passed, total } = checkTally(result.checks.results);
+  if (graded.length === 0) return null;
 
-  return styleText(color, `${icon} ${passed}/${total}`);
+  return {
+    passed: graded.filter((t) => t.result === "pass").length,
+    total: graded.length,
+  };
 }
 
 /**
- * Detect regression or fix between the last two runs
+ * Format a single cell in the comparison table.
+ *
+ * A mixed cell gets its own marker: a scenario that passes 2 of 3 trials is a
+ * different problem from one that fails outright, and the icon is what makes
+ * that visible at a glance.
+ *
+ * @param trials - Every stored trial for one scenario in one run
+ * @returns Styled cell string
+ */
+function formatRunCell(trials: JsonEvalResult[] | undefined): string {
+  if (!trials || trials.length === 0) return styleText("gray", "—");
+
+  const rate = passRate(trials);
+
+  if (!rate) return styleText("gray", "skip");
+
+  const { passed, total } = rate;
+  const label = `${passed}/${total}`;
+
+  if (passed === total) return styleText("green", `✓ ${label}`);
+  if (passed === 0) return styleText("red", `✗ ${label}`);
+
+  return styleText("yellow", `~ ${label}`);
+}
+
+/**
+ * Describe how the last two runs differ for one scenario.
+ *
+ * Compares pass RATES, not a single pass/fail, so a drop from 3/3 to 2/3 shows
+ * up instead of being rounded away. Losing every passing trial is called out
+ * separately from losing some — the first is a regression, the second is
+ * usually flakiness.
  *
  * @param runResults - All run results
  * @param runIds - Ordered run IDs
  * @param scenarioId - Scenario to check
- * @returns Styled tag string, or undefined if no change
+ * @returns Styled tag string, or undefined if nothing changed
  */
-function regressionTag(
-  runResults: Map<string, Map<string, JsonEvalResult>>,
+function changeTag(
+  runResults: Map<string, Map<string, JsonEvalResult[]>>,
   runIds: string[],
   scenarioId: string,
 ): string | undefined {
   if (runIds.length < 2) return undefined;
 
-  const prev = runResults.get(runIds.at(-2) as string)?.get(scenarioId);
-  const curr = runResults.get(runIds.at(-1) as string)?.get(scenarioId);
+  const prev = passRate(
+    runResults.get(runIds.at(-2) as string)?.get(scenarioId),
+  );
+  const curr = passRate(
+    runResults.get(runIds.at(-1) as string)?.get(scenarioId),
+  );
 
   if (!prev || !curr) return undefined;
 
-  if (prev.result === "pass" && curr.result === "fail") {
-    return styleText("red", "← REGRESSION");
-  }
+  const before = prev.passed / prev.total;
+  const after = curr.passed / curr.total;
 
-  if (prev.result === "fail" && curr.result === "pass") {
-    return styleText("green", "← FIXED");
-  }
+  if (before > 0 && after === 0) return styleText("red", "← REGRESSION");
+  if (before === 0 && after > 0) return styleText("green", "← FIXED");
+  if (after < before) return styleText("yellow", "← WORSE");
+  if (after > before) return styleText("green", "← BETTER");
 
   return undefined;
 }
