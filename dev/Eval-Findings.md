@@ -161,6 +161,30 @@ not tidiness.
 **So: teaching a spelling is worth trying; arguing a model out of a preference
 is not.**
 
+### The predictor's first real test, and it failed
+
+`s0`/`s1` looked exactly like a spelling problem, and it was called one. Models
+read a user's "scene 1" as `s1` when the path is `s0`. Three places were
+corrected — two skill fragments, plus `duplicate.def.ts`, which had glossed
+`'t2/s1'` as "clip slot (track 2, scene 1)" in a schema the model re-reads every
+turn. `object-paths.ts` now states the rule outright: _"Users count from 1, so
+subtract one from what they say: their 'scene 1' is `s0`."_
+
+gemma then wrote `t3/s1` in **5 of 6 trials**. The prior wins over text that
+contradicts it in as many words. So the predictor's two shapes aren't quite
+"spelling vs preference" — a spelling the model **already believes it knows**
+behaves like a preference, and 0-vs-1-based indexing is that. Reserve the
+spelling bet for notation the model has no prior about at all.
+
+The instructive part is what the same call gets right. It writes `t3` correctly
+and `s1` incorrectly, every time, because `read-live-set` hands back
+`path: "t3"` beside `name: "Lead"` and hands back nothing for scenes. One live
+example beat the prior; three corrected sentences did not.
+
+**Measuring this needs repeats.** Two single-trial rounds came back 1-of-2 and
+then 1-of-2 the other way, which reads as partial progress and is a coin flip.
+At gemma's flip rate, n=1 on a two-scenario pair says nothing.
+
 ## Scenarios that are red on purpose
 
 **`drum-backbeat-stark`.** The prompt asks for a four-on-the-floor kick; the
