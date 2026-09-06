@@ -385,10 +385,11 @@ describe("createScene", () => {
       });
     });
 
+    // The insert lands after the selection, so index 2 selects scene 1.
     it("should delegate to captureScene with sceneIndex and name", () => {
       const result = createScene({
         capture: true,
-        sceneIndex: 1,
+        sceneIndex: 2,
         name: "Custom Capture",
       });
 

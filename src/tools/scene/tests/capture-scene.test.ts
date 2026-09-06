@@ -55,32 +55,43 @@ describe("captureScene", () => {
     });
   });
 
-  it("should select a scene before capturing if sceneIndex is provided", () => {
+  // The insert lands after the selection, so an index-2 request selects scene 1.
+  it("selects the scene before the requested index", () => {
     const appView = registerMockObject("live_set/view", {
       path: livePath.view.song,
     });
 
-    registerMockObject("live_set/scenes/2", {
-      path: livePath.scene(2),
+    registerMockObject("live_set/scenes/1", {
+      path: livePath.scene(1),
     });
 
-    const { liveSet } = setupCaptureMocks(2);
+    const { liveSet } = setupCaptureMocks(1);
 
     const result = captureScene({ sceneIndex: 2 });
 
     expect(result).toStrictEqual({
-      id: "live_set/scenes/3",
-      path: "s3",
-      sceneIndex: 3,
+      id: "live_set/scenes/2",
+      path: "s2",
+      sceneIndex: 2,
       clips: [],
     });
 
     expect(appView.set).toHaveBeenCalledWith(
       "selected_scene",
-      "id live_set/scenes/2",
+      "id live_set/scenes/1",
     );
 
     expect(liveSet.call).toHaveBeenCalledWith("capture_and_insert_scene");
+  });
+
+  it("refuses sceneIndex 0, which has no scene to insert after", () => {
+    const { liveSet } = setupCaptureMocks();
+
+    expect(() => captureScene({ sceneIndex: 0 })).toThrow(
+      "capture can't insert at s0 - it always inserts after an existing scene. Use s1 or later, or s+ to append",
+    );
+
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("should set the scene name when provided", () => {

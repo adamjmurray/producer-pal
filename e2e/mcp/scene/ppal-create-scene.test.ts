@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -277,10 +278,95 @@ describe("ppal-create-scene", () => {
       arguments: { action: "stop" },
     });
   });
+
+  /**
+   * The Set's scenes in order, by id. Ids stay with a scene as inserts move it,
+   * so they show whether a capture landed where it was asked to.
+   * @returns The scene ids, first to last
+   */
+  async function sceneIds(): Promise<string[]> {
+    const liveSet = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: { include: ["scenes"] },
+      }),
+    );
+
+    return (liveSet.scenes ?? []).map((scene) => scene.id);
+  }
+
+  // capture_and_insert_scene inserts after the selected scene, so an index-N
+  // request has to select N-1. Selecting N instead put the scene one slot late
+  // and renumbered everything after it — only real Live inserts the scene, so
+  // only e2e can catch it.
+  it("captures at the index a path names", async () => {
+    // Launch scene 0 (Intro, 5 session clips) so its clips are playing
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", sceneIndex: 0 },
+    });
+    await sleep(1500);
+
+    const before = await sceneIds();
+
+    // s0 names a slot with no scene before it, so the call is refused whole
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: { path: "s0", capture: true, name: "Refused" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "capture can't insert at s0",
+    );
+
+    await sleep(100);
+    expect(await sceneIds()).toStrictEqual(before);
+
+    // s2 lands at 2 and pushes what was there down
+    const atTwo = parseToolResult<CaptureSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { path: "s2", capture: true, name: "CAP-AT-2" },
+      }),
+    );
+
+    expect(atTwo.path).toBe("s2");
+
+    await sleep(100);
+    const afterTwo = await sceneIds();
+
+    expect(afterTwo[2]).toBe(atTwo.id);
+    // Dropping the new scene gives back the original order, so nothing else moved
+    expect(afterTwo.filter((_, i) => i !== 2)).toStrictEqual(before);
+
+    // s+ lands at the end and leaves every existing scene where it was
+    const atEnd = parseToolResult<CaptureSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { path: "s+", capture: true, name: "CAP-AT-END" },
+      }),
+    );
+
+    expect(atEnd.path).toBe(`s${String(afterTwo.length)}`);
+
+    await sleep(100);
+    const afterEnd = await sceneIds();
+
+    expect(afterEnd.at(-1)).toBe(atEnd.id);
+    expect(afterEnd.slice(0, -1)).toStrictEqual(afterTwo);
+
+    // Cleanup: stop playback
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "stop" },
+    });
+  });
 });
 
 interface LiveSetResult {
   sceneCount?: number;
+  scenes?: Array<{ id: string; name: string; path: string }>;
 }
 
 interface CreateSceneResult {

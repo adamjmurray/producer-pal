@@ -27,7 +27,7 @@ interface CaptureSceneArgs {
 /**
  * Captures the currently playing clips into a new scene
  * @param args - The parameters
- * @param args.sceneIndex - Optional scene index to select before capturing
+ * @param args.sceneIndex - Optional index the new scene should land at
  * @param args.name - Optional name for the captured scene
  * @returns The captured scene, plus its index for the caller's follow-up writes
  */
@@ -35,13 +35,22 @@ export function captureScene({
   sceneIndex,
   name,
 }: CaptureSceneArgs = {}): CaptureSceneResult & { sceneIndex: number } {
+  if (sceneIndex === 0) {
+    throw new Error(
+      "capture can't insert at s0 - it always inserts after an existing scene. Use s1 or later, or s+ to append",
+    );
+  }
+
   const liveSet = LiveAPI.from(livePath.liveSet);
   const appView = LiveAPI.from(livePath.view.song);
 
   if (sceneIndex != null) {
-    const scene = LiveAPI.from(livePath.scene(sceneIndex));
+    // capture_and_insert_scene inserts after the selection, so select the scene
+    // before the target index. "s+" resolves to the scene count, whose
+    // predecessor is the last scene.
+    const scene = LiveAPI.from(livePath.scene(sceneIndex - 1));
 
-    appView.set("selected_scene", toLiveApiId(scene.id));
+    appView.setProperty("selected_scene", toLiveApiId(scene.id));
   }
 
   const selectedScene = LiveAPI.from(livePath.view.selectedScene);
