@@ -16,7 +16,10 @@ import {
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { namedParam, paramNamesSomething } from "#src/tools/shared/utils.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { computeNonSurvivorClipIds } from "./arrangement/update-clip-arrangement-optimizer.ts";
+import {
+  computeOverwritePlan,
+  type OverwritePlan,
+} from "./arrangement/update-clip-arrangement-optimizer.ts";
 import {
   beatsForClip,
   parseArrangementParams,
@@ -47,8 +50,8 @@ export interface ClipUpdatePlan {
   /** Which written `l+` each clip's destination lands on, for an `l=`. */
   laneOrdinalById: Map<string, number>;
   destinationParam: "toPath" | "toSlot";
-  /** Clips to delete rather than move, or null when nothing can be skipped */
-  nonSurvivorClipIds: Set<string> | null;
+  /** Clips to clear rather than move, or null when nothing can be skipped */
+  overwrites: OverwritePlan | null;
   startBeatsFor: (clip: LiveAPI) => number | null;
   lengthBeatsFor: (clip: LiveAPI) => number | null;
 }
@@ -113,7 +116,7 @@ export function planClipUpdate({
     destinationById,
     laneOrdinalById,
     destinationParam: moveDestinationParam(toPath, toSlot),
-    nonSurvivorClipIds: computeNonSurvivorClipIds(splitClips, {
+    overwrites: computeOverwritePlan(splitClips, {
       startBeatsFor,
       lengthBeatsFor,
       destinationById,

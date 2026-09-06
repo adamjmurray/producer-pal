@@ -8,28 +8,26 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import {
   buildClipResultObject,
+  type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
-import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
-import {
-  type ArrangementTrack,
-  isTakeLaneClip,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   objectPathForApi,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import {
+  deferNonSurvivorDeletion,
+  removeMovedSource,
+} from "./update-clip-deferred-deletion.ts";
 import { placeMovedClip } from "./update-clip-lane-move-helpers.ts";
-import { tallyMovedClip, type MoveGroup } from "./update-clip-move-groups.ts";
-
-interface ClipResult {
-  id: string;
-  noteCount?: number;
-  transformed?: number;
-}
+import {
+  recordLandedClip,
+  tallyMovedClip,
+  type MoveGroup,
+} from "./update-clip-move-groups.ts";
 
 interface HandleArrangementStartArgs {
   clip: LiveAPI;
@@ -41,6 +39,8 @@ interface HandleArrangementStartArgs {
   context: TilingContext;
   /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
   appendedLanes: Map<string, number>;
+  updatedClips: ClipResult[];
+  noteResult: NoteUpdateResult | null;
   isNonSurvivor?: boolean;
 }
 
@@ -60,8 +60,11 @@ interface HandleArrangementStartArgs {
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
  * @param args.appendedLanes - Lanes this call has already appended, shared by `l=`
- * @param args.isNonSurvivor - When true, just delete the clip (optimization for
- *   multi-clip moves where this clip would be overwritten by a later longer clip)
+ * @param args.updatedClips - Array to collect results
+ * @param args.noteResult - Note update result for the result entry
+ * @param args.isNonSurvivor - When true, leave the clip alone: a later, longer
+ *   clip in this call is headed for the same place, and clearing it waits on
+ *   that landing (see update-clip-deferred-deletion.ts)
  * @returns The new clip ID after move, original ID on failure, or null for non-survivors
  */
 export function handleArrangementStartOperation({
@@ -72,6 +75,8 @@ export function handleArrangementStartOperation({
   isMidiClip,
   context,
   appendedLanes,
+  updatedClips,
+  noteResult,
   isNonSurvivor,
 }: HandleArrangementStartArgs): string | null {
   const isArrangementClip =
@@ -102,23 +107,19 @@ export function handleArrangementStartOperation({
   const targetBeats =
     arrangementStartBeats ?? (clip.getProperty("start_time") as number);
 
-  // Non-survivor: just clear it, don't bother moving (it would be overwritten)
+  // Non-survivor: don't move it, and don't clear it yet either. A later clip
+  // in this call is headed here to overwrite it, and only that clip actually
+  // landing settles its fate.
   if (isNonSurvivor) {
-    // Counted even though nothing is placed: a clip is a non-survivor because
-    // a later clip in this call lands on this same track and position. That
-    // holds only because computeNonSurvivorClipIds excludes the routes
-    // placeMovedClip refuses, running the same clipCopyBlocker check with the
-    // same arguments. Mark a clip whose survivor is then refused and it is
-    // destroyed with nothing naming it.
-    tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
-
-    if (clip.exists()) {
-      removeMovedSource(clip, sourceTrack);
-    } else {
-      console.warn(
-        `non-survivor clip ${targetLabel(clip)} already deleted, skipping`,
-      );
-    }
+    deferNonSurvivorDeletion({
+      clip,
+      sourceTrack,
+      destTrackIndex,
+      targetBeats,
+      movedClipGroups,
+      updatedClips,
+      noteResult,
+    });
 
     return null;
   }
@@ -157,6 +158,10 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
+  // The copy is confirmed here, which is what releases any clip this call held
+  // back for this track and position.
+  recordLandedClip(movedClipGroups, destTrackIndex, targetBeats, clip.id);
+
   // Clear the original to complete the move. For a self-overlapping move the
   // holding placement already trimmed it (or fully replaced it on a zero-offset
   // move), so guard with exists() — leaving a single clip at the new position.
@@ -166,21 +171,6 @@ export function handleArrangementStartOperation({
 
   // Return the new clip ID
   return newClip.id;
-}
-
-/**
- * Get the source out of the way once its copy has landed. Live can delete a
- * main-lane clip outright; a take-lane one can only be cleared in place, which
- * leaves a placeholder the user has to delete by hand.
- * @param clip - The source clip
- * @param sourceTrack - The track it sits on
- */
-function removeMovedSource(clip: LiveAPI, sourceTrack: LiveAPI): void {
-  if (isTakeLaneClip(clip)) {
-    emptyTakeLaneClip(clip);
-  } else {
-    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
-  }
 }
 
 interface HandleArrangementOperationsArgs {
@@ -212,7 +202,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.noteResult - Note update result for result
- * @param args.isNonSurvivor - When true, clip is deleted without moving
+ * @param args.isNonSurvivor - When true, clip is left for the deferred clear
  */
 export function handleArrangementOperations({
   clip,
@@ -242,10 +232,12 @@ export function handleArrangementOperations({
       isMidiClip: !isAudioClip,
       context: context as TilingContext,
       appendedLanes,
+      updatedClips,
+      noteResult,
       isNonSurvivor,
     });
 
-    // Non-survivor was deleted, skip adding to results
+    // A non-survivor is not moved and already recorded its own entry.
     if (finalClipId == null) {
       return;
     }

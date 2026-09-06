@@ -4,11 +4,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+
+/** A clip left in place until the clip that overwrites it has landed. */
+export interface DeferredDeletion {
+  /** The clip that was not moved. */
+  clip: LiveAPI;
+  /** The track it sits on, for the delete. */
+  sourceTrack: LiveAPI;
+  /** Its entry in the response, finished once its fate is known. */
+  result: ClipResult;
+}
 
 /** The clips a call lands on one track at one position. */
 export interface MoveGroup {
   trackIndex: number;
   count: number;
+  /** Ids of the clips whose placement actually landed here. */
+  landed: Set<string>;
+  /** Clips waiting to see whether the overwrite really happens. */
+  deferred: DeferredDeletion[];
 }
 
 /**
@@ -35,11 +50,41 @@ export function tallyMovedClip(
   trackIndex: number,
   startBeats: number,
 ): void {
-  const key = moveGroupKey(trackIndex, startBeats);
-  const group = groups.get(key) ?? { trackIndex, count: 0 };
+  moveGroupFor(groups, trackIndex, startBeats).count++;
+}
 
-  group.count++;
-  groups.set(key, group);
+/**
+ * Record that a clip's copy is confirmed to be sitting here. A tally is not the
+ * same thing: a duplicate Live silently declined still cleared the range, so it
+ * counts as a move but never as a landing.
+ * @param groups - Counts per group, added to
+ * @param trackIndex - The track the clip landed on
+ * @param startBeats - The position it landed at, in beats
+ * @param sourceClipId - Id of the clip that was moved here
+ */
+export function recordLandedClip(
+  groups: Map<string, MoveGroup>,
+  trackIndex: number,
+  startBeats: number,
+  sourceClipId: string,
+): void {
+  moveGroupFor(groups, trackIndex, startBeats).landed.add(sourceClipId);
+}
+
+/**
+ * Hold a clip back from deletion until this group's overwrite is confirmed.
+ * @param groups - Counts per group, added to
+ * @param trackIndex - The track the clip was headed for
+ * @param startBeats - The position it was headed for, in beats
+ * @param pending - The clip, its track, and its entry in the response
+ */
+export function deferClipDeletion(
+  groups: Map<string, MoveGroup>,
+  trackIndex: number,
+  startBeats: number,
+  pending: DeferredDeletion,
+): void {
+  moveGroupFor(groups, trackIndex, startBeats).deferred.push(pending);
 }
 
 /**
@@ -54,4 +99,29 @@ export function emitArrangementWarnings(groups: Map<string, MoveGroup>): void {
       );
     }
   }
+}
+
+/**
+ * The group for a track and position, created empty the first time.
+ * @param groups - Counts per group
+ * @param trackIndex - The track the clip lands on
+ * @param startBeats - The position it lands at, in beats
+ * @returns The group, now in the map
+ */
+function moveGroupFor(
+  groups: Map<string, MoveGroup>,
+  trackIndex: number,
+  startBeats: number,
+): MoveGroup {
+  const key = moveGroupKey(trackIndex, startBeats);
+  const group = groups.get(key) ?? {
+    trackIndex,
+    count: 0,
+    landed: new Set<string>(),
+    deferred: [],
+  };
+
+  groups.set(key, group);
+
+  return group;
 }

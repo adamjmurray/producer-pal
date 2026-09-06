@@ -58,11 +58,11 @@ async function createArrangementClip(
  * @returns Parsed clips and warnings
  */
 function parseUpdateResults(result: unknown): {
-  clips: Array<{ id: string }>;
+  clips: Array<{ id: string; deleted?: boolean }>;
   warnings: string[];
 } {
   const { data, warnings } = parseToolResultWithWarnings<
-    { id: string } | Array<{ id: string }>
+    { id: string; deleted?: boolean } | Array<{ id: string; deleted?: boolean }>
   >(result);
 
   return {
@@ -122,8 +122,12 @@ describe("ppal-update-clip arrangement multistart", () => {
     });
     const { clips } = parseUpdateResults(result);
 
-    // A is non-survivor (deleted), B and C are survivors
-    expect(clips).toHaveLength(2);
+    // Every target gets an entry, in the order the call named them. A is the
+    // non-survivor, and says so rather than going unmentioned.
+    expect(clips).toHaveLength(3);
+    expect(clips[0]?.deleted).toBe(true);
+    expect(clips[1]?.deleted).toBeUndefined();
+    expect(clips[2]?.deleted).toBeUndefined();
 
     await sleep(200);
 
@@ -135,6 +139,44 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     expect(finalClips).toHaveLength(2);
     expect(arrangementStartOf(finalClips[0]!)).toBe("170|1");
+  });
+
+  // Survivors descend in length, but a non-survivor can outlast a later, shorter
+  // one. A(20) is buried by B(40); C(12) survives on top of B without being long
+  // enough to bury A on its own. The clearing gate has to compare lengths, not
+  // just ask whether some survivor landed.
+  it("buries a non-survivor only under a landing long enough to cover it", async () => {
+    const idA = await createArrangementClip(EMPTY_MIDI_TRACK, "301|1", "5bar");
+    const idB = await createArrangementClip(EMPTY_MIDI_TRACK, "311|1", "10bar");
+    const idC = await createArrangementClip(EMPTY_MIDI_TRACK, "325|1", "3bar");
+
+    await sleep(200);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: `${idA},${idB},${idC}`,
+        toPath: "[340|1]",
+      },
+    });
+    const { clips } = parseUpdateResults(result);
+
+    // A is the only non-survivor, and B's landing is what buries it.
+    expect(clips).toHaveLength(3);
+    expect(clips[0]?.deleted).toBe(true);
+    expect(clips[1]?.deleted).toBeUndefined();
+    expect(clips[2]?.deleted).toBeUndefined();
+
+    await sleep(200);
+
+    const { clips: finalClips } = await readClipsOnTrack(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+    );
+
+    // B underneath, C stacked on its front — A gone, nothing left at 301|1.
+    expect(finalClips).toHaveLength(2);
+    expect(arrangementStartOf(finalClips[0]!)).toBe("340|1");
   });
 
   it("only last clip survives when all have same length", async () => {
@@ -154,8 +196,12 @@ describe("ppal-update-clip arrangement multistart", () => {
     });
     const { clips } = parseUpdateResults(result);
 
-    // Same length: only last survives (4>0), first two <=4
-    expect(clips).toHaveLength(1);
+    // Same length: only the last survives (4>0), the first two are buried by
+    // it — and each of them says so in its own entry.
+    expect(clips).toHaveLength(3);
+    expect(clips[0]?.deleted).toBe(true);
+    expect(clips[1]?.deleted).toBe(true);
+    expect(clips[2]?.deleted).toBeUndefined();
 
     await sleep(200);
 

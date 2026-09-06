@@ -18,6 +18,8 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-optimizer.ts";
+import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
   emitArrangementWarnings,
   type MoveGroup,
@@ -168,7 +170,7 @@ export async function updateClip(
     destinationById,
     laneOrdinalById,
     destinationParam,
-    nonSurvivorClipIds,
+    overwrites,
     startBeatsFor,
     lengthBeatsFor,
   } = planClipUpdate({
@@ -231,7 +233,7 @@ export async function updateClip(
       destination: destinationById.get(clip.id) ?? null,
       newLaneOrdinal: laneOrdinalById.get(clip.id),
       destinationParam,
-      nonSurvivorClipIds,
+      nonSurvivorClipIds: overwrites?.nonSurvivorIds,
       context,
       updatedClips,
       movedClipGroups,
@@ -240,7 +242,7 @@ export async function updateClip(
     });
   }
 
-  return finishUpdate(movedClipGroups, updatedClips, focus);
+  return finishUpdate(movedClipGroups, overwrites, updatedClips, focus);
 }
 
 /**
@@ -391,18 +393,23 @@ async function applyCodeExecToNewClips(
 }
 
 /**
- * Says what the batch's moves collided over, focuses the last clip written, and
- * shapes the result.
+ * Settles the clips the moves held back, says what the batch's moves collided
+ * over, focuses the last clip written, and shapes the result.
  * @param movedClipGroups - Tally of clips landing on each lane and position
+ * @param overwrites - Which clips the moves were set to land on top of
  * @param updatedClips - The clips this call wrote
  * @param focus - Whether to select the last one in Live
  * @returns The single result, or the list
  */
 function finishUpdate(
   movedClipGroups: Map<string, MoveGroup>,
+  overwrites: OverwritePlan | null,
   updatedClips: ClipResult[],
   focus: boolean | undefined,
 ): ClipResult | ClipResult[] {
+  // Before the warnings: a clip cleared here counts toward the group the
+  // "same position" warning names.
+  flushDeferredDeletions(movedClipGroups, overwrites);
   emitArrangementWarnings(movedClipGroups);
   focusLastUpdatedClip(updatedClips, focus);
 

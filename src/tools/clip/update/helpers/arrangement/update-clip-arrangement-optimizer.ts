@@ -7,9 +7,13 @@
  * Optimization for multi-clip arrangement start moves.
  *
  * When multiple clips land on the same lane at the same position, later clips
- * overwrite earlier ones. This module determines which clips "survive"
- * (contribute to the final arrangement state) so non-survivors can be deleted
- * without the expensive duplicate+move operation.
+ * overwrite earlier ones. This module works out which clips "survive"
+ * (contribute to the final arrangement state) so the rest can be deleted
+ * instead of paying for a duplicate+move nothing keeps.
+ *
+ * The plan is a prediction, so it never authorizes a deletion by itself: it
+ * also names the clips whose landing would perform each overwrite, and the
+ * deletion waits until one of them really lands.
  */
 
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -20,6 +24,20 @@ import { moveGroupKey } from "./update-clip-move-groups.ts";
 interface ClipMoveInfo {
   clipId: string;
   clipLength: number;
+}
+
+/** What a call's moves are set to land on top of, if they land at all. */
+export interface OverwritePlan {
+  /** Clips a later clip in the same group is set to land on top of. */
+  nonSurvivorIds: Set<string>;
+  /**
+   * Per group key ({@link moveGroupKey}), the clips whose landing performs that
+   * overwrite, each with the length it covers. A landing only settles a
+   * held-back clip it is long enough to bury.
+   */
+  survivorLengthsByGroup: Map<string, Map<string, number>>;
+  /** Arrangement length in beats of every clip the plan weighed, by id. */
+  lengthById: Map<string, number>;
 }
 
 /** Where each clip in the call is headed. */
@@ -33,27 +51,30 @@ export interface ClipMoves {
 }
 
 /**
- * Determine which clips will not survive when several are moved onto one lane
- * at one position. Walks backwards through each group in ID order, tracking
+ * Work out which clips will not survive when several are moved onto one lane at
+ * one position. Walks backwards through each group in ID order, tracking
  * maximum length seen. A clip survives only if its length exceeds all clips
  * after it (because later clips placed at the same position overwrite earlier
  * ones up to their length).
  *
- * By construction, survivors in ID order are always in descending length:
- * the longest clip is first, each subsequent survivor is shorter and
- * "stacks on top" at the target position.
+ * Survivors in ID order are always in descending length: the longest clip is
+ * first, each subsequent survivor is shorter and "stacks on top" at the target
+ * position. That does NOT make every survivor longer than every non-survivor —
+ * lengths [20, 40, 12] leave the 20 a non-survivor while the trailing 12
+ * survives — so the plan carries each survivor's length and the deferred
+ * deletion compares before it clears anything.
  *
  * Returns null when the optimization applies to nothing: no group has more
  * than one clip, or no group has a non-survivor.
  *
  * @param clips - Clips in the order they will be processed (ID order)
  * @param moves - Where each clip is headed
- * @returns Set of non-survivor clip IDs, or null if optimization doesn't apply
+ * @returns The overwrite plan, or null when it applies to nothing
  */
-export function computeNonSurvivorClipIds(
+export function computeOverwritePlan(
   clips: LiveAPI[],
   moves: ClipMoves,
-): Set<string> | null {
+): OverwritePlan | null {
   // Group by the lane the clips LAND on AND the position they land at. Clips
   // sharing a lane at different positions don't necessarily overwrite each
   // other, so they are separate groups and fall back to the normal
@@ -75,27 +96,64 @@ export function computeNonSurvivorClipIds(
     groups.set(key, group);
   }
 
-  // Backwards scan per group: a clip survives if its length > all after it
   const nonSurvivorIds = new Set<string>();
+  const survivorLengthsByGroup = new Map<string, Map<string, number>>();
+  const lengthById = new Map<string, number>();
 
-  for (const group of groups.values()) {
+  for (const [key, group] of groups) {
     if (group.length <= 1) continue;
 
-    let maxLengthAfter = 0;
+    const { survivors, nonSurvivors } = splitGroup(group);
 
-    for (let i = group.length - 1; i >= 0; i--) {
-      // Loop bounds guarantee valid index
-      const info = group[i] as ClipMoveInfo;
+    if (nonSurvivors.size === 0) continue;
 
-      if (info.clipLength > maxLengthAfter) {
-        maxLengthAfter = info.clipLength;
-      } else {
-        nonSurvivorIds.add(info.clipId);
-      }
+    for (const id of nonSurvivors) nonSurvivorIds.add(id);
+
+    for (const { clipId, clipLength } of group)
+      lengthById.set(clipId, clipLength);
+
+    survivorLengthsByGroup.set(
+      key,
+      new Map(
+        group
+          .filter(({ clipId }) => survivors.has(clipId))
+          .map(({ clipId, clipLength }) => [clipId, clipLength]),
+      ),
+    );
+  }
+
+  return nonSurvivorIds.size > 0
+    ? { nonSurvivorIds, survivorLengthsByGroup, lengthById }
+    : null;
+}
+
+/**
+ * Backwards scan of one group: a clip survives if its length beats every clip
+ * after it, and is overwritten otherwise.
+ * @param group - The group's clips, in ID order
+ * @returns The group's survivors and the clips they overwrite
+ */
+function splitGroup(group: ClipMoveInfo[]): {
+  survivors: Set<string>;
+  nonSurvivors: Set<string>;
+} {
+  const survivors = new Set<string>();
+  const nonSurvivors = new Set<string>();
+  let maxLengthAfter = 0;
+
+  for (let i = group.length - 1; i >= 0; i--) {
+    // Loop bounds guarantee valid index
+    const info = group[i] as ClipMoveInfo;
+
+    if (info.clipLength > maxLengthAfter) {
+      maxLengthAfter = info.clipLength;
+      survivors.add(info.clipId);
+    } else {
+      nonSurvivors.add(info.clipId);
     }
   }
 
-  return nonSurvivorIds.size > 0 ? nonSurvivorIds : null;
+  return { survivors, nonSurvivors };
 }
 
 /**
@@ -128,10 +186,9 @@ function moveGroup(clip: LiveAPI, moves: ClipMoves): string | null {
  * main-lane clip below it a non-survivor), clips moving to a slot
  * (off the arrangement timeline entirely), clips moving ONTO a take lane
  * (re-created there one at a time, so the optimization has nothing to save),
- * and clips the destination won't take (wrong type, frozen), for the same
- * reason as take-lane sources: a clip that never lands overwrites nothing, so
- * counting it would delete a shorter sibling that the "survivor" then fails to
- * replace.
+ * and clips the destination won't take (wrong type, frozen) — a clip that never
+ * lands overwrites nothing, so counting it only holds a sibling back for a
+ * landing that never comes.
  * @param clip - Candidate clip
  * @param destination - Where the clip is moving, if the call named anywhere
  * @returns The destination track index, or null to skip the clip

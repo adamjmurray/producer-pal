@@ -216,6 +216,8 @@ function runMove(opts: MoveOptions = {}): string | null {
     appendedLanes: opts.appendedLanes ?? new Map(),
     isMidiClip: isMidi === 1,
     context: mockContext,
+    updatedClips: [],
+    noteResult: null,
   });
 }
 

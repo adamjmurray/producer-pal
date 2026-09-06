@@ -8,9 +8,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
-  computeNonSurvivorClipIds,
+  computeOverwritePlan,
   type ClipMoves,
 } from "../../helpers/arrangement/update-clip-arrangement-optimizer.ts";
+import { moveGroupKey } from "../../helpers/arrangement/update-clip-move-groups.ts";
 
 /**
  * Create a mock arrangement clip with the given start/end times.
@@ -126,7 +127,20 @@ function moves(
   };
 }
 
-describe("computeNonSurvivorClipIds", () => {
+/**
+ * Just the clips the plan expects to be overwritten.
+ * @param clips - Clips in the order they will be processed
+ * @param clipMoves - Where each clip is headed
+ * @returns The non-survivor ids, or null when the plan applies to nothing
+ */
+function nonSurvivorIds(
+  clips: LiveAPI[],
+  clipMoves: ClipMoves,
+): Set<string> | null {
+  return computeOverwritePlan(clips, clipMoves)?.nonSurvivorIds ?? null;
+}
+
+describe("computeOverwritePlan", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -134,7 +148,7 @@ describe("computeNonSurvivorClipIds", () => {
   it("returns null when arrangementStartBeats is null", () => {
     const clips = [mockArrangementClip("1", 0, 0, 8)];
 
-    expect(computeNonSurvivorClipIds(clips, moves(null))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(null))).toBeNull();
   });
 
   it("returns null when arrangementLength is set for every clip", () => {
@@ -143,9 +157,7 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("2", 0, 4, 12),
     ];
 
-    expect(
-      computeNonSurvivorClipIds(clips, moves(16, { lengthBeats: 8 })),
-    ).toBeNull();
+    expect(nonSurvivorIds(clips, moves(16, { lengthBeats: 8 }))).toBeNull();
   });
 
   it("returns null when only one clip per track", () => {
@@ -154,13 +166,13 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("2", 1, 0, 4),
     ];
 
-    expect(computeNonSurvivorClipIds(clips, moves(16))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(16))).toBeNull();
   });
 
   it("returns null for session clips", () => {
     const clips = [mockSessionClip("1"), mockSessionClip("2")];
 
-    expect(computeNonSurvivorClipIds(clips, moves(16))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(16))).toBeNull();
   });
 
   it("identifies non-survivors: A(4), B(8), C(2)", () => {
@@ -170,7 +182,7 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("3", 0, 20, 22), // C: 2 beats
     ];
 
-    const result = computeNonSurvivorClipIds(clips, moves(32));
+    const result = nonSurvivorIds(clips, moves(32));
 
     // Backwards: C(2)>0 survives, B(8)>2 survives, A(4)<=8 covered by B
     // C survives because it's last (on top), B survives (longest), A is covered
@@ -184,10 +196,74 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("30", 0, 16, 20), // 4 beats
     ];
 
-    const result = computeNonSurvivorClipIds(clips, moves(32));
+    const result = nonSurvivorIds(clips, moves(32));
 
     // Same length: last one survives (4>0), others <=4
     expect(result).toStrictEqual(new Set(["10", "20"]));
+  });
+
+  // Nothing is cleared on the plan alone, so the plan has to name the clips
+  // whose landing is what would clear the rest — and how much each one covers.
+  it("names the survivors that do the overwriting, per group", () => {
+    const clips = [
+      mockArrangementClip("41", 0, 0, 4), // track 0: covered by 43
+      mockArrangementClip("42", 0, 8, 16), // track 0: survives (8 beats)
+      mockArrangementClip("43", 0, 20, 26), // track 0: survives (6 beats, last)
+      mockArrangementClip("44", 1, 0, 4), // track 1: lone clip → no group
+    ];
+
+    expect(computeOverwritePlan(clips, moves(32))).toStrictEqual({
+      nonSurvivorIds: new Set(["41"]),
+      survivorLengthsByGroup: new Map([
+        [
+          moveGroupKey(0, 32),
+          new Map([
+            ["42", 8],
+            ["43", 6],
+          ]),
+        ],
+      ]),
+      lengthById: new Map([
+        ["41", 4],
+        ["42", 8],
+        ["43", 6],
+      ]),
+    });
+  });
+
+  // The gate that clears a held-back clip compares lengths, so the plan must
+  // carry a survivor shorter than the non-survivor it follows.
+  it("carries a trailing survivor shorter than the non-survivor", () => {
+    const clips = [
+      mockArrangementClip("61", 0, 0, 20), // 20 beats: covered by 62
+      mockArrangementClip("62", 0, 40, 80), // 40 beats: survives
+      mockArrangementClip("63", 0, 100, 112), // 12 beats: survives, last
+    ];
+
+    const plan = computeOverwritePlan(clips, moves(32));
+
+    expect(plan?.nonSurvivorIds).toStrictEqual(new Set(["61"]));
+    expect(plan?.survivorLengthsByGroup.get(moveGroupKey(0, 32))).toStrictEqual(
+      new Map([
+        ["62", 40],
+        ["63", 12],
+      ]),
+    );
+    // The 12 is shorter than the 20 it is nominally a survivor over.
+    expect(plan?.lengthById.get("61")).toBe(20);
+  });
+
+  it("leaves a group with nothing to overwrite out of the plan", () => {
+    const clips = [
+      mockArrangementClip("51", 0, 0, 4), // track 0: covered by 52
+      mockArrangementClip("52", 0, 8, 16), // track 0: survives
+      mockArrangementClip("53", 1, 0, 8), // track 1: survives (descending)
+      mockArrangementClip("54", 1, 12, 16), // track 1: survives
+    ];
+
+    expect(
+      computeOverwritePlan(clips, moves(32))?.survivorLengthsByGroup,
+    ).toStrictEqual(new Map([[moveGroupKey(0, 32), new Map([["52", 8]])]]));
   });
 
   it("returns null when already in descending order (all survive)", () => {
@@ -198,7 +274,7 @@ describe("computeNonSurvivorClipIds", () => {
     ];
 
     // Backwards: C(2)>0, B(4)>2, A(8)>4 — all survive, no non-survivors
-    expect(computeNonSurvivorClipIds(clips, moves(32))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(32))).toBeNull();
   });
 
   it("skips single-clip tracks while optimizing multi-clip tracks", () => {
@@ -208,7 +284,7 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("3", 1, 0, 4), // track 1: lone clip → skipped
     ];
 
-    const result = computeNonSurvivorClipIds(clips, moves(32));
+    const result = nonSurvivorIds(clips, moves(32));
 
     // Track 0 has multiple clips (A(4) covered by B(8) → "1" non-survivor);
     // track 1's single-clip group is skipped.
@@ -223,7 +299,7 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("4", 1, 4, 10), // track 1: 6 beats
     ];
 
-    const result = computeNonSurvivorClipIds(clips, moves(32));
+    const result = nonSurvivorIds(clips, moves(32));
 
     // Track 0: A(4) covered by C(8) → A non-survivor
     // Track 1: B(2) covered by D(6) → B non-survivor
@@ -239,7 +315,7 @@ describe("computeNonSurvivorClipIds", () => {
       mockArrangementClip("5", 0, 32, 35), // E: 3 beats
     ];
 
-    const result = computeNonSurvivorClipIds(clips, moves(40));
+    const result = nonSurvivorIds(clips, moves(40));
 
     // Backwards: E(3)>0, D(6)>3, C(2)<=6 covered, B(8)>6, A(4)<=8 covered
     // Non-survivors: A(4) and C(2)
@@ -256,7 +332,7 @@ describe("computeNonSurvivorClipIds", () => {
     // so optimization doesn't apply and the result is null. Without filtering,
     // the take-lane clip's length (16) would have marked clip "1" non-survivor
     // and the harness would delete it — a real bug for users.
-    expect(computeNonSurvivorClipIds(clips, moves(32))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(32))).toBeNull();
   });
 
   it("short-circuits to null for a null arrangementStart even with multi-clip non-survivors", () => {
@@ -267,7 +343,7 @@ describe("computeNonSurvivorClipIds", () => {
 
     // Track 0 would yield non-survivor "1", but a null arrangementStart must
     // return null before any survivor analysis runs.
-    expect(computeNonSurvivorClipIds(clips, moves(null))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(null))).toBeNull();
   });
 
   it("skips null-trackIndex clips so they never form a survivor group", () => {
@@ -292,7 +368,7 @@ describe("computeNonSurvivorClipIds", () => {
 
     // Both clips lack a track path (trackIndex null). If they were grouped, the
     // 4-beat clip would be a non-survivor; the null-trackIndex guard drops them.
-    expect(computeNonSurvivorClipIds(clips, moves(32))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(32))).toBeNull();
   });
 
   it("excludes session clips (is_arrangement_clip <= 0) from survivor grouping", () => {
@@ -320,7 +396,7 @@ describe("computeNonSurvivorClipIds", () => {
     // Both are session clips (is_arrangement_clip 0) on track 0. Treated as
     // eligible they would group and mark "601" a non-survivor; the eligibility
     // gate drops them, so no optimization applies.
-    expect(computeNonSurvivorClipIds(clips, moves(32))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(32))).toBeNull();
   });
 
   // The hazard toPath destinations introduced: grouped by SOURCE track, the
@@ -335,7 +411,7 @@ describe("computeNonSurvivorClipIds", () => {
     ]);
 
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long],
         moves(32, { destinationById: destinations }),
       ),
@@ -351,7 +427,7 @@ describe("computeNonSurvivorClipIds", () => {
     ]);
 
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long],
         moves(32, { destinationById: destinations }),
       ),
@@ -371,7 +447,7 @@ describe("computeNonSurvivorClipIds", () => {
     const long = mockArrangementClip("822", 0, 8, 24);
 
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long],
         moves(32, { destinationById: new Map([["821", destination]]) }),
       ),
@@ -398,7 +474,7 @@ describe("computeNonSurvivorClipIds", () => {
     ]);
 
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long],
         moves(32, { destinationById: destinations }),
       ),
@@ -424,7 +500,7 @@ describe("computeNonSurvivorClipIds", () => {
     ]);
 
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, longAudio],
         moves(32, { destinationById: destinations }),
       ),
@@ -445,7 +521,7 @@ describe("computeNonSurvivorClipIds", () => {
     const clips = [clip, mockArrangementClip("2", 0, 0, 8)];
 
     // Only one clip on track 0 (clip 99 has null trackIndex), so no optimization
-    expect(computeNonSurvivorClipIds(clips, moves(16))).toBeNull();
+    expect(nonSurvivorIds(clips, moves(16))).toBeNull();
   });
 
   // The hazard per-clip positions introduce: grouped by lane alone, the shorter
@@ -455,7 +531,7 @@ describe("computeNonSurvivorClipIds", () => {
     const long = mockArrangementClip("902", 0, 8, 24);
 
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long],
         moves(null, {
           startBeatsById: new Map([
@@ -475,7 +551,7 @@ describe("computeNonSurvivorClipIds", () => {
     // 911 and 912 both land at 32, so the shorter one is overwritten; 913
     // lands at 64 and is a group of its own.
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long, elsewhere],
         moves(null, {
           startBeatsById: new Map([
@@ -494,7 +570,7 @@ describe("computeNonSurvivorClipIds", () => {
 
     // 921 stays where it is, so nothing in the call says the two collide.
     expect(
-      computeNonSurvivorClipIds(
+      nonSurvivorIds(
         [short, long],
         moves(null, { startBeatsById: new Map([["922", 32]]) }),
       ),
@@ -508,7 +584,7 @@ describe("computeNonSurvivorClipIds", () => {
     // 932 tiles to fill its span, which the length comparison doesn't model,
     // so it can't stand in for the clip below it.
     expect(
-      computeNonSurvivorClipIds([short, tiled], {
+      nonSurvivorIds([short, tiled], {
         startBeatsFor: () => 32,
         lengthBeatsFor: (clip) => (clip.id === "932" ? 16 : null),
       }),
