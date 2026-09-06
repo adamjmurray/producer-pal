@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as consoleModule from "#src/shared/max/v8-max-console.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   registerMockObject,
@@ -13,6 +14,7 @@ import {
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
+  inOneRequest,
   registerDrumRackTrack,
   setupAudioClipMock,
   setupMidiClipMock,
@@ -31,6 +33,14 @@ const DRUM_CHORD_NOTES = [
 const DRUM_MODE_OUTPUT = "v100 n/16 C1 1|1,3\nE1 1|1";
 const MELODIC_MODE_OUTPUT = "v100 n/16 C1 E1 1|1\nC1 1|3";
 
+/** A one-bar 4/4 MIDI clip, the shape DRUM_CHORD_NOTES is read out of. */
+const DRUM_CHORD_CLIP_PROPS = {
+  is_midi_clip: 1,
+  signature_numerator: 4,
+  signature_denominator: 4,
+  length: 4,
+};
+
 // Set up a standalone 4/4 MIDI clip holding DRUM_CHORD_NOTES in slot 0/0, then
 // read its notes. `readOverrides` tweaks the readClip args (e.g. drumMode).
 function readDrumChordNotes(
@@ -40,12 +50,7 @@ function readDrumChordNotes(
     trackIndex: 0,
     sceneIndex: 0,
     notes: DRUM_CHORD_NOTES,
-    clipProps: {
-      is_midi_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      length: 4,
-    },
+    clipProps: DRUM_CHORD_CLIP_PROPS,
   });
 
   return readClip({
@@ -316,6 +321,30 @@ describe("readClip - include flag gating", () => {
   });
 });
 
+/**
+ * Read the DRUM_CHORD_NOTES clip sitting in one track's first session slot.
+ * @param trackIndex - Track the clip is on
+ * @returns The formatted notes
+ */
+function readChordNotesOnTrack(trackIndex: number): string | undefined {
+  return readClip({ trackIndex, sceneIndex: 0, include: ["notes"] }).notes;
+}
+
+/**
+ * Give a track a plain melodic instrument, so its clips spell melodically.
+ * @param trackIndex - Track to set up
+ */
+function registerMelodicTrack(trackIndex: number): void {
+  registerMockObject(`track-${String(trackIndex)}`, {
+    path: livePath.track(trackIndex),
+    properties: { devices: children(`melodicInst${String(trackIndex)}`) },
+  });
+  registerMockObject(`melodicInst${String(trackIndex)}`, {
+    type: "Device",
+    properties: { can_have_drum_pads: 0, can_have_chains: 0 },
+  });
+}
+
 describe("readClip - drum mode resolution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -336,5 +365,56 @@ describe("readClip - drum mode resolution", () => {
     // drumMode:true is passed even though the track is NOT a drum rack. The
     // precomputed value must win (nullish-coalesce), yielding drum notation.
     expect(readDrumChordNotes({ drumMode: true })).toBe(DRUM_MODE_OUTPUT);
+  });
+
+  it("spells each track its own way when one request reads both", () => {
+    // The answer is memoized per request, so it has to be keyed on the track.
+    // One key for the request would spell both tracks whichever way the first
+    // read came out — silently wrong notes, not a slow read.
+    registerDrumRackTrack();
+    registerMelodicTrack(1);
+
+    for (const trackIndex of [0, 1]) {
+      setupMidiClipMock({
+        trackIndex,
+        sceneIndex: 0,
+        notes: DRUM_CHORD_NOTES,
+        clipProps: DRUM_CHORD_CLIP_PROPS,
+      });
+    }
+
+    // A wrong key lets whichever track answers first spell the other, so read
+    // both orders — a request each, since the memo dies with the request.
+    inOneRequest(() => {
+      expect(readChordNotesOnTrack(0)).toBe(DRUM_MODE_OUTPUT);
+      expect(readChordNotesOnTrack(1)).toBe(MELODIC_MODE_OUTPUT);
+    });
+
+    inOneRequest(() => {
+      expect(readChordNotesOnTrack(1)).toBe(MELODIC_MODE_OUTPUT);
+      expect(readChordNotesOnTrack(0)).toBe(DRUM_MODE_OUTPUT);
+    });
+  });
+
+  it("re-reads the track's devices for the next request", () => {
+    // The memo is request-scoped on purpose: a drum rack dropped on the track
+    // between two reads has to change how the second one spells.
+    registerMelodicTrack(0);
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: DRUM_CHORD_NOTES,
+      clipProps: DRUM_CHORD_CLIP_PROPS,
+    });
+
+    inOneRequest(() => {
+      expect(readChordNotesOnTrack(0)).toBe(MELODIC_MODE_OUTPUT);
+    });
+
+    registerDrumRackTrack();
+
+    inOneRequest(() => {
+      expect(readChordNotesOnTrack(0)).toBe(DRUM_MODE_OUTPUT);
+    });
   });
 });

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -217,22 +218,43 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
  * Check if a track contains a Drum Rack anywhere in its device tree.
  * A Drum Rack nested inside instrument rack chains (at any depth, in any chain)
  * still puts the track in drum mode, so the whole tree is searched recursively.
+ *
+ * Memoized per track for the request, so a request reading many clips of one
+ * track walks the tree once. Only read paths ask for the answer and none of
+ * them mutate; a tool that changed a device tree or the track order and then
+ * spelled notes would have to walk afresh.
  * @param trackIndex - Track index (0-based)
  * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackTrack(trackIndex: number): boolean {
-  return isDrumRackForTrack(LiveAPI.from(livePath.track(trackIndex)));
+  const trackPath = String(livePath.track(trackIndex));
+
+  // The track is built inside the memo, so a repeat resolves nothing at all.
+  return requestMemo(drumModeMemoKey(trackPath), () =>
+    containerHasDrumRack(LiveAPI.from(trackPath)),
+  );
 }
 
 /**
  * Drum-mode check for a track object already in hand. Batch readers that walk N
  * clips of one track call this once instead of paying a full device-tree walk
- * per clip via {@link isDrumRackTrack}.
+ * per clip via {@link isDrumRackTrack}, whose per-request memo it shares.
  * @param track - LiveAPI track object
  * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackForTrack(track: LiveAPI): boolean {
-  return containerHasDrumRack(track);
+  return requestMemo(drumModeMemoKey(track.path), () =>
+    containerHasDrumRack(track),
+  );
+}
+
+/**
+ * Name the answer after the track, so two tracks never share one.
+ * @param trackPath - The track's Live API path
+ * @returns The memo key
+ */
+function drumModeMemoKey(trackPath: string): string {
+  return `drumMode ${trackPath}`;
 }
 
 /**

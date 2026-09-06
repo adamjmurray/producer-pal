@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   expectGetNotesExtendedCall,
@@ -331,5 +333,24 @@ describe("readClip", () => {
       length: "1bar",
       notes: "v100 n/4 G8 1|1",
     });
+  });
+
+  it("reads a clip whose note dictionary has no notes in it", () => {
+    // Live always answers with a notes key, but reading them has never assumed
+    // it: the serializers all treat nothing to spell as "", not an error.
+    registerMockObject("emptyDict", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: { is_midi_clip: 1, length: 4 },
+      methods: { get_notes_extended: () => JSON.stringify({}) },
+    });
+
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["notes"],
+    });
+
+    expect(result.notes).toBeUndefined();
   });
 });

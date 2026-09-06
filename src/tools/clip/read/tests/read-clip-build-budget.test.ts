@@ -11,9 +11,10 @@
 //
 // The number that moves is the drum-mode walk. Formatting notes needs to know
 // whether the track holds a drum rack, and working that out recurses the
-// track's whole device tree — once per clip, unless the caller hands the answer
-// over. The expensive fixture is a rack with NO drum rack in it: a real drum
-// rack ends the walk at the first device reporting can_have_drum_pads.
+// track's whole device tree. The answer is memoized per track for the request,
+// so the walk is paid once however many of the track's clips a request reads.
+// The expensive fixture is a rack with NO drum rack in it: a real drum rack
+// ends the walk at the first device reporting can_have_drum_pads.
 //
 // These count resolutions rather than asserting output, so they fail when a
 // repeat comes back — a correctness test cannot see repeated work.
@@ -28,6 +29,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import { inOneRequest } from "./read-clip-test-helpers.ts";
 
 /** How many chains the throwaway rack carries. */
 const CHAIN_COUNT = 8;
@@ -37,6 +39,9 @@ const CLIP_COUNT = 8;
 
 /** What one drum-mode walk of the fixture costs: the track, the rack, its chains. */
 const WALK_COST = CHAIN_COUNT + 2;
+
+/** Scene index of the one clip in the fixture that holds no notes. */
+const EMPTY_CLIP_SCENE = CLIP_COUNT;
 
 /** One note, so notes are formatted for real rather than skipped as empty. */
 const NOTES = [
@@ -95,7 +100,9 @@ function setupTrackWithClips(): void {
     });
   }
 
-  for (let sceneIndex = 0; sceneIndex < CLIP_COUNT; sceneIndex++) {
+  for (let sceneIndex = 0; sceneIndex <= EMPTY_CLIP_SCENE; sceneIndex++) {
+    const notes = sceneIndex === EMPTY_CLIP_SCENE ? [] : NOTES;
+
     registerMockObject(`clip${String(sceneIndex)}`, {
       path: livePath.track(0).clipSlot(sceneIndex).clip(),
       type: "Clip",
@@ -110,7 +117,7 @@ function setupTrackWithClips(): void {
         loop_start: 0,
         loop_end: 4,
       },
-      methods: { get_notes_extended: () => JSON.stringify({ notes: NOTES }) },
+      methods: { get_notes_extended: () => JSON.stringify({ notes }) },
     });
   }
 }
@@ -132,16 +139,44 @@ describe("readClip build budget", () => {
     expect(resolves("id rackChain*")).toBe(0);
   });
 
-  it("re-walks the device tree for every clip read on its own", () => {
-    for (let sceneIndex = 0; sceneIndex < CLIP_COUNT; sceneIndex++) {
-      readClip({ path: `t0/s${String(sceneIndex)}`, include: ["notes"] });
+  it("walks the device tree once for every clip one request reads", () => {
+    inOneRequest(() => {
+      for (let sceneIndex = 0; sceneIndex < CLIP_COUNT; sceneIndex++) {
+        readClip({ path: `t0/s${String(sceneIndex)}`, include: ["notes"] });
+      }
+    });
+
+    // The memo is what makes this one walk instead of CLIP_COUNT of them, and
+    // it is keyed on the track, so the walk is paid before the first clip and
+    // never again. Every clip after that costs only itself.
+    expect(resolves("id rackChain*")).toBe(CHAIN_COUNT);
+    expect(liveApiBuildStats().resolved).toBe(WALK_COST + CLIP_COUNT);
+  });
+
+  it("walks again for the next request", () => {
+    for (let sceneIndex = 0; sceneIndex < 2; sceneIndex++) {
+      inOneRequest(() => {
+        readClip({ path: `t0/s${String(sceneIndex)}`, include: ["notes"] });
+      });
     }
 
-    // Nothing carries between standalone reads, so each one walks the whole
-    // tree again. This is the cost the batch readers avoid by passing drumMode
-    // — it is pinned so it stays linear, and so a second walk per clip shows.
-    expect(resolves("id rackChain*")).toBe(CHAIN_COUNT * CLIP_COUNT);
-    expect(liveApiBuildStats().resolved).toBe((WALK_COST + 1) * CLIP_COUNT);
+    // Nothing derived may outlive the request that derived it — the user can
+    // drop a drum rack on the track between two reads. So two requests pay two
+    // walks, and this is the cost the batch readers still avoid with drumMode.
+    expect(resolves("id rackChain*")).toBe(CHAIN_COUNT * 2);
+    expect(liveApiBuildStats().resolved).toBe((WALK_COST + 1) * 2);
+  });
+
+  it("skips the walk for a clip with no notes to spell", () => {
+    readClip({
+      path: `t0/s${String(EMPTY_CLIP_SCENE)}`,
+      include: ["notes"],
+    });
+
+    // Drum mode only decides how notes are spelled. An empty clip has none, so
+    // the answer is never used and must not be worked out.
+    expect(liveApiBuildStats().resolved).toBe(1);
+    expect(resolves("id rackChain*")).toBe(0);
   });
 
   it("costs one object per clip when the caller supplies drum mode", () => {

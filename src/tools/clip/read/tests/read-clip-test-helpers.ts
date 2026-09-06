@@ -7,6 +7,10 @@
  * Test helper functions for read-clip tests
  */
 import { expect } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -290,4 +294,19 @@ export function registerDrumRackTrack(): void {
     type: "Device",
     properties: { can_have_drum_pads: 1 },
   });
+}
+
+/**
+ * Run reads inside one request scope. The drum-mode memo only holds while a
+ * request is open, so a test without this measures a request per read.
+ * @param reads - The reads to make in the request
+ */
+export function inOneRequest(reads: () => void): void {
+  beginLiveApiScope();
+
+  try {
+    reads();
+  } finally {
+    endLiveApiScope();
+  }
 }

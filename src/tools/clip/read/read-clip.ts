@@ -277,7 +277,7 @@ function addTimingProperties(
  * @param includeClipNotes - Whether to include formatted notes
  * @param notation - Notation for the returned notes (default barbeat)
  * @param precomputedDrumMode - Drum mode supplied by a batch reader; falls back
- *   to a per-clip device-tree walk when omitted (standalone reads)
+ *   to a device-tree walk when omitted (standalone reads)
  */
 function processMidiClip(
   result: ReadClipResult,
@@ -311,11 +311,17 @@ function processMidiClip(
     -lengthBeats,
     lengthBeats * 3,
   ) as string;
-  const notes = JSON.parse(notesDictionary).notes;
+  // `?? []` because everything below is total on a missing key, the way
+  // formatNotation is: nothing to spell is not an error.
+  const notes = JSON.parse(notesDictionary).notes ?? [];
 
+  // Nothing to spell means the answer is never used, so an empty clip must not
+  // pay for the device-tree walk that produces it.
   const drumMode =
     precomputedDrumMode ??
-    (clip.trackIndex != null && isDrumRackTrack(clip.trackIndex));
+    (notes.length > 0 &&
+      clip.trackIndex != null &&
+      isDrumRackTrack(clip.trackIndex));
 
   const formatted = formatNotation(notes, {
     notation,
