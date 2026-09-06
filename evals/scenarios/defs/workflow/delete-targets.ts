@@ -63,9 +63,9 @@ interface TrackDevices {
   devices?: Array<{ name?: string; type?: string }>;
 }
 
-/** A drum rack read with its pads. */
+/** A drum rack read with its pad names keyed by note. */
 interface RackPads {
-  drumPads?: Array<{ name?: string; pitch?: string }>;
+  drumMap?: Record<string, string>;
 }
 
 /** A Live Set read with its scenes. */
@@ -92,9 +92,7 @@ function deviceNames(result: unknown): string[] {
  * @returns Pad names, in pitch order
  */
 function padNames(result: unknown): string[] {
-  return ((result as RackPads).drumPads ?? []).map(
-    (pad) => pad.name ?? pad.pitch ?? "?",
-  );
+  return Object.values((result as RackPads).drumMap ?? {});
 }
 
 export const deleteTargets: EvalScenario = {
@@ -147,7 +145,10 @@ export const deleteTargets: EvalScenario = {
     {
       type: "state",
       tool: "ppal-read-device",
-      args: { path: DRUM_RACK_PATH, include: ["drum-pads"] },
+      // drum-map, not drum-pads: small-model mode strips drum-pads from the
+      // enum, so the read is rejected and the empty result reads as a deleted
+      // rack. drum-map carries the same names and exists in both modes.
+      args: { path: DRUM_RACK_PATH, include: ["drum-map"] },
       expect: (result) => {
         const pads = padNames(result);
 
