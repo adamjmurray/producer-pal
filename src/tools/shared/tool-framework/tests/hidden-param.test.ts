@@ -188,6 +188,42 @@ describe("hiddenParamWarnings", () => {
     ]);
   });
 
+  // A replacement that reads the value differently is the case a bare "use X
+  // instead" gets wrong: the caller renames the param, keeps the value, and the
+  // call quietly does something else.
+  it("says how the replacement reads the value, when it differs", () => {
+    expect(
+      hiddenParamWarnings(
+        ["split"],
+        collectHiddenParams({
+          split: deprecatedParam(z.string().optional(), {
+            replacedBy: "arrangementSplit",
+            note: "Positions are on the song timeline, not offsets from the clip's start.",
+          }),
+        }),
+      ),
+    ).toStrictEqual([
+      'WARNING: param "split" is deprecated and will be removed; use "arrangementSplit" instead. Positions are on the song timeline, not offsets from the clip\'s start.',
+    ]);
+  });
+
+  it("puts the note after the example when a deprecation has both", () => {
+    expect(
+      hiddenParamWarnings(
+        ["takeLane"],
+        collectHiddenParams({
+          takeLane: deprecatedParam(z.string().optional(), {
+            replacedBy: "path",
+            example: "t0/l0",
+            note: "Lanes count from 0 in a path.",
+          }),
+        }),
+      ),
+    ).toStrictEqual([
+      'WARNING: param "takeLane" is deprecated and will be removed; use "path" instead (e.g. path: "t0/l0"). Lanes count from 0 in a path.',
+    ]);
+  });
+
   // Two halves of one destination are one mistake, so they read as one
   // correction rather than two near-identical lines.
   it("groups aliases by the param they fold into", () => {

@@ -121,6 +121,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     // split() note op in the transforms description points at nothing retired.
     split: deprecatedParam(z.string().optional(), {
       replacedBy: "arrangementSplit",
+      note: "Positions are on the song timeline, not offsets from the clip's start.",
     }),
 
     // Audio clip parameters

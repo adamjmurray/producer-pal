@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
-import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
+import { MAX_CODE_LENGTH, TAKE_LANE_NOTE } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
@@ -177,6 +177,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     takeLane: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
+      note: TAKE_LANE_NOTE,
     }),
 
     takeLaneName: param(z.string().optional(), {

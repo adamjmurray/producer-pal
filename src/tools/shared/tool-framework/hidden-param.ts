@@ -34,6 +34,13 @@ export interface DeprecatedParamInfo {
   replacedBy: string;
   /** Example value for the replacement, shown in the warning. */
   example?: string;
+  /**
+   * How the replacement reads the value differently, for a param whose
+   * replacement is not a rename. Without it the warning reads as one, and a
+   * caller who follows it literally writes a call that quietly does something
+   * else.
+   */
+  note?: string;
 }
 
 export interface AliasParamInfo {
@@ -153,7 +160,8 @@ export function hiddenParamWarnings(
     if (info.kind === "deprecated") {
       warnings.push(
         `${WARNING_PREFIX}param "${key}" is deprecated and will be removed; ` +
-          `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, info.example)}`,
+          `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, info.example)}` +
+          (info.note == null ? "" : `. ${info.note}`),
       );
       continue;
     }

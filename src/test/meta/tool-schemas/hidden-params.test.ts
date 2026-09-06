@@ -273,6 +273,33 @@ describe("hidden params", () => {
     }
   });
 
+  // A rename is safe to follow blindly; these two are not. `split` reads its
+  // positions from the clip's start where `arrangementSplit` reads the song
+  // timeline, and `takeLane` counts from 1 where the `l<n>` segment counts from
+  // 0 — so a caller who keeps the value writes the wrong bar or the wrong lane.
+  // The note is the only part of the warning that says so.
+  it("tells a caller how the replacement reads the value, where it differs", () => {
+    const notes: Array<[string, string, string]> = [
+      ["ppal-update-clip", "split", "song timeline"],
+      ["ppal-create-clip", "takeLane", "count from 0"],
+      ["ppal-duplicate", "takeLane", "count from 0"],
+    ];
+
+    for (const [toolName, param, expected] of notes) {
+      const def = STANDARD_TOOL_DEFS.find(
+        (td: ToolDefFunction) => td.toolName === toolName,
+      ) as ToolDefFunction;
+      const { hidden } = resolveToolSchema(def.toolOptions.inputSchema, {});
+      const info = hidden[param];
+
+      expect(info?.kind, `${toolName} ${param}`).toBe("deprecated");
+      expect(
+        (info as { note?: string }).note,
+        `${toolName} ${param} note`,
+      ).toContain(expected);
+    }
+  });
+
   // The eval framework skips a scenario when it needs a param the model never
   // receives. A hidden param is exactly that, so it belongs in the set —
   // otherwise a scenario naming one silently fails instead of skipping.
