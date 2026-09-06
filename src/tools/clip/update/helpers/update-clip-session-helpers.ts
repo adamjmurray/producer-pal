@@ -375,6 +375,8 @@ interface HandlePositionOperationsArgs {
   movedClipGroups: Map<string, MoveGroup>;
   /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
   appendedLanes: Map<string, number>;
+  /** Destination tracks the batch has already resolved, keyed by track index. */
+  destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -413,6 +415,7 @@ export function handlePositionOperations(
           trackIndex: destination.trackIndex,
           sceneIndex: destination.sceneIndex,
         },
+        destinationTracks: args.destinationTracks,
         updatedClips: args.updatedClips,
         noteResult: args.noteResult,
       });

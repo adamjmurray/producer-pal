@@ -204,6 +204,10 @@ async function runClipBatch({
   // Shared across the batch so an "l=" destination lands on the lane the "l+"
   // before it appended, instead of appending one of its own.
   const appendedLanes = new Map<string, number>();
+  // The tracks the moves resolve, so a batch moving into one track resolves it
+  // once; what makes reusing one safe is spelled out at destinationTrack() in
+  // the slot-move helpers. Lives and dies with this call.
+  const destinationTracks = new Map<number, LiveAPI>();
 
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
@@ -244,6 +248,7 @@ async function runClipBatch({
       newLaneOrdinal: laneOrdinalById.get(clip.id),
       destinationParam: plan.destinationParam,
       nonSurvivorClipIds: plan.overwrites?.nonSurvivorIds,
+      destinationTracks,
       context,
       updatedClips,
       movedClipGroups,

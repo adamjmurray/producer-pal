@@ -404,6 +404,51 @@ describe("ppal-update-clip", () => {
     expect(oldSlot.id).toBeNull();
   });
 
+  // The batch resolves the destination track once and every clip's copy check
+  // reads through that one object. Only a real Live says whether those reads
+  // stay live, so the second clip landing is the assertion that matters.
+  it("moves a batch of session clips into one track", async () => {
+    // Sources above the destinations: creating them auto-creates the scenes,
+    // and a move needs its destination slot to exist already.
+    const clip1Id = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s13`, {
+      notes: "C3 1|1",
+      name: "Batch Move 1",
+    });
+    const clip2Id = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s14`, {
+      notes: "D3 1|1",
+      name: "Batch Move 2",
+    });
+
+    const moveResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: `${clip1Id},${clip2Id}`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s11,t${EMPTY_MIDI_TRACK}/s12`,
+      },
+    });
+    const movedClips =
+      parseToolResult<Array<{ id: string; path: string }>>(moveResult);
+
+    expect(movedClips.map((clip) => clip.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}/s11`,
+      `t${EMPTY_MIDI_TRACK}/s12`,
+    ]);
+
+    await sleep(100);
+
+    for (const [index, name] of [
+      [0, "Batch Move 1"],
+      [1, "Batch Move 2"],
+    ] as const) {
+      const verify = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: movedClips[index]!.id },
+      });
+
+      expect(parseToolResult<ReadClipResult>(verify).name).toBe(name);
+    }
+  });
+
   it("warns instead of throwing when toPath isn't a clip slot", async () => {
     const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s6`, {
       notes: "C3 1|1",

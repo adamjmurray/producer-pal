@@ -129,3 +129,25 @@ export function buildClipContext(
     scalePitchClassMask: readLiveSetScaleMask(),
   };
 }
+
+/**
+ * Whether the update edits the clip's notes: any of notes, transforms, or
+ * preTransforms. These are also the only reason to build the clip context, and
+ * building it reads the Live Set's scale — so a batch that only renames clips
+ * skips that read instead of paying it once per clip.
+ * @param notationString - New notes to merge, or undefined
+ * @param transformString - Transforms applied after the merge, or undefined
+ * @param preTransformString - Transforms applied before the merge, or undefined
+ * @returns True when any of the three names something
+ */
+export function hasNoteEdits(
+  notationString: string | undefined,
+  transformString: string | undefined,
+  preTransformString: string | undefined,
+): boolean {
+  return (
+    notationString != null ||
+    transformString != null ||
+    preTransformString != null
+  );
+}

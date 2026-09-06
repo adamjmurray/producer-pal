@@ -148,18 +148,34 @@ describe("updateClip build budget", () => {
     expect(resolves("live_set tracks *")).toBe(0);
     expect(resolves("live_set tracks * clip_slots *")).toBe(0);
 
-    // The clip and the Live Set, and that is the whole call.
-    expect(liveApiBuildStats().resolved).toBe(CLIPS * 2);
+    // One clip per id, and that is the whole call.
+    expect(liveApiBuildStats().resolved).toBe(CLIPS);
   });
 
-  it("reads the Live Set once per clip for a scale no transform asked about", async () => {
+  it("leaves the Live Set alone when the call edits no notes", async () => {
     setupSessionClips();
 
     await updateClip({ id: IDS.join(","), name: "Renamed" });
 
-    // Every clip rebuilds the transform context, and that context carries the
-    // Set's scale mask — read even by a call with no transform and no notes.
-    // The scale is the same for the whole batch, so this could be one.
+    // The Set's scale reaches a call only through the transform context, which
+    // carries the variables a transform reads (clip.*, bar.*) and the mask
+    // snap()/step() quantize against. A rename asks for none of it, so the
+    // context isn't built and nothing here touches the Set at all.
+    //
+    // These are resolutions, not constructions: live_set is a stable target, so
+    // the reads this removes were memo hits plus their property gets. The
+    // destination track below is the half that saves real object builds.
+    expect(resolves("live_set")).toBe(0);
+  });
+
+  it("reads the Live Set's scale once per clip that edits notes", async () => {
+    setupSessionClips();
+
+    await updateClip({ id: IDS.join(","), notes: "1|1 C3" });
+
+    // The other side of the skip above: notes mean a context per clip, and the
+    // context carries the scale mask. Still one read per clip — the scale is
+    // the same for the whole batch, so this could be one.
     expect(resolves("live_set")).toBe(CLIPS);
   });
 
@@ -173,16 +189,16 @@ describe("updateClip build budget", () => {
     // An arrangement clip is named by its bar|beat, which costs the song
     // meter, and that name gets built three times per clip: twice for warning
     // labels the call goes on to not warn with, once for the result's path.
-    // The meter is memoized per request, so all of it collapses to the one.
-    // The CLIPS is the scale mask, which is not memoized. A session clip pays
-    // none of this — its path is spelled from indices already in hand.
+    // The meter is memoized per request, so all of it collapses to this one.
+    // A session clip pays none of it — its path is spelled from indices
+    // already in hand.
     //
     // The scope is the point. Every tool call runs inside one, so a count
     // taken without a scope measures the harness rather than what ships.
-    expect(resolves("live_set")).toBe(CLIPS + 1);
+    expect(resolves("live_set")).toBe(1);
   });
 
-  it("rebuilds the destination track once per clip moved into it", async () => {
+  it("resolves the destination track once for the whole batch moved into it", async () => {
     setupSessionClips();
     setupMoveDestination();
 
@@ -193,11 +209,10 @@ describe("updateClip build budget", () => {
       ),
     });
 
-    // Every clip in the batch lands on the same track, and the check for
-    // whether that track takes the copy builds it again for each one. One
-    // object serves the batch — createClip already resolves its destination
-    // track once. This is a baseline to ratchet down.
-    expect(resolves("live_set tracks *")).toBe(CLIPS);
+    // Every clip in the batch lands on the same track, and each one asks that
+    // track whether it takes the copy. The batch resolves it once and passes
+    // it down, so the count is the number of destination tracks, not clips.
+    expect(resolves("live_set tracks *")).toBe(1);
 
     // Two slots per clip: the one it leaves and the one it lands in.
     expect(resolves("live_set tracks * clip_slots *")).toBe(CLIPS * 2);

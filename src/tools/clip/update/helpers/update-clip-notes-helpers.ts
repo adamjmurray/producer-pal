@@ -27,6 +27,7 @@ import {
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
+  hasNoteEdits,
 } from "./update-clip-transform-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -75,7 +76,7 @@ interface QuantizationOptions {
  * @param preTransformString - Transform expressions to apply to existing notes BEFORE merge
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @param clipContext - Clip-level context for transform variables
+ * @param clipContext - Clip-level context for transform variables, undefined when the call edits no notes
  * @param notation - Global notation setting the notes string is written in (default barbeat)
  * @returns Note update result, or null if notes not modified
  */
@@ -86,15 +87,12 @@ export function handleNoteUpdates(
   preTransformString: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
-  clipContext: ClipContext,
+  clipContext: ClipContext | undefined,
   notation: Notation | undefined,
 ): NoteUpdateResult | null {
-  // Skip if nothing meaningful to do
-  if (
-    notationString == null &&
-    transformString == null &&
-    preTransformString == null
-  ) {
+  // Nothing to do. The caller builds the clip context on this same check, so
+  // an undefined one never reaches the code below.
+  if (!hasNoteEdits(notationString, transformString, preTransformString)) {
     return null;
   }
 
@@ -389,7 +387,7 @@ function applyPreTransformsToExisting(
   preTransformString: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
-  clipContext: ClipContext,
+  clipContext: ClipContext | undefined,
 ): { notes: NoteEvent[]; matchCount: number | undefined } {
   if (preTransformString == null || existingNotes.length === 0) {
     return { notes: existingNotes, matchCount: undefined };

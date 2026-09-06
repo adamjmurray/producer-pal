@@ -36,7 +36,10 @@ import {
   calculateBeatPositions,
   getTimeSignature,
 } from "./update-clip-timing-helpers.ts";
-import { buildClipContext } from "./update-clip-transform-helpers.ts";
+import {
+  buildClipContext,
+  hasNoteEdits,
+} from "./update-clip-transform-helpers.ts";
 
 interface ClipResult {
   id: string;
@@ -81,6 +84,8 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   /** Which written `l+` the destination lands on, for an `l=` sharing it. */
   newLaneOrdinal?: number;
   nonSurvivorClipIds?: Set<string> | null;
+  /** Destination tracks the batch has already resolved, keyed by track index. */
+  destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   movedClipGroups: Map<string, MoveGroup>;
@@ -141,6 +146,8 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     clipIndex,
     clipCount,
     notationString,
+    transformString,
+    preTransformString,
     timeSignature,
     firstStart,
     looping,
@@ -206,9 +213,13 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     wasLooping,
   });
 
-  // Build context for transform variables (clip.*, bar.*)
+  // Context for transform variables (clip.*, bar.*). Built only when the call
+  // edits notes, because building it reads the Live Set's scale and nothing
+  // else uses it — a batch of renames would otherwise read the scale per clip.
   // prettier-ignore
-  const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
+  const clipContext = hasNoteEdits(notationString, transformString, preTransformString)
+    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator)
+    : undefined;
 
   if (isAudioClip) {
     handleAudioClipUpdate(clip, clipContext, params);
@@ -260,6 +271,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     arrangementLengthBeats: params.arrangementLengthBeats,
     movedClipGroups,
     appendedLanes: params.appendedLanes,
+    destinationTracks: params.destinationTracks,
     context,
     updatedClips,
     noteResult,
@@ -362,7 +374,7 @@ function writeClipProperties(
  * @param params - The full single-clip update params
  * @param resolved - Derived per-clip values not present on params
  * @param resolved.isAudioClip - Whether the clip is an audio clip
- * @param resolved.clipContext - Clip-level context for transform variables
+ * @param resolved.clipContext - Clip-level context for transform variables, undefined when the call edits no notes
  * @param resolved.timeSigNumerator - Resolved time signature numerator
  * @param resolved.timeSigDenominator - Resolved time signature denominator
  * @param resolved.notation - Global notation setting the notes string is written in (or undefined)
@@ -378,7 +390,7 @@ function resolveNoteResult(
     notation,
   }: {
     isAudioClip: boolean;
-    clipContext: ClipContext;
+    clipContext: ClipContext | undefined;
     timeSigNumerator: number;
     timeSigDenominator: number;
     notation: Notation | undefined;
@@ -428,12 +440,12 @@ function resolveNoteResult(
  * audio parameters ran earlier, before the region write — see the call site.
  * Audio clips have no MIDI notes, so preTransforms is unconditionally ignored.
  * @param clip - The audio clip to update
- * @param clipContext - Clip-level context for transform variables
+ * @param clipContext - Clip-level context for transform variables, undefined when the call sends no transforms
  * @param params - The full update params (audio fields are consumed)
  */
 function handleAudioClipUpdate(
   clip: LiveAPI,
-  clipContext: ClipContext,
+  clipContext: ClipContext | undefined,
   params: ProcessSingleClipUpdateParams,
 ): void {
   applyAudioTransforms(clip, params.transformString, clipContext);

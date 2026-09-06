@@ -36,6 +36,8 @@ import {
 interface SlotMoveArgs {
   clip: LiveAPI;
   toSlot: ClipSlotPosition;
+  /** Destination tracks the batch has already resolved, keyed by track index. */
+  destinationTracks?: Map<number, LiveAPI>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
 }
@@ -45,12 +47,14 @@ interface SlotMoveArgs {
  * @param args - Operation arguments
  * @param args.clip - The session clip to move
  * @param args.toSlot - Destination slot position
+ * @param args.destinationTracks - Destination tracks the batch already resolved
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
  */
 export function handleClipSlotMove({
   clip,
   toSlot,
+  destinationTracks,
   updatedClips,
   noteResult,
 }: SlotMoveArgs): void {
@@ -84,7 +88,11 @@ export function handleClipSlotMove({
   // of failing, and the source is deleted right after — check first rather than
   // destroying the clip and reporting it moved.
   const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
-  const blocker = clipCopyBlocker(clipIsMidi, toSlot.trackIndex);
+  const blocker = clipCopyBlocker(
+    clipIsMidi,
+    toSlot.trackIndex,
+    destinationTrack(toSlot.trackIndex, destinationTracks),
+  );
 
   if (blocker != null) {
     console.warn(
@@ -234,6 +242,37 @@ function arrangementToSlotBlocker(
     (clip.getProperty("is_midi_clip") as number) > 0,
     toSlot.trackIndex,
   );
+}
+
+/**
+ * The destination track, resolved once per index for the whole call: every clip
+ * a batch moves into one track asks the same track whether it takes the copy.
+ *
+ * Reusing it is safe because nothing in the batch can change the answer —
+ * update-clip creates and deletes no tracks, and the only reads through the
+ * object are the blocker's has_midi_input and is_frozen. The path check covers
+ * what the batch doesn't control: a held object follows its own object, not its
+ * index, so a track inserted ahead of this one (by the user, or by a request
+ * overlapping this one's awaits) rewrites the held path and it stops matching
+ * the index this clip was sent to. Reading a path builds nothing.
+ * @param trackIndex - Destination track index
+ * @param tracks - Tracks the batch has already resolved, added to
+ * @returns The destination track
+ */
+function destinationTrack(
+  trackIndex: number,
+  tracks: Map<number, LiveAPI> | undefined,
+): LiveAPI {
+  const path = String(livePath.track(trackIndex));
+  const resolved = tracks?.get(trackIndex);
+
+  if (resolved != null && resolved.path === path) return resolved;
+
+  const track = LiveAPI.from(path);
+
+  tracks?.set(trackIndex, track);
+
+  return track;
 }
 
 /**
