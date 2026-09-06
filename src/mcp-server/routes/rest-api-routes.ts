@@ -15,6 +15,10 @@ import {
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import {
+  unexpectedArgKeys,
+  unexpectedArgsWarning,
+} from "#src/tools/shared/tool-framework/unexpected-args.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import {
@@ -167,6 +171,12 @@ export function registerRestApiRoutes(
       // `action: "delete"`, and so on. Every filtered value is one the tool
       // still handles; only the advertising shrinks.
       const { inputSchema } = toolDef.toolOptions;
+      // Diff the raw body against that same full schema, before Zod strips the
+      // rest, so a typo'd optional param doesn't come back as a clean success
+      // that changed nothing. MCP diffs against the filtered schema instead;
+      // here that would call a real param unexpected whenever small-model mode
+      // is on, for exactly the reason above.
+      const unexpectedKeys = unexpectedArgKeys(req.body, inputSchema);
       const parsed = z
         .object(inputSchema)
         .safeParse(
@@ -203,6 +213,14 @@ export function registerRestApiRoutes(
           });
 
           return;
+        }
+
+        // Same order define-tool.ts appends them in: what was ignored, then
+        // what to send instead.
+        const unexpectedWarning = unexpectedArgsWarning(unexpectedKeys);
+
+        if (unexpectedWarning != null) {
+          mcpResponse.content.push({ type: "text", text: unexpectedWarning });
         }
 
         appendDeprecationNotices(

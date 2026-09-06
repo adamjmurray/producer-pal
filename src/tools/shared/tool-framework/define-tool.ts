@@ -6,7 +6,6 @@
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
-import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { hiddenParamWarnings } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import {
@@ -14,6 +13,10 @@ import {
   resolveModalDescription,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import {
+  unexpectedArgKeys,
+  unexpectedArgsWarning,
+} from "#src/tools/shared/tool-framework/unexpected-args.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 
@@ -101,11 +104,11 @@ export function defineTool(
       },
       async (args: Record<string, unknown>): Promise<CallToolResult> => {
         // Detect unexpected arguments before stripping them. Hidden params are
-        // expected here even though they were not published.
-        const expectedKeys = new Set(Object.keys(finalInputSchema));
-        const extraKeys = Object.keys(args).filter(
-          (key) => !expectedKeys.has(key),
-        );
+        // expected here even though they were not published. Diffed against the
+        // filtered schema, so a param this mode dropped is genuinely unexpected
+        // — the REST route diffs against the full one instead, because it
+        // validates against the full one. See rest-api-routes.ts.
+        const extraKeys = unexpectedArgKeys(args, finalInputSchema);
         // Only count a hidden param the handler will actually honor — warning
         // "use X instead" for a blank or null value steers the caller over a
         // value that was never used.
@@ -142,10 +145,10 @@ export function defineTool(
         const { errorCode: _errorCode, ...result } = rawResult;
 
         // Append warning for extra keys so LLMs learn correct usage
-        if (extraKeys.length > 0) {
-          const warning = `${WARNING_PREFIX}ignored unexpected argument(s): ${extraKeys.join(", ")}`;
+        const extraWarning = unexpectedArgsWarning(extraKeys);
 
-          result.content.push({ type: "text", text: warning });
+        if (extraWarning != null) {
+          result.content.push({ type: "text", text: extraWarning });
         }
 
         // The value was honored; this only steers the caller to the real name.

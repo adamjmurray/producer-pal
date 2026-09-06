@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
+import { MAX_TIMEOUT_MS, SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   lastMcpContext,
@@ -315,7 +315,100 @@ describe("REST API Routes", () => {
       expect(body.warnings?.join("\n")).toContain(
         'param "toSlot" is deprecated',
       );
+      // A hidden param is in the schema that validates, so it is expected here
+      // even though the catalog no longer lists it.
+      expect(body.warnings?.join("\n")).not.toContain("unexpected argument");
       expect(body.appended).toBeUndefined();
+    });
+
+    it("warns about an argument no param accepts", async () => {
+      // Zod strips it, so without this the call comes back as a clean success
+      // that changed nothing — indistinguishable from a real write. MCP has
+      // warned about this since it shipped; REST was silent.
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"3"}' }] });
+
+      const response = await callTool("ppal-update-track", {
+        path: "t1",
+        nmae: "Renamed",
+      });
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(response.status).toBe(200);
+      expect(body.warnings).toStrictEqual([
+        "ignored unexpected argument(s): nmae",
+      ]);
+    });
+
+    it("says nothing when every argument is known", async () => {
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"3"}' }] });
+
+      const response = await callTool("ppal-update-track", {
+        path: "t1",
+        name: "Renamed",
+      });
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(body.warnings).toBeUndefined();
+    });
+
+    it("does not call a small-model-filtered param unexpected", async () => {
+      // REST validates against the full schema on purpose, so a param that
+      // mode drops from the catalog is still accepted and still forwarded.
+      // Diffing against the filtered schema would call it unexpected.
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"7"}' }] });
+
+      const smallModel = {
+        "Content-Type": "application/json",
+        [SMALL_MODEL_MODE_HEADER]: "true",
+      };
+      // Proves the mode is live for this request, so the assertion below is
+      // about the schema choice rather than a header that did nothing.
+      const catalog = await fetch(`${appState.baseUrl}/api/tools`, {
+        headers: smallModel,
+      });
+      const { tools } = await catalog.json();
+      const listed = tools.find(
+        (t: { name: string }) => t.name === "ppal-create-scene",
+      );
+
+      expect(listed.inputSchema.properties).not.toHaveProperty("tempo");
+
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/ppal-create-scene`,
+        {
+          method: "POST",
+          headers: smallModel,
+          body: JSON.stringify({ path: "s+", tempo: 100 }),
+        },
+      );
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toStrictEqual({
+        path: "s+",
+        tempo: 100,
+        capture: false,
+        count: 1,
+      });
+      expect(body.warnings).toBeUndefined();
+    });
+
+    it("does not report array indexes as unexpected params", async () => {
+      // The body is whatever was posted, and JSON parses an array without
+      // complaint. Object.keys on it would name "0, 1" as params the caller
+      // sent.
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"3"}' }] });
+
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/ppal-update-track`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "[1, 2]",
+        },
+      );
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(body.warnings).toBeUndefined();
     });
 
     it("says nothing about a deprecated param sent blank", async () => {
