@@ -15,7 +15,7 @@
 // the spelling `rt+` replaced.
 export const objectPaths = `## Addressing Tracks and Scenes
 
-A \`path\` names an object by where it is, 0-based: \`t2\` is track 2, \`rt0\` the first return track, \`mt\` the main track, \`s3\` scene 3. Reads report a \`path\` beside every \`id\` and the write tools take one, so what you just read is what you address next — no re-reading an object to learn its id.
+A \`path\` names an object by where it is, counting from 0: \`t0\` is the first track, \`s0\` the first scene, \`rt0\` the first return track, \`mt\` the main track. Users count from 1, so subtract one from what they say: their "scene 1" is \`s0\`, their "track 3" is \`t2\`. Reads report a \`path\` beside every \`id\` and the write tools take one, so what you just read is what you address next — no re-reading an object to learn its id.
 
 A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a return track and on the main track, whose \`path\` is what identifies them.
 

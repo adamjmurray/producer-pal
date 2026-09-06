@@ -94,8 +94,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     }),
     toPath: param(z.coerce.string().optional(), {
       default:
-        "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1); " +
-        "'t2[5|1]' = that spot on track 2's arrangement, and '[5|1]' the same spot on the source clip's " +
+        "destination(s), comma-separated for multiple. Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0); " +
+        "'t2[5|1]' = that spot on that track's arrangement, and '[5|1]' the same spot on the source clip's " +
         "own track (a position is bar|beat or loc:<locator name or id> — 't2[loc:Chorus]' names a " +
         "section instead of counting bars; an arrangement track must match " +
         "the clip's MIDI/audio type); 't2/l0' = its first take lane, 't2/l+' appends a fresh one, and " +
