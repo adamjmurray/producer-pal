@@ -395,6 +395,18 @@ Optimized algorithm using 2(N-1) duplications for N segments (not 2N):
 5. Re-scan track after modifications to get fresh clip objects
    (`rescanSplitClips()` refreshes stale LiveAPI objects)
 
+A split can't be combined with `toPath`, `toSlot`, `arrangementStart` or
+`arrangementLength`, whatever they name. `refuseSplitWithMove()` throws before
+anything is cut. Live keeps only the first piece on the id that was named, so a
+list reaches that piece and no other; a single value reaches every piece, which
+is worse. One `arrangementStart` stacks them all on one bar and
+`computeOverwritePlan` deletes all but the last — an optimizer doing as it is
+told, not a guard. One `arrangementLength` longer than a piece tiles copies in
+from that piece's end, which is where the next piece starts, so each piece
+buries the one after it. Telling a safe length from a destructive one needs each
+piece's own length, and that needs a Live read this has to answer before, so the
+whole param is refused.
+
 ---
 
 ## Source File Reference

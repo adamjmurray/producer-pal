@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type RegisteredMockObject,
   clearMockRegistry,
+  lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -22,6 +23,7 @@ import {
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { planClipUpdate } from "#src/tools/clip/update/helpers/update-clip-prep-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 
@@ -275,5 +277,145 @@ describe("updateClip - loc: song positions", () => {
     await expect(
       updateClip({ id: CLIP_ID, split: "loc:Chorus" }, {}),
     ).resolves.toBeDefined();
+  });
+});
+
+type UpdateClipArgs = NonNullable<Parameters<typeof updateClip>[0]>;
+
+describe("updateClip - arrangementSplit next to a move", () => {
+  it.each<{ sent: string; param: string; args: UpdateClipArgs }>([
+    {
+      sent: "toPath",
+      param: "toPath",
+      args: { id: "clip_1", toPath: "t1[17|1]" },
+    },
+    { sent: "toSlot", param: "toSlot", args: { id: "clip_1", toSlot: "1/2" } },
+    {
+      sent: "an arrangementStart list",
+      param: "arrangementStart",
+      args: { id: "clip_1, clip_2", arrangementStart: "3|1,5|1" },
+    },
+    {
+      sent: "an arrangementLength list",
+      param: "arrangementLength",
+      args: { id: "clip_1, clip_2", arrangementLength: "1bar,2bar" },
+    },
+    {
+      sent: "one arrangementLength",
+      param: "arrangementLength",
+      args: { id: "clip_1", arrangementLength: "4bar" },
+    },
+  ])("refuses arrangementSplit sent with $sent", async ({ param, args }) => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    await expect(
+      updateClip({ ...args, arrangementSplit: "2|1" }, {}),
+    ).rejects.toThrow(`arrangementSplit cannot be combined with ${param}`);
+
+    // Refused before anything was cut.
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses one arrangementStart, which every piece would land on", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+    const clip = lookupMockObject("clip_1");
+
+    // A single value covers every clip, the pieces included, so all three
+    // would pile onto bar 17 and the overlap plan would delete two of them.
+    await expect(
+      updateClip(
+        {
+          id: "clip_1",
+          arrangementSplit: "3|1, 5|1",
+          arrangementStart: "17|1",
+        },
+        {},
+      ),
+    ).rejects.toThrow(
+      "arrangementSplit cannot be combined with arrangementStart",
+    );
+
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+    expect(clip?.set).not.toHaveBeenCalled();
+  });
+
+  it("refuses one arrangementLength, which tiles a piece over the next", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    // Lengthening tiles copies in from the clip's own end, and after a split
+    // that is exactly where the next piece starts, so the pieces bury each
+    // other. Which lengths are safe needs each piece's length, and that needs
+    // a Live read this has to answer before.
+    await expect(
+      updateClip(
+        { id: "clip_1", arrangementSplit: "3|1", arrangementLength: "4bar" },
+        {},
+      ),
+    ).rejects.toThrow(
+      "arrangementSplit cannot be combined with arrangementLength",
+    );
+
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+  });
+
+  it("names every refused param, joined so the sentence still reads", async () => {
+    setupClipSplittingMocks("clip_1");
+
+    await expect(
+      updateClip(
+        {
+          id: "clip_1, clip_2",
+          arrangementSplit: "2|1",
+          toPath: "t1[17|1],t1[21|1]",
+          arrangementLength: "1bar,2bar",
+        },
+        {},
+      ),
+    ).rejects.toThrow(
+      /toPath or arrangementLength[\S\s]*on the ids the split returns\./,
+    );
+  });
+
+  it("refuses the deprecated split spelling too, and names it", async () => {
+    setupClipSplittingMocks("clip_1");
+
+    await expect(
+      updateClip({ id: "clip_1", split: "2|1", toPath: "t1[17|1]" }, {}),
+    ).rejects.toThrow("split cannot be combined with toPath");
+  });
+
+  it("still splits when nothing else names a place or a length", async () => {
+    const { callState } = setupClipSplittingMocks("clip_1");
+
+    // An all-empty toSlot names nothing, so it is not a conflict: refusing it
+    // would refuse a call that had none.
+    await updateClip(
+      { id: "clip_1", arrangementSplit: "2|1", toSlot: "," },
+      {},
+    );
+
+    expectDuplicateCalled(callState.trackMock);
+  });
+});
+
+describe("planClipUpdate - the pieces a split makes", () => {
+  it("gives the piece on a new id nothing a list could have paired with", () => {
+    setupClipSplittingMocks("clip_1");
+
+    const plan = planClipUpdate({
+      requestedIds: ["clip_1"],
+      arrangementSplit: "2|1",
+      context: {},
+    });
+
+    // Why every position and length is refused above: the second piece is on
+    // an id the call never named, so a list has no entry to pair with it and
+    // a single value would reach it whether or not that made sense.
+    expect(
+      plan.clips.map((clip) => [clip.id, plan.lengthBeatsFor(clip)]),
+    ).toStrictEqual([
+      ["clip_1", null],
+      ["dup_2", null],
+    ]);
   });
 });

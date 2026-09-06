@@ -93,7 +93,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       default:
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
-        "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
+        "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter. " +
+        "Cannot be combined with toPath or arrangementLength: the cut makes new clips, so those would either miss the new pieces or apply to every one of them - cut in one call, then move/resize the pieces in the next",
       smallModel: null,
     }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {

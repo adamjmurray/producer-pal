@@ -25,6 +25,7 @@ import {
   parseArrangementParams,
 } from "./arrangement/update-clip-arrangement-params.ts";
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
+import { refuseSplitWithMove } from "./update-clip-refusal-helpers.ts";
 import {
   moveDestinationParam,
   resolveMoveDestinations,
@@ -64,8 +65,9 @@ export interface ClipUpdatePlan {
 }
 
 /**
- * Work out what the call does to which clips: resolve the ids, split them if
- * asked, and pair each one with where it's headed.
+ * Work out what the call does to which clips: refuse a split there is no
+ * reading of, resolve the ids, split them if asked, and pair each one with
+ * where it's headed.
  * @param args - The target and position params as the tool received them
  * @param args.requestedIds - Ids in call order
  * @param args.toPath - Destination path(s)
@@ -87,6 +89,17 @@ export function planClipUpdate({
   split,
   context,
 }: ClipUpdatePlanArgs): ClipUpdatePlan {
+  // Before the first Live read, so a call there is no reading of changes
+  // nothing.
+  refuseSplitWithMove({
+    arrangementSplit,
+    split,
+    toPath,
+    toSlot,
+    arrangementStart,
+    arrangementLength,
+  });
+
   // Rewrite every `loc:` position as the bar|beat it names, once, before
   // anything reads them, so nothing below needs a Live Set of its own.
   // `start`, `firstStart` and `split` are clip-relative and stay out of it.
