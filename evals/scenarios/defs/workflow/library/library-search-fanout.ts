@@ -13,14 +13,14 @@
  * chooses is indistinguishable from one that reads badly.
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
+import { resolveSamplesPath } from "../../../run-scenario-helpers.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
   type ToolCall,
-} from "../../types.ts";
+} from "../../../types.ts";
 
 const TOOL_LIBRARY = "ppal-library";
 

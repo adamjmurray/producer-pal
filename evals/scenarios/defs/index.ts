@@ -56,7 +56,13 @@ export {
 export { contextWritePreserves } from "./context/context-write-preserve.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deleteTargets } from "./workflow/delete-targets.ts";
-export { librarySearchFanout } from "./workflow/library-search-fanout.ts";
+export {
+  libraryDiscoveryActions,
+  libraryKindMidi,
+  libraryTagDiscovery,
+  libraryTypeOneshot,
+} from "./workflow/library/library-filters.ts";
+export { librarySearchFanout } from "./workflow/library/library-search-fanout.ts";
 export { locatorNavigation } from "./workflow/locator-navigation.ts";
 export { liveApiEscapeHatch } from "./workflow/live-api-escape-hatch.ts";
 export { mixerLanguage } from "./workflow/mixer-language.ts";
