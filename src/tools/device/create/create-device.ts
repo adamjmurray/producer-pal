@@ -326,6 +326,10 @@ function createDeviceAtPath(
   if (!id || !device?.exists()) {
     const positionDesc = position != null ? `position ${position}` : "end";
 
+    // Live refuses a second instrument in a chain that already has one, and
+    // this is how that arrives: no id back, no device. Re-running a drum kit
+    // build fails every pad this way. That's Live, not a bug — an audio effect
+    // on the same chains succeeds.
     throw new Error(
       `could not insert "${deviceName}" at ${positionDesc} in path "${path}"`,
     );

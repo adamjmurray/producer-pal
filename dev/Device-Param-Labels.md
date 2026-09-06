@@ -77,6 +77,11 @@ rack with two macros renamed the same is easy to build — there only the raw
 names collide, so the `name (original_name)` form read-device reports still
 picks one out.
 
+**A macro's name can't be set through the Live API**, so that case has to be
+built by hand in Live. Probed: `set name "Zap"` on a rack macro returns 1 —
+Live's usual ack — and both `name` and `original_name` are unchanged on a fresh
+read. The ack means nothing here.
+
 ## Checking a param for real
 
 Labels are the only source of truth, and they can only be read from a running

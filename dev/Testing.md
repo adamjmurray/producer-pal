@@ -143,6 +143,22 @@ required, and per-tree counts are ratcheted in
 `src/test/lint-suppression-limits.test.ts` — raising a limit needs user
 approval.
 
+## Auditing coverage
+
+**Don't audit by grepping for a name.** A table-driven test registers its cases
+through `it.each`, so the name never appears as a literal and the grep reports a
+gap that isn't there. A coverage audit did this twice in one pass: `sin()` and
+`tri()` were already covered by an `it.each` in
+`ppal-clip-transforms-waveforms.test.ts`, and `pitchShift`, `warpMode`,
+`firstStart` and `quantizePitch` each had a read and a write e2e. Read the
+suite, or grep for the helper that builds the table.
+
+**Green after a semantics change is weaker evidence than it looks.** When the
+mock registry changed how a re-registered object behaves, the affected tests
+were not read one by one — whatever stayed green was kept. Nothing broke, but
+green does not prove that a test still means what its author intended. Worth
+remembering if something surfaces later around mock identity.
+
 ## E2E
 
 `e2e/mcp/` drives a real Ableton Live; see `e2e/mcp/README.md`. Always ask
