@@ -24,6 +24,7 @@ import {
   beatsForClip,
   parseArrangementParams,
 } from "./arrangement/update-clip-arrangement-params.ts";
+import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
 import {
   moveDestinationParam,
   resolveMoveDestinations,
@@ -44,8 +45,14 @@ export interface ClipUpdatePlanArgs {
 }
 
 export interface ClipUpdatePlan {
-  /** The clips to update, after any splitting */
+  /** The clips to update, after any splitting, in the order the call named them */
   clips: LiveAPI[];
+  /**
+   * Positions in `clips`, in the order to process them. A move clears its
+   * destination before the copy lands, so a clip another clip is moving on top
+   * of goes first (see update-clip-move-order.ts).
+   */
+  moveOrder: number[];
   destinationById: Map<string, ClipPath>;
   /** Which written `l+` each clip's destination lands on, for an `l=`. */
   laneOrdinalById: Map<string, number>;
@@ -110,19 +117,41 @@ export function planClipUpdate({
     split,
     context,
   );
+  const { order, blockedIds } = orderArrangementMoves(splitClips, {
+    startBeatsFor,
+    lengthBeatsFor,
+    destinationById,
+  });
+
+  // A refused move must not reach Live by either route, so drop the lane too.
+  for (const id of blockedIds) destinationById.delete(id);
+
+  // Both halves go: a resize clears the span it tiles across just as a move
+  // clears its destination, so letting it run alone would destroy the very
+  // clip the refusal is protecting.
+  const startBeatsForMove = (clip: LiveAPI): number | null =>
+    blockedIds.has(clip.id) ? null : startBeatsFor(clip);
+  const lengthBeatsForMove = (clip: LiveAPI): number | null =>
+    blockedIds.has(clip.id) ? null : lengthBeatsFor(clip);
 
   return {
     clips: splitClips,
+    moveOrder: order,
     destinationById,
     laneOrdinalById,
     destinationParam: moveDestinationParam(toPath, toSlot),
-    overwrites: computeOverwritePlan(splitClips, {
-      startBeatsFor,
-      lengthBeatsFor,
-      destinationById,
-    }),
-    startBeatsFor,
-    lengthBeatsFor,
+    // Weighed in processing order, and without the refused moves: the plan
+    // holds a clip back for an overwrite that would now never come.
+    overwrites: computeOverwritePlan(
+      order.map((index) => splitClips[index] as LiveAPI),
+      {
+        startBeatsFor: startBeatsForMove,
+        lengthBeatsFor: lengthBeatsForMove,
+        destinationById,
+      },
+    ),
+    startBeatsFor: startBeatsForMove,
+    lengthBeatsFor: lengthBeatsForMove,
   };
 }
 

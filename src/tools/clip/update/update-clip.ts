@@ -24,7 +24,10 @@ import {
   emitArrangementWarnings,
   type MoveGroup,
 } from "./helpers/arrangement/update-clip-move-groups.ts";
-import { planClipUpdate } from "./helpers/update-clip-prep-helpers.ts";
+import {
+  planClipUpdate,
+  type ClipUpdatePlan,
+} from "./helpers/update-clip-prep-helpers.ts";
 import {
   refuseRegionWithDuplicateLoop,
   refuseUnreadableCall,
@@ -113,44 +116,11 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
  * @returns Single clip object or array of clip objects
  */
 export async function updateClip(
-  {
-    id,
-    ids,
-    path,
-    paths,
-    notes: notationString,
-    transforms,
-    preTransforms,
-    name,
-    color,
-    timeSignature,
-    start,
-    length,
-    firstStart,
-    looping,
-    duplicateLoop,
-    arrangementStart,
-    arrangementLength,
-    toSlot,
-    toPath,
-    arrangementSplit,
-    split,
-    gainDb,
-    pitchShift,
-    warpMode,
-    warping,
-    warpOp,
-    warpBeatTime,
-    warpSampleTime,
-    warpDistance,
-    quantize,
-    quantizeGrid,
-    quantizePitch,
-    code,
-    focus,
-  }: UpdateClipArgs = {},
+  args: UpdateClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipResult | ClipResult[]> {
+  const { id, ids, path, paths, name, color, toPath, toSlot } = args;
+  const { arrangementStart, arrangementLength, arrangementSplit, split } = args;
   // Set once per request by the V8 adapter, so a nested call (duplicate ->
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
@@ -162,18 +132,15 @@ export async function updateClip(
     { name, color, arrangementStart, arrangementLength, toPath, toSlot },
   );
 
-  refuseUnreadableCall(timeSignature, quantizePitch, toPath, arrangementStart);
-  refuseRegionWithDuplicateLoop(start, length, duplicateLoop);
+  refuseUnreadableCall(
+    args.timeSignature,
+    args.quantizePitch,
+    toPath,
+    arrangementStart,
+  );
+  refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 
-  const {
-    clips: mutableClips,
-    destinationById,
-    laneOrdinalById,
-    destinationParam,
-    overwrites,
-    startBeatsFor,
-    lengthBeatsFor,
-  } = planClipUpdate({
+  const plan = planClipUpdate({
     requestedIds,
     toPath,
     toSlot,
@@ -184,88 +151,138 @@ export async function updateClip(
     context,
   });
 
-  const parsedNames = parseNames(name, mutableClips.length, "clip");
-  const parsedColors = parseColors(color, mutableClips.length, "clip");
-
   // Said here, not where the args are read: it claims what the call did, so a
   // call refused above — or one whose paths found no clip — must not carry it.
-  warnBlankTarget({ id, ids, path, paths }, "clips", mutableClips.length);
+  warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
 
-  const updatedClips: ClipResult[] = [];
   const movedClipGroups = new Map<string, MoveGroup>();
+  const updated = await runClipBatch({
+    args,
+    plan,
+    context,
+    deadline,
+    movedClipGroups,
+  });
+
+  return finishUpdate(movedClipGroups, plan.overwrites, updated, args.focus);
+}
+
+interface RunClipBatchArgs {
+  args: UpdateClipArgs;
+  plan: ClipUpdatePlan;
+  context: Partial<ToolContext>;
+  deadline: number | null;
+  movedClipGroups: Map<string, MoveGroup>;
+}
+
+/**
+ * Update the clips one at a time, in the plan's order, and hand the results
+ * back in the order the caller named them.
+ * @param batch - The call's args, the plan, and the per-call collectors
+ * @param batch.args - The tool arguments as received
+ * @param batch.plan - What the call does to which clips
+ * @param batch.context - Per-request context
+ * @param batch.deadline - The request deadline
+ * @param batch.movedClipGroups - Tally of clips landing on each lane and position
+ * @returns One entry per clip written, in call order
+ */
+async function runClipBatch({
+  args,
+  plan,
+  context,
+  deadline,
+  movedClipGroups,
+}: RunClipBatchArgs): Promise<ClipResult[]> {
+  const { clips, moveOrder, destinationById, laneOrdinalById } = plan;
+  const { name, color } = args;
+  const parsedNames = parseNames(name, clips.length, "clip");
+  const parsedColors = parseColors(color, clips.length, "clip");
+  const updatedClips: ClipResult[] = [];
+  // The clips can be processed out of call order, so each one's results are
+  // kept at its own place and the response is put back together at the end.
+  const resultsPerClip: ClipResult[][] = clips.map(() => []);
   // Shared across the batch so an "l=" destination lands on the lane the "l+"
   // before it appended, instead of appending one of its own.
   const appendedLanes = new Map<string, number>();
 
-  for (let i = 0; i < mutableClips.length; i++) {
-    const clip = mutableClips[i] as LiveAPI;
+  for (const [step, i] of moveOrder.entries()) {
+    const clip = clips[i] as LiveAPI;
 
-    if (stopBatch(deadline, mutableClips, i)) break;
+    if (stopBatch(deadline, clips, moveOrder, step)) break;
+
+    const written = updatedClips.length;
 
     await processClipUpdateStep({
       clip,
       clipIndex: i,
-      clipCount: mutableClips.length,
-      notationString,
-      transformString: transforms,
-      preTransformString: preTransforms,
+      clipCount: clips.length,
+      notationString: args.notes,
+      transformString: args.transforms,
+      preTransformString: args.preTransforms,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
-      timeSignature,
-      start,
-      length,
-      firstStart,
-      looping,
-      duplicateLoop,
-      gainDb,
-      pitchShift,
-      warpMode,
-      warping,
-      warpOp,
-      warpBeatTime,
-      warpSampleTime,
-      warpDistance,
-      quantize,
-      quantizeGrid,
-      quantizePitch,
-      arrangementLengthBeats: lengthBeatsFor(clip),
-      arrangementStartBeats: startBeatsFor(clip),
+      timeSignature: args.timeSignature,
+      start: args.start,
+      length: args.length,
+      firstStart: args.firstStart,
+      looping: args.looping,
+      duplicateLoop: args.duplicateLoop,
+      gainDb: args.gainDb,
+      pitchShift: args.pitchShift,
+      warpMode: args.warpMode,
+      warping: args.warping,
+      warpOp: args.warpOp,
+      warpBeatTime: args.warpBeatTime,
+      warpSampleTime: args.warpSampleTime,
+      warpDistance: args.warpDistance,
+      quantize: args.quantize,
+      quantizeGrid: args.quantizeGrid,
+      quantizePitch: args.quantizePitch,
+      arrangementLengthBeats: plan.lengthBeatsFor(clip),
+      arrangementStartBeats: plan.startBeatsFor(clip),
       destination: destinationById.get(clip.id) ?? null,
       newLaneOrdinal: laneOrdinalById.get(clip.id),
-      destinationParam,
-      nonSurvivorClipIds: overwrites?.nonSurvivorIds,
+      destinationParam: plan.destinationParam,
+      nonSurvivorClipIds: plan.overwrites?.nonSurvivorIds,
       context,
       updatedClips,
       movedClipGroups,
       appendedLanes,
-      code,
+      code: args.code,
     });
+
+    resultsPerClip[i] = updatedClips.slice(written);
   }
 
-  return finishUpdate(movedClipGroups, overwrites, updatedClips, focus);
+  return resultsPerClip.flat();
 }
 
 /**
  * Whether the batch should stop here, naming the clips it didn't reach.
  *
  * Without them the caller knows the batch was cut short but not where the gap
- * is.
+ * is. Named in call order, not the order the loop would have reached them in.
  * @param deadline - The request deadline
  * @param clips - Every clip in the batch
- * @param index - How far the loop got
+ * @param order - Positions in `clips`, in processing order
+ * @param step - How far the loop got
  * @returns true when time is up
  */
 function stopBatch(
   deadline: number | null,
   clips: LiveAPI[],
-  index: number,
+  order: number[],
+  step: number,
 ): boolean {
   if (!isDeadlineExceeded(deadline)) return false;
 
-  const skipped = clips.slice(index).map(targetLabel);
+  const skipped = order
+    .slice(step)
+    .toSorted((a, b) => a - b)
+    .map((index) => targetLabel(clips[index] as LiveAPI));
 
   console.warn(
-    `Ran out of time after updating ${index} of ${clips.length} clips. ` +
+    `Ran out of time after updating ${step} of ${clips.length} clips. ` +
       `Not updated: ${skipped.join(", ")}. Re-run for those clips.`,
   );
 

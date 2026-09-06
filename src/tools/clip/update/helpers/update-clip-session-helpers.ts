@@ -323,9 +323,18 @@ function claimDestination(
 }
 
 /**
- * Drops a destination that holds another clip this call updates. The move would
- * overwrite that clip, and the batch would then work on a clip that no longer
- * exists and report it as updated — the loss the 1:1 pairing exists to prevent.
+ * Drops a slot destination that holds another clip this call updates. The move
+ * would overwrite that clip, and the batch would then work on a clip that no
+ * longer exists and report it as updated — the loss the 1:1 pairing exists to
+ * prevent.
+ *
+ * Slots only. An arrangement move can overwrite a batch clip too, but not
+ * from here: this runs while the destinations are being paired to the clips,
+ * and all it is handed is the destinations. Knowing what an arrangement move
+ * would clear takes the position it lands at, the clip's own length, and the
+ * track it ends up on. That case is handled in update-clip-move-order.ts,
+ * which runs the operations in an order that clears nobody's way and refuses
+ * the ones with no such order.
  * @param destinationById - Destinations by clip id, pruned in place
  * @param batchIds - Ids of every clip this call updates
  */
@@ -334,8 +343,6 @@ function dropDestinationsHoldingBatchClips(
   batchIds: Set<string>,
 ): void {
   for (const [clipId, destination] of destinationById) {
-    // Arrangement lanes hold many clips, so nothing there is displaced by a
-    // move landing on it — Live trims what overlaps instead of replacing it.
     if (destination.kind !== "slot") continue;
 
     const { trackIndex, sceneIndex } = destination;
