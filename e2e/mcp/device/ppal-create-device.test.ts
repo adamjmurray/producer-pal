@@ -276,6 +276,38 @@ describe("ppal-create-device", () => {
 
     expect(chainDevice.path).toBe(`${rack.path}/c0/d0`);
   });
+
+  // Live keeps a chain sorted by device type, so appending an instrument to a
+  // chain that already holds an audio effect pushes that effect down a slot.
+  // The path cache shares one container walk across a batch, and this is the
+  // mutation that moves an object out from under a path it cached. Both halves
+  // are checked: the effect really did move, and the batch still wrote to the
+  // devices it named rather than to whatever took their old slots.
+  it("keeps paths straight when an appended instrument re-sorts the chain", async () => {
+    const trackIndex = await createTrack("midi");
+    const effect = await createDevice("Auto Filter", `t${trackIndex}`);
+
+    expect(effect.path).toBe(`t${trackIndex}/d0`);
+
+    await sleep(100);
+
+    const instrument = await createDevice("Operator", `t${trackIndex}`);
+
+    // Live sorted the instrument ahead of the audio effect it appended after.
+    expect(instrument.path).toBe(`t${trackIndex}/d0`);
+
+    // The effect kept its identity and moved, rather than the path keeping its
+    // occupant. Reading by id is the question "where did this device go".
+    const movedEffect = await readDevice(effect.id);
+
+    expect(movedEffect.id).toBe(effect.id);
+    expect(movedEffect.path).toBe(`t${trackIndex}/d1`);
+
+    // And the path the re-sort vacated now names the instrument.
+    const atSlotZero = await readDeviceAt(`t${trackIndex}/d0`);
+
+    expect(atSlotZero.id).toBe(instrument.id);
+  });
 });
 
 interface ListDevicesResult {
@@ -298,5 +330,6 @@ interface CreateDeviceResult {
 interface ReadDeviceResult {
   id: string;
   type: string;
+  path?: string;
   name?: string;
 }

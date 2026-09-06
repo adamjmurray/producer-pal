@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
+  simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
 import {
   cachedDevicePath,
@@ -63,6 +64,48 @@ describe("withDevicePathCache", () => {
 
       expect(cachedDevicePath(missing).exists()).toBe(true);
     });
+  });
+
+  // The bug class this cache kept producing: a mutation renumbers devices, the
+  // path now names something else, and nobody remembered to announce it. The
+  // object itself is fine — it followed its target — so its path is the tell.
+  it("resolves fresh when the cached object moved out from under the path", () => {
+    const devicePath = livePath.track(0).device(0).toString();
+
+    registerMockObject("dev-a", { path: livePath.track(0).device(0) });
+
+    withDevicePathCache(() => {
+      const before = cachedDevicePath(devicePath);
+
+      expect(before.id).toBe("dev-a");
+
+      // Live re-sorts the chain: dev-a slides to devices 1 and dev-b takes the
+      // slot. No invalidateDevicePathCache() call, on purpose.
+      registerMockObject("dev-a", { path: livePath.track(0).device(1) });
+      registerMockObject("dev-b", { path: livePath.track(0).device(0) });
+
+      expect(cachedDevicePath(devicePath).id).toBe("dev-b");
+    });
+  });
+
+  // A deleted target keeps its id and clears its path, so the same check
+  // catches it without knowing a delete happened.
+  it("resolves fresh when the cached object was deleted", () => {
+    simulateMockDeletes();
+
+    withDevicePathCache(() => {
+      const before = cachedDevicePath(trackPath);
+
+      LiveAPI.from(livePath.liveSet).call("delete_track", 0);
+
+      expect(before.path).toBe("");
+      expect(cachedDevicePath(trackPath)).not.toBe(before);
+    });
+  });
+
+  it("refuses an async callback rather than tearing the cache down early", () => {
+    expect(() => withDevicePathCache(async () => cachedDevicePath(trackPath))) //
+      .toThrow("synchronous callback");
   });
 
   it("restores the enclosing scope's cache when a nested one ends", () => {

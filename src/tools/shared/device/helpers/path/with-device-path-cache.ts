@@ -11,14 +11,16 @@
  * repeat is another object off the pool. Inside the scope, a path resolves once
  * and the rest of the call reuses it.
  *
- * WHAT THE SCOPE ASSUMES: the caller calls invalidateDevicePathCache() right
- * after anything that renumbers devices. That is a positioned insert, and also
- * an append Live re-sorts the chain around: it keeps a chain ordered by device
- * type, so an instrument or a MIDI effect pushes siblings down a slot even
- * though it was appended. A delete inside the scope needs the same call, and is
- * riskier: a held object follows its own target through an index shift, which is
- * exactly wrong for a path cache, so only invalidate-immediately is safe. See
- * dev/LiveAPI-Object-Reuse.md.
+ * WHAT KEEPS IT HONEST: a cache hit is only used when the object still reports
+ * the path it is filed under. A held object follows its own target, so anything
+ * that renumbers devices rewrites the object's path and the key stops matching
+ * — which is the same thing as "this path now names something else". Checking
+ * that costs one property read and catches every move, including the ones no
+ * caller thought to announce. Deletion is covered too: the path clears to "".
+ *
+ * invalidateDevicePathCache() is still called after a known renumber, so a
+ * stale entry is dropped rather than re-resolved on next use. It is now an
+ * optimization, not the thing correctness rests on.
  *
  * Ids are never cached: at mode 0 an id resolves to a path once and follows
  * that path afterward, so a second lookup of the same id is not the same
@@ -38,7 +40,20 @@ export function withDevicePathCache<T>(fn: () => T): T {
   cache = new Map();
 
   try {
-    return fn();
+    const result = fn();
+
+    // The cache is module state, torn down by the finally below. An async fn
+    // returns at its first await, so the scope would close while the work is
+    // still running and a request that overlaps this one would be handed these
+    // objects. Nothing about that failure is visible, so say it out loud.
+    if (isThenable(result)) {
+      throw new Error(
+        "withDevicePathCache needs a synchronous callback: the cache is torn " +
+          "down before an awaited body would finish",
+      );
+    }
+
+    return result;
   } finally {
     cache = outer;
   }
@@ -56,7 +71,14 @@ export function cachedDevicePath(path: string): LiveAPI {
 
   const hit = cache.get(path);
 
-  if (hit != null) return hit;
+  // The object is never the stale half — it followed its target. The key is,
+  // once something moved that object out from under this path. A mismatch
+  // means re-resolve, and the entry is overwritten below.
+  //
+  // If a caller ever spells a path differently from the way Live gives it
+  // back, this quietly stops hitting. The build-budget tests assert exact
+  // resolve counts, so that shows up as a failure rather than as slow code.
+  if (hit != null && hit.path === path) return hit;
 
   const object = LiveAPI.from(path);
 
@@ -75,4 +97,15 @@ export function cachedDevicePath(path: string): LiveAPI {
  */
 export function invalidateDevicePathCache(): void {
   cache?.clear();
+}
+
+/**
+ * Whether a value is a promise, so a scope can refuse an async callback.
+ * @param value - Whatever the scope's callback returned
+ * @returns True when awaiting it would defer work past the scope
+ */
+function isThenable(value: unknown): boolean {
+  return (
+    value != null && typeof (value as { then?: unknown }).then === "function"
+  );
 }
