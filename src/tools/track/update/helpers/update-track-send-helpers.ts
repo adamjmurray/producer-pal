@@ -3,9 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
+import {
+  type ReturnTrackInfo,
+  readReturnTrackInfo,
+} from "#src/tools/shared/sends/return-track-info.ts";
 import {
   type DedupedSends,
   type IndexedSend,
@@ -51,7 +54,7 @@ export function resolveTrackSends(
     return { winners: [], collisions: [] };
   }
 
-  const returns = returnTrackInfo();
+  const returns = readReturnTrackInfo();
 
   // A half pair was refused up front, so either both are set or neither is.
   const scalar =
@@ -148,27 +151,6 @@ function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult | null {
     : null;
 }
 
-/** Name and id of each of the Live Set's return tracks, in send order. */
-interface ReturnInfo {
-  names: string[];
-  ids: string[];
-}
-
-/**
- * Read the Live Set's return tracks, in send order
- * @returns Their names and ids
- */
-function returnTrackInfo(): ReturnInfo {
-  const returnTracks = LiveAPI.from(livePath.liveSet).getChildren(
-    "return_tracks",
-  );
-
-  return {
-    names: returnTracks.map((rt) => rt.getName()),
-    ids: returnTracks.map((rt) => rt.id),
-  };
-}
-
 /**
  * Match one send's return, naming the returns it could have named instead
  * @param returns - The Live Set's return tracks
@@ -177,16 +159,22 @@ function returnTrackInfo(): ReturnInfo {
  * @returns The resolved send, or null when nothing matched
  */
 function matchReturn(
-  returns: ReturnInfo,
+  returns: ReturnTrackInfo[],
   send: SendEntry,
   problem: string,
 ): ResolvedSend | null {
-  const index = findReturnIndex(returns.names, send.return, returns.ids);
+  const names = returns.map((rt) => rt.name);
+  const index = findReturnIndex(
+    names,
+    send.return,
+    returns.map((rt) => rt.id),
+  );
+  const match = returns[index];
 
-  if (index === -1) {
+  if (match == null) {
     const available =
-      returns.names.length > 0
-        ? `Available: ${returns.names.join(", ")}`
+      names.length > 0
+        ? `Available: ${names.join(", ")}`
         : "the Live Set has no return tracks";
 
     console.warn(`${problem} (${available})`);
@@ -197,7 +185,7 @@ function matchReturn(
   return {
     ...send,
     index,
-    name: returns.names[index] as string,
-    returnId: returns.ids[index] as string,
+    name: match.name,
+    returnId: match.id,
   };
 }

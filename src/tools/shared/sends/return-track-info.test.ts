@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -22,6 +26,36 @@ describe("readReturnTrackInfo", () => {
       { name: "Reverb", id: "return-a" },
       { name: "Delay", id: "return-b" },
     ]);
+  });
+
+  it("reads the names fresh, even twice within one request", () => {
+    // update-track resolves its sends through this reader, in a write path, so
+    // memoizing the list per request would send to a name that has since
+    // changed. The scope is what a memo would live in, so the test opens one.
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { return_tracks: children("return-a") },
+    });
+
+    const returnA = registerMockObject("return-a", {
+      properties: { name: "Reverb" },
+    });
+
+    beginLiveApiScope();
+
+    try {
+      expect(readReturnTrackInfo()).toStrictEqual([
+        { name: "Reverb", id: "return-a" },
+      ]);
+
+      returnA.properties.name = "Hall";
+
+      expect(readReturnTrackInfo()).toStrictEqual([
+        { name: "Hall", id: "return-a" },
+      ]);
+    } finally {
+      endLiveApiScope();
+    }
   });
 
   it("reports an all-digit return track name as a string", () => {
