@@ -70,7 +70,6 @@ export interface MinimalClipInfo {
   /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
    * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
-  name?: string;
   noteCount?: number;
   transformed?: number;
 }

@@ -24,7 +24,6 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  name?: string;
 }
 
 interface DuplicateSceneResult {
@@ -341,9 +340,11 @@ describe("duplicate - scene duplication", () => {
       const track0 = registerTrackWithArrangementDup(0);
 
       // Register arrangement clips with sequential start times
-      registerArrangementClip(0, 0, 16);
-      registerArrangementClip(0, 1, 24);
-      registerArrangementClip(0, 2, 32);
+      const clips = [
+        registerArrangementClip(0, 0, 16),
+        registerArrangementClip(0, 1, 24),
+        registerArrangementClip(0, 2, 32),
+      ];
 
       const result = (await duplicate({
         type: "scene",
@@ -372,6 +373,12 @@ describe("duplicate - scene duplication", () => {
         32,
       );
 
+      // The name lands on the clips; the result reports id and path only, so
+      // it never echoes an arg that took effect as intended.
+      for (const clip of clips) {
+        expect(clip.set).toHaveBeenCalledWith("name", "Scene Copy");
+      }
+
       // Beats 16, 24 and 32, which the song's 4/4 spells as bars 5, 7 and 9.
       expect(result).toStrictEqual([
         {
@@ -379,7 +386,6 @@ describe("duplicate - scene duplication", () => {
             {
               id: livePath.track(0).arrangementClip(0),
               path: "t0[5|1]",
-              name: "Scene Copy",
             },
           ],
         },
@@ -388,7 +394,6 @@ describe("duplicate - scene duplication", () => {
             {
               id: livePath.track(0).arrangementClip(1),
               path: "t0[7|1]",
-              name: "Scene Copy",
             },
           ],
         },
@@ -397,7 +402,6 @@ describe("duplicate - scene duplication", () => {
             {
               id: livePath.track(0).arrangementClip(2),
               path: "t0[9|1]",
-              name: "Scene Copy",
             },
           ],
         },

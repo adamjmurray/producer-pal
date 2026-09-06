@@ -576,6 +576,38 @@ describe("duplicate-track-scene-helpers", () => {
     });
   }
 
+  /**
+   * Register the scene, liveSet, track and arrangement-clip mocks one
+   * scene-to-arrangement duplicate needs.
+   * @param clipLength - Length of the scene's single source clip, in beats
+   * @param extraLiveSetProps - Additional properties for the liveSet mock
+   */
+  function setupSceneToArrangementClipMocks(
+    clipLength: number,
+    extraLiveSetProps: Record<string, unknown> = {},
+  ): void {
+    setupSceneToArrangementBaseMocks(extraLiveSetProps);
+    registerClipSlot(0, 0, true, {
+      length: clipLength,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 1,
+    });
+    registerMockObject("live_set/tracks/0", {
+      path: livePath.track(0),
+      methods: {
+        duplicate_clip_to_arrangement: () => [
+          "id",
+          livePath.track(0).arrangementClip(0),
+        ],
+      },
+    });
+    registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
+      properties: { is_arrangement_clip: 1, start_time: 16 },
+    });
+  }
+
   describe("duplicateSceneToArrangement", () => {
     it("should throw error when scene does not exist", async () => {
       mockNonExistentObjects();
@@ -658,26 +690,7 @@ describe("duplicate-track-scene-helpers", () => {
         arrangementLength,
         expectedClipPath,
       }) => {
-        setupSceneToArrangementBaseMocks(liveSetExtra);
-        registerClipSlot(0, 0, true, {
-          length: clipLength,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          is_midi_clip: 1,
-        });
-        registerMockObject("live_set/tracks/0", {
-          path: livePath.track(0),
-          methods: {
-            duplicate_clip_to_arrangement: () => [
-              "id",
-              livePath.track(0).arrangementClip(0),
-            ],
-          },
-        });
-        registerMockObject(livePath.track(0).arrangementClip(0), {
-          path: livePath.track(0).arrangementClip(0),
-          properties: { is_arrangement_clip: 1, start_time: 16 },
-        });
+        setupSceneToArrangementClipMocks(clipLength, liveSetExtra);
 
         const result = await duplicateSceneToArrangement(
           "scene1",
@@ -695,5 +708,28 @@ describe("duplicate-track-scene-helpers", () => {
         expect(result.clips[0]?.path).toBe(expectedClipPath);
       },
     );
+
+    it("reports each clip as id and path, never the requested name", async () => {
+      // The name lands on the clip itself, so reporting it back would echo an
+      // arg that took effect as intended.
+      setupSceneToArrangementClipMocks(8, {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      });
+
+      const result = await duplicateSceneToArrangement(
+        "scene1",
+        16,
+        "Scene Name",
+        false,
+        undefined,
+        4,
+        4,
+      );
+
+      expect(result.clips).toStrictEqual([
+        { id: expect.any(String), path: "t0[5|1]" },
+      ]);
+    });
   });
 });

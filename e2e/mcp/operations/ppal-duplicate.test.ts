@@ -209,6 +209,75 @@ describe("ppal-duplicate", () => {
     );
   });
 
+  // The name is written onto every clip the copy lands, so reporting it back
+  // would echo an arg that took effect as intended. s6 starts empty, so the
+  // clip created here is the whole scene.
+  it.each([
+    {
+      desc: "at the source length",
+      arrangementLength: undefined,
+      name: "Arranged Scene",
+    },
+    // Longer than the source routes the name through ppal-update-clip instead
+    // of a direct write, and can land more than one clip per source clip.
+    { desc: "lengthened", arrangementLength: "2bar", name: "Stretched Scene" },
+  ])(
+    "reports a scene's arrangement copies $desc by id and path, not by name",
+    async ({ arrangementLength, name }) => {
+      const createClipResult = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}/s6`,
+          notes: "C3 1|1",
+          length: "1bar",
+        },
+      });
+
+      expect(
+        parseToolResult<{ id: string }>(createClipResult).id,
+      ).toBeDefined();
+
+      await sleep(100);
+
+      const scenesResult = await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: { include: ["scenes"] },
+      });
+      const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
+
+      const dupResult = await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "scene",
+          id: scenes.scenes![6]!.id,
+          toPath: "[41|1]",
+          name,
+          ...(arrangementLength == null ? {} : { arrangementLength }),
+        },
+      });
+      const dup = parseToolResult<{ clips: Array<Record<string, unknown>> }>(
+        dupResult,
+      );
+
+      expect(dup.clips.length).toBeGreaterThan(0);
+      expect(dup.clips[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}[41|1]`);
+
+      for (const clip of dup.clips) {
+        expect(Object.keys(clip).toSorted()).toStrictEqual(["id", "path"]);
+      }
+
+      await sleep(100);
+
+      // The name did land — it reads back off the clip instead of being echoed.
+      const readCopy = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: dup.clips[0]!.id as string },
+      });
+
+      expect(parseToolResult<ReadClipResult>(readCopy).name).toBe(name);
+    },
+  );
+
   it("duplicates clips", async () => {
     // Test 1: Session clip to session
     // First create a clip to duplicate on empty track
@@ -603,7 +672,6 @@ interface DuplicateSceneResult {
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  name?: string;
 }
 
 interface DuplicateDeviceResult {

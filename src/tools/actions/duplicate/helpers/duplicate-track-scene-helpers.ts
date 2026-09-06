@@ -322,17 +322,6 @@ export function calculateSceneLength(sceneIndex: number): number {
 }
 
 /**
- * Assign scene name to clip info objects
- * @param clips - Array of clip info objects
- * @param name - Name to assign to each clip
- */
-function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
-  for (const clipInfo of clips) {
-    clipInfo.name = name;
-  }
-}
-
-/**
  * Duplicate a scene to the arrangement view
  * @param sceneId - Scene ID to duplicate
  * @param arrangementStartBeats - Start position in beats
@@ -400,7 +389,8 @@ export async function duplicateSceneToArrangement(
     for (const { clip, trackIndex } of sceneClips) {
       const track = LiveAPI.from(livePath.track(trackIndex));
 
-      // Use the new length-aware clip creation logic
+      // The result reports id and path only: a clip takes the name verbatim,
+      // so reading it back could only repeat the arg.
       const clipsForTrack = await createClipsForLength(
         clip,
         track,
@@ -411,11 +401,6 @@ export async function duplicateSceneToArrangement(
         name,
         context,
       );
-
-      // Add the scene name to each clip result if provided
-      if (name != null) {
-        assignNamesToClips(clipsForTrack, name);
-      }
 
       duplicatedClips.push(...clipsForTrack);
     }
