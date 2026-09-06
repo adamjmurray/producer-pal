@@ -103,7 +103,12 @@ describe("updateClip - duplicateLoop", () => {
     const result = await updateClip({ id: "123", duplicateLoop: true });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 8 });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+      length: "2bar",
+    });
   });
 
   it("doubles an arrangement MIDI clip", async () => {
@@ -117,6 +122,7 @@ describe("updateClip - duplicateLoop", () => {
       id: "789",
       path: "t2[1|1]",
       noteCount: 4,
+      length: "2bar",
     });
   });
 
@@ -142,9 +148,37 @@ describe("updateClip - duplicateLoop", () => {
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
     expect(result).toStrictEqual([
-      { id: "123", path: "t0/s0", noteCount: 6 },
+      { id: "123", path: "t0/s0", noteCount: 6, length: "2bar" },
       { id: "456", path: "t1/s1" },
     ]);
+  });
+
+  it("reports the doubled length, not the length the caller asked for", async () => {
+    // The measured failure: a model reads "double it to 4 bars" as
+    // `length: "4bar", duplicateLoop: true`, and gets 8 bars, because length
+    // picks the region to double. The result has to say so — the note count
+    // doubles either way, so nothing else tells the caller it overshot.
+    // length reads 32 (the post-double value Live would report).
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 2,
+      length: 32,
+    });
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      length: "4bar",
+    });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+      length: "8bar",
+    });
   });
 
   it("applies length to select the region before doubling (no warning)", async () => {
@@ -169,7 +203,12 @@ describe("updateClip - duplicateLoop", () => {
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("duplicateLoop sets the clip length"),
     );
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 8 });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+      length: "2bar",
+    });
   });
 
   it("applies length on both MIDI and audio clips in a mixed batch", async () => {
@@ -205,16 +244,32 @@ describe("updateClip - duplicateLoop", () => {
   it.each([
     // Either transform string reports how many notes it matched; `notes` alone
     // transforms nothing, so it reports no count.
-    ["notes", "1|1 C3", { id: "123", path: "t0/s0", noteCount: 8 }],
+    [
+      "notes",
+      "1|1 C3",
+      { id: "123", path: "t0/s0", noteCount: 8, length: "2bar" },
+    ],
     [
       "transforms",
       "pitch += 12",
-      { transformed: 8, id: "123", path: "t0/s0", noteCount: 8 },
+      {
+        transformed: 8,
+        id: "123",
+        path: "t0/s0",
+        noteCount: 8,
+        length: "2bar",
+      },
     ],
     [
       "preTransforms",
       "pitch += 12",
-      { transformed: 8, id: "123", path: "t0/s0", noteCount: 8 },
+      {
+        transformed: 8,
+        id: "123",
+        path: "t0/s0",
+        noteCount: 8,
+        length: "2bar",
+      },
     ],
   ])(
     "doubles and composes %s without warning (no length conflict)",
@@ -254,6 +309,7 @@ describe("updateClip - duplicateLoop", () => {
       id: "123",
       path: "t0/s0",
       noteCount: 8,
+      length: "2bar",
     });
   });
 
@@ -275,6 +331,7 @@ describe("updateClip - duplicateLoop", () => {
       id: "123",
       path: "t0/s0",
       noteCount: 8,
+      length: "2bar",
     });
   });
 
@@ -296,6 +353,7 @@ describe("updateClip - duplicateLoop", () => {
       id: "123",
       path: "t0/s0",
       noteCount: 8,
+      length: "2bar",
     });
   });
 
@@ -317,7 +375,12 @@ describe("updateClip - duplicateLoop", () => {
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("duplicateLoop sets the clip length"),
     );
-    expect(result).toStrictEqual({ path: "t0/s0", noteCount: 8, id: "123" });
+    expect(result).toStrictEqual({
+      path: "t0/s0",
+      noteCount: 8,
+      id: "123",
+      length: "2bar",
+    });
   });
 
   it("applies preTransforms before the double and notes/transforms after", async () => {

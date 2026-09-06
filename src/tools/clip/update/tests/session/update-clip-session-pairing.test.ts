@@ -151,7 +151,12 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
-    expect(result).toStrictEqual({ id: "456", path: "t1/s1", noteCount: 0 });
+    expect(result).toStrictEqual({
+      id: "456",
+      path: "t1/s1",
+      noteCount: 0,
+      length: "2bar",
+    });
     expect(capturedWarnings()).toContain(
       "id/path named 1 clip(s) more than once; each clip was updated once",
     );

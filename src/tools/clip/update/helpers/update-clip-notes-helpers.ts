@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   formatNotation,
   interpretNotation,
@@ -220,9 +221,13 @@ function mergeNewNotes(
  * and copies the existing notes AND automation envelopes into the new half - the
  * envelope copy is something the manual length+notes path can't do. MIDI clips
  * only: audio clips warn-and-skip so a mixed comma-separated batch keeps going.
+ *
+ * Always reports the resulting length. A `length` arg selects the region to
+ * double, so the clip ends up at twice that — not at the length the caller
+ * asked for — and without this the result looks the same either way.
  * @param clip - The clip to double
- * @returns Note update result with the post-duplicate note count, or null when
- *   skipped (audio clip)
+ * @returns Note update result with the post-duplicate note count and length, or
+ *   null when skipped (audio clip)
  */
 export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
@@ -239,7 +244,14 @@ export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
   // LiveAPI staleness - matters for arrangement clips - before reading the count.
   const freshClip = LiveAPI.from(clip.id);
 
-  return { noteCount: getClipNoteCount(freshClip) };
+  return {
+    noteCount: getClipNoteCount(freshClip),
+    length: abletonBeatsToDuration(
+      freshClip.getProperty("length") as number,
+      freshClip.getProperty("signature_numerator") as number,
+      freshClip.getProperty("signature_denominator") as number,
+    ),
+  };
 }
 
 /**
@@ -331,6 +343,12 @@ export function handleDuplicateLoopWithEdits({
     postContext,
     notation,
   );
+
+  // Stage 3 only counts notes, so carry stage 2's length across it — nothing
+  // else in the result reveals the length the double landed on.
+  if (mergeResult != null && dupResult?.length != null) {
+    mergeResult.length = dupResult.length;
+  }
 
   return withPreTransformed(mergeResult ?? dupResult, preTransformed);
 }

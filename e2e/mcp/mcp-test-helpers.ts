@@ -578,6 +578,7 @@ export interface UpdateClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  length?: string;
 }
 
 /** Result from ppal-create-track tool */

@@ -17,6 +17,8 @@ export interface MidiNote {
 export interface NoteUpdateResult {
   noteCount: number;
   transformed?: number;
+  /** Set only when the call changed the length itself (see duplicateLoop). */
+  length?: string;
 }
 
 export interface ClipResult {
@@ -25,6 +27,8 @@ export interface ClipResult {
   transformed?: number;
   /** Where the clip is, as a path. Pastes back into any path/toPath param. */
   path?: string;
+  /** The length the clip ended up at, when the call moved it off the arg. */
+  length?: string;
 }
 
 /**
@@ -34,7 +38,7 @@ export interface ClipResult {
  * @param clipId - The clip ID
  * @param noteResult - Optional note update result with count and transformed
  * @param path - Where the clip is, from objectPathForApi
- * @returns Result object with id, path, and optionally noteCount/transformed
+ * @returns Result object with id, path, and optionally noteCount/transformed/length
  */
 export function buildClipResultObject(
   clipId: string,
@@ -48,6 +52,10 @@ export function buildClipResultObject(
 
     if (noteResult.transformed != null) {
       result.transformed = noteResult.transformed;
+    }
+
+    if (noteResult.length != null) {
+      result.length = noteResult.length;
     }
   }
 

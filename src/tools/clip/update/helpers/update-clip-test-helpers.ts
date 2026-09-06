@@ -297,6 +297,10 @@ export function setupMidiClipMock(
       is_midi_clip: 1,
       signature_numerator: 4,
       signature_denominator: 4,
+      // A real clip always has one, and duplicateLoop reports it. Without a
+      // default the result reads back "0bar" and looks like a bug in the code
+      // under test rather than a gap in the fixture.
+      length: 8,
       ...opts,
     }),
   );

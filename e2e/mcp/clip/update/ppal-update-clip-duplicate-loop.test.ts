@@ -163,6 +163,22 @@ describe("ppal-update-clip duplicateLoop", () => {
     expect(clip.notes).toContain("3|1");
   });
 
+  it("reports the length it landed on, not the length that was asked for", async () => {
+    // "double it to 4 bars" reads as length: "4bar" + duplicateLoop, and lands
+    // on 8: length picks the region, then the double extends it. The result has
+    // to carry the length or nothing reveals the overshoot — the note count
+    // doubles either way, so a silent result looks exactly like success.
+    const clipId = await createLoopingClip(6, "v100 C3 1|1 E3 2|1", "2bar");
+
+    const { data, clip } = await duplicateLoopAndRead(clipId, {
+      length: "4bar",
+    });
+
+    // What the caller asked for was 4 bars; both the result and Live say 8.
+    expect(data.length).toBe("8bar");
+    expect(clip.length).toBe("8bar");
+  });
+
   it("selects a sub-region smaller than the content, then doubles it (insert pushes the rest out)", async () => {
     // 2-bar clip: C3 in bar 1, E3 in bar 2.
     const clipId = await createLoopingClip(4, "v100 C3 1|1 E3 2|1", "2bar");
