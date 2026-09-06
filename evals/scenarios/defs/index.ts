@@ -119,6 +119,10 @@ export {
 export { pathTrackSceneAddress } from "./path/path-track-scene-address.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
 export { rackPadOps } from "./device/rack-pad-ops.ts";
+export {
+  writeTrustEchoedResult,
+  writeTrustSilentResult,
+} from "./result/write-result-trust.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";

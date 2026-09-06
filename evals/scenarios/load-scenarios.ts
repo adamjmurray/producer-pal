@@ -98,6 +98,8 @@ import {
   sceneAndPlayback,
   trackAndDeviceWorkflow,
   updateLiveSet,
+  writeTrustEchoedResult,
+  writeTrustSilentResult,
 } from "./defs/index.ts";
 import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
 import { envLabel, type RunEnv } from "./run-env/run-env.ts";
@@ -117,6 +119,9 @@ const allScenarios: EvalScenario[] = [
   melodyTransforms,
   trackAndDeviceWorkflow,
   mixerLanguage,
+  // The matched pair: same tool, one silent result and one echoing one.
+  writeTrustSilentResult,
+  writeTrustEchoedResult,
   deviceSoundDesign,
   deviceDrumKit,
   rackPadOps,
