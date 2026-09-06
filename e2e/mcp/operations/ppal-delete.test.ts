@@ -36,6 +36,15 @@ describe("ppal-delete", () => {
   }
 
   /**
+   * Read a device, chain, or drum pad back.
+   * @param args - ppal-read-device arguments
+   * @returns The raw tool result
+   */
+  async function readDevice(args: Record<string, unknown>): Promise<unknown> {
+    return ctx.client!.callTool({ name: "ppal-read-device", arguments: args });
+  }
+
+  /**
    * Assert an object is gone by reading it back.
    * @param tool - Read tool to try
    * @param args - Read arguments
@@ -370,6 +379,9 @@ describe("ppal-delete", () => {
     expect(warnings.join(" ")).toContain("99999");
   });
 
+  // Live has no way to remove a drum pad — the 128 slots are permanent — so a
+  // delete clears the pad's chains and leaves the slot. This pins the three
+  // things that make that read as a deletion anyway. See ADR-0034.
   it("deletes a drum pad by path, spelled the way a model guesses it", async () => {
     // "paths" is a permanent alias, so this checks the delete and the steer.
     // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1
@@ -381,6 +393,36 @@ describe("ppal-delete", () => {
 
     expect(deleted.type).toBe("drum-pad");
     expect(deleted.deleted).toBe(true);
+    // The slot outlives the call, so the address comes back under `path`.
+    expect(deleted.path).toBe("t0/d0/pC1");
+    expect(deleted.deletedPath).toBeUndefined();
+
+    const rack = parseToolResult<DrumRackRead>(
+      await readDevice({ path: "t0/d0", include: ["drum-pads", "drum-map"] }),
+    );
+
+    // The rack reads as though the pad were gone.
+    expect(rack.drumPads.map((pad) => pad.pitch)).not.toContain("C1");
+    expect(Object.keys(rack.drumMap)).not.toContain("C1");
+
+    const cleared = parseToolResult<DrumPadRead>(
+      await readDevice({ path: "t0/d0/pC1", include: ["chains"] }),
+    );
+    const neverFilled = parseToolResult<DrumPadRead>(
+      await readDevice({ path: "t0/d0/pE1", include: ["chains"] }),
+    );
+
+    // ...but the slot is still there, keeping the id the delete reported.
+    expect(cleared.id).toBe(deleted.id);
+    expect(cleared.chains).toStrictEqual([]);
+    // Live renames a cleared pad to its own pitch, so nothing tells it apart
+    // from a pad that was never filled.
+    expect(cleared.name).toBe("C1");
+    expect(neverFilled.name).toBe("E1");
+    expect(neverFilled.chains).toStrictEqual([]);
+    expect(Object.keys(cleared).toSorted()).toStrictEqual(
+      Object.keys(neverFilled).toSorted(),
+    );
   });
 });
 
@@ -393,6 +435,20 @@ interface DeleteResult {
   path?: string;
   type: string;
   deleted: boolean;
+}
+
+interface DrumRackRead {
+  drumPads: { id: string; path: string; pitch: string }[];
+  drumMap: Record<string, string>;
+}
+
+interface DrumPadRead {
+  id: string;
+  path: string;
+  name: string;
+  note: number;
+  pitch: string;
+  chains: unknown[];
 }
 
 interface CreateTrackResult {

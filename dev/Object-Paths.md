@@ -278,8 +278,15 @@ Every write result — create, update, duplicate — reports `path` beside `id`,
 the next call can address what was just written without rebuilding the path from
 indices. No result repeats that address as an index: no `slot`, no `trackIndex`,
 `sceneIndex`, `deviceIndex` or `returnTrackIndex` — no exceptions, so there is
-nothing to remember. `delete` is the one place a result carries no path at all:
-after deleting `t2`, that path names a different track.
+nothing to remember.
+
+`delete` reports its address under the key that says whether the object is still
+there. `deletedPath` is where the object _was_: after deleting `t2` that path
+names a different track, so it addresses nothing worth calling again. `path`
+means the target outlived the call — a drum pad, whose 128 slots are permanent,
+so a delete clears its chains and leaves the slot. The rack then reads exactly
+as it would for a pad that was never filled; see
+[ADR-0034](decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md).
 
 | Object                 | Result                        |
 | ---------------------- | ----------------------------- |

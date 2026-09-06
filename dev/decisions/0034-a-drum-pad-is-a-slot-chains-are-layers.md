@@ -64,6 +64,14 @@ and skips.
 
 ## Consequences
 
+- Deleting a pad clears its chains; the slot stays. The rack then reads exactly
+  as it would for a pad that was never filled — gone from `drumPads` and
+  `drumMap` — so it looks removed, and the result carries `path` rather than
+  `deletedPath`. The pad `id` stays resolvable too, the only delete where a
+  caller's id survives the call.
+- Clearing a pad that is already empty reports `deleted: true`. Nothing was
+  removed, but nothing needs retrying either, and telling the two apart would
+  cost a chain-count read before every pad delete.
 - A nested rack's pads **move but never delete**: `DrumChain` has no self-delete
   and `delete_all_chains` needs a pad the rack doesn't have, while `in_note`
   writes work fine.
