@@ -56,6 +56,22 @@ export async function assertState(
     });
 
     const resultText = extractToolResultText(result);
+
+    // A tool that refuses returns its message as content, not as a rejection.
+    // Grading that would run `expect()` against a string: field access yields
+    // undefined and the scenario reports its own domain wording for a call that
+    // never returned any state — "the rack is gone" for a rejected read, which
+    // sends you debugging the delete path. Fail on the error itself instead.
+    if (result.isError === true) {
+      return {
+        assertion,
+        earned: 0,
+        maxScore: 1,
+        message: `State assertion could not read state: ${assertion.tool} returned an error: ${resultText}`,
+        details: { error: resultText },
+      };
+    }
+
     let parsed: unknown;
 
     try {
