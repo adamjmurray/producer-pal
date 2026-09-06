@@ -27,6 +27,7 @@ import {
   planSources,
   resolveSourceClipDestinations,
 } from "./helpers/sources/duplicate-source-helpers.ts";
+import { markOverwrittenCopies } from "./helpers/clip/duplicate-overwrite-helpers.ts";
 import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
 import {
   hasArrangementPosition,
@@ -171,7 +172,6 @@ export async function duplicate(
 
   const destination = resolveDestinationAndWarn({
     type,
-    sources,
     // Every source's destination is the same kind, and the warnings are about
     // the params rather than the places, so one of them speaks for the call.
     clipDestinations: clipDestinations?.[0] ?? null,
@@ -216,6 +216,13 @@ export async function duplicate(
         context,
       })),
     );
+  }
+
+  // A copy can land on one an earlier copy in this call just made. Say so in
+  // that copy's own entry, before anything downstream spends an id that now
+  // names nothing.
+  if (type === "clip") {
+    markOverwrittenCopies(createdObjects);
   }
 
   // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)

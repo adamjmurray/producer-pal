@@ -5,11 +5,7 @@
 
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type MinimalClipInfo } from "../duplicate-helpers.ts";
-
-interface NestedClipResult {
-  trackIndex: number;
-  clips: MinimalClipInfo[];
-}
+import { collectClipResults } from "./duplicate-overwrite-helpers.ts";
 
 /**
  * Apply transforms and/or code to the clips produced by a duplicate operation.
@@ -54,28 +50,4 @@ export async function applyTransformsToDuplicatedClips(
     if (stats?.noteCount != null) clip.noteCount = stats.noteCount;
     if (stats?.transformed != null) clip.transformed = stats.transformed;
   }
-}
-
-/**
- * Collect every clip result from a duplicate response, flattening nested groups.
- *
- * Arrangement tiling (arrangementLength) nests multiple clips under
- * { trackIndex, clips } — these flatten into the same id list since the single
- * broadcast transform string applies to every clip the same way.
- *
- * @param createdObjects - Result objects from clip duplication
- * @returns Flat list of clip results
- */
-function collectClipResults(createdObjects: object[]): MinimalClipInfo[] {
-  const flat: MinimalClipInfo[] = [];
-
-  for (const obj of createdObjects) {
-    if ("clips" in obj) {
-      flat.push(...(obj as NestedClipResult).clips);
-    } else if ("id" in obj) {
-      flat.push(obj as MinimalClipInfo);
-    }
-  }
-
-  return flat;
 }

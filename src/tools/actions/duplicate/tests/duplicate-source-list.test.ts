@@ -16,8 +16,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import {
   registerArrangementClip,
+  registerTrackThatClearsOnDup,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { updateClipMock } from "./setup.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const SLOT_ID = /tracks\/(\d+)\/clip_slots\/(\d+)/;
@@ -354,10 +356,6 @@ describe("duplicate - a list of sources", () => {
             path: "t1[5|1]",
           },
         ]);
-        // A genuine row: each source lands on its own track, so no collision.
-        expect(capturedWarnings()).not.toContainEqual(
-          expect.stringContaining("later ones will overwrite earlier ones"),
-        );
       },
     );
 
@@ -365,14 +363,10 @@ describe("duplicate - a list of sources", () => {
     // planSources) — never split per source — so a named toPath shared by
     // several sources always piles them onto the same spots, however many
     // positions the list names.
-    it("warns when a container toPath is broadcast to every source", async () => {
+    it("reports the copies a broadcast toPath buried, one entry each", async () => {
       registerTwoArrangementSources();
 
-      const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
-
-      for (const clipIndex of [0, 1, 2, 3]) {
-        registerArrangementClip(2, clipIndex, 16);
-      }
+      const track2 = registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
 
       const result = await duplicate({
         type: "clip",
@@ -381,39 +375,112 @@ describe("duplicate - a list of sources", () => {
         arrangementStart: "5|1,9|1",
       });
 
-      expect(result).toHaveLength(4);
       expect(track2.call).toHaveBeenCalledTimes(4);
-      // Each source writes both "t2" positions, so clipA and clipB collide at
-      // 5|1 and again at 9|1 — a pile, not a row.
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          '2 clips duplicated to "t2" at the same position',
-        ),
-      );
+      // clipB lands on both of clipA's copies, so clipA's two entries name
+      // where they went and say the copies are gone.
+      expect(result).toStrictEqual([
+        { path: "t2[5|1]", overwritten: true },
+        { path: "t2[9|1]", overwritten: true },
+        {
+          id: "live_set tracks 2 arrangement_clips 2",
+          path: "t2[5|1]",
+        },
+        {
+          id: "live_set tracks 2 arrangement_clips 3",
+          path: "t2[9|1]",
+        },
+      ]);
     });
 
-    // Each source is placed on its own, with no view of the others, so nothing
-    // downstream can see that they all land on the same span.
-    it("warns when every source lands on one track at one position", async () => {
+    // Each source is placed on its own, with no view of the others, so only the
+    // finished results can say which copies survived.
+    it("keeps an id only for the copy still there", async () => {
       registerTwoArrangementSources();
-      registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+      registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
 
-      for (const clipIndex of [0, 1]) {
-        registerArrangementClip(2, clipIndex, 16);
-      }
-
-      await duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clipA,clipB",
         toPath: "t2",
         arrangementStart: "5|1",
+        transforms: "velocity *= 0.5",
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          '2 clips duplicated to "t2" at the same position',
-        ),
+      expect(result).toStrictEqual([
+        { path: "t2[5|1]", overwritten: true },
+        {
+          id: "live_set tracks 2 arrangement_clips 1",
+          path: "t2[5|1]",
+        },
+      ]);
+      // The buried copy is out of the transform too: there is no clip left to
+      // transform, and its id would go into the list as `undefined`.
+      expect(updateClipMock).toHaveBeenCalledWith(
+        {
+          ids: "live_set tracks 2 arrangement_clips 1",
+          transforms: "velocity *= 0.5",
+          code: undefined,
+        },
+        expect.anything(),
       );
+    });
+
+    // A copy is cleared by whatever lands across it, not only by one that
+    // starts on the same beat — so the two entries here name different spots
+    // and are still one clip and one corpse.
+    it("marks a copy the next one cleared from a different start", async () => {
+      registerMockObject("clipA", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      // Four-bar copies, so the one at 5|1 reaches across the one at 6|1.
+      registerTrackThatClearsOnDup(1, { has_midi_input: 1 }, 16);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA",
+        toPath: "t1",
+        arrangementStart: "6|1,5|1",
+      });
+
+      expect(result).toStrictEqual([
+        { path: "t1[6|1]", overwritten: true },
+        {
+          id: "live_set tracks 1 arrangement_clips 1",
+          path: "t1[5|1]",
+        },
+      ]);
+    });
+
+    // The case a named toPath never covers: two sources on one track default to
+    // that track, so one position piles them just the same. The retired warning
+    // skipped a call with no toPath, so this was already silent — what is new
+    // is the entry naming the copy that is gone.
+    it("marks the buried copy when no toPath was named", async () => {
+      registerMockObject("clipA", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerMockObject("clipB", {
+        path: livePath.track(0).clipSlot(1).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerTrackThatClearsOnDup(0, { has_midi_input: 1 });
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        arrangementStart: "5|1",
+      });
+
+      expect(result).toStrictEqual([
+        { path: "t0[5|1]", overwritten: true },
+        {
+          id: "live_set tracks 0 arrangement_clips 1",
+          path: "t0[5|1]",
+        },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

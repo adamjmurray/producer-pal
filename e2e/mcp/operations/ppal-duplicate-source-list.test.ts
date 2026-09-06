@@ -27,6 +27,12 @@ interface DuplicateClipResult {
   path?: string;
 }
 
+/** The entry for a copy a later copy in the same call landed on. */
+interface OverwrittenClipResult {
+  path: string;
+  overwritten: true;
+}
+
 describe("ppal-duplicate with a source list", () => {
   /**
    * Two source clips in scene 5, one per empty MIDI track. Their notes differ
@@ -127,6 +133,112 @@ describe("ppal-duplicate with a source list", () => {
     // Each copy stayed on its own source's track, both at bar 97.
     expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}[97|1]`);
     expect(copies[1]!.path).toBe(`t${CHILD_TRACK}[97|1]`);
+  });
+
+  // Two sources on ONE track default to that track, so a single position piles
+  // them: the second copy lands on the first. Every id the result hands back
+  // still has to name a clip that is there.
+  it("hands back no id for a copy a later source landed on", async () => {
+    const first = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s5`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+    const second = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
+        notes: "D3 1|1",
+        length: "1bar",
+      },
+    });
+
+    await sleep(100);
+
+    const copies = parseToolResult<
+      (DuplicateClipResult | OverwrittenClipResult)[]
+    >(
+      await duplicateClips({
+        id: [
+          parseToolResult<{ id: string }>(first).id,
+          parseToolResult<{ id: string }>(second).id,
+        ].join(","),
+        toPath: "[97|1]",
+      }),
+    );
+
+    expect(copies).toHaveLength(2);
+    // The first copy is gone, so its entry says where it went and stops there.
+    expect(copies[0]).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}[97|1]`,
+      overwritten: true,
+    });
+    expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[97|1]`);
+
+    await sleep(100);
+
+    // Every id that came back names a clip that is really there.
+    for (const copy of copies) {
+      if (!("id" in copy)) continue;
+
+      expect((await readClip(copy.id)).notes).toContain("D3");
+    }
+  });
+
+  // A copy is cleared by whatever lands across it, not only by one starting on
+  // the same beat. Both entries name a different bar here, and one of them is
+  // still a clip that no longer exists.
+  it("hands back no id for a copy the next one cleared", async () => {
+    const session = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s5`,
+        notes: "C3 1|1",
+        length: "4bar",
+      },
+    });
+
+    await sleep(100);
+
+    // Copy it to the arrangement first: an arrangement source is what routes
+    // the overlap through Producer Pal's own clearing rather than leaving it
+    // to Live.
+    const source = parseToolResult<DuplicateClipResult>(
+      await duplicateClips({
+        id: parseToolResult<{ id: string }>(session).id,
+        toPath: `t${EMPTY_MIDI_TRACK}[89|1]`,
+      }),
+    );
+
+    await sleep(100);
+
+    // The copy at 101 spans four bars, so it clears the front of the one at
+    // 102 - which leaves that one deleted and its tail re-created at 105.
+    const copies = parseToolResult<
+      (DuplicateClipResult | OverwrittenClipResult)[]
+    >(
+      await duplicateClips({
+        id: source.id,
+        toPath: `t${EMPTY_MIDI_TRACK}[102|1],t${EMPTY_MIDI_TRACK}[101|1]`,
+      }),
+    );
+
+    expect(copies[0]).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}[102|1]`,
+      overwritten: true,
+    });
+    expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[101|1]`);
+
+    await sleep(100);
+
+    for (const copy of copies) {
+      if (!("id" in copy)) continue;
+
+      expect((await readClip(copy.id)).notes).toContain("C3");
+    }
   });
 
   // duplicate used to take a path only for a drum pad, so a path a model just

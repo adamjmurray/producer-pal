@@ -602,7 +602,7 @@ describe("duplicate take lane", () => {
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    await duplicate({
+    const result = await duplicate({
       type: "clip",
       id: "src_clip",
       toPath: "t0/l+,t0/l+",
@@ -612,6 +612,13 @@ describe("duplicate take lane", () => {
     // Both copies sit at bar 1, one per fresh lane.
     expectTakeLaneMidiClip(0, 0);
     expectTakeLaneMidiClip(1, 0);
+    // Two copies at one bar that bury nothing: each has its own lane. Both keep
+    // their ids — a path that lost its "/lN" would read as one copy landing on
+    // the other, and both ids would be stripped without a word.
+    expect(result).toStrictEqual([
+      { id: expect.any(String), path: "t0/l0[1|1]" },
+      { id: expect.any(String), path: "t0/l1[1|1]" },
+    ]);
   });
 
   // The list cycles, so one written l+ covers all three positions. Numbering
