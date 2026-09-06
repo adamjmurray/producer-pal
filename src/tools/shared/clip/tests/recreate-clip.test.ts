@@ -237,6 +237,11 @@ describe("recreateClip on an audio source with no sample", () => {
 // returns, a later step failing still leaves that clip behind — a real,
 // partial one, not nothing. The caller needs it back to report and count the
 // placement instead of treating it like a refusal.
+//
+// Unit coverage only, on purpose: nothing a caller can send reaches this. A
+// deleted sample is refused earlier; a pickup note, an all-digit name and a
+// 5000-char name all succeed; and a name long enough to upset Live doesn't
+// survive the MCP transport. Don't go hunting for an e2e case.
 describe("recreateClip when a later step fails after creating", () => {
   it.each([
     ["MIDI", { is_midi_clip: 1 }, "create_midi_clip"],

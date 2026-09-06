@@ -1,5 +1,11 @@
 # Instruments
 
+> Over the ~20 KB doc-size limit and staying that way. That rule's remedy is to
+> move the catalogs out and keep the reasoning in the index — this file _is_ the
+> moved-out catalog, so splitting again just adds a hop. The repeated "Cycling
+> LOM docs" lines aren't boilerplate either; each names a different URL and
+> coverage level.
+
 ## Specialized instruments
 
 ### Drift — `DriftDevice` (`class_name: Drift`)
