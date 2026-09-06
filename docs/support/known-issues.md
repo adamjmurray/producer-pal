@@ -67,6 +67,33 @@ load the device.
 before removing it, or open one of Live's automatic project backups (Live keeps
 several).
 
+## Live's Memory Grows Over Very Long Sessions
+
+Every request Producer Pal makes to Live uses a little more of Live's memory,
+and Live doesn't give it back until you quit. The amount is tiny: each object
+Producer Pal looks up costs about 3 KB, so an everyday request costs a few dozen
+kilobytes, and even "read my whole Set" on a large Set stays in the hundreds.
+But it never stops, so a Live session left running for days across tens of
+thousands of AI requests can eventually run out of memory and crash. We have
+seen this once, after two and a half days of nearly continuous, heavy automated
+testing.
+
+Normal use is nowhere near that. Days of ordinary music-making won't reach it.
+
+**Workaround:** quit and reopen Live now and then if you leave it running for
+days at a time with heavy Producer Pal use. Saving and reopening your Set is not
+enough, because the memory is released only when Live itself quits.
+
+**Why we can't just fix it.** The growth is a direct consequence of asking Live
+for objects through the Live API, from the Max for Live device Producer Pal runs
+in. It happens per object looked up, no matter how the lookup is done. We
+measured the one alternative that reduces it, which is holding on to those
+objects between requests, and it makes things worse in a way you would actually
+notice: Live gets progressively slower the longer a session runs, and writes
+enormous log files. A slow leak that takes tens of thousands of requests to
+matter is the better trade. What we can do, and keep doing, is make each request
+look up fewer objects, which slows the growth proportionally.
+
 ## Claude Desktop Caches Tool Definitions
 
 If you change a setting that rewrites the tool definitions (**small model mode**

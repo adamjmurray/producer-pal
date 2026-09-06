@@ -11,6 +11,11 @@ A LiveAPI object is pointed at a path. Mutate the Live Set so a different object
 now sits there — create a clip in an empty slot, delete a device, insert a chain
 — and what you are still holding may not be what you think.
 
+**Holding across requests was measured and rejected**, on memory as well as
+correctness: it cuts Live's memory growth to about a third but reinstates the
+armed path listeners that `live-api-release.ts` exists to clear, and a cached
+deleted object reports `exists()` true. See `dev/LiveAPI-Performance.md`.
+
 **An id target is not exempt.** At mode 0 an id resolves to a path once and
 follows that path afterward, so an object built from `id N` is exposed the same
 way one built from `live_set tracks 2 clip_slots 3 clip` is. See the comment at

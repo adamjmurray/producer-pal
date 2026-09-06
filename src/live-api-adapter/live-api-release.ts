@@ -55,6 +55,15 @@
  * to work as well, and closing that gap took the same read-track loop from 34.8
  * to 11.6 ms/call.
  *
+ * All of that is about latency. Memory is a separate story: Live's memory grows
+ * about 3.2 KB per object resolved and never saturates, however many times the
+ * same path is revisited, with the pool serving every call and nothing being
+ * constructed. Holding objects across requests instead cuts that to 0.149 MB
+ * per full read from 0.39 — and buys it back as armed listeners, the cost this
+ * file exists to remove. Taking the leak is the deliberate trade: it needs tens
+ * of thousands of requests to matter, where the listeners slow Live down while
+ * you work. See dev/LiveAPI-Performance.md.
+ *
  * Pooling does not make the cost vanish, and measuring it as though it should
  * will read as failure. Visiting a path registers something too, so latency
  * still rises while a session reaches new corners of the Live Set — that 54 to
