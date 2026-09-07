@@ -16,9 +16,11 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
+import { readParam } from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -51,7 +53,78 @@ describe("ppal-update-device display values", () => {
     expect(await writeThenRead(deviceId, "Drive", 2.04)).toBe(2);
     expect(await writeThenRead(deviceId, "Drive", 2.06)).toBe(2.1);
   });
+
+  it("writes a display value through create-device too", async () => {
+    // create-device and update-device share the write path, and the bug report
+    // reached it through create-device.
+    const created = parseToolResult<CreateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Utility",
+          path: "t0",
+          params: [{ name: "Output", value: "-1.2" }],
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(created.params).toStrictEqual([
+      { id: expect.any(String), name: "Output", value: -1.2 },
+    ]);
+    expect((await readParam(ctx.client!, created.id, "Output")).value).toBe(
+      -1.2,
+    );
+  });
 });
+
+describe("ppal-update-device at the ends of a param's range", () => {
+  // Glue Compressor's Release displays seconds up to 1.2 and then the word "A"
+  // (Auto). The search trims that end off the numbers, so the word is only
+  // reachable by name.
+  it("writes the word at the end of the range by naming it", async () => {
+    const deviceId = await glueCompressor();
+
+    expect(await writeThenRead(deviceId, "Release", "A")).toBe("A");
+    // And back to a number, so naming the word doesn't strand the param there.
+    expect(await writeThenRead(deviceId, "Release", 0.6)).toBe(0.6);
+  });
+
+  it("clamps a target past the range and says so in the param's units", async () => {
+    const deviceId = await glueCompressor();
+    const { data, warnings } = parseToolResultWithWarnings<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          id: deviceId,
+          params: [{ name: "Release", value: "9999" }],
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    // Live drops an out-of-range write instead of clamping it, so an unclamped
+    // 9999 would leave the param untouched and still report success.
+    expect(data.params).toStrictEqual([
+      { id: expect.any(String), name: "Release", value: 1.2 },
+    ]);
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(
+        'only goes from 0.1 to 1.2 (or "A"), so 9999 was set to the nearest valid value.',
+      ),
+    ]);
+  });
+});
+
+/**
+ * Create a Glue Compressor on the first track.
+ * @returns The new device's id
+ */
+function glueCompressor(): Promise<string> {
+  return createTestDevice(ctx.client!, "Glue Compressor", "t0");
+}
 
 /**
  * Create a Saturator set to the hard-clipping mode from the bug report.
@@ -88,7 +161,7 @@ async function createSaturator(): Promise<string> {
 async function writeThenRead(
   deviceId: string,
   paramName: string,
-  value: number,
+  value: number | string,
 ): Promise<number | string | undefined> {
   const written = parseToolResult<UpdateDeviceResult>(
     await ctx.client!.callTool({
@@ -127,5 +200,10 @@ interface ReadDeviceResult {
 }
 
 interface UpdateDeviceResult {
+  params?: Array<{ id: string; name: string; value?: number | string }>;
+}
+
+interface CreateDeviceResult {
+  id: string;
   params?: Array<{ id: string; name: string; value?: number | string }>;
 }
