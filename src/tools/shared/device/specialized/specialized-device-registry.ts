@@ -77,8 +77,10 @@ export function getSpecForDevice(
  * Attempt to apply a pseudo-param write for a specialized device. Null means
  * the key is not a pseudo-param, so the caller falls through to DeviceParameter
  * resolution. Otherwise the return is what the key contributes to the `params`
- * result: how to read the written value back, why nothing was written, or
- * nothing at all when a refused write left no value to report.
+ * result: how to read the written value back (and, for a param a device can
+ * silently ignore, how to tell that read-back from the value it replaced), why
+ * nothing was written, or nothing at all when a refused write left no value to
+ * report.
  * @param device - LiveAPI device object
  * @param key - Param name from the `params` input
  * @param value - Coerced value
@@ -110,6 +112,11 @@ export function applySpecializedParamWrite(
     return [{ name: param.name, reason: "read-only" }];
   }
 
+  const { writeFailed } = param;
+  // Only a param that can be silently ignored needs its old value kept, and
+  // it has to be read before the write overwrites it.
+  const before = writeFailed ? param.read(device) : undefined;
+
   // A refused write names nothing, the way a DeviceParameter write Live
   // ignored does: an entry is only ever a value that landed. Reporting one
   // here would report the unchanged value as the value the call wrote.
@@ -119,7 +126,16 @@ export function applySpecializedParamWrite(
 
   // Read at the end of the call, not here: a later write in the same call can
   // change this value (replacing a Simpler's sample resets its gain).
-  return [{ name: param.name, read: () => param.read(device) }];
+  return [
+    {
+      name: param.name,
+      read: () => param.read(device),
+      ...(writeFailed && {
+        writeFailed: (after: unknown) =>
+          writeFailed({ before, after, requested: value }),
+      }),
+    },
+  ];
 }
 
 /**

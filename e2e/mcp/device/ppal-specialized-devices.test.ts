@@ -33,7 +33,8 @@ import {
 interface PseudoParam {
   id?: string;
   name: string;
-  value: unknown;
+  value?: unknown;
+  reason?: string;
   unit?: string;
   state?: string;
 }
@@ -624,6 +625,62 @@ describe("specialized devices: Simpler", () => {
       { name: "sample", reason: "written, but no value reads back" },
     ]);
     expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
+  });
+
+  it("says so when a sample write leaves the loaded sample in place", async () => {
+    const id = await createInstrument("Simpler");
+    const missing = SAMPLE_FILE.replace("sample.aiff", "no-such-sample.aiff");
+
+    await updateDevice(id, {
+      params: [{ name: "sample", value: SAMPLE_FILE }],
+    });
+    await sleep(100);
+
+    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id, params: [{ name: "sample", value: missing }] },
+      }),
+    );
+
+    await sleep(100);
+
+    // A loaded sample gives the read-back a path to report, and reporting it
+    // as the value would read as a write that landed — the caller would only
+    // notice by diffing it against the path it sent.
+    const [entry] = data.params ?? [];
+
+    expect(entry?.name).toBe("sample");
+    expect(entry).not.toHaveProperty("value");
+    expect(entry?.reason).toContain("not loaded");
+    expect(entry?.reason).toContain("sample.aiff");
+    // The sample it could not replace is still loaded.
+    expect(String((await readDevice(id, ["sample"])).sample)).toContain(
+      "sample.aiff",
+    );
+  });
+
+  it("reports a sample reloaded from its own path as a value", async () => {
+    const id = await createInstrument("Simpler");
+
+    await updateDevice(id, {
+      params: [{ name: "sample", value: SAMPLE_FILE }],
+    });
+    await sleep(100);
+
+    // Rewriting the path already loaded leaves the read-back where it was, so
+    // only the path the call asked for tells this apart from a write that
+    // never landed — which means Live has to report the path it was handed.
+    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id, params: [{ name: "sample", value: SAMPLE_FILE }] },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(data.params).toStrictEqual([{ name: "sample", value: SAMPLE_FILE }]);
   });
 
   it('include: ["*"] emits both the top-level sample field and the sample param entry', async () => {

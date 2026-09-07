@@ -247,6 +247,14 @@ describe("createDevice params", () => {
                       parameters: children(),
                       sample: ["id", sampleId],
                     },
+                    methods: {
+                      // Live reports the file it resolved to, not the string
+                      // it was handed.
+                      replace_sample: (path: unknown) => {
+                        samples[sampleId]!.properties.file_path =
+                          `/Library${String(path)}`;
+                      },
+                    },
                   });
                   samples[sampleId] = registerMockObject(sampleId, {
                     type: "Sample",
@@ -283,14 +291,14 @@ describe("createDevice params", () => {
       });
 
       // Each pad's entry carries the path it was addressed by and the sample
-      // its Simpler reports — the fixture's Simplers keep their own loaded
+      // its Simpler reports — the fixture's Simplers resolve to their own
       // path, so an entry echoing the written value would not match.
       expect(result).toStrictEqual({
         path: "t0/d0",
         id: "drum-rack",
         params: [
-          { name: "pC1/sample", value: "/loaded.wav" },
-          { name: "pC#1/d0/sample", value: "/loaded.wav" },
+          { name: "pC1/sample", value: "/Library/kick.wav" },
+          { name: "pC#1/d0/sample", value: "/Library/snare.wav" },
         ],
       });
       expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(

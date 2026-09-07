@@ -343,6 +343,12 @@ export interface UnresolvedParam {
 export interface WrittenPseudoParam {
   name: string;
   read: () => unknown;
+  /**
+   * Why the read-back is not the value the write asked for, or undefined when
+   * it landed. Only params a device takes whole or ignores carry this — see
+   * `PseudoParam.writeFailed`.
+   */
+  writeFailed?: (readBack: unknown) => string | undefined;
 }
 
 /** One param the call named: what a write landed on, or why nothing did. */
@@ -402,9 +408,17 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
     if ("read" in entry) {
       const value = entry.read();
 
-      return value === undefined
-        ? [{ name: entry.name, reason: NO_VALUE_AFTER_WRITE }]
-        : [{ name: entry.name, value }];
+      if (value === undefined) {
+        return [{ name: entry.name, reason: NO_VALUE_AFTER_WRITE }];
+      }
+
+      // A device that ignored the write left the value it already had, and
+      // reporting that as the value would read as a write that landed.
+      const failed = entry.writeFailed?.(value);
+
+      return failed == null
+        ? [{ name: entry.name, value }]
+        : [{ name: entry.name, reason: failed }];
     }
 
     return [entry];

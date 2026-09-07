@@ -264,14 +264,19 @@ describe("updateDevice - written param values", () => {
 
   it("reports the value a pseudo-param reads back, not the one written", () => {
     const simpler = registerSimplerDevice();
-
-    registerMockObject("kick-sample", {
+    const sample = registerMockObject("kick-sample", {
       type: "Sample",
       properties: { file_path: "/Library/kick.aif", gain: 0.5 },
     });
-    // The device keeps its own path, the way Live reports the file it resolved
-    // to: an entry echoing the written value would not match.
+
     simpler.properties.sample = children("kick-sample");
+    // The device reports the file it resolved to, not the string it was
+    // handed: an entry echoing the written value would not match.
+    simpler.call.mockImplementation((method: string) => {
+      if (method === "replace_sample") {
+        sample.properties.file_path = "/Library/Samples/snare.wav";
+      }
+    });
 
     const result = updateDevice({
       id: "simpler-1",
@@ -282,7 +287,7 @@ describe("updateDevice - written param values", () => {
     expect(result).toStrictEqual({
       id: "simpler-1",
       path: "t0/d0",
-      params: [{ name: "sample", value: "/Library/kick.aif" }],
+      params: [{ name: "sample", value: "/Library/Samples/snare.wav" }],
     });
   });
 
@@ -299,8 +304,11 @@ describe("updateDevice - written param values", () => {
     });
     // A loaded sample brings its own gain, so the gainDb write above it is
     // gone by the time the call returns.
-    simpler.call.mockImplementation((method: string) => {
-      if (method === "replace_sample") sample.properties.gain = 1;
+    simpler.call.mockImplementation((method: string, path: unknown) => {
+      if (method === "replace_sample") {
+        sample.properties.gain = 1;
+        sample.properties.file_path = path;
+      }
     });
 
     const result = updateDevice({
@@ -317,7 +325,7 @@ describe("updateDevice - written param values", () => {
       path: "t0/d0",
       params: [
         { name: "gainDb", value: 24 },
-        { name: "sample", value: "/Library/kick.aif" },
+        { name: "sample", value: "/snare.wav" },
       ],
     });
   });
@@ -358,6 +366,60 @@ describe("updateDevice - written param values", () => {
       id: "simpler-1",
       path: "t0/d0",
       params: [{ name: "sample", reason: "written, but no value reads back" }],
+    });
+  });
+
+  it("reports a reason when a sample write leaves the old sample loaded", () => {
+    const simpler = registerSimplerDevice();
+
+    registerMockObject("kick-sample", {
+      type: "Sample",
+      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
+    });
+    simpler.properties.sample = children("kick-sample");
+
+    // An absolute path naming no file: Live takes `replace_sample`, loads
+    // nothing, and leaves the sample that was already there.
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [{ name: "sample", value: "/nowhere/missing.wav" }],
+    });
+
+    // Reporting the old path as the value would read as a write that landed —
+    // the caller would have to diff it against what it sent to notice.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [
+        {
+          name: "sample",
+          reason:
+            'not loaded — check the path; "/Library/kick.aif" is still there',
+        },
+      ],
+    });
+  });
+
+  it("reports a sample reloaded from its own path as a value, not a failure", () => {
+    const simpler = registerSimplerDevice();
+
+    registerMockObject("kick-sample", {
+      type: "Sample",
+      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
+    });
+    simpler.properties.sample = children("kick-sample");
+
+    // Reloading the loaded sample leaves the path where it was, so only the
+    // value the call asked for tells this apart from a write that never landed.
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [{ name: "sample", value: "/Library/kick.aif" }],
+    });
+
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [{ name: "sample", value: "/Library/kick.aif" }],
     });
   });
 

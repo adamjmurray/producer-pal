@@ -17,7 +17,10 @@ import {
   writeBoolProp,
   writeIntFromSet,
 } from "../specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
+import {
+  type PseudoParamWrite,
+  type SpecializedDeviceSpec,
+} from "../specialized-device-types.ts";
 
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). See
 // dev/specialized-devices/instruments.md.
@@ -96,6 +99,22 @@ function sampleAction(method: string) {
   };
 }
 
+/**
+ * Why a `sample` write left the sample that was already loaded. Live takes
+ * `replace_sample` for a path naming no loadable file, loads nothing and
+ * reports success, so a read-back that never moved is the only sign it failed.
+ * A path that reads back as itself landed, even where it was already loaded.
+ * @param write - The requested path, and the path before and after the write
+ * @returns The reason the sample never loaded, or undefined when it did
+ */
+function sampleWriteFailed(write: PseudoParamWrite): string | undefined {
+  const { before, after } = write;
+
+  if (after === write.requested || after !== before) return undefined;
+
+  return `not loaded — check the path; "${String(before)}" is still there`;
+}
+
 export const simplerSpec: SpecializedDeviceSpec = {
   displayNames: [DEVICE_CLASS.SIMPLER],
   params: [
@@ -103,6 +122,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
       name: "sample",
       read: readSamplePath,
       write: (device, value) => setSimplerSample(device, String(value)),
+      writeFailed: sampleWriteFailed,
     },
     {
       name: "gainDb",

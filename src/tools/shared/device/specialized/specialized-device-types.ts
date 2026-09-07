@@ -49,6 +49,24 @@ export interface PseudoParam {
    * write had landed.
    */
   write?: (device: LiveAPI, value: string | number) => boolean;
+  /**
+   * Why a write that ran did not land, or undefined when it did. Only for a
+   * param a device takes whole or ignores — Simpler's `sample`, where a path
+   * naming no loadable file leaves the old sample in place, so the read-back
+   * would report it as the value the call wrote. Everything else is left off:
+   * a value that reads back the way it already was is a write that landed.
+   */
+  writeFailed?: (write: PseudoParamWrite) => string | undefined;
+}
+
+/** What a pseudo-param write asked for, and what the param read before/after. */
+export interface PseudoParamWrite {
+  /** The value the param read before the write. */
+  before: unknown;
+  /** The value it reads at the end of the call. */
+  after: unknown;
+  /** The value the call asked for. */
+  requested: string | number;
 }
 
 /** A parsed `actions` entry: a name plus positional literal args. */
