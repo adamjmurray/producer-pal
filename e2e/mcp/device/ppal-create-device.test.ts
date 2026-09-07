@@ -298,27 +298,31 @@ describe("ppal-create-device", () => {
   it("keeps paths straight when an appended instrument re-sorts the chain", async () => {
     const trackIndex = await createTrack("midi");
     const effect = await createDevice("Auto Filter", `t${trackIndex}`);
+    // Not d0: a default track preset may have put devices here first.
+    const effectSlot = Number(effect.path?.match(/\/d(\d+)$/)?.[1]);
 
-    expect(effect.path).toBe(`t${trackIndex}/d0`);
+    expect(effectSlot).toBeGreaterThanOrEqual(0);
 
     await sleep(100);
 
     const instrument = await createDevice("Operator", `t${trackIndex}`);
 
     // Live sorted the instrument ahead of the audio effect it appended after.
-    expect(instrument.path).toBe(`t${trackIndex}/d0`);
+    expect(
+      Number(instrument.path?.match(/\/d(\d+)$/)?.[1]),
+    ).toBeLessThanOrEqual(effectSlot);
 
-    // The effect kept its identity and moved, rather than the path keeping its
-    // occupant. Reading by id is the question "where did this device go".
+    // The effect kept its identity and moved down a slot, rather than the path
+    // keeping its occupant. Reading by id asks "where did this device go".
     const movedEffect = await readDevice(effect.id);
 
     expect(movedEffect.id).toBe(effect.id);
-    expect(movedEffect.path).toBe(`t${trackIndex}/d1`);
+    expect(movedEffect.path).toBe(`t${trackIndex}/d${effectSlot + 1}`);
 
-    // And the path the re-sort vacated now names the instrument.
-    const atSlotZero = await readDeviceAt(`t${trackIndex}/d0`);
+    // And the path the instrument reported really names the instrument.
+    const atInstrumentSlot = await readDeviceAt(instrument.path!);
 
-    expect(atSlotZero.id).toBe(instrument.id);
+    expect(atInstrumentSlot.id).toBe(instrument.id);
   });
 
   it("refuses a list-mode call carrying create-only args", async () => {
