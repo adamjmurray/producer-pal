@@ -37,6 +37,8 @@ import { recreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
+/** Never registered, so it stands for a track index the caller mistyped. */
+const MISSING_TRACK = 99;
 const SOURCE_ID = "123";
 /**
  * How a warning names the source clip: both spellings, per ADR-0009. It starts
@@ -100,6 +102,11 @@ const REFUSALS: Array<[string, MoveOptions, string]> = [
     "a take lane past the per-track limit",
     { destination: { trackIndex: DEST_TRACK, takeLane: 8 } },
     'take lane "l8" is out of range',
+  ],
+  [
+    "a destination track that isn't there",
+    { destination: { trackIndex: MISSING_TRACK, takeLane: null } },
+    `track t${MISSING_TRACK} does not exist`,
   ],
 ];
 
@@ -409,8 +416,8 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(SOURCE_ID);
-    // These three all return before the placement writes anything, so nothing
-    // was overwritten and nothing is counted.
+    // These all return before the placement writes anything, so nothing was
+    // overwritten and nothing is counted.
     expect(landedCount(movedClipGroups)).toBe(0);
   });
 

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "../utils.ts";
 
@@ -50,6 +51,14 @@ export function clipCopyBlocker(
   trackIndex: number,
   track: LiveAPI = LiveAPI.from(livePath.track(trackIndex)),
 ): string | null {
+  // Before the type read, which can't tell a missing track from an audio one: a
+  // track that isn't there reports no has_midi_input, so a MIDI clip aimed at a
+  // mistyped index gets blamed for its own type and an audio clip sails through
+  // to a duplicate that quietly copies nothing.
+  if (!track.exists()) {
+    return `track ${arrangementPath(trackIndex)} does not exist`;
+  }
+
   const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
   if (clipIsMidi !== trackIsMidi) {
