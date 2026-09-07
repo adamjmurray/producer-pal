@@ -558,7 +558,13 @@ describe("updateDevice", () => {
     beforeEach(() => {
       liveSet = mockWorkingDeviceMoves();
 
-      registerMockObject("track1", { path: livePath.track(1) });
+      // Two devices so the moves below have somewhere to land: Live takes an
+      // index up to the container's device count and refuses anything past it,
+      // so an empty track could only ever accept d0.
+      registerMockObject("track1", {
+        path: livePath.track(1),
+        properties: { devices: children("resident-0", "resident-1") },
+      });
       registerMockObject("track0", { path: livePath.track(0) });
       registerMockObject("device0", {
         path: livePath.track(0).device(0),
@@ -610,7 +616,7 @@ describe("updateDevice", () => {
         "id track1",
         2,
       );
-      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d2" });
     });
 
     it("should move device into a rack chain", () => {

@@ -106,4 +106,49 @@ describe("a device move Live refuses", () => {
     // And the temp track duplicate_track parks next to the source is gone.
     expect(await deviceCounts(from, to)).toStrictEqual(before);
   });
+
+  it("warns when toPath names an index past the end of the container", async () => {
+    // Live takes 0 through the container's device count and ignores anything
+    // higher without a word. Within one container the arrival check cannot see
+    // it either, because the device is already in the list that check reads.
+    const track = await createMidiTrack(ctx.client!);
+
+    await createTestDevice(ctx.client!, "Operator", `t${track}`);
+
+    const count = await readDeviceCount(ctx.client!, track);
+    const pastTheEnd = `t${track}/d${count + 5}`;
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `t${track}/d0`, toPath: pastTheEnd },
+    });
+
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining(`"${pastTheEnd}" is past the end`),
+    );
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, track)).toBe(count);
+  });
+
+  it("takes the index equal to the device count, which appends", async () => {
+    const from = await createMidiTrack(ctx.client!);
+    const to = await createMidiTrack(ctx.client!);
+    const deviceId = await createTestDevice(ctx.client!, "Reverb", `t${from}`);
+    const count = await readDeviceCount(ctx.client!, to);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: deviceId, toPath: `t${to}/d${count}` },
+    });
+
+    expect(getToolWarnings(result)).not.toContainEqual(
+      expect.stringContaining("past the end"),
+    );
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, to)).toBe(count + 1);
+  });
 });

@@ -83,6 +83,10 @@ export function moveDeviceToPath(
     return { outcome: "no-destination" };
   }
 
+  if (isPastTheEnd(position, container, reportPath)) {
+    return { outcome: "refused" };
+  }
+
   // Read the chain before the move: on a plain move the source is the device
   // itself, and afterward it answers with the chain it landed in. No source
   // means the chain's mixer is already on the destination, so there is no
@@ -124,6 +128,40 @@ export function moveDeviceToPath(
   }
 
   return { outcome: "moved", container };
+}
+
+/**
+ * Whether a destination index is past where a device can go, warning if it is.
+ *
+ * Live takes 0 through the container's device count — count itself appends —
+ * and ignores anything higher without a word, for a device arriving from
+ * elsewhere and one moving within its own container alike.
+ *
+ * Nothing after the call can tell: `move_device` returns the position on
+ * success and 1 on refusal, which a real move to index 1 matches, and the
+ * arrival check reads the destination's device list, which already holds a
+ * device that never left it.
+ * @param position - Index the move is aimed at, or null to insert at the top
+ * @param container - Where the device is headed
+ * @param reportPath - How to spell the destination in the warning
+ * @returns True when the move can't happen, having warned why
+ */
+function isPastTheEnd(
+  position: number | null,
+  container: LiveAPI,
+  reportPath: string,
+): boolean {
+  if (position == null) return false;
+
+  const count = container.getChildIds("devices").length;
+
+  if (position <= count) return false;
+
+  console.warn(
+    `device not moved: "${reportPath}" is past the end of a container holding ${count} device${count === 1 ? "" : "s"}`,
+  );
+
+  return true;
 }
 
 /**

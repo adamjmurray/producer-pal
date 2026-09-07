@@ -159,6 +159,75 @@ describe("moveDeviceToPath", () => {
     );
   });
 
+  it("refuses an index past the end, which Live would drop in silence", () => {
+    // Live takes 0 through the container's device count and ignores anything
+    // higher without a word, so this can only be caught before the call.
+    mockWorkingDeviceMoves();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("resident-0", "resident-1") },
+    });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d9")).toStrictEqual({
+      outcome: "refused",
+    });
+    expect(capturedWarnings()).toContain(
+      'device not moved: "t1/d9" is past the end of a container holding 2 devices',
+    );
+  });
+
+  it("catches an index past the end within the device's own container", () => {
+    // The containment check below cannot see this one: a device moving inside
+    // its own container is already in the list that check reads.
+    mockWorkingDeviceMoves();
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { devices: children("device-0") },
+    });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t0/d9")).toStrictEqual({
+      outcome: "refused",
+    });
+    expect(capturedWarnings()).toContain(
+      'device not moved: "t0/d9" is past the end of a container holding 1 device',
+    );
+  });
+
+  it("allows the index equal to the count, which appends", () => {
+    mockWorkingDeviceMoves();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("resident-0", "resident-1") },
+    });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d2").outcome).toBe(
+      "moved",
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("past the end"),
+    );
+  });
+
+  it("spells the destination the way the caller asked it to", () => {
+    // Device duplication shifts track indices past its temp track, so the
+    // warning has to name the path the user sent, not the one we moved to.
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("resident-0") },
+    });
+
+    moveDeviceToPath(LiveAPI.from(device.path), "t1/d9", null, "t0/d9");
+
+    expect(capturedWarnings()).toContain(
+      'device not moved: "t0/d9" is past the end of a container holding 1 device',
+    );
+  });
+
   it("reports a missing destination, without moving", () => {
     // Callers word this one themselves; only they know the path the user sent.
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });

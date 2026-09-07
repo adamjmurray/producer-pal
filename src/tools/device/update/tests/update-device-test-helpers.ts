@@ -30,12 +30,15 @@ export { updateDevice } from "../update-device.ts";
 const OWN_DEVICE_SEGMENT = / devices \d+$/;
 
 /**
- * Register a live_set whose move_device relocates the device the way Live does:
- * out of its old container, into the destination at the position asked for
- * (clamped to the end), with every device either list re-pathed to the index it
- * now sits at. The registry answers statically, so without this the destination
- * never lists the device and moveDeviceToPath reads every move as refused.
- * Leave it out to test a refusal.
+ * Register a live_set whose move_device relocates the device: out of its old
+ * container, into the destination at the position asked for, with every device
+ * either list re-pathed to the index it now sits at. The registry answers
+ * statically, so without this the destination never lists the device and
+ * moveDeviceToPath reads every move as refused. Leave it out to test a refusal.
+ *
+ * One deliberate divergence: this clamps a position past the end, where Live
+ * ignores the move instead. moveDeviceToPath refuses those before calling, so
+ * nothing reaches here — don't lean on the clamp to decide what Live does.
  * @returns The live_set mock
  */
 export function mockWorkingDeviceMoves(): RegisteredMockObject {

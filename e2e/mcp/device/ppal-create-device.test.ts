@@ -15,6 +15,8 @@
 import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   readDeviceCount,
@@ -317,6 +319,33 @@ describe("ppal-create-device", () => {
     const atSlotZero = await readDeviceAt(`t${trackIndex}/d0`);
 
     expect(atSlotZero.id).toBe(instrument.id);
+  });
+
+  it("refuses a list-mode call carrying create-only args", async () => {
+    // Without deviceName the call lists the catalog; path and params used to be
+    // dropped without a word, so the catalog came back looking like a success.
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        path: "t0",
+        params: [{ name: "Dry/Wet", value: "50%" }],
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path, params require deviceName",
+    );
+  });
+
+  it("still lists devices when no create-only args come with it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {},
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(extractToolResultText(result)).toContain("Wavetable");
   });
 });
 

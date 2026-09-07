@@ -11,6 +11,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -319,6 +321,36 @@ describe("ppal-update-live-set", () => {
     );
 
     expect(deleted.locator?.operation).toBe("deleted");
+  });
+
+  it("refuses locator args sent with no locatorOperation", async () => {
+    // These used to be dropped in silence: the call returned a bare id and
+    // created nothing, so a model that knew the locator params but not the
+    // operation param had no way to tell.
+    const before = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const locatorsBefore = parseToolResult<ReadResult>(before).locators ?? [];
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { locatorTime: "45|1", locatorName: "Chorus" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "locatorTime, locatorName require locatorOperation",
+    );
+
+    const after = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+
+    expect(parseToolResult<ReadResult>(after).locators ?? []).toStrictEqual(
+      locatorsBefore,
+    );
   });
 });
 

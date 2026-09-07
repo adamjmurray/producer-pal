@@ -173,6 +173,28 @@ describe("createDevice", () => {
       expect(Array.isArray(result.audioEffects)).toBe(true);
     });
 
+    it.each([
+      ["path", { path: "t0" }],
+      ["name", { name: "Lead" }],
+      ["params", { params: [{ name: "Dry/Wet", value: "50%" }] }],
+    ])("refuses a list-mode call carrying %s", (param, args) => {
+      expect(() => createDevice(args)).toThrow(`${param} require deviceName`);
+    });
+
+    it("names every create-only arg it was sent", () => {
+      expect(() => createDevice({ path: "t0", name: "Lead" })).toThrow(
+        "path, name require deviceName; omit them to list available devices",
+      );
+    });
+
+    it("does not touch Live before refusing", () => {
+      expect(() => createDevice({ path: "t0" })).toThrow(
+        "path require deviceName",
+      );
+
+      expect(track0.call).not.toHaveBeenCalled();
+    });
+
     it("should not call Live API when listing devices", () => {
       createDevice({});
 

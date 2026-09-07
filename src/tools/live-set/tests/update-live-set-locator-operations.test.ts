@@ -469,4 +469,37 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
   });
+  describe("locator args without an operation", () => {
+    it.each([
+      ["locatorTime", { locatorTime: "45|1" }],
+      ["locatorName", { locatorName: "Chorus" }],
+      ["locatorId", { locatorId: "locator-0" }],
+    ])("refuses a call sending only %s", async (param, args) => {
+      await expect(updateLiveSet(args)).rejects.toThrow(
+        `${param} require locatorOperation`,
+      );
+    });
+
+    it("names every locator arg it was sent", async () => {
+      await expect(
+        updateLiveSet({ locatorTime: "45|1", locatorName: "Chorus" }),
+      ).rejects.toThrow(
+        'locatorTime, locatorName require locatorOperation ("create", "delete", or "rename")',
+      );
+    });
+
+    it("refuses before writing anything else the call asked for", async () => {
+      await expect(
+        updateLiveSet({ tempo: 140, locatorTime: "45|1" }),
+      ).rejects.toThrow("locatorTime require locatorOperation");
+
+      expect(liveSet.set).not.toHaveBeenCalled();
+    });
+
+    it("leaves a call carrying no locator args alone", async () => {
+      const result = await updateLiveSet({ tempo: 140 });
+
+      expect(result.tempo).toBe(140);
+    });
+  });
 });

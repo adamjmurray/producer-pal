@@ -286,3 +286,30 @@ export function renameLocator(
     name: locatorName,
   };
 }
+
+/**
+ * Refuse a call that sends locator args with no locatorOperation to act on.
+ *
+ * Without an operation there is nothing to create, delete or rename, so the
+ * args name no work at all and the call returns a bare id that reads as
+ * success. They apply to the whole call, so there is no per-target result to
+ * carry a skip. Nothing has been written yet when this runs.
+ * @param locatorOperation - The operation, if given
+ * @param args - The locator args that only mean something with an operation
+ */
+export function validateLocatorOperation(
+  locatorOperation: string | undefined,
+  args: { locatorId?: string; locatorTime?: string; locatorName?: string },
+): void {
+  if (locatorOperation != null) return;
+
+  const sent = (["locatorId", "locatorTime", "locatorName"] as const).filter(
+    (key) => args[key] != null,
+  );
+
+  if (sent.length > 0) {
+    throw new Error(
+      `${sent.join(", ")} require locatorOperation ("create", "delete", or "rename")`,
+    );
+  }
+}

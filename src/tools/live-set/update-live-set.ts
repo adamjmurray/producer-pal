@@ -25,6 +25,7 @@ import {
   deleteLocator,
   renameLocator,
   stopPlaybackIfNeeded,
+  validateLocatorOperation,
   waitForPlayheadPosition,
 } from "./helpers/update-live-set-locator-helpers.ts";
 
@@ -81,6 +82,12 @@ export async function updateLiveSet(
   }: UpdateLiveSetArgs = {},
   context: UpdateLiveSetContext = {},
 ): Promise<Record<string, unknown>> {
+  validateLocatorOperation(locatorOperation, {
+    locatorId,
+    locatorTime,
+    locatorName,
+  });
+
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   // optimistic result object that only include properties that are actually set

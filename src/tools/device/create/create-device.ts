@@ -72,6 +72,31 @@ function validateDeviceName(deviceName: string): void {
 }
 
 /**
+ * Refuse a list-mode call that also carries create-only args.
+ *
+ * Without deviceName the call lists the catalog and creates nothing, so a path
+ * or params sent alongside it are dropped — and the catalog comes back looking
+ * like the call worked. The args say a create was meant, so answer the create
+ * that can't run rather than the list that wasn't asked for.
+ * @param args - The create-only args, none of which list mode can act on
+ */
+function validateListModeArgs(args: {
+  path?: string;
+  name?: string;
+  params?: ParamEntry[];
+}): void {
+  const sent = (["path", "name", "params"] as const).filter(
+    (key) => args[key] != null,
+  );
+
+  if (sent.length > 0) {
+    throw new Error(
+      `${sent.join(", ")} require deviceName; omit them to list available devices`,
+    );
+  }
+}
+
+/**
  * Creates a native Live device on a track or chain, or lists available devices
  * @param args - The device parameters
  * @param args.deviceName - Device name, omit to list available devices
@@ -88,6 +113,8 @@ export function createDevice(
 ): typeof VALID_DEVICES | CreateDeviceResult | CreateDeviceResult[] {
   // List mode: return valid devices when deviceName is omitted
   if (deviceName == null) {
+    validateListModeArgs({ path, name, params });
+
     return VALID_DEVICES;
   }
 

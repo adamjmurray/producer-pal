@@ -82,11 +82,17 @@ function setupRackWithDevices(): void {
   });
 
   // Where the copy lands. It reports the moved devices so every move reads back
-  // as landed, which is what keeps the loop going for the whole count.
+  // as landed, which is what keeps the loop going for the whole count. The
+  // registry answers statically, so it reports the end state throughout: the
+  // carry appends at index N with N already there, and a destination stuck at
+  // one device would read every later append as past its end.
   registerMockObject("chain-new", {
     path: `${RACK} chains 1`,
     type: "Chain",
-    properties: { name: "Source", devices: children("temp-dev") },
+    properties: {
+      name: "Source",
+      devices: children("temp-dev", ...deviceIds),
+    },
   });
 
   // The temp track's copy of the chain. Each pass takes its first device.
