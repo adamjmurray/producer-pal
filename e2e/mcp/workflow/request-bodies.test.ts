@@ -4,14 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * A REST body the route cannot turn into arguments answers 400 JSON.
+ * A body the server cannot use answers JSON, never an HTML stack trace.
  *
- * Normalizing used to run outside the handler's try, so a refusal meant for
- * the caller escaped to Express's default error handler: an HTML page carrying
- * a stack trace and the server's absolute paths, from an endpoint that is
+ * Two ways it used to leak one. Normalizing ran outside the tool route's try,
+ * so a refusal meant for the caller escaped to Express's default error handler;
+ * and nothing at all handled what never reached a route, so a malformed body or
+ * an undecodable path did the same on /mcp too. Either way the answer was an
+ * HTML page naming the server's absolute paths, from endpoints that are
  * deliberately reachable from off the machine. Only the built device can leak
  * those paths, so only this suite can prove they are gone — and it pins that
- * MCP's answer to the same input is unchanged.
+ * MCP's own answers are unchanged.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track)
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -45,7 +47,20 @@ async function postRawBody(
   toolName: string,
   body?: string,
 ): Promise<{ response: Response; text: string }> {
-  const response = await fetch(`${REST_BASE_URL}/api/tools/${toolName}`, {
+  return postRawPath(`/api/tools/${toolName}`, body);
+}
+
+/**
+ * POST a raw body to any path, for the failures that never reach a route.
+ * @param path - Path to post to
+ * @param body - Raw request body, or undefined to send none at all
+ * @returns The response and its text
+ */
+async function postRawPath(
+  path: string,
+  body?: string,
+): Promise<{ response: Response; text: string }> {
+  const response = await fetch(`${REST_BASE_URL}${path}`, {
     method: "POST",
     ...(body == null
       ? {}
@@ -137,6 +152,63 @@ describe("request bodies", () => {
 
     expect(response.status).toBe(200);
     expect(JSON.parse(text).result.type).toBe("midi");
+  });
+
+  // These never reach a route at all, so the tool route's own try can't catch
+  // them. The bundle's path is what the leaked trace named on every frame.
+  it.each([
+    ["a tool call", "/api/tools/ppal-read-track", "{bad", 400],
+    ["the MCP endpoint", "/mcp", "{bad", 400],
+    ["a tool call", "/api/tools/ppal-read-track", '"hi"', 400],
+    // express.json is capped at 2mb.
+    [
+      "a tool call",
+      "/api/tools/ppal-read-track",
+      JSON.stringify({ a: "x".repeat(3_000_000) }),
+      413,
+    ],
+  ])(
+    "answers JSON for a body %s cannot parse",
+    async (_l, path, body, status) => {
+      const { response, text } = await postRawPath(path, body);
+
+      expect(response.status).toBe(status);
+      expect(response.headers.get("content-type")).toContain(
+        "application/json",
+      );
+      expect(text).not.toContain("<!DOCTYPE html>");
+      expect(text).not.toContain("mcp-server.mjs");
+      expect(JSON.parse(text).error).toStrictEqual(expect.any(String));
+    },
+  );
+
+  it("answers JSON for a path that isn't valid percent-encoding", async () => {
+    // Raised by the router decoding the path, before any route runs.
+    const { response, text } = await postRawPath("/api/tools/%E0%A4%A");
+
+    expect(response.status).toBe(400);
+    expect(text).not.toContain("<!DOCTYPE html>");
+    expect(text).not.toContain("mcp-server.mjs");
+    expect(JSON.parse(text).error).toBe("Bad request");
+  });
+
+  it("keeps MCP's answer to a bad JSON-RPC message unchanged", async () => {
+    // The /mcp route has its own try and the SDK transport answers protocol
+    // errors from inside it, so the new handler must not see this one.
+    const response = await fetch(`${REST_BASE_URL}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: '{"not":"jsonrpc"}',
+    });
+    const body = (await response.json()) as {
+      error: { code: number; message: string };
+    };
+
+    expect(body.error.code).toBe(-32700);
+    expect(body.error.message).toContain("Invalid JSON-RPC message");
   });
 
   it("keeps MCP's answer to the same blank param unchanged", async () => {

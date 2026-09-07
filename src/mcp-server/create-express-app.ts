@@ -25,6 +25,7 @@ import {
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
+import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import {
@@ -398,6 +399,9 @@ export function createExpressApp(): Express {
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);
+
+  // Registered last so it sees anything the routes above didn't answer.
+  app.use(errorHandlerMiddleware);
 
   return app;
 }
