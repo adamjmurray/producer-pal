@@ -100,6 +100,8 @@ describe("ppal-read-live-set", () => {
     expect(locatorsParsed.locators?.[0]?.time).toBe("1|1");
     expect(locatorsParsed.locators?.[1]?.name).toBe("Verse");
     expect(locatorsParsed.locators?.[1]?.time).toBe("9|1");
+    // The token to send back, so a caller names the section instead of the bar.
+    expect(locatorsParsed.locators?.[1]?.position).toBe("loc:Verse");
   });
 });
 
@@ -122,5 +124,10 @@ interface ReadLiveSetResult {
     instrument?: { id: string; name: string } | null;
   }>;
   returnTracks?: Array<{ id: string; name: string; path: string }>;
-  locators?: Array<{ id: string; name: string; time: string }>;
+  locators?: Array<{
+    id: string;
+    name: string;
+    time: string;
+    position: string;
+  }>;
 }

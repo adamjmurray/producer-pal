@@ -12,6 +12,7 @@ export interface LocatorInfo {
   id: string;
   name: string;
   time: string;
+  position: string;
 }
 
 export interface LocatorMatch {
@@ -60,26 +61,30 @@ export function readLocators(
   timeSigDenominator: number,
 ): LocatorInfo[] {
   const locatorIds = liveSet.getChildIds("cue_points");
-  const locators: LocatorInfo[] = [];
+  const entries: { name: string; timeInBeats: number }[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
-    const name = locator.getName();
-    const timeInBeats = locator.getProperty("time") as number;
-    const timeFormatted = abletonBeatsToBarBeat(
-      timeInBeats,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
 
-    locators.push({
-      id: getLocatorId(i),
-      name,
-      time: timeFormatted,
+    entries.push({
+      name: locator.getName(),
+      timeInBeats: locator.getProperty("time") as number,
     });
   }
 
-  return locators;
+  // Every name up front: a repeat can't be spotted until they are all read.
+  const names = entries.map((entry) => entry.name);
+
+  return entries.map(({ name, timeInBeats }, i) => ({
+    id: getLocatorId(i),
+    name,
+    time: abletonBeatsToBarBeat(
+      timeInBeats,
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+    position: locatorPosition(name, i, names),
+  }));
 }
 
 /**
@@ -263,6 +268,29 @@ export function resolveLocatorRefToBeats(
   return isLocatorId(locatorRef)
     ? resolveLocatorToBeats(liveSet, { locatorId: locatorRef }, context)
     : resolveLocatorToBeats(liveSet, { locatorName: locatorRef }, context);
+}
+
+/**
+ * The `loc:` token to send back for a locator — what every song position takes,
+ * including inside a path coordinate. Without it a model copies the bar out of
+ * `time` and the section name never reaches a call.
+ *
+ * Falls back to the positional id whenever the name wouldn't resolve to this
+ * exact locator: a blank or repeated name matches the wrong one, and a bracket
+ * or comma is read by the path grammar before the name is.
+ * @param name - This locator's name
+ * @param index - Its index in cue_points
+ * @param names - Every locator's name, to spot a repeat
+ * @returns The token, e.g. "loc:Bridge" or "loc:locator-3"
+ */
+function locatorPosition(name: string, index: number, names: string[]): string {
+  const usable =
+    name !== "" &&
+    name === name.trim() &&
+    !/[[\],]/.test(name) &&
+    names.indexOf(name) === names.lastIndexOf(name);
+
+  return `loc:${usable ? name : getLocatorId(index)}`;
 }
 
 /**

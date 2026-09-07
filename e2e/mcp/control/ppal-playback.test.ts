@@ -467,6 +467,30 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
+  // The read hands back a ready-to-send `position`; this proves it is a token
+  // and not just prose, so a caller never has to build "loc:" itself.
+  it("starts from the position a locator read handed back", async () => {
+    const read = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["locators"] },
+    });
+    const locators = parseToolResult<{
+      locators?: { name: string; time: string; position: string }[];
+    }>(read).locators;
+    const chorus = locators?.find((l) => l.name === "Chorus");
+
+    expect(chorus?.position).toBe("loc:Chorus");
+
+    const playing = await playback({
+      action: "play-arrangement",
+      startTime: chorus!.position,
+    });
+
+    expect(playing.startTime).toBe(chorus!.time);
+
+    await playback({ action: "stop" });
+  });
+
   it("starts the arrangement from a locator id", async () => {
     const playing = await playback({
       action: "play-arrangement",
