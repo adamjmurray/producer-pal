@@ -24,6 +24,7 @@ fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
 | 4   | gemma-4-26b-a4b | `--small-model` | `90ead3407`  | 1      | 59  | 40 (68%)  | 3.1M   | 35m   |
 | 5   | gemma-4-26b-a4b | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m |
 | 6   | gpt-5.6-luna    | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m |
+| 7   | gpt-5.6-luna    | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
