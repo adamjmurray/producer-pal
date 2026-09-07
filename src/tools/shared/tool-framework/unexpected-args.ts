@@ -22,8 +22,8 @@ export function unexpectedArgKeys(
   args: unknown,
   expected: Record<string, ZodType>,
 ): string[] {
-  // A REST body is whatever was posted; Object.keys on an array or a string
-  // would report indexes as param names.
+  // Takes unknown because a transport can hand over whatever was posted, and
+  // Object.keys on an array or a string reports indexes as param names.
   if (args == null || typeof args !== "object" || Array.isArray(args)) {
     return [];
   }

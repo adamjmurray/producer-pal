@@ -36,7 +36,10 @@ export function unsetEmptyParams(
   const kept: Record<string, unknown> = {};
 
   for (const [name, value] of Object.entries(args)) {
-    const param = schema[name];
+    // hasOwn, not a plain lookup: an arg named `toString` or `constructor`
+    // finds a function on Object.prototype, and the blank check below then
+    // calls safeParse on it.
+    const param = Object.hasOwn(schema, name) ? schema[name] : undefined;
 
     // An arg the tool doesn't declare is left for the unexpected-argument
     // warning to report.

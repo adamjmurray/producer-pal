@@ -392,25 +392,6 @@ describe("REST API Routes", () => {
       expect(body.warnings).toBeUndefined();
     });
 
-    it("does not report array indexes as unexpected params", async () => {
-      // The body is whatever was posted, and JSON parses an array without
-      // complaint. Object.keys on it would name "0, 1" as params the caller
-      // sent.
-      setMcpResponse({ content: [{ type: "text", text: '{"id":"3"}' }] });
-
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/ppal-update-track`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "[1, 2]",
-        },
-      );
-      const body = (await response.json()) as ToolCallBody;
-
-      expect(body.warnings).toBeUndefined();
-    });
-
     it("says nothing about a deprecated param sent blank", async () => {
       // A blank survives the schema on a string-typed param, so != null counted
       // it as sent and steered the caller onto a value nothing had honored. MCP

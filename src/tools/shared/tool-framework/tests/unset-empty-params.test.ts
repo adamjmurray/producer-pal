@@ -68,6 +68,15 @@ describe("unsetEmptyParams", () => {
     });
   });
 
+  it("leaves an arg named after a prototype member for that warning too", () => {
+    // A plain lookup found Object.prototype.toString, so the blank check below
+    // called safeParse on a function and reported "schema.safeParse is not a
+    // function" as the caller's mistake.
+    expect(
+      unsetEmptyParams({ toString: "", constructor: "" }, schema),
+    ).toStrictEqual({ toString: "", constructor: "" });
+  });
+
   it("reads a null as omitting the param", () => {
     expect(parse({ trackIndex: null, name: null })).toStrictEqual({ count: 1 });
   });

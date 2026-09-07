@@ -6,6 +6,7 @@
 import { type Express, type Request, type Response } from "express";
 import { z, type ZodType } from "zod";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -25,6 +26,7 @@ import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "../create-mcp-server.ts";
+import { requestBody } from "../helpers/http/request-body.ts";
 import {
   resolveRequestProfile,
   type RequestProfile,
@@ -171,23 +173,26 @@ export function registerRestApiRoutes(
       // `action: "delete"`, and so on. Every filtered value is one the tool
       // still handles; only the advertising shrinks.
       const { inputSchema } = toolDef.toolOptions;
+      const body = requestBodyObject(req);
+
+      if (body == null) {
+        res.status(400).json({
+          error: "Request body must be a JSON object of tool arguments.",
+        });
+
+        return;
+      }
+
       // Diff the raw body against that same full schema, before Zod strips the
       // rest, so a typo'd optional param doesn't come back as a clean success
       // that changed nothing. MCP diffs against the filtered schema instead;
       // here that would call a real param unexpected whenever small-model mode
       // is on, for exactly the reason above.
-      const unexpectedKeys = unexpectedArgKeys(req.body, inputSchema);
-      const parsed = z
-        .object(inputSchema)
-        .safeParse(
-          unsetEmptyParams(req.body as Record<string, unknown>, inputSchema),
-        );
+      const unexpectedKeys = unexpectedArgKeys(body, inputSchema);
+      const args = parseToolArgs(body, inputSchema);
 
-      if (!parsed.success) {
-        res.status(400).json({
-          error: "Validation failed",
-          details: parsed.error.issues,
-        });
+      if ("error" in args) {
+        res.status(400).json(args);
 
         return;
       }
@@ -197,7 +202,7 @@ export function registerRestApiRoutes(
 
         const mcpResponse = (await buildCallLiveApi(profile)(
           toolName,
-          parsed.data,
+          args.data,
           overrides,
         )) as McpResponse;
 
@@ -226,7 +231,7 @@ export function registerRestApiRoutes(
         appendDeprecationNotices(
           mcpResponse,
           toolDef.toolOptions.inputSchema,
-          parsed.data,
+          args.data,
         );
 
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
@@ -236,6 +241,59 @@ export function registerRestApiRoutes(
       }
     },
   );
+}
+
+type ToolArgs =
+  | { data: Record<string, unknown> }
+  | { error: string; details?: unknown[] };
+
+/**
+ * Normalize and validate one call's arguments.
+ *
+ * Both steps throw on input the caller controls: unsetEmptyParams refuses a
+ * blank on a param with no blank value, and safeParse runs that same refusal a
+ * level down, inside the nested shapes optionalParams builds. Catch both here.
+ * Uncaught, they reach Express's default handler, which answers a JSON API
+ * with an HTML page carrying a stack trace and the server's absolute paths.
+ *
+ * @param body - The posted arguments
+ * @param inputSchema - The tool's params, keyed by name
+ * @returns The validated arguments, or the JSON body to return with a 400
+ */
+function parseToolArgs(
+  body: Record<string, unknown>,
+  inputSchema: Record<string, ZodType>,
+): ToolArgs {
+  let parsed: z.ZodSafeParseResult<Record<string, unknown>>;
+
+  try {
+    parsed = z
+      .object(inputSchema)
+      .safeParse(unsetEmptyParams(body, inputSchema));
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  if (!parsed.success) {
+    return { error: "Validation failed", details: parsed.error.issues };
+  }
+
+  return { data: parsed.data };
+}
+
+/**
+ * The posted body as an argument list.
+ *
+ * requestBody() reads an array as no body at all, which every other route
+ * wants. Here it is the bug: a call sent as `[{...}]` runs with no arguments,
+ * so the tool answers by naming a param the caller did send, inside the
+ * element the route discarded. Refuse it instead.
+ *
+ * @param req - Express request
+ * @returns The arguments, or undefined when the body is not a JSON object
+ */
+function requestBodyObject(req: Request): Record<string, unknown> | undefined {
+  return Array.isArray(req.body) ? undefined : requestBody(req);
 }
 
 /**
