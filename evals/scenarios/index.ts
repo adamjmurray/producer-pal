@@ -8,6 +8,8 @@
  * CLI for running Producer Pal evaluation scenarios
  */
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { styleText } from "node:util";
 import { Command } from "commander";
 import "#evals/shared/install-fetch-dispatcher.ts";
@@ -54,6 +56,8 @@ interface CliOptions {
   list?: boolean;
   listModels?: string | boolean;
   all?: boolean;
+  /** Run the ordering canary subset from evals/canary-scenarios.txt. */
+  canary?: boolean;
   skipSetup?: boolean;
   skipJudge?: boolean;
   skipReflection?: boolean;
@@ -75,6 +79,25 @@ interface CliOptions {
  */
 function collectValues(value: string, previous: string[]): string[] {
   return [...previous, value];
+}
+
+/**
+ * Read the ordering canary's scenario ids.
+ *
+ * The list is a checked-in file rather than a tag so that adding a scenario to
+ * the gate stays a reviewable act. Blank lines and #-comments are ignored.
+ *
+ * @returns Scenario ids to run
+ */
+function readCanaryScenarios(): string[] {
+  const path = fileURLToPath(
+    new URL("../canary-scenarios.txt", import.meta.url),
+  );
+
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .map((line) => line.replace(/#.*$/, "").trim())
+    .filter((line) => line !== "");
 }
 
 /** Stop the run after this many scenarios in a row fail to start at all. */
@@ -148,6 +171,10 @@ program
   .option("--no-save", "Skip writing JSON result files to disk")
   .option("-a, --all", "Run all scenarios")
   .option(
+    "--canary",
+    "Run the ordering canary subset (evals/canary-scenarios.txt)",
+  )
+  .option(
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
   )
@@ -188,8 +215,17 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     );
   }
 
+  if (options.canary) {
+    if (options.all || options.test.length > 0) {
+      program.error("--canary cannot be combined with --all or --test");
+    }
+
+    options.test = readCanaryScenarios();
+    console.log(`Canary: ${options.test.length} scenarios`);
+  }
+
   if (!options.all && options.test.length === 0) {
-    program.error("must specify -t, --test <id> or -a, --all");
+    program.error("must specify -t, --test <id>, -a, --all, or --canary");
   }
 
   if (options.all && options.test.length > 0) {

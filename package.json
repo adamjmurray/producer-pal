@@ -62,6 +62,7 @@
     "duplication:docs": "printf 'Docs ' && jscpd -s --no-colors -c config/.jscpd-docs.json",
     "duplication:verbose": "jscpd -c config/.jscpd.json && jscpd -c config/.jscpd-tests.json && jscpd -c config/.jscpd-scripts.json && jscpd -c config/.jscpd-evals.json && jscpd -c config/.jscpd-e2e.json && jscpd -c config/.jscpd-docs.json",
     "skills:snapshot": "node scripts/skills/snapshot-skills.ts",
+    "probe:skills": "node --env-file=.env scripts/probes/skill-recall-probe.ts",
     "loc": "node scripts/stats/loc.ts",
     "test:stats": "node scripts/stats/test-stats.ts",
     "e2e:stats": "node scripts/stats/e2e-stats.ts",

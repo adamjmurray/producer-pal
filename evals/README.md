@@ -7,17 +7,71 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # Evals
 
-Two CLI tools for testing LLM behavior with Producer Pal's MCP tools:
+Four CLI tools for testing LLM behavior with Producer Pal's MCP tools:
 
 - **`scripts/eval`** - Automated evaluation scenarios with scoring and
   assertions
+- **`scripts/eval-canary`** - The fragment-sensitive scenario subset, for after
+  you edit a skill fragment (see
+  [Measuring a context change](#measuring-a-context-change))
+- **`scripts/skill-probe`** - Does each fragment / tool / param description
+  still reach the model? Seconds, and needs no Ableton
 - **`scripts/chat`** - Interactive chat sessions for manual testing
 
-Both require Ableton Live running with the Producer Pal device loaded.
+All but `probe:skills` require Ableton Live running with the Producer Pal device
+loaded.
 
 `dev/Eval-Findings.md` records what past runs established — including fixes that
 were tried and measured as not working. Read it before attacking a scenario that
 has been failing for a while.
+
+## Measuring a context change
+
+Editing a skill fragment, a tool description, or a param description changes
+what the model reads. The full suite is the only complete answer, but it costs
+~4h and ~130M tokens — too slow to iterate against. Two cheaper gates come
+first, and neither replaces the other.
+
+**1. `npm run probe:skills` — did the content reach the model at all?**
+
+Moving an `@include` can cost the model a whole fragment even though the text is
+still in the blob. That is what happened to `swing()` / `quant()` / `step()`,
+and only a full run caught it. The probe asks one question per fragment, tool
+and param, answerable only from that source, and takes about a minute:
+
+```bash
+npm run probe:skills
+npm run probe:skills -- --small-model                    # basic tier
+npm run probe:skills -- --surface param                  # param descriptions only
+npm run probe:skills -- -t transforms-expressions        # one source
+npm run probe:skills -- -m local/google/gemma-4-26b-a4b  # LM Studio, free
+```
+
+It runs the real `buildSkills()` blob plus the real published tool schemas
+(through `resolveToolSchema`, so hidden params and per-mode overrides apply). No
+Ableton, no MCP server. It exits non-zero on a miss, so it works as a gate.
+
+It catches content LOSS, not bad behavior — a model can recall `legato(tol)`
+perfectly and never use it. **Before trusting a new probe, check it fails when
+the source is absent.** Run the standard-tier probes against the basic blob: the
+fragments basicDriver lacks must MISS. A probe a capable model can answer from
+the rest of the context is measuring nothing.
+
+**2. `./scripts/eval --canary` — did behavior change?**
+
+```bash
+./scripts/eval --canary -m codex-code/luna -r 1 --skip-judge  # ~25 scenarios, ~20 min
+./scripts/eval --canary -m codex-code/luna -r 3 --skip-judge  # confirm a flagged red
+```
+
+The list is `evals/canary-scenarios.txt`: every scenario that has ever collapsed
+between two `-r 3` luna runs, plus one witness per `standardDriver` fragment.
+`-r 1` cannot see 2/3 drift and is not meant to — a bad include position causes
+total loss, and that is what this gates. Confirm anything it flags at `-r 3` on
+that scenario alone before believing it.
+
+Same caveat as any eval run: it opens Live Sets **without saving the current
+one**.
 
 ## Eval CLI
 
