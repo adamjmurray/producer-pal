@@ -80,6 +80,7 @@ export {
   noteOpsSplit,
 } from "./clip/transforms/note-ops-roll-and-merge.ts";
 export { legatoTransforms } from "./clip/transforms/legato-transforms.ts";
+export { transformRandomBakedOrReplayed } from "./clip/transforms/transform-random-baked-or-replayed.ts";
 export { melodyTransforms } from "./clip/transforms/melody-transforms.ts";
 export { rangeClearBoundaries } from "./clip/notation/range-bound-clears.ts";
 export {
