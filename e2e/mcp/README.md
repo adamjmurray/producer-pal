@@ -6,8 +6,12 @@ End-to-end tests that verify Producer Pal tools via the MCP protocol.
 
 1. **Build the project**: `npm run build:debug`
 2. **Ableton Live installed** (the tests will open it automatically)
-3. **Terminal accessibility permissions** (System Settings → Privacy & Security
-   → Accessibility → Terminal)
+3. **Accessibility permission** (System Settings → Privacy & Security →
+   Accessibility) for the app responsible for the process — the terminal or
+   editor you run the tests from, plus AEServer when macOS cannot pin one down.
+   An entry already switched on can go stale; toggle it off and back on to
+   re-record it. Without the grant the harness cannot click the dialogs that
+   block a Set swap, and every open fails.
 
 ## Running Tests
 

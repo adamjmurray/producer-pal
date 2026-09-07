@@ -15,8 +15,9 @@
  * back. A dialog watcher runs the whole time to clear the modals that would
  * otherwise block the swap forever.
  *
- * NOTE: macOS only. Requires Terminal.app with Accessibility permissions
- * (System Settings → Privacy & Security → Accessibility → Terminal)
+ * NOTE: macOS only. Needs Accessibility (System Settings → Privacy & Security
+ * → Accessibility) for the app responsible for this process — the terminal or
+ * editor the tests run under, and AEServer when macOS cannot pin one down.
  *
  * IMPORTANT: Any projects that are auto-opened need to have the Producer Pal device in them.
  *            If using Live templates, the device must be frozen or the code will be missing
@@ -48,6 +49,8 @@ const SERVER_STOP_TIMEOUT_MS = 20000;
 const SERVER_START_TIMEOUT_MS = 45000;
 // Live shows this instead of opening a Set that a newer version saved.
 const UNSUPPORTED_VERSION_TEXT = "newer version of Live";
+// What System Events says when the Accessibility grant is missing or stale.
+const ASSISTIVE_ACCESS_DENIED = "not allowed assistive access";
 
 /**
  * Opens an Ableton Live project, clearing any dialogs in the way.
@@ -59,6 +62,8 @@ export async function openLiveSet(projectPath: string): Promise<void> {
   if (!existsSync(absolutePath)) {
     throw new Error(`Project file not found: ${absolutePath}`);
   }
+
+  await assertAssistiveAccess();
 
   const watcher = startDialogWatcher();
 
@@ -76,6 +81,38 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     await verifyLoadedSet(absolutePath);
   } finally {
     watcher.kill();
+  }
+}
+
+/**
+ * Fails when AppleScript cannot drive Live's UI.
+ *
+ * Everything that clears a dialog goes through System Events, and a missing
+ * Accessibility grant makes those calls raise an ordinary AppleScript error
+ * that the watcher's `try` swallows. The open then dies 20s later saying Live
+ * would not swap Sets, which sends you looking at Live. Check up front so the
+ * message names the permission instead.
+ *
+ * The grant belongs to whichever app is responsible for this process — the
+ * terminal or editor the tests run under, or AEServer when macOS cannot pin
+ * one down. An entry already switched on can still be stale; toggling it off
+ * and on re-records it.
+ */
+async function assertAssistiveAccess(): Promise<void> {
+  // Finder is always running, so this probes the permission rather than
+  // whether some particular app happens to be up.
+  const { error } = await runOsascript(
+    'tell application "System Events" to tell process "Finder" to return count of windows',
+  );
+
+  if (error?.includes(ASSISTIVE_ACCESS_DENIED)) {
+    throw new Error(
+      "AppleScript is not allowed assistive access, so the dialogs that block " +
+        "a Set swap cannot be clicked. Grant Accessibility (System Settings → " +
+        "Privacy & Security → Accessibility) to the app running these tests, " +
+        "and to AEServer if it is listed. Toggle an entry that is already on " +
+        `off and back on — the grant goes stale. osascript said: ${error}`,
+    );
   }
 }
 
@@ -404,11 +441,28 @@ async function liveWindowTitles(): Promise<string[]> {
  *   failing an open over on its own.
  */
 async function runAppleScript(script: string): Promise<string | null> {
+  const { output } = await runOsascript(script);
+
+  return output;
+}
+
+/**
+ * Runs an AppleScript, keeping the failure. Only the access preflight needs
+ * this; everything else treats a failure as "nothing to report".
+ * @param script - The AppleScript source
+ * @returns The trimmed output, or the error text when osascript failed
+ */
+async function runOsascript(
+  script: string,
+): Promise<{ output: string | null; error: string | null }> {
   return await new Promise((resolve) => {
-    execFile("osascript", ["-e", script], (error, stdout) => {
+    execFile("osascript", ["-e", script], (error, stdout, stderr) => {
       const output = error ? "" : stdout.trim();
 
-      resolve(output === "" ? null : output);
+      resolve({
+        output: output === "" ? null : output,
+        error: error ? stderr.trim() || error.message : null,
+      });
     });
   });
 }
