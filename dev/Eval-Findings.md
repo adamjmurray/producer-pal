@@ -86,8 +86,11 @@ scenario is not in small-model mode's set.
 | `range-clear-boundaries`                | 3/3       | 0/1        | 0/1        | 1/1          |
 | `rhythm-grid-barbeat`                   | 3/3       | 0/1        | 1/1        | 1/1          |
 
-Two rows are not findings: `duplicate-loop` is run 2 predating ADR-0040, and
-`drum-backbeat-stark` is red on purpose (below).
+Three rows are not findings: `duplicate-loop` is run 2 predating ADR-0040,
+`drum-backbeat-stark` is red on purpose (below), and `legato-transforms` graded
+a spelling the parser accepts — two of its three trials failed only on writing
+`random()` where the check wanted `rand()`, and the check was widened 45 minutes
+after that run finished. Corrected, it is about 1/3.
 
 **The stronger model fails where the weaker one passes.** Luna is 0/3 on
 `note-ops-repeat`, 1/3 on `note-ops-merge` and 0/3 on `note-ops-split` while
@@ -124,6 +127,19 @@ them, and prefers writing notes because that is what it can predict. So a fix
 has to change the trade, not the prose — make the op do something hand-written
 notes cannot, or make the manual route cost more than one call.
 
+**Naming the unit does not stop a model reading `sin()` as radians.** Every luna
+trial opens with `sin(2*pi*note.start/4)` and needs 3 to 5 calls to arrive at
+`sin(1bar)`. The waveform argument is a cycle LENGTH, and saying so in the
+signature line — "never radians, never a note property", where the model reads
+the call shape — changed nothing: still 0 of 3, still 3+ calls each.
+
+It is not a wording gap, for the same reason the note-count ops were not. The
+radian form PARSES and comes back `transformed: N`, so nothing tells the model
+it asked for the wrong thing; it revises only because the music is wrong. A fix
+has to make the wrong unit visible — reject a waveform period that is not a note
+value, or report the cycle length the call actually produced. Don't retry this
+as prose.
+
 **A locator param loses to a value the model already has.** `ppal-duplicate`'s
 locator was missed in 3 of 3 trials while `ppal-playback`'s `startLocator`
 landed 3 of 3. Not a wording gap — both were documented with examples. It is
@@ -157,6 +173,19 @@ over-generalizes the prefix from fractions to bars; it is not misreading `Nbar`.
 Cost is one round trip and the error is self-correcting, so the only remaining
 lever is a grammar alias accepting `n4bar` — judge that against round-trip cost,
 not tidiness.
+
+**Two kinds of randomness, and only one gloss for both.** Live stores a random
+velocity two ways: `rand()` draws one value per note and writes it into the
+clip, and the `vA-B` shorthand writes Live's per-note spread, which re-rolls on
+every playback. Nothing shipped said so, and the only place the skills paired
+"random" with a velocity spelling was the shorthand list's `vA-B` velocity
+_(range = humanized random)_. Asked to randomize the snares AND lock the values
+in, luna wrote the spread twice and a deterministic `sin()` once — 0 of 3.
+
+Saying which one bakes, next to each spelling, took luna to **3 of 3 on both
+arms**: `rand(90,110)` for the baked ask and `v70-110` for the re-rolled one.
+gemma moved 2/3 to 3/3 twice, which on its own would be noise; luna is the
+result. Scenario: `transform-random-baked-or-replayed`.
 
 **So: teaching a spelling is worth trying; arguing a model out of a preference
 is not.**
@@ -257,6 +286,14 @@ replace, which is correct.
 
 Grade the guard, not the path. A scenario that assumes one route to a target
 reports red for a model that found another.
+
+`transform-random-baked-or-replayed` was written this way and had to be redone
+before it measured anything. Requiring the `transforms` param scored 0 of 3 on
+gemma — but two of those trials hand-wrote four different snare velocities,
+which IS the baked outcome, reached without the DSL. Graded on the clip's end
+state instead (distinct velocities and no deviation vs. a deviation on every
+note), the same baseline is 2 of 3. The first number was the grader, not the
+model.
 
 ## What a transcript does not show you
 
