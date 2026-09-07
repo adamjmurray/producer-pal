@@ -437,3 +437,53 @@ and examples.
 <!--@include: ../_generated/ppal-live-api-schema.md-->
 
 <!--@include: ../_generated/ppal-live-api-output.md-->
+
+### Spawn Subagent (`spawn_subagent`) {#spawn-subagent}
+
+**Built-in chat only.** Every other tool on this page is an MCP tool the server
+provides. This one belongs to the Producer Pal [Chat UI](/guide/chat-ui), which
+runs the nested session itself, so it isn't available over MCP, the REST API, or
+the Agent Skill.
+
+**Off by default.** Turn it on with the experimental **Subagent** checkbox under
+**Advanced** on the chat's Tools tab. See [Subagents](/guide/chat-ui#subagents)
+for what the cards show, resuming a subagent, and choosing what workers run
+under.
+
+- Hands a self-contained subtask to a nested assistant with the full Producer
+  Pal toolset, working in the same Live Set
+- Several calls in one response run their subtasks in parallel
+- A subagent can't spawn its own, and one turn gets at most 10 spawn attempts
+- The AI sees only each subagent's final message, labeled with its number
+- `resumeFrom` gives more work to a subagent that already ran, keeping
+  everything it did and knows, instead of briefing a fresh one
+
+<details>
+<summary>Parameters</summary>
+
+| Parameter    | Type                                                             | Description                                                                                                                             |
+| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `task`       | string <nobr><span class="vp-doc-muted">(required)</span></nobr> | What the subagent should do, with all the context it needs, since it can't see the conversation. With `resumeFrom`, just the follow-up. |
+| `resumeFrom` | number                                                           | Number of an earlier subagent to continue instead of starting a fresh one.                                                              |
+
+</details>
+
+<details>
+<summary>Example output</summary>
+
+Called with
+`{"task":"On the Bass track, write a 4-bar bassline into scene 1 that follows the kick pattern in the Drums clip. A minor, eighth notes, root-heavy."}`:
+
+```text
+[subagent 1]
+Wrote a 4-bar bassline to Bass, scene 1, named "Bass A". Eighth notes in A
+minor, roots on the kick hits and passing tones between them. I left it
+unlooped to match the Drums clip in that scene.
+```
+
+The result is plain text, not JSON: the `[subagent N]` label, then that
+subagent's own closing message. Pass the number back as `resumeFrom` to give the
+same subagent more work. The AI never sees the subagent's tool calls or working
+notes, only this; the full log stays in the chat UI's card.
+
+</details>
