@@ -383,6 +383,36 @@ function registerPadRack(layers = 1): RegisteredMockObject[] {
 }
 
 /**
+ * The same rack with the pad's chain not made yet. `insert_chain` hands it back
+ * the way Live does: appended to the rack, its note set afterwards.
+ * @returns The rack mock
+ */
+function registerUnbuiltPadChain(): RegisteredMockObject {
+  registerPadRack();
+  registerCreatedSimpler();
+
+  // A re-registration replaces the property bag, so this restates the rack.
+  const rack = registerMockObject("drum-rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: {
+      can_have_drum_pads: 1,
+      chains: children(),
+      drum_pads: children("pad-36"),
+    },
+    methods: {
+      insert_chain: () => {
+        rack.properties.chains = children("chain-0");
+
+        return null;
+      },
+    },
+  });
+
+  return rack;
+}
+
+/**
  * Register the Simpler a pad chain auto-creates, with a sample that reads back
  * whatever `replace_sample` was handed.
  * @param chainIndex - Which layer it lands in
@@ -539,6 +569,42 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     for (const chain of chains) {
       expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
     }
+  });
+
+  // A pad with no chain at all is where the rack's `pC1/sample` shortcut used
+  // to differ: it made the chain, and the pad path said Live ignores the write.
+  it("makes the chain a pad with none needs, by path and by id", () => {
+    for (const target of [{ path: "t0/d0/pC1" }, { id: "pad-36" }]) {
+      const rack = registerUnbuiltPadChain();
+
+      const result = updateDevice({
+        ...target,
+        params: [{ name: "sample", value: KICK }],
+      });
+
+      expect(rack.call).toHaveBeenCalledWith("insert_chain");
+      expect(LiveAPI.from("id new-simpler").call).toHaveBeenCalledWith(
+        "replace_sample",
+        KICK,
+      );
+      expect(result).toStrictEqual({
+        id: "pad-36",
+        path: "t0/d0/pC1",
+        params: [{ name: "sample", value: KICK }],
+      });
+    }
+  });
+
+  // Nothing else asks for a chain, so nothing else gets one.
+  it("still says an empty pad ignores a write that names no sample", () => {
+    const rack = registerUnbuiltPadChain();
+
+    expect(updateDevice({ path: "t0/d0/pC1", gainDb: -6 })).toStrictEqual([]);
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(capturedWarnings()).toContain(
+      "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
+        "to update — Live ignores writes to an empty pad",
+    );
   });
 
   it("still refuses every other param on a chain", () => {

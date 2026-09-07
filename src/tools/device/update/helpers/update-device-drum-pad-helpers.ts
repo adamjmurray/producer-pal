@@ -9,7 +9,12 @@ import {
   ambiguousLayerReason,
   isSampleParam,
 } from "#src/tools/shared/device/pad-sample-messages.ts";
-import { type DrumPadGroup } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { midiToNoteName } from "#src/shared/pitch.ts";
+import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
+import {
+  type DrumPadGroup,
+  drumRackOfPad,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   pathField,
   pathTargetLabel,
@@ -71,8 +76,15 @@ export function updateDrumPadGroup(
   padPath: string,
   options: UpdateTargetOptions,
 ): DrumPadUpdateResult | null {
-  const { pad, chains } = group;
+  const { pad } = group;
   const padLabel = pathTargetLabel(pad, padPath);
+  // A sample write makes the pad's chain, exactly as the rack's `pC1/sample`
+  // shortcut does — the pad is the address either way. The new chain then takes
+  // the whole call: a one-layer pad is what the pad now is.
+  const chains =
+    group.chains.length === 0
+      ? createChainForSample(pad, options)
+      : group.chains;
 
   // Live drops every write to a pad with no chains — `set` returns 1 and the
   // read-back stays 0 — so there is nothing here to write, and saying the
@@ -129,6 +141,32 @@ export function updateDrumPadGroup(
   }
 
   return result;
+}
+
+/**
+ * Make the chain a `sample` write needs on an empty pad. Only a sample creates
+ * one — every other setting would land on a chain the caller never asked for.
+ * @param pad - The DrumPad, or null on a virtual pad that has none
+ * @param options - Update options
+ * @returns The new chain as the pad's only layer, or none when nothing was made
+ */
+function createChainForSample(
+  pad: LiveAPI | null,
+  options: UpdateTargetOptions,
+): LiveAPI[] {
+  const wantsSample = (options.params ?? []).some((entry) =>
+    isSampleParam(entry.name.trim()),
+  );
+
+  if (!wantsSample || pad == null) return [];
+
+  const note = midiToNoteName(pad.getProperty("note") as number);
+
+  if (note == null) return [];
+
+  const chain = resolveOrCreateDrumPadChain(drumRackOfPad(pad), note, []);
+
+  return chain?.exists() ? [chain] : [];
 }
 
 /**

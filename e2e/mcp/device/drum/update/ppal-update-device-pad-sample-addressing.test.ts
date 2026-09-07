@@ -250,6 +250,31 @@ describe("a sample addressed by the pad's own path", () => {
     expect(warnings).toStrictEqual([]);
     expect(params).toStrictEqual([{ name: "sample", value: KICK_FILE }]);
   });
+
+  // An empty pad has no chain to write to, and used to answer "Live ignores
+  // writes to an empty pad" — where the rack's shortcut made the chain instead.
+  it("makes the chain and the Simpler on an empty pad", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+
+    expect(
+      (await readDrumPad(ctx.client!, `${rackPath}/pF1`)).chains ?? [],
+    ).toHaveLength(0);
+
+    const { params, warnings } = await writeSampleByPath(
+      `${rackPath}/pF1`,
+      KICK_FILE,
+    );
+
+    expect(warnings).toStrictEqual([]);
+    expect(params).toStrictEqual([{ name: "sample", value: KICK_FILE }]);
+
+    const devices = (await readDrumPad(ctx.client!, `${rackPath}/pF1`))
+      .chains?.[0]?.devices;
+
+    expect(devices).toHaveLength(1);
+    expect(devices?.[0]?.type).toContain("Simpler");
+    expect(await sampleAt(`${rackPath}/pF1/c0/d0`)).toBe(KICK_FILE);
+  });
 });
 
 describe("a sample addressed by the device's own path", () => {

@@ -207,9 +207,16 @@ export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
  * @returns The pad's chains, in rack order
  */
 export function chainsOnDrumPad(pad: LiveAPI): LiveAPI[] {
-  const rack = LiveAPI.from(pad.path.replace(DRUM_PADS_TAIL, ""));
+  return chainsForInNote(drumRackOfPad(pad), pad.getProperty("note") as number);
+}
 
-  return chainsForInNote(rack, pad.getProperty("note") as number);
+/**
+ * The Drum Rack a pad belongs to.
+ * @param pad - The DrumPad
+ * @returns The rack device holding it
+ */
+export function drumRackOfPad(pad: LiveAPI): LiveAPI {
+  return LiveAPI.from(pad.path.replace(DRUM_PADS_TAIL, ""));
 }
 
 /**
