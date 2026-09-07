@@ -420,7 +420,7 @@ describe("handleArrangementToSlotMove", () => {
     );
 
     expect(warning).toBe(
-      `clip ${SOURCE} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip - an audio clip needs an audio track). The source clip in the arrangement is untouched.`,
+      `clip ${SOURCE} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip at t${DEST_TRACK}/s${DEST_SCENE}). The source clip in the arrangement is untouched.`,
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
@@ -597,7 +597,7 @@ describe("handleArrangementToSlotMove", () => {
     [
       "a MIDI clip aimed at an audio track",
       { destIsMidi: 0 },
-      `track ${DEST_TRACK} is audio`,
+      `track t${DEST_TRACK} (id track_${DEST_TRACK}) is audio; a MIDI clip needs a MIDI track`,
     ],
   ])("refuses %s", (_label, opts: MoveOptions, expected) => {
     const updatedClips = runMove(opts);

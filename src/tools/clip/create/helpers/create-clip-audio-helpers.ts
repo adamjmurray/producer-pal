@@ -10,6 +10,10 @@ import {
   requireCreatedSessionClip,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 
 export interface AudioSessionClipResult {
   clip: LiveAPI;
@@ -42,7 +46,7 @@ export function createAudioSessionClip(
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
-    clip: requireCreatedSessionClip(clipSlot, "audio"),
+    clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
   };
 }
@@ -86,7 +90,10 @@ export function createAudioArrangementClip(
     sampleFile,
     arrangementStartBeats,
   ) as string;
-  const clip = requireCreatedClip(LiveAPI.from(newClipResult), "audio");
+  const clip = requireCreatedClip(
+    LiveAPI.from(newClipResult),
+    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  );
 
   return { clip, arrangementStartBeats };
 }

@@ -131,45 +131,40 @@ export function prepareSessionClipSlot(
   return clipSlot;
 }
 
-/** Which kind of clip a create call asked Live for. */
-export type ClipKind = "MIDI" | "audio";
-
 /**
  * The clip Live just put in the slot.
  * @param clipSlot - The slot the clip was created in
- * @param kind - Which clip was asked for
+ * @param position - Where the clip was asked for, as a path
  * @returns The new clip
  * @throws When Live created no clip
  */
 export function requireCreatedSessionClip(
   clipSlot: LiveAPI,
-  kind: ClipKind,
+  position: string,
 ): LiveAPI {
-  return requireCreatedClip(clipSlot.child("clip"), kind);
+  return requireCreatedClip(clipSlot.child("clip"), position);
 }
 
 /**
- * The clip a create call produced, or an error saying why there isn't one.
+ * The clip a create call produced, or an error saying it made none.
  *
- * Live declines a create it can't do — a MIDI clip on an audio track, say —
- * without raising. Sometimes nothing comes back (id "0"); the arrangement
- * create calls instead answer with another object entirely, and id 1 is the
- * Live Set. So existing is not enough: it has to be a Clip. Left unchecked
- * that ships as a successful create and poisons every follow-up call that uses
- * the id.
+ * Live declines a create it can't do without raising. Sometimes nothing comes
+ * back (id "0"); the arrangement create calls instead answer with another
+ * object entirely, and id 1 is the Live Set. So existing is not enough: it has
+ * to be a Clip. Left unchecked that ships as a successful create and poisons
+ * every follow-up call that uses the id.
+ *
+ * The message names the position and nothing else. Callers pre-flight the
+ * refusals that can be explained (clipCopyBlocker), so anything reaching here
+ * is a refusal no guess would get right.
  * @param clip - What the create call produced
- * @param kind - Which clip was asked for
+ * @param position - Where the clip was asked for, as a path
  * @returns The new clip
  * @throws When Live created no clip
  */
-export function requireCreatedClip(clip: LiveAPI, kind: ClipKind): LiveAPI {
+export function requireCreatedClip(clip: LiveAPI, position: string): LiveAPI {
   if (!clip.exists() || clip.type !== "Clip") {
-    const needs =
-      kind === "MIDI"
-        ? "a MIDI clip needs a MIDI track"
-        : "an audio clip needs an audio track";
-
-    throw new Error(`Live created no clip - ${needs}`);
+    throw new Error(`Live created no clip at ${position}`);
   }
 
   return clip;

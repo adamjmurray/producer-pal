@@ -20,6 +20,10 @@ import {
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import {
   createAudioArrangementClip,
   createAudioSessionClip,
 } from "./create-clip-audio-helpers.ts";
@@ -148,7 +152,7 @@ function createSessionClip(
   clipSlot.call("create_clip", clipLength);
 
   return {
-    clip: requireCreatedSessionClip(clipSlot, "MIDI"),
+    clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
   };
 }
@@ -180,7 +184,10 @@ function createArrangementClip(
     arrangementStartBeats,
     clipLength,
   ) as string;
-  const clip = requireCreatedClip(LiveAPI.from(newClipResult), "MIDI");
+  const clip = requireCreatedClip(
+    LiveAPI.from(newClipResult),
+    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  );
 
   return { clip, arrangementStartBeats };
 }

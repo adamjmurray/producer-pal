@@ -162,7 +162,10 @@ describe("createClip - audio clips", () => {
         },
       });
 
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        properties: { has_midi_input: 0 },
+      });
 
       const clipSlot = registerMockObject("clip-slot-0-1", {
         path: livePath.track(0).clipSlot(1),
@@ -519,11 +522,12 @@ describe("createAudioArrangementClip (unit)", () => {
     registerMockObject("live-set", { path: livePath.liveSet });
     registerMockObject("track-0", {
       path: livePath.track(0),
+      properties: { has_midi_input: 0 },
       methods: { create_audio_clip: () => createResult },
     });
 
     expect(() => createAudioArrangementClip(0, 0, "/samples/loop.wav")).toThrow(
-      "Live created no clip - an audio clip needs an audio track",
+      "Live created no clip at t0",
     );
   });
 });

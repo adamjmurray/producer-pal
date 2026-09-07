@@ -17,6 +17,7 @@ import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
+import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
   takeLaneKey,
   takeLaneLabel,
@@ -195,6 +196,19 @@ async function createClipAtIndex(
   );
 
   try {
+    // Live declines a create the track can't take without reporting anything,
+    // and afterwards there is nothing left to say why. The catch below words
+    // the refusal as this position's failure.
+    // Truthiness, not a null check: it is what picks the audio create below,
+    // and an empty sampleFile makes a MIDI clip.
+    const blocker = clipCopyBlocker(
+      !params.sampleFile,
+      pos.trackIndex,
+      params.tracks.get(pos.trackIndex),
+    );
+
+    if (blocker != null) throw new Error(blocker);
+
     const clipResult = processClipIteration(
       view,
       pos.trackIndex,

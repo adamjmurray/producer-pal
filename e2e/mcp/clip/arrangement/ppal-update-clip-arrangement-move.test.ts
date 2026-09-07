@@ -111,7 +111,10 @@ describe("arrangement clip moved to another lane", () => {
       ctx.client!,
       source.id,
       { toPath: `t${AUDIO_TRACK}[25|1]` },
-      `clip ${source.path} (id ${source.id}) was not moved: track ${AUDIO_TRACK} is audio`,
+      [
+        `clip ${source.path} (id ${source.id}) was not moved: track t${AUDIO_TRACK} (id `,
+        ") is audio; a MIDI clip needs a MIDI track",
+      ],
     );
 
     expect(
@@ -165,7 +168,7 @@ describe("arrangement clip moved to another lane", () => {
     // which wouldn't have warned about a stack even before the count was true.
     for (const clip of [first, second]) {
       expect(warnings.join(" ")).toContain(
-        `clip ${clip.path} (id ${clip.id}) was not moved: track ${AUDIO_TRACK} is audio`,
+        `clip ${clip.path} (id ${clip.id}) was not moved: track t${AUDIO_TRACK} (id `,
       );
     }
 

@@ -84,7 +84,7 @@ const REFUSALS: Array<[string, MoveOptions, string]> = [
   [
     "a MIDI clip aimed at an audio track",
     { destHasMidiInput: 0 },
-    `track ${DEST_TRACK} is audio`,
+    `track t${DEST_TRACK} (id tl_track_${DEST_TRACK}) is audio; a MIDI clip needs a MIDI track`,
   ],
   [
     "an audio clip with no sample, aimed at a take lane",
@@ -289,7 +289,7 @@ describe("moving an arrangement clip to another lane", () => {
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${SOURCE} was not moved: failed to create Arrangement clip`,
+        `clip ${SOURCE} was not moved: Live created no clip at t${DEST_TRACK}/l0`,
       ),
     );
     expect(capturedWarnings()).not.toContainEqual(
@@ -502,7 +502,7 @@ describe("moving a clip off a take lane", () => {
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${SOURCE_ON_LANE} was not moved: failed to create Arrangement clip`,
+        `clip ${SOURCE_ON_LANE} was not moved: Live created no clip at t${DEST_TRACK}`,
       ),
     );
     expect(capturedWarnings()).not.toContainEqual(

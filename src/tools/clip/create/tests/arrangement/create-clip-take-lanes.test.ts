@@ -103,7 +103,7 @@ describe("createClip take lanes", () => {
 
   it("creates an audio arrangement clip on a take lane", async () => {
     registerLiveSet();
-    registerTakeLaneTrack({ initialLanes: 0 });
+    registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
 
     await createClip({
       trackIndex: 0,

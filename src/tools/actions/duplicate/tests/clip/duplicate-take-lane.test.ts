@@ -343,11 +343,11 @@ describe("duplicate take lane", () => {
     })) as object[];
 
     expect(created).toStrictEqual([]);
-    // The wrapped warning carries the inner "failed to create Arrangement clip"
-    // throw (from the not-exists guard), not some other downstream error.
+    // The wrapped warning carries the inner "created no clip" throw (from the
+    // not-a-clip guard), not some other downstream error.
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        "failed to create take-lane copy of clip t0[1|1] (id src_clip) at beat 0: failed to create Arrangement clip",
+        "failed to create take-lane copy of clip t0[1|1] (id src_clip) at beat 0: Live created no clip at t0/l0",
       ),
     );
   });

@@ -136,10 +136,14 @@ describe("cross-track arrangement clip duplicate", () => {
     const warningText = warnings.join(" ");
 
     expect(warningText).toContain(
-      `MIDI clip t${EMPTY_MIDI_TRACK}[${position}] (id ${source.id})`,
+      `clip t${EMPTY_MIDI_TRACK}[${position}] (id ${source.id})`,
     );
-    expect(warningText).toContain(
-      `was not duplicated: track ${AUDIO_TRACK} is audio`,
+    // The destination's id is Live-assigned, so match around it.
+    expect(warningText).toMatch(
+      new RegExp(
+        `was not duplicated: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; ` +
+          `a MIDI clip needs a MIDI track`,
+      ),
     );
     expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
   });

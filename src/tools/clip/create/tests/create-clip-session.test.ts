@@ -89,9 +89,13 @@ function setupLiveSet(
   return liveSet;
 }
 
-function setupTrack(trackIndex: number): RegisteredMockObject {
+function setupTrack(
+  trackIndex: number,
+  properties: Record<string, unknown> = {},
+): RegisteredMockObject {
   return registerMockObject(`track-${trackIndex}`, {
     path: livePath.track(trackIndex),
+    properties,
   });
 }
 
@@ -152,24 +156,21 @@ function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
 }
 
 describe("createClip - session view", () => {
-  // Regression: Live declines a create it can't do — a MIDI clip on an audio
-  // track, say — without raising, and the clip that isn't there reads back as
-  // id "0". Reported as created, that id poisoned every follow-up call.
+  // Regression: Live declines a create without raising, and the clip that isn't
+  // there reads back as id "0". Reported as created, that id poisoned every
+  // follow-up call. The track holds the clip's own kind here, so the pre-flight
+  // below passes and this is the backstop firing on its own.
   it.each([
-    ["a MIDI clip", {}, "a MIDI clip needs a MIDI track"],
-    [
-      "an audio clip",
-      { sampleFile: "/tmp/kick.wav" },
-      "an audio clip needs an audio track",
-    ],
+    ["a MIDI clip", {}, {}],
+    ["an audio clip", { sampleFile: "/tmp/kick.wav" }, { has_midi_input: 0 }],
   ])(
     "warns and skips %s Live declined to create",
-    async (_what, extra, reason) => {
+    async (_what, extra, trackProps) => {
       const warn = vi.spyOn(console, "warn");
 
       mockNonExistentObjects();
       setupLiveSet();
-      setupTrack(0);
+      setupTrack(0, trackProps);
       registerMockObject("clip-slot-0-0", {
         path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
@@ -179,8 +180,44 @@ describe("createClip - session view", () => {
 
       expect(result).toStrictEqual([]);
       expect(warn).toHaveBeenCalledWith(
-        `Failed to create clip at t0/s0: Live created no clip - ${reason}`,
+        "Failed to create clip at t0/s0: Live created no clip at t0/s0",
       );
+    },
+  );
+
+  // Live refuses these without reporting anything, so create-clip checks the
+  // destination track first and words the refusal itself.
+  it.each([
+    [
+      "a frozen track",
+      {},
+      { is_frozen: 1 },
+      "track t0 (id track-0) is frozen; unfreeze it first",
+    ],
+    [
+      "a track of the wrong kind",
+      { sampleFile: "/tmp/kick.wav" },
+      {},
+      "track t0 (id track-0) is MIDI; an audio clip needs an audio track",
+    ],
+  ])(
+    "warns and skips a clip aimed at %s",
+    async (_what, extra, trackProps, reason) => {
+      const warn = vi.spyOn(console, "warn");
+
+      setupLiveSet();
+      setupTrack(0, trackProps);
+      const { clipSlot } = setupSessionClip(0, 0, {
+        clipProperties: { length: 4 },
+      });
+
+      const result = await createClip({ path: "t0/s0", ...extra });
+
+      expect(result).toStrictEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        `Failed to create clip at t0/s0: ${reason}`,
+      );
+      expect(clipSlot.call).not.toHaveBeenCalled();
     },
   );
 

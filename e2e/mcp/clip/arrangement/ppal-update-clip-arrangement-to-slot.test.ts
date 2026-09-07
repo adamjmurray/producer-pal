@@ -217,7 +217,10 @@ describe("arrangement clip moved into a session slot", () => {
       ctx.client!,
       source.id,
       { toPath: `t${AUDIO_TRACK}/s3` },
-      `clip ${source.path} (id ${source.id}) was not moved: track ${AUDIO_TRACK} is audio`,
+      [
+        `clip ${source.path} (id ${source.id}) was not moved: track t${AUDIO_TRACK} (id `,
+        ") is audio; a MIDI clip needs a MIDI track",
+      ],
     );
 
     expect(

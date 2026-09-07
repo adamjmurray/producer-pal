@@ -103,17 +103,22 @@ export async function arrangementClipAt(
  * @param client - The connected MCP client
  * @param id - The clip that must stay put
  * @param args - The rest of the ppal-update-clip arguments
- * @param warning - Text the refusal warning must contain
+ * @param warning - Text the refusal warning must contain; every string of an
+ *   array must appear, for a message with a Live-assigned id in the middle
  */
 export async function expectRefusedUpdate(
   client: Client,
   id: string,
   args: Record<string, unknown>,
-  warning: string,
+  warning: string | string[],
 ): Promise<void> {
   const { data: kept, warnings } = await updateClip(client, id, args);
+  const joined = warnings.join(" ");
 
-  expect(warnings.join(" ")).toContain(warning);
+  for (const part of typeof warning === "string" ? [warning] : warning) {
+    expect(joined).toContain(part);
+  }
+
   expect(kept.id).toBe(id);
 }
 

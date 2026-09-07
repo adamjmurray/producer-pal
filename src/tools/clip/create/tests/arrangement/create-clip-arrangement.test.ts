@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -97,6 +98,31 @@ describe("createClip - arrangement view", () => {
     // Regression: every position is checked before the first clip is made, so
     // the bar-3 clip doesn't get left behind by the bar-0 error — which is all
     // the caller gets back, and it names no clip.
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  // Live refuses this without reporting anything, so create-clip checks the
+  // destination track first and words the refusal itself.
+  it("warns and skips a clip aimed at a frozen track", async () => {
+    const warn = vi.spyOn(console, "warn");
+    const { track } = setupArrangementClipMocks();
+
+    track.properties.is_frozen = 1;
+
+    const result = await createClip({
+      trackIndex: 0,
+      arrangementStart: "3|1",
+      notes: "C3 1|1",
+    });
+
+    expect(result).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      "Failed to create clip at t0[3|1]: track t0 (id track-0) is frozen; unfreeze it first",
+    );
     expect(track.call).not.toHaveBeenCalledWith(
       "create_midi_clip",
       expect.anything(),
@@ -380,7 +406,7 @@ describe("processClipIteration (unit)", () => {
     registerTrackReturning(["id", "0"]);
 
     expect(() => callArrangementIteration({})).toThrow(
-      "Live created no clip - a MIDI clip needs a MIDI track",
+      "Live created no clip at t0",
     );
   });
 
@@ -391,7 +417,7 @@ describe("processClipIteration (unit)", () => {
     registerTrackReturning(["id", "live-set"]);
 
     expect(() => callArrangementIteration({})).toThrow(
-      "Live created no clip - a MIDI clip needs a MIDI track",
+      "Live created no clip at t0",
     );
   });
 

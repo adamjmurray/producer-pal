@@ -95,9 +95,7 @@ export function handleClipSlotMove({
   );
 
   if (blocker != null) {
-    console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(clip)} was not moved: ${blocker}`,
-    );
+    console.warn(`clip ${targetLabel(clip)} was not moved: ${blocker}`);
     keepClip(clip, updatedClips, noteResult);
 
     return;

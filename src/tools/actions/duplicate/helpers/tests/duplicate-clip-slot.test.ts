@@ -117,7 +117,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "MIDI clip t0/s0 (id 56) was not duplicated: track 1 is audio",
+      "clip t0/s0 (id 56) was not duplicated: track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
     );
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
@@ -127,7 +127,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "audio clip t0/s0 (id 56) was not duplicated: track 1 is MIDI",
+      "clip t0/s0 (id 56) was not duplicated: track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
     );
   });
 
@@ -138,7 +138,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "MIDI clip t0/s0 (id 56) was not duplicated: track 1 is frozen",
+      "clip t0/s0 (id 56) was not duplicated: track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
     );
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
@@ -231,7 +231,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
 
     expect(result).toStrictEqual([{ id: COPY_ID, path: "t1/s0" }]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip t0/s0 (id 56) was not duplicated: track 2 is frozen",
+      "clip t0/s0 (id 56) was not duplicated: track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
     );
   });
 });

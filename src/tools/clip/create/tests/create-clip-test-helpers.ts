@@ -184,7 +184,7 @@ export function setupSessionAudioClipMocks(
 
   const liveSet = registerLiveSetWithScenes(sceneIds);
 
-  registerMockObject("track-0", { path: livePath.track(0) });
+  registerAudioTrack();
 
   const clipSlot = registerMockObject("clip-slot-0-0", {
     path: livePath.track(0).clipSlot(0),
@@ -222,6 +222,7 @@ export function setupAudioArrangementClipMocks(
   const clipProps = audioClipProperties(clipLength);
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
+    properties: { has_midi_input: 0 },
     methods: {
       create_audio_clip: (_sampleFile, start) => {
         clipProps.start_time = start;
@@ -278,7 +279,7 @@ export function setupMultiSessionAudioClipMocks(
 
   const liveSet = registerLiveSetWithScenes(sceneIds);
 
-  registerMockObject("track-0", { path: livePath.track(0) });
+  registerAudioTrack();
 
   const clipSlots = slotIndices.map((i) => {
     const clipSlot = registerMockObject(`clip-slot-0-${i}`, {
@@ -328,6 +329,7 @@ export function setupMultiAudioArrangementClipMocks(
   );
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
+    properties: { has_midi_input: 0 },
     methods: {
       create_audio_clip: (_sampleFile, start) => {
         const props = clipProps[clipCounter];
@@ -496,5 +498,17 @@ function registerLiveSetWithTimeSig(): RegisteredMockObject {
       signature_denominator: 4,
       tempo: MOCK_TEMPO,
     },
+  });
+}
+
+/**
+ * Register track 0 as an audio track, so create-clip's pre-flight lets an
+ * audio clip land on it.
+ * @returns The registered Track mock object
+ */
+function registerAudioTrack(): RegisteredMockObject {
+  return registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: { has_midi_input: 0 },
   });
 }

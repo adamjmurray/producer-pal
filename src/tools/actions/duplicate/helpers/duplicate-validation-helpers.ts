@@ -252,9 +252,7 @@ function canCopyClipToTrack(
   const blocker = clipCopyBlocker(clipIsMidi, trackIndex, track);
 
   if (blocker != null) {
-    console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(clip)} was not duplicated: ${blocker}`,
-    );
+    console.warn(`clip ${targetLabel(clip)} was not duplicated: ${blocker}`);
 
     return false;
   }

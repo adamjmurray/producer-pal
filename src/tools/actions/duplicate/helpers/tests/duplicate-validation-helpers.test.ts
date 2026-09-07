@@ -202,7 +202,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip t3[1|1] (id src_clip) was not duplicated: track 5 is audio",
+      "clip t3[1|1] (id src_clip) was not duplicated: track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
     );
   });
 
@@ -217,7 +217,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip t3[1|1] (id src_clip) was not duplicated: track 6 is frozen",
+      "clip t3[1|1] (id src_clip) was not duplicated: track t6 (id dest_track_6) is frozen; unfreeze it first",
     );
   });
 
@@ -230,7 +230,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "audio clip t4[1|1] (id src_clip) was not duplicated: track 8 is MIDI",
+      "clip t4[1|1] (id src_clip) was not duplicated: track t8 (id dest_track_8) is MIDI; an audio clip needs an audio track",
     );
   });
 
@@ -246,7 +246,7 @@ describe("resolveDestinationTargets", () => {
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
     ).toStrictEqual([mainLane(7), null]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip t3[1|1] (id src_clip) was not duplicated: track 5 is audio",
+      "clip t3[1|1] (id src_clip) was not duplicated: track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
     );
   });
 });

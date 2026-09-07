@@ -332,7 +332,7 @@ describe("handleClipSlotMove", () => {
 
     expectMoveRefused(
       moved,
-      "MIDI clip t0/s0 (id 123) was not moved: track 1 is audio",
+      "clip t0/s0 (id 123) was not moved: track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
     );
   });
 
@@ -350,7 +350,7 @@ describe("handleClipSlotMove", () => {
 
     expectMoveRefused(
       moved,
-      "MIDI clip t0/s0 (id 123) was not moved: track 17 is frozen",
+      "clip t0/s0 (id 123) was not moved: track t17 (id live_set/tracks/17) is frozen; unfreeze it first",
     );
   });
 
@@ -377,7 +377,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "audio clip t0/s0 (id 123) was not moved: track 1 is MIDI",
+      "clip t0/s0 (id 123) was not moved: track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);

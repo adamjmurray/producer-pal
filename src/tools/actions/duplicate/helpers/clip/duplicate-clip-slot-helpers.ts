@@ -126,7 +126,7 @@ export function duplicateClipSlot(
 
   if (blocker != null) {
     console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(sourceClip)} was not duplicated: ${blocker}`,
+      `clip ${targetLabel(sourceClip)} was not duplicated: ${blocker}`,
     );
 
     return null;

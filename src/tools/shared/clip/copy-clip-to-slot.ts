@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "../utils.ts";
 
 /**
@@ -52,13 +53,17 @@ export function clipCopyBlocker(
   const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
   if (clipIsMidi !== trackIsMidi) {
-    return `track ${trackIndex} is ${trackIsMidi ? "MIDI" : "audio"}`;
+    const needs = clipIsMidi
+      ? "a MIDI clip needs a MIDI track"
+      : "an audio clip needs an audio track";
+
+    return `track ${targetLabel(track)} is ${trackIsMidi ? "MIDI" : "audio"}; ${needs}`;
   }
 
   // A frozen track still reports has_midi_input, so the type check passes and
   // the copy is refused anyway.
   if (track.getProperty("is_frozen")) {
-    return `track ${trackIndex} is frozen`;
+    return `track ${targetLabel(track)} is frozen; unfreeze it first`;
   }
 
   return null;

@@ -5,7 +5,11 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { requireCreatedSessionClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  requireCreatedClip,
+  requireCreatedSessionClip,
+} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { rawNotesToNoteEvents, readAllClipNotes } from "./clip-notes.ts";
 
 /**
@@ -79,10 +83,12 @@ export function recreateClip(
     createMidi: (length) =>
       createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
+        destination,
       ),
     createAudio: (filePath) =>
       createdArrangementClip(
         destination.call("create_audio_clip", filePath, startBeats) as string,
+        destination,
       ),
   });
 }
@@ -105,16 +111,18 @@ export function recreateClipInSlot(
   name: string | undefined,
   color: string | undefined,
 ): LiveAPI {
+  const position = pathPrefix(clipSlot);
+
   return recreateInto(sourceClip, name, color, {
     createMidi: (length) => {
       clipSlot.call("create_clip", length);
 
-      return requireCreatedSessionClip(clipSlot, "MIDI");
+      return requireCreatedSessionClip(clipSlot, position);
     },
     createAudio: (filePath) => {
       clipSlot.call("create_audio_clip", filePath);
 
-      return requireCreatedSessionClip(clipSlot, "audio");
+      return requireCreatedSessionClip(clipSlot, position);
     },
   });
 }
@@ -225,18 +233,20 @@ function recreateInto(
 
 /**
  * Wrap what an arrangement create call returned, failing loudly when Live made
- * nothing.
+ * no clip. An arrangement create can answer with another object entirely, so
+ * this goes through the same guard the create-clip paths use.
  * @param createResult - What `create_midi_clip`/`create_audio_clip` returned
+ * @param destination - The lane it was asked for, to name in the error
  * @returns The new clip
  */
-function createdArrangementClip(createResult: string): LiveAPI {
-  const newClip = LiveAPI.from(createResult);
-
-  if (!newClip.exists()) {
-    throw new Error("failed to create Arrangement clip");
-  }
-
-  return newClip;
+function createdArrangementClip(
+  createResult: string,
+  destination: LiveAPI,
+): LiveAPI {
+  return requireCreatedClip(
+    LiveAPI.from(createResult),
+    pathPrefix(destination),
+  );
 }
 
 /**
