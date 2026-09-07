@@ -195,6 +195,11 @@ describe("ppal-playback", () => {
 
     expect(turnedOn.loop).toBeUndefined();
 
+    // Let the write land: `live_set loop` reads back as it was for a few
+    // milliseconds after it's set, so the very next call still sees the old
+    // value (measured on 12.4.3).
+    await sleep(100);
+
     const on = await playback({ action: "play-arrangement" });
 
     expect(on.loop).toBe(true);
@@ -212,6 +217,8 @@ describe("ppal-playback", () => {
     });
 
     expect(turnedOff.loop).toBeUndefined();
+
+    await sleep(100);
 
     const off = await playback({ action: "play-arrangement" });
 

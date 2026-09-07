@@ -239,7 +239,7 @@ describe("ppal-create-clip", () => {
     expect(midiResult.warnings).toContainEqual(
       expect.stringMatching(
         new RegExp(
-          `^Failed to create clip at t${AUDIO_TRACK}\\[61\\|1\\]: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
+          `^WARNING: Failed to create clip at t${AUDIO_TRACK}\\[61\\|1\\]: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
         ),
       ),
     );
@@ -259,7 +259,7 @@ describe("ppal-create-clip", () => {
     expect(audioResult.warnings).toContainEqual(
       expect.stringMatching(
         new RegExp(
-          `^Failed to create clip at t${EMPTY_MIDI_TRACK}\\[61\\|1\\]: track t${EMPTY_MIDI_TRACK} \\(id \\d+\\) is MIDI; an audio clip needs an audio track$`,
+          `^WARNING: Failed to create clip at t${EMPTY_MIDI_TRACK}\\[61\\|1\\]: track t${EMPTY_MIDI_TRACK} \\(id \\d+\\) is MIDI; an audio clip needs an audio track$`,
         ),
       ),
     );
@@ -278,7 +278,7 @@ describe("ppal-create-clip", () => {
     expect(slotResult.warnings).toContainEqual(
       expect.stringMatching(
         new RegExp(
-          `^Failed to create clip at t${AUDIO_TRACK}/s2: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
+          `^WARNING: Failed to create clip at t${AUDIO_TRACK}/s2: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
         ),
       ),
     );
