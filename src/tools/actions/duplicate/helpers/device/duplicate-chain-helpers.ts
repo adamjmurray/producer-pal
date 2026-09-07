@@ -299,12 +299,14 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
       // which keeps the copies in the source's order. No source device: the
       // chain's mixer went onto the copy already, and the only chain a move
       // could name here is the temp track's, which is about to be deleted.
-      // Report the unshifted path for the same reason.
+      // Report the unshifted path and the real source device for the same
+      // reason.
       const { outcome } = moveDeviceToPath(
         tempDevice,
         `${adjusted}/d${index}`,
         null,
         `${destinationChainPath}/d${index}`,
+        `${pathPrefix(chain)}/d${index}`,
       );
 
       if (outcome !== "moved") {

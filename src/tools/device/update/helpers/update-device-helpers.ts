@@ -57,6 +57,8 @@ export interface DeviceMove {
  *   there is nothing here to carry or warn about
  * @param reportPath - How to spell toPath in warnings, when the caller adjusted
  *   it (device duplication shifts track indices past its temp track)
+ * @param reportLabel - How to name the device in warnings, when `device` is a
+ *   temp copy the caller is about to delete. Defaults to the device itself
  * @returns "moved" once the device is at the destination, "no-destination" when
  *   toPath names nothing, "refused" when Live wouldn't take it, or
  *   "unresolvable" when toPath doesn't resolve at all — with the container it
@@ -67,6 +69,7 @@ export function moveDeviceToPath(
   toPath: string,
   source: LiveAPI | null = device,
   reportPath: string = toPath,
+  reportLabel?: string,
 ): DeviceMove {
   const destination = resolveMoveDestination(toPath, reportPath);
 
@@ -103,12 +106,10 @@ export function moveDeviceToPath(
   // is still wherever it was, and reporting its id would name a device that
   // never arrived — for a duplicate, one the cleanup is about to delete.
   if (!container.getChildIds("devices").includes(toLiveApiId(device.id))) {
-    // Known wart: on a duplication path `device` is the temp copy, so this
-    // names a track the cleanup is about to delete. Left alone because both
-    // duplication callers follow it with their own refusal, worded from the
-    // real source path — the fix is a label to thread through, not a bug.
+    // On a duplication path `device` is the temp copy, whose track the cleanup
+    // is about to delete — so those callers pass the real source's label.
     console.warn(
-      `Live refused the move of ${targetLabel(device)}${refusalReason(device, container)}`,
+      `Live refused the move of ${reportLabel ?? targetLabel(device)}${refusalReason(device, container)}`,
     );
 
     return { outcome: "refused" };

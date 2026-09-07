@@ -37,6 +37,7 @@ interface RackRead {
     id: string;
     name?: string;
     deviceCount?: number;
+    devices?: unknown[];
     gainDb?: number;
     pan?: number;
   }[];
@@ -44,15 +45,38 @@ interface RackRead {
 }
 
 /**
+ * Check a call raised the warnings it had to and no others. A substring check
+ * on its own passes while an unrelated warning rides along — which is how the
+ * false "trim stays behind" sat on these drum cases unnoticed.
+ *
+ * Every copy out of the Kit carries the macro-mappings warning, so a call that
+ * has anything else to say lists both.
+ * @param warnings - The call's warnings
+ * @param expected - A substring of each warning the call should raise
+ */
+function expectOnlyWarnings(warnings: string[], expected: string[]): void {
+  for (const substring of expected) {
+    expect(warnings.join()).toContain(substring);
+  }
+
+  expect(
+    warnings.filter(
+      (warning) => !expected.some((substring) => warning.includes(substring)),
+    ),
+  ).toStrictEqual([]);
+}
+
+/**
  * Read a rack's chains.
  * @param path - Producer Pal path to the rack
+ * @param maxDepth - 0 leaves chains unexpanded; 1 lists each chain's devices
  * @returns The rack's chains
  */
-async function readChains(path: string) {
+async function readChains(path: string, maxDepth = 0) {
   const result = parseToolResult<RackRead>(
     await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { path, include: ["chains"], maxDepth: 0 },
+      arguments: { path, include: ["chains"], maxDepth },
     }),
   );
 
@@ -139,7 +163,10 @@ describe("ppal-duplicate type=chain", () => {
       toPath: SUB_KIT,
     });
 
-    expect(warnings.join()).toContain("no return chain named");
+    expectOnlyWarnings(warnings, [
+      "no return chain named",
+      "has macro mappings",
+    ]);
 
     // Sub Kit starts with only a C3 pad, so an E1 pad is the copy — landing
     // there rather than on the catch-all also proves the in_note carried.
@@ -182,7 +209,41 @@ describe("ppal-duplicate type=chain", () => {
       toPath: `${OUTER}/c0/d0`,
     });
 
-    expect(warnings.join()).toContain("chains of its own kind");
+    expectOnlyWarnings(warnings, ["chains of its own kind"]);
+  });
+
+  // The same carry as the instrument case below, on a chain addressed by its
+  // pad — the devices move to "pE1/cN", a destination that path never builds.
+  // Clap holds a sampler, so devices really do have to cross.
+  // Runs late: it leaves a trim and an extra layer on the Kit's E1 pad.
+  it("carries a drum chain's trim onto its copy, devices and all", async () => {
+    const KIT = `${OUTER}/c0/d0`;
+
+    const source = (await readChains(`${KIT}/pE1`, 1))[0]!;
+
+    expect(source.devices?.length).toBeGreaterThan(0);
+
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: source.id, gainDb: -3, pan: -0.5 },
+    });
+
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-duplicate",
+      { type: "chain", id: source.id, name: "Trimmed Clap" },
+    );
+
+    // The Kit's macro mappings are the only thing this copy has to report.
+    expectOnlyWarnings(warnings, ["has macro mappings"]);
+
+    const copy = (await readChains(`${KIT}/pE1`, 1)).find(
+      (chain) => chain.id === (data as ChainResult).id,
+    );
+
+    expect(copy?.gainDb).toBeCloseTo(-3, 1);
+    expect(copy?.pan).toBeCloseTo(-0.5, 2);
+    expect(copy?.devices?.length).toBe(source.devices?.length);
   });
 
   // The chain's own fader is copied before its devices are moved across, and

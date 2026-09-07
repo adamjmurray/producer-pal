@@ -25,6 +25,10 @@ const TEMP_CHAIN = `${livePath.track(1).device(0)} chains 0`;
 
 const GAIN_DB = -2;
 const PAN = 0.25;
+/** The pad both drum chains sound on, so the copy is C1's second layer. */
+const PAD_NOTE = 36;
+
+type RackKind = "instrument" | "drum";
 
 /**
  * Register a chain's mixer device and its two faders.
@@ -49,11 +53,50 @@ function registerMixer(prefix: string, chainPath: string, trimmed: boolean) {
 }
 
 /**
+ * Register the rack the copy is made in, plus the pad a Drum Rack needs to
+ * resolve its chains by note.
+ * @param kind - Which rack the chains live in
+ */
+function registerRack(kind: RackKind): void {
+  const drum = kind === "drum";
+
+  registerMockObject("rack-0", {
+    path: RACK,
+    type: "RackDevice",
+    properties: {
+      class_name: drum ? "DrumGroupDevice" : "InstrumentGroupDevice",
+      has_macro_mappings: 0,
+      return_chains: [],
+      chains: children("chain-0", "chain-new"),
+      ...(drum
+        ? { can_have_drum_pads: 1, drum_pads: children("pad-36") }
+        : { can_have_drum_pads: 0 }),
+    },
+    methods: { insert_chain: () => ["id", "chain-new"] },
+  });
+
+  if (drum) {
+    registerMockObject("pad-36", {
+      path: livePath.track(0).device(0).drumPad(PAD_NOTE),
+      type: "DrumPad",
+      properties: { note: PAD_NOTE },
+    });
+  }
+}
+
+/**
  * A rack whose first chain is trimmed and holds one device, plus the temp track
  * copy the carry takes that device from.
+ * @param kind - Which rack the chains live in
  * @returns The live_set mock and the copy's faders
  */
-function setupTrimmedChain() {
+function setupTrimmedChain(kind: RackKind) {
+  const drum = kind === "drum";
+  const chainType = drum ? "DrumChain" : "Chain";
+  // The copy's in_note is registered rather than written: set() is a spy, and
+  // the pad spelling of the destination path is read back off this.
+  const pad = drum ? { in_note: PAD_NOTE } : {};
+
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
     properties: { tracks: children("track-0") },
@@ -65,25 +108,16 @@ function setupTrimmedChain() {
   });
 
   registerMockObject("track-0", { path: livePath.track(0) });
-  registerMockObject("rack-0", {
-    path: RACK,
-    type: "RackDevice",
-    properties: {
-      class_name: "InstrumentGroupDevice",
-      has_macro_mappings: 0,
-      return_chains: [],
-      chains: children("chain-0", "chain-new"),
-    },
-    methods: { insert_chain: () => ["id", "chain-new"] },
-  });
+  registerRack(kind);
 
   registerMockObject("chain-0", {
     path: SOURCE_CHAIN,
-    type: "Chain",
+    type: chainType,
     properties: {
       name: "Chain",
       mute: 0,
       solo: 0,
+      ...pad,
       devices: children("src-dev"),
     },
   });
@@ -93,11 +127,12 @@ function setupTrimmedChain() {
   // Lists the moved device, so the move reads back as landed.
   registerMockObject("chain-new", {
     path: COPY_CHAIN,
-    type: "Chain",
+    type: chainType,
     properties: {
       name: "",
       mute: 0,
       solo: 0,
+      ...pad,
       devices: children("temp-dev"),
     },
   });
@@ -106,8 +141,8 @@ function setupTrimmedChain() {
   // reading a source off the temp device would find, and name.
   registerMockObject("temp-chain", {
     path: TEMP_CHAIN,
-    type: "Chain",
-    properties: { name: "Chain", devices: children("temp-dev") },
+    type: chainType,
+    properties: { name: "Chain", ...pad, devices: children("temp-dev") },
   });
   registerMixer("temp", TEMP_CHAIN, true);
   registerMockObject("temp-dev", { path: `${TEMP_CHAIN} devices 0` });
@@ -115,26 +150,46 @@ function setupTrimmedChain() {
   return { liveSet, copy: registerMixer("copy", COPY_CHAIN, false) };
 }
 
+/**
+ * Copy the rack's one chain, and check its trim reached the copy ahead of its
+ * device with nothing said about staying behind.
+ * @param kind - Which rack the chains live in
+ * @param expectedPath - The path the copy comes back spelled as
+ */
+async function expectTrimCarried(
+  kind: RackKind,
+  expectedPath: string,
+): Promise<void> {
+  const { liveSet, copy } = setupTrimmedChain(kind);
+
+  const result = await duplicate({ type: "chain", id: "chain-0" });
+
+  expect(result).toStrictEqual({ id: "chain-new", path: expectedPath });
+  expect(copy.volume.set).toHaveBeenCalledWith("display_value", GAIN_DB);
+  expect(copy.panning.set).toHaveBeenCalledWith("value", PAN);
+
+  // The device really crossed, so the trim is not sitting on an empty copy.
+  expect(liveSet.call).toHaveBeenCalledWith(
+    "move_device",
+    "id temp-dev",
+    "id chain-new",
+    0,
+  );
+
+  // The trim landed before the devices arrived. Warning that it stayed behind
+  // would be false, and would name the temp chain the move read it off.
+  expect(capturedWarnings()).toStrictEqual([]);
+}
+
 describe("duplicate - chain trim", () => {
   it("carries the trim to the copy and says nothing about leaving it behind", async () => {
-    const { liveSet, copy } = setupTrimmedChain();
+    await expectTrimCarried("instrument", "t0/d0/c1");
+  });
 
-    const result = await duplicate({ type: "chain", id: "chain-0" });
-
-    expect(result).toStrictEqual({ id: "chain-new", path: "t0/d0/c1" });
-    expect(copy.volume.set).toHaveBeenCalledWith("display_value", GAIN_DB);
-    expect(copy.panning.set).toHaveBeenCalledWith("value", PAN);
-
-    // The device really crossed, so the trim is not sitting on an empty copy.
-    expect(liveSet.call).toHaveBeenCalledWith(
-      "move_device",
-      "id temp-dev",
-      "id chain-new",
-      0,
-    );
-
-    // The trim landed before the devices arrived. Warning that it stayed behind
-    // would be false, and would name the temp chain the move read it off.
-    expect(capturedWarnings()).toStrictEqual([]);
+  // A drum chain is addressed by its pad, so the carry moves the device to
+  // "pC1/c1/d0" — a destination the instrument case never builds, and the one
+  // shape of this path nothing covered.
+  it("carries a drum chain's trim, moving its device by the pad path", async () => {
+    await expectTrimCarried("drum", "t0/d0/pC1/c1");
   });
 });

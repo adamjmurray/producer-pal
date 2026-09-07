@@ -180,9 +180,10 @@ function duplicateDevice(
       );
 
       // Skip rather than throw, so the other destinations of a comma-separated
-      // toPath still get their copies. Name the caller's toPath, not the adjusted
-      // one — the temp track shifted its track index. Either way nothing
-      // survives: the copy is still on the temp track, which the cleanup deletes.
+      // toPath still get their copies. Name the caller's toPath and the real
+      // source, not the adjusted path and the temp copy — the temp track
+      // shifted its track index, and the cleanup deletes it. Either way nothing
+      // survives: the copy is still on the temp track.
       // Live confirms the device is in this container before the move reports
       // "moved", which is what makes the destination safe to name it by.
       const { outcome, container } = moveDeviceToPath(
@@ -190,6 +191,7 @@ function duplicateDevice(
         adjustedDestination,
         device,
         destination,
+        sourceLabel,
       );
 
       if (outcome === "no-destination") {

@@ -113,6 +113,26 @@ describe("moveDeviceToPath", () => {
     );
   });
 
+  it("names the source a duplication gave it, not the temp copy it moved", () => {
+    // Both duplication paths hand the move a temp copy on a track the cleanup
+    // is about to delete, so naming `device` here would print a dead id.
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+
+    expect(
+      moveDeviceToPath(
+        LiveAPI.from(device.path),
+        "t1/d0",
+        null,
+        "t1/d0",
+        "t0/d0/c0/d0",
+      ),
+    ).toStrictEqual({ outcome: "refused" });
+    expect(capturedWarnings()).toContain(
+      "Live refused the move of t0/d0/c0/d0",
+    );
+  });
+
   it("names the one refusal Live's own state explains", () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("device-0", {
