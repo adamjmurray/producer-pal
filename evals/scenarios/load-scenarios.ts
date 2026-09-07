@@ -73,6 +73,7 @@ import {
   pathInsertPosition,
   pathLocatorCoordinate,
   pathSessionSlot,
+  pathSpokenSceneNumber,
   pathTakeLaneFirst,
   pathToPathClipDestinations,
   pathToPathDeviceAndPad,
@@ -168,6 +169,7 @@ const allScenarios: EvalScenario[] = [
   // Object-path addressing (2.2.0). Contiguous and on one Live Set:
   // path-session-slot resets the slots it writes, so it can reuse the open one.
   pathSessionSlot,
+  pathSpokenSceneNumber,
   pathToPathPairing,
   pathUncommonRoots,
   pathTrackSceneAddress,
