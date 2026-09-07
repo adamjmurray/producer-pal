@@ -27,18 +27,23 @@ import { type ExpressionNode } from "../parser/transform-parser.ts";
 const WAVEFORM_NAMES = new Set(["cos", "sin", "tri", "saw", "square"]);
 
 /**
- * Find the first waveform call in an expression.
+ * Find the first call to one of `names` anywhere in an expression. Shared with
+ * the ramp-reach check, which walks the same tree for a different name set.
  * @param expr - Expression to walk
- * @returns The waveform's name, or null when the expression has none
+ * @param names - Function names to look for
+ * @returns The name found, or null when the expression has none of them
  */
-export function findWaveformName(expr: ExpressionNode): string | null {
+export function findFunctionName(
+  expr: ExpressionNode,
+  names: ReadonlySet<string>,
+): string | null {
   if (typeof expr === "number" || !("type" in expr)) return null;
 
   if (expr.type === "function") {
-    if (WAVEFORM_NAMES.has(expr.name)) return expr.name;
+    if (names.has(expr.name)) return expr.name;
 
     for (const arg of expr.args) {
-      const nested = findWaveformName(arg);
+      const nested = findFunctionName(arg, names);
 
       if (nested != null) return nested;
     }
@@ -49,10 +54,21 @@ export function findWaveformName(expr: ExpressionNode): string | null {
   // Binary nodes carry the OPERATOR as their type ("add", "multiply", ...),
   // so match on shape rather than listing every operator.
   if ("left" in expr && "right" in expr) {
-    return findWaveformName(expr.left) ?? findWaveformName(expr.right);
+    return (
+      findFunctionName(expr.left, names) ?? findFunctionName(expr.right, names)
+    );
   }
 
   return null;
+}
+
+/**
+ * Find the first waveform call in an expression.
+ * @param expr - Expression to walk
+ * @returns The waveform's name, or null when the expression has none
+ */
+export function findWaveformName(expr: ExpressionNode): string | null {
+  return findFunctionName(expr, WAVEFORM_NAMES);
 }
 
 /**

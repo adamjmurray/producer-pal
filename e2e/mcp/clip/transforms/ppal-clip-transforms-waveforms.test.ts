@@ -165,6 +165,33 @@ describe("ppal-clip-transforms-waveforms", () => {
     expect(notes).toContain("p0.5");
   });
 
+  // ramp()/curve() interpolate across the RANGE, not across the notes they
+  // matched, so a range ending past the last note stops short of its end value
+  // with nothing else in the response to say so. Sixteenth-note hats filling
+  // beats 3-4 of bar 2: the last one sits at 7/8 of a `2|3-3|1` range.
+  it("warns when a ramp's range ends past its last note", async () => {
+    const clipId = await createMidiClip(46, "v100 n/16 C3 2|3x8");
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(clipId, "2|3-3|1: velocity = ramp(1, 127)"),
+    );
+
+    expect(warnings.join("\n")).toContain("of the way to its end value");
+    // The warning names the position to end the range on, which is the fix.
+    expect(warnings.join("\n")).toContain("2|4.75");
+    // Every hat was transformed, and none of them reached the asked-for 127.
+    expect(await readClipNotes(clipId)).not.toContain("v127");
+  });
+
+  it("stays quiet when the range ends on the ramp's last note", async () => {
+    const clipId = await createMidiClip(47, "v100 n/16 C3 2|3x8");
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(clipId, "2|3-2|4.75: velocity = ramp(1, 127)"),
+    );
+
+    expect(warnings.join("\n")).not.toContain("of the way to its end value");
+    expect(await readClipNotes(clipId)).toContain("v127");
+  });
+
   it("stays quiet when the waveform actually varies the notes", async () => {
     const clipId = await createWaveformClip(42);
     const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(

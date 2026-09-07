@@ -15,7 +15,6 @@ import {
   isNoteOp,
   type NoteContext,
   type NoteProperties,
-  operatorDisplay,
   type TimeRange,
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
@@ -30,6 +29,10 @@ import {
   buildNoteContext,
   selectAssignmentNotes,
 } from "./helpers/transform-evaluator-selection-helpers.ts";
+import {
+  rejectsPitchLiteralValue,
+  warnShortRamp,
+} from "./helpers/transform-assignment-warning-helpers.ts";
 import { timeRangeBoundsInMusicalBeats } from "./helpers/transform-time-range-helpers.ts";
 import {
   type PitchRange,
@@ -202,23 +205,7 @@ function applyAssignmentToNotes(
   clipContext: ClipContext | undefined,
   transformedIndices: Set<number>,
 ): void {
-  // A bare pitch literal (`b2`, `C3`) is only a meaningful VALUE for the `pitch`
-  // parameter (or as a selector / function argument). Assigned directly to any
-  // other parameter it is almost certainly a typo that would silently coerce to a
-  // MIDI number (`velocity = b2` → 59). Warn and skip rather than corrupt.
-  const expr = assignment.expression;
-
-  if (
-    assignment.parameter !== "pitch" &&
-    typeof expr === "object" &&
-    expr.type === "pitchLiteral"
-  ) {
-    console.warn(
-      `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
-    );
-
-    return;
-  }
+  if (rejectsPitchLiteralValue(assignment)) return;
 
   // The selected notes are those matching BOTH the pitch range AND the
   // time-range selector. Indexing and next.*/legato() are scoped to this set,
@@ -343,6 +330,17 @@ function applyAssignmentToNotes(
       assignment,
       timeSigDenominator,
       transformedIndices,
+    );
+  }
+
+  if (transformedIndices.size > 0) {
+    warnShortRamp(
+      assignment.expression,
+      assignment.timeRange != null,
+      selectedStarts,
+      evalTimeRange,
+      timeSigNumerator,
+      timeSigDenominator,
     );
   }
 }
