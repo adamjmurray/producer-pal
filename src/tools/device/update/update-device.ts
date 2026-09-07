@@ -40,7 +40,8 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
  * @param args.paths - Hidden alias for path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
- * @param args.params - {name, value} entries to set (devices only)
+ * @param args.params - {name, value} entries to set (devices, plus `sample` on
+ *   a drum pad or one of its layers)
  * @param args.actions - Device-specific action strings (devices only)
  * @param args.macroVariation - Rack variation action (racks only)
  * @param args.macroVariationIndex - Rack variation index (racks only)

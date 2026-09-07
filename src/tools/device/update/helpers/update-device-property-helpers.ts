@@ -9,6 +9,7 @@ import {
   type ParamResult,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { applyChainSampleParams } from "./sample-param-helpers.ts";
 import {
   applyChainMixer,
   type ChainMixerApplied,
@@ -126,19 +127,28 @@ export function updateDeviceProperties(
   return refreshParamValues(paramResults);
 }
 
+/** What a chain or pad update wrote: its mixer, plus any params it took. */
+export interface NonDeviceApplied extends ChainMixerApplied {
+  params?: ParamResult[];
+}
+
 /**
  * Update chain/drum pad properties
  * @param target - Chain or drum pad to update
  * @param type - Target type
  * @param options - Update options
- * @returns What the chain's mixer write landed, read back off the chain
+ * @returns What the chain's mixer and sample writes landed, read back off Live
  */
 export function updateNonDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
-): ChainMixerApplied {
-  warnIfSet("params", options.params, type, target);
+): NonDeviceApplied {
+  // A drum pad owns its sample, so a `sample` param addressed to the pad takes
+  // the same route the rack's `pC1/sample` shortcut does. Everything else in
+  // `params` is still not applicable, and warns from in there.
+  const params = applyChainSampleParams(target, type, options);
+
   warnIfSet("actions", options.actions, type, target);
   warnIfSet("macroVariation", options.macroVariation, type, target);
   warnIfSet("macroVariationIndex", options.macroVariationIndex, type, target);
@@ -179,7 +189,7 @@ export function updateNonDeviceProperties(
     warnIfSet("mappedPitch", options.mappedPitch, type, target);
   }
 
-  return mixer;
+  return params.length > 0 ? { ...mixer, params } : mixer;
 }
 
 /**

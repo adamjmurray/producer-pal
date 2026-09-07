@@ -16,7 +16,9 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
 import {
+  type NestedParamTarget,
   isDrumPadSampleShortcut,
+  resolveDrumChainSampleTarget,
   resolveNestedParamTarget,
   splitForAdvice,
 } from "../nested-param-target.ts";
@@ -168,17 +170,29 @@ function rack(): LiveAPI {
  * @param force - Allow the instrument-to-Simpler swap
  * @returns The resolved target, or null when resolution warn-skips
  */
-function resolveSampleTarget(prefix: string, force = false): LiveAPI | null {
+function resolveSampleTarget(prefix: string, force = false): NestedParamTarget {
   return resolveNestedParamTarget(rack(), prefix, "sample", force);
 }
 
 /**
- * Assert resolution warn-skipped: it returned null and relayed a warning.
+ * The device resolution landed on.
  * @param target - The value returned by resolveNestedParamTarget
- * @param message - Substring the relayed warning must contain
+ * @returns The device, or null when resolution skipped
  */
-function expectWarnedNull(target: LiveAPI | null, message: string): void {
-  expect(target).toBeNull();
+function deviceOf(target: NestedParamTarget): LiveAPI | null {
+  return "device" in target ? target.device : null;
+}
+
+/**
+ * Assert resolution skipped: it came back with a reason, said in both channels
+ * — the param's own result entry and the warning.
+ * @param target - The value returned by resolveNestedParamTarget
+ * @param message - Substring the reason must contain
+ */
+function expectSkipped(target: NestedParamTarget, message: string): void {
+  expect(target).toStrictEqual({
+    reason: expect.stringContaining(message) as unknown as string,
+  });
   expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
 }
 
@@ -244,6 +258,81 @@ describe("splitForAdvice", () => {
   });
 });
 
+// The pad is the address for its own sample, so a `sample` write aimed at the
+// pad (or one of its layers) gets the same policy as the rack's "pC1/sample"
+// shortcut — the pad path is what read-device prints, and a model uses it.
+describe("resolveDrumChainSampleTarget", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a Simpler on an empty chain", () => {
+    registerRack(["chain-c1"]);
+    const chain = registerDrumChain("chain-c1", 36, [], {
+      insert_device: () => ["id", "new-simpler"],
+    });
+
+    registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+    const target = resolveDrumChainSampleTarget(
+      LiveAPI.from("id chain-c1"),
+      false,
+    );
+
+    expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(deviceOf(target)?.id).toBe("new-simpler");
+  });
+
+  it("reuses the Simpler the chain already holds", () => {
+    registerRack(["chain-c1"]);
+    const chain = registerDrumChain("chain-c1", 36, ["existing-simpler"]);
+
+    registerDevice("existing-simpler", "Simpler", "SimplerDevice");
+
+    const target = resolveDrumChainSampleTarget(
+      LiveAPI.from("id chain-c1"),
+      false,
+    );
+
+    expectNoDeviceInserted(chain);
+    expect(deviceOf(target)?.id).toBe("existing-simpler");
+  });
+
+  it("skips another instrument with the same reason the rack shortcut gives", () => {
+    registerRack(["chain-c1"]);
+    const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
+      insert_device: () => ["id", "new-simpler"],
+    });
+
+    registerDevice("ds-1", "DrumSampler");
+
+    expectSkipped(
+      resolveDrumChainSampleTarget(LiveAPI.from("id chain-c1"), false),
+      "it holds a DrumSampler, whose sample the Live API can't set",
+    );
+    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expectNoDeviceInserted(chain);
+  });
+
+  it("swaps that instrument for a Simpler under force", () => {
+    registerRack(["chain-c1"]);
+    const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
+      insert_device: () => ["id", "new-simpler"],
+    });
+
+    registerDevice("ds-1", "DrumSampler");
+    registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+    const target = resolveDrumChainSampleTarget(
+      LiveAPI.from("id chain-c1"),
+      true,
+    );
+
+    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expect(deviceOf(target)?.id).toBe("new-simpler");
+  });
+});
+
 describe("resolveNestedParamTarget", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -261,7 +350,7 @@ describe("resolveNestedParamTarget", () => {
       const target = resolveSampleTarget("pC1/d0");
 
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
-      expect(target?.id).toBe("new-simpler");
+      expect(deviceOf(target)?.id).toBe("new-simpler");
     });
 
     it("reuses an existing Simpler without inserting a new one", () => {
@@ -273,7 +362,7 @@ describe("resolveNestedParamTarget", () => {
       const target = resolveSampleTarget("pC1/d0");
 
       expectNoDeviceInserted(chain);
-      expect(target?.id).toBe("existing-simpler");
+      expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
     it("skips a non-Simpler instrument without force, leaving it intact", () => {
@@ -286,7 +375,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expectWarnedNull(target, "sample write SKIPPED on pad t0/d0/pC1");
+      expectSkipped(target, "sample write SKIPPED on pad t0/d0/pC1");
       expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
       expectNoDeviceInserted(chain);
     });
@@ -318,7 +407,7 @@ describe("resolveNestedParamTarget", () => {
 
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
-      expect(target?.id).toBe("new-simpler");
+      expect(deviceOf(target)?.id).toBe("new-simpler");
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("replaced a DrumSampler"),
       );
@@ -335,10 +424,12 @@ describe("resolveNestedParamTarget", () => {
       registerDevice("op-1", "Operator");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      expectWarnedNull(resolveSampleTarget("pC1/d0"), "it holds an Operator");
+      expectSkipped(resolveSampleTarget("pC1/d0"), "it holds an Operator");
       expectNoDeviceInserted(chain);
 
-      expect(resolveSampleTarget("pC1/d0", true)?.id).toBe("new-simpler");
+      expect(deviceOf(resolveSampleTarget("pC1/d0", true))?.id).toBe(
+        "new-simpler",
+      );
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
     });
 
@@ -351,13 +442,15 @@ describe("resolveNestedParamTarget", () => {
       registerMultiSampleSimpler("ms-1");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      expectWarnedNull(
+      expectSkipped(
         resolveSampleTarget("pC1/d0"),
         "it holds a Simpler in multi-sample mode",
       );
       expectNoDeviceInserted(chain);
 
-      expect(resolveSampleTarget("pC1/d0", true)?.id).toBe("new-simpler");
+      expect(deviceOf(resolveSampleTarget("pC1/d0", true))?.id).toBe(
+        "new-simpler",
+      );
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
     });
 
@@ -369,7 +462,7 @@ describe("resolveNestedParamTarget", () => {
       const target = resolveSampleTarget("pC1");
 
       expectNoDeviceInserted(chain);
-      expect(target?.id).toBe("simpler-1");
+      expect(deviceOf(target)?.id).toBe("simpler-1");
     });
 
     it("deletes the instrument's own index under force, not device 0", () => {
@@ -382,7 +475,9 @@ describe("resolveNestedParamTarget", () => {
       registerDevice("op-1", "Operator");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      expect(resolveSampleTarget("pC1", true)?.id).toBe("new-simpler");
+      expect(deviceOf(resolveSampleTarget("pC1", true))?.id).toBe(
+        "new-simpler",
+      );
       expect(chain.call).toHaveBeenCalledWith("delete_device", 1);
       expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
     });
@@ -393,7 +488,7 @@ describe("resolveNestedParamTarget", () => {
     it("skips a stacked pad when no layer is named", () => {
       const first = registerStackedPad();
 
-      expectWarnedNull(resolveSampleTarget("pC1"), "it has 2 layers");
+      expectSkipped(resolveSampleTarget("pC1"), "it has 2 layers");
       expectNoDeviceInserted(first);
       // The retries are param names relative to the rack, not pad paths.
       expect(capturedWarnings()).toContainEqual(
@@ -405,13 +500,13 @@ describe("resolveNestedParamTarget", () => {
     it("skips a stacked pad addressed by device index alone", () => {
       registerStackedPad();
 
-      expectWarnedNull(resolveSampleTarget("pC1/d0"), "it has 2 layers");
+      expectSkipped(resolveSampleTarget("pC1/d0"), "it has 2 layers");
     });
 
     it("writes the named layer of a stacked pad", () => {
       registerStackedPad();
 
-      expect(resolveSampleTarget("pC1/c1")?.id).toBe("simpler-b");
+      expect(deviceOf(resolveSampleTarget("pC1/c1"))?.id).toBe("simpler-b");
     });
 
     // Live sorts MIDI effects ahead of the instrument, so a `d0` written out of
@@ -419,7 +514,7 @@ describe("resolveNestedParamTarget", () => {
     it("skips when the device index is not the pad's instrument", () => {
       const chain = registerEffectThenSimpler();
 
-      expectWarnedNull(
+      expectSkipped(
         resolveSampleTarget("pC1/d0"),
         "d0 is not its instrument, which is at d1",
       );
@@ -432,7 +527,7 @@ describe("resolveNestedParamTarget", () => {
     it("keeps the named layer in the retry it suggests", () => {
       registerEffectThenSimpler();
 
-      expectWarnedNull(resolveSampleTarget("pC1/c0/d0"), '"pC1/c0/sample"');
+      expectSkipped(resolveSampleTarget("pC1/c0/d0"), '"pC1/c0/sample"');
     });
 
     // Nothing is there to contradict the index, and refusing would break the
@@ -445,7 +540,7 @@ describe("resolveNestedParamTarget", () => {
 
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      expect(resolveSampleTarget("pC1/d9")?.id).toBe("new-simpler");
+      expect(deviceOf(resolveSampleTarget("pC1/d9"))?.id).toBe("new-simpler");
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
     });
 
@@ -461,7 +556,7 @@ describe("resolveNestedParamTarget", () => {
       const target = resolveSampleTarget("pC1/d0");
 
       expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
-      expect(target?.id).toBe("new-simpler");
+      expect(deviceOf(target)?.id).toBe("new-simpler");
     });
 
     it("warns when the pad chain can't be resolved or created", () => {
@@ -469,7 +564,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pZ9/d0");
 
-      expectWarnedNull(target, "could not resolve or create drum pad");
+      expectSkipped(target, "could not resolve or create drum pad");
     });
 
     it("refuses to auto-create a pad chain on a non-drum rack (leaves no stray chain)", () => {
@@ -488,7 +583,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expectWarnedNull(target, "could not resolve or create drum pad");
+      expectSkipped(target, "could not resolve or create drum pad");
       expect(rackMock.call).not.toHaveBeenCalledWith("insert_chain");
     });
 
@@ -500,10 +595,10 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expectWarnedNull(target, "failed to create a Simpler");
+      expectSkipped(target, "failed to create a Simpler");
     });
 
-    it("returns null when the created Simpler does not exist", () => {
+    it("says so when the created Simpler does not read back", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, [], {
         insert_device: () => ["id", "0"],
@@ -511,7 +606,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expect(target).toBeNull();
+      expectSkipped(target, "could not be read back");
     });
 
     it("accepts an explicit chain 0 in the prefix", () => {
@@ -524,7 +619,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/c0");
 
-      expect(target?.id).toBe("existing-simpler");
+      expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
     it("warns when Simpler creation returns nothing at all", () => {
@@ -537,7 +632,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expectWarnedNull(target, "failed to create a Simpler");
+      expectSkipped(target, "failed to create a Simpler");
     });
 
     it("defaults the device slot to 0 when only the pad is given", () => {
@@ -547,7 +642,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1");
 
-      expect(target?.id).toBe("existing-simpler");
+      expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
   });
 
@@ -559,7 +654,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveNestedParamTarget(rack(), "pC1/d0", "gainDb");
 
-      expect(target?.id).toBe("existing-simpler");
+      expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
     it("warns when the prefix resolves to a chain, not a device", () => {
@@ -568,7 +663,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveNestedParamTarget(rack(), "pC1", "gainDb");
 
-      expectWarnedNull(target, "resolves to a chain");
+      expectSkipped(target, "resolves to a chain");
     });
 
     it("warns when no device is found at the prefix", () => {
@@ -577,7 +672,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveNestedParamTarget(rack(), "pC1/d0", "gainDb");
 
-      expectWarnedNull(target, "no device at");
+      expectSkipped(target, "no device at");
     });
 
     it("treats a non-pad prefix as a general device path", () => {
@@ -594,7 +689,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveNestedParamTarget(rack(), "c0/d0", "sample");
 
-      expect(target?.id).toBe("reg-dev");
+      expect(deviceOf(target)?.id).toBe("reg-dev");
     });
   });
 
@@ -619,7 +714,7 @@ describe("resolveNestedParamTarget", () => {
     ])("does not pad-create for prefix '%s'", (prefix, message) => {
       const target = resolveSampleTarget(prefix);
 
-      expectWarnedNull(target, message);
+      expectSkipped(target, message);
       expectNoDeviceInserted(chain);
     });
   });

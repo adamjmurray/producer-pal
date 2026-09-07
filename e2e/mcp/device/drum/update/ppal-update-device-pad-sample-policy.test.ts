@@ -24,6 +24,7 @@ import {
   callWithWarnings,
   type DeviceInfo,
   KIT,
+  type ParamEntryResult,
   RACKS_TEST_PATH,
   readKitPads,
 } from "../../helpers/racks-test-helpers.ts";
@@ -36,10 +37,13 @@ const ctx = setupMcpTestContext({ liveSetPath: RACKS_TEST_PATH });
  * Write a sample onto a pad through the rack's path-prefixed param form.
  * @param padNote - Pad note segment (e.g. "pAb1")
  * @param force - Whether to pass force:true
- * @returns The warnings the write produced
+ * @returns The `params` the result reports, and the warnings the write produced
  */
-async function writeSample(padNote: string, force = false): Promise<string[]> {
-  const { warnings } = await callWithWarnings(
+async function writeSample(
+  padNote: string,
+  force = false,
+): Promise<{ params: ParamEntryResult[]; warnings: string[] }> {
+  const { data, warnings } = await callWithWarnings(
     ctx.client!,
     "ppal-update-device",
     {
@@ -49,7 +53,7 @@ async function writeSample(padNote: string, force = false): Promise<string[]> {
     },
   );
 
-  return warnings;
+  return { params: (data.params as ParamEntryResult[]) ?? [], warnings };
 }
 
 /**
@@ -80,7 +84,7 @@ function padSwapTests(
   instrumentType: string,
 ): void {
   it("skips the write and warns, leaving the instrument alone", async () => {
-    const warnings = await writeSample(pad);
+    const { params, warnings } = await writeSample(pad);
 
     expect(
       warnings.some(
@@ -90,11 +94,18 @@ function padSwapTests(
     // The warning is where the model learns force:true exists.
     expect(warnings.some((w) => w.includes("force:true"))).toBe(true);
 
+    // And the param's own entry carries the same reason: a params list that
+    // came back a name short is one the caller has to diff against its request.
+    expect(params).toHaveLength(1);
+    expect(params[0]?.name).toBe(`${pad}/sample`);
+    expect(params[0]?.reason).toContain(held);
+    expect(params[0]?.reason).toContain("force:true");
+
     expect((await padDevices(padName))[0]?.type).toContain(instrumentType);
   });
 
   it("replaces it with a Simpler under force, and says what was lost", async () => {
-    const warnings = await writeSample(pad, true);
+    const { warnings } = await writeSample(pad, true);
 
     expect(
       warnings.some(
@@ -148,7 +159,7 @@ describe("a MIDI effect in front of the pad's instrument", () => {
     // in ahead of the instrument.
     expect(arp).toBe(`${KIT}/pC1/c0/d0`);
 
-    const warnings = await writeSample("pC1");
+    const { warnings } = await writeSample("pC1");
 
     expect(warnings).toStrictEqual([]);
 

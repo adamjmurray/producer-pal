@@ -41,6 +41,14 @@ export interface DeviceInfo {
   parameters?: { name: string; value?: unknown; enabled?: boolean }[];
 }
 
+/** One entry of the `params` a create-device or update-device result reports. */
+export interface ParamEntryResult {
+  name: string;
+  value?: unknown;
+  /** Why the write landed nowhere, when it didn't */
+  reason?: string;
+}
+
 export interface DrumPadInfo {
   id?: string;
   path?: string;

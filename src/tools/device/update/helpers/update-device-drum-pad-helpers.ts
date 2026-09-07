@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import {
+  ambiguousLayerReason,
+  isSampleParam,
+} from "#src/tools/shared/device/pad-sample-messages.ts";
 import { type DrumPadGroup } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   pathField,
@@ -12,6 +16,7 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { stripReturnChainLetter } from "./update-device-helpers.ts";
 import {
+  type NonDeviceApplied,
   type UpdateTargetOptions,
   updateNonDeviceProperties,
 } from "./update-device-property-helpers.ts";
@@ -40,7 +45,7 @@ const CHAIN_WRITE_PROPS = [
   ...PER_LAYER_PROPS,
 ] as const;
 
-export interface DrumPadUpdateResult extends ChainMixerApplied {
+export interface DrumPadUpdateResult extends NonDeviceApplied {
   /** The DrumPad's id, absent on a virtual pad that has no DrumPad object */
   id?: string;
   /** The pad's path, so a whole-pad write names its target the way every other
@@ -81,10 +86,16 @@ export function updateDrumPadGroup(
     return null;
   }
 
-  const applicable =
+  const layered =
     chains.length > 1
       ? dropPerLayerProps(options, padPath, padLabel, chains)
       : options;
+  // A sample belongs to one layer, so a stacked pad has to say which — the
+  // same ambiguity the rack's `pC1/sample` shortcut refuses. Left in place on a
+  // single-layer pad, where naming the pad names the layer.
+  const ambiguous =
+    chains.length > 1 ? dropAmbiguousSamples(layered, padPath, chains) : null;
+  const applicable = ambiguous?.options ?? layered;
 
   // mute/solo go to the DrumPad where there is one: Live broadcasts them to the
   // pad's chains itself, and reads them back aggregated.
@@ -107,6 +118,9 @@ export function updateDrumPadGroup(
   const mixer = applyToChains(chains, chainOptions);
 
   const result: DrumPadUpdateResult = { ...mixer };
+  const skipped = ambiguous?.skipped ?? [];
+
+  if (skipped.length > 0) result.params = [...skipped, ...(mixer.params ?? [])];
 
   if (pad != null) Object.assign(result, { id: pad.id }, pathField(pad));
 
@@ -126,7 +140,7 @@ export function updateDrumPadGroup(
 function applyToChains(
   chains: LiveAPI[],
   options: UpdateTargetOptions,
-): ChainMixerApplied {
+): NonDeviceApplied {
   const first = chains[0] as LiveAPI;
 
   // in_note is what puts a chain on a pad, and this already retargets every
@@ -140,7 +154,7 @@ function applyToChains(
     first.set("name", stripReturnChainLetter(first, options.name));
   }
 
-  let mixer: ChainMixerApplied = {};
+  let mixer: NonDeviceApplied = {};
 
   for (const [index, chain] of chains.entries()) {
     // The first chain carries the full options so the "not applicable to
@@ -208,4 +222,42 @@ function dropPerLayerProps(
   }
 
   return remaining;
+}
+
+/**
+ * Drop the `sample` entries of a stacked pad's `params` write and say which
+ * layer to address instead. Which layer to load is the caller's to settle:
+ * writing "the pad" would load whichever layer happens to be first, and under
+ * `force` replace an instrument nobody named.
+ * @param options - Update options
+ * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
+ * @param chains - The pad's chains
+ * @returns The remaining options and the skipped entries, or null when the
+ *   write named no sample
+ */
+function dropAmbiguousSamples(
+  options: UpdateTargetOptions,
+  padPath: string,
+  chains: LiveAPI[],
+): { options: UpdateTargetOptions; skipped: ParamResult[] } | null {
+  const params = options.params ?? [];
+  const samples = params.filter((entry) => isSampleParam(entry.name.trim()));
+
+  if (samples.length === 0) return null;
+
+  // The retries are paths, not param names: a path is what this caller sends.
+  const reason = ambiguousLayerReason(
+    padPath,
+    chains.map((_, index) => `${padPath}/c${index}`),
+  );
+
+  console.warn(reason);
+
+  return {
+    options: {
+      ...options,
+      params: params.filter((entry) => !samples.includes(entry)),
+    },
+    skipped: samples.map((entry) => ({ name: entry.name, reason })),
+  };
 }

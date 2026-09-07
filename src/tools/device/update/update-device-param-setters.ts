@@ -26,8 +26,11 @@ import {
   resolveNestedParamTarget,
   splitForAdvice,
 } from "#src/tools/shared/device/helpers/nested-param-target.ts";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
+import {
+  isSampleParam,
+  unsettableSampleReason,
+} from "#src/tools/shared/device/pad-sample-messages.ts";
 import {
   type ParamNumericRange,
   readNumericRange,
@@ -45,14 +48,12 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
 import {
+  resolveParamById,
   resolveParamsByName,
   warnIfAmbiguousName,
 } from "./helpers/param-name-resolution.ts";
 import { displayValueForWrite } from "./helpers/param-unit-check.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
-
-/** The tail a Live path adds to a device's own path to name one of its params. */
-const PARAMETER_TAIL = / parameters \d+$/;
 
 /**
  * Set parameter values from an array of {name, value} entries. Specialized-device
@@ -167,6 +168,18 @@ function setOneParam(
     );
   }
 
+  // A `sample` write that matched no pseudo-param and no parameter reached a
+  // device with no sample to set. "Not found" would read as a misspelling and
+  // send the model hunting for the right name; the reason below says what is
+  // true, and on a drum pad names the (destructive) call that can honor it.
+  if (isSampleParam(key)) {
+    const unsettable = unsettableSampleReason(device);
+
+    console.warn(unsettable);
+
+    return [{ name: key, reason: unsettable }];
+  }
+
   const lookup = resolveParamById(key, device);
 
   // The key reached no parameter of this device, so the entry says so instead
@@ -177,60 +190,6 @@ function setOneParam(
   return toEntries(
     setParamValue(lookup.param, inputValue, rawValue, device, deviceName),
   );
-}
-
-/** A param key that reached a parameter, or the reason it reached none. */
-type ParamLookup = { param: LiveAPI } | { reason: string };
-
-/**
- * Resolve a purely numeric param key as an absolute Live API object id, saying
- * why when it reaches nothing this device owns.
- *
- * Every object id resolves, so the type is checked: a non-parameter reads as a
- * plain enabled parameter with no range (Live answers nothing rather than
- * failing), and the tool would report a write it never made against a name read
- * off some unrelated object.
- *
- * Ownership is checked as well. A param id is global, so an id belonging to
- * another device writes that device while the result — a param entry carries no
- * path of its own, only the device's — reports it under the device the call
- * addressed. Naming where the param actually lives turns that into a one-step
- * correction; the path-prefixed form (`c0/d0/Volume`) is how one call reaches a
- * nested device's param on purpose.
- *
- * The reason is said twice on purpose. The param's own entry carries it, which
- * is where the caller reads what happened to that param; the warning stays
- * until every way a param write can fail has an entry of its own, so one
- * channel still covers all of them.
- * @param key - The trimmed param name
- * @param device - The device the call addressed
- * @returns The parameter, or the reason there is none
- */
-function resolveParamById(key: string, device: LiveAPI): ParamLookup {
-  const object = /^\d+$/.test(key) ? LiveAPI.from(key) : null;
-
-  if (object?.exists() && object.type === "DeviceParameter") {
-    // A param hangs directly off its device, so the device's own canonical path
-    // is the whole of its parent path.
-    const ownerPath = object.path.replace(PARAMETER_TAIL, "");
-
-    if (ownerPath === device.path) return { param: object };
-
-    const elsewhere = `id ${key} is on ${extractDevicePath(ownerPath) ?? "another object"}, not ${targetLabel(device)}, so it was not written`;
-
-    console.warn(`param ${elsewhere}`);
-
-    return { reason: elsewhere };
-  }
-
-  // Named by the device the key was looked up on, not "this device": a
-  // path-prefixed miss (pC1/Cutoff) is looked up on the pad's own device while
-  // the entry sits in the rack's result.
-  const missing = `not found on ${targetLabel(device)}`;
-
-  console.warn(`param "${key}" ${missing}`);
-
-  return { reason: missing };
 }
 
 /**
@@ -284,12 +243,14 @@ function applyNestedParam(
 
   const target = resolveNestedParamTarget(device, prefix, paramName, force);
 
-  if (!target) return [];
+  // Named as the caller wrote it: a list that came back a name short is one
+  // the caller has to diff against its own request to read.
+  if ("reason" in target) return [{ name: key, reason: target.reason }];
 
   // Report the param under the path the caller addressed it by: sixteen pads'
   // worth of bare "Volume" entries would name nothing.
   return setParamValues(
-    target,
+    target.device,
     [{ name: paramName, value: rawValue }],
     force,
   ).map((result) => ({ ...result, name: `${prefix}/${result.name}` }));

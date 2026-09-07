@@ -11,14 +11,18 @@ import {
 } from "#src/tools/constants.ts";
 import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
 import {
+  ambiguousLayerReason,
+  isSampleParam,
+  padSampleSwapReason,
+  unsettableSampleHolder,
+} from "#src/tools/shared/device/pad-sample-messages.ts";
+import {
   navigateRemainingSegments,
   resolveDrumPadGroup,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
-
-const SAMPLE_PARAM = "sample";
 
 interface DrumPadSlot {
   padNote: string;
@@ -43,7 +47,7 @@ export function isDrumPadSampleShortcut(
   prefix: string,
   paramName: string,
 ): boolean {
-  if (paramName.toLowerCase() !== SAMPLE_PARAM) return false;
+  if (!isSampleParam(paramName)) return false;
 
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
@@ -114,28 +118,23 @@ export function splitForAdvice(key: string): { path: string; name: string } {
  * @param prefix - The path segments before the param name (e.g. "pC1")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
- * @returns The target device, or null (after warning) when none can be targeted
+ * @returns The target device, or the reason nothing can be targeted
  */
 export function resolveNestedParamTarget(
   rack: LiveAPI,
   prefix: string,
   paramName: string,
   force = false,
-): LiveAPI | null {
+): NestedParamTarget {
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
   if (segments.length === 0) {
-    console.warn(
+    return skip(
       `param "${prefix}/${paramName}" has no path before the param name`,
     );
-
-    return null;
   }
 
-  const slot =
-    paramName.toLowerCase() === SAMPLE_PARAM
-      ? parseDrumPadSlot(segments)
-      : null;
+  const slot = isSampleParam(paramName) ? parseDrumPadSlot(segments) : null;
 
   // Pad-property model: a `sample` write to a drum pad.
   if (slot) {
@@ -146,20 +145,55 @@ export function resolveNestedParamTarget(
   const { target, targetType } = navigateRemainingSegments(rack, segments);
 
   if (!target?.exists()) {
-    console.warn(`no device at "${pathPrefix(rack)}/${prefix}"`);
-
-    return null;
+    return skip(`no device at "${pathPrefix(rack)}/${prefix}"`);
   }
 
   if (targetType !== "device") {
-    console.warn(
+    return skip(
       `"${pathPrefix(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
     );
-
-    return null;
   }
 
-  return target;
+  return { device: target };
+}
+
+/**
+ * Resolve (and, per policy, create/replace) the Simpler that holds one drum
+ * chain's sample, for a `sample` write addressed to the pad itself rather than
+ * to its rack. Same policy as the rack's `pC1/sample` shortcut — the pad is the
+ * address, whichever way the caller spells it.
+ *
+ * Layer ambiguity is the caller's to settle: a chain names one layer already,
+ * and a bare pad path is refused before it gets here.
+ * @param chain - The DrumChain the write addressed
+ * @param force - Allow the instrument-to-Simpler swap the sample write needs
+ * @returns The Simpler to write the sample to, or the reason there is none
+ */
+export function resolveDrumChainSampleTarget(
+  chain: LiveAPI,
+  force: boolean,
+): NestedParamTarget {
+  const instrument = findChainInstrument(chain);
+
+  return instrument == null
+    ? createSimplerInChain(chain)
+    : applyPadInstrumentPolicy(chain, instrument, pathPrefix(chain), force);
+}
+
+/** The device a nested param write lands on, or why it lands on nothing. */
+export type NestedParamTarget = { device: LiveAPI } | { reason: string };
+
+/**
+ * Say why a write landed nowhere, in both channels at once: the reason goes in
+ * the param's own result entry, and the warning stays until every way a param
+ * write can fail has an entry of its own.
+ * @param reason - Why nothing was written
+ * @returns The reason, as a resolution result
+ */
+function skip(reason: string): NestedParamTarget {
+  console.warn(reason);
+
+  return { reason };
 }
 
 /**
@@ -232,27 +266,26 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
  * @param rack - Drum Rack device
  * @param slot - Parsed drum pad slot
  * @param force - Allow the instrument-to-Simpler swap
- * @returns The Simpler to write the sample to, or null (after warning)
+ * @returns The Simpler to write the sample to, or the reason there is none
  */
 function resolveDrumPadSampleTarget(
   rack: LiveAPI,
   slot: DrumPadSlot,
   force: boolean,
-): LiveAPI | null {
+): NestedParamTarget {
   const { padNote, chainIndex, chainNamed, deviceIndex } = slot;
   const padLabel = `${pathPrefix(rack)}/p${padNote}`;
+  const ambiguous = chainNamed
+    ? null
+    : ambiguousLayerSkip(rack, padNote, padLabel);
 
-  if (!chainNamed && warnAmbiguousLayer(rack, padNote, padLabel)) {
-    return null;
-  }
+  if (ambiguous) return ambiguous;
 
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 
   if (!chain?.exists()) {
-    console.warn(`could not resolve or create drum pad "${padLabel}"`);
-
-    return null;
+    return skip(`could not resolve or create drum pad "${padLabel}"`);
   }
 
   const instrument = findChainInstrument(chain);
@@ -267,15 +300,32 @@ function resolveDrumPadSampleTarget(
       ? `p${padNote}/c${chainIndex}/sample`
       : `p${padNote}/sample`;
 
-    console.warn(
+    return skip(
       `sample write SKIPPED on pad ${padLabel} — d${deviceIndex} ` +
         `is not its instrument, which is at d${instrument.index}. Drop the ` +
         `device segment to find the instrument wherever it sits: "${retry}".`,
     );
-
-    return null;
   }
 
+  return applyPadInstrumentPolicy(chain, instrument, padLabel, force);
+}
+
+/**
+ * Decide what a pad's existing instrument means for a sample write: a
+ * single-sample Simpler takes it, and anything else is replaced only under
+ * `force`, because the Live API has no other way to honor the write.
+ * @param chain - The pad's chain
+ * @param instrument - The instrument the chain holds, and its index in it
+ * @param padLabel - How to name the pad
+ * @param force - Allow the instrument-to-Simpler swap
+ * @returns The Simpler to write the sample to, or the reason there is none
+ */
+function applyPadInstrumentPolicy(
+  chain: LiveAPI,
+  instrument: { device: LiveAPI; index: number },
+  padLabel: string,
+  force: boolean,
+): NestedParamTarget {
   const className = instrument.device.getProperty(
     "class_display_name",
   ) as string;
@@ -283,31 +333,17 @@ function resolveDrumPadSampleTarget(
   // A single-sample Simpler is already the pad's sample holder, loaded or not —
   // the caller's write lands on it as-is.
   if (isSingleSampleSimpler(instrument.device, className)) {
-    return instrument.device;
+    return { device: instrument.device };
   }
 
-  // Nothing else has a settable sample: the Live API exposes `replace_sample`
-  // only on a single-sample Simpler, and can't take a Simpler out of
-  // multi-sample mode. So the only way to honor the write is to swap in a fresh
-  // Simpler, which loses every setting on the instrument it replaces. Too
-  // destructive to do silently — warn and skip, and let `force` through once the
-  // user has agreed.
-  const description =
-    className === DEVICE_CLASS.SIMPLER
-      ? "a Simpler in multi-sample mode"
-      : `${article(className)} ${className}`;
+  // Nothing else has a settable sample, so the only way to honor the write is
+  // to swap in a fresh Simpler, which loses every setting on the instrument it
+  // replaces. Too destructive to do silently — skip, and let `force` through
+  // once the user has agreed.
+  const held = unsettableSampleHolder(className);
 
   if (!force) {
-    console.warn(
-      `sample write SKIPPED on pad ${padLabel} — it holds ` +
-        `${description}, whose sample the Live API can't set. Honoring the ` +
-        `write REPLACES it with a Simpler, losing all its settings. Ask the ` +
-        `user before passing force:true. To keep it: load the sample on ` +
-        `another pad, or copy the instrument to a free pad first ` +
-        `(ppal-duplicate type:"device").`,
-    );
-
-    return null;
+    return skip(padSampleSwapReason(padLabel, held));
   }
 
   chain.call("delete_device", instrument.index);
@@ -316,54 +352,39 @@ function resolveDrumPadSampleTarget(
   // again after its insert; this one keeps the invariant true in between.
   invalidateDevicePathCache();
   console.warn(
-    `force:true — replaced ${description} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
+    `force:true — replaced ${held} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
   );
 
   return createSimplerInChain(chain);
 }
 
 /**
- * The indefinite article for a device class name, so the skip warning reads
- * "an Operator" rather than "a Operator".
- * @param name - The name the article precedes
- * @returns "an" before a vowel, "a" otherwise
- */
-function article(name: string): string {
-  return /^[aeiou]/i.test(name) ? "an" : "a";
-}
-
-/**
- * Warn when a pad holds several layers and the caller named none of them. A
+ * Skip when a pad holds several layers and the caller named none of them. A
  * sample belongs to one layer, so writing "the pad" used to load the first one
  * silently — and with `force` that replaces an instrument nobody named. Matches
  * the pad-property path, which skips its per-layer settings the same way.
  * @param rack - Drum Rack device
  * @param padNote - The pad's note, as the caller spelled it
  * @param padLabel - The pad's full path, for naming it in the warning
- * @returns Whether the write was skipped
+ * @returns The skip, or null when the pad holds at most one layer
  */
-function warnAmbiguousLayer(
+function ambiguousLayerSkip(
   rack: LiveAPI,
   padNote: string,
   padLabel: string,
-): boolean {
+): NestedParamTarget | null {
   const layers = resolveDrumPadGroup(rack.path, padNote)?.chains.length ?? 0;
 
-  if (layers < 2) return false;
+  if (layers < 2) return null;
 
   // Name the retries as param names, relative to the rack, since that is what
   // the caller re-sends — not the pad's full path.
   const retries = Array.from(
     { length: layers },
-    (_, index) => `"p${padNote}/c${index}/sample"`,
-  ).join(", ");
-
-  console.warn(
-    `sample write SKIPPED on pad ${padLabel} — it has ${layers} ` +
-      `layers, so which one to load is ambiguous. Name one: ${retries}.`,
+    (_, index) => `p${padNote}/c${index}/sample`,
   );
 
-  return true;
+  return skip(ambiguousLayerReason(padLabel, retries));
 }
 
 /**
@@ -392,9 +413,9 @@ function findChainInstrument(
  * re-sorts a chain by device type, so the Simpler lands after any MIDI effects
  * and before any audio effects on its own.
  * @param chain - Chain LiveAPI object
- * @returns The created Simpler, or null (after warning) on failure
+ * @returns The created Simpler, or the reason there is none
  */
-function createSimplerInChain(chain: LiveAPI): LiveAPI | null {
+function createSimplerInChain(chain: LiveAPI): NestedParamTarget {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
     | undefined;
@@ -406,12 +427,12 @@ function createSimplerInChain(chain: LiveAPI): LiveAPI | null {
   const id = rawId ? String(rawId) : null;
 
   if (!id) {
-    console.warn(`failed to create a Simpler on the drum pad`);
-
-    return null;
+    return skip(`failed to create a Simpler on the drum pad`);
   }
 
   const device = LiveAPI.from(`id ${id}`);
 
-  return device.exists() ? device : null;
+  return device.exists()
+    ? { device }
+    : skip(`the Simpler created on the drum pad could not be read back`);
 }
