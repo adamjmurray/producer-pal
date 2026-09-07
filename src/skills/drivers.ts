@@ -39,6 +39,14 @@ const HEADER = "# Producer Pal Skills";
  * base head, then its `-write` sibling carrying the syntax only the clip writers
  * can act on (ADR-0019). bar|beat and stark are split; midi-json resolves that
  * second ref to nothing.
+ *
+ * `object-paths` goes after the transforms block, not before it. Sitting
+ * between time-and-values and transforms-core, it cost luna every use of
+ * swing(), quant() and step(): swing-and-quantize went 3/3 to 0/3, and the
+ * model hand-wrote note positions instead of calling the function. Moving it
+ * here restores 3/3 and keeps path-spoken-scene-number at 3/3. The fragment
+ * teaches nothing about transforms -- it displaces them -- so the position is
+ * what matters, and why it matters is not understood.
  */
 export const standardDriver = `${HEADER}
 
@@ -47,8 +55,6 @@ export const standardDriver = `${HEADER}
 @include "./{notation}-standard-write.md"
 
 @include "./time-and-values.md"
-
-@include "./object-paths.md"
 
 @include "./transforms-core.md"
 
@@ -59,6 +65,8 @@ export const standardDriver = `${HEADER}
 @include "./transforms-generative.md"
 
 @include "./code-transforms.md"
+
+@include "./object-paths.md"
 
 @include "./library.md"
 

@@ -23,6 +23,14 @@ fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
 | 3   | gemma-4-26b-a4b | `--small-model` | `90ead3407`  | 1      | 59  | 41 (69%)  | 3.4M   | 33m   |
 | 4   | gemma-4-26b-a4b | `--small-model` | `90ead3407`  | 1      | 59  | 40 (68%)  | 3.1M   | 35m   |
 | 5   | gemma-4-26b-a4b | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m |
+| 6   | gpt-5.6-luna    | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m |
+
+**Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
+70% is over the scenarios it reached, which are the expensive front of the list.
+It was killed on purpose: `swing-and-quantize` and `melody-transforms` had both
+gone 3/3 to 0/3 against run 2, and bisecting that mattered more than finishing.
+See "Where a fragment sits can cost more than what it says". Do not compare its
+percentage to any full run.
 
 All `--skip-judge`, so these are deterministic checks only. Gemma runs local (LM
 Studio, `-b http://localhost:1234/v1`) and costs nothing, but its token totals
@@ -233,6 +241,44 @@ nothing anchoring `s0`. Worth trying if this regresses.
 then 1-of-2 the other way, which reads as partial progress and is a coin flip.
 At gemma's flip rate, n=1 on a two-scenario pair says nothing.
 
+## Where a fragment sits can cost more than what it says
+
+Everything above is about what the skills say. This one is about where it sits,
+and it is the largest single behavior change any text edit has produced here.
+
+`feac7199b` fixed a real bug: `object-paths` was registered, slotted and
+tool-gated, but named by neither driver, so it had never shipped to any model.
+The fix added `@include "./object-paths.md"` to `standardDriver` — landing
+between `time-and-values` and `transforms-core`.
+
+That cost luna every use of `swing()`, `quant()` and `step()`.
+`swing-and-quantize` went **3/3 to 0/3**: instead of
+`transforms: "Ab1: timing = swing(0.05)"`, the model deleted the hats and
+rewrote all twenty note positions with hand-computed offsets, at 6 turns and
+~118s against 5 turns and ~57s. `melody-transforms` went 3/3 to 0/3 the same
+way, hand-remapping pitches instead of calling `step()`.
+
+Bisected over the 65 commits between the two full runs, with the harness and the
+scenario held fixed and only the device rebuilt. Commit 54 is 3/3, commit 55
+(`feac7199b`) is 0/3, HEAD is 0/3, HEAD with that one include deleted is 3/3,
+and HEAD with it moved after the transforms block is 3/3 — while
+`path-spoken-scene-number`, the scenario the commit was written to fix, stays
+3/3. So the fragment ships and the transforms survive; it just cannot sit in
+front of them.
+
+**The fragment teaches nothing about transforms. It displaces them.** That is
+the whole finding, and why it matters is not understood. It does not fit the
+spelling-versus-preference predictor above: no preference was argued and no
+spelling was taught. Adding correct, useful prose in the wrong place did the
+damage.
+
+Two things follow. A skills edit that only _adds_ a fragment still needs a
+transforms scenario run against it — reviewing the added text tells you nothing,
+because the added text was fine. And `basicDriver` has the same shape untested:
+`object-paths-basic` sits between `{notation}-basic-write` and
+`transforms-basic`, the same slot, and small-model mode needs LM Studio to
+measure.
+
 ## Scenarios that are red on purpose
 
 **`drum-backbeat-stark`.** The prompt asks for a four-on-the-floor kick; the
@@ -312,6 +358,24 @@ across scenarios; inlining them would cost megabytes per run.
 So: to check whether the model was given the context it needed, read
 `injectedBlocks` out of the JSON, not the printed transcript. Before concluding
 a context or onboarding failure is the model's, look there.
+
+## A run that never happened is not a failed run
+
+A result file whose `turns` is empty and whose `error` is set — `fetch failed`
+is the usual one, from the device reloading while the harness is mid-request —
+never reached the model. It has no `checks.results` to grade. Count it as a
+failure and the pass rate reads low for a reason that has nothing to do with the
+model.
+
+This is easy to hit while rebuilding between runs. During the `feac7199b`
+bisect, the control at run 2's own commit scored "2/3" and briefly looked like
+the scenario was too noisy to bisect on; one of the three had died at 1s with
+zero turns, and the real score was 2/2. Discarding those files instead made
+every step of the bisect read cleanly.
+
+Filter on `d.error || !d.turns?.length` and report the discards separately, so a
+step that lost most of its trials to reloads is visibly weak evidence rather
+than a confident red.
 
 ## Rack chain sends can't be covered by an eval yet
 
