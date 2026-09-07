@@ -81,7 +81,8 @@ Returns (the default `json` format, see
 - **200** with `isError: true`: tool ran but reported an error (e.g. invalid
   path, execution error)
 - **404**: unknown or disabled tool
-- **400**: invalid input (includes validation details)
+- **400**: the body isn't a JSON object, or the arguments don't validate. The
+  message is in `error`, and a schema failure adds `details`
 - **504**: the tool didn't finish before the timeout (see
   [Per-request timeout](#per-request-timeout-timeoutms-n))
 - **500**: internal server error
