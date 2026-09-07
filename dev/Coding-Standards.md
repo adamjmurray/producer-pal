@@ -217,21 +217,31 @@ and a single-chain one are indistinguishable by name alone. Count the chains to
 tell them apart. Writes to it are silently dropped, and Live's `set` still
 returns 1.
 
-### A Frozen Track Still Takes Some Writes
+### A Frozen Track Refuses Clip Writes
 
-Verified against Live 12.4.3, on a track with `is_frozen` reading 1. Freezing
-blocks less through the API than it does in Live's UI:
+Verified against Live 12.4.5, on a track with `is_frozen` reading 1:
 
-| Call                            | On a frozen track            |
-| ------------------------------- | ---------------------------- |
-| `duplicate_clip_to_arrangement` | works — returns the new clip |
-| `delete_clip`                   | works — the clip is gone     |
-| `create_midi_clip`              | refused — returns bare `1`   |
+| Call                               | On a frozen track          |
+| ---------------------------------- | -------------------------- |
+| `create_midi_clip` (arrangement)   | refused — returns bare `1` |
+| `create_audio_clip` (arrangement)  | refused                    |
+| `create_clip` (session slot)       | refused                    |
+| `duplicate_clip_to_arrangement`    | refused — returns bare `1` |
+| `duplicate_clip_to` (session slot) | refused — returns bare `1` |
+| `delete_clip`                      | works — the clip is gone   |
 
-So a frozen track stops a clip being _created_ and lets one be _duplicated_ or
-_deleted_. Don't assume a move onto a frozen track fails: `clipCopyBlocker`
-refuses a move whose destination is frozen, but a same-track move runs through
-duplicate and delete, and both go through.
+A refused copy returns `1` for a frozen destination and for a type mismatch
+alike; a real copy returns `["id", n]`.
+
+An earlier probe on 12.4.3 recorded `duplicate_clip_to_arrangement` as working
+on a frozen track, and code and tickets were reasoned from that. Two independent
+probes on 12.4.5 disagree, so treat the create and duplicate rows as settled and
+the old reading as wrong. `delete_clip` is the one row carried over from 12.4.3
+and not re-probed since.
+
+A same-track move never consults `clipCopyBlocker` — that only checks a named
+destination — and runs through duplicate and delete, so on a frozen track it has
+no guard in front of a refusal. Not verified end to end.
 
 The refusal shows up as the bare `1` above — the same "no object, no answer"
 sentinel a call on a nonexistent object returns, so the two are
