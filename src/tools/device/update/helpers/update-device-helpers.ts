@@ -52,7 +52,9 @@ export interface DeviceMove {
  * @param toPath - Target path
  * @param source - The device the user is really moving or copying, when
  *   `device` is a temp copy of it (device duplication); drives the
- *   left-behind chain mixer warning
+ *   left-behind chain mixer warning. Null when the caller has already put the
+ *   source chain's mixer on the destination itself (chain duplication), so
+ *   there is nothing here to carry or warn about
  * @param reportPath - How to spell toPath in warnings, when the caller adjusted
  *   it (device duplication shifts track indices past its temp track)
  * @returns "moved" once the device is at the destination, "no-destination" when
@@ -63,7 +65,7 @@ export interface DeviceMove {
 export function moveDeviceToPath(
   device: LiveAPI,
   toPath: string,
-  source: LiveAPI = device,
+  source: LiveAPI | null = device,
   reportPath: string = toPath,
 ): DeviceMove {
   const destination = resolveMoveDestination(toPath, reportPath);
@@ -79,8 +81,10 @@ export function moveDeviceToPath(
   }
 
   // Read the chain before the move: on a plain move the source is the device
-  // itself, and afterward it answers with the chain it landed in.
-  const chain = sourceChain(source);
+  // itself, and afterward it answers with the chain it landed in. No source
+  // means the chain's mixer is already on the destination, so there is no
+  // chain here to carry from or name.
+  const chain = source == null ? null : sourceChain(source);
 
   // Decide before the move: afterward the destination holds this device, so it
   // no longer reads as the untouched chain that makes carrying safe.
@@ -99,6 +103,10 @@ export function moveDeviceToPath(
   // is still wherever it was, and reporting its id would name a device that
   // never arrived — for a duplicate, one the cleanup is about to delete.
   if (!container.getChildIds("devices").includes(toLiveApiId(device.id))) {
+    // Known wart: on a duplication path `device` is the temp copy, so this
+    // names a track the cleanup is about to delete. Left alone because both
+    // duplication callers follow it with their own refusal, worded from the
+    // real source path — the fix is a label to thread through, not a bug.
     console.warn(
       `Live refused the move of ${targetLabel(device)}${refusalReason(device, container)}`,
     );
@@ -108,7 +116,7 @@ export function moveDeviceToPath(
 
   if (carry != null) {
     carryChainMixer(carry, container);
-  } else {
+  } else if (source != null) {
     // Device duplication passes the real source alongside a temp copy; a plain
     // move leaves `source` defaulted to the device itself.
     warnIfChainMixerLeftBehind(chain, container, source.id !== device.id);

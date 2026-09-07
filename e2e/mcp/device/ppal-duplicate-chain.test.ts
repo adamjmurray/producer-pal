@@ -33,7 +33,13 @@ interface ChainResult {
 }
 
 interface RackRead {
-  chains?: { id: string; name?: string; deviceCount?: number }[];
+  chains?: {
+    id: string;
+    name?: string;
+    deviceCount?: number;
+    gainDb?: number;
+    pan?: number;
+  }[];
   drumPads?: { pitch?: string; chainCount?: number }[];
 }
 
@@ -177,5 +183,33 @@ describe("ppal-duplicate type=chain", () => {
     });
 
     expect(warnings.join()).toContain("chains of its own kind");
+  });
+
+  // The chain's own fader is copied before its devices are moved across, and
+  // the move used to report it as left behind — naming the temp track it read
+  // it off, and telling the model to redo a write that had already landed.
+  // Runs last: it leaves a trim on the source chain.
+  it("carries a non-default trim onto the copy without warning it stayed behind", async () => {
+    const source = (await readChains(OUTER))[0]!;
+
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: source.id, gainDb: -2, pan: 0.25 },
+    });
+
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-duplicate",
+      { type: "chain", id: source.id, name: "Trimmed Copy" },
+    );
+
+    expect(warnings.join()).not.toContain("stays behind");
+
+    const copy = (await readChains(OUTER)).find(
+      (chain) => chain.id === (data as ChainResult).id,
+    );
+
+    expect(copy?.gainDb).toBeCloseTo(-2, 1);
+    expect(copy?.pan).toBeCloseTo(0.25, 2);
   });
 });

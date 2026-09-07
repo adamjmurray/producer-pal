@@ -205,6 +205,72 @@ describe("duplicate - chain", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
+  // The copy gets the source's fader before its devices arrive, so the move
+  // bringing them must not be asked to account for the trim a second time — it
+  // would only find the temp track's chain to name.
+  it("carries the source chain's trim and hands the move no source", async () => {
+    setupRack({ deviceIds: ["d-0"] });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("mixer-0", { path: `${RACK} chains 0 mixer_device` });
+    registerMockObject("volume-0", {
+      path: `${RACK} chains 0 mixer_device volume`,
+      properties: { display_value: -6 },
+    });
+    registerMockObject("mixer-new", { path: `${RACK} chains 1 mixer_device` });
+
+    const createdVolume = registerMockObject("volume-new", {
+      path: `${RACK} chains 1 mixer_device volume`,
+    });
+
+    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
+    registerMockObject("temp-device", {
+      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
+    });
+
+    await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(createdVolume.set).toHaveBeenCalledWith("display_value", -6);
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t0/d0/c1/d0",
+      null,
+      "t0/d0/c1/d0",
+    );
+  });
+
+  // The temp track sits between the source and a later destination, so the path
+  // the move runs on is a track further along than the one the caller asked for.
+  it("spells a warning's destination the way the caller asked for it", async () => {
+    const DESTINATION_RACK = livePath.track(1).device(0);
+
+    setupRack({ deviceIds: ["d-0"] });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("rack-1", {
+      path: DESTINATION_RACK,
+      type: "RackDevice",
+      properties: { class_name: "InstrumentGroupDevice", return_chains: [] },
+      methods: { insert_chain: () => ["id", "chain-new"] },
+    });
+    registerMockObject("chain-new", {
+      path: `${DESTINATION_RACK} chains 1`,
+      type: "Chain",
+      properties: { name: "", mute: 0, solo: 0, devices: [] },
+    });
+    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
+    registerMockObject("temp-device", {
+      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
+    });
+
+    await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" });
+
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t2/d0/c1/d0",
+      null,
+      "t1/d0/c1/d0",
+    );
+  });
+
   it("warns and skips when the rack refuses to make a chain", async () => {
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("rack-0", {

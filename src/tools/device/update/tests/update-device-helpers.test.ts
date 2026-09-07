@@ -20,6 +20,7 @@ import {
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { moveDrumChainToPath } from "../helpers/update-device-drum-move-helpers.ts";
+import { mockWorkingDeviceMoves } from "./update-device-test-helpers.ts";
 
 describe("moveDeviceToPath", () => {
   let device: RegisteredMockObject;
@@ -148,6 +149,69 @@ describe("moveDeviceToPath", () => {
       outcome: "no-destination",
     });
     expect(liveSet.call).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+});
+
+describe("moveDeviceToPath - out of a trimmed chain", () => {
+  const rackPath = livePath.track(0).device(0);
+  const sourceChainPath = rackPath.chain(0);
+  const destinationChainPath = rackPath.chain(1);
+  let device: RegisteredMockObject;
+
+  beforeEach(() => {
+    mockWorkingDeviceMoves();
+    registerMockObject("rack-0", {
+      path: rackPath,
+      type: "RackDevice",
+      properties: {
+        chains: children("chain-0", "chain-1"),
+        can_have_drum_pads: 0,
+      },
+    });
+    registerMockObject("chain-0", {
+      path: sourceChainPath,
+      type: "Chain",
+      properties: { name: "Trimmed", devices: children("device-0") },
+    });
+    registerMockObject("mixer-0", { path: `${sourceChainPath} mixer_device` });
+    registerMockObject("volume-0", {
+      path: `${sourceChainPath} mixer_device volume`,
+      properties: { display_value: -15 },
+    });
+    registerMockObject("chain-1", {
+      path: destinationChainPath,
+      type: "Chain",
+    });
+    registerMockObject("mixer-1", {
+      path: `${destinationChainPath} mixer_device`,
+    });
+    // Already trimmed, so the source's fader has nowhere safe to be carried.
+    registerMockObject("volume-1", {
+      path: `${destinationChainPath} mixer_device volume`,
+      properties: { display_value: -15 },
+    });
+    device = registerMockObject("device-0", {
+      path: sourceChainPath.device(0),
+      type: "SimplerDevice",
+    });
+  });
+
+  it("warns that the trim stays behind on a plain move", () => {
+    const move = moveDeviceToPath(LiveAPI.from(device.path), "t0/d0/c1");
+
+    expect(move.outcome).toBe("moved");
+    expect(capturedWarnings()).toContain(
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("stays quiet when the caller already carried the chain's mixer", () => {
+    // Chain duplication writes the mixer onto the copy before its devices
+    // arrive, so a "stays behind" here would be false and name a temp track.
+    const move = moveDeviceToPath(LiveAPI.from(device.path), "t0/d0/c1", null);
+
+    expect(move.outcome).toBe("moved");
     expect(capturedWarnings()).toHaveLength(0);
   });
 });

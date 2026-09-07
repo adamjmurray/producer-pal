@@ -102,20 +102,19 @@ function setupRackWithDevices(): void {
 }
 
 describe("duplicate chain build budget", () => {
-  // Pins today's cost: 12 resolutions per device carried, exactly 12N + 10, of
-  // only 17 distinct targets however large N gets. Just one has to scale —
+  // Pins today's cost: 5 resolutions per device carried, exactly 5N + 10, of
+  // only 13 distinct targets however large N gets. Just one has to scale —
   // taking the temp track's first device, because moving one out shifts the
   // next into its place. The rest name things the carry settles before it
   // starts, and get walked again per device.
   //
-  // DON'T HOIST THEM FOR SPEED. It was measured, not assumed: sharing the walk
-  // across the carry cuts a quarter of the resolutions (778 -> 589 at N=64) and
-  // buys 3% of wall time. Copying a chain costs about 205 ms a device on
+  // DON'T HOIST THEM FOR SPEED. It was measured, not assumed: an earlier
+  // version resolved 12 a device and sharing those walks across the carry
+  // bought 3% of wall time. Copying a chain costs about 205 ms a device on
   // 12.4.3 — 3.5 s at 16, 13.3 s at 64 — and that is duplicate_track copying
   // the whole host track plus one move_device per device. Resolving objects is
-  // not what makes this slow, so removing every redundant walk would still land
-  // near 15%. The target, if this ever has to be fast, is the temp-track
-  // workaround itself.
+  // not what makes this slow. The target, if this ever has to be fast, is the
+  // temp-track workaround itself.
   //
   // What the numbers are for: catching a NEW repeat. A count that climbs means
   // something started resolving per device that used to resolve once.
@@ -130,11 +129,14 @@ describe("duplicate chain build budget", () => {
     );
 
     // Invariant across the carry, resolved per device anyway.
-    expect(resolves("live_set tracks * devices * chains *")).toBe(DEVICES * 2);
-    expect(resolves("live_set tracks * devices * chains * mixer_device")).toBe(
-      DEVICES * 2 + 2,
-    );
+    expect(resolves("live_set tracks * devices * chains *")).toBe(DEVICES);
     expect(resolves("live_set tracks *")).toBe(DEVICES);
     expect(resolves("live_set tracks * devices *")).toBe(DEVICES + 1);
+
+    // Read off the source chain and written to the copy, once each: carrying
+    // the devices does not look at a chain fader at all.
+    expect(resolves("live_set tracks * devices * chains * mixer_device")).toBe(
+      2,
+    );
   });
 });
