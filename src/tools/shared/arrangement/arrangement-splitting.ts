@@ -12,6 +12,7 @@ import {
   warnUnusedSplitPoints,
   type SplitMiss,
 } from "#src/tools/shared/arrangement/arrangement-splitting-warnings.ts";
+import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
@@ -172,12 +173,13 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   // Step 1: Duplicate original once to holding as source
   const sourcePos = holdingAreaStart;
-  const result = track.call(
-    "duplicate_clip_to_arrangement",
-    toLiveApiId(originalClipId),
-    sourcePos,
-  ) as [string, string | number];
-  const sourceClip = LiveAPI.from(result);
+  const sourceClip = clipFromDuplicateResult(
+    track.call(
+      "duplicate_clip_to_arrangement",
+      toLiveApiId(originalClipId),
+      sourcePos,
+    ),
+  );
 
   if (!sourceClip.exists()) {
     console.warn(
@@ -345,16 +347,16 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
     // escaping and leaving the clip half-cut.
     try {
       // Duplicate source to working position
-      const workResult = track.call(
-        "duplicate_clip_to_arrangement",
-        toLiveApiId(sourceClipId),
-        workPos,
-      ) as [string, string | number];
-      const workClip = LiveAPI.from(workResult);
+      const workClip = clipFromDuplicateResult(
+        track.call(
+          "duplicate_clip_to_arrangement",
+          toLiveApiId(sourceClipId),
+          workPos,
+        ),
+      );
 
-      // Use exists() rather than `id === "0"`: a non-existent object's id can be
-      // "id 0", "0", or 0 (number), so the string-only check missed two of the
-      // three failure shapes.
+      // Check exists(), not `id === "0"`: a nonexistent object's id can be
+      // "id 0", "0", or 0.
       //
       // Stop here, don't skip ahead: step 2 already trimmed this segment's span
       // off the original, so moving to the next segment leaves it empty and its

@@ -10,6 +10,7 @@
  */
 
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import { type TilingContext } from "./helpers/arrangement-tiling-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
@@ -27,7 +28,8 @@ import {
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Tiling context with silenceWavPath for audio operations
  * @param source - The source clip, when the caller already resolved it
- * @returns The placed clip (may be a phantom on silent failure — check exists())
+ * @returns The placed clip, or a nonexistent object when Live refused the copy
+ *   — check exists()
  */
 export function duplicateToArrangementTarget(
   track: LiveAPI,
@@ -56,11 +58,11 @@ export function duplicateToArrangementTarget(
     );
   }
 
-  return LiveAPI.from(
+  return clipFromDuplicateResult(
     track.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(sourceClipId),
       targetBeats,
-    ) as [string, string | number],
+    ),
   );
 }

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAudioClipInSession,
   type TilingContext,
@@ -369,12 +370,13 @@ function truncateWithTempClip({
       length,
       silenceWavPath,
     );
-    const tempResult = track.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(sessionClip.id),
-      position,
-    ) as string;
-    const tempClip = LiveAPI.from(tempResult);
+    const tempClip = clipFromDuplicateResult(
+      track.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(sessionClip.id),
+        position,
+      ),
+    );
 
     if (setupAudioClip) {
       setupAudioClip(tempClip);

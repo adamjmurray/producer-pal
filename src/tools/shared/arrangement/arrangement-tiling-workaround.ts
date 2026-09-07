@@ -11,6 +11,7 @@
  */
 
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
@@ -19,17 +20,14 @@ import {
 
 /**
  * Verify a duplicate_clip_to_arrangement result and return the new clip's ID.
- * Throws if Ableton returned an invalid result (e.g. ["id", 0]) so destructive
- * follow-up steps cannot silently destroy the source clip.
+ * Throws when Live made no copy, so destructive follow-up steps cannot silently
+ * destroy the source clip.
  * @param result - Raw return value from track.call("duplicate_clip_to_arrangement", ...)
  * @param context - Short description of the failed operation for the error message
  * @returns The new clip's ID string
  */
-function verifyDupResult(
-  result: [string, string | number],
-  context: string,
-): string {
-  const newClip = LiveAPI.from(result);
+function verifyDupResult(result: unknown, context: string): string {
+  const newClip = clipFromDuplicateResult(result);
 
   if (!newClip.exists()) {
     throw new Error(
@@ -292,7 +290,7 @@ export function moveClipFromHolding(
     "duplicate_clip_to_arrangement",
     toLiveApiId(holdingClipId),
     targetPosition,
-  ) as [string, string | number];
+  );
   const movedId = verifyDupResult(
     finalResult,
     `move from holding (id ${holdingClipId}) to ${targetPosition}`,
@@ -335,12 +333,12 @@ export function duplicateSelfOverlappingClip(
 ): LiveAPI {
   // Copy the source to a far holding area FIRST (guaranteed empty → no crash),
   // verified before anything is mutated, so the full content is preserved even
-  // if Ableton returns a silent dup failure. The holding area must clear the
-  // target placement (targetPosition + sourceLength), not just the existing
-  // clips: a full-length copy of a >100-beat clip placed far forward would
-  // otherwise land on a holding area pinned only to maxEnd, and
-  // moveClipFromHolding would misread that overlap as a self-overlap and skip
-  // clearing the original (re-triggering the Ableton crash).
+  // if Live refuses the copy. The holding area must clear the target placement
+  // (targetPosition + sourceLength), not just the existing clips: a full-length
+  // copy of a >100-beat clip placed far forward would otherwise land on a
+  // holding area pinned only to maxEnd, and moveClipFromHolding would misread
+  // that overlap as a self-overlap and skip clearing the original
+  // (re-triggering the Ableton crash).
   const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
   const sourceLength =
     (sourceClip.getProperty("end_time") as number) -
@@ -353,7 +351,7 @@ export function duplicateSelfOverlappingClip(
     "duplicate_clip_to_arrangement",
     toLiveApiId(sourceClipId),
     holdingStart,
-  ) as [string, string | number];
+  );
   const holdingClipId = verifyDupResult(
     holdingResult,
     `self-overlap dup-to-holding for clip ${sourceClipId} at ${holdingStart}`,
@@ -423,13 +421,13 @@ function clearOverlappingClip(
 
   // Step 1: Duplicate to holding area (safe: no clips there) and verify.
   // Order matters: the original clip must remain intact until the holding
-  // copy is confirmed. Otherwise a silent dup failure (Ableton returning
-  // ["id", 0]) would let the later trim/delete destroy the only copy.
+  // copy is confirmed. Otherwise a refused copy would let the later trim or
+  // delete destroy the only copy.
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
     toLiveApiId(clipId),
     holdingStart,
-  ) as [string, string | number];
+  );
   const holdingClipId = verifyDupResult(
     holdingResult,
     `dup-to-holding for clip ${clipId} at ${holdingStart}`,

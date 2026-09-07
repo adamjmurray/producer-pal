@@ -9,6 +9,7 @@
  */
 
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
   type TilingContext,
@@ -44,16 +45,17 @@ export function createShortenedClipInHolding(
   const sourceClipId = sourceClip.id;
 
   // Duplicate source clip to holding area
-  const holdingResult = track.call(
-    "duplicate_clip_to_arrangement",
-    toLiveApiId(sourceClipId),
-    holdingAreaStart,
-  ) as [string, string | number];
-  const holdingClip = LiveAPI.from(holdingResult);
+  const holdingClip = clipFromDuplicateResult(
+    track.call(
+      "duplicate_clip_to_arrangement",
+      toLiveApiId(sourceClipId),
+      holdingAreaStart,
+    ),
+  );
 
-  // Surface a silent dup failure (Ableton returning ["id", 0]) before the
-  // caller relies on holdingClipId — otherwise downstream operations would
-  // no-op against id 0 and the partial tile would silently go missing.
+  // Surface a refused copy before the caller relies on holdingClipId —
+  // otherwise downstream operations would no-op against id 0 and the partial
+  // tile would silently go missing.
   if (!holdingClip.exists()) {
     throw new Error(
       `duplicate_clip_to_arrangement returned no clip for createShortenedClipInHolding (source ${sourceClipId} at ${holdingAreaStart})`,

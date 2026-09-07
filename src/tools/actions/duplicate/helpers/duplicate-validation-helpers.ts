@@ -22,10 +22,8 @@ import {
   warnUnusedArrangementParams,
   warnUnusedDestination,
 } from "./clip/duplicate-destination-helpers.ts";
-import {
-  targetLabel,
-  targetLabelForId,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 
 /**
  * Resolves the comma-separated arrangementStart list to beats. Shared by clip
@@ -222,7 +220,7 @@ export function resolveDestinationTargets(
 
     if (target.trackIndex == null) return { ...target, ...ownTrack() };
 
-    return canCopyClipToTrack(sourceClip.id, target.trackIndex, clipIsMidi)
+    return canCopyClipToTrack(sourceClip, target.trackIndex, clipIsMidi)
       ? { ...target, trackIndex: target.trackIndex }
       : null;
   });
@@ -230,13 +228,13 @@ export function resolveDestinationTargets(
 
 /**
  * Whether a clip can be copied to a track, warning about why not.
- * @param clipId - The clip being copied, for the warning
+ * @param clip - The clip being copied, for the warning
  * @param trackIndex - Destination track index
  * @param clipIsMidi - Whether the clip being copied is MIDI
  * @returns True when the copy can be made
  */
 function canCopyClipToTrack(
-  clipId: string,
+  clip: LiveAPI,
   trackIndex: number,
   clipIsMidi: boolean,
 ): boolean {
@@ -248,14 +246,14 @@ function canCopyClipToTrack(
     return false;
   }
 
-  // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
-  // failing, so check first rather than reporting a copy that never happened.
-  const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
+  // Live refuses a wrong-type or frozen destination without saying why. Asking
+  // first names the reason and drops the destination cleanly; without it the
+  // copy just fails downstream with a position and no cause.
+  const blocker = clipCopyBlocker(clipIsMidi, trackIndex, track);
 
-  if (clipIsMidi !== trackIsMidi) {
+  if (blocker != null) {
     console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabelForId(clipId)} cannot be duplicated to ` +
-        `${trackIsMidi ? "MIDI" : "audio"} track ${targetLabel(track)}`,
+      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(clip)} was not duplicated: ${blocker}`,
     );
 
     return false;

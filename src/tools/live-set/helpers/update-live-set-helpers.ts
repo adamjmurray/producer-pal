@@ -10,6 +10,7 @@ import {
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
+import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
@@ -97,12 +98,13 @@ export function extendSongIfNeeded(
     context.silenceWavPath,
   );
 
-  const arrangementClipResult = selectedTrack.call(
-    "duplicate_clip_to_arrangement",
-    toLiveApiId(sessionClip.id),
-    targetBeats,
-  ) as string;
-  const arrangementClip = LiveAPI.from(arrangementClipResult);
+  const arrangementClip = clipFromDuplicateResult(
+    selectedTrack.call(
+      "duplicate_clip_to_arrangement",
+      toLiveApiId(sessionClip.id),
+      targetBeats,
+    ),
+  );
 
   return {
     track: selectedTrack,

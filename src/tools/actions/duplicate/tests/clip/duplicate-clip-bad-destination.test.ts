@@ -108,6 +108,66 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
   });
 });
 
+// Live returns a bare 1 when it refuses a copy, which reads as its Song object
+// unless the result is checked for an id pair. The Song then flowed on as the
+// new clip and aborted the whole call, losing the copies that had landed.
+describe("duplicate clip - a copy Live refuses", () => {
+  /**
+   * Register a destination track whose arrangement duplicate is refused.
+   * @param trackIndex - Track index
+   */
+  function registerRefusingTrack(trackIndex: number): void {
+    registerMockObject(`live_set/tracks/${trackIndex}`, {
+      path: livePath.track(trackIndex),
+      properties: { has_midi_input: 1 },
+      methods: { duplicate_clip_to_arrangement: () => 1 },
+    });
+  }
+
+  it("warns and reports no copy", async () => {
+    registerMidiSource();
+    registerRefusingTrack(2);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t2",
+    });
+
+    expect(result).toStrictEqual({ path: "t2", clips: [] });
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("Failed to duplicate clip"),
+    );
+  });
+
+  it("still reports the copy that landed", async () => {
+    registerMidiSource();
+
+    const track1 = registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+
+    registerArrangementClip(1, 0, 8);
+    registerRefusingTrack(2);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t1,t2",
+    });
+
+    expect(track1.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id clip1",
+      8,
+    );
+    expect(result).toStrictEqual([
+      { id: livePath.track(1).arrangementClip(0), path: "t1[3|1]" },
+      { path: "t2", clips: [] },
+    ]);
+  });
+});
+
 // A destination the clip can't be copied to still takes its turn in a
 // comma-separated name/color list. Renumbering around it named the surviving
 // copies wrong, and shrinking the count could stop a color list from splitting

@@ -131,12 +131,20 @@ describe("resolveDestinationTargets", () => {
    * Register a destination track mock.
    * @param trackIndex - Track index to register
    * @param isMidi - Whether the track takes MIDI input
+   * @param isFrozen - Whether the track is frozen
    */
-  function destTrack(trackIndex: number, isMidi = true): void {
+  function destTrack(
+    trackIndex: number,
+    isMidi = true,
+    isFrozen = false,
+  ): void {
     registerMockObject(`dest_track_${String(trackIndex)}`, {
       path: livePath.track(trackIndex).toString(),
       type: "Track",
-      properties: { has_midi_input: isMidi ? 1 : 0 },
+      properties: {
+        has_midi_input: isMidi ? 1 : 0,
+        is_frozen: isFrozen ? 1 : 0,
+      },
     });
   }
 
@@ -194,7 +202,22 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip t3[1|1] (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
+      "MIDI clip t3[1|1] (id src_clip) was not duplicated: track 5 is audio",
+    );
+  });
+
+  it("marks a frozen track, which Live refuses the copy to", () => {
+    // Live returns success and copies nothing onto a frozen track, so a
+    // matching type is not enough to let the copy through.
+    const clip = sourceClip(3, true);
+
+    destTrack(6, true, true);
+
+    expect(resolveDestinationTargets(clip, [mainLane(6)])).toStrictEqual([
+      null,
+    ]);
+    expect(capturedWarnings()).toContain(
+      "MIDI clip t3[1|1] (id src_clip) was not duplicated: track 6 is frozen",
     );
   });
 
@@ -207,7 +230,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "audio clip t4[1|1] (id src_clip) cannot be duplicated to MIDI track t8 (id dest_track_8)",
+      "audio clip t4[1|1] (id src_clip) was not duplicated: track 8 is MIDI",
     );
   });
 
@@ -223,7 +246,7 @@ describe("resolveDestinationTargets", () => {
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
     ).toStrictEqual([mainLane(7), null]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip t3[1|1] (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
+      "MIDI clip t3[1|1] (id src_clip) was not duplicated: track 5 is audio",
     );
   });
 });

@@ -12,6 +12,7 @@
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
 
 /**
  * Beat tolerance for length comparisons across arrangement editing. Splitting
@@ -134,12 +135,13 @@ export function createAndDeleteTempClip(
       context.silenceWavPath,
     );
 
-    const tempResult = track.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(sessionClip.id),
-      position,
-    ) as [string, string | number];
-    const tempClip = LiveAPI.from(tempResult);
+    const tempClip = clipFromDuplicateResult(
+      track.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(sessionClip.id),
+        position,
+      ),
+    );
 
     slot.call("delete_clip");
     track.call("delete_clip", toLiveApiId(tempClip.id));

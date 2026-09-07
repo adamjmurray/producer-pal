@@ -12,6 +12,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   type CreatedClip,
   type TilingContext,
@@ -256,16 +257,15 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
     context,
   } = args;
 
-  const result = freshTrack.call(
-    "duplicate_clip_to_arrangement",
-    toLiveApiId(sourceClipId),
-    currentPosition,
-  ) as [string, string | number];
+  const tileClip = clipFromDuplicateResult(
+    freshTrack.call(
+      "duplicate_clip_to_arrangement",
+      toLiveApiId(sourceClipId),
+      currentPosition,
+    ),
+  );
 
-  const tileClip = LiveAPI.from(result);
-
-  // Skip silent failures (Ableton returning ["id", 0]) so we don't push
-  // a phantom clip ID into createdClips and confuse downstream callers.
+  // Skip a refused copy so no phantom clip id reaches createdClips.
   if (!tileClip.exists()) {
     console.warn(
       `Failed to duplicate source clip for tile at ${currentPosition}, skipping`,
