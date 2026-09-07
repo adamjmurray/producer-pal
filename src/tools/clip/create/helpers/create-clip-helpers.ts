@@ -14,6 +14,7 @@ import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-prope
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
   prepareSessionClipSlot,
+  requireCreatedClip,
   requireCreatedSessionClip,
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -179,11 +180,7 @@ function createArrangementClip(
     arrangementStartBeats,
     clipLength,
   ) as string;
-  const clip = LiveAPI.from(newClipResult);
-
-  if (!clip.exists()) {
-    throw new Error("failed to create Arrangement clip");
-  }
+  const clip = requireCreatedClip(LiveAPI.from(newClipResult), "MIDI");
 
   return { clip, arrangementStartBeats };
 }

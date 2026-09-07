@@ -222,6 +222,44 @@ describe("ppal-create-clip", () => {
     expect(arrangementStartOf(arrangementClip)).toBe("41|1");
   });
 
+  it("refuses an arrangement clip the track cannot hold", async () => {
+    // Live declines a create it can't do without raising, and the arrangement
+    // create calls answer with another object — the Live Set (id 1). Reported
+    // as created, that id aimed every follow-up call at the Live Set.
+    const midiOnAudio = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: { path: `t${AUDIO_TRACK}[61|1]`, name: "empty" },
+    });
+
+    const midiResult =
+      parseToolResultWithWarnings<CreateClipResult[]>(midiOnAudio);
+
+    expect(midiResult.data).toStrictEqual([]);
+    expect(midiResult.warnings).toContainEqual(
+      expect.stringContaining(
+        "Live created no clip - a MIDI clip needs a MIDI track",
+      ),
+    );
+
+    const audioOnMidi = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}[61|1]`,
+        sampleFile: SAMPLE_FILE,
+      },
+    });
+
+    const audioResult =
+      parseToolResultWithWarnings<CreateClipResult[]>(audioOnMidi);
+
+    expect(audioResult.data).toStrictEqual([]);
+    expect(audioResult.warnings).toContainEqual(
+      expect.stringContaining(
+        "Live created no clip - an audio clip needs an audio track",
+      ),
+    );
+  });
+
   it("creates multiple clips in batch", async () => {
     // Test 1: Create multiple session clips with name (use t10 Child track which has no clips)
     const multiSessionResult = await ctx.client!.callTool({

@@ -507,16 +507,23 @@ describe("createAudioArrangementClip (unit)", () => {
     expect(result.arrangementStartBeats).toBe(MAX_ARRANGEMENT_POSITION_BEATS);
   });
 
-  it("throws when the created audio arrangement clip does not exist", () => {
+  it.each([
+    ["Live creates nothing", ["id", "0"]], // "no object" ref → exists() false
+    // A declined create on a MIDI track hands back another object — the Live
+    // Set (id 1) — which exists, so existence alone would report success.
+    [
+      "create_audio_clip answers with something that is not a clip",
+      ["id", "live-set"],
+    ],
+  ])("throws when %s", (_what, createResult) => {
+    registerMockObject("live-set", { path: livePath.liveSet });
     registerMockObject("track-0", {
       path: livePath.track(0),
-      methods: {
-        create_audio_clip: () => ["id", "0"], // "no object" ref → exists() false
-      },
+      methods: { create_audio_clip: () => createResult },
     });
 
     expect(() => createAudioArrangementClip(0, 0, "/samples/loop.wav")).toThrow(
-      "failed to create audio Arrangement clip",
+      "Live created no clip - an audio clip needs an audio track",
     );
   });
 });

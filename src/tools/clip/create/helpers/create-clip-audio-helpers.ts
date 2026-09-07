@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   prepareSessionClipSlot,
+  requireCreatedClip,
   requireCreatedSessionClip,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
@@ -85,11 +86,7 @@ export function createAudioArrangementClip(
     sampleFile,
     arrangementStartBeats,
   ) as string;
-  const clip = LiveAPI.from(newClipResult);
-
-  if (!clip.exists()) {
-    throw new Error("failed to create audio Arrangement clip");
-  }
+  const clip = requireCreatedClip(LiveAPI.from(newClipResult), "audio");
 
   return { clip, arrangementStartBeats };
 }

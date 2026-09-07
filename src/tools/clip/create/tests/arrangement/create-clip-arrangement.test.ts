@@ -359,20 +359,39 @@ describe("createClip - loc: on arrangementStart", () => {
 });
 
 describe("processClipIteration (unit)", () => {
-  it("throws when the MIDI arrangement clip fails to be created", () => {
-    // create_midi_clip returns the "no object" ref, so the created clip does not
-    // exist. Kills the `!clip.exists()` guard's condition/block/message mutants.
+  /**
+   * Register the Live Set plus a track whose create_midi_clip answers with the
+   * given ref instead of a clip.
+   * @param createResult - What create_midi_clip returns
+   */
+  function registerTrackReturning(createResult: string[]): void {
     registerMockObject("live-set", {
       path: livePath.liveSet,
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
     registerMockObject("track-0", {
       path: livePath.track(0),
-      methods: { create_midi_clip: () => ["id", "0"] },
+      methods: { create_midi_clip: () => createResult },
     });
+  }
+
+  it("throws when Live creates no MIDI arrangement clip", () => {
+    // create_midi_clip returns the "no object" ref, so nothing was created.
+    registerTrackReturning(["id", "0"]);
 
     expect(() => callArrangementIteration({})).toThrow(
-      "failed to create Arrangement clip",
+      "Live created no clip - a MIDI clip needs a MIDI track",
+    );
+  });
+
+  it("throws when create_midi_clip answers with something that is not a clip", () => {
+    // On an audio track Live declines the create and hands back the Live Set
+    // (id 1), which exists. Reported as created, that id poisoned every
+    // follow-up call.
+    registerTrackReturning(["id", "live-set"]);
+
+    expect(() => callArrangementIteration({})).toThrow(
+      "Live created no clip - a MIDI clip needs a MIDI track",
     );
   });
 

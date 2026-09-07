@@ -131,25 +131,39 @@ export function prepareSessionClipSlot(
   return clipSlot;
 }
 
+/** Which kind of clip a create call asked Live for. */
+export type ClipKind = "MIDI" | "audio";
+
 /**
  * The clip Live just put in the slot.
- *
- * Live declines a create it can't do — a MIDI clip on an audio track, say —
- * without raising, and a LiveAPI pointing at nothing reads back as id "0". Left
- * unchecked that ships as a successful create and poisons every follow-up call
- * that uses the id.
  * @param clipSlot - The slot the clip was created in
  * @param kind - Which clip was asked for
  * @returns The new clip
- * @throws When Live created nothing
+ * @throws When Live created no clip
  */
 export function requireCreatedSessionClip(
   clipSlot: LiveAPI,
-  kind: "MIDI" | "audio",
+  kind: ClipKind,
 ): LiveAPI {
-  const clip = clipSlot.child("clip");
+  return requireCreatedClip(clipSlot.child("clip"), kind);
+}
 
-  if (!clip.exists()) {
+/**
+ * The clip a create call produced, or an error saying why there isn't one.
+ *
+ * Live declines a create it can't do — a MIDI clip on an audio track, say —
+ * without raising. Sometimes nothing comes back (id "0"); the arrangement
+ * create calls instead answer with another object entirely, and id 1 is the
+ * Live Set. So existing is not enough: it has to be a Clip. Left unchecked
+ * that ships as a successful create and poisons every follow-up call that uses
+ * the id.
+ * @param clip - What the create call produced
+ * @param kind - Which clip was asked for
+ * @returns The new clip
+ * @throws When Live created no clip
+ */
+export function requireCreatedClip(clip: LiveAPI, kind: ClipKind): LiveAPI {
+  if (!clip.exists() || clip.type !== "Clip") {
     const needs =
       kind === "MIDI"
         ? "a MIDI clip needs a MIDI track"
