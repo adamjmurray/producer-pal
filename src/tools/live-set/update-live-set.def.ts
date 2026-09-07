@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { MAX_TEMPO, MIN_TEMPO, TEMPO_REFUSAL } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -18,7 +19,17 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
     destructiveHint: true,
   },
   inputSchema: {
-    tempo: z.coerce.number().min(20).max(999).optional().describe("BPM"),
+    // The bound is stated as a refusal, not as a range to retry against. Zod
+    // rejects before our handler runs, so this string is the only wording the
+    // model ever sees — and the default ("Too small: expected number to be
+    // >=20") reads as a spec to clamp to, which is what it did: three trials,
+    // three tempos nobody asked for, written and reported as done.
+    tempo: z.coerce
+      .number()
+      .min(MIN_TEMPO, TEMPO_REFUSAL)
+      .max(MAX_TEMPO, TEMPO_REFUSAL)
+      .optional()
+      .describe("BPM"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
     scale: z
       .string()

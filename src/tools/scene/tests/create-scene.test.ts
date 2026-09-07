@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  TEMPO_REFUSAL,
+  MAX_AUTO_CREATED_SCENES,
+} from "#src/tools/constants.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -11,7 +15,6 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -133,7 +136,7 @@ describe("createScene", () => {
   // leave a run of empty scenes behind.
   it("refuses an out-of-range tempo before creating anything", () => {
     expect(() => createScene({ sceneIndex: 0, tempo: 0 })).toThrow(
-      "tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
+      `${TEMPO_REFUSAL} Pass -1 to disable it.`,
     );
     expect(liveSet.call).not.toHaveBeenCalled();
   });

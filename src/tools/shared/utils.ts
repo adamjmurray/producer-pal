@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { MAX_TEMPO, MIN_TEMPO, TEMPO_REFUSAL } from "#src/tools/constants.ts";
 
 /**
  * Sets properties on a target object, but only for non-null values
@@ -446,8 +447,6 @@ export function validateSendPair(
 }
 
 /** Live's tempo range, shared by the live set and per-scene tempos. */
-const MIN_TEMPO = 20;
-const MAX_TEMPO = 999;
 
 /**
  * Refuse a tempo Live can't hold, before anything is written.
@@ -467,10 +466,8 @@ export function validateTempo(
 
   if (tempo < MIN_TEMPO || tempo > MAX_TEMPO) {
     const disableHint =
-      disableValue == null ? "" : ` (or ${disableValue} to disable)`;
+      disableValue == null ? "" : ` Pass ${disableValue} to disable it.`;
 
-    throw new Error(
-      `tempo must be between ${MIN_TEMPO}.0 and ${MAX_TEMPO}.0 BPM${disableHint}`,
-    );
+    throw new Error(`${TEMPO_REFUSAL}${disableHint}`);
   }
 }

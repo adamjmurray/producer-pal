@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { TEMPO_REFUSAL } from "#src/tools/constants.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -112,9 +113,7 @@ describe("updateLiveSet", () => {
   // One value for the whole call, and Live can't hold it — refused before any
   // property is written, the way a malformed timeSignature already was.
   it.each([10, 1000])("refuses an out-of-range tempo of %i", async (tempo) => {
-    await expect(updateLiveSet({ tempo })).rejects.toThrow(
-      "tempo must be between 20.0 and 999.0 BPM",
-    );
+    await expect(updateLiveSet({ tempo })).rejects.toThrow(TEMPO_REFUSAL);
     expect(liveSet.set).not.toHaveBeenCalled();
   });
 

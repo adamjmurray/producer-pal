@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TEMPO_REFUSAL } from "#src/tools/constants.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -121,7 +122,7 @@ describe("updateScene", () => {
   // touched instead.
   it.each([0, 1000])("refuses an out-of-range tempo of %i", (tempo) => {
     expect(() => updateScene({ id: "123", tempo })).toThrow(
-      "tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
+      `${TEMPO_REFUSAL} Pass -1 to disable it.`,
     );
     expect(scene1.set).not.toHaveBeenCalled();
   });
