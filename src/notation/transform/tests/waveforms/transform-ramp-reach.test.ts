@@ -8,9 +8,13 @@ import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts"
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
-/** Eight 16th-note hats filling beats 3 and 4 of bar 2. */
-function hats(): NoteEvent[] {
-  return Array.from({ length: 8 }, (_, i) => ({
+/**
+ * 16th-note hats on a quarter-note grid starting at bar 2 beat 3.
+ * @param count - How many hats
+ * @returns The notes, the last one at beat 3 + (count - 1) / 4
+ */
+function hats(count: number): NoteEvent[] {
+  return Array.from({ length: count }, (_, i) => ({
     pitch: 68,
     start_time: 6 + i * 0.25,
     duration: 0.25,
@@ -28,7 +32,7 @@ function hats(): NoteEvent[] {
  */
 function reachWarnings(
   transform: string,
-  notes = hats(),
+  notes = hats(7),
 ): { warnings: string[]; notes: NoteEvent[] } {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -47,16 +51,18 @@ function reachWarnings(
 }
 
 describe("ramp reach detection", () => {
+  // Seven hats stop at 2|4.5, half a beat before a `3|1` range end — two grid
+  // steps of the range go unused, so the ramp never reaches 127.
   it("warns when the range ends past the last note, and names the fix", () => {
     const { warnings, notes } = reachWarnings(
       "2|3-3|1: velocity = ramp(1, 127)",
     );
 
     // The whole point: every note matched, and the ramp still fell short.
-    expect(notes.at(-1)?.velocity).toBeCloseTo(111.25);
+    expect(notes.at(-1)?.velocity).toBeLessThan(127);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("ramp() only got 88%");
-    expect(warnings[0]).toContain("(2|4.75)");
+    expect(warnings[0]).toContain("ramp() only got 75%");
+    expect(warnings[0]).toContain("(2|4.5)");
   });
 
   it("warns on the half-open spelling too", () => {
@@ -68,34 +74,37 @@ describe("ramp reach detection", () => {
 
   it("stays quiet when the range ends on the last note", () => {
     const { warnings, notes } = reachWarnings(
-      "2|3-2|4.75: velocity = ramp(1, 127)",
+      "2|3-2|4.5: velocity = ramp(1, 127)",
     );
 
     expect(notes.at(-1)?.velocity).toBe(127);
     expect(warnings).toStrictEqual([]);
   });
 
-  it("stays quiet for a round bound one grid step long", () => {
-    // `1|1-3|1` leaves 3% of the range unused — the ordinary cost of a round
-    // bound, not the mistake this warns about.
-    const { warnings } = reachWarnings("1|1-3|1: velocity = ramp(1, 127)", [
-      ...Array.from({ length: 8 }, (_, i) => ({
+  it("stays quiet when the range ends one grid step past the last note", () => {
+    // Eight hats fill beats 3-4, so `3|1` is one 16th past the last of them —
+    // the ordinary cost of a round bound, not the mistake this warns about.
+    const { warnings } = reachWarnings(
+      "2|3-3|1: velocity = ramp(1, 127)",
+      hats(8),
+    );
+
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("stays quiet for a whole-bar range over 16ths", () => {
+    // `2|*` ends one 16th past the last note of a full bar of 16ths.
+    const { warnings } = reachWarnings(
+      "2|*: velocity = ramp(1, 127)",
+      Array.from({ length: 16 }, (_, i) => ({
         pitch: 68,
-        start_time: i * 0.25,
+        start_time: 4 + i * 0.25,
         duration: 0.25,
         velocity: 100,
         probability: 1,
         velocity_deviation: 0,
       })),
-      {
-        pitch: 68,
-        start_time: 7.75,
-        duration: 0.25,
-        velocity: 100,
-        probability: 1,
-        velocity_deviation: 0,
-      },
-    ]);
+    );
 
     expect(warnings).toStrictEqual([]);
   });
@@ -133,6 +142,16 @@ describe("ramp reach detection", () => {
         velocity_deviation: 0,
       },
     ]);
+
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("stays quiet when the ramp line itself failed", () => {
+    // transformedIndices is cumulative: the first line filling it must not make
+    // the failed second line look like it applied something.
+    const { warnings } = reachWarnings(
+      "velocity = 100\n2|3-3|1: velocity = ramp(1)",
+    );
 
     expect(warnings).toStrictEqual([]);
   });

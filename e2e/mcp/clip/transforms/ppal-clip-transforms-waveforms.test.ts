@@ -166,18 +166,18 @@ describe("ppal-clip-transforms-waveforms", () => {
   });
 
   // ramp()/curve() interpolate across the RANGE, not across the notes they
-  // matched, so a range ending past the last note stops short of its end value
-  // with nothing else in the response to say so. Sixteenth-note hats filling
-  // beats 3-4 of bar 2: the last one sits at 7/8 of a `2|3-3|1` range.
+  // matched, so a range ending more than one grid step past the last note stops
+  // short of its end value with nothing else in the response to say so. Seven
+  // 16th hats stop at 2|4.5, two steps inside a `2|3-3|1` range.
   it("warns when a ramp's range ends past its last note", async () => {
-    const clipId = await createMidiClip(46, "v100 n/16 C3 2|3x8");
+    const clipId = await createMidiClip(46, "v100 n/16 C3 2|3x7");
     const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
       await applyTransform(clipId, "2|3-3|1: velocity = ramp(1, 127)"),
     );
 
     expect(warnings.join("\n")).toContain("of the way to its end value");
     // The warning names the position to end the range on, which is the fix.
-    expect(warnings.join("\n")).toContain("2|4.75");
+    expect(warnings.join("\n")).toContain("2|4.5");
     // Every hat was transformed, and none of them reached the asked-for 127.
     expect(await readClipNotes(clipId)).not.toContain("v127");
   });
@@ -190,6 +190,17 @@ describe("ppal-clip-transforms-waveforms", () => {
 
     expect(warnings.join("\n")).not.toContain("of the way to its end value");
     expect(await readClipNotes(clipId)).toContain("v127");
+  });
+
+  it("stays quiet when the range ends one grid step past the last note", async () => {
+    // Eight 16ths fill beats 3-4, so `3|1` is one step past the last of them —
+    // the ordinary cost of a round bound, not a mistake to report.
+    const clipId = await createMidiClip(48, "v100 n/16 C3 2|3x8");
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(clipId, "2|3-3|1: velocity = ramp(1, 127)"),
+    );
+
+    expect(warnings.join("\n")).not.toContain("of the way to its end value");
   });
 
   it("stays quiet when the waveform actually varies the notes", async () => {

@@ -255,6 +255,9 @@ function applyAssignmentToNotes(
   // everything else applies as it goes, which is what lets transforms stack.
   const waveformName = findWaveformName(assignment.expression);
   const deferred: DeferredWrite[] = [];
+  // transformedIndices is cumulative across the whole transform, so it can't
+  // tell whether THIS assignment applied anything. Count what this one wrote.
+  let appliedCount = 0;
 
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
@@ -313,6 +316,7 @@ function applyAssignmentToNotes(
       );
 
       transformedIndices.add(i);
+      appliedCount++;
     } catch (error) {
       const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
 
@@ -324,7 +328,7 @@ function applyAssignmentToNotes(
   }
 
   if (waveformName != null) {
-    commitWaveformWrites(
+    appliedCount = commitWaveformWrites(
       waveformName,
       deferred,
       assignment,
@@ -333,7 +337,7 @@ function applyAssignmentToNotes(
     );
   }
 
-  if (transformedIndices.size > 0) {
+  if (appliedCount > 0) {
     warnShortRamp(
       assignment.expression,
       assignment.timeRange != null,

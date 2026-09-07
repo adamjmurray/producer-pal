@@ -30,6 +30,7 @@ export interface DeferredWrite {
  * @param assignment - The assignment being applied
  * @param timeSigDenominator - Time signature denominator for beat conversion
  * @param transformedIndices - Set collecting the notes this transform changed
+ * @returns How many notes were written (0 when the waveform came out flat)
  */
 export function commitWaveformWrites(
   waveformName: string,
@@ -37,14 +38,14 @@ export function commitWaveformWrites(
   assignment: TransformAssignment,
   timeSigDenominator: number,
   transformedIndices: Set<number>,
-): void {
+): number {
   if (
     isFlatWaveform(
       waveformName,
       deferred.map((write) => write.value),
     )
   ) {
-    return;
+    return 0;
   }
 
   for (const write of deferred) {
@@ -58,6 +59,8 @@ export function commitWaveformWrites(
 
     transformedIndices.add(write.index);
   }
+
+  return deferred.length;
 }
 
 /**

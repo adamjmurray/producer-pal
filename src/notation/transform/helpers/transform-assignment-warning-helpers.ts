@@ -54,22 +54,21 @@ export function rejectsPitchLiteralValue(
 /** The functions whose value is a position within the time range. */
 const RAMP_NAMES = new Set(["ramp", "curve"]);
 
-/**
- * How much of the range may go unused before it counts as a mistake. Ending the
- * range one grid step past the last note is the normal cost of writing a round
- * bound (`1|1-3|1` over 16ths leaves 3%); ending it a whole beat past is the
- * error worth reporting.
- */
-const TOLERATED_SHORTFALL = 0.05;
+/** Slack for float drift when comparing the unused tail against the grid. */
+const TAIL_EPSILON = 1e-6;
 
 /**
  * Warn when a `ramp()`/`curve()` assignment never reached its end value.
  *
  * These interpolate across the SELECTOR'S TIME RANGE, not across the notes they
  * matched, so a range ending after the last matched note stops short — silently.
- * On 16th-note hats, `2|3-3|1: velocity = ramp(1, 127)` tops out at 111,
- * because the last hit sits at 7/8 of the range. The fix is to end the range ON
- * the last note (`2|4.75`), and nothing else in the response says so.
+ * On 16th-note hats that stop at 2|4.5, `2|3-3|1: velocity = ramp(1, 127)`
+ * gets only three quarters of the way to 127. The fix is to end the range ON
+ * the last note (`2|4.5`), and nothing else in the response says so.
+ *
+ * The tolerance is one grid step: stay quiet when the unused tail of the range
+ * is no longer than the smallest gap between the selected notes, since ending
+ * on a round bound one step past the last note is the normal way to write it.
  *
  * Only for an explicitly scoped range. Unscoped, the range is the clip, and
  * falling one note short of the clip end is both unavoidable and documented —
@@ -101,9 +100,12 @@ export function warnShortRamp(
   if (span <= 0) return;
 
   const last = Math.max(...positions);
-  const reached = (last - range.start) / span;
+  const step = smallestGap(positions);
 
-  if (reached > 1 - TOLERATED_SHORTFALL) return;
+  // One distinct position is one phase, whatever the range: nothing to report.
+  if (step == null || range.end - last <= step + TAIL_EPSILON) return;
+
+  const reached = (last - range.start) / span;
 
   const lastBarBeat = musicalBeatsToBarBeat(
     last,
@@ -116,4 +118,24 @@ export function warnShortRamp(
       `value — it spans the time range, and the last matched note is before ` +
       `the range end. End the range on that note (${lastBarBeat}) to reach it.`,
   );
+}
+
+/**
+ * Smallest gap between distinct note start positions.
+ * @param positions - Note start positions, in musical beats
+ * @returns The smallest gap, or null when the notes share one position
+ */
+function smallestGap(positions: number[]): number | null {
+  const sorted = positions.toSorted((a, b) => a - b);
+  let smallest: number | null = null;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = (sorted[i] as number) - (sorted[i - 1] as number);
+
+    if (gap > TAIL_EPSILON && (smallest == null || gap < smallest)) {
+      smallest = gap;
+    }
+  }
+
+  return smallest;
 }
