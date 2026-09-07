@@ -153,6 +153,21 @@ describe("Transform Parser - shorthand", () => {
   });
 
   describe("velocity range shorthand (vA-B)", () => {
+    // Both models measured wrote `velocity = v80-120`, and peggy's generic
+    // "Expected statement" named the selector's first letter instead of the
+    // mistake — so they gave up on transforms and rewrote the notes by hand.
+    it("is rejected as an expression value (velocity = v80-120)", () => {
+      expect(() => parseAssignments("E1: velocity = v80-120")).toThrow(
+        /v80-120 is a shorthand, not a value.*"C1: v80-120"/s,
+      );
+    });
+
+    it("is rejected as a plain velocity value (velocity = v80)", () => {
+      expect(() => parseAssignments("velocity = v80")).toThrow(
+        /v80 is a shorthand, not a value.*velocity = 80/s,
+      );
+    });
+
     it("desugars v80-120 to velocity set + deviation set", () => {
       expect(parseAssignments("v80-120")).toStrictEqual([
         assignment({ parameter: "velocity", expression: 80 }),

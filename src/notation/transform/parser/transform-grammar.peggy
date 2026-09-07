@@ -700,6 +700,7 @@ primary
   / badPeriod
   / badNoteOpInExpression
   / badDeleteInExpression
+  / badVelocityShorthandInExpression
   / unknownFunction
   / number
   / "(" _ expr:expression _ ")" { return expr; }
@@ -746,6 +747,24 @@ noteOpLikeName
 badDeleteInExpression
   = "delete" {
     throw new Error(`delete is a shorthand action, not a value — write it on its own line (optionally with a selector), e.g. "where(note.velocity < 40): delete", not "velocity = delete".`);
+  }
+
+// `vA-B` and `vN` are shorthand tokens, not values. Matched here only to raise a
+// targeted error when one is used in an expression (`velocity = v80-120`). A
+// valid bare shorthand reaches the shorthand rule first, so this never fires on
+// correct usage. Nothing else in expression position starts with `v` + a digit —
+// variables are all namespaced (`note.`, `clip.`, ...).
+//
+// Without it the line fails at column 1 with peggy's generic "Expected
+// statement", which names the selector's first letter and not the real mistake.
+// Models then abandon transforms and rewrite the clip's notes by hand rather
+// than move the token — the same giving-up unknownFunction was added to stop.
+badVelocityShorthandInExpression
+  = "v" min:unsignedInt "-" max:unsignedInt {
+    throw new Error(`v${min}-${max} is a shorthand, not a value — write it on its own line with the selector, e.g. "C1: v${min}-${max}", not "velocity = v${min}-${max}". It sets velocity and velocity_deviation together.`);
+  }
+  / "v" value:unsignedInt {
+    throw new Error(`v${value} is a shorthand, not a value — write the bare number ("velocity = ${value}") or the shorthand on its own line ("C1: v${value}").`);
   }
 
 nDuration "absolute duration value"
