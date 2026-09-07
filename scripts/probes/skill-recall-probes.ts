@@ -283,9 +283,26 @@ export const SKILL_RECALL_PROBES: SkillRecallProbe[] = [
     surface: "param",
     source: "ppal-update-device.force",
     tier: "standard",
+    // Ask precisely. A vague "when is force for?" gets a generic "overrides
+    // safety checks" gloss from every model and reads as a miss that isn't
+    // one — the description does land when the question demands the detail.
     question:
-      "When is ppal-update-device's `force` parameter meant to be used? One sentence.",
-    expect: [/sample/i, /replac/i],
+      "ppal-update-device has one boolean escape-hatch parameter. In one " +
+      "sentence: exactly which write does it unlock, and does it help with " +
+      "any other kind of write?",
+    expect: [/sample/i, /\bpad\b|drum|simpler/i],
+  },
+
+  {
+    surface: "param",
+    source: "ppal-context.force",
+    tier: "standard",
+    // Same precise-question rule as ppal-update-device.force above.
+    question:
+      "ppal-context has one boolean escape-hatch parameter. In one sentence: " +
+      "exactly which write does it unlock, and does it help with any other " +
+      "kind of write?",
+    expect: [/document|existing|non-?empty|content/i, /global|project|memory/i],
   },
 
   {
