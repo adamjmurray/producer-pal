@@ -49,6 +49,17 @@ const TRACK_SCENE_PATH_TOOLS = [
   "ppal-duplicate",
 ] as const;
 
+/**
+ * The small-model driver's only addressing prose, so its gate is wider than
+ * `object-paths`: with no `arrangement-write` in that document, a clip writer
+ * has nowhere else to learn what the `s` half of `t0/s1` counts from.
+ */
+const SMALL_MODEL_PATH_TOOLS = [
+  ...TRACK_SCENE_PATH_TOOLS,
+  CREATE_CLIP,
+  UPDATE_CLIP,
+] as const;
+
 /** The gate for guidance whose whole point is to be said out loud to a person. */
 const CONVERSATION_ONLY = "conversation-only";
 
@@ -203,6 +214,7 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "arrangement-basic": ARRANGEMENT_TOOLS,
 
   "object-paths": TRACK_SCENE_PATH_TOOLS,
+  "object-paths-basic": SMALL_MODEL_PATH_TOOLS,
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],

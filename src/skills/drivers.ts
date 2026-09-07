@@ -48,6 +48,8 @@ export const standardDriver = `${HEADER}
 
 @include "./time-and-values.md"
 
+@include "./object-paths.md"
+
 @include "./transforms-core.md"
 
 @include "./transforms-editing.md"
@@ -78,7 +80,7 @@ export const standardDriver = `${HEADER}
 `;
 
 /**
- * Small-model driver: header, five includes, and the general Rules inline.
+ * Small-model driver: header, six includes, and the general Rules inline.
  *
  * The notation head takes the same two adjacent lines the standard driver gives
  * it. Small-model mode means fewer fragments, but the read/write axis is not a
@@ -101,6 +103,8 @@ export const basicDriver = `${HEADER}
 @include "./{notation}-basic.md"
 
 @include "./{notation}-basic-write.md"
+
+@include "./object-paths-basic.md"
 
 @include "./transforms-basic.md"
 

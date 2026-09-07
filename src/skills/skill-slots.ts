@@ -22,7 +22,10 @@ import {
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
-import { objectPaths } from "#src/skills/fragments/object-paths.ts";
+import {
+  objectPaths,
+  objectPathsBasic,
+} from "#src/skills/fragments/object-paths.ts";
 import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
@@ -108,6 +111,7 @@ export const SKILL_SLOT_NAMES = [
   "arrangement-write",
   "arrangement-basic",
   "object-paths",
+  "object-paths-basic",
   "working-with-live",
   "context-standard",
   "context-basic",
@@ -307,6 +311,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "How a track or scene path is spelled, what a track's `type` does and doesn't say now, and the `+` roots that name a place to create one. The clip half of the same grammar lives in the arrangement guide.",
     builtIn: objectPaths,
+  },
+
+  "object-paths-basic": {
+    title: "Addressing tracks & scenes (small model mode)",
+    description:
+      "How a track or scene path is spelled and how a number the user says maps onto one, for the small-model document. It is that document's only addressing prose, so it is gated on the clip writers too — nothing else there says what `t0/s1` means.",
+    builtIn: objectPathsBasic,
   },
 
   "working-with-live": {

@@ -51,33 +51,33 @@ release.
 Fragments are cut along the lines of what you're actually doing, so you can drop
 a whole area you never use:
 
-| Fragment                                         | What it teaches                                                                                                                  |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `standard`                                       | The standard skills document: the list of `@include` lines below                                                                 |
-| `basic`                                          | The much shorter document used in small model mode                                                                               |
-| `time-and-values`                                | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                                   |
-| `transforms-core`                                | Selecting notes and setting values on them                                                                                       |
-| `transforms-editing`                             | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only)                    |
-| `transforms-expressions`                         | Transform variables, math functions, swing and quantize                                                                          |
-| `transforms-generative`                          | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                                                |
-| `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms`; the whole transforms guide in small model mode                      |
-| `library`                                        | Using library search results: sanity-checking a tag hit against the file's folder, and loading a result into a clip or a Simpler |
-| `devices`                                        | Device paths and VST/AU limits                                                                                                   |
-| `devices-write`                                  | How parameter values snap on a write, building Simpler and Drum Rack instruments, loading samples                                |
-| `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                                                  |
-| `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                    |
-| `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                           |
-| `arrangement-basic`                              | What a take lane is and how a path names one, in small model mode                                                                |
-| `object-paths`                                   | Addressing tracks and scenes by path: `t0`, `s0`, `rt0`, `mt`, and the `+` spellings that create                                 |
-| `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                        |
-| `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                       |
-| `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                                  |
-| `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                                      |
-| `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                                             |
-| `barbeat-standard-write` / `barbeat-basic-write` | The bar\|beat syntax used only to _write_ notes: repeats, brackets, bar copying, examples                                        |
-| `stark-standard` / `stark-basic`                 | The stark note notation guide                                                                                                    |
-| `stark-standard-write` / `stark-basic-write`     | Stark chord symbols (`Am`, `G7`, `Ebm7`), input only, since read-back returns literal notes                                      |
-| `midi-json`                                      | The midi-json note notation guide                                                                                                |
+| Fragment                                         | What it teaches                                                                                                                      |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `standard`                                       | The standard skills document: the list of `@include` lines below                                                                     |
+| `basic`                                          | The much shorter document used in small model mode                                                                                   |
+| `time-and-values`                                | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                                       |
+| `transforms-core`                                | Selecting notes and setting values on them                                                                                           |
+| `transforms-editing`                             | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only)                        |
+| `transforms-expressions`                         | Transform variables, math functions, swing and quantize                                                                              |
+| `transforms-generative`                          | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                                                    |
+| `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms`; the whole transforms guide in small model mode                          |
+| `library`                                        | Using library search results: sanity-checking a tag hit against the file's folder, and loading a result into a clip or a Simpler     |
+| `devices`                                        | Device paths and VST/AU limits                                                                                                       |
+| `devices-write`                                  | How parameter values snap on a write, building Simpler and Drum Rack instruments, loading samples                                    |
+| `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                                                      |
+| `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                        |
+| `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                               |
+| `arrangement-basic`                              | What a take lane is and how a path names one, in small model mode                                                                    |
+| `object-paths` / `object-paths-basic`            | Addressing tracks and scenes by path: `t0`, `s0`, `rt0`, `mt`, the `+` spellings that create, and how a number you say maps onto one |
+| `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                            |
+| `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                           |
+| `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                                      |
+| `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                                          |
+| `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                                                 |
+| `barbeat-standard-write` / `barbeat-basic-write` | The bar\|beat syntax used only to _write_ notes: repeats, brackets, bar copying, examples                                            |
+| `stark-standard` / `stark-basic`                 | The stark note notation guide                                                                                                        |
+| `stark-standard-write` / `stark-basic-write`     | Stark chord symbols (`Am`, `G7`, `Ebm7`), input only, since read-back returns literal notes                                          |
+| `midi-json`                                      | The midi-json note notation guide                                                                                                    |
 
 ::: warning Fragment names changed in 2.1.0
 
@@ -245,10 +245,10 @@ instead of the Full skills document.
 ::: details Small model mode
 
 Small model mode uses the `basic` document, which is already heavily trimmed: it
-includes the notation guide and its write half, `transforms-basic`,
-`arrangement-basic`, the context fragment and `getting-help-basic`, and writes a
-short list of general rules inline. To customize it, override `basic` (or the
-`*-basic` fragments for notation, transforms, arrangement, context, and
-getting-help) the same way.
+includes the notation guide and its write half, `object-paths-basic`,
+`transforms-basic`, `arrangement-basic`, the context fragment and
+`getting-help-basic`, and writes a short list of general rules inline. To
+customize it, override `basic` (or the `*-basic` fragments for notation, object
+paths, transforms, arrangement, context, and getting-help) the same way.
 
 :::
