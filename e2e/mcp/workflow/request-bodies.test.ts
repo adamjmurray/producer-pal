@@ -6,14 +6,9 @@
 /**
  * A body the server cannot use answers JSON, never an HTML stack trace.
  *
- * Two ways it used to leak one. Normalizing ran outside the tool route's try,
- * so a refusal meant for the caller escaped to Express's default error handler;
- * and nothing at all handled what never reached a route, so a malformed body or
- * an undecodable path did the same on /mcp too. Either way the answer was an
- * HTML page naming the server's absolute paths, from endpoints that are
- * deliberately reachable from off the machine. Only the built device can leak
- * those paths, so only this suite can prove they are gone — and it pins that
- * MCP's own answers are unchanged.
+ * Only the built device can name the paths the leaked trace carried, so only
+ * this suite can prove they are gone. It also pins that MCP's own answers to
+ * the same inputs are unchanged.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track)
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -157,30 +152,25 @@ describe("request bodies", () => {
   // These never reach a route at all, so the tool route's own try can't catch
   // them. The bundle's path is what the leaked trace named on every frame.
   it.each([
-    ["a tool call", "/api/tools/ppal-read-track", "{bad", 400],
-    ["the MCP endpoint", "/mcp", "{bad", 400],
-    ["a tool call", "/api/tools/ppal-read-track", '"hi"', 400],
+    ["malformed JSON", "/api/tools/ppal-read-track", "{bad", 400],
+    ["malformed JSON on the MCP endpoint", "/mcp", "{bad", 400],
+    ["a bare string", "/api/tools/ppal-read-track", '"hi"', 400],
     // express.json is capped at 2mb.
     [
-      "a tool call",
+      "a body over the size limit",
       "/api/tools/ppal-read-track",
       JSON.stringify({ a: "x".repeat(3_000_000) }),
       413,
     ],
-  ])(
-    "answers JSON for a body %s cannot parse",
-    async (_l, path, body, status) => {
-      const { response, text } = await postRawPath(path, body);
+  ])("answers JSON for %s", async (_label, path, body, status) => {
+    const { response, text } = await postRawPath(path, body);
 
-      expect(response.status).toBe(status);
-      expect(response.headers.get("content-type")).toContain(
-        "application/json",
-      );
-      expect(text).not.toContain("<!DOCTYPE html>");
-      expect(text).not.toContain("mcp-server.mjs");
-      expect(JSON.parse(text).error).toStrictEqual(expect.any(String));
-    },
-  );
+    expect(response.status).toBe(status);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(text).not.toContain("<!DOCTYPE html>");
+    expect(text).not.toContain("mcp-server.mjs");
+    expect(JSON.parse(text).error).toStrictEqual(expect.any(String));
+  });
 
   it("answers JSON for a path that isn't valid percent-encoding", async () => {
     // Raised by the router decoding the path, before any route runs.
@@ -189,7 +179,7 @@ describe("request bodies", () => {
     expect(response.status).toBe(400);
     expect(text).not.toContain("<!DOCTYPE html>");
     expect(text).not.toContain("mcp-server.mjs");
-    expect(JSON.parse(text).error).toBe("Bad request");
+    expect(JSON.parse(text).error).toBe("Bad Request");
   });
 
   it("keeps MCP's answer to a bad JSON-RPC message unchanged", async () => {

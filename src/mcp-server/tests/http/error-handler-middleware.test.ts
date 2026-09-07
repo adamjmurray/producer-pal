@@ -89,7 +89,7 @@ describe("errorHandlerMiddleware", () => {
     expect(body).toStrictEqual({ error: "request entity too large" });
   });
 
-  // body-parser sets both; some versions of its dependencies set only one.
+  // Not every error source sets `status`.
   it("reads the status off statusCode when there is no status", () => {
     const { status } = handle(
       Object.assign(new Error("nope"), { statusCode: 400, expose: true }),
@@ -108,10 +108,12 @@ describe("errorHandlerMiddleware", () => {
     ["a thrown string", "raw string with /Users/x in it"],
     ["null", null],
   ])("says nothing about a server fault with %s", (_label, error) => {
-    const { status, body } = handle(error);
+    const { status, body, next } = handle(error);
 
     expect(status).toBe(500);
     expect(body).toStrictEqual({ error: "Internal server error" });
+    // A next() after the response destroys the socket under a flushed body.
+    expect(next).not.toHaveBeenCalled();
   });
 
   // The router's 400 for an undecodable path carries a status but no expose.
@@ -119,18 +121,33 @@ describe("errorHandlerMiddleware", () => {
     [
       "no expose flag",
       Object.assign(new URIError("Failed to decode param"), { status: 400 }),
+      "Bad Request",
     ],
     [
       "expose false",
       Object.assign(new Error("secret"), { status: 400, expose: false }),
+      "Bad Request",
+    ],
+    // The reason phrase has to follow the status, not assume it was a 400.
+    [
+      "no expose flag on a 413",
+      Object.assign(new Error("secret"), { status: 413 }),
+      "Payload Too Large",
+    ],
+    // Not a status Node names.
+    [
+      "an unnamed status",
+      Object.assign(new Error("secret"), { status: 499 }),
+      "Request failed",
     ],
   ])(
-    "keeps a 4xx status but not the message when it has %s",
-    (_label, error) => {
-      const { status, body } = handle(error);
+    "answers the status's own reason, not the message, when it has %s",
+    (_label, error, reason) => {
+      const { status, body, next } = handle(error);
 
-      expect(status).toBe(400);
-      expect(body).toStrictEqual({ error: "Bad request" });
+      expect(status).toBe((error as { status: number }).status);
+      expect(body).toStrictEqual({ error: reason });
+      expect(next).not.toHaveBeenCalled();
     },
   );
 
@@ -157,16 +174,20 @@ describe("errorHandlerMiddleware", () => {
     expect(console.error).not.toHaveBeenCalled();
   });
 
-  // A status outside the HTTP range would make res.status() throw.
+  // res.status() throws on a non-integer, which would put the HTML stack trace
+  // this handler exists to prevent into its own response.
   it.each([
-    ["a status below 400", 200],
-    ["a status above 599", 4000],
+    ["a status below 400", 399],
+    ["a status above 599", 600],
+    ["a fractional status", 400.5],
+    ["NaN", Number.NaN],
   ])("ignores %s", (_label, status) => {
-    const { status: answered } = handle(
+    const { status: answered, body } = handle(
       Object.assign(new Error("x"), { status, expose: true }),
     );
 
     expect(answered).toBe(500);
+    expect(body).toStrictEqual({ error: "Internal server error" });
   });
 
   // The MCP transport streams its own response; there is nothing left to replace.

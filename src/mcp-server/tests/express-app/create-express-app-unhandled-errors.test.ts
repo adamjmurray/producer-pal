@@ -13,10 +13,6 @@ vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   error: vi.fn(),
 }));
 
-// Anything Express raises before or outside a route handler used to fall
-// through to its default handler, which answers a JSON API with an HTML page
-// carrying a stack trace and the server's absolute paths. These endpoints are
-// deliberately reachable from off the machine, so that is a real leak.
 describe("errors that never reach a route", () => {
   const appState = setupExpressAppServer();
 

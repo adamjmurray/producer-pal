@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { STATUS_CODES } from "node:http";
 import { type NextFunction, type Request, type Response } from "express";
 import * as console from "../../node-for-max-logger.ts";
 
-/** What Express's built-in middleware attaches to an error it raises. */
+/** What Express attaches to an error it raises. */
 interface HttpError {
   message?: unknown;
   status?: unknown;
@@ -46,12 +47,18 @@ export function errorHandlerMiddleware(
 
   if (status < 500) {
     // expose says the message describes what the caller sent, so echoing it is
-    // safe and useful. Without it, answer the status and say nothing more —
-    // the router's 400 for an undecodable path sets no expose flag at all.
+    // safe and useful. Today only body-parser sets it, and only on the body it
+    // was handed. Nothing enforces that: http-errors marks every 4xx expose,
+    // so a route that starts using it must not put a server path in a message.
+    //
+    // Without expose, answer the status and nothing more — the router's 400 for
+    // an undecodable path sets no expose flag at all.
     const exposed = (error as HttpError | null)?.expose === true;
 
     res.status(status).json({
-      error: exposed ? String((error as HttpError).message) : "Bad request",
+      error: exposed
+        ? String((error as HttpError).message)
+        : (STATUS_CODES[status] ?? "Request failed"),
     });
 
     return;
@@ -66,8 +73,9 @@ export function errorHandlerMiddleware(
 /**
  * The status an error asks for.
  *
- * body-parser sets `status` and `statusCode` to the same value, but only one of
- * them on some versions, so read both.
+ * Read both spellings: not every error source sets `status`. Anything that
+ * isn't a whole number in the HTTP error range is 500 — res.status() throws on
+ * the rest, out of the one handler that has to never throw.
  *
  * @param error - Whatever was thrown or passed to next()
  * @returns The HTTP status, or 500 when the error names none
@@ -76,7 +84,10 @@ function errorStatus(error: unknown): number {
   const { status, statusCode } = (error ?? {}) as HttpError;
   const claimed = typeof status === "number" ? status : statusCode;
 
-  return typeof claimed === "number" && claimed >= 400 && claimed <= 599
+  return typeof claimed === "number" &&
+    Number.isInteger(claimed) &&
+    claimed >= 400 &&
+    claimed <= 599
     ? claimed
     : 500;
 }
