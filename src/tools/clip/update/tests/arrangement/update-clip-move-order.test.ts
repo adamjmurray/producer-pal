@@ -213,17 +213,88 @@ describe("orderArrangementMoves", () => {
     expect(order).toStrictEqual([0, 1]);
   });
 
-  // The clip in the way isn't moving, but it is still this call's to update:
-  // it gets its turn before the move that lands on it.
-  it("updates a clip that stays put before a move lands on it", () => {
+  // The clip in the way isn't moving anywhere, so nothing can clear the span
+  // for the mover — running the move would delete a clip the call reports as
+  // updated. It still takes its turn, for its name, color and notes.
+  it("refuses a move onto a clip the call leaves where it is", () => {
     const clips = registerRow([
       { id: "115", start: 32, end: 48 },
       { id: "114", start: 16, end: 32 },
     ]);
 
-    const { order } = orderArrangementMoves(clips, moves({ "115": 16 }));
+    const { order, blockedIds } = orderArrangementMoves(
+      clips,
+      moves({ "115": 16 }),
+    );
 
     expect(order).toStrictEqual([1, 0]);
+    expect(blockedIds).toStrictEqual(new Set(["115"]));
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "clip t0[9|1] (id 115) was not moved: it would land on clip t0[5|1] (id 114), " +
+          "which this call leaves where it is; move that clip out of the way too, " +
+          "or use separate calls",
+      ),
+    );
+  });
+
+  // A short destination list pads the rest with nulls, so the clips past the
+  // last one are sitting targets for the ones that did get a destination.
+  it("refuses a move onto a clip the destination list ran out for", () => {
+    const clips = registerRow([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 16, end: 32 },
+    ]);
+    const destinations = new Map<string, ClipPath>([
+      ["113", { kind: "track", trackIndex: 0 }],
+    ]);
+
+    const { blockedIds } = orderArrangementMoves(
+      clips,
+      moves({ "113": 16 }, destinations),
+    );
+
+    expect(blockedIds).toStrictEqual(new Set(["113"]));
+  });
+
+  // moveIntent returns null for a slot destination the same way it does for a
+  // clip going nowhere, but this clip does free its span: it is re-created in
+  // the slot and the original deleted. Treating it as a permanent occupant
+  // would refuse the move below for no reason.
+  it("lets a move follow a clip leaving the arrangement for a slot", () => {
+    const clips = registerRow([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 32, end: 48 },
+    ]);
+    const destinations = new Map<string, ClipPath>([
+      ["113", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
+    ]);
+
+    const { order, blockedIds } = orderArrangementMoves(
+      clips,
+      moves({ "114": 0 }, destinations),
+    );
+
+    expect(order).toStrictEqual([0, 1]);
+    expect(blockedIds).toStrictEqual(new Set());
+  });
+
+  it("lets a move follow a clip leaving for a take lane", () => {
+    const clips = registerRow([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 32, end: 48 },
+    ]);
+    const destinations = new Map<string, ClipPath>([
+      ["113", { kind: "new-take-lane", trackIndex: 0 }],
+    ]);
+
+    const { order, blockedIds } = orderArrangementMoves(
+      clips,
+      moves({ "114": 0 }, destinations),
+    );
+
+    expect(order).toStrictEqual([0, 1]);
+    expect(blockedIds).toStrictEqual(new Set());
   });
 
   it("cascades across tracks", () => {
@@ -294,18 +365,25 @@ describe("orderArrangementMoves", () => {
     expect(order).toStrictEqual([2, 1, 0]);
   });
 
-  it("clears the span a longer arrangementLength tiles across", () => {
+  it("refuses a resize that tiles over a clip staying put", () => {
     const clips = registerRow(row);
 
-    // 113 stays at 1|1 but grows to 8 bars, which tiles over 114 at 5|1.
-    const { order } = orderArrangementMoves(
+    // 113 stays at 1|1 but grows to 8 bars, which tiles over 114 at 5|1 — and
+    // 114 is going nowhere, so nothing can clear that span first.
+    const { blockedIds } = orderArrangementMoves(
       clips,
       moves({}, undefined, {
         "113": 32,
       }),
     );
 
-    expect(order).toStrictEqual([1, 0, 2]);
+    expect(blockedIds).toStrictEqual(new Set(["113"]));
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "clip t0[1|1] (id 113) was not moved or resized: it would land on " +
+          "clip t0[5|1] (id 114), which this call leaves where it is",
+      ),
+    );
   });
 
   it("counts a slot destination the call will ignore for a resize", () => {
@@ -315,13 +393,14 @@ describe("orderArrangementMoves", () => {
     ]);
 
     // update-clip warns the slot is ignored and tiles the clip where it is, so
-    // the span it clears still runs over 114.
-    const { order } = orderArrangementMoves(
+    // the span it clears still runs over 114 — and the slot doesn't free 113's
+    // own span either, so 114 has nothing to wait behind.
+    const { blockedIds } = orderArrangementMoves(
       clips,
       moves({}, destinations, { "113": 32 }),
     );
 
-    expect(order).toStrictEqual([1, 0, 2]);
+    expect(blockedIds).toStrictEqual(new Set(["113"]));
   });
 
   it("refuses the resize too when it refuses the move", () => {
@@ -544,6 +623,33 @@ describe("updateClip - moving a row of arrangement clips", () => {
           "which this call can't move out of the way first",
       ),
     );
+  });
+
+  // The first id's toPath doesn't parse, so that clip goes nowhere — and the
+  // second one's destination is the span it is sitting in.
+  it("keeps a clip whose toPath entry didn't parse", async () => {
+    const result = await updateClip({
+      id: "113,114",
+      toPath: "not-a-real-path,t0[1|1]",
+    });
+
+    expect(movedTo()).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "113", path: "t0[1|1]" },
+      { id: "114", path: "t0[5|1]" },
+    ]);
+  });
+
+  // One destination for two clips pads the second with null, leaving it parked
+  // on the span the first one is moving into.
+  it("keeps a clip past the end of a short destination list", async () => {
+    const result = await updateClip({ id: "114,113", toPath: "t0[1|1]" });
+
+    expect(movedTo()).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "114", path: "t0[5|1]" },
+      { id: "113", path: "t0[1|1]" },
+    ]);
   });
 
   it("refuses a swap written as arrangementStart too", async () => {

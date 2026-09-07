@@ -10,7 +10,8 @@
  * later put every clip's destination on top of the next clip's current
  * position. Only real Live shows what that costs: the clips in between were
  * wiped before the loop reached them. The batch now runs the moves in an order
- * that clears nobody's way, and refuses a pair that would trade places.
+ * that clears nobody's way, and refuses a move nothing can clear for: a pair
+ * trading places, or a clip the call sends nowhere at all.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track)
  *
@@ -123,6 +124,34 @@ describe("moving a row of arrangement clips", () => {
     ).toBe(first.id);
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "405|1"))?.id,
+    ).toBe(second.id);
+  });
+
+  // One destination for two clips leaves the second one with nowhere to go, so
+  // it sits in the span the first one is moving into. The move used to run and
+  // delete it, then report it as updated.
+  it("refuses a move onto a clip the call sends nowhere, and keeps it", async () => {
+    const [first, second] = (await createRow(["601|1", "605|1"], "Static")) as [
+      CreateClipResult,
+      CreateClipResult,
+    ];
+
+    const { warnings } = await moveClips(
+      [second, first],
+      [destination("601|1")],
+    );
+
+    expect(warnings.join(" ")).toContain(
+      `clip ${second.path} (id ${second.id}) was not moved: it would land on clip ` +
+        `${first.path} (id ${first.id}), which this call leaves where it is`,
+    );
+
+    // Both still where they started, with the ids they started with.
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "601|1"))?.id,
+    ).toBe(first.id);
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "605|1"))?.id,
     ).toBe(second.id);
   });
 });

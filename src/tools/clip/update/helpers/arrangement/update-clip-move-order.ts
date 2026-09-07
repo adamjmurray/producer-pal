@@ -18,6 +18,10 @@
  * back-to-front, an earlier one front-to-back. Clips trading positions are a
  * cycle with no such order, so those operations are refused instead: both the
  * move and the resize, since either one clears.
+ *
+ * A clip the call moves nowhere is refused the same way, for the same reason:
+ * it takes its turn in the order, but its span never comes free, so anything
+ * aimed at that span would run over a clip that is still sitting there.
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -92,7 +96,12 @@ export function orderArrangementMoves(
 
   return dependencies == null
     ? inOrder
-    : resolveOrder(clips, dependencies, intents);
+    : resolveOrder(
+        clips,
+        dependencies,
+        intents,
+        clips.map((clip) => freesCurrentSpan(clip, moves)),
+      );
 }
 
 // --- Helpers below main exports ---
@@ -130,6 +139,29 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
     startBeats,
     lengthBeats,
   };
+}
+
+/**
+ * Whether the call takes this clip off the span it holds now. True for a move
+ * to a slot or a take lane too: the clip is re-created there and the original
+ * deleted, so the arrangement span it held comes free.
+ *
+ * False means a permanent occupant — no other clip's move can wait for it to
+ * get out of the way, because it never does.
+ * @param clip - The clip being updated
+ * @param moves - Where each clip is headed
+ * @returns True when the clip's current span comes free
+ */
+function freesCurrentSpan(clip: LiveAPI, moves: ClipMoves): boolean {
+  if (moves.startBeatsFor(clip) != null) return true;
+
+  const destination = moves.destinationById?.get(clip.id);
+
+  if (destination == null) return false;
+
+  // A slot alongside an arrangement length is ignored: update-clip tiles the
+  // clip where it stands, so it goes nowhere.
+  return !(destination.kind === "slot" && moves.lengthBeatsFor(clip) != null);
 }
 
 /**
@@ -230,56 +262,73 @@ function landsAt(
 }
 
 /**
- * Emit the clips in dependency order, taking the earliest one whose waits are
- * all settled. Whatever is left when nothing is ready is a cycle, plus the
- * clips waiting on it: none of them can move, because the clip in their way
- * never leaves.
+ * Emit the clips in dependency order, taking the earliest one whose waits have
+ * all vacated their spans.
+ *
+ * Emitting a clip and freeing its span are two different things: a clip the
+ * call moves nowhere still takes its turn (its name, color and notes land) but
+ * never gets out of anyone's way. Whatever can't be reached is a cycle, a
+ * permanent occupant's dependents, or clips waiting behind either: none of them
+ * can move, because the clip in their way never leaves.
  * @param clips - The clips to update, in the order the caller named them
  * @param dependencies - Which clips each clip has to wait for
  * @param intents - What the call does to each clip's span
+ * @param vacates - Whether each clip's current span comes free
  * @returns The processing order, and the operations that have to be refused
  */
 function resolveOrder(
   clips: LiveAPI[],
   dependencies: Array<Set<number>>,
   intents: Array<MoveIntent | null>,
+  vacates: boolean[],
 ): ArrangementMoveOrder {
   const order: number[] = [];
-  const done = new Set<number>();
+  const emitted = new Set<number>();
+  const vacated = new Set<number>();
   const nextReady = (): number =>
     clips.findIndex(
       (_, index) =>
-        !done.has(index) &&
+        !emitted.has(index) &&
         [...(dependencies[index] as Set<number>)].every((wait) =>
-          done.has(wait),
+          vacated.has(wait),
         ),
     );
 
   for (let next = nextReady(); next >= 0; next = nextReady()) {
-    done.add(next);
+    emitted.add(next);
+
+    if (vacates[next]) vacated.add(next);
+
     order.push(next);
   }
 
   const blocked = clips
     .map((_, index) => index)
-    .filter((index) => !done.has(index));
+    .filter((index) => !emitted.has(index));
 
   order.push(...blocked);
 
   return {
     order,
-    blockedIds: warnBlockedMoves(clips, dependencies, blocked, intents),
+    blockedIds: warnBlockedMoves(
+      clips,
+      dependencies,
+      blocked,
+      intents,
+      vacated,
+    ),
   };
 }
 
 /**
  * Say which operations the call gave up on, and name a clip standing in each
- * one's way. A blocked clip always waits on another blocked clip — that is what
- * made it unorderable — so there is always one to name.
+ * one's way. A blocked clip always waits on a clip that never vacated — that is
+ * what made it unorderable — so there is always one to name.
  * @param clips - The clips to update
  * @param dependencies - Which clips each clip has to wait for
  * @param blocked - Positions of the clips whose moves are refused
  * @param intents - What the call does to each clip's span
+ * @param vacated - Positions of the clips whose spans came free
  * @returns The blocked clips' ids
  */
 function warnBlockedMoves(
@@ -287,25 +336,29 @@ function warnBlockedMoves(
   dependencies: Array<Set<number>>,
   blocked: number[],
   intents: Array<MoveIntent | null>,
+  vacated: Set<number>,
 ): Set<string> {
   const blockedSet = new Set(blocked);
 
   for (const index of blocked) {
     const clip = clips[index] as LiveAPI;
     const waits = [...(dependencies[index] as Set<number>)];
-    const blocker = clips[
-      waits.find((wait) => blockedSet.has(wait)) as number
-    ] as LiveAPI;
+    const blockerIndex = waits.find((wait) => !vacated.has(wait)) as number;
+    const blocker = clips[blockerIndex] as LiveAPI;
     // A resize clears the span it tiles across, so leaving it to run would
     // destroy the clip the refusal is protecting.
     const skipped =
       intents[index]?.lengthBeats == null
         ? "was not moved"
         : "was not moved or resized";
+    // Two ways a span never comes free: the clip in the way is itself blocked,
+    // or the call sends it nowhere at all.
+    const why = blockedSet.has(blockerIndex)
+      ? "which this call can't move out of the way first; move them in separate calls"
+      : "which this call leaves where it is; move that clip out of the way too, or use separate calls";
 
     console.warn(
-      `clip ${targetLabel(clip)} ${skipped}: it would land on clip ${targetLabel(blocker)}, ` +
-        `which this call can't move out of the way first; move them in separate calls`,
+      `clip ${targetLabel(clip)} ${skipped}: it would land on clip ${targetLabel(blocker)}, ${why}`,
     );
   }
 
