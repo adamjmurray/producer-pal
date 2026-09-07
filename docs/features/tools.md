@@ -1,4 +1,5 @@
 ---
+outline: [2, 3]
 title: Ableton MCP Tool Reference
 description:
   Every Producer Pal tool with its full parameter schema. Tracks, scenes, MIDI
@@ -39,7 +40,7 @@ gives you this shape.
 
 ## Core Tools
 
-### 🔧 Connect (`ppal-connect`) {#ppal-connect}
+### Connect (`ppal-connect`) {#ppal-connect}
 
 - Summarizes the state of the current Live Set
 - Returns a [skill set](/features#skills) and [context](/guide/context) that
@@ -53,7 +54,7 @@ gives you this shape.
 
 <!--@include: ../_generated/ppal-connect-output.md-->
 
-### 🔧 Context (`ppal-context`) {#ppal-context}
+### Context (`ppal-context`) {#ppal-context}
 
 - Read and write the three [context layers](/guide/context): project context
   (notes about this Live Set), global context (preferences that apply to every
@@ -65,7 +66,7 @@ gives you this shape.
 
 ## Session Tools
 
-### 🔧 Playback (`ppal-playback`) {#ppal-playback}
+### Playback (`ppal-playback`) {#ppal-playback}
 
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
@@ -79,7 +80,7 @@ gives you this shape.
 
 <!--@include: ../_generated/ppal-playback-output.md-->
 
-### 🔧 Library (`ppal-library`) {#ppal-library}
+### Library (`ppal-library`) {#ppal-library}
 
 ::: warning Requires Live 12.4+
 
@@ -114,7 +115,7 @@ Live, or make sure your standalone Max is up to date. See
 
 <!--@include: ../_generated/ppal-library-output.md-->
 
-### 🔧 Select (`ppal-select`) {#ppal-select}
+### Select (`ppal-select`) {#ppal-select}
 
 - Read current selection and view state (when no arguments)
   - Returns only non-null fields: selected track, scene, clip, device
@@ -134,7 +135,7 @@ Live, or make sure your standalone Max is up to date. See
 
 ## Action Tools
 
-### 🔧 Delete (`ppal-delete`) {#ppal-delete}
+### Delete (`ppal-delete`) {#ppal-delete}
 
 - Remove tracks, return tracks, scenes, clips, devices, or drum pads
 - Bulk delete multiple objects
@@ -143,7 +144,7 @@ Live, or make sure your standalone Max is up to date. See
 
 <!--@include: ../_generated/ppal-delete-output.md-->
 
-### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
+### Duplicate (`ppal-duplicate`) {#ppal-duplicate}
 
 - Copy tracks, scenes, clips, devices, or drum pads
 - Create multiple copies at once
@@ -178,7 +179,7 @@ limitation).
 
 ## Live Set Tools
 
-### 🔧 Read Live Set (`ppal-read-live-set`) {#ppal-read-live-set}
+### Read Live Set (`ppal-read-live-set`) {#ppal-read-live-set}
 
 - Get complete Live project overview
 - View all tracks and scenes at once, with a clip count per track (clip contents
@@ -192,7 +193,7 @@ limitation).
 
 <!--@include: ../_generated/ppal-read-live-set-output.md-->
 
-### 🔧 Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
+### Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators
@@ -203,7 +204,7 @@ limitation).
 
 ## Track Tools
 
-### 🔧 Create Track (`ppal-create-track`) {#ppal-create-track}
+### Create Track (`ppal-create-track`) {#ppal-create-track}
 
 - Add MIDI, audio, or return tracks
 - Position tracks exactly where you want
@@ -213,7 +214,7 @@ limitation).
 
 <!--@include: ../_generated/ppal-create-track-output.md-->
 
-### 🔧 Read Track (`ppal-read-track`) {#ppal-read-track}
+### Read Track (`ppal-read-track`) {#ppal-read-track}
 
 - Get detailed track information
 - View all clips in Session and Arrangement
@@ -227,7 +228,7 @@ limitation).
 
 <!--@include: ../_generated/ppal-read-track-output.md-->
 
-### 🔧 Update Track (`ppal-update-track`) {#ppal-update-track}
+### Update Track (`ppal-update-track`) {#ppal-update-track}
 
 - Change track gain (volume), panning, and send levels, several sends at once
   with `sends: [{return, gainDb}]` (each return named by id, exact name, or
@@ -242,7 +243,7 @@ limitation).
 
 ## Scene Tools
 
-### 🔧 Create Scene (`ppal-create-scene`) {#ppal-create-scene}
+### Create Scene (`ppal-create-scene`) {#ppal-create-scene}
 
 - Add new scenes at any position
 - Set scene name, color, tempo, and time signature
@@ -253,7 +254,7 @@ limitation).
 
 <!--@include: ../_generated/ppal-create-scene-output.md-->
 
-### 🔧 Read Scene (`ppal-read-scene`) {#ppal-read-scene}
+### Read Scene (`ppal-read-scene`) {#ppal-read-scene}
 
 - View scene details and all its clips
 - Check which clips are playing/triggered
@@ -263,7 +264,7 @@ limitation).
 
 <!--@include: ../_generated/ppal-read-scene-output.md-->
 
-### 🔧 Update Scene (`ppal-update-scene`) {#ppal-update-scene}
+### Update Scene (`ppal-update-scene`) {#ppal-update-scene}
 
 - Change scene name, color, tempo, and time signature
 - Update multiple scenes at once
@@ -284,7 +285,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 :::
 
-### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
+### Create Clip (`ppal-create-clip`) {#ppal-create-clip}
 
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
@@ -301,7 +302,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 <!--@include: ../_generated/ppal-create-clip-output.md-->
 
-### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
+### Read Clip (`ppal-read-clip`) {#ppal-read-clip}
 
 - Get detailed info about any clip in Session or Arrangement
 - Read MIDI notes in [custom notation](/features#custom-music-notation) (C3,
@@ -312,7 +313,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 <!--@include: ../_generated/ppal-read-clip-output.md-->
 
-### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
+### Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes using [custom notation](/features#custom-music-notation)
@@ -334,7 +335,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 <!--@include: ../_generated/ppal-update-clip-output.md-->
 
-### Audio Clips {#audio-clips}
+#### Audio Clips {#audio-clips}
 
 A new audio clip's region comes from its sample, so `start`, `length`,
 `firstStart`, and `looping` are MIDI-only on Create Clip and are ignored (with a
@@ -367,7 +368,7 @@ sounding.
 
 ## Device Tools
 
-### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
+### Create Device (`ppal-create-device`) {#ppal-create-device}
 
 - Add native Live devices (instruments, MIDI effects, audio effects)
 - Place devices on any track type: MIDI, audio, return, or the main track
@@ -382,7 +383,7 @@ sounding.
 
 <!--@include: ../_generated/ppal-create-device-output.md-->
 
-### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
+### Read Device (`ppal-read-device`) {#ppal-read-device}
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
@@ -393,7 +394,7 @@ sounding.
 
 <!--@include: ../_generated/ppal-read-device-output.md-->
 
-### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
+### Update Device (`ppal-update-device`) {#ppal-update-device}
 
 - Change device name
 - Change device parameter values (control knobs, dials, etc)
@@ -417,7 +418,7 @@ sounding.
 
 ## Advanced Tools
 
-### 🔧 Live API (`ppal-live-api`) {#ppal-live-api}
+### Live API (`ppal-live-api`) {#ppal-live-api}
 
 Direct access to the
 [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
