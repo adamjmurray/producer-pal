@@ -136,17 +136,21 @@ has to change the trade, not the prose — make the op do something hand-written
 notes cannot, or make the manual route cost more than one call.
 
 **Naming the unit does not stop a model reading `sin()` as radians.** Every luna
-trial opens with `sin(2*pi*note.start/4)` and needs 3 to 5 calls to arrive at
+trial opened with `sin(2*pi*note.start/4)` and needed 3 to 5 calls to arrive at
 `sin(1bar)`. The waveform argument is a cycle LENGTH, and saying so in the
 signature line — "never radians, never a note property", where the model reads
 the call shape — changed nothing: still 0 of 3, still 3+ calls each.
 
 It is not a wording gap, for the same reason the note-count ops were not. The
-radian form PARSES and comes back `transformed: N`, so nothing tells the model
-it asked for the wrong thing; it revises only because the music is wrong. A fix
-has to make the wrong unit visible — reject a waveform period that is not a note
-value, or report the cycle length the call actually produced. Don't retry this
-as prose.
+model has no signal until the music is wrong, so it revises only after hearing
+it. Refusing the call is what moved the number: once a period built from
+`note.start` errored (`period must be > 0` on the note at 0) or warned as a flat
+LFO, the trials fell to 2 to 3 calls and self-corrected to `sin(1bar)` off the
+message alone.
+
+The first call is still the radian form, and nothing we send can reach it — the
+model writes it before it has seen anything from us. The turn-4 check wants one
+call, so it stays red whatever ships. Don't retry this as prose.
 
 **A locator param loses to a value the model already has.** `ppal-duplicate`'s
 locator was missed in 3 of 3 trials while `ppal-playback`'s `startLocator`
