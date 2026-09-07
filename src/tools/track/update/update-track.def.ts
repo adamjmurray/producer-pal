@@ -33,8 +33,9 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     path: param(z.coerce.string().optional(), {
       default:
-        "track path(s) to update instead of id, comma-separated: 't<index>', 'rt<index>' (return), or 'mt' (main) - e.g. 't0' or 't0,rt1'",
-      smallModel: "track path to update instead of id (e.g., 't0')",
+        "track path(s) to update instead of id, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt<index>' (return), or 'mt' (main) - e.g. 't0' or 't0,rt1'",
+      smallModel:
+        "track path to update instead of id: 't<index>', where t0 is the first track (a user's \"track 3\" is t2)",
     }),
 
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),

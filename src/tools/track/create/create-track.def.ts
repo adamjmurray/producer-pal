@@ -18,8 +18,9 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where it goes: 't+' appends, 't2' inserts at 2, 'rt+' adds a return track",
-      smallModel: "'t+' to append, or 't2' to insert at 2",
+        "where it goes: 't+' appends, 't<index>' inserts there (t0 is the first track, so a user's \"track 3\" is t2), 'rt+' adds a return track",
+      smallModel:
+        "'t+' to append, or 't<index>' to insert there (t0 is the first track, so a user's \"track 3\" is t2)",
     }),
     trackIndex: deprecatedParam(z.coerce.number().int().min(-1).optional(), {
       replacedBy: "path",

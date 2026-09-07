@@ -31,7 +31,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       .string()
       .optional()
       .describe(
-        "track path instead of id: 't0', 'rt0' for a return, 'mt' for the main track",
+        "track path instead of id: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt0' for a return, 'mt' for the main track",
       ),
     trackType: deprecatedParam(
       z.enum(["regular", "return", "master"]).optional(),

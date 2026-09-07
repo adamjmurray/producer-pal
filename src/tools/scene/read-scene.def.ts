@@ -27,7 +27,9 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     path: z.coerce
       .string()
       .optional()
-      .describe("scene path instead of id (e.g., 's3')"),
+      .describe(
+        "scene path instead of id: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
+      ),
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
     }),

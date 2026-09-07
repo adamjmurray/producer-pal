@@ -24,9 +24,9 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where they go: 's+' appends, 's2' inserts at 2 and shifts the rest down. Required when capture=false, optional when capture=true",
+        "where they go: 's+' appends, 's<index>' inserts there and shifts the rest down (s0 is the first scene, so a user's \"scene 3\" is s2). Required when capture=false, optional when capture=true",
       smallModel:
-        "required: 's+' to append, or 's2' to insert at 2 and shift the rest down",
+        "required: 's+' to append, or 's<index>' to insert there and shift the rest down (s0 is the first scene, so a user's \"scene 3\" is s2)",
     }),
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
