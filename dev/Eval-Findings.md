@@ -161,25 +161,44 @@ not tidiness.
 **So: teaching a spelling is worth trying; arguing a model out of a preference
 is not.**
 
-### The predictor's first real test, and it failed
+### The predictor's first real test measured nothing
 
 `s0`/`s1` looked exactly like a spelling problem, and it was called one. Models
 read a user's "scene 1" as `s1` when the path is `s0`. Three places were
 corrected — two skill fragments, plus `duplicate.def.ts`, which had glossed
 `'t2/s1'` as "clip slot (track 2, scene 1)" in a schema the model re-reads every
-turn. `object-paths.ts` now states the rule outright: _"Users count from 1, so
-subtract one from what they say: their 'scene 1' is `s0`."_
+turn. gemma then wrote `t3/s1` in **5 of 6 trials**, and that was written up as
+the prior beating the prose: a spelling the model already believes it knows
+behaving like a preference.
 
-gemma then wrote `t3/s1` in **5 of 6 trials**. The prior wins over text that
-contradicts it in as many words. So the predictor's two shapes aren't quite
-"spelling vs preference" — a spelling the model **already believes it knows**
-behaves like a preference, and 0-vs-1-based indexing is that. Reserve the
-spelling bet for notation the model has no prior about at all.
+**None of the three corrections reached the model that was measured.**
+`object-paths` was a registered slot with a tool gate and no `@include` in
+either driver, so it shipped to nobody. `arrangement-write` is in the standard
+driver only, and the run was small-model mode. `duplicate.def.ts`'s `smallModel`
+string is a bare example list that never carried the gloss. The run graded a
+document none of the edits were in.
 
-The instructive part is what the same call gets right. It writes `t3` correctly
-and `s1` incorrectly, every time, because `read-live-set` hands back
-`path: "t3"` beside `name: "Lead"` and hands back nothing for scenes. One live
-example beat the prior; three corrected sentences did not.
+Wiring `object-paths` into both drivers — plus an `object-paths-basic` for the
+small document, which had no addressing prose at all — took
+`path-spoken-scene-number` from **1/3 to 3/3, twice in a row**. The prose lever
+worked the first time it was actually pulled.
+
+Two things this cost, worth not repeating:
+
+- **Check that a fragment ships before grading it.** Assembly is only
+  `resolveIncludes(root)`; registering a slot and gating it does not include it.
+  Nothing failed — the tool-gate tests assert which tools _would_ pull a
+  fragment, never that a driver names it.
+- **Read the model's reasoning, not just its arguments.** The failing trials say
+  _"if they mean the scene with index 3 (the 4th one), I'll use `s3`"_. The
+  model knows paths count from 0; it is guessing at what the USER meant. That
+  makes the load-bearing sentence "a number the user says is 1-based", not
+  "paths are 0-based" — and the fragment that had it was the one not shipping.
+
+The asymmetry noted at the time is still real and still unaddressed:
+`ppal-connect` returns `sceneCount` and no paths, and `read-live-set` leaves
+scenes out by default, so a model gets `path: "t3"` from a track read and
+nothing anchoring `s0`. Worth trying if this regresses.
 
 **Measuring this needs repeats.** Two single-trial rounds came back 1-of-2 and
 then 1-of-2 the other way, which reads as partial progress and is a coin flip.
