@@ -25,6 +25,7 @@ fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
 | 5   | gemma-4-26b-a4b | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m |
 | 6   | gpt-5.6-luna    | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m |
 | 7   | gpt-5.6-luna    | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m |
+| 8   | gpt-5.6-luna    | default         | `47adbc056`  | 3      | 301 | 270 (90%) | 124.6M | 2h56m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -46,54 +47,60 @@ single red cell in a gemma column is noise, not a finding.
 
 ### Failures
 
-Every scenario that failed at least one trial in runs 2-5. `skip` means the
-scenario is not in small-model mode's set.
+Every scenario that failed at least one trial in runs 2-8. `skip` means the
+scenario is not in small-model mode's set; `—` means the scenario did not exist
+in that run.
 
-| scenario                                | 2 luna x3 | 3 gemma sm | 4 gemma sm | 5 gemma full |
-| --------------------------------------- | --------- | ---------- | ---------- | ------------ |
-| `arpeggio-bracket-idiom`                | 3/3       | skip       | skip       | 0/1          |
-| `arrangement-clip-workflow`             | 3/3       | skip       | skip       | 0/1          |
-| `audio-sample-workflow`                 | 3/3       | 0/1        | 0/1        | 0/1          |
-| `bar-beat-absolute-duration-uniformity` | 3/3       | 0/1        | 0/1        | 1/1          |
-| `bar-beat-meter-fill`                   | 3/3       | 0/1        | 0/1        | 1/1          |
-| `bar-beat-per-bar-spread`               | 3/3       | 0/1        | 1/1        | 0/1          |
-| `bar-beat-triplets`                     | 3/3       | 0/1        | 0/1        | 1/1          |
-| `context-memory-recall`                 | 3/3       | skip       | skip       | 0/1          |
-| `context-memory-update-not-duplicate`   | 2/3       | skip       | skip       | 0/1          |
-| `context-onboarding-records-decline`    | 3/3       | skip       | skip       | 0/1          |
-| `context-write-layer-global`            | 1/3       | 0/1        | 0/1        | 1/1          |
-| `context-write-layer-memory`            | 3/3       | skip       | skip       | 0/1          |
-| `context-write-layer-project`           | 3/3       | 1/1        | 0/1        | 0/1          |
-| `context-write-preserves`               | 3/3       | 1/1        | 0/1        | 1/1          |
-| `delete-targets`                        | 3/3       | 0/1        | 0/1        | 1/1          |
-| `drum-backbeat-barbeat`                 | 3/3       | 1/1        | 0/1        | 0/1          |
-| `drum-backbeat-stark`                   | 1/3       | 1/1        | 1/1        | 1/1          |
-| `drum-pad-force-guard`                  | 3/3       | 0/1        | 0/1        | 0/1          |
-| `drum-transforms`                       | 0/3       | skip       | skip       | 0/1          |
-| `duplicate`                             | 3/3       | 1/1        | 0/1        | 0/1          |
-| `duplicate-loop`                        | 0/3       | 1/1        | 1/1        | 1/1          |
-| `duration-reach-for-quarter`            | 3/3       | 0/1        | 0/1        | 1/1          |
-| `legato-transforms`                     | 0/3       | skip       | skip       | 0/1          |
-| `library-search-fanout`                 | 1/3       | skip       | skip       | 1/1          |
-| `locator-navigation`                    | 2/3       | skip       | skip       | 0/1          |
-| `melody-pitch-midi-json`                | 3/3       | 0/1        | 0/1        | 1/1          |
-| `melody-pitch-stark`                    | 3/3       | 0/1        | 1/1        | 1/1          |
-| `middle-c-scale-barbeat`                | 3/3       | 1/1        | 1/1        | 0/1          |
-| `middle-c-scale-midi-json`              | 3/3       | 1/1        | 0/1        | 1/1          |
-| `middle-c-scale-stark`                  | 3/3       | 1/1        | 1/1        | 0/1          |
-| `negative-cases`                        | 2/3       | 1/1        | 1/1        | 1/1          |
-| `note-ops-merge`                        | 1/3       | skip       | skip       | 1/1          |
-| `note-ops-ratchet-roll`                 | 2/3       | skip       | skip       | 1/1          |
-| `note-ops-repeat`                       | 0/3       | skip       | skip       | 1/1          |
-| `note-ops-split`                        | 0/3       | skip       | skip       | 0/1          |
-| `path-insert-position`                  | 3/3       | 0/1        | 0/1        | 1/1          |
-| `path-take-lane-first`                  | 3/3       | 1/1        | 0/1        | 1/1          |
-| `path-topath-clips`                     | 3/3       | 0/1        | 0/1        | 1/1          |
-| `path-topath-devices`                   | 3/3       | 0/1        | 0/1        | 1/1          |
-| `path-track-scene-address`              | 3/3       | 0/1        | 1/1        | 1/1          |
-| `path-uncommon-roots`                   | 3/3       | 0/1        | 1/1        | 1/1          |
-| `range-clear-boundaries`                | 3/3       | 0/1        | 0/1        | 1/1          |
-| `rhythm-grid-barbeat`                   | 3/3       | 0/1        | 1/1        | 1/1          |
+| scenario                                | 2 luna x3 | 3 gemma sm | 4 gemma sm | 5 gemma full | 7 luna x3 | 8 luna x3 |
+| --------------------------------------- | --------- | ---------- | ---------- | ------------ | --------- | --------- |
+| `arpeggio-bracket-idiom`                | 3/3       | skip       | skip       | 0/1          | 3/3       | 3/3       |
+| `arrangement-clip-workflow`             | 3/3       | skip       | skip       | 0/1          | 3/3       | 3/3       |
+| `audio-sample-workflow`                 | 3/3       | 0/1        | 0/1        | 0/1          | 3/3       | 3/3       |
+| `bar-beat-absolute-duration-uniformity` | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `bar-beat-melodic-legato-run`           | —         | —          | —          | —            | 2/3       | 2/3       |
+| `bar-beat-meter-fill`                   | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `bar-beat-per-bar-spread`               | 3/3       | 0/1        | 1/1        | 0/1          | 3/3       | 3/3       |
+| `bar-beat-triplets`                     | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `bar-beat-zip-streams`                  | —         | —          | —          | —            | 3/3       | 2/3       |
+| `context-memory-recall`                 | 3/3       | skip       | skip       | 0/1          | 3/3       | 3/3       |
+| `context-memory-update-not-duplicate`   | 2/3       | skip       | skip       | 0/1          | 1/3       | 3/3       |
+| `context-onboarding-records-decline`    | 3/3       | skip       | skip       | 0/1          | 3/3       | 3/3       |
+| `context-write-layer-global`            | 1/3       | 0/1        | 0/1        | 1/1          | 2/3       | 2/3       |
+| `context-write-layer-memory`            | 3/3       | skip       | skip       | 0/1          | 3/3       | 3/3       |
+| `context-write-layer-project`           | 3/3       | 1/1        | 0/1        | 0/1          | 2/3       | 2/3       |
+| `context-write-preserves`               | 3/3       | 1/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `delete-targets`                        | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `drum-backbeat-barbeat`                 | 3/3       | 1/1        | 0/1        | 0/1          | 3/3       | 3/3       |
+| `drum-backbeat-stark`                   | 1/3       | 1/1        | 1/1        | 1/1          | 0/3       | 1/3       |
+| `drum-pad-force-guard`                  | 3/3       | 0/1        | 0/1        | 0/1          | 1/3       | 3/3       |
+| `drum-transforms`                       | 0/3       | skip       | skip       | 0/1          | 0/3       | 0/3       |
+| `duplicate`                             | 3/3       | 1/1        | 0/1        | 0/1          | 3/3       | 3/3       |
+| `duplicate-loop`                        | 0/3       | 1/1        | 1/1        | 1/1          | 3/3       | 3/3       |
+| `duration-reach-for-quarter`            | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `legato-transforms`                     | 0/3       | skip       | skip       | 0/1          | 0/3       | 1/3       |
+| `library-search-fanout`                 | 1/3       | skip       | skip       | 1/1          | 2/3       | 2/3       |
+| `locator-navigation`                    | 2/3       | skip       | skip       | 0/1          | 0/3       | 0/3       |
+| `melody-pitch-midi-json`                | 3/3       | 0/1        | 0/1        | 1/1          | 2/3       | 3/3       |
+| `melody-pitch-stark`                    | 3/3       | 0/1        | 1/1        | 1/1          | 3/3       | 3/3       |
+| `melody-transforms`                     | —         | —          | —          | —            | 3/3       | 2/3       |
+| `middle-c-scale-barbeat`                | 3/3       | 1/1        | 1/1        | 0/1          | 3/3       | 3/3       |
+| `middle-c-scale-midi-json`              | 3/3       | 1/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `middle-c-scale-stark`                  | 3/3       | 1/1        | 1/1        | 0/1          | 3/3       | 3/3       |
+| `negative-cases`                        | 2/3       | 1/1        | 1/1        | 1/1          | 0/3       | 1/3       |
+| `note-ops-merge`                        | 1/3       | skip       | skip       | 1/1          | 3/3       | 1/3       |
+| `note-ops-ratchet-roll`                 | 2/3       | skip       | skip       | 1/1          | 2/3       | 3/3       |
+| `note-ops-repeat`                       | 0/3       | skip       | skip       | 1/1          | 0/3       | 0/3       |
+| `note-ops-split`                        | 0/3       | skip       | skip       | 0/1          | 0/3       | 0/3       |
+| `path-insert-position`                  | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `path-take-lane-first`                  | 3/3       | 1/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `path-topath-clips`                     | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `path-topath-devices`                   | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `path-track-scene-address`              | 3/3       | 0/1        | 1/1        | 1/1          | 3/3       | 3/3       |
+| `path-uncommon-roots`                   | 3/3       | 0/1        | 1/1        | 1/1          | 2/3       | 3/3       |
+| `range-clear-boundaries`                | 3/3       | 0/1        | 0/1        | 1/1          | 3/3       | 3/3       |
+| `rhythm-grid-barbeat`                   | 3/3       | 0/1        | 1/1        | 1/1          | 3/3       | 3/3       |
+| `synced-lfo-meter-invariance`           | —         | —          | —          | —            | 2/3       | 2/3       |
+| `transform-random-baked-or-replayed`    | —         | —          | —          | —            | 0/3       | 0/3       |
 
 Three rows are not findings: `duplicate-loop` is run 2 predating ADR-0040,
 `drum-backbeat-stark` is red on purpose (below), and `legato-transforms` graded
@@ -104,6 +111,27 @@ after that run finished. Corrected, it is about 1/3.
 **The stronger model fails where the weaker one passes.** Luna is 0/3 on
 `note-ops-repeat`, 1/3 on `note-ops-merge` and 0/3 on `note-ops-split` while
 gemma passes the first two. Not a fluke of scoring — see the next section.
+
+### What moved between runs 7 and 8
+
+Seventeen commits apart, same model, same flags, so a moved cell is either those
+commits or noise. n=3 cannot tell them apart on its own — read a 3/3 to 2/3 as
+noise unless a commit explains it.
+
+Green: `drum-pad-force-guard` 1/3 to 3/3, which the pad-guard fixes in that
+range do explain; `context-memory-update-not-duplicate` 1/3 to 3/3;
+`note-ops-ratchet-roll` and `melody-pitch-midi-json` 2/3 to 3/3.
+`path-uncommon-roots` 2/3 to 3/3 is the scenario, not the model — it was
+reworded to ask for a selection outright.
+
+Red: `note-ops-merge` 3/3 to 1/3, `bar-beat-zip-streams` and `melody-transforms`
+3/3 to 2/3. Nothing in the range touches any of them.
+
+Red in both, 0/3 twice: `drum-transforms`, `locator-navigation`,
+`note-ops-repeat`, `note-ops-split`, `transform-random-baked-or-replayed`. Two
+locator fixes landed in the range and `locator-navigation` did not move, which
+fits — they corrected the name a read hands back, and the scenario fails on the
+model preferring a bar number it already has over naming the locator.
 
 ## Wording changes that were measured and did not work
 
@@ -199,6 +227,14 @@ Saying which one bakes, next to each spelling, took luna to **3 of 3 on both
 arms**: `rand(90,110)` for the baked ask and `v70-110` for the re-rolled one.
 gemma moved 2/3 to 3/3 twice, which on its own would be noise; luna is the
 result. Scenario: `transform-random-baked-or-replayed`.
+
+**That 3/3 no longer holds.** The scenario now grades the clip against Live's
+`velocity_deviation` and adds a turn-4 `sin()` check, and it is 0/3 in runs 7
+and 8. The `sin()` check is the documented red above and can't go green; the
+randomness arms themselves failed 2 of 3 trials in both runs, once by leaving
+every snare at 100 and once by swapping the arms — writing the spread on the
+baked ask and baked values on the re-rolled one. The spelling landed; which
+spelling goes with which ask did not.
 
 **So: teaching a spelling is worth trying; arguing a model out of a preference
 is not.**
