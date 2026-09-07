@@ -11,11 +11,11 @@ Four CLI tools for testing LLM behavior with Producer Pal's MCP tools:
 
 - **`scripts/eval`** - Automated evaluation scenarios with scoring and
   assertions
-- **`scripts/eval-canary`** - The fragment-sensitive scenario subset, for after
-  you edit a skill fragment (see
+- **`scripts/eval --canary`** - The fragment-sensitive scenario subset, for
+  after you edit a skill fragment (see
   [Measuring a context change](#measuring-a-context-change))
-- **`scripts/skill-probe`** - Does each fragment / tool / param description
-  still reach the model? Seconds, and needs no Ableton
+- **`npm run probe:skills`** - Does each fragment / tool / param description
+  still reach the model? Minutes, and needs no Ableton
 - **`scripts/chat`** - Interactive chat sessions for manual testing
 
 All but `probe:skills` require Ableton Live running with the Producer Pal device
@@ -41,15 +41,22 @@ and param, answerable only from that source, and takes about a minute:
 
 ```bash
 npm run probe:skills
-npm run probe:skills -- --small-model                    # basic tier
-npm run probe:skills -- --surface param                  # param descriptions only
-npm run probe:skills -- -t transforms-expressions        # one source
-npm run probe:skills -- -m local/google/gemma-4-26b-a4b  # LM Studio, free
+npm run probe:skills -- -m codex-code/luna                # the model we eval
+npm run probe:skills -- -m local/google/gemma-4-26b-a4b   # LM Studio, free
+npm run probe:skills -- --small-model                     # basic tier
+npm run probe:skills -- --surface param                   # param descriptions only
+npm run probe:skills -- -t transforms-expressions         # one source
 ```
 
-It runs the real `buildSkills()` blob plus the real published tool schemas
-(through `resolveToolSchema`, so hidden params and per-mode overrides apply). No
-Ableton, no MCP server. It exits non-zero on a miss, so it works as a gate.
+It runs the real `buildSkills()` blob, and gets the tool schemas from the real
+`createMcpServer` with a stub Live API behind it. **Every transport connects to
+that same server**, so an AI-SDK model and codex-cli see identical `tools/list`
+output and a difference in results is the model rather than the harness. No
+Ableton either way. It exits non-zero on a miss, so it works as a gate.
+
+Agent CLIs spawn a subprocess per question and rate-limit under load, so they
+run one at a time and take a few minutes; AI-SDK providers run in parallel and
+finish in about one.
 
 It catches content LOSS, not bad behavior — a model can recall `legato(tol)`
 perfectly and never use it. **Before trusting a new probe, check it fails when

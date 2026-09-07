@@ -5,52 +5,48 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Skill recall probe: check that every fragment still reaches the model where
- * the driver currently includes it.
+ * Skill recall probe: check that every fragment, tool description and param
+ * description still reaches the model where we currently put it.
  *
- * Moving an `@include` can cost the model a whole fragment's content even
- * though the text is still in the blob — that is what `feac7199b` did to
- * `swing()`, `quant()` and `step()`, and only a 4-hour eval run caught it. This
- * asks one question per fragment instead, and answers in about a minute.
+ * Moving an `@include` can cost the model a whole fragment even though the text
+ * is still in the blob — that is what `feac7199b` did to `swing()`, `quant()`
+ * and `step()`, and only a 4-hour eval run caught it. This asks one question
+ * per source instead, and answers in about a minute.
  *
- * It needs NO Ableton and no MCP server: `buildSkills()` is a pure function, so
- * this is just the real blob plus one chat turn per probe. Agent-CLI providers
- * (codex-code, claude-code) are not supported for that reason — they only run
- * against a live MCP connection.
+ * It needs NO Ableton. The tool schemas come from the real `createMcpServer`
+ * with a stub Live API behind it, and every transport connects to that same
+ * server — so an AI-SDK model and codex-cli see identical schemas, and a
+ * difference in results is the model rather than the harness.
  *
- * It catches fragment LOSS, not bad behavior. A model can recall `legato(tol)`
+ * It catches content LOSS, not bad behavior. A model can recall `legato(tol)`
  * perfectly and still never use it; that is what the eval suite is for.
  *
  * Usage:
- *   ./scripts/skill-probe                                  # standard tier
- *   ./scripts/skill-probe --small-model                    # basic tier
- *   ./scripts/skill-probe -m local/google/gemma-4-26b-a4b  # LM Studio, free
- *   ./scripts/skill-probe -t transforms-expressions        # one fragment
- *   ./scripts/skill-probe --notation stark
+ *   npm run probe:skills
+ *   npm run probe:skills -- -m codex-code/luna          # the model we eval
+ *   npm run probe:skills -- -m local/google/gemma-4-26b-a4b
+ *   npm run probe:skills -- --small-model               # basic tier
+ *   npm run probe:skills -- --surface param             # param descriptions
+ *   npm run probe:skills -- -t transforms-expressions   # one source
  *
- * Exits non-zero if any probe misses, so it works as a pre-commit gate.
+ * Exits non-zero if any probe misses, so it works as a gate.
  */
 
 import { Command } from "commander";
-import { generateText } from "ai";
-import { createProviderModel } from "#evals/chat/provider.ts";
+import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
 import {
-  type ProbeContext,
-  buildProbeContext,
-} from "./skill-recall-context.ts";
+  type AskContext,
+  askViaAgentCli,
+  askViaAiSdk,
+} from "./skill-recall-ask.ts";
 import {
   SKILL_RECALL_PROBES,
   type SkillRecallProbe,
 } from "./skill-recall-probes.ts";
-
-/** Providers that need a live MCP connection, so cannot answer a bare prompt. */
-const AGENT_CLI_PROVIDERS = new Set(["codex-code", "claude-code"]);
-
-/** Keeps replies short: probes match tokens, and long answers only add cost. */
-const SYSTEM_SUFFIX =
-  "\n\nAnswer the next question as briefly as possible. No preamble, no explanation.";
+import { startSkillProbeServer } from "./skill-recall-server.ts";
 
 interface ProbeOutcome {
   probe: SkillRecallProbe;
@@ -59,16 +55,16 @@ interface ProbeOutcome {
 }
 
 /**
- * Run the probe set and report which fragments failed to come through.
+ * Run the probe set and report which sources failed to come through.
  *
  * @returns Nothing; exits non-zero when a probe misses.
  */
 async function main(): Promise<void> {
   const program = new Command()
-    .name("skill-probe")
-    .description("Check that each skill fragment reaches the model")
+    .name("probe:skills")
+    .description("Check that each fragment / tool / param reaches the model")
     .option("-m, --model <provider/model>", "Model", "google/gemini-3.6-flash")
-    .option("-t, --test <fragment>", "Probe one fragment only")
+    .option("-t, --test <source>", "Probe one source only")
     .option("--small-model", "Probe the basic driver instead of the standard")
     .option("--surface <kind>", "Only skill | tool | param probes")
     .option("--notation <name>", "Notation to assemble with", "barbeat")
@@ -76,14 +72,6 @@ async function main(): Promise<void> {
 
   const options = program.opts();
   const spec = parseModelArg(options.model);
-
-  if (AGENT_CLI_PROVIDERS.has(spec.provider)) {
-    program.error(
-      `${spec.provider} drives a CLI that needs a live MCP connection. ` +
-        `Probe with an API or local provider instead (e.g. -m local/<model>).`,
-    );
-  }
-
   const tier = options.smallModel ? "basic" : "standard";
   const probes = SKILL_RECALL_PROBES.filter(
     (probe) =>
@@ -96,49 +84,79 @@ async function main(): Promise<void> {
     program.error(`No ${tier}-tier probes match. Check -t against the driver.`);
   }
 
-  const context = buildProbeContext({
-    notation: options.notation as Notation,
-    smallModelMode: tier === "basic",
-  });
-  const model = createProviderModel(spec.provider, spec.model);
+  const notation = options.notation as Notation;
+  const smallModelMode = tier === "basic";
+  const server = await startSkillProbeServer({ notation, smallModelMode });
+  const context: AskContext = {
+    skills: buildSkills({ notation, smallModelMode }),
+    mcpUrl: server.url,
+    spec,
+  };
+  // Agent CLIs spawn a subprocess per question and rate-limit under load, so
+  // they go one at a time; AI SDK providers are fine in parallel.
+  const viaAgentCli = getAgentCliTransport(spec.provider) != null;
 
   console.log(
     `${probes.length} probe(s) · ${tier} tier · ${options.notation} · ${options.model}`,
   );
   console.log(
-    `context: ${context.skills.length} chars of skills + ${Object.keys(context.tools).length} tool schemas\n`,
+    `context: ${context.skills.length} chars of skills + tool schemas from ${server.url}\n`,
   );
 
-  const outcomes = await Promise.all(
-    probes.map((probe) => runProbe(probe, context, model)),
-  );
+  try {
+    const outcomes = viaAgentCli
+      ? await runSerially(probes, context)
+      : await Promise.all(
+          probes.map((probe) => runProbe(probe, context, false)),
+        );
 
-  reportOutcomes(outcomes);
+    reportOutcomes(outcomes);
+  } finally {
+    await server.close();
+  }
 }
 
 /**
- * Ask one probe question against the assembled skills.
+ * Run probes one at a time, for transports that cannot take parallel load.
+ *
+ * @param probes - The probes to run
+ * @param context - Skills, probe server URL, and model spec
+ * @returns Each probe's outcome, in order
+ */
+async function runSerially(
+  probes: SkillRecallProbe[],
+  context: AskContext,
+): Promise<ProbeOutcome[]> {
+  const outcomes: ProbeOutcome[] = [];
+
+  for (const probe of probes) {
+    const outcome = await runProbe(probe, context, true);
+
+    console.log(
+      `  ${outcome.missing.length === 0 ? "PASS" : "MISS"}  ${probe.surface.padEnd(6)} ${probe.source}`,
+    );
+    outcomes.push(outcome);
+  }
+
+  return outcomes;
+}
+
+/**
+ * Ask one probe question and score the reply.
  *
  * @param probe - The question and its expected patterns
- * @param context - Skills blob and tool schemas, as a real session has them
- * @param model - AI SDK model to ask
+ * @param context - Skills, probe server URL, and model spec
+ * @param viaAgentCli - Whether this model needs the agent-CLI transport
  * @returns The reply and any patterns it failed to match
  */
 async function runProbe(
   probe: SkillRecallProbe,
-  context: ProbeContext,
-  model: Parameters<typeof generateText>[0]["model"],
+  context: AskContext,
+  viaAgentCli: boolean,
 ): Promise<ProbeOutcome> {
   try {
-    // toolChoice "none" keeps the schemas in context without letting the model
-    // answer by calling something — a probe wants the reply, not a tool call.
-    const { text } = await generateText({
-      model,
-      instructions: context.skills + SYSTEM_SUFFIX,
-      prompt: probe.question,
-      tools: context.tools,
-      toolChoice: "none",
-    });
+    const ask = viaAgentCli ? askViaAgentCli : askViaAiSdk;
+    const text = await ask(probe.question, context);
 
     return {
       probe,
@@ -153,12 +171,14 @@ async function runProbe(
 }
 
 /**
- * Print the per-fragment result table and exit non-zero on any miss.
+ * Print the per-source result table and exit non-zero on any miss.
  *
  * @param outcomes - Every probe's reply and missing patterns
  */
 function reportOutcomes(outcomes: ProbeOutcome[]): void {
   const failed = outcomes.filter((outcome) => outcome.missing.length > 0);
+
+  console.log();
 
   for (const outcome of outcomes) {
     const ok = outcome.missing.length === 0;
