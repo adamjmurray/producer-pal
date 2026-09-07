@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -10,7 +11,11 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers";
+import {
+  parseToolResult,
+  setupMcpTestContext,
+  sleep,
+} from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -102,6 +107,39 @@ describe("ppal-read-live-set", () => {
     expect(locatorsParsed.locators?.[1]?.time).toBe("9|1");
     // The token to send back, so a caller names the section instead of the bar.
     expect(locatorsParsed.locators?.[1]?.position).toBe("loc:Verse");
+  });
+
+  it("falls back to the ID for a locator named like an ID", async () => {
+    // A name shaped like a positional ID resolves as that ID, which points at
+    // whichever locator sits at that index — not this one.
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "2|1",
+        locatorName: "locator-0",
+      },
+    });
+    await sleep(100);
+
+    try {
+      const parsed = parseToolResult<ReadLiveSetResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-live-set",
+          arguments: { include: ["locators"] },
+        }),
+      );
+      const named = parsed.locators?.find((l) => l.name === "locator-0");
+
+      expect(named).toBeDefined();
+      expect(named!.position).toBe(`loc:${named!.id}`);
+      expect(named!.id).not.toBe("locator-0");
+    } finally {
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorTime: "2|1" },
+      });
+    }
   });
 });
 

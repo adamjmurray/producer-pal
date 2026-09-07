@@ -276,8 +276,9 @@ export function resolveLocatorRefToBeats(
  * `time` and the section name never reaches a call.
  *
  * Falls back to the positional id whenever the name wouldn't resolve to this
- * exact locator: a blank or repeated name matches the wrong one, and a bracket
- * or comma is read by the path grammar before the name is.
+ * exact locator: a blank or repeated name matches the wrong one, a bracket or
+ * comma is read by the path grammar before the name is, and an id-shaped name
+ * is read as some other locator's positional id.
  * @param name - This locator's name
  * @param index - Its index in cue_points
  * @param names - Every locator's name, to spot a repeat
@@ -288,6 +289,7 @@ function locatorPosition(name: string, index: number, names: string[]): string {
     name !== "" &&
     name === name.trim() &&
     !/[[\],]/.test(name) &&
+    !isLocatorId(name) &&
     names.indexOf(name) === names.lastIndexOf(name);
 
   return `loc:${usable ? name : getLocatorId(index)}`;

@@ -185,6 +185,19 @@ describe("readLiveSet - locators", () => {
       ]);
     });
 
+    // An id-shaped name resolves as a positional id, which points at whichever
+    // locator sits at that index.
+    it("falls back to the ID for an id-shaped name", () => {
+      setupLocatorReadMocks({
+        cuePoints: {
+          cue1: { name: "Intro", time: 0 },
+          cue2: { name: "locator-0", time: 16 },
+        },
+      });
+
+      expect(readPositions()).toStrictEqual(["loc:Intro", "loc:locator-1"]);
+    });
+
     // "[", "]" and "," are read by the path grammar before the name is, so
     // "t2[loc:A]B]" or a name with a comma would split into something else.
     it.each([["A]B"], ["A[B"], ["A,B"], [" Padded "]])(
