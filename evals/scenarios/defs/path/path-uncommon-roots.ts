@@ -45,11 +45,15 @@ export const pathUncommonRoots: EvalScenario = {
   // Selection is view state only — nothing to reset between trials.
   reuseLiveSet: true,
 
+  // Each turn asks for the selection in so many words. "Show me X" is a fair
+  // request to READ X, and a model that answered it that way navigated to the
+  // right path and still failed every check — grading tool choice on an
+  // ambiguous ask measures the wording, not the grammar.
   messages: [
     MSG_CONNECT,
-    "Show me the A-Delay return track.",
-    "Now show me the main track.",
-    "Show me the kick pad in the Drums track's drum rack.",
+    "Select the A-Delay return track in Live.",
+    "Now select the main track.",
+    "Select the kick pad in the Drums track's drum rack.",
   ],
 
   assertions: [
