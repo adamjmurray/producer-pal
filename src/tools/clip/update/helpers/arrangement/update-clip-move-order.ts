@@ -62,6 +62,14 @@ export interface ArrangementMoveOrder {
    * they ask for first, and either one would clear it themselves.
    */
   blockedIds: Set<string>;
+  /**
+   * Which clips each clip has to wait for. Kept past the sort so the executor
+   * can re-decide: the order below assumes every move lands, and Live can turn
+   * one down after the plan is made.
+   */
+  dependencies: Array<Set<number>>;
+  /** Whether each clip's move was expected to free the span it sits on. */
+  vacates: boolean[];
 }
 
 /**
@@ -75,9 +83,13 @@ export function orderArrangementMoves(
   clips: LiveAPI[],
   moves: ClipMoves,
 ): ArrangementMoveOrder {
+  // No graph means nothing waits on anything, so the executor has no move to
+  // re-decide either.
   const inOrder = {
     order: clips.map((_, index) => index),
     blockedIds: new Set<string>(),
+    dependencies: clips.map(() => new Set<number>()),
+    vacates: clips.map(() => false),
   };
 
   // One clip can't be in its own way.
@@ -94,14 +106,15 @@ export function orderArrangementMoves(
   );
   const dependencies = buildDependencies(spans);
 
-  return dependencies == null
-    ? inOrder
-    : resolveOrder(
-        clips,
-        dependencies,
-        intents,
-        clips.map((clip) => freesCurrentSpan(clip, moves)),
-      );
+  if (dependencies == null) return inOrder;
+
+  const vacates = clips.map((clip) => freesCurrentSpan(clip, moves));
+
+  return {
+    ...resolveOrder(clips, dependencies, intents, vacates),
+    dependencies,
+    vacates,
+  };
 }
 
 // --- Helpers below main exports ---
@@ -281,7 +294,7 @@ function resolveOrder(
   dependencies: Array<Set<number>>,
   intents: Array<MoveIntent | null>,
   vacates: boolean[],
-): ArrangementMoveOrder {
+): Pick<ArrangementMoveOrder, "order" | "blockedIds"> {
   const order: number[] = [];
   const emitted = new Set<number>();
   const vacated = new Set<number>();

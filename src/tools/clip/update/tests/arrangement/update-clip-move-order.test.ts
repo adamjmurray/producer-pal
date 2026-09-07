@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
+  lookupMockObject,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -658,6 +659,139 @@ describe("updateClip - moving a row of arrangement clips", () => {
     expect(movedTo()).toStrictEqual([]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("was not moved"),
+    );
+  });
+});
+
+describe("updateClip - a move Live turns down at write time", () => {
+  /** Registered as audio, so a MIDI clip sent there is refused on arrival. */
+  const AUDIO_TRACK = 1;
+
+  /**
+   * A row of clips on t0, plus an audio track for the moves that get refused.
+   * @param row - The clips, in call order
+   */
+  function setupRefusingTrack(row: RowClip[]): void {
+    registerMockObject("live-set", { path: "live_set", type: "Song" });
+    registerRow(row);
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { track_index: 0, has_midi_input: 1, is_frozen: 0 },
+      methods: {
+        duplicate_clip_to_arrangement: (_sourceId, startTime) => {
+          registerArrangementClip(
+            "copy",
+            0,
+            row.length,
+            startTime as number,
+            0,
+          );
+
+          return "id copy";
+        },
+        delete_clip: () => null,
+      },
+    });
+    registerMockObject("track-1", {
+      path: livePath.track(AUDIO_TRACK),
+      type: "Track",
+      properties: {
+        track_index: AUDIO_TRACK,
+        has_midi_input: 0,
+        is_frozen: 0,
+      },
+    });
+  }
+
+  /**
+   * Every position t0 took a move at.
+   * @returns The target positions in beats
+   */
+  function movedTo(): number[] {
+    return vi
+      .mocked(lookupMockObject("track-0")?.call as Mock)
+      .mock.calls.filter(
+        ([method]) => method === "duplicate_clip_to_arrangement",
+      )
+      .map((call) => call[2] as number);
+  }
+
+  // The planner puts 114 first because 113 is moving onto its span, and trusts
+  // the declared move to clear it. Live refuses that move, so the span never
+  // comes free and 113's move has to be called off — or it runs over a clip
+  // that is still sitting there and the call reports both as updated.
+  it("calls off the move that was waiting on it", async () => {
+    setupRefusingTrack([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 16, end: 32 },
+    ]);
+
+    const result = await updateClip({
+      id: "113,114",
+      toPath: `t0[5|1],t${AUDIO_TRACK}[9|1]`,
+    });
+
+    expect(movedTo()).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "113", path: "t0[1|1]" },
+      { id: "114", path: "t0[5|1]" },
+    ]);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "clip t0[1|1] (id 113) was not moved: it would land on clip t0[5|1] (id 114), which Live wouldn't move",
+      ),
+    );
+  });
+
+  // A clip called off here didn't vacate either, so whatever was waiting on it
+  // has to go too — a sweep over the graph, not one hop.
+  it("calls off the moves waiting behind that one", async () => {
+    setupRefusingTrack([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 16, end: 32 },
+      { id: "115", start: 32, end: 48 },
+    ]);
+
+    const result = await updateClip({
+      id: "113,114,115",
+      toPath: `t0[5|1],t0[9|1],t${AUDIO_TRACK}[13|1]`,
+    });
+
+    expect(movedTo()).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "113", path: "t0[1|1]" },
+      { id: "114", path: "t0[5|1]" },
+      { id: "115", path: "t0[9|1]" },
+    ]);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "clip t0[1|1] (id 113) was not moved: it would land on clip t0[5|1] (id 114), whose own move this call gave up on",
+      ),
+    );
+  });
+
+  // The resize clears the span it tiles across just as the move clears its
+  // destination, so a called-off move takes its arrangementLength with it.
+  it("drops the resize of a called-off move too", async () => {
+    setupRefusingTrack([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 16, end: 32 },
+    ]);
+
+    await updateClip({
+      id: "113,114",
+      toPath: `t0[5|1],t${AUDIO_TRACK}[9|1]`,
+      arrangementLength: "8bar",
+    });
+
+    expect(movedTo()).toStrictEqual([]);
+    expect(lookupMockObject("113")?.call).not.toHaveBeenCalledWith(
+      "duplicate_region",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
     );
   });
 });

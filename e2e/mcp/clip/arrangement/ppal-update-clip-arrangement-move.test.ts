@@ -43,6 +43,9 @@ import {
   RACKS_TRACK,
 } from "../../e2e-test-set.ts";
 
+/** No track index this high exists, so a move aimed there is refused on arrival. */
+const MISSING_TRACK = 99;
+
 const ctx = setupMcpTestContext({ once: true });
 
 describe("arrangement clip moved to another lane", () => {
@@ -179,6 +182,37 @@ describe("arrangement clip moved to another lane", () => {
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "53|1"))?.id,
     ).toBe(second.id);
+  });
+
+  // The planner runs the clip being landed on first, trusting its declared move
+  // to clear the span. Live turns that move down on arrival, so the span never
+  // comes free — and the move waiting on it has to be called off, or it runs
+  // over a clip that is still sitting there and both are reported as updated.
+  it("calls off a move waiting on one Live refused at write time", async () => {
+    const mover = await createClip("73|1", "Waiting Mover");
+    const blocker = await createClip("74|1", "Refused Blocker");
+
+    const { warnings } = await updateClip(
+      ctx.client!,
+      `${mover.id},${blocker.id}`,
+      { toPath: `t${EMPTY_MIDI_TRACK}[74|1],t${MISSING_TRACK}[81|1]` },
+    );
+
+    expect(warnings.join(" ")).toContain(
+      `clip ${blocker.path} (id ${blocker.id}) was not moved: track t${MISSING_TRACK} does not exist`,
+    );
+    expect(warnings.join(" ")).toContain(
+      `clip ${mover.path} (id ${mover.id}) was not moved: it would land on clip ${blocker.path} (id ${blocker.id}), which Live wouldn't move`,
+    );
+
+    // Both still where they started. Before this, the mover landed on 74|1 and
+    // deleted the blocker, which the response still reported as updated.
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "73|1"))?.id,
+    ).toBe(mover.id);
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "74|1"))?.id,
+    ).toBe(blocker.id);
   });
 
   it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {

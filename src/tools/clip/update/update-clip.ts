@@ -24,6 +24,7 @@ import {
   emitArrangementWarnings,
   type MoveGroup,
 } from "./helpers/arrangement/update-clip-move-groups.ts";
+import { trackMoveSkips } from "./helpers/arrangement/update-clip-move-skip.ts";
 import {
   planClipUpdate,
   type ClipUpdatePlan,
@@ -208,6 +209,14 @@ async function runClipBatch({
   // once; what makes reusing one safe is spelled out at destinationTrack() in
   // the slot-move helpers. Lives and dies with this call.
   const destinationTracks = new Map<number, LiveAPI>();
+  // The order above assumes every move lands. This watches what actually
+  // happened and calls off the moves that were counting on one that didn't.
+  const skips = trackMoveSkips({
+    clips,
+    dependencies: plan.dependencies,
+    vacates: plan.vacates,
+    refuseMove: plan.refuseMove,
+  });
 
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
@@ -257,6 +266,7 @@ async function runClipBatch({
     });
 
     resultsPerClip[i] = updatedClips.slice(written);
+    skips.settle(i, resultsPerClip[i]);
   }
 
   return resultsPerClip.flat();

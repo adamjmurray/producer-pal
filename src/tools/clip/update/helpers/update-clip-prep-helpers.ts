@@ -62,6 +62,16 @@ export interface ClipUpdatePlan {
   overwrites: OverwritePlan | null;
   startBeatsFor: (clip: LiveAPI) => number | null;
   lengthBeatsFor: (clip: LiveAPI) => number | null;
+  /** Which clips each clip has to wait for, for the executor's own re-decide. */
+  dependencies: Array<Set<number>>;
+  /** Whether each clip's move was expected to free the span it sits on. */
+  vacates: boolean[];
+  /**
+   * Call off a clip's move and resize before its turn comes, for a destination
+   * Live turned down after this plan was made. Both halves go, for the reason
+   * the plan-time refusal drops both.
+   */
+  refuseMove: (clipId: string) => void;
 }
 
 /**
@@ -130,22 +140,31 @@ export function planClipUpdate({
     split,
     context,
   );
-  const { order, blockedIds } = orderArrangementMoves(splitClips, {
-    startBeatsFor,
-    lengthBeatsFor,
-    destinationById,
-  });
+  const { order, blockedIds, dependencies, vacates } = orderArrangementMoves(
+    splitClips,
+    { startBeatsFor, lengthBeatsFor, destinationById },
+  );
+  // Starts with what the plan refused, and grows as the executor gives up on a
+  // destination Live turns down — same set, so both refusals drop a move the
+  // same way.
+  const refusedIds = new Set(blockedIds);
 
   // A refused move must not reach Live by either route, so drop the lane too.
+  const refuseMove = (clipId: string): void => {
+    refusedIds.add(clipId);
+    destinationById.delete(clipId);
+  };
+
   for (const id of blockedIds) destinationById.delete(id);
 
   // Both halves go: a resize clears the span it tiles across just as a move
   // clears its destination, so letting it run alone would destroy the very
-  // clip the refusal is protecting.
+  // clip the refusal is protecting. Read per clip as its turn comes, so a
+  // refusal made mid-call still reaches the clips after it.
   const startBeatsForMove = (clip: LiveAPI): number | null =>
-    blockedIds.has(clip.id) ? null : startBeatsFor(clip);
+    refusedIds.has(clip.id) ? null : startBeatsFor(clip);
   const lengthBeatsForMove = (clip: LiveAPI): number | null =>
-    blockedIds.has(clip.id) ? null : lengthBeatsFor(clip);
+    refusedIds.has(clip.id) ? null : lengthBeatsFor(clip);
 
   return {
     clips: splitClips,
@@ -165,6 +184,9 @@ export function planClipUpdate({
     ),
     startBeatsFor: startBeatsForMove,
     lengthBeatsFor: lengthBeatsForMove,
+    dependencies,
+    vacates,
+    refuseMove,
   };
 }
 
