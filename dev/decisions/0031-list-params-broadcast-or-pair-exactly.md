@@ -59,6 +59,10 @@ position holds any number of clips and a name is a property, not a place.
   than building none. It lost because it would be a third rule, which is the
   thing this ADR exists to remove; the warning says exactly which positions got
   nothing.
+- duplicate's source list pairs the same way: with several `id`s, `toPath` and
+  `arrangementStart` give one arrangement destination per source, so a lone
+  destination still covers them all and a list never lands every source on every
+  spot.
 
 ## What the evals found
 

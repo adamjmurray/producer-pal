@@ -107,8 +107,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "One destination covers every position, or name one per position, in order; the lists do not cycle. " +
-        "With several sources, a track/take-lane destination goes to every source; clip slots, devices and pads are shared out, so name one per copy",
+        "One destination covers every source and position; a list pairs one per copy, in order, and never cycles. " +
+        "A clip slot, device or pad holds one object, so name one per copy",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
     }),

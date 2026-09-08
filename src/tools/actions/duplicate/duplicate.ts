@@ -142,17 +142,16 @@ export async function duplicate(
   arrangementStart = dest.arrangementStart;
 
   const hasArrangementParams = dest.onArrangement;
-  // A container destination — a track's arrangement or a take lane on it — holds
-  // many copies and tells them apart by position, so every source can have the
-  // whole list. A clip slot, device slot or drum pad holds one object, so the
-  // list is shared out instead of copied over itself.
+  // An arrangement destination pairs across the sources — one covers them all,
+  // a list gives one per source — where a slot-shaped one is dealt out.
   const sources = planSources({
     type,
     id,
     path,
     toPath,
     toSlot,
-    broadcasts: type === "clip" && hasArrangementParams,
+    arrangementStart,
+    onArrangement: type === "clip" && hasArrangementParams,
   });
 
   // A bad id partway through a list would leave the copies before it behind, so
@@ -205,7 +204,7 @@ export async function duplicate(
         count,
         labels,
         params: {
-          arrangementStart,
+          arrangementStart: source.arrangementStart,
           arrangementLength,
           withoutClips,
           withoutDevices,

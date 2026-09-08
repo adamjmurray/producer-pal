@@ -137,6 +137,31 @@ describe("ppal-duplicate with a source list", () => {
     expect(copies[1]!.path).toBe(`t${CHILD_TRACK}[97|1]`);
   });
 
+  // A destination list pairs with the sources instead of going to each of
+  // them, so two sources on one track take a bar each rather than both landing
+  // on both bars, where the second would bury the first.
+  it("pairs a positioned toPath list one destination per source", async () => {
+    const [firstId, secondId] = await createSources();
+
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id: `${firstId},${secondId}`,
+        toPath: `t${EMPTY_MIDI_TRACK}[109|1],t${EMPTY_MIDI_TRACK}[113|1]`,
+      }),
+    );
+
+    expect(copies).toHaveLength(2);
+    expect(copies.some((copy) => "overwritten" in copy)).toBe(false);
+    expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}[109|1]`);
+    expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[113|1]`);
+
+    await sleep(100);
+
+    // The notes say each destination holds the source it was paired with.
+    expect((await readClip(copies[0]!.id)).notes).toContain("C3");
+    expect((await readClip(copies[1]!.id)).notes).toContain("D3");
+  });
+
   // Two sources on ONE track default to that track, so a single position piles
   // them: the second copy lands on the first. Every id the result hands back
   // still has to name a clip that is there.

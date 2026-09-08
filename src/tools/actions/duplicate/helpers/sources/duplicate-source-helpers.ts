@@ -5,12 +5,20 @@
 
 // `id` and `path` each name one source or a list of them. A list runs the
 // single-source logic once per source, in order, and concatenates — so the only
-// thing to settle here is how one `toPath` is shared out.
+// thing to settle here is how the destinations are shared out.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { targetEntries } from "#src/tools/shared/utils.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import {
+  pairValues,
+  type PairLabels,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { targetIds } from "#src/tools/shared/validation/lists/target-lists.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import {
+  pathEntries,
+  pathNamesSomething,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   resolveClipDestinations,
   type ClipDestinations,
@@ -21,6 +29,8 @@ export interface SourceShare {
   id: string;
   toPath: string | undefined;
   toSlot: string | undefined;
+  /** This source's share of arrangementStart. */
+  arrangementStart: string | undefined;
 }
 
 /** What a call needs to share its destinations out across its sources. */
@@ -30,13 +40,14 @@ interface SourcePlanArgs {
   path: string | undefined;
   toPath: string | undefined;
   toSlot: string | undefined;
+  arrangementStart: string | undefined;
   /**
-   * Whether the destination holds many objects. A container — `t2`, `t2/l0`,
-   * `t2/l+` — tells its copies apart by position, so every source can have the
-   * whole list. A clip slot, device slot or drum pad holds exactly one, so the
-   * list is shared out instead.
+   * Whether the copies land on the arrangement, where a destination is a
+   * position rather than a slot. Both spellings of one — a positioned `toPath`,
+   * and a bare track with `arrangementStart` — pair across the sources the same
+   * way.
    */
-  broadcasts: boolean;
+  onArrangement: boolean;
 }
 
 /**
@@ -47,7 +58,8 @@ interface SourcePlanArgs {
  * @param args.path - Source path(s), comma-separated for multiple
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination clip slot(s)
- * @param args.broadcasts - Whether the destination holds many objects
+ * @param args.arrangementStart - Position(s), already resolved to bar|beat
+ * @param args.onArrangement - Whether the copies land on the arrangement
  * @returns One share per source, ids first, then the paths in order
  */
 export function planSources({
@@ -56,17 +68,22 @@ export function planSources({
   path,
   toPath,
   toSlot,
-  broadcasts,
+  arrangementStart,
+  onArrangement,
 }: SourcePlanArgs): SourceShare[] {
   const ids = sourceIds(type, id, path);
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split
   // downstream.
-  if (ids.length <= 1) return [{ id: ids[0] as string, toPath, toSlot }];
+  if (ids.length <= 1) {
+    return [{ id: ids[0] as string, toPath, toSlot, arrangementStart }];
+  }
 
-  if (broadcasts) {
-    return ids.map((sourceId) => ({ id: sourceId, toPath, toSlot }));
+  // toSlot only ever named a clip slot, so a call using it lands in the session
+  // however the position params read — and shares its destinations out below.
+  if (onArrangement && !pathNamesSomething(toSlot)) {
+    return arrangementShares(ids, toPath, arrangementStart);
   }
 
   // toPath and toSlot can't both name a destination (resolveClipDestinations
@@ -81,6 +98,7 @@ export function planSources({
     id: sourceId,
     toPath: paths[i],
     toSlot: slots[i],
+    arrangementStart,
   }));
 }
 
@@ -143,6 +161,69 @@ export function collectSources(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Shares an arrangement destination out across the sources: one entry covers
+ * them all, a list gives one per source in order, and nothing cycles
+ * (ADR-0031). Both params that can carry the destination pair the same way, so
+ * `toPath: "t0[1|1],t0[17|1]"` and `toPath: "t0"` with
+ * `arrangementStart: "1|1,17|1"` put the same source at the same bar.
+ * @param ids - The sources, in call order
+ * @param toPath - Destination path(s)
+ * @param arrangementStart - Position(s), already resolved to bar|beat
+ * @returns One share per source the destinations reached
+ */
+function arrangementShares(
+  ids: string[],
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): SourceShare[] {
+  const paths = perSource(pathEntries(toPath, "toPath"), ids.length, {
+    param: "toPath",
+    noun: "destination",
+    item: "source",
+    shortfall: "were not copied",
+  });
+  const starts = perSource(
+    targetEntries(arrangementStart, "arrangementStart"),
+    ids.length,
+    {
+      param: "arrangementStart",
+      noun: "position",
+      item: "source",
+      shortfall: "were not copied",
+    },
+  );
+  const shared = Math.min(paths.length, starts.length);
+
+  return ids.slice(0, shared).map((sourceId, i) => ({
+    id: sourceId,
+    toPath: paths[i],
+    toSlot: undefined,
+    arrangementStart: starts[i],
+  }));
+}
+
+/**
+ * One list param's share per source, warning when the counts disagree.
+ * @param entries - The param's entries, in call order
+ * @param sources - How many sources the call copies
+ * @param labels - What to call the param and its entries in a warning
+ * @returns One entry per source the param reached, shorter when it ran out
+ */
+function perSource(
+  entries: string[],
+  sources: number,
+  labels: PairLabels,
+): (string | undefined)[] {
+  // An unsent param reaches every source: a clip with no toPath lands on its
+  // own track, and a position can come from toPath instead of arrangementStart.
+  if (entries.length === 0) return Array.from({ length: sources });
+
+  // A short list pads with nulls, and only at the end, so dropping them leaves
+  // the sources it reached — the rest have nowhere to go.
+  return pairValues(entries, sources, labels).filter((entry) => entry != null);
+}
 
 /**
  * The ids of the objects a call names, by id, by path, or both — they name
