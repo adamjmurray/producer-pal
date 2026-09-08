@@ -100,14 +100,22 @@ describe("take lanes", () => {
     expect(lane0.id).toBeDefined();
     expect(lane0.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[1|1]`);
 
-    // takeLaneName names only the lane this call creates
-    const lane1 = await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l1[5|1]`,
-      notes: "E3 1|1",
-      takeLaneName: "Variation B",
+    // takeLaneName still names the lane this call creates, and warns: it is
+    // deprecated with no replacement.
+    const lane1Result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/l1[5|1]`,
+        notes: "E3 1|1",
+        takeLaneName: "Variation B",
+      },
     });
+    const lane1 = parseToolResultWithWarnings<CreateClipResult>(lane1Result);
 
-    expect(lane1.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[5|1]`);
+    expect(lane1.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[5|1]`);
+    expect(lane1.warnings.join("\n")).toContain(
+      'param "takeLaneName" is deprecated and will be removed; name the lane in Live',
+    );
 
     // A main-lane clip's path is the track plus where it starts
     const mainResult = await ctx.client!.callTool({

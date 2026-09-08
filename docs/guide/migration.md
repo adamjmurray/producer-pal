@@ -99,8 +99,8 @@ text needs updating.
 
 ## Params being removed in 2.4
 
-Every param below still works today and emits a deprecation warning naming its
-replacement. They are removed in 2.4.
+Every param below still works today and emits a deprecation warning saying what
+to use instead. They are removed in 2.4.
 
 A param that warns is not always one of these. `ppal-read-clip` takes
 `trackIndex` and `sceneIndex` as **aliases**: names a model reaches for on its
@@ -142,7 +142,9 @@ refused.
 
 `takeLane: "new"` is gone: name the lane by index instead, and lanes up to it
 are created as needed. Read a track's `takeLanes` first and use the next free
-index, since a track holds 8 lanes and none can be deleted.
+index, since a track holds 8 lanes and none can be deleted. Appending a lane
+without knowing how many a track has isn't possible for now; it will come back
+as a track-tool feature.
 
 ```js
 // before: two clips, one new lane
@@ -150,6 +152,11 @@ index, since a track holds 8 lanes and none can be deleted.
 // after
 { path: "t1/l0[21|1],t1/l0[25|1]" }
 ```
+
+### `takeLaneName` is deprecated
+
+It still works on `ppal-create-clip` and `ppal-duplicate`, with a warning, and
+will be removed. Name take lanes in Live.
 
 ### `arrangementStart` becomes a coordinate, not a param
 
@@ -268,8 +275,8 @@ parts than build strings by hand.
 
 ## Finding what you're still sending
 
-Every deprecated param warns when you send it, and the warning names its
-replacement:
+Every deprecated param warns when you send it, and the warning says what to use
+instead:
 
 ```
 WARNING: param "takeLane" is deprecated and will be removed; use "path" instead.

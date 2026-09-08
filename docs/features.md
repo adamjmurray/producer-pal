@@ -146,7 +146,7 @@ cluttering the timeline.
   already has lanes, start after the last one a prior
   [Read Track](/features/tools#ppal-read-track) reported. Add
   [transforms](#transforms) to vary each one.
-- Name a newly created lane with `takeLaneName`.
+- Take lanes are named in Live.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).
 - A take-lane clip can leave its lane, for another lane, another track, or a

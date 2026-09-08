@@ -79,7 +79,7 @@ export interface CreateClipArgs {
   code?: string | null;
   /** Arrangement take lane target: 0/omitted = main lane, 1+ = that lane */
   takeLane?: number | string | null;
-  /** Name for a take lane newly created by this call */
+  /** Deprecated: name for a take lane newly created by this call */
   takeLaneName?: string | null;
 }
 
@@ -109,7 +109,7 @@ export interface CreateClipArgs {
  * @param args.focus - Select the created clip and show clip detail view
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param args.takeLane - Arrangement take lane target (0/omitted = main, 1+ = lane)
- * @param args.takeLaneName - Name for a take lane newly created by this call
+ * @param args.takeLaneName - Deprecated: name for a lane this call creates
  * @param _context - Tool execution context (timeout, notation, smallModelMode)
  * @returns Single clip object when one position, array when multiple positions
  */

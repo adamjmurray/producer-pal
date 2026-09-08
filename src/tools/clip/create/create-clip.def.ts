@@ -180,9 +180,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       note: TAKE_LANE_NOTE,
     }),
 
-    takeLaneName: param(z.string().optional(), {
-      default: "name for a take lane this call creates",
-      smallModel: null,
+    // Deprecated: naming a lane is a property of the lane, not something a
+    // clip call should carry. Still honored for 2.2.0 callers.
+    takeLaneName: deprecatedParam(z.string().optional(), {
+      guidance: "name the lane in Live",
     }),
   },
 });

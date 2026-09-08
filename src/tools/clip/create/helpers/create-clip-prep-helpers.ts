@@ -134,7 +134,7 @@ export function validateArrangementPositions(
  * as needed. Like the main lane, creating over an existing clip
  * replaces/truncates it (no overlap guard). A destination whose lane doesn't
  * fit is warned and left out, so the clips around it still get made.
- * @param takeLaneName - Name for a newly created lane
+ * @param takeLaneName - Deprecated: name for a newly created lane
  * @param arrangementPositions - Resolved arrangement destinations
  * @returns Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes
  */

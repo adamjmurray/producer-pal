@@ -51,9 +51,9 @@ fell through to the device parser. `select` also stopped silently preferring
 ### Phase 1 — take lanes ✅
 
 `t0/l<n>` on `create-clip`'s `path` and `duplicate`'s `toPath`; `takeLane`
-demoted to a hidden alias (`N → l(N-1)`, `0 → no segment`); `takeLaneName` stays
-published. Every arrangement destination carries its own lane, so one call can
-spread copies across lanes.
+demoted to a hidden alias (`N → l(N-1)`, `0 → no segment`); `takeLaneName`
+deprecated with no replacement. Every arrangement destination carries its own
+lane, so one call can spread copies across lanes.
 
 Lane targets are 0-based internally now, matching `take_lanes` and the `l<n>`
 segment.

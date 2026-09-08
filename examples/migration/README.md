@@ -102,6 +102,6 @@ call is worse than an untouched one.
 - **`ppal-select`'s `trackIndex` + `sceneIndex` on a return or the main track.**
   The pair selects both, and only a regular track has a clip slot (`t1/s3`) that
   names both in one path. On a return track that takes two calls.
-- **A value the tool itself refuses**, such as a `takeLane` that is neither 0, a
-  positive integer, nor `"new"`. Rewriting it as the main lane would turn a
-  refusal into a clip on the wrong lane.
+- **A value the tool itself refuses**, such as a `takeLane` that is neither 0
+  nor a positive integer. Rewriting it as the main lane would turn a refusal
+  into a clip on the wrong lane.

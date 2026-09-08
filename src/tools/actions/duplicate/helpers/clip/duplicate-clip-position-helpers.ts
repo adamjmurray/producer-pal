@@ -58,7 +58,7 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
- * @param takeLaneName - Name for a take lane newly created by this call
+ * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param context - Per-request context
  * @returns Array of result objects
  */
@@ -105,7 +105,7 @@ export async function duplicateClipWithPositions(
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
- * @param takeLaneName - Name for a take lane newly created by this call
+ * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param context - Per-request context
  * @returns Array of result objects
  */

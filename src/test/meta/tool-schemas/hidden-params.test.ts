@@ -273,6 +273,27 @@ describe("hidden params", () => {
     }
   });
 
+  // takeLaneName shipped in 2.2.0 and has no successor param: naming a lane is
+  // the lane's business, not a clip call's.
+  it("hides takeLaneName on both tools while still accepting it", () => {
+    for (const toolName of ["ppal-create-clip", "ppal-duplicate"]) {
+      const def = STANDARD_TOOL_DEFS.find(
+        (td: ToolDefFunction) => td.toolName === toolName,
+      ) as ToolDefFunction;
+      const { validating, hidden } = resolveToolSchema(
+        def.toolOptions.inputSchema,
+        {},
+      );
+
+      expect(publishedParams(toolName)).not.toContain("takeLaneName");
+      expect(Object.keys(validating)).toContain("takeLaneName");
+      expect(hidden.takeLaneName).toStrictEqual({
+        kind: "deprecated",
+        guidance: "name the lane in Live",
+      });
+    }
+  });
+
   // A rename is safe to follow blindly; these two are not. `split` reads its
   // positions from the clip's start where `arrangementSplit` reads the song
   // timeline, and `takeLane` counts from 1 where the `l<n>` segment counts from

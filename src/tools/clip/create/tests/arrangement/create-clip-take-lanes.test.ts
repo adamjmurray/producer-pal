@@ -138,6 +138,7 @@ describe("createClip take lanes", () => {
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
   });
 
+  // Deprecated but still honored; the warning is covered in hidden-params tests.
   it("names a newly created lane via takeLaneName", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 0 });

@@ -190,8 +190,8 @@ excludes the main lane, so `l0` is the first take lane and the segment index is
 the Live API index like every other segment.
 
 `takeLane` (1-based, `0` = main) is a hidden alias mapping `N → l(N-1)` and
-`0 → no segment`. `takeLaneName` stays a published param: it is a property of a
-lane being created, not an address.
+`0 → no segment`. `takeLaneName` is deprecated with no replacement: naming a
+lane is a property of the lane, not an address, and not a clip-tool concern.
 
 **Writes to and from a lane re-create the clip**, because Live's arrangement
 duplicate handles neither direction: `TakeLane` has no duplicate API, and

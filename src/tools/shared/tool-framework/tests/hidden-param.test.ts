@@ -224,6 +224,23 @@ describe("hiddenParamWarnings", () => {
     ]);
   });
 
+  // Not every retirement has a successor param — the thing to do instead can
+  // live outside the tools.
+  it("gives the guidance when a deprecation has no replacement", () => {
+    expect(
+      hiddenParamWarnings(
+        ["takeLaneName"],
+        collectHiddenParams({
+          takeLaneName: deprecatedParam(z.string().optional(), {
+            guidance: "name the lane in Live",
+          }),
+        }),
+      ),
+    ).toStrictEqual([
+      'WARNING: param "takeLaneName" is deprecated and will be removed; name the lane in Live',
+    ]);
+  });
+
   // Two halves of one destination are one mistake, so they read as one
   // correction rather than two near-identical lines.
   it("groups aliases by the param they fold into", () => {

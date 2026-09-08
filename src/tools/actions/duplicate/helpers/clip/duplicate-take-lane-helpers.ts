@@ -34,7 +34,7 @@ export interface ResolvedDuplicateLane {
  * so the copies around it still run.
  * @param sourceClip - The clip being duplicated
  * @param targets - Destinations, in copy order
- * @param takeLaneName - Name for a take lane newly created by this call
+ * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param tracks - The destination tracks, keyed by index
  * @returns Lanes keyed by {@link takeLaneLabel}
  */
