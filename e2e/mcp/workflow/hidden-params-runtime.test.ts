@@ -48,6 +48,7 @@ interface AnyResult {
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;
+  takeLanes?: { path: string; name: string }[];
 }
 
 interface TrackRouting {
@@ -141,6 +142,21 @@ async function expectArrangementLoop(
   expect(data.loopEnd).toBe(end);
 
   await call("ppal-playback", { action: "stop" });
+}
+
+/**
+ * The name a fresh lane got. takeLaneName only names a lane the call created,
+ * so the case must target a lane index the track doesn't have yet.
+ * @param lane - The lane path to look up
+ * @returns The lane's name
+ */
+async function laneName(lane: string): Promise<string | undefined> {
+  const { data } = await call("ppal-read-track", {
+    path: `t${EMPTY_MIDI_TRACK}`,
+    include: ["arrangement-clips"],
+  });
+
+  return data.takeLanes?.find((l) => l.path === lane)?.name;
 }
 
 async function seedClip(path: string): Promise<string> {
@@ -332,6 +348,21 @@ const CASES: Case[] = [
   },
   {
     tool: "ppal-create-clip",
+    param: "takeLaneName",
+    args: () => ({
+      path: `t${EMPTY_MIDI_TRACK}/l2[93|1]`,
+      takeLaneName: "Named Create Lane",
+      notes: "C3 1|1",
+      length: "1bar",
+    }),
+    verify: async () => {
+      expect(await laneName(`t${EMPTY_MIDI_TRACK}/l2`)).toBe(
+        "Named Create Lane",
+      );
+    },
+  },
+  {
+    tool: "ppal-create-clip",
     param: "arrangementStart",
     args: () => ({
       path: `t${EMPTY_MIDI_TRACK}`,
@@ -450,6 +481,21 @@ const CASES: Case[] = [
       arrangementStart: "73|1",
       takeLane: 2,
     }),
+  },
+  {
+    tool: "ppal-duplicate",
+    param: "takeLaneName",
+    args: () => ({
+      type: "clip",
+      id: state.arrangementClipId,
+      toPath: `t${EMPTY_MIDI_TRACK}/l3[97|1]`,
+      takeLaneName: "Named Duplicate Lane",
+    }),
+    verify: async () => {
+      expect(await laneName(`t${EMPTY_MIDI_TRACK}/l3`)).toBe(
+        "Named Duplicate Lane",
+      );
+    },
   },
   {
     tool: "ppal-duplicate",
