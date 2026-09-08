@@ -25,6 +25,7 @@
  * Usage:
  *   node scripts/stats/schema-size.ts             # totals per profile
  *   node scripts/stats/schema-size.ts --tools     # plus a per-tool breakdown
+ *   node scripts/stats/schema-size.ts --markdown  # Markdown table (for CI)
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -34,6 +35,7 @@ import {
   printCliNote,
   printCliTable,
   printCliTitle,
+  printMarkdownTable,
   type Row,
 } from "./stats-tables.ts";
 
@@ -95,6 +97,8 @@ async function measure(profile: Profile): Promise<ToolSize[]> {
     .toSorted((a, b) => b.wire - a.wire);
 }
 
+const TOTAL_HEADERS = ["profile", "bytes", "tools"];
+
 /**
  * Print the totals table plus, with --tools, the per-tool breakdown of the
  * largest profile.
@@ -105,16 +109,21 @@ async function main(): Promise<void> {
   const measured = await Promise.all(
     PROFILES.map(async (profile) => [profile, await measure(profile)] as const),
   );
+  const totals = measured.map(([profile, sizes]): Row => [
+    profile.label,
+    fmt(sizes.reduce((sum, tool) => sum + tool.wire, 0)),
+    String(sizes.length),
+  ]);
+
+  if (process.argv.includes("--markdown")) {
+    console.log("\n## Tool Schema Size\n");
+    printMarkdownTable(TOTAL_HEADERS, totals);
+
+    return;
+  }
 
   printCliTitle("Tool schema size — what tools/list sends the model");
-  printCliTable(
-    ["profile", "bytes", "tools"],
-    measured.map(([profile, sizes]): Row => [
-      profile.label,
-      fmt(sizes.reduce((sum, tool) => sum + tool.wire, 0)),
-      String(sizes.length),
-    ]),
-  );
+  printCliTable(TOTAL_HEADERS, totals);
 
   if (!process.argv.includes("--tools")) {
     printCliNote("run with --tools for the per-tool breakdown");

@@ -294,8 +294,8 @@ them without asking:**
   silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
   `@ts-expect-error`, and v8-ignore comments.
-- `src/test/comment-limits.test.ts` — per-tree caps on comment lines and
-  comment-block length.
+- `src/test/helpers/comment-limits.ts` — per-tree caps on comment lines and
+  comment-block length, enforced by `src/test/comment-limits.test.ts`.
 - `vitest.config.ts` (thresholds) — coverage.
 - `config/.jscpd*.json` (`threshold`) — code duplication.
 

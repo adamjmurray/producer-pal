@@ -150,8 +150,10 @@ comment block per tree, and names the worst files (`--all` lists every file).
 The license header and lint directives don't count.
 
 `src/test/comment-limits.test.ts` ratchets those numbers: comment lines, longest
-block, and how many files hold a block of 8+ lines. Lower a limit when a count
-falls; raising one needs user approval.
+block, and how many files hold a block of 8+ lines. The caps live in
+`src/test/helpers/comment-limits.ts`, and `--markdown` prints them beside the
+current counts. Lower a limit when a count falls; raising one needs user
+approval.
 
 ## Auditing coverage
 

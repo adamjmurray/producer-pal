@@ -5,6 +5,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  type TreeLimits,
+  COMMENT_LINE_LIMITS,
+  LONG_BLOCK_FILE_LIMITS,
+  LONGEST_BLOCK_LIMITS,
+} from "./helpers/comment-limits.ts";
+import {
   type CommentSummary,
   type CommentTree,
   type FileCommentStats,
@@ -16,41 +22,11 @@ import {
 
 // A ratchet on comment volume in the non-test sources: the license header and
 // lint directives don't count, everything else does. `npm run comment:stats`
-// prints the same numbers and names the worst files.
-//
-// THE RULE: when a count falls, lower its limit to just above the new number.
-// Raising a limit needs the user's approval — otherwise a verbose comment pays
-// for itself by widening the budget, which is the thing this test exists to
-// stop.
+// prints the same numbers and names the worst files. The caps, and the rule for
+// changing them, live in helpers/comment-limits.ts.
 //
 // Blocks are the metric that actually points at over-explaining: a run of 8+
 // comment lines is usually a story that could be a sentence.
-
-type TreeLimits = Record<CommentTree, number>;
-
-const COMMENT_LINE_LIMITS: TreeLimits = {
-  src: 25_800,
-  scripts: 2_460,
-  webui: 12_030,
-  evals: 7_110,
-  e2e: 93,
-};
-
-const LONGEST_BLOCK_LIMITS: TreeLimits = {
-  src: 74,
-  scripts: 41,
-  webui: 48,
-  evals: 34,
-  e2e: 11,
-};
-
-const LONG_BLOCK_FILE_LIMITS: TreeLimits = {
-  src: 375,
-  scripts: 35,
-  webui: 204,
-  evals: 113,
-  e2e: 2,
-};
 
 interface Metric {
   name: string;
