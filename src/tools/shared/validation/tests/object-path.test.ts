@@ -55,20 +55,19 @@ describe("parseObjectPath", () => {
       trackIndex: 2,
       laneIndex: 1,
     });
-    expect(parseObjectPath("t2/l+")).toStrictEqual({
-      kind: "new-take-lane",
-      trackIndex: 2,
-    });
   });
 
-  // "l=" used to mean "the lane the l+ before it appended". It is gone, so it
-  // reads as any other unknown segment does.
-  it("refuses an l= segment", () => {
+  // "l=" and "l+" used to append or name an appended lane. Both are gone: a
+  // "+" only ever roots a path, and a lane is named by its index.
+  it("refuses the retired l= and l+ segments", () => {
     expect(() => parseObjectPath("t2/l=")).toThrow(
       '"l=" is not a device, chain, or drum pad',
     );
-    expect(() => parseObjectPath("t2/l=[5|1]")).toThrow(
-      '"l=" is not a device, chain, or drum pad',
+    expect(() => parseObjectPath("t2/l+")).toThrow(
+      'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
+    );
+    expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
+      'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
     );
   });
 
@@ -204,7 +203,7 @@ describe("parseObjectPath", () => {
   });
 
   it("rejects a take lane anywhere a track's lanes can't be", () => {
-    for (const path of ["rt0/l1", "mt/l+", "t0/d0/l1", "t0/l1/d0"]) {
+    for (const path of ["rt0/l1", "mt/l1", "t0/d0/l1", "t0/l1/d0"]) {
       expect(() => parseObjectPath(path)).toThrow(
         /a take lane is "t<track>\/l<lane>"/,
       );
@@ -363,7 +362,6 @@ describe("formatObjectPath", () => {
       "s3",
       "t7/s2",
       "t0/l0",
-      "t2/l+",
       "t+",
       "rt+",
       "s+",
@@ -397,11 +395,6 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     expect(parseObjectPath("t0/l1[5|1]")).toStrictEqual({
       kind: "arrangement-position",
       lane: { kind: "take-lane", trackIndex: 0, laneIndex: 1 },
-      position: "5|1",
-    });
-    expect(parseObjectPath("t0/l+[5|1]")).toStrictEqual({
-      kind: "arrangement-position",
-      lane: { kind: "new-take-lane", trackIndex: 0 },
       position: "5|1",
     });
   });
@@ -452,7 +445,7 @@ describe("parseObjectPath - the [song position] coordinate", () => {
   });
 
   it("round-trips every shape", () => {
-    for (const path of ["t0[5|1]", "t0/l1[5|1]", "t0/l+[5|1]", "[loc:Verse]"]) {
+    for (const path of ["t0[5|1]", "t0/l1[5|1]", "[loc:Verse]"]) {
       expect(formatObjectPath(parseObjectPath(path))).toBe(path);
     }
   });

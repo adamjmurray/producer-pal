@@ -6,10 +6,13 @@
 ## Reversal
 
 `l=` never shipped. It was the grammar's only order-dependent rule, and the
-stack-on-one-lane case it served is the common one. So `l+` now means one new
-lane per call: every `l+` in a list lands on that lane, and a lane per clip is
-separate calls or explicit `l<n>` paths. The rejected "repeated `l+` entries
-share a lane" below is what was adopted. See ADR-0025.
+stack-on-one-lane case it served is the common one. So `l+` was made to mean one
+new lane per call: every `l+` in a list landed on that lane.
+
+Then `l+` went too, also before release. A `+` is a root — `t+`, `rt+`, `s+` —
+and only the tool that creates that kind of object accepts one; `l+` was the
+only `+` that was neither. `l<n>` already creates lanes up to the index, so it
+says everything `l+` could. See ADR-0025.
 
 ## Context
 

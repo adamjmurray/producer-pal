@@ -286,7 +286,7 @@ describe("orderArrangementMoves", () => {
       { id: "114", start: 32, end: 48 },
     ]);
     const destinations = new Map<string, ClipPath>([
-      ["113", { kind: "new-take-lane", trackIndex: 0 }],
+      ["113", { kind: "take-lane", trackIndex: 0, laneIndex: 0 }],
     ]);
 
     const { order, blockedIds } = orderArrangementMoves(

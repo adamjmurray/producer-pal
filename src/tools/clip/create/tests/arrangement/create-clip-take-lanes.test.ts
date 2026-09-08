@@ -61,7 +61,7 @@ describe("createClip take lanes", () => {
       trackIndex: 0,
       arrangementStart: "1|1",
       notes: "C3",
-      takeLane: "new",
+      takeLane: 1,
     })) as { id: string; path?: string };
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
@@ -91,7 +91,7 @@ describe("createClip take lanes", () => {
         trackIndex: 0,
         arrangementStart: "1|1,0|1",
         notes: "C3",
-        takeLane: "new",
+        takeLane: 1,
       }),
     ).rejects.toThrow(/1-indexed/);
 
@@ -109,7 +109,7 @@ describe("createClip take lanes", () => {
       trackIndex: 0,
       arrangementStart: "1|1",
       sampleFile: "/samples/loop.wav",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
@@ -146,7 +146,7 @@ describe("createClip take lanes", () => {
       trackIndex: 0,
       arrangementStart: "1|1",
       notes: "C3",
-      takeLane: "new",
+      takeLane: 1,
       takeLaneName: "Variation B",
     });
 
@@ -206,7 +206,7 @@ describe("createClip take lanes", () => {
   it("warns and ignores takeLane for session-only requests", async () => {
     registerEmptyClipSlot();
 
-    await createClip({ slot: "0/0", notes: "C3", takeLane: "new" });
+    await createClip({ slot: "0/0", notes: "C3", takeLane: 1 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining("takeLane ignored for session clips"),
@@ -242,7 +242,7 @@ describe("createClip take lanes", () => {
       slot: "0/0",
       arrangementStart: "1|1",
       notes: "C3",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
@@ -268,24 +268,23 @@ describe("createClip take lane paths", () => {
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
-  it("appends a fresh lane for l+", async () => {
+  it("creates the lanes up to the index the path names", async () => {
     registerLiveSet();
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
-    await createClip({ path: "t0/l+", arrangementStart: "1|1", notes: "C3" });
+    await createClip({ path: "t0/l0", arrangementStart: "1|1", notes: "C3" });
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
     expectTakeLaneMidiClip(0, 0);
   });
 
-  // One new lane per call, so this is how a stack of takes at chosen bars is
-  // written. Two fresh lanes takes two calls.
-  it("puts every l+ in the path on the one lane the call appends", async () => {
+  // A stack of takes at chosen bars: one lane, several positions.
+  it("stacks every position the path names on one lane", async () => {
     registerLiveSet();
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
     await createClip({
-      path: "t0/l+[1|1],t0/l+[5|1]",
+      path: "t0/l0[1|1],t0/l0[5|1]",
       notes: "C3",
     });
 
@@ -294,26 +293,28 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(0, 16);
   });
 
-  // "l=" once meant "the lane the l+ before it appended". It is gone, so it
-  // reads as any other unknown segment does.
-  it("refuses an l= in the path", async () => {
+  // "l=" and "l+" once appended a lane or named the appended one. Both are
+  // gone: a "+" only ever roots a path, and a lane is named by its index.
+  it("refuses the retired l= and l+ in the path", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
 
     await expect(
       createClip({ path: "t0/l=[1|1]", notes: "C3" }),
     ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
+    await expect(
+      createClip({ path: "t0/l+[1|1]", notes: "C3" }),
+    ).rejects.toThrow('a take lane is "t<track>/l<lane>" (e.g. "t0/l0")');
   });
 
-  // One written l+ covers all three positions, the way any single value covers
-  // every item. Numbering the expanded positions instead would scatter them
-  // over three lanes.
-  it("keeps one l+ on one lane across several arrangementStarts", async () => {
+  // One written lane covers all three positions, the way any single value
+  // covers every item.
+  it("keeps one lane across several arrangementStarts", async () => {
     registerLiveSet();
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
     await createClip({
-      path: "t0/l+",
+      path: "t0/l0",
       arrangementStart: "1|1,2|1,3|1",
       notes: "C3",
     });
@@ -393,7 +394,7 @@ describe("createClip take lane paths", () => {
     const mainTrack = registerArrangementTrack(1);
 
     const result = (await createClip({
-      path: "t0/l+,t1",
+      path: `t0/l${MAX_TAKE_LANES},t1`,
       arrangementStart: "1|1",
       notes: "C3",
     })) as { path?: string };
@@ -402,10 +403,10 @@ describe("createClip take lane paths", () => {
     // Only t1's clip was made, so the result collapses to that one object.
     expect(result.path).toBe("t1[1|1]");
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('skipping "t0/l+"'),
+      expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
     );
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('take lane "t0/l+" was skipped'),
+      expect.stringContaining(`take lane "t0/l${MAX_TAKE_LANES}" was skipped`),
     );
   });
 
@@ -448,28 +449,28 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
     const result = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
     ]);
 
-    expect(result.get("t0/l+")!.path).toBe("live_set tracks 0 take_lanes 0");
+    expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
     );
   });
 
-  // Every "l+" on a track keys the same, so all its positions land on the one
-  // lane instead of splitting across three.
-  it("resolves one lane per track, not per position", () => {
+  // One lane named twice keys the same, so both its positions land on the one
+  // lane instead of resolving it twice.
+  it("resolves one lane per destination, not per position", () => {
     const track0 = registerTakeLaneTrack({ initialLanes: 0 });
     const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
     const result = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
-      { trackIndex: 1, arrangementStart: "2|1", takeLane: "new" },
-      { trackIndex: 0, arrangementStart: "3|1", takeLane: "new" },
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
+      { trackIndex: 1, arrangementStart: "2|1", takeLane: 0 },
+      { trackIndex: 0, arrangementStart: "3|1", takeLane: 0 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l+", "t1/l+"]);
+    expect([...result.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
     // The keys alone can't catch a lost dedup — Map.set on a key that's already
     // there adds no key. The append count is what proves t0's second position
     // reused the lane its first one made.
@@ -477,17 +478,16 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     expect(track1.call).toHaveBeenCalledTimes(1);
   });
 
-  // Several written "l+" on one track are one append: the call gets one lane,
-  // and each position lands on it.
-  it("appends one lane when the path names several l+", () => {
+  // The same lane written twice is one resolve, and each position lands on it.
+  it("creates one lane when the path names it twice", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
     const result = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
-      { trackIndex: 0, arrangementStart: "5|1", takeLane: "new" },
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
+      { trackIndex: 0, arrangementStart: "5|1", takeLane: 0 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l+"]);
+    expect([...result.keys()]).toStrictEqual(["t0/l0"]);
     expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
@@ -508,20 +508,19 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     expect(result.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
   });
 
-  // l7 fills the track to the cap, so l+ has nowhere to go. Checking each
-  // destination against the pre-call count misses that and fails mid-resolve,
-  // after l7's 8 permanent lanes already exist.
-  it("skips the destination that pushes one track past the cap", () => {
+  // A destination past the cap is dropped, and the ones alongside it still
+  // resolve — a throw would strand the permanent lanes they already made.
+  it("skips the destination past the cap and keeps the others", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
     const result = resolveCreateClipTakeLanes(null, [
-      { trackIndex: 0, arrangementStart: "1|1", takeLane: 7 },
-      { trackIndex: 0, arrangementStart: "2|1", takeLane: "new" },
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: MAX_TAKE_LANES - 1 },
+      { trackIndex: 0, arrangementStart: "2|1", takeLane: MAX_TAKE_LANES },
     ]);
 
     expect([...result.keys()]).toStrictEqual(["t0/l7"]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('skipping "t0/l+"'),
+      expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
     );
   });
 });

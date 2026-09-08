@@ -63,9 +63,7 @@ describe("duplicate to a take lane, cut short", () => {
     vi.spyOn(Date, "now").mockImplementation(() => now);
   });
 
-  it("names the lane it created, not the l+ that made it", async () => {
-    // Re-running "l+" appends a second lane instead of filling this one, and
-    // lanes are permanent — so the advice has to name the lane that now exists.
+  it("names the lane the unreached copies were headed for", async () => {
     registerSource(2000);
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
 
@@ -73,7 +71,7 @@ describe("duplicate to a take lane, cut short", () => {
       {
         type: "clip",
         id: "src_clip",
-        toPath: "t1/l+",
+        toPath: "t1/l0",
         arrangementStart: "1|1,5|1",
       },
       { deadline: 1000 },
@@ -102,7 +100,7 @@ describe("duplicate to a take lane, cut short", () => {
       {
         type: "clip",
         id: "src_clip",
-        toPath: "t1/l+,t1/l0,t1/l1",
+        toPath: `t1/l${MAX_TAKE_LANES},t1/l0,t1/l1`,
         arrangementStart: "1|1,5|1,9|1",
       },
       { deadline: 1000 },
@@ -116,7 +114,7 @@ describe("duplicate to a take lane, cut short", () => {
     });
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 3. " +
-        "Not duplicated: t1/l+ 1|1, t1/l1 9|1. Re-run for those positions.",
+        `Not duplicated: t1/l${MAX_TAKE_LANES} 1|1, t1/l1 9|1. Re-run for those positions.`,
     );
   });
 
@@ -133,7 +131,7 @@ describe("duplicate to a take lane, cut short", () => {
       {
         type: "clip",
         id: "src_clip",
-        toPath: "t1/l+,t1/l1",
+        toPath: "t1/l0,t1/l1",
         arrangementStart: "1|1",
       },
       { deadline: 1000 },
@@ -141,10 +139,9 @@ describe("duplicate to a take lane, cut short", () => {
 
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(result).toStrictEqual([]);
-    // Nothing was created, so here "l+" is still what a re-run should send.
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 0 of 2. " +
-        "Not duplicated: t1/l+ 1|1, t1/l1 1|1. Re-run for those positions.",
+        "Not duplicated: t1/l0 1|1, t1/l1 1|1. Re-run for those positions.",
     );
   });
 });

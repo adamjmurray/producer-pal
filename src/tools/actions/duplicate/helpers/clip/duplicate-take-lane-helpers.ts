@@ -67,8 +67,7 @@ export function resolveDuplicateTakeLanes(
   const lanes = new Map<string, ResolvedDuplicateLane>();
   const losses = recreatedClipLosses(sourceClip);
 
-  // Resolve once per destination rather than once per copy — otherwise a single
-  // "l+" covering three arrangementStarts gets three fresh lanes.
+  // Resolve once per destination rather than once per copy.
   for (const destination of takeLaneTargetsThatFit(laneTargets)) {
     const { trackIndex, takeLane: target } = destination;
     const key = takeLaneLabel(destination);

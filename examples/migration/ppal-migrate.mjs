@@ -48,8 +48,9 @@
  * are assembled in grammar order — track, then scene or take lane, then the
  * device tail, then a bracketed song position.
  *
- * `trackIndex`, `sceneIndex` and `takeLane` take a number or the string "new"
- * for the `+` spelling that names a place which doesn't exist yet.
+ * `trackIndex` and `sceneIndex` take a number or the string "new" for the `+`
+ * spelling that names a place which doesn't exist yet. `takeLane` is always a
+ * number: lanes are created up to the index.
  */
 export function buildPath(parts = {}) {
   const { trackIndex, trackType, sceneIndex, takeLane, deviceTail, position } =
@@ -59,7 +60,7 @@ export function buildPath(parts = {}) {
 
   if (track) segments.push(track);
   if (sceneIndex != null) segments.push(`s${indexSpelling(sceneIndex)}`);
-  if (takeLane != null) segments.push(`l${indexSpelling(takeLane)}`);
+  if (takeLane != null) segments.push(`l${takeLane}`);
   if (deviceTail?.length) segments.push(...deviceTail);
 
   const body = segments.join("/");
@@ -96,7 +97,7 @@ export function parsePath(path) {
     else if (kind === "rt") assignTrack(parts, "return", value);
     else if (kind === "t") assignTrack(parts, "regular", value);
     else if (kind === "s") parts.sceneIndex = indexValue(value);
-    else parts.takeLane = indexValue(value);
+    else parts.takeLane = Number(value);
   }
 
   if (deviceTail.length > 0) parts.deviceTail = deviceTail;
@@ -406,8 +407,6 @@ function migratePlayback(args) {
 
 /** Fuses a list of song positions onto a destination, one path per position. */
 function positionPaths(args, key, track, takeLaneIndex) {
-  // Every `l+` in one call lands on the same new lane, which is what one
-  // `takeLane: "new"` did.
   return splitList(take(args, key)).map((position) =>
     buildPath({ ...track, takeLane: takeLaneIndex, position }),
   );
@@ -466,7 +465,8 @@ function takeLaneTarget(args, notes) {
 function unusableLaneNote(value) {
   return (
     `takeLane ${JSON.stringify(value)} left as-is: it names no lane. The ` +
-    'param counts from 1 — 0 is the main lane, 1 is "l0", and "new" is "l+".'
+    'param counts from 1 — 0 is the main lane and 1 is "l0". "new" is gone: ' +
+    "name the lane by index, reading the track's take lanes for the next free one"
   );
 }
 
@@ -478,7 +478,6 @@ function unusableLaneNote(value) {
  */
 function laneIndex(value) {
   if (value == null || value === "") return null;
-  if (String(value) === "new") return "new";
 
   const lane = Number(value);
 
@@ -594,31 +593,9 @@ const CASES = [
     { path: "t1[5|1]" },
   ],
   [
-    TOOL.createClip,
-    { trackIndex: 1, arrangementStart: "21|1", takeLane: "new" },
-    { path: "t1/l+[21|1]" },
-  ],
-  // One takeLane made one lane however many positions landed on it, and every
-  // `l+` in one call lands on that same lane.
-  [
-    TOOL.createClip,
-    { trackIndex: 1, arrangementStart: "21|1,25|1", takeLane: "new" },
-    { path: "t1/l+[21|1],t1/l+[25|1]" },
-  ],
-  [
     TOOL.duplicate,
     { type: "clip", path: "t1/s0", takeLane: "1", arrangementStart: "17|1" },
     { type: "clip", path: "t1/s0", toPath: "t1/l0[17|1]" },
-  ],
-  [
-    TOOL.duplicate,
-    {
-      type: "clip",
-      path: "t1/s0",
-      takeLane: "new",
-      arrangementStart: "17|1,21|1",
-    },
-    { type: "clip", path: "t1/s0", toPath: "t1/l+[17|1],t1/l+[21|1]" },
   ],
   [
     TOOL.duplicate,

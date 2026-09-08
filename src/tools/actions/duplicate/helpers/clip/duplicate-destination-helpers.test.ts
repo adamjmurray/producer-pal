@@ -160,19 +160,19 @@ describe("resolveClipDestinations", () => {
       );
     });
 
-    // The dropped slot keeps its place as a null, so the two "l+" stay where the
-    // caller wrote them — and both name the one lane the call appends.
-    it("keeps both l+ entries when a dropped slot shares the list", () => {
+    // The dropped slot keeps its place as a null, so the two lane entries stay
+    // where the caller wrote them.
+    it("keeps both lane entries when a dropped slot shares the list", () => {
       vi.spyOn(console, "warn");
 
       expect(
-        resolveClipDestinations("t2/s1,t3/l+,t3/l+", undefined, true),
+        resolveClipDestinations("t2/s1,t3/l0,t3/l0", undefined, true),
       ).toStrictEqual(
         arrangementResult(
           [
             null,
-            { trackIndex: 3, takeLane: "new" },
-            { trackIndex: 3, takeLane: "new" },
+            { trackIndex: 3, takeLane: 0 },
+            { trackIndex: 3, takeLane: 0 },
           ],
           [null, null, null],
         ),

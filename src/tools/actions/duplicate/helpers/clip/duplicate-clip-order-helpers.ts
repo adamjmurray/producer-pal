@@ -50,8 +50,7 @@ export function sourceLastOrder(
   const sourceEnd = source.getProperty("end_time") as number;
   // Every lane is written on its own, so only a copy landing on the source's
   // own lane can reach it — null is the main lane on both sides, so this
-  // compares like with like. An "l+" matches nothing, which is right: the lane
-  // it appends is empty.
+  // compares like with like.
   const sameLane = (i: number): boolean =>
     (targets[i] as ArrangementTrack).takeLane === sourceLane;
   // An unknown source track counts as every track and every lane, matching

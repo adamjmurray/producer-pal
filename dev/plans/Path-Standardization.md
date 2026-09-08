@@ -40,8 +40,8 @@ results or a take-lane clip has no path to report.
 Merged the clip-side and device-side parsers into
 [object-path.ts](../../src/tools/shared/validation/object-path.ts) +
 [object-path-helpers.ts](../../src/tools/shared/validation/object-path-helpers.ts):
-one parse → discriminated union → resolve. Added the `l` / `l+` segments, the
-`s` root, and the tolerant legacy values.
+one parse → discriminated union → resolve. Added the `l` segment, the `s` root,
+and the tolerant legacy values.
 
 Fixed by construction: `select path="rt0"` used to answer
 `Path must include at least a device index: rt0`, because the return-track case
@@ -50,10 +50,10 @@ fell through to the device parser. `select` also stopped silently preferring
 
 ### Phase 1 — take lanes ✅
 
-`t0/l<n>` and `t0/l+` on `create-clip`'s `path` and `duplicate`'s `toPath`;
-`takeLane` demoted to a hidden alias (`N → l(N-1)`, `0 → no segment`);
-`takeLaneName` stays published. Every arrangement destination carries its own
-lane, so one call can spread copies across lanes.
+`t0/l<n>` on `create-clip`'s `path` and `duplicate`'s `toPath`; `takeLane`
+demoted to a hidden alias (`N → l(N-1)`, `0 → no segment`); `takeLaneName` stays
+published. Every arrangement destination carries its own lane, so one call can
+spread copies across lanes.
 
 Lane targets are 0-based internally now, matching `take_lanes` and the `l<n>`
 segment.

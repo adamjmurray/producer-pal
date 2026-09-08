@@ -37,8 +37,6 @@ interface HandleArrangementStartArgs {
   movedClipGroups: Map<string, MoveGroup>;
   isMidiClip: boolean;
   context: TilingContext;
-  /** The lane an `l+` in this call appended, keyed by destination. */
-  appendedLanes: Map<string, number>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
   isNonSurvivor?: boolean;
@@ -59,7 +57,6 @@ interface HandleArrangementStartArgs {
  * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
- * @param args.appendedLanes - The lane this call already appended, shared by every `l+`
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for the result entry
  * @param args.isNonSurvivor - When true, leave the clip alone: a later, longer
@@ -74,7 +71,6 @@ export function handleArrangementStartOperation({
   movedClipGroups,
   isMidiClip,
   context,
-  appendedLanes,
   updatedClips,
   noteResult,
   isNonSurvivor,
@@ -131,7 +127,6 @@ export function handleArrangementStartOperation({
     targetBeats,
     isMidiClip,
     context,
-    appendedLanes,
     movedClipGroups,
   });
 
@@ -181,8 +176,6 @@ interface HandleArrangementOperationsArgs {
   /** Destination track and lane from toPath, or null to stay on its own lane. */
   destination?: ArrangementTrack | null;
   movedClipGroups: Map<string, MoveGroup>;
-  /** The lane an `l+` in this call appended, keyed by destination. */
-  appendedLanes: Map<string, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -198,7 +191,6 @@ interface HandleArrangementOperationsArgs {
  * @param args.arrangementLengthBeats - Target length in beats
  * @param args.destination - Destination track and lane, or null for the clip's own lane
  * @param args.movedClipGroups - Tally of clips landing on each lane and position
- * @param args.appendedLanes - The lane this call already appended, shared by every `l+`
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.noteResult - Note update result for result
@@ -211,7 +203,6 @@ export function handleArrangementOperations({
   arrangementLengthBeats,
   destination,
   movedClipGroups,
-  appendedLanes,
   context,
   updatedClips,
   noteResult,
@@ -231,7 +222,6 @@ export function handleArrangementOperations({
       movedClipGroups,
       isMidiClip: !isAudioClip,
       context: context as TilingContext,
-      appendedLanes,
       updatedClips,
       noteResult,
       isNonSurvivor,

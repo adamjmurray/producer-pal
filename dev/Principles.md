@@ -81,10 +81,10 @@ should follow from them unambiguously, without being spelled out here.
    result uses the input spelling. A spelling the tools tolerate but don't teach
    is answered with the taught one, so a result never re-teaches a spelling
    being retired. When the call had no path, or one that won't keep referring to
-   the same object or position (`l+`, a locator), the result uses the spelling
-   that stays valid longest. Where the API reaches one object by more than one
-   route, one is canonical and the rest only resolve on input. Canonical is the
-   route that carries the most context: `pC1/c1` says which drum pad's layers it
+   the same object or position (a locator), the result uses the spelling that
+   stays valid longest. Where the API reaches one object by more than one route,
+   one is canonical and the rest only resolve on input. Canonical is the route
+   that carries the most context: `pC1/c1` says which drum pad's layers it
    counts and names the pitch that plays them, where a bare `cN` says neither.
 
 10. Efficiency: Cover the Live API with as few tools, as few Live API calls, and

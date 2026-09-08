@@ -102,8 +102,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2[5|1]' = that spot on that track's arrangement, and '[5|1]' the same spot on the source clip's " +
         "own track (a position is bar|beat or loc:<locator name or id> — 't2[loc:Chorus]' names a " +
         "section instead of counting bars; an arrangement track must match " +
-        "the clip's MIDI/audio type); 't2/l0' = its first take lane, and 't2/l+' appends one new lane " +
-        "per call, which every 'l+' in the call lands on; " +
+        "the clip's MIDI/audio type); 't2/l0' = its first take lane, and lanes are created up to that " +
+        "index; " +
         "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
@@ -139,7 +139,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     }),
 
     takeLaneName: param(z.string().optional(), {
-      default: "name for a take lane this call creates (toPath 't<track>/l+')",
+      default: "name for a take lane this call creates",
       smallModel: null,
     }),
   },

@@ -27,7 +27,7 @@ export const TEMPO_REFUSAL = `Live's tempo range is ${MIN_TEMPO}-${MAX_TEMPO} BP
 // take-lane-helpers.ts: that module reaches for the LiveAPI global, and the
 // tool defs that carry this note are typechecked Node-side too.
 export const TAKE_LANE_NOTE =
-  'Lanes count from 0 in a path: takeLane 1 is "l0", takeLane 0 is the main lane, and takeLane "new" is "l+".';
+  'Lanes count from 0 in a path: takeLane 1 is "l0", and takeLane 0 is the main lane.';
 
 // State string constants (6 valid states)
 export const STATE = {

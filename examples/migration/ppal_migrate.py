@@ -64,9 +64,9 @@ def build_path(parts=None):
 
     Every field is optional; whichever are present are assembled in grammar
     order -- track, then scene or take lane, then the device tail, then a
-    bracketed song position. `trackIndex`, `sceneIndex` and `takeLane` take an
-    int or the string "new" for the `+` spelling that names a place which does
-    not exist yet.
+    bracketed song position. `trackIndex` and `sceneIndex` take an int or the
+    string "new" for the `+` spelling that names a place which does not exist
+    yet. `takeLane` is always an int: lanes are created up to the index.
     """
     parts = parts or {}
     segments = []
@@ -77,7 +77,7 @@ def build_path(parts=None):
     if parts.get("sceneIndex") is not None:
         segments.append("s" + _index_spelling(parts["sceneIndex"]))
     if parts.get("takeLane") is not None:
-        segments.append("l" + _index_spelling(parts["takeLane"]))
+        segments.append("l" + str(parts["takeLane"]))
     segments.extend(parts.get("deviceTail") or [])
 
     body = "/".join(segments)
@@ -120,7 +120,7 @@ def parse_path(path):
         elif kind == "s":
             parts["sceneIndex"] = _index_value(value)
         else:
-            parts["takeLane"] = _index_value(value)
+            parts["takeLane"] = int(value)
 
     if device_tail:
         parts["deviceTail"] = device_tail
@@ -433,8 +433,6 @@ def _position_paths(args, key, track, take_lane):
     """Fuse a list of song positions onto a destination, one path per position."""
     paths = []
 
-    # Every `l+` in one call lands on the same new lane, which is what one
-    # `takeLane: "new"` did.
     for position in _split_list(_take(args, key)):
         parts = dict(track)
         parts.update(takeLane=take_lane, position=position)
@@ -526,7 +524,9 @@ def _unusable_lane_note(value):
     """What to say about a takeLane value the tool would refuse."""
     return (
         "takeLane %s left as-is: it names no lane. The param counts from 1 -- "
-        '0 is the main lane, 1 is "l0", and "new" is "l+".' % json.dumps(value)
+        '0 is the main lane and 1 is "l0". "new" is gone: name the lane by '
+        "index, reading the track's take lanes for the next free one."
+        % json.dumps(value)
     )
 
 
@@ -540,8 +540,6 @@ def _lane_index(value):
     """
     if value is None or value == "":
         return None
-    if str(value) == "new":
-        return "new"
 
     try:
         lane = int(value)
@@ -670,18 +668,6 @@ CASES = [
         {"path": "t1[5|1]"},
     ),
     (
-        TOOL["createClip"],
-        {"trackIndex": 1, "arrangementStart": "21|1", "takeLane": "new"},
-        {"path": "t1/l+[21|1]"},
-    ),
-    # One takeLane made one lane however many positions landed on it, and every
-    # `l+` in one call lands on that same lane.
-    (
-        TOOL["createClip"],
-        {"trackIndex": 1, "arrangementStart": "21|1,25|1", "takeLane": "new"},
-        {"path": "t1/l+[21|1],t1/l+[25|1]"},
-    ),
-    (
         TOOL["duplicate"],
         {
             "type": "clip",
@@ -690,20 +676,6 @@ CASES = [
             "arrangementStart": "17|1",
         },
         {"type": "clip", "path": "t1/s0", "toPath": "t1/l0[17|1]"},
-    ),
-    (
-        TOOL["duplicate"],
-        {
-            "type": "clip",
-            "path": "t1/s0",
-            "takeLane": "new",
-            "arrangementStart": "17|1,21|1",
-        },
-        {
-            "type": "clip",
-            "path": "t1/s0",
-            "toPath": "t1/l+[17|1],t1/l+[21|1]",
-        },
     ),
     (
         TOOL["duplicate"],

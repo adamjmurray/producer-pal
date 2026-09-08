@@ -197,7 +197,6 @@ function describePathKind(path: ObjectPath): string {
     case "slot":
       return "a clip slot";
     case "take-lane":
-    case "new-take-lane":
       return "a take lane";
     case "device":
       return "a device";

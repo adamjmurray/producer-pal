@@ -49,13 +49,11 @@ Paths address **clips and devices**. Tracks and scenes keep `trackIndex` /
   serving only the two tools that already worked. It is not: without `l`, a
   take-lane clip has no correct result path, so result round-tripping ships with
   a hole, and `update-clip` still cannot move a take-lane clip.
-- **`lnew` for appending a lane.** `l+` reads as "one more" and is shorter; `+`
-  already means that in duration syntax (`1bar+n/4`).
-- **`l=`, naming the lane the `l+` before it in the same list appended.**
-  Considered and dropped before release: it was the only order-dependent rule in
-  the grammar, and the common case — stacking takes on one lane — reads fine as
-  repeated `l+`, which now means the same new lane every time it appears in one
-  list.
+- **A segment that appends a take lane (`l+`, `lnew`, `l=`).** All dropped
+  before release. A `+` is a root — `t+`, `rt+`, `s+` — and only the tool that
+  creates that kind of object accepts one; every other path names something that
+  exists. `l<n>` creates the lanes up to its index, so it says everything an
+  appending segment could, and it names the same lane on a re-run.
 - **An `a<n>` segment for arrangement clips.** The index into a track's
   arrangement clip list is unstable and means nothing to a user. Arrangement
   clips are addressed by id, or found through `read-track`. _(The `a<n>`

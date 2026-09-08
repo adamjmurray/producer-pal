@@ -8,9 +8,8 @@
  *
  * 2.2.0 collapsed five location params into one, and 2.3.0 put the position
  * inside it. This walks a single clip through three destination shapes — a
- * session slot, a track's arrangement, and a fresh take lane — and checks the
- * lane rule on the way: every `l+` in one path list is the same new lane, so
- * a stack of takes on ONE new lane is `l+` twice.
+ * session slot, a track's arrangement, and a take lane — and checks the lane
+ * rule on the way: a stack of takes on ONE lane is that lane's index twice.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
@@ -65,7 +64,7 @@ function arrangementLayout(result: unknown): {
 /**
  * Both cycling rules at once, read off the finished Live Set: two copies on the
  * main arrangement lane from one `toPath`, and two more sharing ONE take lane
- * from one written `l+`.
+ * from its index written twice.
  * @returns A state assertion over the Chords track's arrangement
  */
 function assertArrangementLayout(): EvalAssertion {
@@ -143,15 +142,14 @@ export const pathToPathClipDestinations: EvalScenario = {
       ),
     }),
 
-    // Destination 3: two takes on ONE fresh lane, both `l+` — they're the
-    // same new lane. The layout check below catches a model that lands them
-    // on two lanes instead.
+    // Destination 3: two takes on ONE lane, its index written twice. The
+    // layout check below catches a model that lands them on two lanes instead.
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 4 },
     assertPathArg({
       turn: 4,
       tool: TOOL_DUPLICATE,
       param: "toPath",
-      expected: `t${CHORDS_TRACK_INDEX}/l+[${TAKE_LANE_STARTS[0]}],t${CHORDS_TRACK_INDEX}/l+[${TAKE_LANE_STARTS[1]}]`,
+      expected: `t${CHORDS_TRACK_INDEX}/l0[${TAKE_LANE_STARTS[0]}],t${CHORDS_TRACK_INDEX}/l0[${TAKE_LANE_STARTS[1]}]`,
     }),
     assertArrangementLayout(),
 

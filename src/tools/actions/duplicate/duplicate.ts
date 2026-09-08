@@ -86,7 +86,7 @@ interface DuplicateArgs {
  * @param args.toPath - Destination path(s): track, clip slot, or device
  * @param args.transforms - Transform expressions broadcast across all copies
  * @param args.code - JavaScript function body broadcast across all copies
- * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")
+ * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+)
  * @param args.takeLaneName - Name for a take lane newly created by this call
  * @param context - Context object
  * @returns Result object(s)

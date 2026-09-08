@@ -139,10 +139,6 @@ describe("requireClipPath", () => {
       trackIndex: 0,
       laneIndex: 1,
     });
-    expect(requireClipPath(parseObjectPath("t0/l+"))).toStrictEqual({
-      kind: "new-take-lane",
-      trackIndex: 0,
-    });
   });
 
   it("names the path in its canonical spelling, under the caller's label", () => {
@@ -166,13 +162,10 @@ describe("requireClipSlotPath", () => {
     );
   });
 
-  // Both take-lane spellings, since l+ reaches the message by a different arm.
   it("rejects a take lane, which is an arrangement position", () => {
-    for (const path of ["t7/l1", "t7/l+"]) {
-      expect(() => requireClipSlotPath(parseObjectPath(path))).toThrow(
-        /take lanes hold arrangement clips; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
-      );
-    }
+    expect(() => requireClipSlotPath(parseObjectPath("t7/l1"))).toThrow(
+      /take lanes hold arrangement clips; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
+    );
   });
 
   it("rejects a non-clip path in clip terms", () => {

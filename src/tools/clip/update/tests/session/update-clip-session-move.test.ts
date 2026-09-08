@@ -528,7 +528,6 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
     arrangementStartBeats,
     arrangementLengthBeats,
     movedClipGroups: new Map(),
-    appendedLanes: new Map(),
     context: {},
     updatedClips: [],
     noteResult: null,
@@ -607,12 +606,12 @@ describe("handlePositionOperations", () => {
   it("passes an arrangement clip's lane destination to the arrangement operations", () => {
     runPositionOps({
       isArrangementClip: true,
-      toLane: { kind: "new-take-lane", trackIndex: 4 },
+      toLane: { kind: "take-lane", trackIndex: 4, laneIndex: 2 },
     });
 
     expect(handleArrangementOperations).toHaveBeenCalledWith(
       expect.objectContaining({
-        destination: { trackIndex: 4, takeLane: "new" },
+        destination: { trackIndex: 4, takeLane: 2 },
       }),
     );
   });
@@ -666,10 +665,10 @@ describe("resolveMoveDestinations", () => {
   });
 
   it("reads an arrangement lane from toPath", () => {
-    expect(moveLanes("t2,t4/l0,t6/l+", undefined, 3)).toStrictEqual([
+    expect(moveLanes("t2,t4/l0,t6/l1", undefined, 3)).toStrictEqual([
       { kind: "track", trackIndex: 2 },
       { kind: "take-lane", trackIndex: 4, laneIndex: 0 },
-      { kind: "new-take-lane", trackIndex: 6 },
+      { kind: "take-lane", trackIndex: 6, laneIndex: 1 },
     ]);
   });
 

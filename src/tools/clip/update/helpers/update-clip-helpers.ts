@@ -87,8 +87,6 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   movedClipGroups: Map<string, MoveGroup>;
-  /** The lane an `l+` in this call appended, keyed by destination. */
-  appendedLanes: Map<string, number>;
 }
 
 /**
@@ -267,7 +265,6 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
     movedClipGroups,
-    appendedLanes: params.appendedLanes,
     destinationTracks: params.destinationTracks,
     context,
     updatedClips,

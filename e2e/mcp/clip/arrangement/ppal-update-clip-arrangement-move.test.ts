@@ -84,11 +84,11 @@ describe("arrangement clip moved to another lane", () => {
   });
 
   // A take lane has no duplicate API, so the clip is rebuilt from its notes.
-  it("re-creates the clip on a fresh take lane", async () => {
+  it("re-creates the clip on a take lane", async () => {
     const source = await createClip("17|1", "On A Lane");
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${CHILD_TRACK}/l+`,
+      toPath: `t${CHILD_TRACK}/l0`,
     });
 
     expect(warnings.join(" ")).toContain(
@@ -144,7 +144,7 @@ describe("arrangement clip moved to another lane", () => {
     await expectRefusedUpdate(
       ctx.client!,
       source.id,
-      { toPath: `t${AUDIO_TRACK}/l+` },
+      { toPath: `t${AUDIO_TRACK}/l0` },
       `clip ${source.path} (id ${source.id}) was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
     );
 
@@ -216,7 +216,7 @@ describe("arrangement clip moved to another lane", () => {
   });
 
   it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {
-    const source = await createClip("29|1", "Lane Bound", `/l+`);
+    const source = await createClip("29|1", "Lane Bound", `/l0`);
 
     const placed = await moveOffTakeLane(
       ctx.client!,
@@ -241,7 +241,7 @@ describe("arrangement clip moved to another lane", () => {
   // An emptied leftover is still a clip, so it can be moved off its lane
   // again. The second emptying must not stack a second mark on it.
   it("marks a MIDI leftover only once when it is moved again", async () => {
-    const source = await createClip("37|1", "Twice", `/l+`);
+    const source = await createClip("37|1", "Twice", `/l0`);
 
     await moveOffTakeLane(ctx.client!, source, `t${RACKS_TRACK}[41|1]`);
 
@@ -312,7 +312,7 @@ describe("arrangement clip moved to another lane", () => {
 });
 
 /**
- * Create an audio clip on a fresh take lane of the audio track.
+ * Create an audio clip on the audio track's first take lane.
  * @param position - Position in bar|beat format
  * @param name - Clip name
  * @returns The created clip
@@ -322,7 +322,7 @@ async function createAudioClip(
   name: string,
 ): Promise<CreateClipResult> {
   return createAudioClipAt(
-    `t${AUDIO_TRACK}/l+[${position}]`,
+    `t${AUDIO_TRACK}/l0[${position}]`,
     name,
     SAMPLE_FILE,
   );
@@ -368,7 +368,7 @@ function copyToTempSample(): string {
  * Create a MIDI clip in the source track's arrangement.
  * @param position - Position in bar|beat format
  * @param name - Clip name
- * @param laneSuffix - Path suffix naming a take lane (e.g. "/l+")
+ * @param laneSuffix - Path suffix naming a take lane (e.g. "/l0")
  * @returns The created clip
  */
 async function createClip(

@@ -154,17 +154,14 @@ describe("createClip path param", () => {
   });
 
   // A take lane names one place, unlike a bare track — but still not a spot on
-  // it. The error echoes back the lane the caller wrote, l+ included.
+  // it. The error echoes back the lane the caller wrote.
   it("rejects a take-lane path with no position on it", async () => {
     await expect(
-      createClip({ path: "t0/l+", notes: "C3 1|1" }),
-    ).rejects.toThrow(
-      'path "t0/l+" names no position; ' +
-        'add one, as "t0/l+[5|1]"; take lanes hold arrangement clips',
-    );
-    await expect(
       createClip({ path: "t0/l1", notes: "C3 1|1" }),
-    ).rejects.toThrow('path "t0/l1" names no position;');
+    ).rejects.toThrow(
+      'path "t0/l1" names no position; ' +
+        'add one, as "t0/l1[5|1]"; take lanes hold arrangement clips',
+    );
   });
 
   // A model writes the word instead of leaving the param out. Counting it as a

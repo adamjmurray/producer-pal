@@ -59,7 +59,7 @@ async function duplicateToFreshLane(
     type: "clip",
     id: "src_clip",
     arrangementStart: "1|1",
-    takeLane: "new",
+    takeLane: 1,
     ...overrides,
   });
 
@@ -83,7 +83,7 @@ describe("duplicate take lane", () => {
       type: "clip",
       id: "src_clip",
       arrangementStart: "5|1",
-      takeLane: "new",
+      takeLane: 1,
     })) as { id: string; trackIndex: number; arrangementStart: string };
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
@@ -206,7 +206,7 @@ describe("duplicate take lane", () => {
       type: "clip",
       id: "src_clip",
       arrangementStart: "5|1",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
@@ -278,7 +278,7 @@ describe("duplicate take lane", () => {
       type: "clip",
       id: "clip1",
       toSlot: "0/1",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
@@ -289,7 +289,7 @@ describe("duplicate take lane", () => {
   it("warns and ignores takeLane for non-clip types", async () => {
     registerBareTrackDuplication();
 
-    await duplicate({ type: "track", id: "track1", takeLane: "new" });
+    await duplicate({ type: "track", id: "track1", takeLane: 1 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
@@ -338,7 +338,7 @@ describe("duplicate take lane", () => {
     const created = (await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t0/l+",
+      toPath: "t0/l0",
       arrangementStart: "1|1",
     })) as object[];
 
@@ -502,9 +502,8 @@ describe("duplicate take lane", () => {
     );
   });
 
-  // takeLane "new" appends a lane every time it is resolved, so the lane has to
-  // be resolved once per DESTINATION TRACK, not once per copy.
-  it("stacks every copy on one new lane when toPath repeats a track", async () => {
+  // The lane is resolved once per DESTINATION TRACK, not once per copy.
+  it("stacks every copy on one lane when toPath repeats a track", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
@@ -515,7 +514,7 @@ describe("duplicate take lane", () => {
       id: "src_clip",
       toPath: "t1",
       arrangementStart: "5|1, 9|1, 13|1",
-      takeLane: "new",
+      takeLane: 1,
     })) as Array<{ path: string }>;
 
     expect(dest.call).toHaveBeenCalledTimes(1);
@@ -544,15 +543,15 @@ describe("duplicate take lane", () => {
       id: "src_clip",
       toPath: "t1, t2",
       arrangementStart: "5|1",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     expect(first.call).toHaveBeenCalledTimes(1);
     expect(second.call).toHaveBeenCalledTimes(1);
   });
 
-  // A track at the cap must not take the tracks alongside it down with it.
-  it("skips a toPath track at the lane cap and still serves the others", async () => {
+  // A destination past the cap must not take the ones alongside it down.
+  it("skips a lane past the cap and still serves the others", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
@@ -563,20 +562,18 @@ describe("duplicate take lane", () => {
     await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t1, t2",
+      toPath: `t1/l0, t2/l${MAX_TAKE_LANES}`,
       arrangementStart: "5|1",
-      takeLane: "new",
     });
 
     expect(ok.call).toHaveBeenCalledWith("create_take_lane");
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('skipping "t2/l+"'),
+      expect.stringContaining(`skipping "t2/l${MAX_TAKE_LANES}"`),
     );
   });
 
-  // Same hazard within one track: l7 fills it to the cap, so l+ has nowhere to
-  // go. Both destinations read the same pre-call count, so neither sees it.
-  it("skips the lane that pushes one track past the cap", async () => {
+  // A lane past the cap is dropped, and the one alongside it still lands.
+  it("skips the lane past the cap and keeps the others", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
@@ -585,7 +582,7 @@ describe("duplicate take lane", () => {
     await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t1/l7,t1/l+",
+      toPath: `t1/l${MAX_TAKE_LANES - 1},t1/l${MAX_TAKE_LANES}`,
       arrangementStart: "1|1,5|1",
     });
 
@@ -593,13 +590,12 @@ describe("duplicate take lane", () => {
       lookupMockObject(undefined, livePath.track(1).takeLane(7))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('skipping "t1/l+"'),
+      expect.stringContaining(`skipping "t1/l${MAX_TAKE_LANES}"`),
     );
   });
 
-  // One new lane per call, so this is how a stack of takes at chosen bars is
-  // written. Two fresh lanes takes two calls.
-  it("puts every l+ in toPath on the one lane the call appends", async () => {
+  // A stack of takes at chosen bars: one lane, several positions.
+  it("stacks every position toPath names on one lane", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
@@ -608,7 +604,7 @@ describe("duplicate take lane", () => {
     const result = await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t0/l+[1|1],t0/l+[5|1]",
+      toPath: "t0/l0[1|1],t0/l0[5|1]",
     });
 
     expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
@@ -622,9 +618,8 @@ describe("duplicate take lane", () => {
     ]);
   });
 
-  // The list cycles, so one written l+ covers all three positions. Numbering
-  // the expanded copies instead would scatter them over three lanes.
-  it("keeps one l+ on one lane across several arrangementStarts", async () => {
+  // The list cycles, so one written lane covers all three positions.
+  it("keeps one lane across several arrangementStarts", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
@@ -633,7 +628,7 @@ describe("duplicate take lane", () => {
     await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t0/l+",
+      toPath: "t0/l0",
       arrangementStart: "1|1,2|1,3|1",
     });
 
@@ -656,11 +651,11 @@ describe("duplicate take lane", () => {
     const result = await duplicate({
       type: "clip",
       id: "tl_src_clip",
-      toPath: "t0/l+",
+      toPath: "t0/l1",
       arrangementStart: "5|1",
     });
 
-    // Landed on the appended lane, not the one the source sits on
+    // Landed on the named lane, not the one the source sits on
     expect(result).toStrictEqual({
       id: "tl_clip_73",
       path: "t0/l1[5|1]",
@@ -676,9 +671,9 @@ describe("duplicate take lane", () => {
     });
   });
 
-  // "l=" once meant "the lane the l+ before it appended". It is gone, so it
-  // reads as any other unknown segment does.
-  it("refuses an l= destination", async () => {
+  // "l=" and "l+" once appended a lane or named the appended one. Both are
+  // gone: a "+" only ever roots a path, and a lane is named by its index.
+  it("refuses the retired l= and l+ destinations", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 1 });
@@ -686,6 +681,9 @@ describe("duplicate take lane", () => {
     await expect(
       duplicate({ type: "clip", id: "src_clip", toPath: "t0/l=[1|1]" }),
     ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
+    await expect(
+      duplicate({ type: "clip", id: "src_clip", toPath: "t0/l+[1|1]" }),
+    ).rejects.toThrow('a take lane is "t<track>/l<lane>" (e.g. "t0/l0")');
   });
 
   // Unlike the create-outright failure above, the create itself succeeds and
@@ -701,7 +699,7 @@ describe("duplicate take lane", () => {
     const created = (await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t0/l+",
+      toPath: "t0/l0",
       arrangementStart: "1|1",
     })) as object[];
 

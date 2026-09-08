@@ -111,7 +111,7 @@ describe("duplicate an audio clip to a take lane", () => {
       type: "clip",
       id: "src_clip",
       arrangementStart: "5|1",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     return lookupMockObject(
@@ -134,7 +134,7 @@ describe("duplicate an audio clip to a take lane", () => {
       type: "clip",
       id: "src_clip",
       arrangementStart: "1|1",
-      takeLane: "new",
+      takeLane: 1,
     });
   }
 
@@ -146,7 +146,7 @@ describe("duplicate an audio clip to a take lane", () => {
       type: "clip",
       id: "src_clip",
       arrangementStart: "5|1",
-      takeLane: "new",
+      takeLane: 1,
     });
 
     // The sample and the start position, in Live's argument order.

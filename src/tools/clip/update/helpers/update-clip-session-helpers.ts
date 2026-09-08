@@ -331,8 +331,6 @@ interface HandlePositionOperationsArgs {
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
   movedClipGroups: Map<string, MoveGroup>;
-  /** The lane an `l+` in this call appended, keyed by destination. */
-  appendedLanes: Map<string, number>;
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
@@ -389,7 +387,6 @@ export function handlePositionOperations(
     arrangementLengthBeats,
     destination: arrangementDestination(clip, destination, destinationParam),
     movedClipGroups: args.movedClipGroups,
-    appendedLanes: args.appendedLanes,
     context: args.context,
     updatedClips: args.updatedClips,
     noteResult: args.noteResult,

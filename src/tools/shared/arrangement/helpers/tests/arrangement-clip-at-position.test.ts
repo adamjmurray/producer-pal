@@ -15,12 +15,12 @@ import {
 import { arrangementClipAtPosition } from "../arrangement-clip-at-position.ts";
 import {
   type CompleteArrangementPosition,
-  type ExistingArrangementLane,
+  type ArrangementLane,
 } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 
 const PARAM_NAME = "path";
-const MAIN_LANE: ExistingArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE_LANE: ExistingArrangementLane = {
+const MAIN_LANE: ArrangementLane = { kind: "track", trackIndex: 0 };
+const TAKE_LANE: ArrangementLane = {
   kind: "take-lane",
   trackIndex: 0,
   laneIndex: 1,
@@ -33,7 +33,7 @@ const TAKE_LANE: ExistingArrangementLane = {
  * @returns The parsed path
  */
 function at(
-  lane: ExistingArrangementLane,
+  lane: ArrangementLane,
   position: string,
 ): CompleteArrangementPosition {
   return { kind: "arrangement-position", lane, position };

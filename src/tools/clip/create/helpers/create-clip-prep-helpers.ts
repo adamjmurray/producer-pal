@@ -149,8 +149,7 @@ export function resolveCreateClipTakeLanes(
   // on the last destination strands empty lanes on all the earlier ones.
   const fitting = takeLaneTargetsThatFit(arrangementPositions);
 
-  // Resolve once per destination rather than once per clip — otherwise a single
-  // "l+" covering three arrangementStarts gets three fresh lanes.
+  // Resolve once per destination rather than once per clip.
   for (const position of fitting) {
     const { trackIndex, takeLane: target } = position;
     const key = takeLaneLabel(position);

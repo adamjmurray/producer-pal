@@ -30,7 +30,6 @@
  *   silence (see take-lane-placeholder.ts).
  */
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
@@ -73,13 +72,13 @@ export function takeLaneIndexOfClip(clip: LiveAPI): number | null {
 }
 
 /**
- * A take lane target: a 0-based lane index, or "new" to append one.
+ * A take lane target: a 0-based lane index.
  *
  * 0-based because `take_lanes` excludes the main lane, so the index is the Live
  * API index — the same number the `t0/l<n>` path segment carries. The 1-based
  * `takeLane` param is converted on the way in.
  */
-export type TakeLaneTarget = number | "new";
+export type TakeLaneTarget = number;
 
 /** One arrangement destination: which track, and which of its lanes. */
 export interface ArrangementTrack {
@@ -94,25 +93,19 @@ export interface ArrangementTrack {
  * @returns The lane target, or null for the main lane
  */
 export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
-  if (path.kind === "take-lane") return path.laneIndex;
-
-  return path.kind === "new-take-lane" ? "new" : null;
+  return path.kind === "take-lane" ? path.laneIndex : null;
 }
 
 /**
  * Spells a destination the way the caller wrote it — the bare track for the
- * main lane. Doubles as the key a resolved lane is stored under, so every `l+`
- * on a track shares one lane: a call appends one lane however many entries ask
- * for it.
+ * main lane. Doubles as the key a resolved lane is stored under.
  * @param target - The destination
- * @returns The path, e.g. "t0/l+", "t0/l3", or "t0"
+ * @returns The path, e.g. "t0/l3" or "t0"
  */
 export function takeLaneLabel(target: ArrangementTrack): string {
   const { trackIndex, takeLane } = target;
 
-  if (takeLane == null) return `t${trackIndex}`;
-
-  return `t${trackIndex}/l${takeLane === "new" ? "+" : takeLane}`;
+  return takeLane == null ? `t${trackIndex}` : `t${trackIndex}/l${takeLane}`;
 }
 
 /**
@@ -185,15 +178,12 @@ export function normalizeTakeLaneTarget(
     return null;
   }
 
-  if (takeLane === "new") {
-    return "new";
-  }
-
   const n = typeof takeLane === "number" ? takeLane : Number(takeLane);
 
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(
-      `takeLane must be 0, a positive integer, or "new" (got "${takeLane}")`,
+      `takeLane must be 0 or a positive integer (got "${takeLane}"); ` +
+        `name the lane by index, e.g. path "t0/l0"`,
     );
   }
 
@@ -202,11 +192,10 @@ export function normalizeTakeLaneTarget(
 
 /**
  * Resolve (auto-creating as needed) the target take lane on a track.
- * A numeric target auto-creates lanes up to that index (mirroring scene
- * auto-create); "new" appends a fresh lane. The
- * MAX_TAKE_LANES cap is enforced. takeLaneName names only the target lane, and
- * only when this call created it — existing lanes and any intermediate lanes
- * auto-created to fill a gap are left unnamed.
+ * The target auto-creates lanes up to that index (mirroring scene
+ * auto-create). The MAX_TAKE_LANES cap is enforced. takeLaneName names only the
+ * target lane, and only when this call created it — existing lanes and any
+ * intermediate lanes auto-created to fill a gap are left unnamed.
  *
  * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
  * here is permanent. The one residual leak is unfixable: if a later clip write
@@ -215,7 +204,7 @@ export function normalizeTakeLaneTarget(
  * the destinations with {@link takeLaneTargetsThatFit} first, or a later
  * destination's cap error strands the lanes the earlier ones made.
  * @param track - The regular track LiveAPI to resolve the lane on
- * @param target - Normalized take lane target (lane number or "new")
+ * @param target - Normalized take lane target (0-based lane index)
  * @param takeLaneName - Optional name for a newly created lane
  * @returns The resolved take lane and its 0-based index
  */
@@ -225,9 +214,9 @@ export function resolveTakeLane(
   takeLaneName?: string | null,
 ): ResolvedTakeLane {
   const currentCount = track.getChildIds("take_lanes").length;
-  const laneIndex = target === "new" ? currentCount : target;
+  const laneIndex = target;
 
-  assertTakeLaneCapacity(laneIndex, target);
+  assertTakeLaneCapacity(laneIndex);
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
   for (let i = currentCount; i <= laneIndex; i++) {
@@ -256,62 +245,36 @@ export type FittingTakeLaneTarget<T extends ArrangementTrack> = T & {
 };
 
 /**
- * Picks the take-lane destinations that fit, warning for each one dropped.
- *
- * Checking each destination on its own is not enough: they all read the track's
- * pre-call lane count, so nothing sees the lanes an earlier destination is
- * about to add. "t0/l7,t0/l+" passes that way and then fails mid-resolve,
- * leaving 8 permanent empty lanes. So count along instead, in the order the
- * lanes are resolved and skipping repeats by their {@link takeLaneLabel}, the
- * same key the resolved lanes are stored under.
+ * Picks the take-lane destinations that fit, warning once per lane dropped.
  *
  * A destination that doesn't fit is dropped rather than failing the call, so
- * the destinations alongside it — main lane included — still land.
+ * the destinations alongside it — main lane included — still land. Resolving
+ * auto-creates lanes up to the index, so only that index has to fit.
  * @param targets - Every destination in the call, in resolve order
  * @returns The take-lane destinations that fit, in the order given
  */
 export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
   targets: T[],
 ): FittingTakeLaneTarget<T>[] {
-  const counts = new Map<number, number>();
-  const resolved = new Set<string>();
   const dropped = new Set<string>();
   const fitting: FittingTakeLaneTarget<T>[] = [];
 
   for (const target of targets) {
-    const { trackIndex, takeLane } = target;
+    const { takeLane } = target;
 
     if (takeLane == null) continue;
 
-    const fits = { ...target, takeLane };
     const key = takeLaneLabel(target);
 
     if (dropped.has(key)) continue;
 
-    if (resolved.has(key)) {
-      fitting.push(fits);
-      continue;
-    }
-
-    const count =
-      counts.get(trackIndex) ??
-      LiveAPI.from(livePath.track(trackIndex)).getChildIds("take_lanes").length;
-    // Resolving auto-creates lanes up to the target, so the track ends up with
-    // at least laneIndex + 1 of them.
-    const laneIndex = takeLane === "new" ? count : takeLane;
-
-    if (laneIndex + 1 > MAX_TAKE_LANES) {
+    if (takeLane + 1 > MAX_TAKE_LANES) {
       dropped.add(key);
-      console.warn(
-        `skipping "${takeLaneLabel(fits)}" — ` +
-          takeLaneCapacityMessage(laneIndex, takeLane),
-      );
+      console.warn(`skipping "${key}" — ` + takeLaneCapacityMessage(takeLane));
       continue;
     }
 
-    resolved.add(key);
-    fitting.push(fits);
-    counts.set(trackIndex, Math.max(count, laneIndex + 1));
+    fitting.push({ ...target, takeLane });
   }
 
   return fitting;
@@ -322,33 +285,19 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
  * destinations with {@link takeLaneTargetsThatFit} first, so this is a
  * backstop — reaching it means a lane was resolved that was never checked.
  * @param laneIndex - 0-based index of the lane about to be resolved
- * @param target - What asked for it, so the message names the right problem
  * @throws If the lane would exceed MAX_TAKE_LANES
  */
-function assertTakeLaneCapacity(
-  laneIndex: number,
-  target: TakeLaneTarget,
-): void {
+function assertTakeLaneCapacity(laneIndex: number): void {
   if (laneIndex + 1 <= MAX_TAKE_LANES) return;
 
-  throw new Error(takeLaneCapacityMessage(laneIndex, target));
+  throw new Error(takeLaneCapacityMessage(laneIndex));
 }
 
 /**
  * Says why a lane doesn't fit.
- *
- * The two ways past the cap need different advice: an `l+` on a full track is
- * out of room, and deleting lanes in Live makes room. An out-of-range `l<n>` is
- * a bad number, and deleting lanes makes it worse.
  * @param laneIndex - 0-based index of the lane that didn't fit
- * @param target - What asked for it, so the message names the right problem
  * @returns The explanation
  */
-function takeLaneCapacityMessage(
-  laneIndex: number,
-  target: TakeLaneTarget,
-): string {
-  return target === "new"
-    ? `track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`
-    : `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`;
+function takeLaneCapacityMessage(laneIndex: number): string {
+  return `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`;
 }

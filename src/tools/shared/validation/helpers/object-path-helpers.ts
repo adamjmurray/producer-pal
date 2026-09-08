@@ -34,11 +34,11 @@ import {
 
 /**
  * Where a clip can go: a clip slot, or a track's arrangement — its main lane
- * (`t0`), one of its take lanes (`t0/l0`), or a fresh one (`t0/l+`).
+ * (`t0`) or one of its take lanes (`t0/l0`).
  */
 export type ClipPath = Extract<
   ObjectPath,
-  { kind: "track" | "slot" | "take-lane" | "new-take-lane" }
+  { kind: "track" | "slot" | "take-lane" }
 >;
 
 /** A track or device-chain location, which is what can hold a device. */
@@ -128,21 +128,20 @@ export function slotPath(trackIndex: number, sceneIndex: number): string {
  * The path an arrangement clip's lane spells — the track itself for the main
  * lane, or the take lane it sits on.
  * @param trackIndex - 0-based track index
- * @param takeLane - 0-based lane index, "new" for an unresolved `l+`, or null
- *   for the main lane
- * @returns The path (e.g. "t0", "t0/l0", or "t0/l+")
+ * @param takeLane - 0-based lane index, or null for the main lane
+ * @returns The path (e.g. "t0" or "t0/l0")
  */
 export function arrangementPath(
   trackIndex: number,
-  takeLane?: number | "new" | null,
+  takeLane?: number | null,
 ): string {
   if (takeLane == null) return formatObjectPath({ kind: "track", trackIndex });
 
-  return formatObjectPath(
-    takeLane === "new"
-      ? { kind: "new-take-lane", trackIndex }
-      : { kind: "take-lane", trackIndex, laneIndex: takeLane },
-  );
+  return formatObjectPath({
+    kind: "take-lane",
+    trackIndex,
+    laneIndex: takeLane,
+  });
 }
 
 /**
@@ -156,8 +155,7 @@ export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
   if (
     path.kind === "track" ||
     path.kind === "slot" ||
-    path.kind === "take-lane" ||
-    path.kind === "new-take-lane"
+    path.kind === "take-lane"
   ) {
     return path;
   }

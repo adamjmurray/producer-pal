@@ -155,10 +155,9 @@ Live, or make sure your standalone Max is up to date. See
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
-- Stack variations on [take lanes](/features#take-lanes): every `l+` in one
-  `toPath` is the same new lane, so `toPath: "t2/l+[9|1],t2/l+[13|1]"` stacks
-  both takes on one lane, auditioned at the same arrangement position. A fresh
-  lane per copy needs a separate call per copy
+- Stack variations on [take lanes](/features#take-lanes): naming one lane twice
+  in `toPath`, `toPath: "t2/l0[9|1],t2/l0[13|1]"`, stacks both takes on it. A
+  lane per copy is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
@@ -292,7 +291,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   [custom notation](/features#custom-music-notation)
 - Place clips in clip slots or the Arrangement timeline
 - Place arrangement clips on [take lanes](/features#take-lanes) with a
-  `t0/l1[5|1]` or `t0/l+[5|1]` path
+  `t0/l1[5|1]` path
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether

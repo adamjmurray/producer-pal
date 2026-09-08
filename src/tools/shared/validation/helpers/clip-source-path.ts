@@ -12,7 +12,6 @@
 import {
   type ArrangementPosition,
   type CompleteArrangementPosition,
-  type ExistingArrangementLane,
 } from "./object-path-coord.ts";
 import { requireClipPath, type ClipPath } from "./object-path-helpers.ts";
 import { pathError } from "./object-path-lexer.ts";
@@ -66,10 +65,6 @@ export function requireCompletePosition(
     );
   }
 
-  if (lane.kind === "new-take-lane") {
-    throw pathError(label, formatObjectPath(path), newLaneHoldsNoClips(lane));
-  }
-
   return { ...path, lane };
 }
 
@@ -81,34 +76,11 @@ export function requireCompletePosition(
  * @returns The reason, and the complete form to write instead
  */
 function laneNamesManyClips(clip: Exclude<ClipPath, { kind: "slot" }>): string {
-  if (clip.kind === "new-take-lane") {
-    return newLaneHoldsNoClips(clip);
-  }
-
   const holder =
     clip.kind === "track" ? "a track's arrangement" : "a take lane";
 
   return (
     `${holder} holds many clips; name the one to act on by where it ` +
     `starts, as "${formatObjectPath(clip)}[5|1]"`
-  );
-}
-
-/**
- * Says why `l+` names no clip. Nothing has landed on a lane that doesn't exist
- * yet, so there is no position to complete it with either.
- * @param lane - The `l+` the path named
- * @returns The reason, and a lane that could hold a clip
- */
-function newLaneHoldsNoClips(lane: { trackIndex: number }): string {
-  const existing: ExistingArrangementLane = {
-    kind: "take-lane",
-    trackIndex: lane.trackIndex,
-    laneIndex: 0,
-  };
-
-  return (
-    `a new take lane holds no clips; name a lane that exists, as ` +
-    `"${formatObjectPath(existing)}[5|1]"`
   );
 }

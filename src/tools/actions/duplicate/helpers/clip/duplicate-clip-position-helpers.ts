@@ -166,13 +166,7 @@ async function duplicateClipToArrangementPositions(
     tracks,
   );
 
-  // Labelled after the lanes exist, so a stop names the lane it created rather
-  // than the "l+" that made it — re-running "l+" would append another one.
-  const labelled = labelDuplicateDestinations(
-    targetTracks,
-    targetPositions,
-    lanes,
-  );
+  const labelled = labelDuplicateDestinations(targetTracks, targetPositions);
 
   const canPromote = warnRecreatedCopyLimits(
     object,

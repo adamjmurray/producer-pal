@@ -55,14 +55,6 @@ describe("requireClipSourcePath", () => {
       "[5|1]",
       'invalid path "[5|1]" - a song position with no lane names a clip on every track; name the lane too, as "t<track>[5|1]"',
     ],
-    [
-      "t3/l+",
-      'invalid path "t3/l+" - a new take lane holds no clips; name a lane that exists, as "t3/l0[5|1]"',
-    ],
-    [
-      "t3/l+[5|1]",
-      'invalid path "t3/l+[5|1]" - a new take lane holds no clips; name a lane that exists, as "t3/l0[5|1]"',
-    ],
   ])("refuses %s as a source", (path, message) => {
     expect(() => sourceFor(path)).toThrow(message);
   });

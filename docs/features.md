@@ -127,7 +127,8 @@ bar 5 on track 0, and `t0/l1[5|1]` the one on its second
 bars, `t0[loc:Chorus]`, which still lands right after you move that section.
 
 A `+` names a place that doesn't exist yet, for creating: `t+` appends a track,
-`s+` a scene, `t2/l+` a take lane.
+`s+` a scene. It's only ever the start of a path, and only the tool that creates
+that kind of object takes one.
 
 ## Take Lanes {#take-lanes}
 
@@ -135,16 +136,16 @@ Live's take lanes stack alternate versions of an arrangement clip at the same
 position, and only the active take plays, so you can audition variations without
 cluttering the timeline.
 
-- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based,
-  auto-created up to it) and `t2/l+` appends a fresh one. Plain `t2` is the main
-  lane. Use it as `path` on [Create Clip](/features/tools#ppal-create-clip) or
-  `toPath` on [Duplicate](/features/tools#ppal-duplicate).
-- Every `l+` in one path list is the same fresh lane, so
-  `toPath: "t2/l+[9|1],t2/l+[13|1]"` stacks both copies on a single new lane. A
-  fresh lane per copy needs a separate
-  [Duplicate](/features/tools#ppal-duplicate) call per copy, or an explicit
-  `t2/l<index>` path from a prior [Read Track](/features/tools#ppal-read-track).
-  Add [transforms](#transforms) to vary each one.
+- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based, and
+  lanes are created up to the index). Plain `t2` is the main lane. Use it as
+  `path` on [Create Clip](/features/tools#ppal-create-clip) or `toPath` on
+  [Duplicate](/features/tools#ppal-duplicate).
+- Naming one lane twice stacks both copies on it, so
+  `toPath: "t2/l0[9|1],t2/l0[13|1]"` puts two takes on one lane. A lane per copy
+  is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`. On a track that
+  already has lanes, start after the last one a prior
+  [Read Track](/features/tools#ppal-read-track) reported. Add
+  [transforms](#transforms) to vary each one.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).

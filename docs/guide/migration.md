@@ -130,26 +130,25 @@ them writes a call that quietly does the wrong thing.
 
 ### `takeLane` counts from 1; `l<n>` counts from 0
 
-| Old               | New                                    |
-| ----------------- | -------------------------------------- |
-| `takeLane: 1`     | `t0/l0`, the first take lane           |
-| `takeLane: 2`     | `t0/l1`                                |
-| `takeLane: 0`     | `t0`, the **main lane** (no take lane) |
-| `takeLane: "new"` | `t0/l+`                                |
+| Old           | New                                    |
+| ------------- | -------------------------------------- |
+| `takeLane: 1` | `t0/l0`, the first take lane           |
+| `takeLane: 2` | `t0/l1`                                |
+| `takeLane: 0` | `t0`, the **main lane** (no take lane) |
 
 So it is off by one everywhere, and at zero it isn't a take lane at all. A take
 lane in a path also always needs its track: `t1/l0[5|1]` works, `l0[5|1]` is
 refused.
 
-One `takeLane: "new"` also made **one** lane, however many positions landed on
-it. A path says that by repeating `l+`: every `l+` in one path is the same new
-lane.
+`takeLane: "new"` is gone: name the lane by index instead, and lanes up to it
+are created as needed. Read a track's `takeLanes` first and use the next free
+index, since a track holds 8 lanes and none can be deleted.
 
 ```js
 // before: two clips, one new lane
 { trackIndex: 1, arrangementStart: "21|1,25|1", takeLane: "new" }
 // after
-{ path: "t1/l+[21|1],t1/l+[25|1]" }
+{ path: "t1/l0[21|1],t1/l0[25|1]" }
 ```
 
 ### `arrangementStart` becomes a coordinate, not a param
@@ -274,8 +273,8 @@ replacement:
 
 ```
 WARNING: param "takeLane" is deprecated and will be removed; use "path" instead.
-Lanes count from 0 in a path: takeLane 1 is "l0", takeLane 0 is the main lane,
-and takeLane "new" is "l+".
+Lanes count from 0 in a path: takeLane 1 is "l0", and takeLane 0 is the main
+lane.
 ```
 
 Over the REST API these arrive in a `warnings` array beside the result; over MCP

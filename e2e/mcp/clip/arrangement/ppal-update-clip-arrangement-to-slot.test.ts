@@ -181,7 +181,7 @@ describe("arrangement clip moved into a session slot", () => {
 
   it("moves a take-lane source into a slot, leaving an emptied clip behind", async () => {
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}/l+[21|1]`,
+      path: `t${EMPTY_MIDI_TRACK}/l0[21|1]`,
       name: "On A Lane",
       notes: "C3 1|1",
       length: "1bar",

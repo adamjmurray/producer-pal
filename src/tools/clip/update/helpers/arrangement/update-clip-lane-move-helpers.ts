@@ -12,7 +12,6 @@ import {
   type ArrangementTrack,
   isTakeLaneClip,
   resolveTakeLane,
-  takeLaneLabel,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
@@ -34,8 +33,6 @@ interface PlaceMovedClipArgs {
   targetBeats: number;
   isMidiClip: boolean;
   context: TilingContext;
-  /** The lane an `l+` in this call appended, keyed by {@link takeLaneLabel}. */
-  appendedLanes: Map<string, number>;
   /** Tally of clips landing on each lane and position. */
   movedClipGroups: Map<string, MoveGroup>;
 }
@@ -53,7 +50,6 @@ interface PlaceMovedClipArgs {
  * @param args.targetBeats - Arrangement position to land at, in Ableton beats
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
- * @param args.appendedLanes - The lane this call already appended, shared by every `l+`
  * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @returns The placed clip, or null when the move was refused or only partly
  *   landed (already warned; either way the source is untouched)
@@ -65,7 +61,6 @@ export function placeMovedClip({
   targetBeats,
   isMidiClip,
   context,
-  appendedLanes,
   movedClipGroups,
 }: PlaceMovedClipArgs): LiveAPI | null {
   // Only for a named destination: an unnamed one is the clip's own track, which
@@ -99,7 +94,6 @@ export function placeMovedClip({
         clip,
         destination,
         targetBeats,
-        appendedLanes,
         movedClipGroups,
       );
     }
@@ -130,9 +124,8 @@ export function placeMovedClip({
  * from its notes (or its sample), which drops what
  * {@link recreatedClipLosses} names.
  * @param clip - The arrangement clip being moved
- * @param destination - The lane the clip lands on, an `l+` still unresolved
+ * @param destination - The lane the clip lands on
  * @param targetBeats - Arrangement position to land at, in Ableton beats
- * @param appendedLanes - The lane this call already appended, shared by every `l+`
  * @param movedClipGroups - Tally of clips landing on each lane and position
  * @returns The re-created clip, or null when the move was refused or only
  *   partly landed (either way, nothing further should touch the source)
@@ -141,15 +134,10 @@ function recreateOnTakeLane(
   clip: LiveAPI,
   destination: ArrangementTrack,
   targetBeats: number,
-  appendedLanes: Map<string, number>,
   movedClipGroups: Map<string, MoveGroup>,
 ): LiveAPI | null {
   const destTrackIndex = destination.trackIndex;
-  // One new lane per call: a later `l+` asks for the index the first one
-  // appended rather than appending another.
-  const key = takeLaneLabel(destination);
-  const takeLane: TakeLaneTarget =
-    appendedLanes.get(key) ?? (destination.takeLane as TakeLaneTarget);
+  const takeLane = destination.takeLane as TakeLaneTarget;
 
   // Lanes are permanent — Live has no delete — but resolveTakeLane checks the
   // cap before creating any, so a refusal strands nothing.
@@ -163,7 +151,6 @@ function recreateOnTakeLane(
     );
 
     ({ lane, laneIndex } = resolved);
-    appendedLanes.set(key, laneIndex);
   } catch (error) {
     console.warn(
       `clip ${targetLabel(clip)} was not moved: ${errorMessage(error)}`,

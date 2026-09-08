@@ -122,8 +122,6 @@ interface MoveOptions {
   destHasMidiInput?: number;
   arrangementStartBeats?: number | null;
   destination?: ArrangementTrack | null;
-  /** Shared across calls, so a later `l+` reuses the lane an earlier one made */
-  appendedLanes?: Map<string, number>;
   /** Shared across calls, to see what a batch counted on one track */
   movedClipGroups?: Map<string, MoveGroup>;
   /** Answer the duplicate with an id that doesn't exist, as Live can */
@@ -220,7 +218,6 @@ function runMove(opts: MoveOptions = {}): string | null {
     arrangementStartBeats,
     destination,
     movedClipGroups: opts.movedClipGroups ?? new Map(),
-    appendedLanes: opts.appendedLanes ?? new Map(),
     isMidiClip: isMidi === 1,
     context: mockContext,
     updatedClips: [],
@@ -361,9 +358,9 @@ describe("moving an arrangement clip to another lane", () => {
     expect(result).toBe(SOURCE_ID);
   });
 
-  it("appends a lane for l+ and says what the re-created clip loses", () => {
+  it("creates the lane it needs and says what the re-created clip loses", () => {
     runMove({
-      destination: { trackIndex: DEST_TRACK, takeLane: "new" },
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
       hasEnvelopes: 1,
     });
 
@@ -375,19 +372,12 @@ describe("moving an arrangement clip to another lane", () => {
     );
   });
 
-  // The map is what makes one call append one lane: the clips of one batch
-  // share it, and a later `l+` reads back what an earlier one appended. The
-  // second move runs against a track that already has that lane, so appending
-  // again is the failure to catch.
-  it("resolves a second l+ off the lane the batch appended", () => {
-    const appendedLanes = new Map<string, number>();
-    const newLane = { trackIndex: DEST_TRACK, takeLane: "new" } as const;
-
-    runMove({ destination: newLane, appendedLanes });
-    expect(appendedLanes.get(`t${DEST_TRACK}/l+`)).toBe(0);
-
-    vi.clearAllMocks();
-    runMove({ destination: newLane, appendedLanes, initialLanes: 1 });
+  // A lane that already exists is reused, not appended to.
+  it("reuses a lane the track already has", () => {
+    runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      initialLanes: 1,
+    });
 
     const created = vi
       .mocked(lookupMockObject(undefined, livePath.track(DEST_TRACK))!.call)

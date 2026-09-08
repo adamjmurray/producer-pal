@@ -97,7 +97,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
  * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: <count>bar, n<fraction>, or <count>bar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
- * @param args.toPath - Where to move the clip: a clip slot ("t2/s3"), a track's arrangement lane ("t2"), or a take lane on it ("t2/l0", "t2/l+")
+ * @param args.toPath - Where to move the clip: a clip slot ("t2/s3"), a track's arrangement lane ("t2"), or a take lane on it ("t2/l0")
  * @param args.arrangementSplit - Comma-separated song-timeline bar|beat positions to split clips at
  * @param args.split - Deprecated split positions, measured from each clip's start; use arrangementSplit
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
@@ -202,9 +202,6 @@ async function runClipBatch({
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
   const resultsPerClip: ClipResult[][] = clips.map(() => []);
-  // Shared across the batch so every "l+" in the call lands on one new lane
-  // instead of appending one apiece.
-  const appendedLanes = new Map<string, number>();
   // The tracks the moves resolve, so a batch moving into one track resolves it
   // once; what makes reusing one safe is spelled out at destinationTrack() in
   // the slot-move helpers. Lives and dies with this call.
@@ -260,7 +257,6 @@ async function runClipBatch({
       context,
       updatedClips,
       movedClipGroups,
-      appendedLanes,
       code: args.code,
     });
 

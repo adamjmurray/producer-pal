@@ -13,7 +13,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 import {
   type CompleteArrangementPosition,
-  type ExistingArrangementLane,
+  type ArrangementLane,
 } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
@@ -83,7 +83,7 @@ function positionBeats(
  * @param lane - The lane the path named
  * @returns The clips on that lane, in Live's order
  */
-function clipsOnLane(lane: ExistingArrangementLane): LiveAPI[] {
+function clipsOnLane(lane: ArrangementLane): LiveAPI[] {
   if (lane.kind === "take-lane") {
     return LiveAPI.from(
       livePath.track(lane.trackIndex).takeLane(lane.laneIndex),
