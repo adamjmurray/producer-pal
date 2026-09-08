@@ -67,6 +67,7 @@
     "test:stats": "node scripts/stats/test-stats.ts",
     "e2e:stats": "node scripts/stats/e2e-stats.ts",
     "schema:stats": "node scripts/stats/schema-size.ts",
+    "comment:stats": "node scripts/stats/comment-stats.ts",
     "knowledge-base": "node scripts/build-and-release/generate-knowledge-base.ts",
     "kb": "npm run knowledge-base",
     "dxt:clean": "rm -f claude-desktop-extension/*.mcpb claude-desktop-extension/*.js claude-desktop-extension/manifest.json claude-desktop-extension/LICENSE",

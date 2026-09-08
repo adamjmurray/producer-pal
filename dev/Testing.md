@@ -143,6 +143,16 @@ required, and per-tree counts are ratcheted in
 `src/test/lint-suppression-limits.test.ts` — raising a limit needs user
 approval.
 
+## Comment volume
+
+`npm run comment:stats` counts comment lines, code lines, and the longest
+comment block per tree, and names the worst files (`--all` lists every file).
+The license header and lint directives don't count.
+
+`src/test/comment-limits.test.ts` ratchets those numbers: comment lines, longest
+block, and how many files hold a block of 8+ lines. Lower a limit when a count
+falls; raising one needs user approval.
+
 ## Auditing coverage
 
 **Don't audit by grepping for a name.** A table-driven test registers its cases
