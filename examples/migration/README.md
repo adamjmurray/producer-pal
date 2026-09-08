@@ -25,7 +25,7 @@ node ppal-migrate.mjs ppal-read-track '{"trackIndex": 2}'
 python ppal_migrate.py ppal-create-clip '{"trackIndex":1,"arrangementStart":"33|1,37|1"}'
 # {"path": "t1[33|1],t1[37|1]"}
 
-node ppal-migrate.mjs --self-test    # 16 cases + path round trips
+node ppal-migrate.mjs --self-test    # every case below, plus path round trips
 ```
 
 As a library:
@@ -56,10 +56,12 @@ it is a case the adapter could not translate on its own, described in full.
 | ---------------------------------------------------- | ----------------------------------------------- |
 | `trackIndex` + `trackType`                           | `path`: `t2`, `rt0`, `mt`                       |
 | `trackIndex: -1` (create-track)                      | `path: "t+"`                                    |
+| `type: "return"` (create-track)                      | `path: "rt+"`                                   |
 | `sceneIndex`                                         | `path: "s2"`                                    |
 | `slot: "1/0"`, `slots`, `toSlot`                     | `path`/`toPath`: `t1/s0`                        |
 | `arrangementStart: "5\|1"`                           | fused onto the path: `t1[5\|1]`                 |
 | `takeLane: "1"`                                      | `/l0` on the path — **counts from 0**           |
+| `takeLane: "new"` over several positions             | `l+` on the first, `l=` on the rest             |
 | `locator: "Chorus"` (duplicate)                      | `toPath: "[loc:Chorus]"`                        |
 | `startLocator`, `loopStartLocator`, `loopEndLocator` | `startTime`/`loopStart`/`loopEnd`: `loc:Chorus` |
 | `devicePath` (select)                                | `path`                                          |
@@ -69,15 +71,20 @@ Two of these are **not renames**, which is why a find-and-replace is not enough:
 
 - `takeLane` counted from 1; the `l<n>` path segment counts from 0.
   `takeLane: 1` is `l0`, and `takeLane: 0` was the main lane — no take lane at
-  all.
+  all. One `takeLane: "new"` also made one lane however many positions landed on
+  it, so only the first position gets `l+`; the rest reuse it with `l=`.
 - `arrangementStart` stops being its own param and becomes a coordinate on the
   destination path, so it has to be paired with a track rather than renamed.
+
+A call can also name two destinations at once — a `slot` list for the session
+and a `trackIndex` for the arrangement, or a track and a scene on `ppal-select`
+— and both survive, as one comma-separated path.
 
 ## What it does not rewrite
 
 These need a Live read or a judgement call, so the adapter reports them in
-`notes` and changes nothing — a half-migrated call is worse than an untouched
-one.
+`notes` and leaves the params they name exactly as they were — a half-migrated
+call is worse than an untouched one.
 
 - **`ppal-update-clip` `split`.** Its positions are offsets from each clip's own
   start; `arrangementSplit` reads the song timeline. The same value cuts
@@ -92,3 +99,9 @@ one.
 - **`takeLane` on `ppal-duplicate` when the source is addressed by `id`**, or
   spans several tracks. A take lane in a path needs its track (`t1/l0[5|1]`),
   and there is nowhere to read that track from.
+- **`ppal-select`'s `trackIndex` + `sceneIndex` on a return or the main track.**
+  The pair selects both, and only a regular track has a clip slot (`t1/s3`) that
+  names both in one path. On a return track that takes two calls.
+- **A value the tool itself refuses**, such as a `takeLane` that is neither 0, a
+  positive integer, nor `"new"`. Rewriting it as the main lane would turn a
+  refusal into a clip on the wrong lane.

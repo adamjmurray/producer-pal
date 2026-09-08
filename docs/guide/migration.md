@@ -102,6 +102,10 @@ text needs updating.
 Every param below still works today and emits a deprecation warning naming its
 replacement. They are removed in 2.4.
 
+A param that warns is not always one of these. `ppal-read-clip` takes
+`trackIndex` and `sceneIndex` as **aliases**: names a model reaches for on its
+own, folded onto `path`. They warn too, and they are staying.
+
 They all say the same thing: an object is named by **one `path`**, counting from
 0, instead of by a scattering of index params. `t2` is the third track, `rt0`
 the first return, `mt` the main track, `s1` the second scene, `t2/s1` a clip
@@ -136,6 +140,17 @@ them writes a call that quietly does the wrong thing.
 So it is off by one everywhere, and at zero it isn't a take lane at all. A take
 lane in a path also always needs its track: `t1/l0[5|1]` works, `l0[5|1]` is
 refused.
+
+One `takeLane: "new"` also made **one** lane, however many positions landed on
+it. A path says that with `l=`, which reuses the lane the `l+` before it
+appended. Repeating `l+` appends a lane per position instead:
+
+```js
+// before: two clips, one new lane
+{ trackIndex: 1, arrangementStart: "21|1,25|1", takeLane: "new" }
+// after
+{ path: "t1/l+[21|1],t1/l=[25|1]" }
+```
 
 ### `arrangementStart` becomes a coordinate, not a param
 
@@ -242,10 +257,12 @@ const { args, notes } = migrateArgs("ppal-update-clip", {
 //           clip's start, and arrangementSplit reads the song timeline…']
 ```
 
-**Always check `notes`.** An empty list means the call migrated cleanly. The
-adapter deliberately changes nothing for `split`, `params[].name` prefixes,
-`searchBatch`, and `takeLane` on a duplicate whose source is addressed by `id`.
-A half-migrated call is worse than an untouched one.
+**Always check `notes`.** An empty list means the call migrated cleanly.
+Anything in it names a param the adapter left exactly as it was, because
+answering needed a Live read or a judgement call: `split`, `params[].name`
+prefixes, `searchBatch`, `takeLane` on a duplicate whose source is addressed by
+`id`, a track and a scene selected on a return track, and any value the tool
+itself refuses. A half-migrated call is worse than an untouched one.
 
 It also exports `buildPath` and `parsePath` if you'd rather assemble paths from
 parts than build strings by hand.

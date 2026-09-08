@@ -15,9 +15,10 @@
 //   const { args, notes } = migrateArgs("ppal-read-track", { trackIndex: 2 });
 //   // args -> { path: "t2" }
 //
-// Three retirements are deliberately NOT rewritten, because a correct answer
+// Some retirements are deliberately NOT rewritten, because a correct answer
 // needs a Live read or a judgement call. Each is reported in `notes` instead,
-// so a call is never left half-migrated:
+// and the params it names are left as they were, so a call is never left
+// half-migrated:
 //
 //   ppal-update-clip `split`
 //     Its positions are offsets from the clip's own start; `arrangementSplit`
@@ -32,6 +33,11 @@
 //   ppal-library `action: "searchBatch"`
 //     Becomes `action: "search"` with a `searches` list: a different request
 //     shape, not a path translation.
+//
+//   A destination two params name and one path can't
+//     ppal-select's trackIndex + sceneIndex on a return or the main track (no
+//     clip slot to hold both), ppal-duplicate's takeLane when the source track
+//     can't be read off `path`, and any value the tool itself refuses.
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -43,7 +49,8 @@
  * device tail, then a bracketed song position.
  *
  * `trackIndex`, `sceneIndex` and `takeLane` take a number or the string "new"
- * for the `+` spelling that names a place which doesn't exist yet.
+ * for the `+` spelling that names a place which doesn't exist yet. `takeLane`
+ * also takes "same" for `l=`, the lane the `l+` before it appended.
  */
 export function buildPath(parts = {}) {
   const { trackIndex, trackType, sceneIndex, takeLane, deviceTail, position } =
@@ -77,7 +84,7 @@ export function parsePath(path) {
   const deviceTail = [];
 
   for (const segment of body.split("/").filter(Boolean)) {
-    const match = /^(mt|rt|t|s|l)(\d+|\+)?$/.exec(segment);
+    const match = /^(mt|rt|t|s|l)(\d+|\+|=)?$/.exec(segment);
 
     if (!match) {
       deviceTail.push(segment);
@@ -109,14 +116,20 @@ function trackSegment(trackIndex, trackType) {
   return `${trackType === "return" ? "rt" : "t"}${indexSpelling(index)}`;
 }
 
-/** "new" is the `+` spelling; anything else is a plain 0-based number. */
+/** "new" is `+` and "same" is `=`; anything else is a plain 0-based number. */
 function indexSpelling(index) {
-  return index === "new" ? "+" : String(index);
+  if (index === "new") return "+";
+  if (index === "same") return "=";
+
+  return String(index);
 }
 
-/** The inverse: `+` reads back as "new". */
+/** The inverse: `+` reads back as "new", `=` as "same". */
 function indexValue(value) {
-  return value === "+" ? "new" : Number(value);
+  if (value === "+") return "new";
+  if (value === "=") return "same";
+
+  return Number(value);
 }
 
 function assignTrack(parts, trackType, value) {
@@ -145,7 +158,7 @@ export function migrateArgs(toolName, args = {}) {
 
 const MIGRATIONS = {
   "ppal-read-track": (args) => migrateTrackTarget(args, "path"),
-  "ppal-create-track": (args) => migrateTrackTarget(args, "path"),
+  "ppal-create-track": migrateCreateTrack,
   "ppal-update-track": migrateRoutingIds,
   "ppal-read-scene": (args) => migrateSceneTarget(args, "path"),
   "ppal-create-scene": (args) => migrateSceneTarget(args, "path"),
@@ -160,9 +173,31 @@ const MIGRATIONS = {
 
 /** trackIndex + trackType -> a track path. -1 meant append, so "t+". */
 function migrateTrackTarget(args, key) {
-  if (args.trackIndex == null && args.trackType == null) return;
+  // trackType alone names a track only for the main track, which has no index.
+  // "return" or "regular" without one named nothing then either, so leave the
+  // call as it stands rather than inventing index 0.
+  if (args.trackIndex == null && !namesMainTrack(args.trackType)) return;
 
   set(args, key, buildPath(takeTrack(args)));
+}
+
+/**
+ * create-track spells a return track as `type: "return"`, not trackType, and
+ * the path settles both the type and the position — Live appends return tracks,
+ * so trackIndex never applied to one.
+ */
+function migrateCreateTrack(args) {
+  // A caller already using `path` is naming the destination twice; the tool has
+  // its own answer for that, and dropping either side would hide it.
+  if (args.type === "return" && args.path == null) {
+    delete args.type;
+    delete args.trackIndex;
+    args.path = "rt+";
+
+    return;
+  }
+
+  migrateTrackTarget(args, "path");
 }
 
 function migrateSceneTarget(args, key) {
@@ -186,9 +221,16 @@ function migrateRoutingIds(args) {
 
 /** "0/3" -> "t0/s3", comma-separated lists included. */
 function migrateSlot(args, from, to) {
-  if (args[from] == null) return;
+  const paths = slotPaths(args, from);
 
-  const paths = splitList(take(args, from)).map((slot) => {
+  if (paths.length > 0) set(args, to, paths.join(","));
+}
+
+/** The slot list as one path each, and the param gone. */
+function slotPaths(args, key) {
+  if (args[key] == null) return [];
+
+  return splitList(take(args, key)).map((slot) => {
     const [trackIndex, sceneIndex] = slot.split("/");
 
     return buildPath({
@@ -196,26 +238,35 @@ function migrateSlot(args, from, to) {
       sceneIndex: Number(sceneIndex),
     });
   });
-
-  set(args, to, paths.join(","));
 }
 
-function migrateCreateClip(args) {
-  migrateSlot(args, "slot", "path");
+function migrateCreateClip(args, notes) {
+  // A slot list and a trackIndex compose: the first names session destinations,
+  // the second an arrangement one, and a call sending both makes both clips. So
+  // they join into one path list rather than one overwriting the other.
+  const paths = slotPaths(args, "slot");
 
-  if (args.arrangementStart != null) {
+  if (args.trackIndex != null && args.sceneIndex != null) {
+    paths.push(buildPath({ ...takeTrack(args), ...takeScene(args) }));
+  } else if (args.arrangementStart != null) {
     // One destination track broadcasts across every position, which is how the
     // old params paired: trackIndex was a single value, arrangementStart a list.
     const track = takeTrack(args);
-    const lane = laneIndex(take(args, "takeLane"));
+    const lane = takeLaneTarget(args, notes);
 
-    set(args, "path", positionPaths(args, "arrangementStart", track, lane));
-
-    return;
+    paths.push(...positionPaths(args, "arrangementStart", track, lane));
+  } else if (args.trackIndex != null) {
+    paths.push(buildPath(takeTrack(args)));
   }
 
-  if (args.trackIndex != null || args.sceneIndex != null) {
-    set(args, "path", buildPath({ ...takeTrack(args), ...takeScene(args) }));
+  if (paths.length > 0) set(args, "path", paths.join(","));
+
+  if (args.arrangementStart != null) {
+    notes.push(
+      "arrangementStart left as-is: trackIndex and sceneIndex named a clip " +
+        "slot, so no track is left for a position. Name the arrangement " +
+        'track yourself, as "t<track>[<position>]".',
+    );
   }
 }
 
@@ -225,7 +276,11 @@ function migrateUpdateClip(args, notes) {
   // No destination-track param existed here: the clip stayed on its own track,
   // which a path spells as a bare coordinate.
   if (args.arrangementStart != null) {
-    set(args, "toPath", positionPaths(args, "arrangementStart", {}, null));
+    set(
+      args,
+      "toPath",
+      positionPaths(args, "arrangementStart", {}, null).join(","),
+    );
   }
 
   if (args.split != null) {
@@ -262,8 +317,14 @@ function migrateDuplicate(args, notes) {
   // spells as a bare "[5|1]". A take lane can't be spelled that way — Live
   // refuses "l0[5|1]" — so with a lane the destination has to name the track,
   // and the only place to read it from is the source path.
-  const lane = args.takeLane == null ? null : laneIndex(args.takeLane);
+  const lane = laneIndex(args.takeLane);
   const track = lane == null ? {} : sourceTrack(args);
+
+  if (lane === undefined) {
+    notes.push(unusableLaneNote(args.takeLane));
+
+    return;
+  }
 
   if (track == null) {
     notes.push(
@@ -277,7 +338,11 @@ function migrateDuplicate(args, notes) {
   }
 
   delete args.takeLane;
-  set(args, "toPath", positionPaths(args, "arrangementStart", track, lane));
+  set(
+    args,
+    "toPath",
+    positionPaths(args, "arrangementStart", track, lane).join(","),
+  );
 }
 
 /**
@@ -301,10 +366,26 @@ function sourceTrack(args) {
   return only === "" ? null : parsePath(only);
 }
 
-function migrateSelect(args) {
+function migrateSelect(args, notes) {
   migrateSlot(args, "slot", "path");
-  migrateTrackTarget(args, "path");
-  migrateSceneTarget(args, "path");
+
+  // trackIndex and sceneIndex select both at once, which one path spells as a
+  // clip slot — but only for a regular track. A return or the main track has no
+  // clip slots, so that pair names two things no single path can.
+  if (args.trackIndex != null && args.sceneIndex != null) {
+    if (namesRegularTrack(args.trackType)) {
+      set(args, "path", buildPath({ ...takeTrack(args), ...takeScene(args) }));
+    } else {
+      notes.push(
+        `trackType ${JSON.stringify(args.trackType)} and sceneIndex left ` +
+          "as-is: they select two things, and a return or the main track has " +
+          "no clip slot to name both in one path. Select them in two calls.",
+      );
+    }
+  } else {
+    migrateTrackTarget(args, "path");
+    migrateSceneTarget(args, "path");
+  }
 
   if (args.devicePath != null) set(args, "path", take(args, "devicePath"));
 }
@@ -328,11 +409,16 @@ function migratePlayback(args) {
 
 /** Fuses a list of song positions onto a destination, one path per position. */
 function positionPaths(args, key, track, takeLaneIndex) {
-  return splitList(take(args, key))
-    .map((position) =>
-      buildPath({ ...track, takeLane: takeLaneIndex, position }),
-    )
-    .join(",");
+  return splitList(take(args, key)).map((position, index) =>
+    buildPath({
+      ...track,
+      // One `takeLane: "new"` made one lane however many positions landed on
+      // it. A repeated `l+` would append a lane each time, so every position
+      // after the first reuses the first one's lane, which `l=` spells.
+      takeLane: takeLaneIndex === "new" && index > 0 ? "same" : takeLaneIndex,
+      position,
+    }),
+  );
 }
 
 function takeTrack(args) {
@@ -348,6 +434,16 @@ function takeTrack(args) {
   };
 }
 
+/** Whether trackType named the main track, the one track with no index. */
+function namesMainTrack(trackType) {
+  return trackType === "master" || trackType === "main";
+}
+
+/** Whether trackType named a regular track — the only kind with clip slots. */
+function namesRegularTrack(trackType) {
+  return trackType == null || trackType === "regular";
+}
+
 function takeScene(args) {
   const sceneIndex = take(args, "sceneIndex");
 
@@ -355,19 +451,48 @@ function takeScene(args) {
 }
 
 /**
+ * The take lane the call named, as a path target, with the param removed. A
+ * value that names no lane the tool accepts keeps its param and gets a note
+ * instead: the call fails either way, and quietly rewriting it as the main lane
+ * would hide that.
+ */
+function takeLaneTarget(args, notes) {
+  const lane = laneIndex(args.takeLane);
+
+  if (lane === undefined) {
+    notes.push(unusableLaneNote(args.takeLane));
+
+    return null;
+  }
+
+  delete args.takeLane;
+
+  return lane;
+}
+
+/** What to say about a takeLane value the tool would refuse. */
+function unusableLaneNote(value) {
+  return (
+    `takeLane ${JSON.stringify(value)} left as-is: it names no lane. The ` +
+    'param counts from 1 — 0 is the main lane, 1 is "l0", and "new" is "l+".'
+  );
+}
+
+/**
  * takeLane counted from 1 and the `l<n>` path segment counts from 0, so this is
  * off by one everywhere — and takeLane 0 named the main lane, which is no take
- * lane at all rather than lane 0. Returns null for anything that names no lane.
+ * lane at all rather than lane 0. Returns null where no lane was named, and
+ * undefined for a value the tool refuses.
  */
 function laneIndex(value) {
   if (value == null || value === "") return null;
-  if (String(value).toLowerCase() === "new") return "new";
+  if (String(value) === "new") return "new";
 
   const lane = Number(value);
 
-  if (!Number.isInteger(lane) || lane < 1) return null;
+  if (!Number.isInteger(lane) || lane < 0) return undefined;
 
-  return lane - 1;
+  return lane === 0 ? null : lane - 1;
 }
 
 /**
@@ -414,60 +539,147 @@ function set(args, key, value) {
 // CLI
 // ---------------------------------------------------------------------------
 
-// Every row was run against Live 12.4 on 2.3: `before` and `after` produce the
-// same result, and `before` also emits the deprecation warning it migrates off.
+// `before` and `after` name the same thing, and every row migrates cleanly —
+// the self-test fails a row that comes back with a note.
+// The tool names below, written once each.
+const TOOL = {
+  createClip: "ppal-create-clip",
+  createTrack: "ppal-create-track",
+  duplicate: "ppal-duplicate",
+  library: "ppal-library",
+  playback: "ppal-playback",
+  readClip: "ppal-read-clip",
+  readScene: "ppal-read-scene",
+  readTrack: "ppal-read-track",
+  select: "ppal-select",
+  updateClip: "ppal-update-clip",
+  updateDevice: "ppal-update-device",
+  updateTrack: "ppal-update-track",
+};
+
 const CASES = [
-  ["ppal-read-track", { trackIndex: 2 }, { path: "t2" }],
-  ["ppal-read-track", { trackIndex: 0, trackType: "return" }, { path: "rt0" }],
-  ["ppal-select", { trackType: "master" }, { path: "mt" }],
-  ["ppal-create-track", { trackIndex: -1 }, { path: "t+" }],
+  [TOOL.readTrack, { trackIndex: 2 }, { path: "t2" }],
+  [TOOL.readTrack, { trackIndex: 0, trackType: "return" }, { path: "rt0" }],
+  // A type with no index named nothing then either, so it is left to fail the
+  // way it already did rather than being pointed at return track 0.
+  [TOOL.readTrack, { trackType: "return" }, { trackType: "return" }],
+  [TOOL.select, { trackType: "master" }, { path: "mt" }],
+  // Both are selected, and one clip-slot path says so.
+  [TOOL.select, { trackIndex: 1, sceneIndex: 3 }, { path: "t1/s3" }],
+  [TOOL.createTrack, { trackIndex: -1 }, { path: "t+" }],
+  // Live appends return tracks, so the path carries the type and the position.
+  [TOOL.createTrack, { trackIndex: -1, type: "return" }, { path: "rt+" }],
+  [TOOL.updateTrack, { outputRoutingTypeId: "2" }, { outputRoutingType: "2" }],
+  [TOOL.readScene, { sceneIndex: 2 }, { path: "s2" }],
+  [TOOL.readClip, { slot: "1/0" }, { path: "t1/s0" }],
+  [TOOL.select, { devicePath: "t6/d0" }, { path: "t6/d0" }],
   [
-    "ppal-update-track",
-    { outputRoutingTypeId: "2" },
-    { outputRoutingType: "2" },
-  ],
-  ["ppal-read-scene", { sceneIndex: 2 }, { path: "s2" }],
-  ["ppal-read-clip", { slot: "1/0" }, { path: "t1/s0" }],
-  ["ppal-select", { devicePath: "t6/d0" }, { path: "t6/d0" }],
-  [
-    "ppal-playback",
+    TOOL.playback,
     { action: "play-session-clips", slots: "0/0,1/0" },
     { action: "play-session-clips", path: "t0/s0,t1/s0" },
   ],
   [
-    "ppal-playback",
+    TOOL.playback,
     { action: "play-arrangement", startLocator: "Chorus" },
     { action: "play-arrangement", startTime: "loc:Chorus" },
   ],
   [
-    "ppal-create-clip",
+    TOOL.createClip,
     { trackIndex: 1, arrangementStart: "33|1,37|1" },
     { path: "t1[33|1],t1[37|1]" },
   ],
+  // A slot list and a trackIndex named a session and an arrangement
+  // destination in one call, and both clips still get made.
   [
-    "ppal-create-clip",
+    TOOL.createClip,
+    { slot: "0/0", trackIndex: 1, arrangementStart: "5|1" },
+    { path: "t0/s0,t1[5|1]" },
+  ],
+  // takeLane 0 was the main lane, which is no take lane at all.
+  [
+    TOOL.createClip,
+    { trackIndex: 1, arrangementStart: "5|1", takeLane: 0 },
+    { path: "t1[5|1]" },
+  ],
+  [
+    TOOL.createClip,
     { trackIndex: 1, arrangementStart: "21|1", takeLane: "new" },
     { path: "t1/l+[21|1]" },
   ],
+  // One takeLane made one lane however many positions landed on it, so only
+  // the first position appends: "l=" reuses that lane.
   [
-    "ppal-duplicate",
+    TOOL.createClip,
+    { trackIndex: 1, arrangementStart: "21|1,25|1", takeLane: "new" },
+    { path: "t1/l+[21|1],t1/l=[25|1]" },
+  ],
+  [
+    TOOL.duplicate,
     { type: "clip", path: "t1/s0", takeLane: "1", arrangementStart: "17|1" },
     { type: "clip", path: "t1/s0", toPath: "t1/l0[17|1]" },
   ],
   [
-    "ppal-duplicate",
+    TOOL.duplicate,
+    {
+      type: "clip",
+      path: "t1/s0",
+      takeLane: "new",
+      arrangementStart: "17|1,21|1",
+    },
+    { type: "clip", path: "t1/s0", toPath: "t1/l+[17|1],t1/l=[21|1]" },
+  ],
+  [
+    TOOL.duplicate,
     { type: "clip", path: "t1/s0", locator: "Chorus" },
     { type: "clip", path: "t1/s0", toPath: "[loc:Chorus]" },
   ],
   [
-    "ppal-update-clip",
+    TOOL.updateClip,
     { path: "t1[41|1],t1[45|1]", arrangementStart: "49|1,53|1" },
     { path: "t1[41|1],t1[45|1]", toPath: "[49|1],[53|1]" },
   ],
   [
-    "ppal-update-clip",
+    TOOL.updateClip,
     { path: "t1/s0", toSlot: "2/5" },
     { path: "t1/s0", toPath: "t2/s5" },
+  ],
+];
+
+// The other half of the contract: what the adapter refuses to translate. Each
+// row is the call, a word its note has to carry, and the params it must leave
+// alone for the caller to deal with.
+const NOTE_CASES = [
+  [TOOL.updateClip, { path: "t1[9|1]", split: "2|1" }, "split", ["split"]],
+  [TOOL.library, { action: "searchBatch" }, "searchBatch", ["action"]],
+  [
+    TOOL.createClip,
+    { trackIndex: 1, arrangementStart: "5|1", takeLane: "later" },
+    "takeLane",
+    ["takeLane"],
+  ],
+  [
+    TOOL.createClip,
+    { trackIndex: 1, sceneIndex: 2, arrangementStart: "5|1" },
+    "arrangementStart",
+    ["arrangementStart"],
+  ],
+  [
+    TOOL.select,
+    { trackType: "return", trackIndex: 0, sceneIndex: 2 },
+    "sceneIndex",
+    ["trackType", "trackIndex", "sceneIndex"],
+  ],
+  [
+    TOOL.duplicate,
+    { type: "clip", id: "id 1", takeLane: "1", arrangementStart: "17|1" },
+    "take lane",
+    ["takeLane", "arrangementStart"],
+  ],
+  [
+    TOOL.updateDevice,
+    { path: "t5/d0", params: [{ name: "pC1/c0/d0/Volume", value: "-6" }] },
+    "device path",
+    ["params"],
   ],
 ];
 
@@ -475,9 +687,17 @@ function selfTest() {
   let failed = 0;
 
   for (const [tool, before, expected] of CASES) {
-    const { args } = migrateArgs(tool, before);
+    const { args, notes } = migrateArgs(tool, before);
     const got = JSON.stringify(args);
     const want = JSON.stringify(expected);
+
+    // A row here migrated cleanly, so a note on one means the adapter is no
+    // longer sure of an answer it is still handing back.
+    if (notes.length > 0) {
+      failed += 1;
+      console.error(`FAIL ${tool} ${JSON.stringify(before)}`);
+      console.error(`  unexpected note: ${notes[0]}`);
+    }
 
     if (got !== want) {
       failed += 1;
@@ -487,9 +707,36 @@ function selfTest() {
     }
   }
 
+  for (const [tool, before, word, kept] of NOTE_CASES) {
+    const asked = JSON.stringify(before);
+    const { args, notes } = migrateArgs(tool, before);
+
+    if (!notes.some((note) => note.includes(word))) {
+      failed += 1;
+      console.error(`FAIL ${tool} ${asked}`);
+      console.error(`  want a note about "${word}", got ${notes.length}`);
+    }
+
+    // A note says the caller still has this one to handle, so the param it
+    // names has to survive: rewriting half of it is worse than none.
+    for (const param of kept.filter((name) => args[name] == null)) {
+      failed += 1;
+      console.error(`FAIL ${tool} ${asked}`);
+      console.error(`  noted but dropped "${param}": ${JSON.stringify(args)}`);
+    }
+  }
+
   // A path survives a round trip through its parts, which is the property the
   // adapter leans on everywhere it edits one piece of a path.
-  for (const path of ["t0", "rt1", "mt", "t+", "t0/s3", "t1/l0[17|1]"]) {
+  for (const path of [
+    "t0",
+    "rt1",
+    "mt",
+    "t+",
+    "t0/s3",
+    "t1/l0[17|1]",
+    "t1/l=[21|1]",
+  ]) {
     const round = buildPath(parsePath(path));
 
     if (round !== path) {
@@ -500,7 +747,7 @@ function selfTest() {
 
   console.log(
     failed === 0
-      ? `${CASES.length} cases + round trips OK`
+      ? `${CASES.length + NOTE_CASES.length} cases + round trips OK`
       : `${failed} failure(s)`,
   );
 
@@ -519,7 +766,18 @@ function main(argv) {
     return 1;
   }
 
-  const { args, notes } = migrateArgs(toolName, JSON.parse(json ?? "{}"));
+  let parsed;
+
+  try {
+    parsed = JSON.parse(json ?? "{}");
+  } catch (error) {
+    console.error(`could not read the args as JSON: ${error.message}`);
+    console.error("quote them as one argument, e.g. '{\"trackIndex\": 2}'");
+
+    return 1;
+  }
+
+  const { args, notes } = migrateArgs(toolName, parsed);
 
   console.log(JSON.stringify(args, null, 2));
 
