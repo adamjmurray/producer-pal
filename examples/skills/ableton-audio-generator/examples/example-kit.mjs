@@ -188,7 +188,7 @@ const KIT = [
 ];
 
 const params = KIT.map(([note, name, buf]) => ({
-  name: `p${note}/d0/sample`,
+  name: `p${note}/sample`,
   value: writeWav(resolve(OUT, `${name}.wav`), buf, SR, { format: "int16" }),
 }));
 

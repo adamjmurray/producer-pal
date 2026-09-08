@@ -216,10 +216,12 @@ async function renderSessionClip({ track, scene, outDir, withReturns }) {
     const clip = (copy.sessionClips ?? []).find((c) => c.path === wanted);
     if (clip == null)
       throw new Error(`Track "${track}" has no Session clip in scene ${scene}`);
+    // A bare position lands the copy on the source clip's own track, which is
+    // the temp track we just made.
     await ppal("ppal-duplicate", {
       id: clip.id,
       type: "clip",
-      arrangementStart: "1|1",
+      toPath: "[1|1]",
     });
 
     return await renderAudio({

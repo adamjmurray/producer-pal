@@ -137,7 +137,8 @@ Live, or make sure your standalone Max is up to date. See
 
 ### Delete (`ppal-delete`) {#ppal-delete}
 
-- Remove tracks, return tracks, scenes, clips, devices, or drum pads
+- Remove tracks, return tracks, scenes, clips, devices, drum pads, or rack
+  chains
 - Bulk delete multiple objects
 
 <!--@include: ../_generated/ppal-delete-schema.md-->
@@ -154,7 +155,7 @@ Live, or make sure your standalone Max is up to date. See
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
-- Stack MIDI variations on [take lanes](/features#take-lanes) with
+- Stack variations on [take lanes](/features#take-lanes) with
   `toPath: "t2/l+,t2/l+"` + transforms: one lane per `l+`, auditioned at the
   same arrangement position. `t2/l=` reuses the lane the `l+` before it made,
   for a stack of takes on one new lane
@@ -290,8 +291,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
 - Place clips in clip slots or the Arrangement timeline
-- Place arrangement clips on [take lanes](/features#take-lanes) with a `t0/l1`
-  or `t0/l+` path
+- Place arrangement clips on [take lanes](/features#take-lanes) with a
+  `t0/l1[5|1]` or `t0/l+[5|1]` path
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether
