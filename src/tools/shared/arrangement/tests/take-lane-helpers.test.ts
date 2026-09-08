@@ -11,11 +11,9 @@ import {
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
-  takeLaneKey,
   takeLaneLabel,
   takeLaneTargetsThatFit,
   warnUnusedTakeLane,
-  withNewLaneOrdinals,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
@@ -273,67 +271,26 @@ describe("resolveTakeLane", () => {
 });
 
 describe("takeLaneLabel", () => {
-  // The ordinal that takeLaneKey appends keeps two written l+ apart internally.
-  // It is not something the caller wrote, so it stays out of messages.
-  it("spells an l+ without its ordinal", () => {
+  it("spells an l+, a numbered lane and the main lane", () => {
     expect(takeLaneLabel({ trackIndex: 0, takeLane: "new" })).toBe("t0/l+");
-    expect(
-      takeLaneLabel({ trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 }),
-    ).toBe("t3/l+");
-  });
-
-  it("spells a numbered lane and the main lane", () => {
     expect(takeLaneLabel({ trackIndex: 2, takeLane: 5 })).toBe("t2/l5");
     expect(takeLaneLabel({ trackIndex: 2, takeLane: null })).toBe("t2");
   });
 
-  // An l= is a different thing to write than an l+, so a message about one
-  // must not tell the caller to look at the other.
-  it("spells an l= as itself", () => {
-    expect(
-      takeLaneLabel({ trackIndex: 1, takeLane: "new", sameLane: true }),
-    ).toBe("t1/l=");
-  });
-});
-
-describe("withNewLaneOrdinals", () => {
-  const newLane = (sameLane = false): ArrangementTrack => ({
-    trackIndex: 0,
-    takeLane: "new",
-    ...(sameLane && { sameLane: true }),
-  });
-
-  it("gives each written l+ its own lane and every l= the one before it", () => {
-    const numbered = withNewLaneOrdinals([
-      newLane(),
-      newLane(true),
-      newLane(),
-      newLane(true),
-    ]);
-
-    expect(numbered.map((target) => takeLaneKey(target))).toStrictEqual([
-      "t0/l+0",
-      "t0/l+0",
-      "t0/l+1",
-      "t0/l+1",
-    ]);
-  });
-
-  it("leaves a numbered lane and the main lane alone", () => {
+  // The label doubles as the key a resolved lane is stored under, so every l+
+  // on a track sharing one key is what makes a call append one lane.
+  it("keys every l+ on a track the same", () => {
     const targets: ArrangementTrack[] = [
-      { trackIndex: 0, takeLane: 3 },
-      { trackIndex: 1, takeLane: null },
+      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 1, takeLane: "new" },
     ];
 
-    expect(withNewLaneOrdinals(targets)).toStrictEqual(targets);
-  });
-
-  // Refused before anything runs: the lanes an earlier entry appended would
-  // outlive a call that failed partway through, and Live can't delete them.
-  it("refuses an l= with no l+ before it", () => {
-    expect(() => withNewLaneOrdinals([newLane(true)], "toPath")).toThrow(
-      'toPath "l=" names the lane the "l+" before it appended',
-    );
+    expect(targets.map(takeLaneLabel)).toStrictEqual([
+      "t0/l+",
+      "t0/l+",
+      "t1/l+",
+    ]);
   });
 });
 

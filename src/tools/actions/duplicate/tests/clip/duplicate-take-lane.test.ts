@@ -597,27 +597,28 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("appends one lane per l+ in toPath", async () => {
+  // One new lane per call, so this is how a stack of takes at chosen bars is
+  // written. Two fresh lanes takes two calls.
+  it("puts every l+ in toPath on the one lane the call appends", async () => {
     registerLiveSet();
     registerArrangementSource(true);
-    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
 
     const result = await duplicate({
       type: "clip",
       id: "src_clip",
-      toPath: "t0/l+,t0/l+",
-      arrangementStart: "1|1",
+      toPath: "t0/l+[1|1],t0/l+[5|1]",
     });
 
-    // Both copies sit at bar 1, one per fresh lane.
+    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
     expectTakeLaneMidiClip(0, 0);
-    expectTakeLaneMidiClip(1, 0);
-    // Two copies at one bar that bury nothing: each has its own lane. Both keep
-    // their ids — a path that lost its "/lN" would read as one copy landing on
-    // the other, and both ids would be stripped without a word.
+    expectTakeLaneMidiClip(0, 16);
+    // Both keep their ids — a path that lost its "/lN" would read as one copy
+    // landing on the other, and both ids would be stripped without a word.
     expect(result).toStrictEqual([
       { id: expect.any(String), path: "t0/l0[1|1]" },
-      { id: expect.any(String), path: "t0/l1[1|1]" },
+      { id: expect.any(String), path: "t0/l0[5|1]" },
     ]);
   });
 
@@ -661,7 +662,7 @@ describe("duplicate take lane", () => {
 
     // Landed on the appended lane, not the one the source sits on
     expect(result).toStrictEqual({
-      id: "tl_clip_74",
+      id: "tl_clip_73",
       path: "t0/l1[5|1]",
     });
 
@@ -675,33 +676,16 @@ describe("duplicate take lane", () => {
     });
   });
 
-  // A stack of takes at chosen bars: one new lane, however many copies land on
-  // it. Written as two l+ they would be two lanes.
-  it("stacks an l= on the lane the l+ before it appended", async () => {
-    registerLiveSet();
-    registerArrangementSource(true);
-
-    const track = registerTakeLaneTrack({ initialLanes: 0 });
-
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      toPath: "t0/l+[1|1],t0/l=[5|1]",
-    });
-
-    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-    expectTakeLaneMidiClip(0, 0);
-    expectTakeLaneMidiClip(0, 16);
-  });
-
-  it("refuses an l= with no l+ before it", async () => {
+  // "l=" once meant "the lane the l+ before it appended". It is gone, so it
+  // reads as any other unknown segment does.
+  it("refuses an l= destination", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 1 });
 
     await expect(
       duplicate({ type: "clip", id: "src_clip", toPath: "t0/l=[1|1]" }),
-    ).rejects.toThrow('toPath "l=" names the lane the "l+" before it appended');
+    ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
   });
 
   // Unlike the create-outright failure above, the create itself succeeds and

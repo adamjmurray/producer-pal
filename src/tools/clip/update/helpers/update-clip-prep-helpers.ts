@@ -55,8 +55,6 @@ export interface ClipUpdatePlan {
    */
   moveOrder: number[];
   destinationById: Map<string, ClipPath>;
-  /** Which written `l+` each clip's destination lands on, for an `l=`. */
-  laneOrdinalById: Map<string, number>;
   destinationParam: "toPath" | "toSlot";
   /** Clips to clear rather than move, or null when nothing can be skipped */
   overwrites: OverwritePlan | null;
@@ -128,8 +126,10 @@ export function planClipUpdate({
     requestedIds.length,
     moves.positions,
   );
-  const { clips, destinationById, laneOrdinalById, requestedIndexById } =
-    resolveRequestedClips(requestedIds, moves.destinations, moves.laneOrdinals);
+  const { clips, destinationById, requestedIndexById } = resolveRequestedClips(
+    requestedIds,
+    moves.destinations,
+  );
   const startBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(startBeats, requestedIndexById.get(clip.id));
   const lengthBeatsFor = (clip: LiveAPI): number | null =>
@@ -170,7 +170,6 @@ export function planClipUpdate({
     clips: splitClips,
     moveOrder: order,
     destinationById,
-    laneOrdinalById,
     destinationParam: moveDestinationParam(toPath, toSlot),
     // Weighed in processing order, and without the refused moves: the plan
     // holds a clip back for an overwrite that would now never come.

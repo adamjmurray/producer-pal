@@ -8,7 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneClip,
-  takeLaneKey,
+  takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
@@ -68,7 +68,7 @@ export async function duplicateOneCopy(
   const { target, startBeats, lanes, object, id, tracks } = options;
 
   if (target.takeLane != null) {
-    const resolved = lanes.get(takeLaneKey(target));
+    const resolved = lanes.get(takeLaneLabel(target));
 
     // A rejected source (audio with no sample) warned once during lane resolution.
     if (resolved == null) return null;

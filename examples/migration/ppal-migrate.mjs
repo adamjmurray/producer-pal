@@ -49,8 +49,7 @@
  * device tail, then a bracketed song position.
  *
  * `trackIndex`, `sceneIndex` and `takeLane` take a number or the string "new"
- * for the `+` spelling that names a place which doesn't exist yet. `takeLane`
- * also takes "same" for `l=`, the lane the `l+` before it appended.
+ * for the `+` spelling that names a place which doesn't exist yet.
  */
 export function buildPath(parts = {}) {
   const { trackIndex, trackType, sceneIndex, takeLane, deviceTail, position } =
@@ -84,7 +83,7 @@ export function parsePath(path) {
   const deviceTail = [];
 
   for (const segment of body.split("/").filter(Boolean)) {
-    const match = /^(mt|rt|t|s|l)(\d+|\+|=)?$/.exec(segment);
+    const match = /^(mt|rt|t|s|l)(\d+|\+)?$/.exec(segment);
 
     if (!match) {
       deviceTail.push(segment);
@@ -116,18 +115,16 @@ function trackSegment(trackIndex, trackType) {
   return `${trackType === "return" ? "rt" : "t"}${indexSpelling(index)}`;
 }
 
-/** "new" is `+` and "same" is `=`; anything else is a plain 0-based number. */
+/** "new" is `+`; anything else is a plain 0-based number. */
 function indexSpelling(index) {
   if (index === "new") return "+";
-  if (index === "same") return "=";
 
   return String(index);
 }
 
-/** The inverse: `+` reads back as "new", `=` as "same". */
+/** The inverse: `+` reads back as "new". */
 function indexValue(value) {
   if (value === "+") return "new";
-  if (value === "=") return "same";
 
   return Number(value);
 }
@@ -409,15 +406,10 @@ function migratePlayback(args) {
 
 /** Fuses a list of song positions onto a destination, one path per position. */
 function positionPaths(args, key, track, takeLaneIndex) {
-  return splitList(take(args, key)).map((position, index) =>
-    buildPath({
-      ...track,
-      // One `takeLane: "new"` made one lane however many positions landed on
-      // it. A repeated `l+` would append a lane each time, so every position
-      // after the first reuses the first one's lane, which `l=` spells.
-      takeLane: takeLaneIndex === "new" && index > 0 ? "same" : takeLaneIndex,
-      position,
-    }),
+  // Every `l+` in one call lands on the same new lane, which is what one
+  // `takeLane: "new"` did.
+  return splitList(take(args, key)).map((position) =>
+    buildPath({ ...track, takeLane: takeLaneIndex, position }),
   );
 }
 
@@ -606,12 +598,12 @@ const CASES = [
     { trackIndex: 1, arrangementStart: "21|1", takeLane: "new" },
     { path: "t1/l+[21|1]" },
   ],
-  // One takeLane made one lane however many positions landed on it, so only
-  // the first position appends: "l=" reuses that lane.
+  // One takeLane made one lane however many positions landed on it, and every
+  // `l+` in one call lands on that same lane.
   [
     TOOL.createClip,
     { trackIndex: 1, arrangementStart: "21|1,25|1", takeLane: "new" },
-    { path: "t1/l+[21|1],t1/l=[25|1]" },
+    { path: "t1/l+[21|1],t1/l+[25|1]" },
   ],
   [
     TOOL.duplicate,
@@ -626,7 +618,7 @@ const CASES = [
       takeLane: "new",
       arrangementStart: "17|1,21|1",
     },
-    { type: "clip", path: "t1/s0", toPath: "t1/l+[17|1],t1/l=[21|1]" },
+    { type: "clip", path: "t1/s0", toPath: "t1/l+[17|1],t1/l+[21|1]" },
   ],
   [
     TOOL.duplicate,
@@ -728,15 +720,7 @@ function selfTest() {
 
   // A path survives a round trip through its parts, which is the property the
   // adapter leans on everywhere it edits one piece of a path.
-  for (const path of [
-    "t0",
-    "rt1",
-    "mt",
-    "t+",
-    "t0/s3",
-    "t1/l0[17|1]",
-    "t1/l=[21|1]",
-  ]) {
+  for (const path of ["t0", "rt1", "mt", "t+", "t0/s3", "t1/l0[17|1]"]) {
     const round = buildPath(parsePath(path));
 
     if (round !== path) {

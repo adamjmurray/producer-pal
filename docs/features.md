@@ -139,11 +139,12 @@ cluttering the timeline.
   auto-created up to it) and `t2/l+` appends a fresh one. Plain `t2` is the main
   lane. Use it as `path` on [Create Clip](/features/tools#ppal-create-clip) or
   `toPath` on [Duplicate](/features/tools#ppal-duplicate).
-- Every `l+` in a list appends its own lane, so `toPath: "t2/l+,t2/l+,t2/l+"` on
-  one [Duplicate](/features/tools#ppal-duplicate) spreads three copies across
-  three fresh lanes. Add [transforms](#transforms) to vary each one.
-- `t2/l=` names the lane the `l+` before it made, so
-  `toPath: "t2/l+[9|1],t2/l=[13|1]"` stacks both copies on a single fresh lane.
+- Every `l+` in one path list is the same fresh lane, so
+  `toPath: "t2/l+[9|1],t2/l+[13|1]"` stacks both copies on a single new lane. A
+  fresh lane per copy needs a separate
+  [Duplicate](/features/tools#ppal-duplicate) call per copy, or an explicit
+  `t2/l<index>` path from a prior [Read Track](/features/tools#ppal-read-track).
+  Add [transforms](#transforms) to vary each one.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).

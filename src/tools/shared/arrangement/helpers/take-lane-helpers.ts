@@ -86,58 +86,6 @@ export interface ArrangementTrack {
   trackIndex: number;
   /** Take lane target, or null for the main lane. */
   takeLane: TakeLaneTarget | null;
-  /**
-   * Which written `l+` this destination came from, set by
-   * {@link withNewLaneOrdinals}. Only meaningful when `takeLane` is "new".
-   */
-  newLaneOrdinal?: number;
-  /**
-   * Written as `l=`: the lane the preceding `l+` appended, rather than one of
-   * its own. Read by {@link withNewLaneOrdinals}.
-   */
-  sameLane?: boolean;
-}
-
-/**
- * Numbers the `l+` entries in a destination list, so each one appends its own
- * lane, and points every `l=` back at the one before it.
- *
- * Call this on the list as the caller wrote it, before it's paired against the
- * positions. One written `l+` then stays one lane however many clips land on
- * it, `l+,l+` gets two, and `l+,l=` gets one holding both. A null is a
- * destination that keeps its turn without being one, and passes straight
- * through. Typed off the lane alone, so a destination carrying more than an
- * {@link ArrangementTrack} keeps its own type.
- * @param targets - Destinations parsed from the path, in order
- * @param label - Param name, for the error an unanchored `l=` raises
- * @returns The destinations, with each "new" entry numbered
- * @throws When an `l=` has no `l+` before it to name
- */
-export function withNewLaneOrdinals<
-  T extends {
-    takeLane: TakeLaneTarget | null;
-    newLaneOrdinal?: number;
-    sameLane?: boolean;
-  } | null,
->(targets: T[], label = "toPath"): T[] {
-  let appended = -1;
-
-  return targets.map((target) => {
-    if (target?.takeLane !== "new") return target;
-
-    // Refused up front, before any lane is created: a permanent lane appended
-    // for the entries before it would outlive the failed call.
-    if (target.sameLane && appended < 0) {
-      throw new Error(
-        `${label} "l=" names the lane the "l+" before it appended, and there ` +
-          `is none; write "l+" for the first one`,
-      );
-    }
-
-    if (!target.sameLane) appended++;
-
-    return { ...target, newLaneOrdinal: appended };
-  });
 }
 
 /**
@@ -148,51 +96,23 @@ export function withNewLaneOrdinals<
 export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
   if (path.kind === "take-lane") return path.laneIndex;
 
-  return path.kind === "new-take-lane" || path.kind === "same-take-lane"
-    ? "new"
-    : null;
+  return path.kind === "new-take-lane" ? "new" : null;
 }
 
 /**
- * Whether a path was written `l=`, so it lands on the lane a preceding `l+`
- * appended rather than one of its own.
- * @param path - A parsed clip path
- * @returns True only for `l=`
- */
-export function reusesPreviousLane(path: ClipPath): boolean {
-  return path.kind === "same-take-lane";
-}
-
-/**
- * Keys a resolved take lane by the destination that asked for it, so several
- * destinations naming one lane share it. An `l+` is keyed by its ordinal, so
- * two written `l+` get two lanes while one broadcast to several positions gets
- * a single lane.
- * @param target - The destination
- * @returns The key, an internal spelling — use {@link takeLaneLabel} in messages
- */
-export function takeLaneKey(target: ArrangementTrack): string {
-  const { trackIndex, takeLane, newLaneOrdinal = 0 } = target;
-  const lane = takeLane === "new" ? `+${newLaneOrdinal}` : takeLane;
-
-  return `t${trackIndex}/l${lane}`;
-}
-
-/**
- * Spells a destination the way the caller wrote it, for messages. Unlike
- * {@link takeLaneKey}, an `l+` stays `l+` without the ordinal that tells two of
- * them apart, and the main lane is the bare track.
+ * Spells a destination the way the caller wrote it — the bare track for the
+ * main lane. Doubles as the key a resolved lane is stored under, so every `l+`
+ * on a track shares one lane: a call appends one lane however many entries ask
+ * for it.
  * @param target - The destination
  * @returns The path, e.g. "t0/l+", "t0/l3", or "t0"
  */
 export function takeLaneLabel(target: ArrangementTrack): string {
-  const { trackIndex, takeLane, sameLane } = target;
+  const { trackIndex, takeLane } = target;
 
   if (takeLane == null) return `t${trackIndex}`;
 
-  if (takeLane !== "new") return `t${trackIndex}/l${takeLane}`;
-
-  return `t${trackIndex}/l${sameLane === true ? "=" : "+"}`;
+  return `t${trackIndex}/l${takeLane === "new" ? "+" : takeLane}`;
 }
 
 /**
@@ -342,8 +262,8 @@ export type FittingTakeLaneTarget<T extends ArrangementTrack> = T & {
  * pre-call lane count, so nothing sees the lanes an earlier destination is
  * about to add. "t0/l7,t0/l+" passes that way and then fails mid-resolve,
  * leaving 8 permanent empty lanes. So count along instead, in the order the
- * lanes are resolved and skipping repeats the same way {@link takeLaneKey}
- * does.
+ * lanes are resolved and skipping repeats by their {@link takeLaneLabel}, the
+ * same key the resolved lanes are stored under.
  *
  * A destination that doesn't fit is dropped rather than failing the call, so
  * the destinations alongside it — main lane included — still land.
@@ -364,7 +284,7 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
     if (takeLane == null) continue;
 
     const fits = { ...target, takeLane };
-    const key = takeLaneKey(target);
+    const key = takeLaneLabel(target);
 
     if (dropped.has(key)) continue;
 

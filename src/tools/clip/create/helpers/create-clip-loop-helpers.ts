@@ -19,7 +19,6 @@ import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
-  takeLaneKey,
   takeLaneLabel,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -129,7 +128,6 @@ interface IterationPosition {
   arrangementStartBeats: number | null;
   arrangementStart: string | null;
   takeLane: TakeLaneTarget | null;
-  newLaneOrdinal?: number;
 }
 
 /**
@@ -311,7 +309,7 @@ function resolveIterationPosition(
     };
   }
 
-  const { trackIndex, arrangementStart, takeLane, newLaneOrdinal } = params
+  const { trackIndex, arrangementStart, takeLane } = params
     .arrangementPositions[i] as ArrangementPosition;
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
@@ -329,7 +327,6 @@ function resolveIterationPosition(
     ),
     arrangementStart,
     takeLane,
-    newLaneOrdinal,
   };
 }
 
@@ -345,7 +342,7 @@ function takeLaneFor(
 ): LiveAPI | null {
   if (position.takeLane == null) return null;
 
-  const lane = lanes.get(takeLaneKey(position));
+  const lane = lanes.get(takeLaneLabel(position));
 
   // A destination whose lane didn't fit warned during resolution and has no
   // entry. Fail this clip — the loop catches it and carries on — rather than

@@ -194,7 +194,7 @@ async function runClipBatch({
   deadline,
   movedClipGroups,
 }: RunClipBatchArgs): Promise<ClipResult[]> {
-  const { clips, moveOrder, destinationById, laneOrdinalById } = plan;
+  const { clips, moveOrder, destinationById } = plan;
   const { name, color } = args;
   const parsedNames = parseNames(name, clips.length, "clip");
   const parsedColors = parseColors(color, clips.length, "clip");
@@ -202,8 +202,8 @@ async function runClipBatch({
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
   const resultsPerClip: ClipResult[][] = clips.map(() => []);
-  // Shared across the batch so an "l=" destination lands on the lane the "l+"
-  // before it appended, instead of appending one of its own.
+  // Shared across the batch so every "l+" in the call lands on one new lane
+  // instead of appending one apiece.
   const appendedLanes = new Map<string, number>();
   // The tracks the moves resolve, so a batch moving into one track resolves it
   // once; what makes reusing one safe is spelled out at destinationTrack() in
@@ -254,7 +254,6 @@ async function runClipBatch({
       arrangementLengthBeats: plan.lengthBeatsFor(clip),
       arrangementStartBeats: plan.startBeatsFor(clip),
       destination: destinationById.get(clip.id) ?? null,
-      newLaneOrdinal: laneOrdinalById.get(clip.id),
       destinationParam: plan.destinationParam,
       nonSurvivorClipIds: plan.overwrites?.nonSurvivorIds,
       destinationTracks,

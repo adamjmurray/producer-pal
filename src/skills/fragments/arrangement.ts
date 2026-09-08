@@ -56,9 +56,9 @@ duplicate's \`id\` takes a list, copying each source in turn: \`count\` applies 
 
 Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
 
-- A lane is a path segment: \`t2/l0\` is the track's first take lane, \`t2/l+\` appends a fresh one, and \`t2/l=\` reuses the one the \`l+\` before it appended. Arrangement only. Each \`l+\` in a list appends its own lane, so a stack of takes on ONE new lane is \`toPath: "t2/l+[9|1],t2/l=[13|1]"\`.
+- A lane is a path segment: \`t2/l0\` is the track's first take lane, \`t2/l+\` appends a fresh one. Arrangement only. Every \`l+\` in the same path list is the SAME new lane, so a stack of takes on one fresh lane is \`toPath: "t2/l+[9|1],t2/l+[13|1]"\`. A fresh lane per clip means separate calls, or explicit \`t2/l<index>\` paths from a prior read-track's \`takeLanes\`.
 - Promote a take back to the main lane with a \`toPath\` that has no \`l\` segment (\`t2\`). \`duplicate\` copies it and leaves the take alone; \`update-clip\` empties the take behind it.
-- Variation workflow: one duplicate with \`toPath: "t2/l+,t2/l+,t2/l+"\` + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
+- Variation workflow: one duplicate with explicit lanes, \`toPath: "t2/l1,t2/l2,t2/l3"\` (lanes are created up to the index) + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
 - Take-lane clips are append-only. Moving one off its lane (\`update-clip\` with \`toPath\`, to another lane, another track, or a session slot) copies the content to the destination and leaves a muted \`(moved) ...\` clip behind, because Live's API can't remove it — tell the user to delete that leftover in Live. A MIDI leftover is emptied of notes; an audio one keeps its sample (Live won't let it be cleared) and is only muted. \`arrangementSplit\`, \`arrangementLength\` and \`ppal-delete\` still warn+skip on a lane clip; those need Live's UI. Moving a main-lane clip ONTO a lane works: \`update-clip\` with \`toPath: "t2/l+"\`.
 - Anything that puts a clip on a lane recreates it (MIDI from its notes, audio from its sample), which drops envelope automation and resets a warped audio clip's warp markers. The response says which applied.`;
@@ -72,10 +72,9 @@ Stack alternate takes of an arrangement clip at the same position; only the acti
  * writes one.
  *
  * Trimmed to what a model can't infer from a tool schema and can't be told at
- * the moment it matters. So no `l=` (a model that only knows `l+` gets a lane
- * per take, which is wrong but not broken), no param names (`path` and
- * `toPath` describe themselves), and nothing about the muted `(moved)`
- * leftover — emptyTakeLaneClip() warns about that when it happens.
+ * the moment it matters. So no param names (`path` and `toPath` describe
+ * themselves), and nothing about the muted `(moved)` leftover —
+ * emptyTakeLaneClip() warns about that when it happens.
  */
 export const arrangementBasic = `## Take Lanes
 

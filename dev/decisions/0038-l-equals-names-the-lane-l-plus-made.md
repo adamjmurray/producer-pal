@@ -1,7 +1,15 @@
 # ADR-0038: `l=` names the lane the `l+` before it appended
 
-- **Status:** Accepted
+- **Status:** Reversed (2026-09-08, before release)
 - **Date logged:** 2026-09-03
+
+## Reversal
+
+`l=` never shipped. It was the grammar's only order-dependent rule, and the
+stack-on-one-lane case it served is the common one. So `l+` now means one new
+lane per call: every `l+` in a list lands on that lane, and a lane per clip is
+separate calls or explicit `l<n>` paths. The rejected "repeated `l+` entries
+share a lane" below is what was adopted. See ADR-0025.
 
 ## Context
 

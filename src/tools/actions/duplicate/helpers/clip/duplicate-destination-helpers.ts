@@ -14,8 +14,6 @@ import { namedParam } from "#src/tools/shared/utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
-  reusesPreviousLane,
-  withNewLaneOrdinals,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
@@ -250,32 +248,24 @@ function arrangementDestinations(
   // alongside them, and there is nothing else to fall back on.
   const fromPath = entries.some((entry) => entry.position != null);
   const slots: ClipSlotPosition[] = [];
-  const targets: (DuplicateArrangementTarget | null)[] = [];
+  const arrangementTargets: (DuplicateArrangementTarget | null)[] = [];
   const arrangementPositions = entries.map((entry) => entry.position);
 
   for (const { lane, position } of entries) {
     if (lane == null) {
-      targets.push({ trackIndex: null, takeLane: null });
+      arrangementTargets.push({ trackIndex: null, takeLane: null });
     } else if (lane.kind === "slot") {
       slots.push({ trackIndex: lane.trackIndex, sceneIndex: lane.sceneIndex });
-      targets.push(null);
+      arrangementTargets.push(null);
     } else {
       if (fromPath && position == null) throw noPositionError(lane);
 
-      targets.push({
+      arrangementTargets.push({
         trackIndex: lane.trackIndex,
         takeLane: takeLaneFromPath(lane),
-        ...(reusesPreviousLane(lane) && { sameLane: true }),
       });
     }
   }
-
-  // Number the lanes here, off the list the caller wrote: one entry may cover
-  // every copy, and a repeat of one "l+" must reuse its lane, not append one
-  // per copy. Both
-  // arrangement returns below need it — leaving it off one path collapses two
-  // "l+" into one lane.
-  const arrangementTargets = withNewLaneOrdinals(targets);
 
   if (slots.length === 0) {
     return {

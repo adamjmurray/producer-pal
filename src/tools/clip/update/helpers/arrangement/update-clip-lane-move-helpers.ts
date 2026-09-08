@@ -12,7 +12,7 @@ import {
   type ArrangementTrack,
   isTakeLaneClip,
   resolveTakeLane,
-  takeLaneKey,
+  takeLaneLabel,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
@@ -34,7 +34,7 @@ interface PlaceMovedClipArgs {
   targetBeats: number;
   isMidiClip: boolean;
   context: TilingContext;
-  /** Lanes an `l+` in this call appended, keyed by {@link takeLaneKey}. */
+  /** The lane an `l+` in this call appended, keyed by {@link takeLaneLabel}. */
   appendedLanes: Map<string, number>;
   /** Tally of clips landing on each lane and position. */
   movedClipGroups: Map<string, MoveGroup>;
@@ -53,7 +53,7 @@ interface PlaceMovedClipArgs {
  * @param args.targetBeats - Arrangement position to land at, in Ableton beats
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
- * @param args.appendedLanes - Lanes this call has already appended, shared by `l=`
+ * @param args.appendedLanes - The lane this call already appended, shared by every `l+`
  * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @returns The placed clip, or null when the move was refused or only partly
  *   landed (already warned; either way the source is untouched)
@@ -130,9 +130,9 @@ export function placeMovedClip({
  * from its notes (or its sample), which drops what
  * {@link recreatedClipLosses} names.
  * @param clip - The arrangement clip being moved
- * @param destination - The lane the clip lands on, `l+`/`l=` still unresolved
+ * @param destination - The lane the clip lands on, an `l+` still unresolved
  * @param targetBeats - Arrangement position to land at, in Ableton beats
- * @param appendedLanes - Lanes this call has already appended, shared by `l=`
+ * @param appendedLanes - The lane this call already appended, shared by every `l+`
  * @param movedClipGroups - Tally of clips landing on each lane and position
  * @returns The re-created clip, or null when the move was refused or only
  *   partly landed (either way, nothing further should touch the source)
@@ -145,9 +145,9 @@ function recreateOnTakeLane(
   movedClipGroups: Map<string, MoveGroup>,
 ): LiveAPI | null {
   const destTrackIndex = destination.trackIndex;
-  // An `l=` lands on the lane its `l+` appended earlier in this same call, so
-  // ask for that index rather than appending another.
-  const key = takeLaneKey(destination);
+  // One new lane per call: a later `l+` asks for the index the first one
+  // appended rather than appending another.
+  const key = takeLaneLabel(destination);
   const takeLane: TakeLaneTarget =
     appendedLanes.get(key) ?? (destination.takeLane as TakeLaneTarget);
 

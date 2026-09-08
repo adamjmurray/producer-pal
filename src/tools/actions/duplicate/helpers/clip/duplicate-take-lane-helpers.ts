@@ -7,7 +7,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   resolveTakeLane,
-  takeLaneKey,
+  takeLaneLabel,
   takeLaneTargetsThatFit,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -36,7 +36,7 @@ export interface ResolvedDuplicateLane {
  * @param targets - Destinations, in copy order
  * @param takeLaneName - Name for a take lane newly created by this call
  * @param tracks - The destination tracks, keyed by index
- * @returns Lanes keyed by {@link takeLaneKey}
+ * @returns Lanes keyed by {@link takeLaneLabel}
  */
 export function resolveDuplicateTakeLanes(
   sourceClip: LiveAPI,
@@ -71,7 +71,7 @@ export function resolveDuplicateTakeLanes(
   // "l+" covering three arrangementStarts gets three fresh lanes.
   for (const destination of takeLaneTargetsThatFit(laneTargets)) {
     const { trackIndex, takeLane: target } = destination;
-    const key = takeLaneKey(destination);
+    const key = takeLaneLabel(destination);
 
     if (lanes.has(key)) continue;
 

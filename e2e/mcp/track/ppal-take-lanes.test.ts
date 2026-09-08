@@ -542,9 +542,7 @@ describe("take lanes", () => {
   });
 
   // One written "l+" is one lane however many clips land on it — the copy loop
-  // cycles the destination list, and a cycled repeat must reuse its lane. The
-  // deprecated spelling on purpose: "l=" is how a path asks for the same stack
-  // (the test after next), and both have to keep landing on one lane.
+  // cycles the destination list, and a cycled repeat must reuse its lane.
   it("stacks every copy on one new lane when one l+ cycles across positions", async () => {
     const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Take Source");
 
@@ -575,38 +573,9 @@ describe("take lanes", () => {
     expect(detail.takeLanes![0]!.clips).toHaveLength(3);
   });
 
-  // ...but two written "l+" are two lanes, even on the same track. Sharing them
-  // is what makes a stack of takes impossible to write in one call.
-  it("gives each written l+ its own lane on the same track", async () => {
-    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Two Lanes");
-
-    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
-      await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "clip",
-          id: source.id,
-          toPath: `t${RACKS_TRACK}/l+[5|1],t${RACKS_TRACK}/l+[5|1]`,
-        },
-      }),
-    );
-
-    expect(dup.data.map((copy) => copy.path)).toStrictEqual([
-      `t${RACKS_TRACK}/l0[5|1]`,
-      `t${RACKS_TRACK}/l1[5|1]`,
-    ]);
-
-    await sleep(100);
-    const detail = await readTakeLanes(RACKS_TRACK);
-
-    expect(detail.takeLanes).toHaveLength(2);
-    expect(detail.takeLanes![0]!.clips).toHaveLength(1);
-    expect(detail.takeLanes![1]!.clips).toHaveLength(1);
-  });
-
-  // The path spelling of the stack above: each "l=" lands on the lane the "l+"
-  // before it appended, so two copies share one new lane at the bars named.
-  it("stacks an l= on the lane the l+ before it appended", async () => {
+  // ...and so are two written "l+": one call appends one lane, which is how a
+  // stack of takes at chosen bars is written.
+  it("stacks two l+ on the one lane the call appends", async () => {
     const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Stacked Takes");
 
     const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
@@ -615,7 +584,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          toPath: `t${CHILD_TRACK}/l+[5|1],t${CHILD_TRACK}/l=[9|1]`,
+          toPath: `t${CHILD_TRACK}/l+[5|1],t${CHILD_TRACK}/l+[9|1]`,
         },
       }),
     );
@@ -632,8 +601,35 @@ describe("take lanes", () => {
     expect(detail.takeLanes![0]!.clips).toHaveLength(2);
   });
 
-  it("refuses an l= with no l+ before it", async () => {
-    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Unanchored");
+  // A fresh lane per copy is separate calls: each one appends its own.
+  it("appends a lane per call when l+ is used twice", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Two Lanes");
+
+    for (const start of ["5|1", "9|1"]) {
+      parseToolResultWithWarnings<DuplicateClipResult[]>(
+        await ctx.client!.callTool({
+          name: "ppal-duplicate",
+          arguments: {
+            type: "clip",
+            id: source.id,
+            toPath: `t${RACKS_TRACK}/l+[${start}]`,
+          },
+        }),
+      );
+    }
+
+    await sleep(100);
+    const detail = await readTakeLanes(RACKS_TRACK);
+
+    expect(detail.takeLanes).toHaveLength(2);
+    expect(detail.takeLanes![0]!.clips).toHaveLength(1);
+    expect(detail.takeLanes![1]!.clips).toHaveLength(1);
+  });
+
+  // "l=" once meant "the lane the l+ before it appended". It is gone, so it
+  // reads as any other unknown segment does.
+  it("refuses an l= in toPath", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Retired Spelling");
 
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
@@ -646,7 +642,7 @@ describe("take lanes", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      'toPath "l=" names the lane the "l+" before it appended',
+      '"l=" is not a device, chain, or drum pad',
     );
   });
 

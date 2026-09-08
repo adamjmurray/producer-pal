@@ -61,7 +61,7 @@ it is a case the adapter could not translate on its own, described in full.
 | `slot: "1/0"`, `slots`, `toSlot`                     | `path`/`toPath`: `t1/s0`                        |
 | `arrangementStart: "5\|1"`                           | fused onto the path: `t1[5\|1]`                 |
 | `takeLane: "1"`                                      | `/l0` on the path — **counts from 0**           |
-| `takeLane: "new"` over several positions             | `l+` on the first, `l=` on the rest             |
+| `takeLane: "new"` over several positions             | `l+` on every position — one new lane           |
 | `locator: "Chorus"` (duplicate)                      | `toPath: "[loc:Chorus]"`                        |
 | `startLocator`, `loopStartLocator`, `loopEndLocator` | `startTime`/`loopStart`/`loopEnd`: `loc:Chorus` |
 | `devicePath` (select)                                | `path`                                          |
@@ -72,7 +72,8 @@ Two of these are **not renames**, which is why a find-and-replace is not enough:
 - `takeLane` counted from 1; the `l<n>` path segment counts from 0.
   `takeLane: 1` is `l0`, and `takeLane: 0` was the main lane — no take lane at
   all. One `takeLane: "new"` also made one lane however many positions landed on
-  it, so only the first position gets `l+`; the rest reuse it with `l=`.
+  it, which is what `l+` does: every `l+` in one call lands on that same new
+  lane.
 - `arrangementStart` stops being its own param and becomes a coordinate on the
   destination path, so it has to be paired with a track rather than renamed.
 

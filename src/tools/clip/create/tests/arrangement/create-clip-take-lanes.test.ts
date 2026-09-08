@@ -278,29 +278,14 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(0, 0);
   });
 
-  it("appends one lane per l+ in the path", async () => {
-    registerLiveSet();
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    await createClip({
-      path: "t0/l+,t0/l+",
-      arrangementStart: "1|1",
-      notes: "C3",
-    });
-
-    // Both copies sit at bar 1, one per fresh lane.
-    expectTakeLaneMidiClip(0, 0);
-    expectTakeLaneMidiClip(1, 0);
-  });
-
-  // The stack a list of l+ can't ask for: one new lane holding takes at the
-  // bars the caller named.
-  it("stacks an l= on the lane the l+ before it appended", async () => {
+  // One new lane per call, so this is how a stack of takes at chosen bars is
+  // written. Two fresh lanes takes two calls.
+  it("puts every l+ in the path on the one lane the call appends", async () => {
     registerLiveSet();
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
     await createClip({
-      path: "t0/l+[1|1],t0/l=[5|1]",
+      path: "t0/l+[1|1],t0/l+[5|1]",
       notes: "C3",
     });
 
@@ -309,13 +294,15 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(0, 16);
   });
 
-  it("refuses an l= with no l+ before it", async () => {
+  // "l=" once meant "the lane the l+ before it appended". It is gone, so it
+  // reads as any other unknown segment does.
+  it("refuses an l= in the path", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
 
     await expect(
       createClip({ path: "t0/l=[1|1]", notes: "C3" }),
-    ).rejects.toThrow('path "l=" names the lane the "l+" before it appended');
+    ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
   });
 
   // One written l+ covers all three positions, the way any single value covers
@@ -464,15 +451,15 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
       { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
     ]);
 
-    expect(result.get("t0/l+0")!.path).toBe("live_set tracks 0 take_lanes 0");
+    expect(result.get("t0/l+")!.path).toBe("live_set tracks 0 take_lanes 0");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
     );
   });
 
-  // One written "l+" cycled over several arrangementStarts shares its ordinal,
-  // so all its positions land on the one lane instead of splitting across three.
-  it("resolves one lane per written l+, not per position", () => {
+  // Every "l+" on a track keys the same, so all its positions land on the one
+  // lane instead of splitting across three.
+  it("resolves one lane per track, not per position", () => {
     const track0 = registerTakeLaneTrack({ initialLanes: 0 });
     const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
@@ -482,7 +469,7 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
       { trackIndex: 0, arrangementStart: "3|1", takeLane: "new" },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l+0", "t1/l+0"]);
+    expect([...result.keys()]).toStrictEqual(["t0/l+", "t1/l+"]);
     // The keys alone can't catch a lost dedup — Map.set on a key that's already
     // there adds no key. The append count is what proves t0's second position
     // reused the lane its first one made.
@@ -490,31 +477,20 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     expect(track1.call).toHaveBeenCalledTimes(1);
   });
 
-  // Two written "l+" on one track are two appends, so each gets its own lane.
-  it("appends a lane per l+ when the path names several", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
+  // Several written "l+" on one track are one append: the call gets one lane,
+  // and each position lands on it.
+  it("appends one lane when the path names several l+", () => {
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
 
     const result = resolveCreateClipTakeLanes(null, [
-      {
-        trackIndex: 0,
-        arrangementStart: "1|1",
-        takeLane: "new",
-        newLaneOrdinal: 0,
-      },
-      {
-        trackIndex: 0,
-        arrangementStart: "1|1",
-        takeLane: "new",
-        newLaneOrdinal: 1,
-      },
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
+      { trackIndex: 0, arrangementStart: "5|1", takeLane: "new" },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l+0", "t0/l+1"]);
+    expect([...result.keys()]).toStrictEqual(["t0/l+"]);
+    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
-    );
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('targeting take lane "t0/l1"'),
     );
   });
 

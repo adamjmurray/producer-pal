@@ -160,9 +160,9 @@ describe("resolveClipDestinations", () => {
       );
     });
 
-    // Same numbering as a list with no slots in it. Without it both "l+" key to
-    // ordinal 0 and share one lane, against "each l+ appends its own lane".
-    it("still numbers the new lanes when a dropped slot shares the list", () => {
+    // The dropped slot keeps its place as a null, so the two "l+" stay where the
+    // caller wrote them — and both name the one lane the call appends.
+    it("keeps both l+ entries when a dropped slot shares the list", () => {
       vi.spyOn(console, "warn");
 
       expect(
@@ -171,8 +171,8 @@ describe("resolveClipDestinations", () => {
         arrangementResult(
           [
             null,
-            { trackIndex: 3, takeLane: "new", newLaneOrdinal: 0 },
-            { trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 },
+            { trackIndex: 3, takeLane: "new" },
+            { trackIndex: 3, takeLane: "new" },
           ],
           [null, null, null],
         ),

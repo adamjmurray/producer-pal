@@ -59,10 +59,17 @@ describe("parseObjectPath", () => {
       kind: "new-take-lane",
       trackIndex: 2,
     });
-    expect(parseObjectPath("t2/l=")).toStrictEqual({
-      kind: "same-take-lane",
-      trackIndex: 2,
-    });
+  });
+
+  // "l=" used to mean "the lane the l+ before it appended". It is gone, so it
+  // reads as any other unknown segment does.
+  it("refuses an l= segment", () => {
+    expect(() => parseObjectPath("t2/l=")).toThrow(
+      '"l=" is not a device, chain, or drum pad',
+    );
+    expect(() => parseObjectPath("t2/l=[5|1]")).toThrow(
+      '"l=" is not a device, chain, or drum pad',
+    );
   });
 
   it("reads the roots that name something to create", () => {
@@ -357,7 +364,6 @@ describe("formatObjectPath", () => {
       "t7/s2",
       "t0/l0",
       "t2/l+",
-      "t2/l=",
       "t+",
       "rt+",
       "s+",
@@ -396,11 +402,6 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     expect(parseObjectPath("t0/l+[5|1]")).toStrictEqual({
       kind: "arrangement-position",
       lane: { kind: "new-take-lane", trackIndex: 0 },
-      position: "5|1",
-    });
-    expect(parseObjectPath("t0/l=[5|1]")).toStrictEqual({
-      kind: "arrangement-position",
-      lane: { kind: "same-take-lane", trackIndex: 0 },
       position: "5|1",
     });
   });
@@ -451,13 +452,7 @@ describe("parseObjectPath - the [song position] coordinate", () => {
   });
 
   it("round-trips every shape", () => {
-    for (const path of [
-      "t0[5|1]",
-      "t0/l1[5|1]",
-      "t0/l+[5|1]",
-      "t0/l=[5|1]",
-      "[loc:Verse]",
-    ]) {
+    for (const path of ["t0[5|1]", "t0/l1[5|1]", "t0/l+[5|1]", "[loc:Verse]"]) {
       expect(formatObjectPath(parseObjectPath(path))).toBe(path);
     }
   });

@@ -7,7 +7,7 @@
 
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
-  takeLaneKey,
+  takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
@@ -85,7 +85,7 @@ function takeLaneSuffix(
 
   if (takeLane == null) return "";
 
-  const laneIndex = lanes?.get(takeLaneKey(target))?.laneIndex;
+  const laneIndex = lanes?.get(takeLaneLabel(target))?.laneIndex;
 
   if (laneIndex != null) return `/l${laneIndex}`;
 

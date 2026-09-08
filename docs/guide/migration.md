@@ -142,14 +142,14 @@ lane in a path also always needs its track: `t1/l0[5|1]` works, `l0[5|1]` is
 refused.
 
 One `takeLane: "new"` also made **one** lane, however many positions landed on
-it. A path says that with `l=`, which reuses the lane the `l+` before it
-appended. Repeating `l+` appends a lane per position instead:
+it. A path says that by repeating `l+`: every `l+` in one path is the same new
+lane.
 
 ```js
 // before: two clips, one new lane
 { trackIndex: 1, arrangementStart: "21|1,25|1", takeLane: "new" }
 // after
-{ path: "t1/l+[21|1],t1/l=[25|1]" }
+{ path: "t1/l+[21|1],t1/l+[25|1]" }
 ```
 
 ### `arrangementStart` becomes a coordinate, not a param

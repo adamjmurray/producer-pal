@@ -47,7 +47,7 @@ import json
 import re
 import sys
 
-SEGMENT = re.compile(r"^(mt|rt|t|s|l)(\d+|\+|=)?$")
+SEGMENT = re.compile(r"^(mt|rt|t|s|l)(\d+|\+)?$")
 
 # A takeLane value that names no lane the tool accepts.
 _UNUSABLE_LANE = object()
@@ -66,8 +66,7 @@ def build_path(parts=None):
     order -- track, then scene or take lane, then the device tail, then a
     bracketed song position. `trackIndex`, `sceneIndex` and `takeLane` take an
     int or the string "new" for the `+` spelling that names a place which does
-    not exist yet. `takeLane` also takes "same" for `l=`, the lane the `l+`
-    before it appended.
+    not exist yet.
     """
     parts = parts or {}
     segments = []
@@ -144,21 +143,17 @@ def _track_segment(track_index, track_type):
 
 
 def _index_spelling(index):
-    """"new" is `+` and "same" is `=`; anything else is a plain 0-based number."""
+    """"new" is `+`; anything else is a plain 0-based number."""
     if index == "new":
         return "+"
-    if index == "same":
-        return "="
 
     return str(index)
 
 
 def _index_value(value):
-    """The inverse: `+` reads back as "new", `=` as "same"."""
+    """The inverse: `+` reads back as "new"."""
     if value == "+":
         return "new"
-    if value == "=":
-        return "same"
 
     return int(value)
 
@@ -438,13 +433,11 @@ def _position_paths(args, key, track, take_lane):
     """Fuse a list of song positions onto a destination, one path per position."""
     paths = []
 
-    for index, position in enumerate(_split_list(_take(args, key))):
+    # Every `l+` in one call lands on the same new lane, which is what one
+    # `takeLane: "new"` did.
+    for position in _split_list(_take(args, key)):
         parts = dict(track)
-        # One `takeLane: "new"` made one lane however many positions landed on
-        # it. A repeated `l+` would append a lane each time, so every position
-        # after the first reuses the first one's lane, which `l=` spells.
-        lane = "same" if take_lane == "new" and index > 0 else take_lane
-        parts.update(takeLane=lane, position=position)
+        parts.update(takeLane=take_lane, position=position)
         paths.append(build_path(parts))
 
     return paths
@@ -681,12 +674,12 @@ CASES = [
         {"trackIndex": 1, "arrangementStart": "21|1", "takeLane": "new"},
         {"path": "t1/l+[21|1]"},
     ),
-    # One takeLane made one lane however many positions landed on it, so only
-    # the first position appends: "l=" reuses that lane.
+    # One takeLane made one lane however many positions landed on it, and every
+    # `l+` in one call lands on that same lane.
     (
         TOOL["createClip"],
         {"trackIndex": 1, "arrangementStart": "21|1,25|1", "takeLane": "new"},
-        {"path": "t1/l+[21|1],t1/l=[25|1]"},
+        {"path": "t1/l+[21|1],t1/l+[25|1]"},
     ),
     (
         TOOL["duplicate"],
@@ -709,7 +702,7 @@ CASES = [
         {
             "type": "clip",
             "path": "t1/s0",
-            "toPath": "t1/l+[17|1],t1/l=[21|1]",
+            "toPath": "t1/l+[17|1],t1/l+[21|1]",
         },
     ),
     (
@@ -816,7 +809,7 @@ def self_test():
 
     # A path survives a round trip through its parts, which is the property the
     # adapter leans on everywhere it edits one piece of a path.
-    for path in ("t0", "rt1", "mt", "t+", "t0/s3", "t1/l0[17|1]", "t1/l=[21|1]"):
+    for path in ("t0", "rt1", "mt", "t+", "t0/s3", "t1/l0[17|1]"):
         round_trip = build_path(parse_path(path))
 
         if round_trip != path:

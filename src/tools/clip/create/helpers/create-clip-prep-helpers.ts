@@ -11,7 +11,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   resolveTakeLane,
-  takeLaneKey,
+  takeLaneLabel,
   takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
@@ -136,7 +136,7 @@ export function validateArrangementPositions(
  * fit is warned and left out, so the clips around it still get made.
  * @param takeLaneName - Name for a newly created lane
  * @param arrangementPositions - Resolved arrangement destinations
- * @returns Take lane LiveAPI keyed by {@link takeLaneKey}, empty for main lanes
+ * @returns Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes
  */
 export function resolveCreateClipTakeLanes(
   takeLaneName: string | null,
@@ -153,7 +153,7 @@ export function resolveCreateClipTakeLanes(
   // "l+" covering three arrangementStarts gets three fresh lanes.
   for (const position of fitting) {
     const { trackIndex, takeLane: target } = position;
-    const key = takeLaneKey(position);
+    const key = takeLaneLabel(position);
 
     if (lanes.has(key)) continue;
 

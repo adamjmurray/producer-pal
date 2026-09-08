@@ -155,10 +155,10 @@ Live, or make sure your standalone Max is up to date. See
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
-- Stack variations on [take lanes](/features#take-lanes) with
-  `toPath: "t2/l+,t2/l+"` + transforms: one lane per `l+`, auditioned at the
-  same arrangement position. `t2/l=` reuses the lane the `l+` before it made,
-  for a stack of takes on one new lane
+- Stack variations on [take lanes](/features#take-lanes): every `l+` in one
+  `toPath` is the same new lane, so `toPath: "t2/l+[9|1],t2/l+[13|1]"` stacks
+  both takes on one lane, auditioned at the same arrangement position. A fresh
+  lane per copy needs a separate call per copy
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
