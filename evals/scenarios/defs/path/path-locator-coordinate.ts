@@ -15,6 +15,12 @@
  * failure is attributable: fail here and the form is broken, fail only there
  * and the model just didn't think of it.
  *
+ * All three writing tools are covered because they take the coordinate in
+ * different params — `path` on create, `toPath` on update and duplicate — and
+ * a break in one would not show in the others. `locator-navigation` reaches
+ * `ppal-duplicate` too, but only in the "did the model think of it" sense, and
+ * it fails there every trial, so duplicate's `toPath` had no proof at all.
+ *
  * No `requires` — a path coordinate is in every schema, small-model mode
  * included, unlike duplicate's `locator` param.
  */
@@ -35,11 +41,17 @@ const BASS_TRACK_INDEX = 2;
 /** Where the Bridge locator sits, for grading the create's own result. */
 const BRIDGE_POSITION = "[25|1]";
 
-/** Bass clip starts after the new clip has moved to the Intro. */
-const AFTER_MOVE = ["1|1", "9|1", "17|1", "33|1"];
+/**
+ * Bass clip starts at the end of the run: the new clip moved to the Intro, its
+ * copy at the Bridge, and the three the Set ships with. Every position here is
+ * a locator, so a coordinate that resolved to the wrong bar shows up as a
+ * missing one.
+ */
+const AFTER_DUPLICATE = ["1|1", "9|1", "17|1", "25|1", "33|1"];
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_DUPLICATE = "ppal-duplicate";
 
 /** A path whose song position names a locator instead of a bar. */
 const LOCATOR_COORDINATE = /\[\s*loc(?:ator)?\s*:/i;
@@ -116,6 +128,7 @@ export const pathLocatorCoordinate: EvalScenario = {
     "Connect to Ableton Live",
     "Add an 8-bar clip to the Bass track's arrangement at the Bridge. Address it by the locator's name rather than working out its bar number.",
     "Move that clip to the Intro, again by locator name.",
+    "Now duplicate it to the Bridge, again by locator name.",
   ],
 
   assertions: [
@@ -144,8 +157,18 @@ export const pathLocatorCoordinate: EvalScenario = {
       param: "toPath",
       locator: "Intro",
     }),
-    assertBassClipsAt(AFTER_MOVE),
+    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
+    assertLocatorCoordinate({
+      turn: 3,
+      tool: TOOL_DUPLICATE,
+      param: "toPath",
+      locator: "Bridge",
+    }),
 
-    { type: "token_usage", maxTokens: 2_500 },
+    // One read at the end covers the move and the copy both: the Intro start
+    // is where the move put the clip, the Bridge start is where the copy went.
+    assertBassClipsAt(AFTER_DUPLICATE),
+
+    { type: "token_usage", maxTokens: 3_500 },
   ],
 };
