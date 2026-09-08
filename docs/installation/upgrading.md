@@ -12,6 +12,20 @@ Get the latest version (v{{ $frontmatter.version }}) —
 - [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb) -
   Claude Desktop extension (if applicable)
 
+<!-- Version-scoped: remove once nobody is still arriving from a pre-2.3.0
+     device. -->
+
+::: warning Do you use Producer Pal from a script?
+
+Anything calling Producer Pal over [MCP](/guide/npx-cli), the
+[REST API](/guide/rest-api), or an [agent skill](/guide/skills) may need changes
+for 2.3.0. Parts of the input and output format have changed. See the
+[Migration Guide](/guide/migration) for details.
+
+Not applicable if you only chat with Producer Pal.
+
+:::
+
 ## 2. Replace the Max Device
 
 Replace `Producer_Pal.amxd` in the location where you originally saved it (e.g.
