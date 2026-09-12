@@ -126,7 +126,9 @@ function setOneParam(
   if (key.includes("/")) {
     const matches = resolveParamsByName(device, key);
 
-    if (warnIfAmbiguousName(matches, key, device)) return [];
+    if (warnIfAmbiguousName(matches, key, device)) {
+      return [];
+    }
 
     const namedParam = matches[0];
 
@@ -158,7 +160,9 @@ function setOneParam(
 
   const matches = resolveParamsByName(device, key);
 
-  if (warnIfAmbiguousName(matches, key, device)) return [];
+  if (warnIfAmbiguousName(matches, key, device)) {
+    return [];
+  }
 
   const named = matches[0];
 
@@ -185,7 +189,9 @@ function setOneParam(
   // The key reached no parameter of this device, so the entry says so instead
   // of dropping out: a list that came back a name short is one the caller has
   // to diff against its own request to read.
-  if ("reason" in lookup) return [{ name: key, reason: lookup.reason }];
+  if ("reason" in lookup) {
+    return [{ name: key, reason: lookup.reason }];
+  }
 
   return toEntries(
     setParamValue(lookup.param, inputValue, rawValue, device, deviceName),
@@ -245,7 +251,9 @@ function applyNestedParam(
 
   // Named as the caller wrote it: a list that came back a name short is one
   // the caller has to diff against its own request to read.
-  if ("reason" in target) return [{ name: key, reason: target.reason }];
+  if ("reason" in target) {
+    return [{ name: key, reason: target.reason }];
+  }
 
   // Report the param under the path the caller addressed it by: sixteen pads'
   // worth of bare "Volume" entries would name nothing.
@@ -429,14 +437,18 @@ function setNumericParamValue(write: NumericWrite): WrittenParam | null {
     label,
   });
 
-  if (displayValue == null) return null;
+  if (displayValue == null) {
+    return null;
+  }
 
   const targetRaw =
     range == null
       ? displayValue
       : findRawValueForDisplay(param, displayValue, range, label);
 
-  if (targetRaw == null) return null;
+  if (targetRaw == null) {
+    return null;
+  }
 
   return writeParam(param, targetRaw, label);
 }
@@ -456,7 +468,9 @@ function writeParam(
   rawValue: number,
   label: string,
 ): WrittenParam | null {
-  if (!setParamValueAndVerify(param, rawValue, label)) return null;
+  if (!setParamValueAndVerify(param, rawValue, label)) {
+    return null;
+  }
 
   return readParameterBasic(param);
 }

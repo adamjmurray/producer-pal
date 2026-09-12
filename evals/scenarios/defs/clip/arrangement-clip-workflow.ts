@@ -131,7 +131,9 @@ export const arrangementClipWorkflow: EvalScenario = {
         const calls = getToolCalls(turns, 1);
         const createCall = calls.find((c) => c.name === "ppal-create-clip");
 
-        if (!createCall) throw new Error("ppal-create-clip not found");
+        if (!createCall) {
+          throw new Error("ppal-create-clip not found");
+        }
 
         if (!callNamesArrangementPosition(createCall.args, "path")) {
           throw new Error(

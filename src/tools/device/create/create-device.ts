@@ -183,7 +183,9 @@ function validateInsertionOrder(paths: string[], deviceName: string): void {
   for (const p of paths) {
     const target = insertionTarget(p);
 
-    if (target == null) continue;
+    if (target == null) {
+      continue;
+    }
 
     const stale = renumbered.find(
       (earlier) =>
@@ -199,7 +201,9 @@ function validateInsertionOrder(paths: string[], deviceName: string): void {
       );
     }
 
-    if (target.positioned || appendRenumbers) renumbered.push(target);
+    if (target.positioned || appendRenumbers) {
+      renumbered.push(target);
+    }
   }
 }
 
@@ -238,7 +242,9 @@ function insertionTarget(path: string): InsertionTarget | null {
  * @returns The segment, with a pad's note replaced by its MIDI number
  */
 function padByNote(segment: DeviceSegment): DeviceSegment {
-  if (segment.kind !== "drum-pad") return segment;
+  if (segment.kind !== "drum-pad") {
+    return segment;
+  }
 
   const midi = noteNameToMidi(segment.note);
 
@@ -278,12 +284,17 @@ function createDevicesAtPaths(
         // Every param the call named comes back, written or not.
         const outcomes = setParamValues(device, params);
 
-        if (outcomes.length > 0) result.params = refreshParamValues(outcomes);
+        if (outcomes.length > 0) {
+          result.params = refreshParamValues(outcomes);
+        }
       }
 
       results.push(result);
     } catch (error) {
-      if (paths.length === 1) throw error;
+      if (paths.length === 1) {
+        throw error;
+      }
+
       console.warn(
         `Failed to create "${deviceName}" at path "${p}": ${errorMessage(error)}`,
       );
@@ -343,8 +354,12 @@ function createDeviceAtPath(
 
   // A positioned insert shifts every later device down a slot; an append can
   // too, when Live re-sorts the chain around it.
-  if (effectivePosition != null || appendMovesSiblings(deviceName, deviceCount))
+  if (
+    effectivePosition != null ||
+    appendMovesSiblings(deviceName, deviceCount)
+  ) {
     invalidateDevicePathCache();
+  }
 
   const rawId = result[1];
   const id = rawId ? String(rawId) : null;

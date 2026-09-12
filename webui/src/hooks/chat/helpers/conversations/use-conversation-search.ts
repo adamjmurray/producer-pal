@@ -47,7 +47,9 @@ export function useConversationSearch(
     let cancelled = false;
     const timer = setTimeout(() => {
       void searchConversations(query).then((ids) => {
-        if (!cancelled) setMatchedIds(ids);
+        if (!cancelled) {
+          setMatchedIds(ids);
+        }
       });
     }, SEARCH_DEBOUNCE_MS);
 

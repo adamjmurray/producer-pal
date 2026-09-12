@@ -310,7 +310,9 @@ export default defineConfig({
  * @returns the title, brand-suffixed unless it already names the brand
  */
 function socialTitle(title: string | undefined): string {
-  if (!title) return SITE_TITLE;
+  if (!title) {
+    return SITE_TITLE;
+  }
 
   return title.includes("Producer Pal") ? title : `${title} — Producer Pal`;
 }

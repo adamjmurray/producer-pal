@@ -266,14 +266,18 @@ export function projectContext(content: unknown): void {
 
     sessionState.projectContext.content = value;
 
-    if (isLoadEcho) noteProjectContextLoaded(value);
+    if (isLoadEcho) {
+      noteProjectContextLoaded(value);
+    }
 
     // Device-UI and webui edits reach us only through this setter (never an MCP
     // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
     // forget: the write is Node-side and must not block the param update, and
     // requestNode never rejects so this can't throw. Detached because a void-ed
     // async call is a suspension point — see v8-warning-capture.ts rule 3.
-    if (isEdit) detachWarningCapture(() => backupProjectContextOnEdit(value));
+    if (isEdit) {
+      detachWarningCapture(() => backupProjectContextOnEdit(value));
+    }
   } finally {
     endLiveApiScope();
   }
@@ -298,11 +302,15 @@ function applyRestoredProjectContext(
   restored: string | null,
   snapshot: string,
 ): void {
-  if (restored == null) return;
+  if (restored == null) {
+    return;
+  }
 
   // Two session starts applying the SAME restore is not a divergence, even
   // though the second one's snapshot no longer matches. Nothing left to do.
-  if (sessionState.projectContext.content === restored) return;
+  if (sessionState.projectContext.content === restored) {
+    return;
+  }
 
   if (sessionState.projectContext.content !== snapshot) {
     console.warn(
@@ -386,7 +394,9 @@ function sendResponse(
 
   const tooLargeError = sendChunked(requestId, withWarnings(result));
 
-  if (tooLargeError == null) return;
+  if (tooLargeError == null) {
+    return;
+  }
 
   // The result alone overflowed. Chunk the fallback too, rather than send it
   // as one atom: a multi-target call that overflows is exactly the case that
@@ -399,7 +409,9 @@ function sendResponse(
     withWarnings(formatErrorResponse(tooLargeError)),
   );
 
-  if (fallbackTooLargeError == null) return;
+  if (fallbackTooLargeError == null) {
+    return;
+  }
 
   // The warnings alone overflowed the chunk ceiling — MAX_CAPTURED_WARNINGS
   // bounds their count, not their length. formatErrorResponse's own message is

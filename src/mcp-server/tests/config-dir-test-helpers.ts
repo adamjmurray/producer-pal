@@ -121,7 +121,9 @@ export function putJson(
     "Content-Type": "application/json",
   };
 
-  if (origin != null) headers.Origin = origin;
+  if (origin != null) {
+    headers.Origin = origin;
+  }
 
   return fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
 }

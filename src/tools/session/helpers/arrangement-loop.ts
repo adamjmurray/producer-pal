@@ -37,7 +37,9 @@ export function applyArrangementLoop(
 ): boolean {
   const { loop, loopStart, loopEnd } = timeline;
 
-  if (loop == null && loopStart == null && loopEnd == null) return false;
+  if (loop == null && loopStart == null && loopEnd == null) {
+    return false;
+  }
 
   const namesABound = loopStart != null || loopEnd != null;
   const toBeats = (value: string, paramName: string): number =>

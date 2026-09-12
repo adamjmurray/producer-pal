@@ -49,7 +49,10 @@ export function realtimeItemsToUIMessages(items: RealtimeItem[]): UIMessage[] {
       currentModel = null;
       const text = extractUserText(item);
 
-      if (!text) continue;
+      if (!text) {
+        continue;
+      }
+
       messages.push({
         role: "user",
         parts: [{ type: "text", content: text }],
@@ -59,7 +62,10 @@ export function realtimeItemsToUIMessages(items: RealtimeItem[]): UIMessage[] {
     } else if (item.type === "message" && item.role === "assistant") {
       const text = extractAssistantText(item);
 
-      if (!text) continue;
+      if (!text) {
+        continue;
+      }
+
       currentModel = ensureCurrentModel(currentModel, messages, i);
       currentModel.parts.push({ type: "text", content: text });
     } else if (
@@ -86,7 +92,9 @@ export function realtimeItemsToUIMessages(items: RealtimeItem[]): UIMessage[] {
 function extractUserText(item: UserMessageItem): string {
   return item.content
     .map((c) => {
-      if (c.type === "input_text") return c.text;
+      if (c.type === "input_text") {
+        return c.text;
+      }
 
       return c.transcript ?? "";
     })
@@ -104,7 +112,9 @@ function extractUserText(item: UserMessageItem): string {
 function extractAssistantText(item: AssistantMessageItem): string {
   return item.content
     .map((c) => {
-      if (c.type === "output_text") return c.text;
+      if (c.type === "output_text") {
+        return c.text;
+      }
 
       return c.transcript ?? "";
     })
@@ -150,7 +160,10 @@ function ensureCurrentModel(
   messages: UIMessage[],
   itemIndex: number,
 ): UIMessage {
-  if (current) return current;
+  if (current) {
+    return current;
+  }
+
   const created: UIMessage = {
     role: "model",
     parts: [],

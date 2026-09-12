@@ -196,14 +196,20 @@ function StepBudgetField({
   // Follow the buffer when it moves under us — a Cancel reverts it, and the
   // post-mount load can replace the mount-time default.
   useEffect(() => {
-    if (maxToolSteps === echoRef.current) return;
+    if (maxToolSteps === echoRef.current) {
+      return;
+    }
+
     echoRef.current = maxToolSteps;
     baselineRef.current = maxToolSteps;
     setDraft(String(maxToolSteps));
   }, [maxToolSteps]);
 
   const commit = (steps: number): void => {
-    if (steps === maxToolSteps) return;
+    if (steps === maxToolSteps) {
+      return;
+    }
+
     echoRef.current = steps;
     setMaxToolSteps(steps);
   };

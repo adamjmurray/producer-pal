@@ -93,7 +93,9 @@ export type SidecarRead =
 export function readProjectContextSidecar(liveSetPath: string): SidecarRead {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return { status: "absent" };
+  if (!existsSync(path)) {
+    return { status: "absent" };
+  }
 
   try {
     return { status: "found", content: readFileSync(path, "utf8") };
@@ -167,7 +169,9 @@ export function deleteProjectContextSidecar(
 ): SidecarDelete {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return "absent";
+  if (!existsSync(path)) {
+    return "absent";
+  }
 
   try {
     rmSync(path, { force: true });

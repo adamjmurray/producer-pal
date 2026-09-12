@@ -110,7 +110,9 @@ function coverageRows(report: TestStatsReport): Row[] {
 
       // Unmeasured trees (see coverage.include in vitest.config.ts) have no
       // counts at all — COVERAGE_NOTE explains the dash.
-      if (!counts?.total) return "–";
+      if (!counts?.total) {
+        return "–";
+      }
 
       return pct((counts.covered / counts.total) * 100);
     }),

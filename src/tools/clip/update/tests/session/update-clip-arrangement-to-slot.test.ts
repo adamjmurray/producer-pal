@@ -147,7 +147,10 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
   });
 
   for (const [sceneIndex, hasClip] of (otherScenes ?? []).entries()) {
-    if (sceneIndex === DEST_SCENE) continue;
+    if (sceneIndex === DEST_SCENE) {
+      continue;
+    }
+
     registerScratchSlot(sceneIndex, hasClip);
   }
 
@@ -158,12 +161,16 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
       properties: { has_clip: destHasClip },
       methods: {
         create_clip: () => {
-          if (!destCreateFails) registerDestClip();
+          if (!destCreateFails) {
+            registerDestClip();
+          }
 
           return null;
         },
         create_audio_clip: () => {
-          if (!destCreateFails) registerDestClip();
+          if (!destCreateFails) {
+            registerDestClip();
+          }
 
           return null;
         },

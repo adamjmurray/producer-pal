@@ -89,7 +89,9 @@ function assertNoReadBack(): EvalAssertion {
         (call) => call.name === TOOL_UPDATE_TRACK,
       );
 
-      if (wrote < 0) throw new Error(`no ${TOOL_UPDATE_TRACK} call`);
+      if (wrote < 0) {
+        throw new Error(`no ${TOOL_UPDATE_TRACK} call`);
+      }
 
       const readBacks = calls
         .slice(wrote + 1)

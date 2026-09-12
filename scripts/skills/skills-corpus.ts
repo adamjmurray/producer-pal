@@ -202,9 +202,17 @@ function fragmentTable(): string {
 function describeGate(name: string): string {
   const gate = fragmentGate(name);
 
-  if (gate == null) return "_driver root_";
-  if (gate === "always") return "always";
-  if (gate === "conversation-only") return "chat audience only";
+  if (gate == null) {
+    return "_driver root_";
+  }
+
+  if (gate === "always") {
+    return "always";
+  }
+
+  if (gate === "conversation-only") {
+    return "chat audience only";
+  }
 
   return gate.join(", ");
 }

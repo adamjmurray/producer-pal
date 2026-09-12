@@ -147,7 +147,9 @@ export async function saveConversation(
 
   const trim = selectLimitTrim(all, record, exists, protectedIds);
 
-  for (const id of trim.ids) void tx.store.delete(id);
+  for (const id of trim.ids) {
+    void tx.store.delete(id);
+  }
 
   void tx.store.put(record);
   await tx.done;
@@ -172,7 +174,9 @@ export async function loadConversation(
     | Partial<ConversationRecord>
     | undefined;
 
-  if (!raw) return undefined;
+  if (!raw) {
+    return undefined;
+  }
 
   return normalizeLegacyRecord(raw);
 }
@@ -205,7 +209,9 @@ export async function deleteUnbookmarkedConversations(): Promise<void> {
   const tx = db.transaction(STORE_NAME, "readwrite");
 
   for (const record of all) {
-    if (!record.bookmarked) void tx.store.delete(record.id);
+    if (!record.bookmarked) {
+      void tx.store.delete(record.id);
+    }
   }
 
   await tx.done;
@@ -225,7 +231,9 @@ export async function renameConversation(
     | ConversationRecord
     | undefined;
 
-  if (!record) return;
+  if (!record) {
+    return;
+  }
 
   record.title = title;
   await db.put(STORE_NAME, record);
@@ -245,7 +253,9 @@ export async function setBookmark(
     | ConversationRecord
     | undefined;
 
-  if (!record) return;
+  if (!record) {
+    return;
+  }
 
   record.bookmarked = bookmarked;
   await db.put(STORE_NAME, record);
@@ -333,7 +343,9 @@ export async function searchConversations(query: string): Promise<Set<string>> {
   const needle = query.trim().toLowerCase();
   const matches = new Set<string>();
 
-  if (!needle) return matches;
+  if (!needle) {
+    return matches;
+  }
 
   const db = await getConversationDb();
   const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
@@ -360,7 +372,9 @@ export async function searchConversations(query: string): Promise<Set<string>> {
       .toLowerCase()
       .includes(needle);
 
-    if (inTitle || inMessages || inVoice) matches.add(record.id);
+    if (inTitle || inMessages || inVoice) {
+      matches.add(record.id);
+    }
   }
 
   return matches;
@@ -419,23 +433,38 @@ function normalizeLegacyRecord(
  * @returns All transcript text joined by spaces (empty string if none)
  */
 function extractVoiceTranscriptText(voiceHistory: unknown[] | null): string {
-  if (voiceHistory == null) return "";
+  if (voiceHistory == null) {
+    return "";
+  }
 
   const parts: string[] = [];
 
   for (const item of voiceHistory) {
-    if (!isRecord(item) || item.type !== "message") continue;
+    if (!isRecord(item) || item.type !== "message") {
+      continue;
+    }
+
     // Only search what the transcript renders: `realtimeItemsToUIMessages`
     // skips system messages, so search must too (don't match hidden text).
-    if (item.role !== "user" && item.role !== "assistant") continue;
-    if (!Array.isArray(item.content)) continue;
+    if (item.role !== "user" && item.role !== "assistant") {
+      continue;
+    }
+
+    if (!Array.isArray(item.content)) {
+      continue;
+    }
 
     for (const part of item.content) {
-      if (!isRecord(part)) continue;
+      if (!isRecord(part)) {
+        continue;
+      }
+
       // input_text/output_text carry `.text`; audio items carry `.transcript`.
       const text = part.text ?? part.transcript;
 
-      if (typeof text === "string" && text) parts.push(text);
+      if (typeof text === "string" && text) {
+        parts.push(text);
+      }
     }
   }
 

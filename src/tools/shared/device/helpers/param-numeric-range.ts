@@ -120,7 +120,9 @@ export function sentinelRawValue(
 ): number | null {
   const { sentinel } = range;
 
-  if (sentinel == null) return null;
+  if (sentinel == null) {
+    return null;
+  }
 
   const matches =
     input.trim().toLowerCase() === sentinel.label.trim().toLowerCase();

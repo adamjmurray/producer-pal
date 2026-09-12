@@ -131,7 +131,9 @@ export function parseClaudeCodeStream(stdout: string): ParsedAgentTurn {
  * @returns Steps this event spent
  */
 export function countClaudeCodeSteps(event: Record<string, unknown>): number {
-  if (event.type !== "assistant") return 0;
+  if (event.type !== "assistant") {
+    return 0;
+  }
 
   return messageContent(event).some(isModelAction) ? 1 : 0;
 }
@@ -142,7 +144,9 @@ export function countClaudeCodeSteps(event: Record<string, unknown>): number {
  * @returns True for a tool call or a non-empty reply
  */
 function isModelAction(block: Record<string, unknown>): boolean {
-  if (block.type === "tool_use") return true;
+  if (block.type === "tool_use") {
+    return true;
+  }
 
   return block.type === "text" && block.text !== "";
 }
@@ -186,15 +190,20 @@ function handleEvent(
   event: Record<string, unknown>,
   state: AgentStreamState,
 ): void {
-  if (typeof event.session_id === "string") state.sessionId = event.session_id;
+  if (typeof event.session_id === "string") {
+    state.sessionId = event.session_id;
+  }
 
   if (event.type === "system" && event.subtype === "init") {
     state.error ??= mcpConnectionError(event.mcp_servers);
   } else if (event.type === "assistant") {
-    for (const block of messageContent(event))
+    for (const block of messageContent(event)) {
       handleAssistantBlock(block, state);
+    }
   } else if (event.type === "user") {
-    for (const block of messageContent(event)) handleToolResult(block, state);
+    for (const block of messageContent(event)) {
+      handleToolResult(block, state);
+    }
   } else if (event.type === "result") {
     state.usage = mapClaudeUsage(event.usage);
     state.error ??= permissionDenialError(event.permission_denials);
@@ -213,7 +222,9 @@ function messageContent(
   const message = event.message as { content?: unknown } | undefined;
   const content = message?.content;
 
-  if (!Array.isArray(content)) return [];
+  if (!Array.isArray(content)) {
+    return [];
+  }
 
   return content.filter(
     (block): block is Record<string, unknown> =>
@@ -231,7 +242,9 @@ function handleAssistantBlock(
   state: AgentStreamState,
 ): void {
   if (block.type === "text" && typeof block.text === "string") {
-    if (block.text !== "") state.textParts.push(block.text);
+    if (block.text !== "") {
+      state.textParts.push(block.text);
+    }
   } else if (block.type === "tool_use" && typeof block.name === "string") {
     const call: ToolCall = {
       name: stripMcpPrefix(block.name),
@@ -240,7 +253,9 @@ function handleAssistantBlock(
 
     state.toolCalls.push(call);
 
-    if (typeof block.id === "string") state.openCalls.set(block.id, call);
+    if (typeof block.id === "string") {
+      state.openCalls.set(block.id, call);
+    }
   }
 }
 
@@ -259,7 +274,9 @@ function handleToolResult(
 
   const call = state.openCalls.get(block.tool_use_id);
 
-  if (call == null) return;
+  if (call == null) {
+    return;
+  }
 
   recordToolResult(call, block.content);
 
@@ -320,7 +337,9 @@ function persistedOutputError(call: ToolCall): string | undefined {
  * @returns Error message, or undefined when every configured server connected
  */
 function mcpConnectionError(value: unknown): string | undefined {
-  if (!Array.isArray(value)) return undefined;
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
 
   for (const item of value as unknown[]) {
     const entry = (item ?? {}) as { name?: unknown; status?: unknown };
@@ -352,7 +371,9 @@ function mcpConnectionError(value: unknown): string | undefined {
  * @returns Error message, or undefined when nothing was denied
  */
 function permissionDenialError(value: unknown): string | undefined {
-  if (!Array.isArray(value) || value.length === 0) return undefined;
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
+  }
 
   const names = (value as unknown[])
     .map((item) => ((item ?? {}) as { tool_name?: unknown }).tool_name)
@@ -376,7 +397,9 @@ function permissionDenialError(value: unknown): string | undefined {
  * @returns Error message, or undefined for a successful turn
  */
 function resultError(event: Record<string, unknown>): string | undefined {
-  if (event.is_error !== true && event.subtype === "success") return undefined;
+  if (event.is_error !== true && event.subtype === "success") {
+    return undefined;
+  }
 
   const detail =
     typeof event.result === "string" && event.result !== ""
@@ -397,7 +420,9 @@ function resultError(event: Record<string, unknown>): string | undefined {
  */
 function firstString(...values: unknown[]): string | undefined {
   for (const value of values) {
-    if (typeof value === "string" && value !== "") return value;
+    if (typeof value === "string" && value !== "") {
+      return value;
+    }
   }
 
   return undefined;
@@ -420,7 +445,10 @@ function stripMcpPrefix(name: string): string {
  * @returns Shared token usage or undefined
  */
 function mapClaudeUsage(value: unknown): TokenUsage | undefined {
-  if (value == null || typeof value !== "object") return undefined;
+  if (value == null || typeof value !== "object") {
+    return undefined;
+  }
+
   const usage = value as Record<string, unknown>;
   const result: TokenUsage = {
     inputTokens: tokenCount(usage.input_tokens),
@@ -429,8 +457,13 @@ function mapClaudeUsage(value: unknown): TokenUsage | undefined {
   const cacheRead = tokenCount(usage.cache_read_input_tokens);
   const cacheWrite = tokenCount(usage.cache_creation_input_tokens);
 
-  if (cacheRead > 0) result.cacheReadTokens = cacheRead;
-  if (cacheWrite > 0) result.cacheWriteTokens = cacheWrite;
+  if (cacheRead > 0) {
+    result.cacheReadTokens = cacheRead;
+  }
+
+  if (cacheWrite > 0) {
+    result.cacheWriteTokens = cacheWrite;
+  }
 
   return result;
 }

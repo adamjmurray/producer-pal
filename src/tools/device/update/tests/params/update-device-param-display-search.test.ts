@@ -238,7 +238,9 @@ describe("updateDevice - a request Live silently drops", () => {
         str_for_value: (v: unknown) => {
           const raw = Number(v);
 
-          if (raw < 0 || raw > 4) return "";
+          if (raw < 0 || raw > 4) {
+            return "";
+          }
 
           return ["Off", "Subtle", "Old", "Older", "Extreme"][
             Math.round(raw)
@@ -293,7 +295,9 @@ function registerSentinelParam(): RegisteredMockObject {
       str_for_value: (v: unknown) => {
         const raw = Number(v);
 
-        if (raw >= 6) return "A";
+        if (raw >= 6) {
+          return "A";
+        }
 
         return String(RELEASE_STEPS[Math.floor(raw)]);
       },

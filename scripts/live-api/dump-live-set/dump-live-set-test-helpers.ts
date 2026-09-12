@@ -87,7 +87,9 @@ export function installFakeLom(lom: FakeLom): FakeLomCalls {
         return readWrapperProperty(current, currentPath, op.property);
 
       case "info": {
-        if (!current) return "No object";
+        if (!current) {
+          return "No object";
+        }
 
         return current.info ?? lom.types[current.type] ?? "No object";
       }

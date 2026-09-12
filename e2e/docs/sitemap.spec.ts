@@ -81,7 +81,9 @@ function buildAnchorIndex(): Map<string, Set<string>> {
         continue;
       }
 
-      if (!entry.name.endsWith(".html")) continue;
+      if (!entry.name.endsWith(".html")) {
+        continue;
+      }
 
       const html = readFileSync(fullPath, "utf-8");
       const ids = new Set(
@@ -120,11 +122,15 @@ function checkAnchor(
 ): string | null {
   const hashIndex = href.indexOf("#");
 
-  if (hashIndex === -1) return null;
+  if (hashIndex === -1) {
+    return null;
+  }
 
   const rawFragment = href.slice(hashIndex + 1);
 
-  if (rawFragment === "") return null;
+  if (rawFragment === "") {
+    return null;
+  }
 
   let fragment = rawFragment;
 
@@ -144,7 +150,9 @@ function checkAnchor(
       : new URL(pathPart, `http://localhost${currentPath}`).pathname;
   const ids = anchorIndex.get(normalizeRoute(targetPath));
 
-  if (ids == null) return `Anchor link to unknown page: ${href}`;
+  if (ids == null) {
+    return `Anchor link to unknown page: ${href}`;
+  }
 
   if (!ids.has(fragment)) {
     return `Dead anchor: ${href} (no element with id="${fragment}" on ${normalizeRoute(targetPath)})`;
@@ -303,10 +311,17 @@ test.describe("Docs Site Sitemap Tests", () => {
       for (const link of links) {
         const href = await link.getAttribute("href");
 
-        if (!href) continue;
+        if (!href) {
+          continue;
+        }
 
-        if (href.startsWith("mailto:")) continue;
-        if ((await link.getAttribute("download")) != null) continue;
+        if (href.startsWith("mailto:")) {
+          continue;
+        }
+
+        if ((await link.getAttribute("download")) != null) {
+          continue;
+        }
 
         // Validate the #anchor fragment of same-page and internal links. The
         // sitemap check below only sees the path, so without this a link to a
@@ -314,11 +329,15 @@ test.describe("Docs Site Sitemap Tests", () => {
         if (!isExternalUrl(href)) {
           const anchorError = checkAnchor(href, relativePath, anchorIndex);
 
-          if (anchorError) linkValidationErrors.push(anchorError);
+          if (anchorError) {
+            linkValidationErrors.push(anchorError);
+          }
         }
 
         // Hash-only links are same-page: fully validated by checkAnchor above
-        if (href.startsWith("#")) continue;
+        if (href.startsWith("#")) {
+          continue;
+        }
 
         // Check if it's an external link
         if (isExternalUrl(href)) {

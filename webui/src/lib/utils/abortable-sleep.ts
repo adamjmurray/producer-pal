@@ -30,7 +30,10 @@ export function abortableSleep(
     const timer: { id: ReturnType<typeof setTimeout> | null } = { id: null };
 
     const onAbort = () => {
-      if (timer.id != null) clearTimeout(timer.id);
+      if (timer.id != null) {
+        clearTimeout(timer.id);
+      }
+
       reject(new Error(abortMessage));
     };
 

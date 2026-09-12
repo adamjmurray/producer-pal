@@ -94,7 +94,9 @@ describe("FRAGMENT_GATES", () => {
 
   it("names only real tools", () => {
     for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-      if (typeof gate === "string") continue;
+      if (typeof gate === "string") {
+        continue;
+      }
 
       expect(gate.length, `${name} gates on nothing`).toBeGreaterThan(0);
 
@@ -128,7 +130,9 @@ describe("FRAGMENT_GATES", () => {
       expect(ALL_TOOLS, `${tool} is not a tool`).toContain(tool);
 
       for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-        if (typeof gate === "string") continue;
+        if (typeof gate === "string") {
+          continue;
+        }
 
         expect(
           gate,
@@ -150,7 +154,9 @@ describe("FRAGMENT_GATES", () => {
         const requiredGate = FRAGMENT_GATES[required];
 
         // "always" ships to every toolset and audience, so it satisfies anyone.
-        if (requiredGate === "always") continue;
+        if (requiredGate === "always") {
+          continue;
+        }
 
         // "conversation-only" survives a subagent audience only for another
         // "conversation-only" — a tool-gated dependent would outlive it there.

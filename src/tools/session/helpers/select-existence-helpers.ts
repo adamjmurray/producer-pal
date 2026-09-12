@@ -65,9 +65,13 @@ export function requireSelectTargets({
     );
   }
 
-  if (clipSlot != null) requireClipSlot(clipSlot);
+  if (clipSlot != null) {
+    requireClipSlot(clipSlot);
+  }
 
-  if (devicePath != null) requireDevice(devicePath);
+  if (devicePath != null) {
+    requireDevice(devicePath);
+  }
 }
 
 // --- Helpers below main exports ---
@@ -80,7 +84,9 @@ export function requireSelectTargets({
  * @returns The path spelling, e.g. "t2", "rt0", "mt"
  */
 function trackPathLabel(category: TrackCategory, trackIndex?: number): string {
-  if (category === "master") return "mt";
+  if (category === "master") {
+    return "mt";
+  }
 
   return category === "return" ? `rt${trackIndex}` : `t${trackIndex}`;
 }
@@ -135,7 +141,9 @@ function requireClipSlot({
 function requireDevice(devicePath: string): void {
   const resolved = resolvePathToLiveApi(devicePath);
 
-  if (resolved.targetType !== "device") return;
+  if (resolved.targetType !== "device") {
+    return;
+  }
 
   requireTarget(LiveAPI.from(resolved.liveApiPath), "device", devicePath);
 }

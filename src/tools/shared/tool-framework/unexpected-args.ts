@@ -39,7 +39,9 @@ export function unexpectedArgKeys(
  * @returns The warning text, or undefined when nothing was unexpected
  */
 export function unexpectedArgsWarning(keys: string[]): string | undefined {
-  if (keys.length === 0) return undefined;
+  if (keys.length === 0) {
+    return undefined;
+  }
 
   return `${WARNING_PREFIX}ignored unexpected argument(s): ${keys.join(", ")}`;
 }

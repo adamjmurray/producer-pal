@@ -66,7 +66,9 @@ export function stopForDeadline(
   deadline: number | null | undefined,
   describeRemaining: () => string,
 ): boolean {
-  if (!isDeadlineExceeded(deadline ?? null)) return false;
+  if (!isDeadlineExceeded(deadline ?? null)) {
+    return false;
+  }
 
   console.warn(describeRemaining());
 

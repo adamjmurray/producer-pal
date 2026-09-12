@@ -267,7 +267,9 @@ function processReturnChains(
 ): void {
   const returnChains = device.getChildren("return_chains");
 
-  if (returnChains.length === 0) return;
+  if (returnChains.length === 0) {
+    return;
+  }
 
   const deviceOptions = {
     includeChains,

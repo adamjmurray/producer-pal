@@ -70,9 +70,17 @@ export async function runProbeMatrix<Row>(
 
   console.log("Schema compatibility probe");
   console.log(`Variants: ${variants.map((v) => v.id).join(", ")}\n`);
-  for (const v of variants) console.log(`  ${v.id}: ${v.tests}`);
+
+  for (const v of variants) {
+    console.log(`  ${v.id}: ${v.tests}`);
+  }
+
   console.log(`\n${LEGEND}`);
-  for (const line of matrix.settings) console.log(line);
+
+  for (const line of matrix.settings) {
+    console.log(line);
+  }
+
   console.log();
 
   const details: string[] = [];
@@ -109,7 +117,9 @@ export function truncate(s: string, n = 160): string {
 export function numArg(flag: string): number | undefined {
   const arg = process.argv.find((a) => a.startsWith(flag));
 
-  if (arg == null) return undefined;
+  if (arg == null) {
+    return undefined;
+  }
 
   const n = Number(arg.slice(flag.length));
 
@@ -202,8 +212,9 @@ async function runCell<Row>(
 function aggregate(results: CellResult[]): CellResult {
   const counts = new Map<Status, number>();
 
-  for (const r of results)
+  for (const r of results) {
     counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+  }
 
   const worst = SEVERITY.find((s) => counts.has(s)) ?? "ok";
   const dist = SEVERITY.filter((s) => counts.has(s))

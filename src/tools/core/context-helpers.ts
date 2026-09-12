@@ -118,9 +118,13 @@ export async function handleWriteMemoryEntry(args: {
   description?: string;
   content?: string;
 }): Promise<ContentResult> {
-  if (!args.name) throw new Error("name required to write a memory entry");
-  if (!args.content)
+  if (!args.name) {
+    throw new Error("name required to write a memory entry");
+  }
+
+  if (!args.content) {
     throw new Error("content required to write a memory entry");
+  }
 
   if (!args.description?.trim()) {
     throw new Error("description required to write a memory entry");
@@ -144,7 +148,9 @@ export async function handleWriteMemoryEntry(args: {
 export async function handleDeleteMemoryEntry(
   name: string | undefined,
 ): Promise<ContentResult> {
-  if (!name) throw new Error("name required to delete a memory entry");
+  if (!name) {
+    throw new Error("name required to delete a memory entry");
+  }
 
   return await callNodeContentRoute("memory.forget", { name });
 }
@@ -276,7 +282,9 @@ export function clobberWarning(
   existing: string,
   incoming: string,
 ): string | null {
-  if (incoming.trim() === "") return null;
+  if (incoming.trim() === "") {
+    return null;
+  }
 
   const nonBlank = existing
     .split("\n")
@@ -294,7 +302,9 @@ export function clobberWarning(
   const hasBodyText = bodyWithText.length > 0;
   const lines = hasBodyText ? body : nonBlank;
 
-  if (lines.length === 0) return null;
+  if (lines.length === 0) {
+    return null;
+  }
 
   // Compared line-by-line rather than against the whole blob, so a match can't
   // straddle two lines of the incoming content.
@@ -308,7 +318,9 @@ export function clobberWarning(
   // roster of short entries unguarded — see the JSDoc above.
   const checkable = substantive.length > 0 ? substantive : withText;
 
-  if (checkable.length === 0) return null;
+  if (checkable.length === 0) {
+    return null;
+  }
 
   if (checkable.some((line) => incomingLines.some((l) => l.includes(line)))) {
     return null;

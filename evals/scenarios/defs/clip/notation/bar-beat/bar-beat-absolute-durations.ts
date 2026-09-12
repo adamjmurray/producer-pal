@@ -79,7 +79,9 @@ function assertClipNotes(
   return clipStateAssertion(slot, meter, (events) => {
     const starts = events.map((e) => e.start_time).toSorted((a, b) => a - b);
 
-    if (starts.length !== expectedStarts.length) return false;
+    if (starts.length !== expectedStarts.length) {
+      return false;
+    }
 
     const positionsMatch = starts.every(
       (s, i) => Math.abs(s - (expectedStarts[i] as number)) < BEAT_TOLERANCE,

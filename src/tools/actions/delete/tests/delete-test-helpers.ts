@@ -32,7 +32,9 @@ interface DeviceMockResult {
 function extractDeviceParentPath(devicePath: string): string | null {
   const matches = [...devicePath.matchAll(/devices \d+/g)];
 
-  if (matches.length === 0) return null;
+  if (matches.length === 0) {
+    return null;
+  }
 
   // We know matches is non-empty from the check above
   const lastMatch = matches.at(-1) as RegExpExecArray;

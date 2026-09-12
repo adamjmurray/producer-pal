@@ -477,7 +477,9 @@ describe("orderArrangementMoves", () => {
 
     expect(order).toStrictEqual([0, 1, 2]);
 
-    for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+    for (const spy of spies) {
+      expect(spy).not.toHaveBeenCalled();
+    }
   });
 });
 

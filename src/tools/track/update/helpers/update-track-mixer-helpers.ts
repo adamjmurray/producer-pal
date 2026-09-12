@@ -168,7 +168,9 @@ function writeMixerChild(
   value: number | undefined,
   naming: { label: string; round: (value: number) => number },
 ): number | undefined {
-  if (value == null) return undefined;
+  if (value == null) {
+    return undefined;
+  }
 
   const param = mixer.child(name);
 
@@ -188,5 +190,7 @@ function setIfLanded(
   field: keyof TrackMixerApplied,
   landed: number | undefined,
 ): void {
-  if (landed != null) applied[field] = landed;
+  if (landed != null) {
+    applied[field] = landed;
+  }
 }

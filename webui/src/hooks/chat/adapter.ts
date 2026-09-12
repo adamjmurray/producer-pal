@@ -118,13 +118,17 @@ function buildAnthropicOptions(
   // Pre-3.7 Anthropic models (reachable only via the free-text "Other..." input)
   // reject ANY `thinking` field with a 400, so never send one regardless of the
   // UI thinking level — otherwise the default adaptive payload 400s on first send.
-  if (isLegacyNonThinkingModel(model)) return undefined;
+  if (isLegacyNonThinkingModel(model)) {
+    return undefined;
+  }
 
   // Legacy path for models that don't support adaptive thinking (Haiku 4.5)
   if (isLegacyThinkingModel(model)) {
     const budgetTokens = getThinkingBudget(thinking);
 
-    if (budgetTokens === 0) return undefined;
+    if (budgetTokens === 0) {
+      return undefined;
+    }
 
     return {
       anthropic: {
@@ -139,7 +143,9 @@ function buildAnthropicOptions(
   // Adaptive thinking with effort for Sonnet 4.6+, Opus 4.6+
   const effort = mapThinkingToAnthropicEffort(thinking);
 
-  if (effort == null) return undefined;
+  if (effort == null) {
+    return undefined;
+  }
 
   return {
     anthropic: {
@@ -190,7 +196,9 @@ function buildOpenAIOptions(
 function buildSubagentConfig(
   preset: ResolvedSubagentPreset | undefined,
 ): SubagentConfigOverride | undefined {
-  if (preset == null) return undefined;
+  if (preset == null) {
+    return undefined;
+  }
 
   try {
     return {

@@ -218,7 +218,9 @@ export function tileClipToRange(
     adjustPreRoll,
   });
 
-  if (stoppedEarly) return createdClips;
+  if (stoppedEarly) {
+    return createdClips;
+  }
 
   // Handle partial final tile if remainder exists
   if (remainder > EPSILON) {

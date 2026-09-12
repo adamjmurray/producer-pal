@@ -28,7 +28,9 @@ import { type ClipDestinationPath } from "#src/tools/shared/validation/helpers/c
 export function resolveDestinationPositions<
   T extends ClipDestinationPath | null,
 >(entries: T[], labels: SongPositionLabels): T[] {
-  if (!entries.some((entry) => namesLocator(entry))) return entries;
+  if (!entries.some((entry) => namesLocator(entry))) {
+    return entries;
+  }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const options = {

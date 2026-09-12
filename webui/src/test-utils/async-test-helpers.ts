@@ -39,7 +39,9 @@ export async function waitUntil(
   what: string,
 ): Promise<void> {
   for (let turn = 0; turn < WAIT_UNTIL_TURNS; turn++) {
-    if (predicate()) return;
+    if (predicate()) {
+      return;
+    }
 
     await new Promise((resolve) => setTimeout(resolve, 0));
   }

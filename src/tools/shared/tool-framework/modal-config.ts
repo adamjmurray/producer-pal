@@ -142,7 +142,9 @@ export function resolveParamModes(
   for (const [key, schema] of Object.entries(inputSchema)) {
     const modes = getParamModes(schema);
 
-    if (modes == null) continue;
+    if (modes == null) {
+      continue;
+    }
 
     const winner = firstPresent(ladder, (k) => modes[k]);
 
@@ -156,16 +158,22 @@ export function resolveParamModes(
     // still one the handler accepts from a caller who names it anyway.
     const hidden = enumValuesOf(modes.default) ?? [];
 
-    if (hidden.length > 0) unpublishedEnumValues[key] = [...hidden];
+    if (hidden.length > 0) {
+      unpublishedEnumValues[key] = [...hidden];
+    }
 
     if (winner !== undefined) {
       const desc = descriptionOf(winner);
 
-      if (desc != null) descriptionOverrides[key] = desc;
+      if (desc != null) {
+        descriptionOverrides[key] = desc;
+      }
 
       const refused = enumValuesOf(winner) ?? [];
 
-      if (refused.length > 0) excludeEnumValues[key] = [...refused];
+      if (refused.length > 0) {
+        excludeEnumValues[key] = [...refused];
+      }
     }
   }
 
@@ -189,7 +197,9 @@ export function resolveModalDescription(
   description: ModalDescription,
   context: ModeContext,
 ): string {
-  if (typeof description === "string") return description;
+  if (typeof description === "string") {
+    return description;
+  }
 
   const winner = firstPresent(modeKeyLadder(context), (k) => description[k]);
 
@@ -211,11 +221,17 @@ function modeKeyLadder(context: ModeContext): ModeKey[] {
   const small = context.smallModelMode === true;
   const keys: ModeKey[] = [];
 
-  if (small && notation != null) keys.push(`smallModel:${notation}`);
+  if (small && notation != null) {
+    keys.push(`smallModel:${notation}`);
+  }
 
-  if (notation != null) keys.push(notation);
+  if (notation != null) {
+    keys.push(notation);
+  }
 
-  if (small) keys.push("smallModel");
+  if (small) {
+    keys.push("smallModel");
+  }
 
   return keys;
 }
@@ -233,7 +249,9 @@ function firstPresent<T>(
   for (const key of ladder) {
     const value = pick(key);
 
-    if (value !== undefined) return value;
+    if (value !== undefined) {
+      return value;
+    }
   }
 
   return undefined;

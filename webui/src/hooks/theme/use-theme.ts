@@ -38,7 +38,9 @@ export function useTheme() {
     localStorage.setItem("theme", theme);
 
     // Only listen for system theme changes when using "system" theme
-    if (theme !== "system") return undefined;
+    if (theme !== "system") {
+      return undefined;
+    }
 
     mediaQuery.addEventListener("change", applyTheme);
 

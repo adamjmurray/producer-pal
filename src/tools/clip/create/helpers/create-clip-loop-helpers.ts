@@ -205,7 +205,9 @@ async function createClipAtIndex(
       params.tracks.get(pos.trackIndex),
     );
 
-    if (blocker != null) throw new Error(blocker);
+    if (blocker != null) {
+      throw new Error(blocker);
+    }
 
     const clipResult = processClipIteration(
       view,
@@ -340,7 +342,9 @@ function takeLaneFor(
   lanes: Map<string, LiveAPI>,
   position: IterationPosition,
 ): LiveAPI | null {
-  if (position.takeLane == null) return null;
+  if (position.takeLane == null) {
+    return null;
+  }
 
   const lane = lanes.get(takeLaneLabel(position));
 

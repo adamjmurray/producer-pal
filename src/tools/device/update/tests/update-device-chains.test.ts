@@ -557,7 +557,9 @@ describe("updateDevice - return chain rename mid-request", () => {
     // Real Live reflects a name write immediately; the mock's set() is a
     // pure spy by default, so mirror that here.
     returnX.set.mockImplementation((prop: string, value: unknown) => {
-      if (prop === "name") returnX.properties.name = value;
+      if (prop === "name") {
+        returnX.properties.name = value;
+      }
     });
 
     registerMockObject("chain-a", { path: chainAPath, type: "Chain" });

@@ -7,24 +7,25 @@ import { type Session } from "@google/genai";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import {
   applyManualMute,
   endGeminiHalfDuplexMute,
 } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
 import { buildGeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
-import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
+import { type GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
 import { GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
 import { fetchGeminiToken } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import {
   closeQuietly,
   createGenAIClient,
-  GEMINI_INPUT_MIME_TYPE,
   openResumableGeminiSession,
+  releaseGeminiSessionResources,
   type ResumeState,
   seedGeminiContext,
+  startGeminiMic,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 import {
@@ -114,23 +115,15 @@ export function useGeminiVoiceSession(
 
   const cleanup = useCallback(async () => {
     intentionalCloseRef.current = true;
-    const session = sessionRef.current;
-    const mcp = mcpClientRef.current;
-    const mic = micRef.current;
-    const player = playerRef.current;
-
-    sessionRef.current = null;
-    mcpClientRef.current = null;
-    micRef.current = null;
-    playerRef.current = null;
-    builderRef.current = null;
-    connectingRef.current = false;
-    // Invalidate any connect() suspended on an await so it bails on resume.
-    connectGenRef.current++;
-
-    await mic?.stop();
-    await player?.close();
-    await closeSessionAndMcp(session, mcp);
+    await releaseGeminiSessionResources({
+      sessionRef,
+      mcpClientRef,
+      micRef,
+      playerRef,
+      builderRef,
+      connectingRef,
+      connectGenRef,
+    });
 
     setAssistantSpeaking(false);
     setAssistantThinking(false);
@@ -148,7 +141,9 @@ export function useGeminiVoiceSession(
       // reading it before the awaits and assigning it after would trip the
       // require-atomic-updates rule (which the OpenAI hook suppresses; we avoid
       // needing a suppression instead).
-      if (connectingRef.current) return;
+      if (connectingRef.current) {
+        return;
+      }
 
       if (!geminiKey) {
         setStatus("error");
@@ -177,7 +172,10 @@ export function useGeminiVoiceSession(
           await createGeminiMcpTools(mcpUrl, enabledTools);
 
         mcpClientRef.current = mcpClient;
-        if (stale()) return await cleanup();
+
+        if (stale()) {
+          return await cleanup();
+        }
 
         const credential = await fetchGeminiToken(
           voiceTokenUrl,
@@ -185,7 +183,9 @@ export function useGeminiVoiceSession(
           model,
         );
 
-        if (stale()) return await cleanup();
+        if (stale()) {
+          return await cleanup();
+        }
 
         const player = new GeminiPcmPlayer();
 
@@ -195,7 +195,10 @@ export function useGeminiVoiceSession(
         // contexts and an orphan would also keep the tab alive across HMR.
         playerRef.current = player;
         await player.resume();
-        if (stale()) return await cleanup();
+
+        if (stale()) {
+          return await cleanup();
+        }
 
         // turn-detection is fixed for the session (changes apply on the next
         // Stop → Talk), so the half-duplex flag is too — mirrors the OpenAI hook.
@@ -219,7 +222,10 @@ export function useGeminiVoiceSession(
         });
 
         const handleDrop = (message: string): void => {
-          if (intentionalCloseRef.current) return;
+          if (intentionalCloseRef.current) {
+            return;
+          }
+
           void cleanup().then(() => {
             setStatus("error");
             setError(message);
@@ -260,26 +266,14 @@ export function useGeminiVoiceSession(
 
         sessionRef.current = session;
 
-        const mic = new GeminiMicCapture();
-
-        micRef.current = mic;
-        mic.setMuted(isMutedRef.current);
-        await mic.start({
-          onChunk: (data) => {
-            try {
-              sessionRef.current?.sendRealtimeInput({
-                audio: { data, mimeType: GEMINI_INPUT_MIME_TYPE },
-              });
-            } catch {
-              // a chunk racing teardown — drop it
-            }
-          },
-        });
+        const mic = await startGeminiMic(micRef, sessionRef, isMutedRef);
 
         // If cleanup() ran during mic.start(), it stopped a partial mic and
         // didn't see the resources mic.start() set up afterward. Stop the
         // orphan locally — cleanup() already ran the rest of teardown.
-        if (stale()) return await mic.stop();
+        if (stale()) {
+          return await mic.stop();
+        }
 
         seedGeminiContext(session, initialHistory);
         setActiveVoice(voice ?? null);
@@ -372,29 +366,4 @@ export function useGeminiVoiceSession(
     resetHistory,
     activeVoice,
   };
-}
-
-/**
- * Best-effort teardown of the live session + MCP client. A close that throws
- * shouldn't stall the rest of cleanup (the refs are already nulled), so each is
- * swallowed individually.
- *
- * @param session - The live session, or null
- * @param mcp - The MCP client, or null
- */
-async function closeSessionAndMcp(
-  session: Session | null,
-  mcp: Client | null,
-): Promise<void> {
-  try {
-    session?.close();
-  } catch {
-    // best-effort
-  }
-
-  try {
-    await mcp?.close();
-  } catch {
-    // best-effort
-  }
 }

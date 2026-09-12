@@ -21,7 +21,9 @@
 export function requireString(args: unknown, key: string): string {
   const value = (args as Record<string, unknown> | null)?.[key];
 
-  if (typeof value !== "string") throw new Error(`${key} must be a string`);
+  if (typeof value !== "string") {
+    throw new Error(`${key} must be a string`);
+  }
 
   return value;
 }

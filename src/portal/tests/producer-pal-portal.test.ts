@@ -76,7 +76,9 @@ describe("producer-pal-portal", () => {
   );
 
   beforeEach(() => {
-    for (const name of OVERRIDE_ENV_VARS) delete process.env[name];
+    for (const name of OVERRIDE_ENV_VARS) {
+      delete process.env[name];
+    }
   });
 
   afterEach(() => {
@@ -88,8 +90,9 @@ describe("producer-pal-portal", () => {
 
     for (const [signal, preexisting] of preexistingSignalListeners) {
       for (const listener of process.listeners(signal)) {
-        if (!preexisting.has(listener))
+        if (!preexisting.has(listener)) {
           process.removeListener(signal, listener);
+        }
       }
     }
   });

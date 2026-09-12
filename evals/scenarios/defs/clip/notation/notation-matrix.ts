@@ -162,8 +162,9 @@ function midiJsonNotesAssertion(
 
       const events = parseMidiJsonClip(result, meter);
 
-      if (events == null)
+      if (events == null) {
         return "clip notes missing or not parseable as midi-json";
+      }
 
       return diffNotes(events, expected);
     },

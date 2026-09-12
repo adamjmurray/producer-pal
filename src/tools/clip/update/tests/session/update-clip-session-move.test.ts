@@ -103,7 +103,9 @@ function runSessionMove(opts: {
       path: livePath.track(trackIndex).clipSlot(sceneIndex),
       methods: {
         duplicate_clip_to: () => {
-          if (copyLands) registerMockObject(COPY_ID, { path: destClipPath });
+          if (copyLands) {
+            registerMockObject(COPY_ID, { path: destClipPath });
+          }
 
           return null;
         },

@@ -115,7 +115,9 @@ function parseSplitPoints(
   const parts = splitStr.split(",").map((s) => s.trim());
 
   for (const part of parts) {
-    if (!part) continue;
+    if (!part) {
+      continue;
+    }
 
     try {
       const beats = barBeatToAbletonBeats(

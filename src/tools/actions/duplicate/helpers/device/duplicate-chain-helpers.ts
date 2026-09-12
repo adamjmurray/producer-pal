@@ -101,22 +101,30 @@ function duplicateChain(
   const sourceRack = LiveAPI.from(chainRackPath(chain));
   const destinationRack = resolveDestinationRack(toPath, sourceRack);
 
-  if (destinationRack == null) return null;
+  if (destinationRack == null) {
+    return null;
+  }
 
   const created = insertChain(destinationRack);
 
-  if (created == null) return null;
+  if (created == null) {
+    return null;
+  }
 
   created.set("name", name ?? chain.getProperty("name"));
 
   const color = chain.getColor();
 
-  if (color) created.setColor(color);
+  if (color) {
+    created.setColor(color);
+  }
 
   for (const flag of ["mute", "solo"] as const) {
     const value = chain.getProperty(flag);
 
-    if (value === 1) created.set(flag, 1);
+    if (value === 1) {
+      created.set(flag, 1);
+    }
   }
 
   carryDrumPadNote(chain, created);
@@ -146,7 +154,9 @@ function duplicateChain(
  * @param created - The new chain
  */
 function carryDrumPadNote(chain: LiveAPI, created: LiveAPI): void {
-  if (chain.type !== "DrumChain" || created.type !== "DrumChain") return;
+  if (chain.type !== "DrumChain" || created.type !== "DrumChain") {
+    return;
+  }
 
   const inNote = chain.getProperty("in_note");
 
@@ -179,7 +189,9 @@ function resolveDestinationRack(
   toPath: string | undefined,
   sourceRack: LiveAPI,
 ): LiveAPI | null {
-  if (toPath == null) return sourceRack;
+  if (toPath == null) {
+    return sourceRack;
+  }
 
   const object = rackAtPath(toPath);
 
@@ -229,7 +241,9 @@ function rackAtPath(toPath: string): LiveAPI | null {
     return resolved.targetType === "device" ? resolved.target : null;
   }
 
-  if (targetType !== "device") return null;
+  if (targetType !== "device") {
+    return null;
+  }
 
   const object = LiveAPI.from(liveApiPath);
 
@@ -269,7 +283,9 @@ function insertChain(rack: LiveAPI): LiveAPI | null {
 function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
   const deviceCount = chain.getChildCount("devices");
 
-  if (deviceCount === 0) return;
+  if (deviceCount === 0) {
+    return;
+  }
 
   // Take the destination path now: the temp track shifts every later track
   // index, so a path read inside the copy would be one track off.
@@ -293,7 +309,9 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
     for (let index = 0; index < deviceCount; index++) {
       const tempDevice = LiveAPI.from(`${tempPath} devices 0`);
 
-      if (!tempDevice.exists()) break;
+      if (!tempDevice.exists()) {
+        break;
+      }
 
       // Append: the destination slot is whatever index the chain is up to,
       // which keeps the copies in the source's order. No source device: the
@@ -326,7 +344,9 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
  * @param sourceRack - The rack the source chain belongs to
  */
 function warnIfMacrosLeftBehind(sourceRack: LiveAPI): void {
-  if (sourceRack.getProperty("has_macro_mappings") !== 1) return;
+  if (sourceRack.getProperty("has_macro_mappings") !== 1) {
+    return;
+  }
 
   console.warn(
     `the source rack ${targetLabel(sourceRack)} has macro mappings, and ` +

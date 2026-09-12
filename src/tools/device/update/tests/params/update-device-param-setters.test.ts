@@ -64,8 +64,13 @@ function registerBinarySearchParam(
       str_for_value: (v: unknown) => {
         const n = Number(v);
 
-        if (n <= 0.01) return "0 Hz";
-        if (n >= 0.99) return "1000 Hz";
+        if (n <= 0.01) {
+          return "0 Hz";
+        }
+
+        if (n >= 0.99) {
+          return "1000 Hz";
+        }
 
         return midLabel;
       },
@@ -490,8 +495,13 @@ describe("updateDevice - param value conversion", () => {
           str_for_value: (v: unknown) => {
             const n = Number(v);
 
-            if (n === 1) return "0R";
-            if (n === -1) return "0L";
+            if (n === 1) {
+              return "0R";
+            }
+
+            if (n === -1) {
+              return "0L";
+            }
 
             return "C";
           },

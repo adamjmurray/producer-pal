@@ -39,7 +39,9 @@ export async function getUpdate(): Promise<UpdateInfo | null> {
 
   // Opted out: never touch the network, not even once. This is the whole point
   // of the setting for users who don't want Producer Pal reaching out to GitHub.
-  if (!settings.autoUpdateCheck) return null;
+  if (!settings.autoUpdateCheck) {
+    return null;
+  }
 
   // The catch enforces never-rejects here rather than trusting checkForUpdate to
   // keep swallowing its own failures. This promise is cached for the life of the
@@ -50,7 +52,9 @@ export async function getUpdate(): Promise<UpdateInfo | null> {
 
   // Dismissal is applied here, not per-surface, so the device and the chat UI
   // share one answer.
-  if (update?.version === settings.dismissedUpdateVersion) return null;
+  if (update?.version === settings.dismissedUpdateVersion) {
+    return null;
+  }
 
   return update;
 }

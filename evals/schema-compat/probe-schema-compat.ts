@@ -84,7 +84,9 @@ function resolveModel(arg: string): Promise<LanguageModel> {
     const model = arg.slice("mistral/".length);
     const apiKey = process.env.MISTRAL_KEY;
 
-    if (!apiKey) throw new Error("API key for Mistral is not set");
+    if (!apiKey) {
+      throw new Error("API key for Mistral is not set");
+    }
 
     return Promise.resolve(createMistral({ apiKey })(model));
   }

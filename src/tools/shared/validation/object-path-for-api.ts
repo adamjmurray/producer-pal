@@ -42,7 +42,9 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
   // An object that resolved to nothing reports an empty path.
   const path = api.path;
 
-  if (!path) return undefined;
+  if (!path) {
+    return undefined;
+  }
 
   const scene = SCENE.exec(path);
 
@@ -52,11 +54,15 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
 
   const slot = CLIP_SLOT.exec(path);
 
-  if (slot) return slotPath(Number(slot[1]), Number(slot[2]));
+  if (slot) {
+    return slotPath(Number(slot[1]), Number(slot[2]));
+  }
 
   const lane = TAKE_LANE.exec(path);
 
-  if (lane) return arrangementPath(Number(lane[1]), Number(lane[2]));
+  if (lane) {
+    return arrangementPath(Number(lane[1]), Number(lane[2]));
+  }
 
   const arrangementClip = ARRANGEMENT_CLIP.exec(path);
 
@@ -101,9 +107,13 @@ export function pathField(
 ): { path?: string } {
   const path = objectPathForApi(api);
 
-  if (path == null) return {};
+  if (path == null) {
+    return {};
+  }
 
-  if (written == null || !DRUM_PAD_SEGMENT.test(written.path)) return { path };
+  if (written == null || !DRUM_PAD_SEGMENT.test(written.path)) {
+    return { path };
+  }
 
   const parentPath = api.path.replace(OWN_LIVE_SEGMENT, "");
 
@@ -152,7 +162,9 @@ export function pathTargetLabel(
   api: LiveAPI | null | undefined,
   written: string,
 ): string {
-  if (api == null) return `"${written}"`;
+  if (api == null) {
+    return `"${written}"`;
+  }
 
   return spellTarget(objectPathForApi(api) ?? written, api.id);
 }
@@ -263,13 +275,17 @@ function devicePathForApi(api: LiveAPI, path: string): string | undefined {
   // chain whose rack-relative index we'd have to go looking for. Say nothing
   // rather than hand back the wrong chain. Live normally hands back the
   // rack-relative path instead, so this is the rare shape that kept one.
-  if (path.includes(" drum_pads ")) return undefined;
+  if (path.includes(" drum_pads ")) {
+    return undefined;
+  }
 
   // A parameter, a mixer, a send — anything hanging below the last device or
   // chain segment. extractDevicePath walks past what it doesn't recognize, so
   // it would answer with the ancestor's path, and a warning would then pair
   // that path with this object's id as if they named the same thing.
-  if (!WHOLE_DEVICE_PATH.test(path)) return undefined;
+  if (!WHOLE_DEVICE_PATH.test(path)) {
+    return undefined;
+  }
 
   // Name a drum chain the way reads do — "pC1/c0", not "c3" — for the chain
   // itself and anything hanging below it. The namer only costs a rack read

@@ -80,7 +80,9 @@ function padChains(result: unknown): PadChain[] {
 function describePad(result: unknown): string {
   const chains = padChains(result);
 
-  if (chains.length === 0) return "no chains";
+  if (chains.length === 0) {
+    return "no chains";
+  }
 
   return chains
     .map(
@@ -101,7 +103,9 @@ function describePad(result: unknown): string {
  * @returns True when the chain's own fader holds the asked-for trim
  */
 function hasAskedForTrim(chain: PadChain | undefined): boolean {
-  if (chain == null) return false;
+  if (chain == null) {
+    return false;
+  }
 
   return (
     Math.abs((chain.gainDb ?? 0) - TRIM_DB) <= DB_TOLERANCE &&

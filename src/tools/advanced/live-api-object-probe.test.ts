@@ -43,8 +43,11 @@ describe("liveApi per-operation path", () => {
     // Assigning undefined to a process.env property stores the STRING
     // "undefined", which leaves the flag set for every later test in this
     // worker. Deleting is the only way to unset it.
-    if (originalFlag == null) delete process.env.ENABLE_OBJECT_PROBE;
-    else process.env.ENABLE_OBJECT_PROBE = originalFlag;
+    if (originalFlag == null) {
+      delete process.env.ENABLE_OBJECT_PROBE;
+    } else {
+      process.env.ENABLE_OBJECT_PROBE = originalFlag;
+    }
   });
 
   it("routes an operation with a path to its own object", () => {

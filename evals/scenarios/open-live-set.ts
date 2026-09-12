@@ -75,7 +75,9 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     // Only wait for a teardown there is something to tear down. With Live shut
     // (or its Set device-less) nothing is serving, and the wait would just burn
     // its whole timeout.
-    if (wasServing) await waitForServerToStop();
+    if (wasServing) {
+      await waitForServerToStop();
+    }
 
     await waitForServerToStart();
     await verifyLoadedSet(absolutePath);
@@ -210,7 +212,9 @@ function envWithoutTestMarkers(): NodeJS.ProcessEnv {
   const env = { ...process.env };
 
   for (const key of Object.keys(env)) {
-    if (key.startsWith("VITEST")) delete env[key];
+    if (key.startsWith("VITEST")) {
+      delete env[key];
+    }
   }
 
   delete env.NODE_ENV;
@@ -227,7 +231,9 @@ async function waitForServerToStop(): Promise<void> {
   const start = Date.now();
 
   while (Date.now() - start < SERVER_STOP_TIMEOUT_MS) {
-    if (!(await serverIsAnswering())) return;
+    if (!(await serverIsAnswering())) {
+      return;
+    }
 
     await sleep(POLL_INTERVAL_MS);
   }
@@ -257,7 +263,9 @@ async function waitForServerToStart(): Promise<void> {
       );
     }
 
-    if (await mcpServerIsReady()) return;
+    if (await mcpServerIsReady()) {
+      return;
+    }
 
     await sleep(POLL_INTERVAL_MS);
   }

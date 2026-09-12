@@ -80,7 +80,9 @@ const defaultOutlet = vi.fn(
 
     // Defer the reply: the code inside the Promise callLiveApi() returns has
     // not run yet, so pendingRequests isn't in the state the handler needs.
-    if (params != null) setTimeout(() => handler(requestId, ...params), 1);
+    if (params != null) {
+      setTimeout(() => handler(requestId, ...params), 1);
+    }
 
     return Promise.resolve();
   },

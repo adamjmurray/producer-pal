@@ -54,12 +54,29 @@ describe("device-reader-helpers", () => {
         id: "chain-123",
         type: overrides.type ?? "Chain",
         getProperty: (prop: string) => {
-          if (prop === "name") return overrides.name ?? "Test Chain";
-          if (prop === "mute") return overrides.mute ?? 0;
-          if (prop === "solo") return overrides.solo ?? 0;
-          if (prop === "muted_via_solo") return overrides.muted_via_solo ?? 0;
-          if (prop === "choke_group") return overrides.choke_group ?? 0;
-          if (prop === "out_note") return overrides.out_note ?? 60;
+          if (prop === "name") {
+            return overrides.name ?? "Test Chain";
+          }
+
+          if (prop === "mute") {
+            return overrides.mute ?? 0;
+          }
+
+          if (prop === "solo") {
+            return overrides.solo ?? 0;
+          }
+
+          if (prop === "muted_via_solo") {
+            return overrides.muted_via_solo ?? 0;
+          }
+
+          if (prop === "choke_group") {
+            return overrides.choke_group ?? 0;
+          }
+
+          if (prop === "out_note") {
+            return overrides.out_note ?? 60;
+          }
 
           return 0;
         },

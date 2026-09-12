@@ -67,7 +67,9 @@ export function parseAgentCliStream(
   for (const line of stdout.split("\n")) {
     const event = parseJsonlLine(line);
 
-    if (event != null) options.handleEvent(event, state);
+    if (event != null) {
+      options.handleEvent(event, state);
+    }
   }
 
   if (state.error != null) {
@@ -93,7 +95,9 @@ export function parseJsonlLine(
 ): Record<string, unknown> | undefined {
   const trimmed = line.trim();
 
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
 
   try {
     return JSON.parse(trimmed) as Record<string, unknown>;
@@ -151,15 +155,21 @@ export function recordToolResult(call: ToolCall, value: unknown): void {
 
   const isError = (value as { isError?: unknown } | null | undefined)?.isError;
 
-  if (typeof isError === "boolean") call.isError = isError;
+  if (typeof isError === "boolean") {
+    call.isError = isError;
+  }
 
   const warnings = mcpResultWarnings(value);
 
-  if (warnings.length > 0) call.warnings = warnings;
+  if (warnings.length > 0) {
+    call.warnings = warnings;
+  }
 
   const injected = mcpResultInjectedBlocks(value);
 
-  if (injected.length > 0) call.injectedBlocks = injected;
+  if (injected.length > 0) {
+    call.injectedBlocks = injected;
+  }
 }
 
 /**
@@ -172,7 +182,9 @@ export function recordToolResult(call: ToolCall, value: unknown): void {
  * @returns String result
  */
 export function stringifyToolResult(value: unknown): string {
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    return value;
+  }
 
   return mcpResultText(value) || JSON.stringify(value);
 }

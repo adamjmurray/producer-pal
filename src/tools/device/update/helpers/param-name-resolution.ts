@@ -25,7 +25,9 @@ export function resolveParamsByName(device: LiveAPI, name: string): LiveAPI[] {
   return device.getChildren("parameters").filter((param) => {
     const paramName = param.getName();
 
-    if (paramName.toLowerCase() === nameLower) return true;
+    if (paramName.toLowerCase() === nameLower) {
+      return true;
+    }
 
     // Also match formatted name "name (original_name)" for rack macros
     const rawOriginalName = param.getProperty("original_name") as
@@ -56,7 +58,9 @@ export function warnIfAmbiguousName(
   name: string,
   device: LiveAPI,
 ): boolean {
-  if (matches.length < 2) return false;
+  if (matches.length < 2) {
+    return false;
+  }
 
   const described = matches
     .map(
@@ -107,7 +111,9 @@ export function resolveParamById(key: string, device: LiveAPI): ParamLookup {
     // is the whole of its parent path.
     const ownerPath = object.path.replace(PARAMETER_TAIL, "");
 
-    if (ownerPath === device.path) return { param: object };
+    if (ownerPath === device.path) {
+      return { param: object };
+    }
 
     const elsewhere = `id ${key} is on ${extractDevicePath(ownerPath) ?? "another object"}, not ${targetLabel(device)}, so it was not written`;
 

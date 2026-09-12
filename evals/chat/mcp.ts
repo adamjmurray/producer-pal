@@ -112,7 +112,9 @@ export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
           arguments: args,
         });
 
-        if (result.isError === true) erroredToolCallIds.add(toolCallId);
+        if (result.isError === true) {
+          erroredToolCallIds.add(toolCallId);
+        }
 
         // Unchanged on purpose: this is what the model sees.
         return result.content;

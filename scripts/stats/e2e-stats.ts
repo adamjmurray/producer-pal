@@ -255,7 +255,9 @@ function suiteRows(stats: SuiteStats[]): Row[] {
  * @returns Display row
  */
 function suiteRow(s: SuiteStats): Row {
-  if (!s.ran) return [s.label, "not run", "–", "–", "–", "–", "–"];
+  if (!s.ran) {
+    return [s.label, "not run", "–", "–", "–", "–", "–"];
+  }
 
   return [
     s.label,
@@ -288,7 +290,9 @@ function printCliReport(stats: SuiteStats[], slowest: SlowTest[]): void {
   printCliTitle("End-to-End Tests");
   printCliTable(TABLE_HEADERS, rows, rows.length - 1);
 
-  if (slowest.length === 0) return;
+  if (slowest.length === 0) {
+    return;
+  }
 
   printCliTitle("Slowest End-to-End Tests");
   printCliTable(SLOWEST_HEADERS, slowestRows(slowest));
@@ -305,7 +309,9 @@ function printMarkdownReport(stats: SuiteStats[], slowest: SlowTest[]): void {
   console.log("\n## End-to-End Tests\n");
   printMarkdownTable(TABLE_HEADERS, rows, rows.length - 1);
 
-  if (slowest.length === 0) return;
+  if (slowest.length === 0) {
+    return;
+  }
 
   console.log("<details><summary>Slowest end-to-end tests</summary>\n");
   printMarkdownTable(SLOWEST_HEADERS, slowestRows(slowest));

@@ -140,7 +140,9 @@ function selectedVariants(): Variant[] {
     .filter((a) => a.startsWith("--variant="))
     .map((a) => a.slice("--variant=".length));
 
-  if (wanted.length === 0) return VARIANTS;
+  if (wanted.length === 0) {
+    return VARIANTS;
+  }
 
   const chosen = VARIANTS.filter((v) => wanted.includes(v.id));
 

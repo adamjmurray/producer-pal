@@ -103,7 +103,9 @@ const VALID_SENSITIVITY = new Set<SpeechSensitivity>(["high", "low"]);
 export function loadTurnDetection(): TurnDetectionSettings {
   const stored = localStorage.getItem(TURN_DETECTION_KEY);
 
-  if (stored == null) return DEFAULT_TURN_DETECTION;
+  if (stored == null) {
+    return DEFAULT_TURN_DETECTION;
+  }
 
   try {
     return normalizeTurnDetection(

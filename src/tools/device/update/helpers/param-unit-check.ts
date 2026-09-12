@@ -55,7 +55,9 @@ export function displayValueForWrite(ctx: WriteUnitContext): number | null {
       return requested === ctx.labelUnit ? ctx.inputValue : refuse(ctx);
     }
 
-    if (ctx.known == null) return refuse(ctx);
+    if (ctx.known == null) {
+      return refuse(ctx);
+    }
 
     // A recorded unit describes what the param *displays*, which is not
     // always canonical: Glue Compressor's Release shows seconds. Put the
@@ -72,7 +74,9 @@ export function displayValueForWrite(ctx: WriteUnitContext): number | null {
   // still has to match the param's own recorded unit.
   const trailing = splitLeadingNumber(ctx.writtenText)?.trailing;
 
-  if (!trailing) return ctx.inputValue;
+  if (!trailing) {
+    return ctx.inputValue;
+  }
 
   return ctx.known != null &&
     trailing.toLowerCase() === ctx.known.unit.toLowerCase()

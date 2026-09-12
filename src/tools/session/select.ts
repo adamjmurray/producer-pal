@@ -181,7 +181,9 @@ export function select(
       args.openPluginWindow,
     );
 
-    if (applied) pluginWindowOpen = args.openPluginWindow;
+    if (applied) {
+      pluginWindowOpen = args.openPluginWindow;
+    }
   }
 
   const rackSelection =
@@ -206,7 +208,9 @@ export function select(
   // Build response with only relevant fields
   const result: SelectResult = {};
 
-  if (effectiveView != null) result.view = effectiveView;
+  if (effectiveView != null) {
+    result.view = effectiveView;
+  }
 
   addTrackToResponse(result, trackResult.selectedTrackId);
   addSceneToResponse(result, sceneResult.selectedSceneId);
@@ -352,7 +356,9 @@ function addTrackToResponse(
   if (selectedTrackId != null) {
     const info = buildTrackResponseFromId(selectedTrackId);
 
-    if (info) result.selectedTrack = info;
+    if (info) {
+      result.selectedTrack = info;
+    }
   }
 }
 
@@ -368,7 +374,9 @@ function addSceneToResponse(
   if (selectedSceneId != null) {
     const info = buildSceneResponseFromId(selectedSceneId);
 
-    if (info) result.selectedScene = info;
+    if (info) {
+      result.selectedScene = info;
+    }
   }
 }
 
@@ -400,7 +408,9 @@ function addClipToResponse(
   } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
     const info = buildClipResponseFromSlot(resolved.parsedClipSlot);
 
-    if (info) result.selectedClip = info;
+    if (info) {
+      result.selectedClip = info;
+    }
   }
 }
 
@@ -416,10 +426,14 @@ function addDeviceToResponse(
   if (resolved.deviceId != null) {
     const info = buildDeviceResponseFromId(resolved.deviceId);
 
-    if (info) result.selectedDevice = info;
+    if (info) {
+      result.selectedDevice = info;
+    }
   } else if (resolved.devicePath != null) {
     const info = buildDeviceResponseFromPath(resolved.devicePath);
 
-    if (info) result.selectedDevice = info;
+    if (info) {
+      result.selectedDevice = info;
+    }
   }
 }

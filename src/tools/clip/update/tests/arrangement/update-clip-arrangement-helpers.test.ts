@@ -195,9 +195,17 @@ describe("update-clip-arrangement-helpers", () => {
         id: "700",
         path: `live_set tracks ${trackIndex} arrangement_clips 0`,
         getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") return 1;
-          if (prop === "start_time") return 0;
-          if (prop === "end_time") return 16;
+          if (prop === "is_arrangement_clip") {
+            return 1;
+          }
+
+          if (prop === "start_time") {
+            return 0;
+          }
+
+          if (prop === "end_time") {
+            return 16;
+          }
 
           return null;
         }),
@@ -249,7 +257,9 @@ describe("update-clip-arrangement-helpers", () => {
       const mockClip = {
         id: "100",
         getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "is_arrangement_clip") {
+            return 1;
+          }
 
           return null;
         }),
@@ -690,7 +700,9 @@ function setupTwoClipsOnOneTrack(duplicateFails = false): RegisteredMockObject {
       // Live answers a duplicate it silently declined — on a frozen track, say
       // — with an id that resolves to nothing.
       duplicate_clip_to_arrangement: () => {
-        if (duplicateFails) return ["id", 0];
+        if (duplicateFails) {
+          return ["id", 0];
+        }
 
         registerMockObject(MOVED, {
           path: livePath.track(0).arrangementClip(2),
@@ -821,15 +833,22 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
   const mockClip: Record<string, unknown> = {
     id: opts.clipId,
     getProperty: vi.fn((prop) => {
-      if (prop === "is_arrangement_clip") return 1;
+      if (prop === "is_arrangement_clip") {
+        return 1;
+      }
 
       return null;
     }),
     trackIndex: opts.trackIndex,
   };
 
-  if (opts.path != null) mockClip.path = opts.path;
-  if (opts.exists != null) mockClip.exists = opts.exists;
+  if (opts.path != null) {
+    mockClip.path = opts.path;
+  }
+
+  if (opts.exists != null) {
+    mockClip.exists = opts.exists;
+  }
 
   const movedClipGroups = new Map<string, MoveGroup>();
   const updatedClips: ClipResult[] = [];

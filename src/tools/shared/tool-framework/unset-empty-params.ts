@@ -48,7 +48,9 @@ export function unsetEmptyParams(
       continue;
     }
 
-    if (value == null) continue;
+    if (value == null) {
+      continue;
+    }
 
     if (isBlankString(value) && !blankIsAValue(param)) {
       throw new Error(blankParamMessage(name));
@@ -106,7 +108,9 @@ function emptyParamValue(
   value: unknown,
   schema: ZodType,
 ): unknown {
-  if (value == null) return undefined;
+  if (value == null) {
+    return undefined;
+  }
 
   if (isBlankString(value) && !blankIsAValue(schema)) {
     throw new Error(blankParamMessage(name));

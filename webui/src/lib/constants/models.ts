@@ -307,7 +307,9 @@ export function isRealtimeSelection(
   provider: Provider,
   model: string | null | undefined,
 ): boolean {
-  if (model == null) return false;
+  if (model == null) {
+    return false;
+  }
 
   const isPreset =
     PROVIDER_MODELS[provider]?.some(
@@ -335,7 +337,9 @@ export function resolveRealtimeModel(
   model: string | null | undefined,
 ): string {
   // isRealtimeSelection is false for null/undefined, so model is a string here.
-  if (isRealtimeSelection(provider, model)) return model as string;
+  if (isRealtimeSelection(provider, model)) {
+    return model as string;
+  }
 
   return provider === "gemini" ? GEMINI_REALTIME_MODEL : OPENAI_REALTIME_MODEL;
 }
@@ -352,7 +356,9 @@ export function realtimeProvider(
   provider: Provider,
   model: string | null | undefined,
 ): "openai" | "gemini" | null {
-  if (!isRealtimeSelection(provider, model)) return null;
+  if (!isRealtimeSelection(provider, model)) {
+    return null;
+  }
 
   return provider === "gemini" ? "gemini" : "openai";
 }

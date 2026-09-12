@@ -67,7 +67,9 @@ export function buildClipResultObject(
     }
   }
 
-  if (path != null) result.path = path;
+  if (path != null) {
+    result.path = path;
+  }
 
   return result;
 }

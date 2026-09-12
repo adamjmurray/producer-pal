@@ -124,7 +124,9 @@ function warnNoDrumMap(
   result: Record<string, unknown>,
   drumMapExplicit: boolean,
 ): void {
-  if (!drumMapExplicit) return;
+  if (!drumMapExplicit) {
+    return;
+  }
 
   const kind = result.type == null ? "drum pad" : "drum chain";
 

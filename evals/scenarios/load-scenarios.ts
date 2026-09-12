@@ -290,15 +290,31 @@ export function listScenarioSummaries(env?: RunEnv): Array<{
 function requirementLabels(scenario: EvalScenario): string[] {
   const req = scenario.requires;
 
-  if (!req) return [];
+  if (!req) {
+    return [];
+  }
 
   const labels: string[] = [];
 
-  if (req.transforms) labels.push("transforms");
-  if (req.brackets) labels.push("brackets");
-  if (req.largeModel) labels.push("largeModel");
-  if (req.tools?.length) labels.push(`tools:${req.tools.join("+")}`);
-  if (req.params?.length) labels.push(`params:${req.params.join("+")}`);
+  if (req.transforms) {
+    labels.push("transforms");
+  }
+
+  if (req.brackets) {
+    labels.push("brackets");
+  }
+
+  if (req.largeModel) {
+    labels.push("largeModel");
+  }
+
+  if (req.tools?.length) {
+    labels.push(`tools:${req.tools.join("+")}`);
+  }
+
+  if (req.params?.length) {
+    labels.push(`params:${req.params.join("+")}`);
+  }
 
   return labels;
 }
@@ -328,7 +344,9 @@ export function printList(env?: RunEnv): void {
     console.log(`  - ${id} ${kindLabel}${requiresLabel}${skipLabel}`);
   }
 
-  if (env == null) return;
+  if (env == null) {
+    return;
+  }
 
   printGradedCounts(summaries, env);
 }

@@ -146,7 +146,9 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
   let time = 0;
 
   for (const item of section.content) {
-    if ("barMarker" in item) continue;
+    if ("barMarker" in item) {
+      continue;
+    }
 
     const beats = durationBeats(item.duration ?? lineDefault);
     const count = item.repeat ?? 1;
@@ -170,10 +172,13 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
 
 // Convert a dynamic level to a random velocity within its range.
 function velocityFor(dynamic: StarkDynamic): number {
-  if (dynamic === "accent")
+  if (dynamic === "accent") {
     return randomVelocity(VELOCITY_ACCENT_MIN, VELOCITY_ACCENT_MAX);
-  if (dynamic === "soft")
+  }
+
+  if (dynamic === "soft") {
     return randomVelocity(VELOCITY_SOFT_MIN, VELOCITY_SOFT_MAX);
+  }
 
   return randomVelocity(VELOCITY_NORMAL_MIN, VELOCITY_NORMAL_MAX);
 }
@@ -242,7 +247,9 @@ function processChordItem(
   lineDefault: StarkDuration,
   notes: NoteEvent[],
 ): number {
-  if ("barMarker" in item) return time;
+  if ("barMarker" in item) {
+    return time;
+  }
 
   if (item.type === "rest") {
     return time + durationBeats(item.duration ?? lineDefault);
@@ -305,7 +312,9 @@ function processItem(
   lineDefault: StarkDuration,
   notes: NoteEvent[],
 ): number {
-  if ("barMarker" in item) return time;
+  if ("barMarker" in item) {
+    return time;
+  }
 
   if (item.type === "rest") {
     return time + durationBeats(item.duration ?? lineDefault);

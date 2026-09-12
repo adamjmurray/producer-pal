@@ -77,9 +77,11 @@ export function splitPathEntries(raw: string): string[] {
   for (let i = 0; i < raw.length; i++) {
     const char = raw[i];
 
-    if (char === "[") depth++;
-    else if (char === "]") depth = Math.max(0, depth - 1);
-    else if (char === "," && depth === 0) {
+    if (char === "[") {
+      depth++;
+    } else if (char === "]") {
+      depth = Math.max(0, depth - 1);
+    } else if (char === "," && depth === 0) {
       entries.push(raw.slice(start, i));
       start = i + 1;
     }

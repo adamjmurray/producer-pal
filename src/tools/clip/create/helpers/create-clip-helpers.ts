@@ -228,8 +228,13 @@ function applyCreatedAudioClipSettings(
   const { clipName, color, timeSignature } = settings;
   const propsToSet: Record<string, unknown> = {};
 
-  if (clipName) propsToSet.name = clipName;
-  if (color != null) propsToSet.color = color;
+  if (clipName) {
+    propsToSet.name = clipName;
+  }
+
+  if (color != null) {
+    propsToSet.color = color;
+  }
 
   if (timeSignature != null) {
     propsToSet.signature_numerator = settings.timeSigNumerator;

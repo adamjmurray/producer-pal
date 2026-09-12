@@ -70,7 +70,9 @@ const CONFIG_BUILDERS: Record<Provider, ConfigBuilder> = {
   custom: (apiKey, baseUrl) => {
     const headers: Record<string, string> = {};
 
-    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
 
     return { url: `${getBaseUrl("custom", baseUrl)}/models`, headers };
   },
@@ -106,7 +108,9 @@ export async function testConnection(
       signal: controller.signal,
     });
 
-    if (response.ok) return { ok: true, message: "Connected" };
+    if (response.ok) {
+      return { ok: true, message: "Connected" };
+    }
 
     if (response.status === 401 || response.status === 403) {
       return { ok: false, message: "Invalid API key" };

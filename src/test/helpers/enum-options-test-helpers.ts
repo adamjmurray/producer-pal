@@ -32,7 +32,9 @@ export function liveEnumValues(schema: ZodType): readonly string[] {
       | Unwrappable
       | undefined;
 
-    if (inner == null) return [];
+    if (inner == null) {
+      return [];
+    }
 
     current = inner;
   }

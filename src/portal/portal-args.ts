@@ -68,23 +68,34 @@ export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
       ? true
       : parseBoolEnv(env.LIVE_API);
 
-  if (smallModelMode != null) bridgeOptions.smallModelMode = smallModelMode;
-  if (liveApiEnabled != null) bridgeOptions.liveApiEnabled = liveApiEnabled;
+  if (smallModelMode != null) {
+    bridgeOptions.smallModelMode = smallModelMode;
+  }
+
+  if (liveApiEnabled != null) {
+    bridgeOptions.liveApiEnabled = liveApiEnabled;
+  }
 
   const notation = resolveNotationArg(argv, env.NOTATION);
 
-  if (notation != null) bridgeOptions.notation = notation;
+  if (notation != null) {
+    bridgeOptions.notation = notation;
+  }
 
   const jsonOutput = resolveJsonOutputArg(argv, env.FORMAT, env.JSON_OUTPUT);
 
-  if (jsonOutput != null) bridgeOptions.jsonOutput = jsonOutput;
+  if (jsonOutput != null) {
+    bridgeOptions.jsonOutput = jsonOutput;
+  }
 
   const disabledTools = resolveDisabledTools(
     readOptionArg(argv, ["--tools"]) ?? env.TOOLS,
     readOptionArg(argv, ["--disable-tools"]) ?? env.DISABLE_TOOLS,
   );
 
-  if (disabledTools != null) bridgeOptions.disabledTools = disabledTools;
+  if (disabledTools != null) {
+    bridgeOptions.disabledTools = disabledTools;
+  }
 
   return {
     mcpUrl: `${mcpServerOrigin}/mcp`,
@@ -108,11 +119,15 @@ function readOptionArg(argv: string[], names: string[]): string | undefined {
     const prefix = `${name}=`;
     const inline = argv.find((a) => a.startsWith(prefix));
 
-    if (inline) return inline.slice(prefix.length);
+    if (inline) {
+      return inline.slice(prefix.length);
+    }
 
     const idx = argv.indexOf(name);
 
-    if (idx !== -1 && idx + 1 < argv.length) return argv[idx + 1];
+    if (idx !== -1 && idx + 1 < argv.length) {
+      return argv[idx + 1];
+    }
   }
 
   return undefined;
@@ -128,9 +143,13 @@ function readOptionArg(argv: string[], names: string[]): string | undefined {
  * @returns The boolean, or undefined when not a recognized boolean
  */
 function parseBoolEnv(value: string | undefined): boolean | undefined {
-  if (value === "true") return true;
+  if (value === "true") {
+    return true;
+  }
 
-  if (value === "false") return false;
+  if (value === "false") {
+    return false;
+  }
 
   return undefined;
 }
@@ -153,9 +172,13 @@ function resolveNotationArg(
   const raw = readOptionArg(argv, ["--notation", "-n"]) ?? envNotation;
   const value = raw?.trim().toLowerCase();
 
-  if (value == null || value === "") return undefined;
+  if (value == null || value === "") {
+    return undefined;
+  }
 
-  if (isNotation(value)) return value;
+  if (isNotation(value)) {
+    return value;
+  }
 
   logger.error(
     `Ignoring invalid notation "${raw}" (expected one of: ${NOTATIONS.join(", ")})`,
@@ -184,9 +207,13 @@ function resolveJsonOutputArg(
 ): boolean | undefined {
   const format = readOptionArg(argv, ["--format", "-f"]) ?? envFormat;
 
-  if (format === "json") return true;
+  if (format === "json") {
+    return true;
+  }
 
-  if (format === "compact") return false;
+  if (format === "compact") {
+    return false;
+  }
 
   if (format != null && format !== "") {
     logger.error(
@@ -233,7 +260,9 @@ function resolveDisabledTools(
     const keep = new Set(resolveToolNames(rawTools, warnUnknownTool));
 
     for (const id of ALL_TOOL_IDS) {
-      if (!keep.has(id)) disabled.add(id);
+      if (!keep.has(id)) {
+        disabled.add(id);
+      }
     }
   }
 
@@ -254,7 +283,9 @@ function resolveDisabledTools(
     ...forwarded,
   ];
 
-  if (names.length === 0) return undefined;
+  if (names.length === 0) {
+    return undefined;
+  }
 
   logger.info(`Withholding tools from this client: ${names.join(", ")}`);
 

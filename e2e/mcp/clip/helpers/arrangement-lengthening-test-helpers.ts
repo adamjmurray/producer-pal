@@ -104,7 +104,9 @@ export function parseLengthenResult(result: unknown): {
  * Assumes clips are contiguous and start at the same position.
  */
 export function calculateTotalLengthInBars(clips: ReadClipResult[]): number {
-  if (clips.length === 0) return 0;
+  if (clips.length === 0) {
+    return 0;
+  }
 
   // Get the range from first start to last end
   const starts = clips
@@ -124,7 +126,9 @@ export function calculateTotalLengthInBars(clips: ReadClipResult[]): number {
     })
     .filter((e): e is number => e != null);
 
-  if (starts.length === 0 || ends.length === 0) return 0;
+  if (starts.length === 0 || ends.length === 0) {
+    return 0;
+  }
 
   const minStart = Math.min(...starts);
   const maxEnd = Math.max(...ends);

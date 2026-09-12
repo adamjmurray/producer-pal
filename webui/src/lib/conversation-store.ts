@@ -194,7 +194,9 @@ export function createConversationStore(
 
     slot = next;
 
-    if (activeId() !== before) notify(activeId());
+    if (activeId() !== before) {
+      notify(activeId());
+    }
   };
 
   return {
@@ -203,13 +205,17 @@ export function createConversationStore(
     metaRef,
 
     patchActiveMeta: (id, patch) => {
-      if (id !== activeId() || metaRef.current == null) return;
+      if (id !== activeId() || metaRef.current == null) {
+        return;
+      }
 
       Object.assign(metaRef.current, patch);
     },
 
     beginSave: (branch) => {
-      if (slot.state === "deleted") return null;
+      if (slot.state === "deleted") {
+        return null;
+      }
 
       // A branching save (a chat fork) leaves its source intact and writes a
       // new record, so it starts a new live conversation rather than writing
@@ -219,7 +225,9 @@ export function createConversationStore(
       const sourceId = branch && slot.state !== "fresh" ? slot.id : null;
       const before = slot;
 
-      if (branch) enter(freshSlot());
+      if (branch) {
+        enter(freshSlot());
+      }
 
       // Shared with every other save that reads this same claimed-but-not-yet-
       // persisted id off the slot (a follow-up autosave queued behind this
@@ -248,7 +256,9 @@ export function createConversationStore(
       // Publish the id now rather than when the write lands: the sidebar
       // highlight and the URL hash have to follow the conversation as soon as
       // it has an id to follow.
-      if (slot.state === "fresh") enter({ ...slot, state: "claimed" });
+      if (slot.state === "fresh") {
+        enter({ ...slot, state: "claimed" });
+      }
 
       return snapshot;
     },
@@ -258,7 +268,9 @@ export function createConversationStore(
       // It belongs in that record either way, but it says nothing about this
       // one — and a slot being deleted must not be revived by a write the
       // delete is already waiting to drain.
-      if (snapshot.id !== slot.id || slot.state === "deleted") return;
+      if (snapshot.id !== slot.id || slot.state === "deleted") {
+        return;
+      }
 
       metaRef.current = metaFromRecord(record);
       enter({ ...slot, state: "persisted" });
@@ -275,7 +287,9 @@ export function createConversationStore(
       enter({ ...slot, state: "deleted" });
 
       return () => {
-        if (slot.state === "deleted" && slot.id === before.id) enter(before);
+        if (slot.state === "deleted" && slot.id === before.id) {
+          enter(before);
+        }
       };
     },
 

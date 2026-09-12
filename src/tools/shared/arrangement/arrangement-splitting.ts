@@ -274,7 +274,9 @@ function trackStateFor(
 ): TrackSplitState {
   const known = tracks.get(trackIndex);
 
-  if (known != null) return known;
+  if (known != null) {
+    return known;
+  }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
   const state = { track, holdingStart: holdingAreaStartOnTrack(track) };
@@ -482,7 +484,9 @@ export function performSplitting(
         tracks,
       });
 
-      if (measured) measuredClips++;
+      if (measured) {
+        measuredClips++;
+      }
     } catch (error) {
       // Whatever Live refused, the rest of the batch is still worth cutting.
       // This clip is left as it fell; the rescan below reports what survived.
@@ -498,7 +502,9 @@ export function performSplitting(
   if (splitClipRanges.size === 0) {
     // Nothing cut and nothing skipped, so every clip is a miss — unless there
     // were no clips at all.
-    if (everyClipMeasured && misses.length > 0) warnNothingSplit(misses, mode);
+    if (everyClipMeasured && misses.length > 0) {
+      warnNothingSplit(misses, mode);
+    }
   } else if (everyClipMeasured) {
     // Something was cut, so the caller gets a result that looks like it worked.
     // A position that landed in no clip at all has to say so itself.

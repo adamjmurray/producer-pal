@@ -268,7 +268,9 @@ interface IncludeToggleProps {
 function IncludeToggle(props: IncludeToggleProps): preact.JSX.Element | null {
   const { slot, onSetEnabled } = props;
 
-  if (!slot.canDisable) return null;
+  if (!slot.canDisable) {
+    return null;
+  }
 
   return (
     <label

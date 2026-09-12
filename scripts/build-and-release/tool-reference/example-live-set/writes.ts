@@ -259,7 +259,9 @@ function appendChild(
 ): void {
   const parent = lookupMockObject(undefined, parentPath);
 
-  if (!parent) return;
+  if (!parent) {
+    return;
+  }
 
   const current = (parent.properties[property] as string[] | undefined) ?? [];
 

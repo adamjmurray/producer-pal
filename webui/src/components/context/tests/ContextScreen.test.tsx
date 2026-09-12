@@ -320,7 +320,10 @@ describe("ContextScreen", () => {
     await act(async () => {
       rerender(<Harness />);
       resolveClear(true);
-      for (let i = 0; i < 5; i++) await Promise.resolve();
+
+      for (let i = 0; i < 5; i++) {
+        await Promise.resolve();
+      }
     });
 
     expect(editorMountedValues).toStrictEqual(["old content", ""]);

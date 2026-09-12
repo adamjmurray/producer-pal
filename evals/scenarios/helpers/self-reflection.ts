@@ -33,7 +33,9 @@ export async function maybeInjectReflection(
     (r) => r.earned < r.maxScore && REFLECTABLE_TYPES.has(r.assertion.type),
   );
 
-  if (!failure) return;
+  if (!failure) {
+    return;
+  }
 
   const prompt = buildReflectionPrompt(failure);
 

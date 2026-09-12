@@ -78,11 +78,15 @@ function updateNoteCount(turns: EvalTurnResult[], turn: number): number | null {
   );
 
   for (const call of calls.toReversed()) {
-    if (call.result == null) continue;
+    if (call.result == null) {
+      continue;
+    }
 
     const parsed = parseToolResult(call.result) as { noteCount?: number };
 
-    if (parsed.noteCount != null) return parsed.noteCount;
+    if (parsed.noteCount != null) {
+      return parsed.noteCount;
+    }
   }
 
   return null;
@@ -207,7 +211,9 @@ function createdNoteCount(
     (c) => c.name === TOOL_CREATE_CLIP,
   );
 
-  if (call?.result == null) return null;
+  if (call?.result == null) {
+    return null;
+  }
 
   const parsed = parseToolResult(call.result) as { noteCount?: number };
 

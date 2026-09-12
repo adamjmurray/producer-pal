@@ -30,7 +30,9 @@ import {
 function useFixture(env: Record<string, string>): void {
   vi.stubEnv(CODEX_CLI_TRANSPORT.binEnvVar, FIXTURE_BIN);
 
-  for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+  for (const [key, value] of Object.entries(env)) {
+    vi.stubEnv(key, value);
+  }
 }
 
 describe("spawnAgentCli", () => {

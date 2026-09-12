@@ -72,10 +72,13 @@ export function makeContextIoHandlers(
 
   const onImport = (): void => {
     void pickTextFile(MARKDOWN_ACCEPT).then((result) => {
-      if (result.kind === "text") onImportText(result.text);
-      else if (result.kind === "too-large") onImportError?.(TOO_LARGE_MESSAGE);
-      else if (result.kind === "read-error")
+      if (result.kind === "text") {
+        onImportText(result.text);
+      } else if (result.kind === "too-large") {
+        onImportError?.(TOO_LARGE_MESSAGE);
+      } else if (result.kind === "read-error") {
         onImportError?.(READ_ERROR_MESSAGE);
+      }
       // "cancel": the user dismissed the picker — nothing to report.
     });
   };

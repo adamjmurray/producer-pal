@@ -57,7 +57,9 @@ function mockDownloadApis() {
   vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
     const el = origCreate(tag);
 
-    if (tag === "a") vi.spyOn(el, "click").mockImplementation(clickSpy);
+    if (tag === "a") {
+      vi.spyOn(el, "click").mockImplementation(clickSpy);
+    }
 
     return el;
   });

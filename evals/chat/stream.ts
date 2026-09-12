@@ -149,9 +149,14 @@ function handleError(error: unknown, state: StreamState): void {
  * @param state - Mutable stream state
  */
 function closeThought(state: StreamState): void {
-  if (!state.inThought) return;
+  if (!state.inThought) {
+    return;
+  }
 
-  if (!isQuietMode()) process.stdout.write(endThought());
+  if (!isQuietMode()) {
+    process.stdout.write(endThought());
+  }
+
   state.inThought = false;
 }
 
@@ -166,7 +171,9 @@ function handleTextDelta(text: string, state: StreamState): void {
 
   state.text += text;
 
-  if (!isQuietMode()) process.stdout.write(text);
+  if (!isQuietMode()) {
+    process.stdout.write(text);
+  }
 }
 
 /**
@@ -180,7 +187,9 @@ function handleReasoningDelta(text: string, state: StreamState): void {
   // tell a reasoning-only turn apart even when thoughts aren't printed.
   state.sawReasoning = true;
 
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   process.stdout.write(
     state.inThought ? continueThought(text) : startThought(text),
@@ -258,12 +267,16 @@ function handleStartStep(state: StreamState): void {
 function finishStream(state: StreamState): void {
   maybeWarnEmptyTurn(state);
 
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   closeThought(state);
 
   // Skip trailing newline when usage is shown — onStepEnd adds its own
-  if (!state.showUsage) process.stdout.write("\n");
+  if (!state.showUsage) {
+    process.stdout.write("\n");
+  }
 }
 
 /**
@@ -283,7 +296,9 @@ function maybeWarnEmptyTurn(state: StreamState): void {
     state.text.length === 0 &&
     state.toolCalls.length === 0;
 
-  if (!empty) return;
+  if (!empty) {
+    return;
+  }
 
   if (state.sawReasoning) {
     if (!isQuietMode()) {
@@ -373,11 +388,15 @@ function recordOutput(
 
   const warnings = mcpResultWarnings(output);
 
-  if (warnings.length > 0) toolCall.warnings = warnings;
+  if (warnings.length > 0) {
+    toolCall.warnings = warnings;
+  }
 
   const injected = mcpResultInjectedBlocks(output);
 
-  if (injected.length > 0) toolCall.injectedBlocks = injected;
+  if (injected.length > 0) {
+    toolCall.injectedBlocks = injected;
+  }
 }
 
 /**
@@ -387,8 +406,13 @@ function recordOutput(
  * @returns Formatted string
  */
 function formatOutput(output: unknown): string {
-  if (typeof output === "string") return output;
-  if (output == null) return "";
+  if (typeof output === "string") {
+    return output;
+  }
+
+  if (output == null) {
+    return "";
+  }
 
   // MCP content array format: [{ type: "text", text: "..." }]
   return mcpResultText(output) || JSON.stringify(output);

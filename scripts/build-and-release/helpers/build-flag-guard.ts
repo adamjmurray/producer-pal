@@ -45,13 +45,17 @@ export function buildFlagGuard(
 ): string | null {
   // "true" exactly, like every flag the build reads — a shell that means to
   // opt in can spell it the one way the refusal below prints.
-  if (env[DEV_BUILD_OVERRIDE] === "true") return null;
+  if (env[DEV_BUILD_OVERRIDE] === "true") {
+    return null;
+  }
 
   const set = GUARDED_BUILD_FLAGS.filter(
     (flag) => env[flag] != null && env[flag] !== "",
   );
 
-  if (set.length === 0) return null;
+  if (set.length === 0) {
+    return null;
+  }
 
   return [
     "\n❌ Refusing to build: dev-only build flags are set in this environment.\n",

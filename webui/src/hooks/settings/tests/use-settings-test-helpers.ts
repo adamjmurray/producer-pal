@@ -13,6 +13,8 @@ import { act } from "@testing-library/preact";
  */
 export async function flushLoad(): Promise<void> {
   await act(async () => {
-    for (let i = 0; i < 5; i++) await Promise.resolve();
+    for (let i = 0; i < 5; i++) {
+      await Promise.resolve();
+    }
   });
 }

@@ -18,7 +18,9 @@
 export function isProducerPalDevice(object: LiveAPI): boolean {
   const hostPath = producerPalDevicePath();
 
-  if (hostPath == null) return false;
+  if (hostPath == null) {
+    return false;
+  }
 
   const path = object.path;
 

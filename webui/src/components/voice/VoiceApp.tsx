@@ -171,7 +171,9 @@ function buildConversationPanel(
   // On phones the panel overlays the screen, so collapse it after picking or
   // creating a conversation (matches chat's useConversationPanelState).
   const closeOnMobile = () => {
-    if (isMobile()) setHistoryPanelOpen(() => false);
+    if (isMobile()) {
+      setHistoryPanelOpen(() => false);
+    }
   };
 
   return {
@@ -183,14 +185,20 @@ function buildConversationPanel(
     matchedIds: search.matchedIds,
     onToggle: () => setHistoryPanelOpen((open) => !open),
     onNew: () => {
-      if (isSessionActive) void params.disconnect();
+      if (isSessionActive) {
+        void params.disconnect();
+      }
+
       params.resetVoiceHistory();
       persistence.startNewConversation();
       params.clearViewingMode();
       closeOnMobile();
     },
     onSelect: (id) => {
-      if (isSessionActive) void params.disconnect();
+      if (isSessionActive) {
+        void params.disconnect();
+      }
+
       params.resetVoiceHistory();
       void persistence.switchConversation(id);
       closeOnMobile();

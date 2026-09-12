@@ -12,7 +12,7 @@ import {
 } from "@google/genai";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { describe, expect, it, vi } from "vitest";
-import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import { handleGeminiMessage } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import {
   GEM_ITEM_ID,

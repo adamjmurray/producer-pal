@@ -36,7 +36,9 @@ function resolveHeader(header: string): number[] | null {
   } catch (error) {
     const message = errorMessage(error);
 
-    if (message.startsWith("Stark notation parse error:")) return null;
+    if (message.startsWith("Stark notation parse error:")) {
+      return null;
+    }
 
     throw new Error(
       `The grammar accepted drum header "${header}" but drumHeaderPitch's regex did not (${message}). ` +

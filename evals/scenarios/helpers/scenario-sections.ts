@@ -206,7 +206,9 @@ async function printSignalsSection(
   turns: EvalTurnResult[],
   session: EvalSession,
 ): Promise<EvalAssertionResult[]> {
-  if (assertions.length === 0) return [];
+  if (assertions.length === 0) {
+    return [];
+  }
 
   console.log("\n" + formatSubsectionHeader("Signals") + "\n");
 
@@ -233,7 +235,9 @@ async function printEfficiencySection(
   turns: EvalTurnResult[],
   session: EvalSession,
 ): Promise<EvalAssertionResult[]> {
-  if (assertions.length === 0) return [];
+  if (assertions.length === 0) {
+    return [];
+  }
 
   console.log("\n" + formatSubsectionHeader("Efficiency") + "\n");
 
@@ -263,12 +267,16 @@ async function printJudgeSection(
   judgeOverride: JudgeOverride | undefined,
   checkSummaries: CheckSummary[],
 ): Promise<EvalAssertionResult[]> {
-  if (assertions.length === 0) return [];
+  if (assertions.length === 0) {
+    return [];
+  }
 
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
-    if (assertion.type !== "llm_judge") continue;
+    if (assertion.type !== "llm_judge") {
+      continue;
+    }
 
     console.log("\n" + formatSubsectionHeader("Judge"));
 

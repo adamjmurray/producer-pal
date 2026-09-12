@@ -30,7 +30,10 @@ export function beginGeminiHalfDuplexMute(
   autoMutedRef: BooleanRef,
   halfDuplex: boolean,
 ): void {
-  if (!halfDuplex || autoMutedRef.current || !mic) return;
+  if (!halfDuplex || autoMutedRef.current || !mic) {
+    return;
+  }
+
   autoMutedRef.current = true;
   mic.setMuted(true);
 }
@@ -55,7 +58,9 @@ export function applyManualMute(
   isMutedRef: BooleanRef,
   autoMutedRef: BooleanRef,
 ): boolean {
-  if (!mic) return false;
+  if (!mic) {
+    return false;
+  }
 
   autoMutedRef.current = false;
   isMutedRef.current = muted;
@@ -77,7 +82,10 @@ export function endGeminiHalfDuplexMute(
   autoMutedRef: BooleanRef,
   isMutedRef: BooleanRef,
 ): void {
-  if (!autoMutedRef.current) return;
+  if (!autoMutedRef.current) {
+    return;
+  }
+
   autoMutedRef.current = false;
   mic?.setMuted(isMutedRef.current);
 }

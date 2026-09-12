@@ -190,7 +190,9 @@ function canonicalizeScaleRoot(scaleRoot: string): string | null {
     scaleRoot.toLowerCase(),
   );
 
-  if (index !== -1) return VALID_PITCH_CLASS_NAMES[index] as string;
+  if (index !== -1) {
+    return VALID_PITCH_CLASS_NAMES[index] as string;
+  }
 
   const pitchClass = pitchClassToNumber(scaleRoot);
 

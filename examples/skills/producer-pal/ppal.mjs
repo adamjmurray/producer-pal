@@ -71,7 +71,9 @@ export async function listTools(baseUrl = DEFAULT_BASE_URL, options = {}) {
   const res = await fetch(`${baseUrl}/api/tools`, {
     headers: profileHeaders(options),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
   return res.json();
 }
 
@@ -88,8 +90,9 @@ export async function listTools(baseUrl = DEFAULT_BASE_URL, options = {}) {
 export async function callTool(name, args = {}, options = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const params = new URLSearchParams();
-  if (options.timeoutMs != null)
+  if (options.timeoutMs != null) {
     params.set("timeoutMs", String(options.timeoutMs));
+  }
 
   const query = params.toString();
   const url = query
@@ -103,7 +106,9 @@ export async function callTool(name, args = {}, options = {}) {
     },
     body: JSON.stringify(args),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
   return res.json();
 }
 
@@ -128,7 +133,9 @@ export async function setConfig(patch, options = {}) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
   return res.json();
 }
 
@@ -139,15 +146,25 @@ function parseArgs(argv) {
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--url") opts.baseUrl = argv[++i];
-    else if (arg === "--timeout-ms") opts.timeoutMs = Number(argv[++i]);
-    else if (arg === "--list-tools") opts.listTools = true;
-    else if (arg === "--set-config") opts.setConfig = argv[++i];
-    else if (arg === "--disable-tools") opts.disabledTools = argv[++i];
-    else if (arg === "--notation") opts.notation = argv[++i];
-    else if (arg === "--small-model-mode") opts.smallModelMode = true;
-    else if (arg === "--help" || arg === "-h") opts.help = true;
-    else positional.push(arg);
+    if (arg === "--url") {
+      opts.baseUrl = argv[++i];
+    } else if (arg === "--timeout-ms") {
+      opts.timeoutMs = Number(argv[++i]);
+    } else if (arg === "--list-tools") {
+      opts.listTools = true;
+    } else if (arg === "--set-config") {
+      opts.setConfig = argv[++i];
+    } else if (arg === "--disable-tools") {
+      opts.disabledTools = argv[++i];
+    } else if (arg === "--notation") {
+      opts.notation = argv[++i];
+    } else if (arg === "--small-model-mode") {
+      opts.smallModelMode = true;
+    } else if (arg === "--help" || arg === "-h") {
+      opts.help = true;
+    } else {
+      positional.push(arg);
+    }
   }
   return { opts, positional };
 }

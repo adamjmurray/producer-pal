@@ -65,7 +65,9 @@ export function warnUnusedSplitPoints(
 ): void {
   const unused = splitPoints.filter((_, index) => !usedPoints.has(index));
 
-  if (unused.length === 0) return;
+  if (unused.length === 0) {
+    return;
+  }
 
   const toBarBeat = barBeatFormatter();
   const positions = unused.map((point) => toBarBeat(point)).join(", ");

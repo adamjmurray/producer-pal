@@ -60,7 +60,7 @@ import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 

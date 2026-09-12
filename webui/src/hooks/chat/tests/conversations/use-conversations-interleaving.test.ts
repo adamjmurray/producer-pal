@@ -61,7 +61,9 @@ const OPS: DestructiveOp[] = [
     run: async (handle) => {
       const id = handle.result.current.activeConversationId;
 
-      if (id != null) await handle.result.current.deleteConversation(id);
+      if (id != null) {
+        await handle.result.current.deleteConversation(id);
+      }
     },
     destroysLive: true,
     destroysBystander: false,

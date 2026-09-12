@@ -33,7 +33,9 @@ function registerTargets(): void {
 
 /** The target param each action needs, so the call gets as far as the timeline. */
 function targetFor(action: string): Record<string, unknown> {
-  if (action === "play-scene") return { sceneIndex: 3 };
+  if (action === "play-scene") {
+    return { sceneIndex: 3 };
+  }
 
   if (action === "play-session-clips" || action === "stop-session-clips") {
     return { path: "t0/s1" };

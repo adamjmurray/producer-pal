@@ -32,7 +32,9 @@ export function Tooltip({ text }: TooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isPinned) return undefined;
+    if (!isPinned) {
+      return undefined;
+    }
 
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -50,7 +52,9 @@ export function Tooltip({ text }: TooltipProps) {
   }, [isPinned]);
 
   useEffect(() => {
-    if (!isVisible || !buttonRef.current) return;
+    if (!isVisible || !buttonRef.current) {
+      return;
+    }
 
     const rect = buttonRef.current.getBoundingClientRect();
 
@@ -58,7 +62,9 @@ export function Tooltip({ text }: TooltipProps) {
   }, [isVisible]);
 
   useEffect(() => {
-    if (!position || !tooltipRef.current || !buttonRef.current) return;
+    if (!position || !tooltipRef.current || !buttonRef.current) {
+      return;
+    }
 
     const rect = tooltipRef.current.getBoundingClientRect();
     const next = { ...position };
@@ -90,11 +96,15 @@ export function Tooltip({ text }: TooltipProps) {
   };
 
   const handleMouseEnter = () => {
-    if (!isPinned) setIsVisible(true);
+    if (!isPinned) {
+      setIsVisible(true);
+    }
   };
 
   const handleMouseLeave = () => {
-    if (!isPinned) setIsVisible(false);
+    if (!isPinned) {
+      setIsVisible(false);
+    }
   };
 
   const normalizedText = text.replaceAll("\n", " ").replaceAll(/\s{2,}/g, " ");

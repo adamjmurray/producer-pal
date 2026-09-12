@@ -37,7 +37,9 @@ export function parseTypeInfo(info: string): TypeInfo {
   for (const line of info.split("\n")) {
     const [kind, name, lomType] = line.trim().split(/\s+/);
 
-    if (!kind || !name || !INFO_KINDS.has(kind)) continue;
+    if (!kind || !name || !INFO_KINDS.has(kind)) {
+      continue;
+    }
 
     if (kind === "function") {
       type.functions.push(name);
@@ -70,19 +72,25 @@ export function childRefs(
   child: ChildInfo,
   value: unknown,
 ): ChildRef[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
   const refs: ChildRef[] = [];
 
   for (let at = 0; at + 1 < value.length; at += 2) {
-    if (value[at] !== "id") continue;
+    if (value[at] !== "id") {
+      continue;
+    }
 
     const id = String(value[at + 1]);
     const index = refs.length;
 
     // An empty clip slot answers "id 0", and so does any child Live has not
     // made yet. Following one walks to nothing.
-    if (id === "0") continue;
+    if (id === "0") {
+      continue;
+    }
 
     refs.push({
       path: child.list
@@ -150,7 +158,9 @@ export function redactFilePaths(properties: Record<string, unknown>): number {
 
   for (const [name, value] of Object.entries(properties)) {
     if (!Array.isArray(value)) {
-      if (!isAbsolutePath(value)) continue;
+      if (!isAbsolutePath(value)) {
+        continue;
+      }
 
       properties[name] = REDACTED;
       redacted++;
@@ -159,7 +169,9 @@ export function redactFilePaths(properties: Record<string, unknown>): number {
     }
 
     for (let at = 0; at < value.length; at++) {
-      if (!isAbsolutePath(value[at])) continue;
+      if (!isAbsolutePath(value[at])) {
+        continue;
+      }
 
       value[at] = REDACTED;
       redacted++;

@@ -23,11 +23,15 @@ export function parseArgs(argv = process.argv.slice(2)) {
   const opt = (name, def) => {
     const i = argv.indexOf(name);
 
-    if (i < 0) return def;
+    if (i < 0) {
+      return def;
+    }
 
     const v = argv[i + 1];
 
-    if (v == null || v.startsWith("--")) fail(`Missing value for ${name}`);
+    if (v == null || v.startsWith("--")) {
+      fail(`Missing value for ${name}`);
+    }
 
     return v;
   };
@@ -64,8 +68,9 @@ export function parseArgs(argv = process.argv.slice(2)) {
   const int = (name, def, min, max) => {
     const v = num(name, def, min, max);
 
-    if (!Number.isInteger(v))
+    if (!Number.isInteger(v)) {
       fail(`${name} must be a whole number, got "${v}"`);
+    }
 
     return v;
   };

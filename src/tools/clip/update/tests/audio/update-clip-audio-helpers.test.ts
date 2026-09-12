@@ -217,9 +217,17 @@ describe("applyAudioTransforms", () => {
    */
   function stubGainAndPitch(pitchCoarse: number, pitchFine: number): void {
     mockClip.getProperty.mockImplementation((prop: string) => {
-      if (prop === "gain") return 0.4;
-      if (prop === "pitch_coarse") return pitchCoarse;
-      if (prop === "pitch_fine") return pitchFine;
+      if (prop === "gain") {
+        return 0.4;
+      }
+
+      if (prop === "pitch_coarse") {
+        return pitchCoarse;
+      }
+
+      if (prop === "pitch_fine") {
+        return pitchFine;
+      }
 
       return null;
     });

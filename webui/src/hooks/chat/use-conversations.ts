@@ -203,13 +203,18 @@ export function useConversations({
       await refreshList();
       const hashId = getHashConversationId();
 
-      if (!hashId) return;
+      if (!hashId) {
+        return;
+      }
 
       const record = await loadConversation(hashId);
 
       if (record?.sessionType === "voice") {
-        if (onForeignRecord) onForeignRecord(record);
-        else store.reset();
+        if (onForeignRecord) {
+          onForeignRecord(record);
+        } else {
+          store.reset();
+        }
 
         return;
       }
@@ -236,17 +241,23 @@ export function useConversations({
       // must still branch. Consuming the signal here let that save reuse the
       // source id and overwrite it with the fork's history. clearConversation
       // drops the signal when the conversation goes away.
-      if (chatHistory.length === 0) return Promise.resolve();
+      if (chatHistory.length === 0) {
+        return Promise.resolve();
+      }
 
       const fork = pendingForkRef?.current ?? null;
 
-      if (pendingForkRef) pendingForkRef.current = null;
+      if (pendingForkRef) {
+        pendingForkRef.current = null;
+      }
 
       // Everything this write is judged on is captured here, synchronously, at
       // call time — before any await can move the conversation out from under it.
       const snapshot = store.beginSave(fork != null);
 
-      if (!snapshot) return Promise.resolve();
+      if (!snapshot) {
+        return Promise.resolve();
+      }
 
       // Copy the settings now, not inside the queued body. Switching or
       // starting a conversation mid-stream replaces metaRef before the body
@@ -300,7 +311,9 @@ export function useConversations({
         if (onForeignRecord) {
           store.adopt(record);
           onForeignRecord(record);
-        } else store.reset();
+        } else {
+          store.reset();
+        }
 
         return;
       }
@@ -325,7 +338,9 @@ export function useConversations({
   // drop the signal before the teardown autosave reads it — otherwise that save
   // writes a sibling of the doomed record and moves the active id onto it.
   const dropPendingFork = useCallback(() => {
-    if (pendingForkRef) pendingForkRef.current = null;
+    if (pendingForkRef) {
+      pendingForkRef.current = null;
+    }
   }, [pendingForkRef]);
 
   const deleteConversation = useCallback(
@@ -394,7 +409,9 @@ export function useConversations({
     async (id: string) => {
       const conv = conversations.find((c) => c.id === id);
 
-      if (!conv) return;
+      if (!conv) {
+        return;
+      }
 
       const newValue = !conv.bookmarked;
 

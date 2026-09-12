@@ -490,7 +490,10 @@ export class ChatSdkClient {
           yield [...this.chatHistory];
         } else if (part.type === "start-step" && addedCurrentMsg) {
           // Between tool steps: check if a queued user message should interrupt
-          if (shouldInterrupt?.()) return;
+          if (shouldInterrupt?.()) {
+            return;
+          }
+
           // New step means new assistant turn (after tool results)
           currentMsg = { role: "assistant", content: "" };
           addedCurrentMsg = false;
@@ -613,9 +616,13 @@ function isAnthropicThinkingEnabled(
  * @param overrides - Per-message overrides (undefined = no overrides)
  */
 function stampOverrides(msg: ChatMessage, overrides?: MessageOverrides): void {
-  if (!overrides) return;
+  if (!overrides) {
+    return;
+  }
 
-  if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
+  if (overrides.thinking != null) {
+    msg.thinkingOverride = overrides.thinking;
+  }
 }
 
 /**
@@ -629,5 +636,7 @@ async function drain(
 ): Promise<void> {
   let step = await stream.next();
 
-  while (!step.done) step = await stream.next();
+  while (!step.done) {
+    step = await stream.next();
+  }
 }

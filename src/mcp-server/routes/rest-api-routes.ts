@@ -335,9 +335,17 @@ function appendDeprecationNotices(
  *   "invalid" when present but not recognized
  */
 function parseFormatQuery(raw: unknown): "json" | "compact" | "invalid" {
-  if (raw === undefined) return "json";
-  if (raw === "json") return "json";
-  if (raw === "compact") return "compact";
+  if (raw === undefined) {
+    return "json";
+  }
+
+  if (raw === "json") {
+    return "json";
+  }
+
+  if (raw === "compact") {
+    return "compact";
+  }
 
   return "invalid";
 }
@@ -350,8 +358,13 @@ function parseFormatQuery(raw: unknown): "json" | "compact" | "invalid" {
  *   present but not a positive integer in (0, MAX_TIMEOUT_MS]
  */
 function parseTimeoutQuery(raw: unknown): number | "invalid" | undefined {
-  if (raw === undefined) return undefined;
-  if (typeof raw !== "string") return "invalid";
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  if (typeof raw !== "string") {
+    return "invalid";
+  }
 
   const n = Number(raw);
 
@@ -457,8 +470,13 @@ function unwrapMcpResponse(
 
   const response: UnwrappedResponse = { result, isError: false };
 
-  if (warnings.length > 0) response.warnings = warnings;
-  if (appended.length > 0) response.appended = appended;
+  if (warnings.length > 0) {
+    response.warnings = warnings;
+  }
+
+  if (appended.length > 0) {
+    response.appended = appended;
+  }
 
   return response;
 }

@@ -11,8 +11,13 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 // Velocity is randomized within a bucket on interpret, so assert the bucket, not
 // the exact value (a documented lossy axis).
 function bucket(velocity: number): "soft" | "normal" | "accent" {
-  if (velocity < 90) return "soft";
-  if (velocity >= 112) return "accent";
+  if (velocity < 90) {
+    return "soft";
+  }
+
+  if (velocity >= 112) {
+    return "accent";
+  }
 
   return "normal";
 }

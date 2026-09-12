@@ -236,7 +236,9 @@ describe("Behavioral splitting tests", () => {
       await sleep(50);
       const clip = await readClip(ctx.client!, s.id, ["notes"]);
 
-      if (clip.notes) clipsWithNotes++;
+      if (clip.notes) {
+        clipsWithNotes++;
+      }
     }
 
     // Each split segment should have at least 1 note (4 notes across 4 segments)
@@ -595,7 +597,9 @@ function parseSplitResult(result: unknown): Array<{ id: string }> {
     .split("\n")
     .find((line) => line.startsWith("[") || line.startsWith("{"));
 
-  if (!jsonLine) return [];
+  if (!jsonLine) {
+    return [];
+  }
 
   const parsed = JSON.parse(jsonLine) as { id: string } | Array<{ id: string }>;
 

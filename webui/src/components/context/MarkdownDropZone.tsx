@@ -46,7 +46,10 @@ export function MarkdownDropZone(
   const depthRef = useRef(0);
 
   const handleDragEnter = (event: DragEvent): void => {
-    if (!dragHasFiles(event.dataTransfer)) return;
+    if (!dragHasFiles(event.dataTransfer)) {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     depthRef.current++;
@@ -54,13 +57,22 @@ export function MarkdownDropZone(
   };
 
   const handleDragLeave = (event: DragEvent): void => {
-    if (!dragHasFiles(event.dataTransfer)) return;
+    if (!dragHasFiles(event.dataTransfer)) {
+      return;
+    }
+
     depthRef.current = Math.max(0, depthRef.current - 1);
-    if (depthRef.current === 0) setDragging(false);
+
+    if (depthRef.current === 0) {
+      setDragging(false);
+    }
   };
 
   const handleDrop = (event: DragEvent): void => {
-    if (!dragHasFiles(event.dataTransfer)) return;
+    if (!dragHasFiles(event.dataTransfer)) {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     depthRef.current = 0;
@@ -117,7 +129,10 @@ export function MarkdownDropZone(
  * @returns Nothing
  */
 function handleDragOver(event: DragEvent): void {
-  if (!dragHasFiles(event.dataTransfer)) return;
+  if (!dragHasFiles(event.dataTransfer)) {
+    return;
+  }
+
   // preventDefault marks this a valid drop target; stopPropagation keeps the
   // wrapped editor from handling (and inserting) the dragged file.
   event.preventDefault();

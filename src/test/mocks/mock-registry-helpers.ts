@@ -136,7 +136,9 @@ export function applyRegistrationOptions(
  * @param mock - The registration that changed
  */
 export function refreshHolders(mock: RegisteredMockObject): void {
-  for (const refresh of mock.refreshers) refresh();
+  for (const refresh of mock.refreshers) {
+    refresh();
+  }
 }
 
 /**
@@ -147,7 +149,9 @@ export function refreshHolders(mock: RegisteredMockObject): void {
 function createGetMock(mock: RegisteredMockObject): Mock {
   return vi.fn().mockImplementation((prop: string) => {
     // A deleted object reads nothing in Live, even though its id still lies.
-    if (mock.deleted) return [];
+    if (mock.deleted) {
+      return [];
+    }
 
     const override = mock.properties[prop];
 
@@ -202,7 +206,9 @@ export function storedParamValue(raw: number): number {
  */
 function createSetMock(mock: RegisteredMockObject): Mock {
   return vi.fn().mockImplementation((property: string, ...args: unknown[]) => {
-    if (args.length !== 1 || typeof args[0] !== "number") return;
+    if (args.length !== 1 || typeof args[0] !== "number") {
+      return;
+    }
 
     if (property === "value") {
       mock.properties.value = storedParamValue(args[0]);
@@ -225,7 +231,9 @@ function createCallMock(
   return vi.fn().mockImplementation((method: string, ...args: unknown[]) => {
     const methodImpl = mock.methods[method];
 
-    if (methodImpl) return methodImpl(...args);
+    if (methodImpl) {
+      return methodImpl(...args);
+    }
 
     return fallbackCall(method, args, mock.path);
   }) as Mock;

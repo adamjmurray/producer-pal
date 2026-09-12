@@ -47,7 +47,9 @@ export function VoiceSelector({
   // cross-provider voice — the dropdown displays voices[0] but never fires
   // setVoice, so the in-modal state still holds the old id.
   useEffect(() => {
-    if (selected !== voice) setVoice(selected);
+    if (selected !== voice) {
+      setVoice(selected);
+    }
   }, [selected, voice, setVoice]);
   const pendingChange = activeVoice != null && activeVoice !== selected;
 

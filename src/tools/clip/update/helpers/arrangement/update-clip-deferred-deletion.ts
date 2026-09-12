@@ -98,7 +98,9 @@ export function flushDeferredDeletions(
   plan: OverwritePlan | null | undefined,
 ): void {
   for (const [key, group] of movedClipGroups) {
-    if (group.deferred.length === 0) continue;
+    if (group.deferred.length === 0) {
+      continue;
+    }
 
     const survivorLengths = plan?.survivorLengthsByGroup.get(key);
 
@@ -119,7 +121,9 @@ export function flushDeferredDeletions(
 
       // The landing may already have cleared the range this clip sat in, in
       // which case there is nothing left to delete.
-      if (clip.exists()) removeMovedSource(clip, sourceTrack);
+      if (clip.exists()) {
+        removeMovedSource(clip, sourceTrack);
+      }
     }
   }
 }
@@ -156,12 +160,16 @@ function buriedByLanding(
   survivorLengths: Map<string, number> | undefined,
   heldLength: number | undefined,
 ): boolean {
-  if (survivorLengths == null || heldLength == null) return false;
+  if (survivorLengths == null || heldLength == null) {
+    return false;
+  }
 
   for (const id of group.landed) {
     const landedLength = survivorLengths.get(id);
 
-    if (landedLength != null && landedLength >= heldLength) return true;
+    if (landedLength != null && landedLength >= heldLength) {
+      return true;
+    }
   }
 
   return false;

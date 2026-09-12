@@ -111,6 +111,7 @@
       ],
       "plugins": ["import", "oxc"],
       "rules": {
+        "curly": "error",
         "constructor-super": "error",
         "for-direction": "error",
         "getter-return": "error",

@@ -98,7 +98,9 @@ export function toolErrorPenalty(result: JsonEvalResult): number {
 export function scorePercentage(results: JsonEvalResult[]): number | null {
   const base = basePercentage(results);
 
-  if (base == null) return null;
+  if (base == null) {
+    return null;
+  }
 
   const penalty =
     results.reduce((sum, r) => sum + toolErrorPenalty(r), 0) / results.length;
@@ -113,7 +115,9 @@ export function scorePercentage(results: JsonEvalResult[]): number | null {
  * @returns The base percentage, or null when there is nothing to grade
  */
 function basePercentage(results: JsonEvalResult[]): number | null {
-  if (results.length === 0) return null;
+  if (results.length === 0) {
+    return null;
+  }
 
   // Repeated runs grade consistency: how many trials passed outright.
   if (results.length > 1) {
@@ -126,7 +130,9 @@ function basePercentage(results: JsonEvalResult[]): number | null {
     (results[0] as JsonEvalResult).checks.results,
   );
 
-  if (total === 0) return null;
+  if (total === 0) {
+    return null;
+  }
 
   return (passed / total) * 100;
 }

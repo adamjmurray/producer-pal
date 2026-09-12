@@ -81,7 +81,9 @@ export function wrapDevicesInRack({
     ? rackDestination(toPath)
     : getDeviceInsertionPoint(assertDefined(devices[0], "first device"));
 
-  if (destination == null) return null;
+  if (destination == null) {
+    return null;
+  }
 
   const { container, position } = destination;
 
@@ -299,7 +301,9 @@ function wrapInstrumentsInRack(
     ? rackDestination(toPath)
     : { container: sourceContainer, position: devicePosition };
 
-  if (destination == null) return null;
+  if (destination == null) {
+    return null;
+  }
 
   const { container, position } = destination;
 
@@ -413,7 +417,9 @@ function restoreStrandedInstruments(
   for (let i = 0; i < count; i++) {
     const stranded = tempTrack.child("devices", "0");
 
-    if (!stranded.exists()) break;
+    if (!stranded.exists()) {
+      break;
+    }
 
     try {
       liveSet.call("move_device", toLiveApiId(stranded.id), sourceId, position);

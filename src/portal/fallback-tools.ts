@@ -92,7 +92,9 @@ export function buildFallbackTools(options: FallbackToolsOptions = {}): {
  * @returns The tools to register, or undefined for "all of them"
  */
 function enabledToolWhitelist(disabledTools?: string[]): string[] | undefined {
-  if (disabledTools == null || disabledTools.length === 0) return undefined;
+  if (disabledTools == null || disabledTools.length === 0) {
+    return undefined;
+  }
 
   const disabled = new Set(disabledTools);
 

@@ -110,7 +110,9 @@ function sampleAction(method: string) {
 function sampleWriteFailed(write: PseudoParamWrite): string | undefined {
   const { before, after } = write;
 
-  if (after === write.requested || after !== before) return undefined;
+  if (after === write.requested || after !== before) {
+    return undefined;
+  }
 
   return `not loaded — check the path; "${String(before)}" is still there`;
 }

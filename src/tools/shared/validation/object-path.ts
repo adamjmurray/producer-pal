@@ -119,7 +119,9 @@ export function parseObjectPath(path: string, label = "path"): ObjectPath {
 
   const legacy = parseLegacyPath(input, label);
 
-  if (legacy != null) return legacy;
+  if (legacy != null) {
+    return legacy;
+  }
 
   // The body carries no brackets, so a plain split is already depth-0.
   const segments = body.split("/");
@@ -223,11 +225,15 @@ function parseRoot(
   label: string,
   input: string,
 ): Extract<ObjectPath, TrackSegment | NewObjectSegment | { kind: "scene" }> {
-  if (segment === "mt") return { kind: "master-track" };
+  if (segment === "mt") {
+    return { kind: "master-track" };
+  }
 
   const created = NEW_OBJECT_ROOTS.get(segment);
 
-  if (created != null) return created;
+  if (created != null) {
+    return created;
+  }
 
   const returnTrack = RETURN_TRACK_ROOT.exec(segment);
 
@@ -237,11 +243,15 @@ function parseRoot(
 
   const track = TRACK_ROOT.exec(segment);
 
-  if (track) return { kind: "track", trackIndex: Number(track[1]) };
+  if (track) {
+    return { kind: "track", trackIndex: Number(track[1]) };
+  }
 
   const scene = SCENE.exec(segment);
 
-  if (scene) return { kind: "scene", sceneIndex: Number(scene[1]) };
+  if (scene) {
+    return { kind: "scene", sceneIndex: Number(scene[1]) };
+  }
 
   throw pathError(
     label,

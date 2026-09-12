@@ -30,7 +30,9 @@ export interface VoiceAudioGraph {
  * @returns A finite gain in [VOICE_VOLUME_MIN, VOICE_VOLUME_MAX]
  */
 export function clampGain(volume: number | undefined): number {
-  if (volume == null || !Number.isFinite(volume)) return VOICE_VOLUME_DEFAULT;
+  if (volume == null || !Number.isFinite(volume)) {
+    return VOICE_VOLUME_DEFAULT;
+  }
 
   return Math.min(VOICE_VOLUME_MAX, Math.max(VOICE_VOLUME_MIN, volume));
 }
@@ -54,14 +56,21 @@ export function createVoiceAudioGraph(
   audioElement: HTMLAudioElement | null,
   volume: number | undefined,
 ): VoiceAudioGraph | null {
-  if (audioElement == null) return null;
+  if (audioElement == null) {
+    return null;
+  }
+
   const stream = audioElement.srcObject;
 
-  if (!(stream instanceof MediaStream)) return null;
+  if (!(stream instanceof MediaStream)) {
+    return null;
+  }
 
   const AudioCtx = resolveAudioContext();
 
-  if (AudioCtx == null) return null;
+  if (AudioCtx == null) {
+    return null;
+  }
 
   const context = new AudioCtx();
   const source = context.createMediaStreamSource(stream);
@@ -96,7 +105,10 @@ export function setGraphGain(
   graph: VoiceAudioGraph | null,
   volume: number | undefined,
 ): void {
-  if (graph == null) return;
+  if (graph == null) {
+    return;
+  }
+
   graph.gain.gain.value = clampGain(volume);
 }
 
@@ -108,7 +120,9 @@ export function setGraphGain(
  * @param graph - The graph to tear down, or null
  */
 export function teardownVoiceAudioGraph(graph: VoiceAudioGraph | null): void {
-  if (graph == null) return;
+  if (graph == null) {
+    return;
+  }
 
   try {
     graph.source.disconnect();

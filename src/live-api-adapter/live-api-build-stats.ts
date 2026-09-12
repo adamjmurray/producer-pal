@@ -100,7 +100,9 @@ export function liveApiBuildStats(): LiveApiBuildStats {
  * request is capturing next.
  */
 export function reportLiveApiBuildStats(): void {
-  if (resolvedCount === 0) return;
+  if (resolvedCount === 0) {
+    return;
+  }
 
   const shapes = shapeCounts();
   const shown = shapes

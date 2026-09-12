@@ -150,10 +150,15 @@ async function expectInvariants(
 
   // 1. No resurrection. A record the operation removed stays removed, however
   //    late the racing write lands.
-  if (op.destroysLive && liveId != null) expect(ids).not.toContain(liveId);
+  if (op.destroysLive && liveId != null) {
+    expect(ids).not.toContain(liveId);
+  }
 
-  if (op.destroysBystander) expect(ids).not.toContain(bystanderId);
-  else expect(ids).toContain(bystanderId);
+  if (op.destroysBystander) {
+    expect(ids).not.toContain(bystanderId);
+  } else {
+    expect(ids).toContain(bystanderId);
+  }
 
   // 2. No cross-contamination. The racing save's history lands in one record or
   //    none — never in a conversation that belongs to someone else. A first
@@ -162,7 +167,9 @@ async function expectInvariants(
   const carriers: string[] = [];
 
   for (const id of ids) {
-    if (await conversationCarries(id, LATE_MARKER)) carriers.push(id);
+    if (await conversationCarries(id, LATE_MARKER)) {
+      carriers.push(id);
+    }
   }
 
   expect(carriers.length).toBeLessThanOrEqual(1);
@@ -176,7 +183,9 @@ async function expectInvariants(
   //    pointing at a record that isn't there strands the next reload.
   expect(hashId()).toBe(activeId);
 
-  if (activeId != null) expect(ids).toContain(activeId);
+  if (activeId != null) {
+    expect(ids).toContain(activeId);
+  }
 }
 
 /**
@@ -215,7 +224,9 @@ async function seedBystander(handle: Handle): Promise<string> {
   await saveHistory(handle, "bystander");
   const id = result.current.activeConversationId;
 
-  if (id == null) throw new Error("seedBystander: the save minted no id");
+  if (id == null) {
+    throw new Error("seedBystander: the save minted no id");
+  }
 
   await act(() => {
     result.current.startNewConversation();

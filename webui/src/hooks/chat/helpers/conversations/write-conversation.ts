@@ -91,11 +91,15 @@ export async function writeConversation(
     // same recovery already succeeded.
     const revived = pendingForkRef?.current ?? null;
 
-    if (pendingForkRef) pendingForkRef.current = null;
+    if (pendingForkRef) {
+      pendingForkRef.current = null;
+    }
 
     const retrySnapshot = store.beginSave(revived != null);
 
-    if (!retrySnapshot) return;
+    if (!retrySnapshot) {
+      return;
+    }
 
     snapshot = retrySnapshot;
     fork = revived;
@@ -124,7 +128,9 @@ export async function writeConversation(
       // A save held up long enough for the user to leave is about a
       // conversation they are no longer in. Saying so now would put the banner
       // over whatever they moved to, which saves fine.
-      if (snapshot.id === store.activeId()) limit.showSaveRefused();
+      if (snapshot.id === store.activeId()) {
+        limit.showSaveRefused();
+      }
 
       return;
     }

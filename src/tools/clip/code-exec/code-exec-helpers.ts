@@ -139,7 +139,9 @@ export function getClipLocationInfo(clip: LiveAPI): {
 } {
   const isArrangement = (clip.getProperty("is_arrangement_clip") as number) > 0;
 
-  if (isArrangement) return { view: "arrangement" };
+  if (isArrangement) {
+    return { view: "arrangement" };
+  }
 
   // Session clip — extract scene index from path
   const clipPath = clip.path;
@@ -210,7 +212,9 @@ function buildLocationContext(
 
   // Omitted rather than guessed when the clip's own coordinates don't say where
   // it is — a wrong path here is one user code would act on.
-  if (trackIndex == null) return location;
+  if (trackIndex == null) {
+    return location;
+  }
 
   if (view === "arrangement") {
     location.path = objectPathForApi(clip);

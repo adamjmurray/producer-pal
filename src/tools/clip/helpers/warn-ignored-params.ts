@@ -16,7 +16,9 @@ export function warnIgnoredParams(
 ): void {
   const ignored = Object.keys(params).filter((name) => params[name] != null);
 
-  if (ignored.length === 0) return;
+  if (ignored.length === 0) {
+    return;
+  }
 
   console.warn(`${ignored.join(", ")} ignored for ${subject}`);
 }

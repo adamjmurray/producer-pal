@@ -39,7 +39,10 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
 
   const showNotification = useCallback(
     (message: string, type: "success" | "error") => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+
       setNotification({ message, type });
       timerRef.current = setTimeout(() => setNotification(null), 4000);
     },
@@ -47,13 +50,18 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
   );
 
   const dismissNotification = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
     setNotification(null);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
   }, []);
 
@@ -122,10 +130,21 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
 
         const parts: string[] = [];
 
-        if (newCount > 0) parts.push(`${newCount} new`);
-        if (updatedCount > 0) parts.push(`${updatedCount} updated`);
-        if (skippedCount > 0) parts.push(`${skippedCount} skipped`);
-        if (ignoredCount > 0) parts.push(`${ignoredCount} older ignored`);
+        if (newCount > 0) {
+          parts.push(`${newCount} new`);
+        }
+
+        if (updatedCount > 0) {
+          parts.push(`${updatedCount} updated`);
+        }
+
+        if (skippedCount > 0) {
+          parts.push(`${skippedCount} skipped`);
+        }
+
+        if (ignoredCount > 0) {
+          parts.push(`${ignoredCount} older ignored`);
+        }
 
         const total = newCount + updatedCount;
         const detail = parts.length > 0 ? ` (${parts.join(", ")})` : "";
@@ -142,7 +161,9 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
     input.onchange = () => {
       const file = input.files?.[0];
 
-      if (file) void onFileSelected(file);
+      if (file) {
+        void onFileSelected(file);
+      }
     };
 
     input.click();

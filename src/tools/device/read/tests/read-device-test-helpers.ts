@@ -165,7 +165,9 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): {
                 return chainIds.flatMap((c) => ["id", c]);
               }
 
-              if (childType === "drum_pads") return [];
+              if (childType === "drum_pads") {
+                return [];
+              }
 
               return [];
             },

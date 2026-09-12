@@ -205,7 +205,9 @@ function applyAssignmentToNotes(
   clipContext: ClipContext | undefined,
   transformedIndices: Set<number>,
 ): void {
-  if (rejectsPitchLiteralValue(assignment)) return;
+  if (rejectsPitchLiteralValue(assignment)) {
+    return;
+  }
 
   // The selected notes are those matching BOTH the pitch range AND the
   // time-range selector. Indexing and next.*/legato() are scoped to this set,

@@ -228,7 +228,9 @@ export function computeTotalUsage(
     }
   }
 
-  if (!hasUsage) return undefined;
+  if (!hasUsage) {
+    return undefined;
+  }
 
   return {
     inputTokens: input,

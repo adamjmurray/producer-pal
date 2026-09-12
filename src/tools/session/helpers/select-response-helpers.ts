@@ -31,22 +31,30 @@ export function readFullState(): SelectResult {
   const track = LiveAPI.from(livePath.view.selectedTrack);
   const trackInfo = buildTrackInfo(track);
 
-  if (trackInfo) result.selectedTrack = trackInfo;
+  if (trackInfo) {
+    result.selectedTrack = trackInfo;
+  }
 
   const scene = LiveAPI.from(livePath.view.selectedScene);
   const sceneInfo = buildSceneInfo(scene);
 
-  if (sceneInfo) result.selectedScene = sceneInfo;
+  if (sceneInfo) {
+    result.selectedScene = sceneInfo;
+  }
 
   const detailClip = LiveAPI.from(livePath.view.detailClip);
   const clipInfo = buildClipInfo(detailClip);
 
-  if (clipInfo) result.selectedClip = clipInfo;
+  if (clipInfo) {
+    result.selectedClip = clipInfo;
+  }
 
   if (track.exists()) {
     const deviceInfo = readSelectedDeviceInfo(track);
 
-    if (deviceInfo) result.selectedDevice = deviceInfo;
+    if (deviceInfo) {
+      result.selectedDevice = deviceInfo;
+    }
   }
 
   return result;
@@ -121,7 +129,9 @@ export function buildDeviceResponseFromId(
 ): SelectResult["selectedDevice"] {
   const device = LiveAPI.from(deviceId);
 
-  if (!device.exists()) return undefined;
+  if (!device.exists()) {
+    return undefined;
+  }
 
   const path = extractDevicePath(device.path);
 
@@ -138,11 +148,15 @@ export function buildDeviceResponseFromPath(
 ): SelectResult["selectedDevice"] {
   const resolved = resolvePathToLiveApi(devicePath);
 
-  if (resolved.targetType !== "device") return undefined;
+  if (resolved.targetType !== "device") {
+    return undefined;
+  }
 
   const device = LiveAPI.from(resolved.liveApiPath);
 
-  if (!device.exists()) return undefined;
+  if (!device.exists()) {
+    return undefined;
+  }
 
   return { id: device.id, path: devicePath };
 }
@@ -155,11 +169,15 @@ export function buildDeviceResponseFromPath(
 function buildTrackInfo(
   track: LiveAPI,
 ): SelectResult["selectedTrack"] | undefined {
-  if (!track.exists()) return undefined;
+  if (!track.exists()) {
+    return undefined;
+  }
 
   const category = track.category;
 
-  if (category == null) return undefined;
+  if (category == null) {
+    return undefined;
+  }
 
   return {
     id: track.id,
@@ -179,7 +197,9 @@ function buildTrackInfo(
 function buildSceneInfo(
   scene: LiveAPI,
 ): SelectResult["selectedScene"] | undefined {
-  if (!scene.exists()) return undefined;
+  if (!scene.exists()) {
+    return undefined;
+  }
 
   const path = objectPathForApi(scene);
 
@@ -194,7 +214,9 @@ function buildSceneInfo(
 function buildClipInfo(
   clip: LiveAPI,
 ): SelectResult["selectedClip"] | undefined {
-  if (!clip.exists()) return undefined;
+  if (!clip.exists()) {
+    return undefined;
+  }
 
   const isSessionClip = clip.trackIndex != null && clip.clipSlotIndex != null;
 
@@ -216,16 +238,22 @@ function readSelectedDeviceInfo(
 ): SelectResult["selectedDevice"] | undefined {
   const trackView = LiveAPI.from(`${track.path} view`);
 
-  if (!trackView.exists()) return undefined;
+  if (!trackView.exists()) {
+    return undefined;
+  }
 
   const deviceResult = trackView.getPropertyList("selected_device");
 
-  if (!deviceResult[1]) return undefined;
+  if (!deviceResult[1]) {
+    return undefined;
+  }
 
   const rawId = atomToString(deviceResult[1]);
   const device = LiveAPI.from(`id ${rawId}`);
 
-  if (!device.exists()) return undefined;
+  if (!device.exists()) {
+    return undefined;
+  }
 
   const path = extractDevicePath(device.path);
 

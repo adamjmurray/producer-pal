@@ -44,7 +44,9 @@ export async function checkForUpdate(
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
 
     const data: unknown = await response.json();
 
@@ -54,7 +56,9 @@ export async function checkForUpdate(
 
     const tagName = data.tag_name;
 
-    if (typeof tagName !== "string") return null;
+    if (typeof tagName !== "string") {
+      return null;
+    }
 
     const latest = tagName.startsWith("v") ? tagName.slice(1) : tagName;
 
@@ -82,8 +86,13 @@ export function isNewerVersion(current: string, latest: string): boolean {
     const c = currentParts[i] ?? 0;
     const l = latestParts[i] ?? 0;
 
-    if (l > c) return true;
-    if (l < c) return false;
+    if (l > c) {
+      return true;
+    }
+
+    if (l < c) {
+      return false;
+    }
   }
 
   // Numeric parts are equal — check pre-release suffixes (e.g., "-beta", "-rc1").

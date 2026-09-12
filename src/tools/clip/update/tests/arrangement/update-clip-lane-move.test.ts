@@ -203,7 +203,9 @@ function runMove(opts: MoveOptions = {}): string | null {
   )!.methods.duplicate_clip_to_arrangement = () => {
     // Live answers a silently-declined duplicate with an id that resolves to
     // nothing, AFTER the target range has already been cleared for it.
-    if (opts.duplicateFails) return ["id", PHANTOM_ID];
+    if (opts.duplicateFails) {
+      return ["id", PHANTOM_ID];
+    }
 
     registerMockObject(DUPLICATED_ID, {
       path: livePath.track(DEST_TRACK).arrangementClip(0),

@@ -225,7 +225,9 @@ export function createSplittingCallMock(): SplittingCallState {
 function sourceLength(sourceId: unknown): number {
   const source = lookupMockObject(String(sourceId).replace(/^id /, ""));
 
-  if (!source) return 0;
+  if (!source) {
+    return 0;
+  }
 
   const props = source.properties as Record<string, number | undefined>;
 
@@ -296,7 +298,9 @@ export function throwOnNthDuplicate(
     if (method === "duplicate_clip_to_arrangement") {
       count++;
 
-      if (count === nth) throw new Error("Live refused the duplicate");
+      if (count === nth) {
+        throw new Error("Live refused the duplicate");
+      }
     }
 
     return inner(method, ...args);
@@ -332,12 +336,16 @@ export function overrideWithDuplicateCounter(
         throw new Error("Live API error");
       }
 
-      if (counter.count === opts.failOnDuplicate) return ["id", "0"];
+      if (counter.count === opts.failOnDuplicate) {
+        return ["id", "0"];
+      }
 
       return ["id", `dup_${counter.count}`];
     }
 
-    if (method === "create_midi_clip") return ["id", "temp_1"];
+    if (method === "create_midi_clip") {
+      return ["id", "temp_1"];
+    }
 
     return undefined;
   });
@@ -395,7 +403,9 @@ export function withEachClipReadCostingASecond(
 ): void {
   const clip = lookupMockObject(clipId);
 
-  if (!clip) throw new Error(`Clip mock ${clipId} not found`);
+  if (!clip) {
+    throw new Error(`Clip mock ${clipId} not found`);
+  }
 
   withEachMockCallCostingASecond(clip.get, body);
 }

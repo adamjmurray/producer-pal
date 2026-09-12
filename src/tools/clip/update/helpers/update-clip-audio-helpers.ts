@@ -43,7 +43,9 @@ export function setAudioParameters(
   // and be overridden: the unwarp resets end_marker to the whole sample, and
   // re-warping maps that back as beats — collapsing the clip's region on the
   // way through, even though the flag ends up where it started.
-  if (looping !== true) applyAudioClipWarping(clip, warping);
+  if (looping !== true) {
+    applyAudioClipWarping(clip, warping);
+  }
 }
 
 /**
@@ -63,7 +65,9 @@ export function forceWarpForLooping(
   looping: boolean | undefined,
   warping: boolean | undefined,
 ): void {
-  if (looping !== true) return;
+  if (looping !== true) {
+    return;
+  }
 
   // Warn before the already-warped bail-out: setAudioParameters skips the
   // vetoed unwarp entirely, so on a warped clip there is nothing left to do
@@ -74,7 +78,9 @@ export function forceWarpForLooping(
     );
   }
 
-  if ((clip.getProperty("warping") as number) > 0) return;
+  if ((clip.getProperty("warping") as number) > 0) {
+    return;
+  }
 
   applyAudioClipWarping(clip, true);
 }

@@ -83,8 +83,9 @@ export const melodyTransforms: EvalScenario = {
         const calls = getToolCalls(turns, 3);
         const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
 
-        if (!updateCall)
+        if (!updateCall) {
           throw new Error("ppal-update-clip not found in turn 3");
+        }
 
         const transforms = argText(updateCall.args.transforms);
 

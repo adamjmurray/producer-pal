@@ -55,7 +55,9 @@ function hangingStream<T>(initialValues: T[] = []): AsyncIterable<T> {
 async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {
   const values: T[] = [];
 
-  for await (const v of stream) values.push(v);
+  for await (const v of stream) {
+    values.push(v);
+  }
 
   return values;
 }

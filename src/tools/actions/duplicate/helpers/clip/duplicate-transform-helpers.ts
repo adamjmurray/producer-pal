@@ -31,7 +31,9 @@ export async function applyTransformsToDuplicatedClips(
 ): Promise<void> {
   const clipResults = collectClipResults(createdObjects);
 
-  if (clipResults.length === 0) return;
+  if (clipResults.length === 0) {
+    return;
+  }
 
   const ids = clipResults.map((clip) => clip.id).join(",");
   const updateResult = await updateClip({ ids, transforms, code }, context);
@@ -47,7 +49,12 @@ export async function applyTransformsToDuplicatedClips(
   for (const clip of clipResults) {
     const stats = statsById.get(clip.id);
 
-    if (stats?.noteCount != null) clip.noteCount = stats.noteCount;
-    if (stats?.transformed != null) clip.transformed = stats.transformed;
+    if (stats?.noteCount != null) {
+      clip.noteCount = stats.noteCount;
+    }
+
+    if (stats?.transformed != null) {
+      clip.transformed = stats.transformed;
+    }
   }
 }

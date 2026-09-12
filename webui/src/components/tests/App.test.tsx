@@ -421,7 +421,10 @@ describe("App", () => {
         "[aria-label='Toggle conversation history']",
       );
 
-      if (btn) fireEvent.click(btn);
+      if (btn) {
+        fireEvent.click(btn);
+      }
+
       expect(mockSetViewState).toHaveBeenCalledWith({ historyPanelOpen: true });
     });
 
@@ -437,7 +440,10 @@ describe("App", () => {
         (b) => b.textContent === "Preferences",
       );
 
-      if (tab) fireEvent.click(tab);
+      if (tab) {
+        fireEvent.click(tab);
+      }
+
       expect(mockSetViewState).toHaveBeenCalledWith({
         settingsTab: "preferences",
       });

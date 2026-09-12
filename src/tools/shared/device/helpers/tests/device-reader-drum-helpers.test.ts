@@ -146,10 +146,21 @@ describe("device-reader-drum-helpers", () => {
         _id: `chain-${inNote}`,
         _state: state,
         getProperty: vi.fn((prop: string) => {
-          if (prop === "in_note") return inNote;
-          if (prop === "name") return name;
-          if (prop === "mute") return 0;
-          if (prop === "solo") return 0;
+          if (prop === "in_note") {
+            return inNote;
+          }
+
+          if (prop === "name") {
+            return name;
+          }
+
+          if (prop === "mute") {
+            return 0;
+          }
+
+          if (prop === "solo") {
+            return 0;
+          }
 
           return null;
         }),
@@ -374,8 +385,13 @@ describe("device-reader-drum-helpers", () => {
       ({
         _id: `chain-${inNote}`,
         getProperty: vi.fn((prop: string) => {
-          if (prop === "in_note") return inNote;
-          if (prop === "name") return "Layer";
+          if (prop === "in_note") {
+            return inNote;
+          }
+
+          if (prop === "name") {
+            return "Layer";
+          }
 
           return null;
         }),

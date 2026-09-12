@@ -18,7 +18,9 @@ function getFilesRecursively(dir) {
   for (const entry of readdirSync(dir)) {
     // A vitest run rewrites its cache under node_modules/.vite, which would
     // otherwise read as a chat UI change and cost a rebuild.
-    if (entry === "node_modules") continue;
+    if (entry === "node_modules") {
+      continue;
+    }
 
     const fullPath = join(dir, entry);
 
@@ -75,7 +77,9 @@ function recordedBuild() {
  * @returns True when the build output is missing or older than a source
  */
 function isChatUIStale(htmlPath, sources, startedAt) {
-  if (mtimeOf(htmlPath) == null) return true;
+  if (mtimeOf(htmlPath) == null) {
+    return true;
+  }
 
   // Against the build's START, not the output's mtime: the output is written
   // when the build finishes, so a source saved mid-build reads as older than an

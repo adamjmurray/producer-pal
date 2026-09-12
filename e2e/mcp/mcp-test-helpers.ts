@@ -6,8 +6,6 @@
 /**
  * Shared test utilities for MCP e2e tests
  */
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, afterEach, beforeAll, beforeEach, expect } from "vitest";
 import {
@@ -23,6 +21,7 @@ import {
   setConfig,
   type ConfigOptions,
 } from "#evals/shared/config.ts";
+import { KICK_FILE, LIVE_SET_PATH, SAMPLE_FILE } from "./e2e-test-set.ts";
 
 // Re-export for use in tests
 export { extractToolResultText };
@@ -30,40 +29,9 @@ export { extractToolResultText };
 // Re-export config utilities for use in tests
 export { CONFIG_URL, resetConfig, setConfig, type ConfigOptions };
 
-// Sample file for audio clip tests - resolve relative to this file's location
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-export const SAMPLE_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/sample.aiff",
-);
-
-export const KICK_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/drums/kick.aiff",
-);
-
-/**
- * A generated one-bar 4/4 drum loop at the test Set's tempo — 98000 frames at
- * 44100 Hz is exactly 4 beats at 108 BPM. SAMPLE_FILE is under a bar long, so
- * anything that needs a bar-aligned audio region uses this instead. See
- * live-sets/samples/generate-drum-loop.mjs.
- */
-export const DRUM_LOOP_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/drum-loop-1bar.wav",
-);
-
-/**
- * A generated eight-bar 4/4 drum loop — 441000 frames at 22050 Hz is exactly 32
- * beats at 96 BPM, the arrangement-sections tempo. DRUM_LOOP_FILE is one bar, so
- * a clip built from it still cannot cross a bar line; anything that needs a
- * multi-bar audio region (splitting, cropping) uses this against that Set.
- */
-export const DRUM_LOOP_8BAR_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/drum-loop-8bar.wav",
-);
+// Re-export the shared Live Set fixtures for use in tests
+export { DRUM_LOOP_8BAR_FILE, DRUM_LOOP_FILE } from "./e2e-test-set.ts";
+export { KICK_FILE, LIVE_SET_PATH, SAMPLE_FILE };
 
 /**
  * Parse a tool result as JSON with type casting.
@@ -145,7 +113,9 @@ export function getToolWarnings(result: unknown): string[] {
     content?: Array<{ text?: string; type?: string }>;
   } | null;
 
-  if (!typed?.content) return [];
+  if (!typed?.content) {
+    return [];
+  }
 
   return typed.content
     .filter(
@@ -212,8 +182,6 @@ export function parseAliasedToolResult<T>(
 }
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
-export const LIVE_SET_PATH =
-  "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";
 
 /**
  * Sleep for a specified number of milliseconds.
@@ -505,8 +473,13 @@ export async function fetchSkillOverrides(): Promise<SkillOverrides> {
   const disabled: string[] = [];
 
   for (const slot of slots) {
-    if (slot.override) fragments[slot.name] = slot.override;
-    if (!slot.enabled) disabled.push(slot.name);
+    if (slot.override) {
+      fragments[slot.name] = slot.override;
+    }
+
+    if (!slot.enabled) {
+      disabled.push(slot.name);
+    }
   }
 
   return { fragments, disabled };

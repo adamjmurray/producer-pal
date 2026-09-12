@@ -99,11 +99,15 @@ export function useCompaction<
   // message, so there is never a tail after the cut to discard.
   const compact = useCallback(
     async (mergedMessageIndex: number) => {
-      if (isCompacting || isAssistantResponding) return;
+      if (isCompacting || isAssistantResponding) {
+        return;
+      }
 
       const targetMessage = messages[mergedMessageIndex];
 
-      if (!targetMessage) return;
+      if (!targetMessage) {
+        return;
+      }
 
       isCompactingRef.current = true;
       setIsCompacting(true);
@@ -118,22 +122,30 @@ export function useCompaction<
         // A restored-but-not-yet-sent conversation has no client yet; bootstrap
         // one from its pending history so Compact works instead of no-opping.
         // A bootstrap failure falls through to the catch below.
-        if (!clientRef.current) await bootstrapClientRef?.current?.();
+        if (!clientRef.current) {
+          await bootstrapClientRef?.current?.();
+        }
 
         client = clientRef.current;
 
-        if (!client?.summarize) return;
+        if (!client?.summarize) {
+          return;
+        }
 
         const history = client.chatHistory;
 
-        if (history.length === 0) return;
+        if (history.length === 0) {
+          return;
+        }
 
         const summary = await client.summarize(history);
 
         // Switched/torn down while summarizing: the captured client is no longer
         // active. Applying its summary now would overwrite the conversation the
         // user moved to and arm an undo pointing at the wrong history.
-        if (clientRef.current !== client) return;
+        if (clientRef.current !== client) {
+          return;
+        }
 
         // Non-destructive: keep the prior turns for display and append the
         // summary marker. The model boundary in buildModelMessages drops the
@@ -149,7 +161,9 @@ export function useCompaction<
         autoSaveRef?.current?.();
       } catch (error) {
         // Don't surface the error on a conversation we've since left.
-        if (client && clientRef.current !== client) return;
+        if (client && clientRef.current !== client) {
+          return;
+        }
 
         // No client means the bootstrap threw before building one, so the
         // conversation is still only in the pending history — render it behind
@@ -185,7 +199,9 @@ export function useCompaction<
     const snapshot = undoRef.current;
     const client = clientRef.current;
 
-    if (!snapshot || !client) return;
+    if (!snapshot || !client) {
+      return;
+    }
 
     client.chatHistory = snapshot;
     undoRef.current = null;

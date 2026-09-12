@@ -130,8 +130,13 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
           onInput={(e) => onChange((e.target as HTMLInputElement).value)}
           onBlur={() => onRename(name)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            if (e.key === "Escape") onChange(displayName ?? "");
+            if (e.key === "Enter") {
+              (e.target as HTMLInputElement).blur();
+            }
+
+            if (e.key === "Escape") {
+              onChange(displayName ?? "");
+            }
           }}
           className={`${inputClass(props.error)} font-mono disabled:opacity-60`}
         />

@@ -145,7 +145,9 @@ function skipStranded(
     const blocker = queue[at] as number;
 
     for (const waiter of waiters.get(blocker) ?? []) {
-      if (skipped.has(waiter)) continue;
+      if (skipped.has(waiter)) {
+        continue;
+      }
 
       skipped.add(waiter);
       refuseMove((clips[waiter] as LiveAPI).id);

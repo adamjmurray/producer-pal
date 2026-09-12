@@ -7,7 +7,7 @@ import { type RealtimeItem } from "@openai/agents/realtime";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { type Mock, vi } from "vitest";
 import { type VoiceAppProps } from "#webui/components/voice/VoiceApp";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 

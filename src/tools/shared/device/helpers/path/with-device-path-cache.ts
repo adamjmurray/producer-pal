@@ -67,7 +67,9 @@ export function withDevicePathCache<T>(fn: () => T): T {
  * @returns The object at that path
  */
 export function cachedDevicePath(path: string): LiveAPI {
-  if (cache == null || path.startsWith("id ")) return LiveAPI.from(path);
+  if (cache == null || path.startsWith("id ")) {
+    return LiveAPI.from(path);
+  }
 
   const hit = cache.get(path);
 
@@ -78,7 +80,9 @@ export function cachedDevicePath(path: string): LiveAPI {
   // If a caller ever spells a path differently from the way Live gives it
   // back, this quietly stops hitting. The build-budget tests assert exact
   // resolve counts, so that shows up as a failure rather than as slow code.
-  if (hit != null && hit.path === path) return hit;
+  if (hit != null && hit.path === path) {
+    return hit;
+  }
 
   const object = LiveAPI.from(path);
 
@@ -87,7 +91,9 @@ export function cachedDevicePath(path: string): LiveAPI {
   // lookup just probed is an ordinary thing for one call to do. Caching the
   // miss would answer "doesn't exist" for a device that does, so only a hit is
   // worth keeping.
-  if (object.exists()) cache.set(path, object);
+  if (object.exists()) {
+    cache.set(path, object);
+  }
 
   return object;
 }

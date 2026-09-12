@@ -120,8 +120,13 @@ function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
   // Callers pass an uppercased A-G letter, so the table lookup always hits.
   const base = NATURAL_PC[letter] as number;
 
-  if (accidental === "#") return base + 1;
-  if (accidental === "b") return base - 1;
+  if (accidental === "#") {
+    return base + 1;
+  }
+
+  if (accidental === "b") {
+    return base - 1;
+  }
 
   return base;
 }

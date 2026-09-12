@@ -351,7 +351,9 @@ export function updateClipSlotSelection({
 
   const hasClip = clipSlotAPI.getProperty("has_clip") as number;
 
-  if (!hasClip) return false;
+  if (!hasClip) {
+    return false;
+  }
 
   const clipInSlot = LiveAPI.from(`${clipSlotAPI.path} clip`);
 

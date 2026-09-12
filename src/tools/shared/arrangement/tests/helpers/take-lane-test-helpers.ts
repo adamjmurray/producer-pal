@@ -249,7 +249,9 @@ function seedLaneClips(
 ): void {
   const seeds = initialLaneClips[laneIndex];
 
-  if (seeds == null || seeds.length === 0) return;
+  if (seeds == null || seeds.length === 0) {
+    return;
+  }
 
   for (const { start, end } of seeds) {
     const clipId = `tl_seed_clip_${uid++}`;

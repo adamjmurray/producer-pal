@@ -13,7 +13,9 @@
  * @returns true when the current browser is Firefox
  */
 export function isFirefox(): boolean {
-  if (typeof navigator === "undefined") return false;
+  if (typeof navigator === "undefined") {
+    return false;
+  }
 
   return navigator.userAgent.includes("Firefox");
 }

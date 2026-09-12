@@ -214,7 +214,9 @@ async function compareRuns(runIds: string[]): Promise<void> {
     );
     const tag = changeTag(runResults, runIds, scenarioId);
 
-    if (tag) cells.push(tag);
+    if (tag) {
+      cells.push(tag);
+    }
 
     console.log(`  ${scenarioId.padEnd(35)} ${cells.join("  →  ")}`);
   }
@@ -229,11 +231,15 @@ async function compareRuns(runIds: string[]): Promise<void> {
 function passRate(
   trials: JsonEvalResult[] | undefined,
 ): { passed: number; total: number } | null {
-  if (!trials || trials.length === 0) return null;
+  if (!trials || trials.length === 0) {
+    return null;
+  }
 
   const graded = trials.filter((t) => t.result !== "skipped");
 
-  if (graded.length === 0) return null;
+  if (graded.length === 0) {
+    return null;
+  }
 
   return {
     passed: graded.filter((t) => t.result === "pass").length,
@@ -252,17 +258,26 @@ function passRate(
  * @returns Styled cell string
  */
 function formatRunCell(trials: JsonEvalResult[] | undefined): string {
-  if (!trials || trials.length === 0) return styleText("gray", "—");
+  if (!trials || trials.length === 0) {
+    return styleText("gray", "—");
+  }
 
   const rate = passRate(trials);
 
-  if (!rate) return styleText("gray", "skip");
+  if (!rate) {
+    return styleText("gray", "skip");
+  }
 
   const { passed, total } = rate;
   const label = `${passed}/${total}`;
 
-  if (passed === total) return styleText("green", `✓ ${label}`);
-  if (passed === 0) return styleText("red", `✗ ${label}`);
+  if (passed === total) {
+    return styleText("green", `✓ ${label}`);
+  }
+
+  if (passed === 0) {
+    return styleText("red", `✗ ${label}`);
+  }
 
   return styleText("yellow", `~ ${label}`);
 }
@@ -285,7 +300,9 @@ function changeTag(
   runIds: string[],
   scenarioId: string,
 ): string | undefined {
-  if (runIds.length < 2) return undefined;
+  if (runIds.length < 2) {
+    return undefined;
+  }
 
   const prev = passRate(
     runResults.get(runIds.at(-2) as string)?.get(scenarioId),
@@ -294,15 +311,28 @@ function changeTag(
     runResults.get(runIds.at(-1) as string)?.get(scenarioId),
   );
 
-  if (!prev || !curr) return undefined;
+  if (!prev || !curr) {
+    return undefined;
+  }
 
   const before = prev.passed / prev.total;
   const after = curr.passed / curr.total;
 
-  if (before > 0 && after === 0) return styleText("red", "← REGRESSION");
-  if (before === 0 && after > 0) return styleText("green", "← FIXED");
-  if (after < before) return styleText("yellow", "← WORSE");
-  if (after > before) return styleText("green", "← BETTER");
+  if (before > 0 && after === 0) {
+    return styleText("red", "← REGRESSION");
+  }
+
+  if (before === 0 && after > 0) {
+    return styleText("green", "← FIXED");
+  }
+
+  if (after < before) {
+    return styleText("yellow", "← WORSE");
+  }
+
+  if (after > before) {
+    return styleText("green", "← BETTER");
+  }
 
   return undefined;
 }

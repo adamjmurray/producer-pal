@@ -41,16 +41,26 @@ describe("JSDoc requirements", () => {
       for (const file of findSourceFiles(path.join(projectRoot, tree))) {
         const rel = path.relative(projectRoot, file);
 
-        if (rel === SELF) continue;
+        if (rel === SELF) {
+          continue;
+        }
 
         const lines = fs.readFileSync(file, "utf8").split("\n");
 
         for (const [i, line] of lines.entries()) {
           const match = EXPORTED_FUNCTION.exec(line);
 
-          if (match == null) continue;
-          if (hasJsdocAbove(lines, i)) continue;
-          if (isSuppressed(lines, i)) continue;
+          if (match == null) {
+            continue;
+          }
+
+          if (hasJsdocAbove(lines, i)) {
+            continue;
+          }
+
+          if (isSuppressed(lines, i)) {
+            continue;
+          }
 
           // The capture is empty for `export default function () {}`.
           const name = match[1] === "" ? "(default)" : match[1];
@@ -85,7 +95,9 @@ function hasJsdocAbove(lines: string[], index: number): boolean {
 
     // Decorators and line comments may sit between the block and the
     // declaration; blank lines may not, matching the jsdoc plugin.
-    if (line === "" || line.startsWith("//") || line.startsWith("@")) continue;
+    if (line === "" || line.startsWith("//") || line.startsWith("@")) {
+      continue;
+    }
 
     return line.endsWith("*/");
   }
@@ -108,7 +120,9 @@ function isSuppressed(lines: string[], index: number): boolean {
   // keeps `disable-line` and `disable-next-line` from reading as file-wide.
   const fileWide = new RegExp(`${prefix}-disable(?!-)\\s[^\\n]*${rule}`);
 
-  if (lines.some((l) => fileWide.test(l))) return true;
+  if (lines.some((l) => fileWide.test(l))) {
+    return true;
+  }
 
   return (
     new RegExp(`${prefix}-disable-line[^\\n]*${rule}`).test(

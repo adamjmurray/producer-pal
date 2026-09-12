@@ -152,7 +152,9 @@ function danglingEnumReferences(
     ),
   ].filter((value) => !excused.includes(value));
 
-  if (trimmed.length === 0) return [];
+  if (trimmed.length === 0) {
+    return [];
+  }
 
   const { published } = resolveToolSchema(inputSchema, context);
   // Each text carries the values its own param still offers, so a collision

@@ -57,14 +57,19 @@ function freshClipsByOldId(
   for (const [oldClipId, range] of splitClipRanges) {
     const forTrack = rangesByTrack.get(range.trackIndex);
 
-    if (forTrack) forTrack.push([oldClipId, range]);
-    else rangesByTrack.set(range.trackIndex, [[oldClipId, range]]);
+    if (forTrack) {
+      forTrack.push([oldClipId, range]);
+    } else {
+      rangesByTrack.set(range.trackIndex, [[oldClipId, range]]);
+    }
   }
 
   const freshByOldId = new Map<string, LiveAPI[]>();
 
   for (const [trackIndex, ranges] of rangesByTrack) {
-    for (const [oldClipId] of ranges) freshByOldId.set(oldClipId, []);
+    for (const [oldClipId] of ranges) {
+      freshByOldId.set(oldClipId, []);
+    }
 
     const track = LiveAPI.from(livePath.track(trackIndex));
 

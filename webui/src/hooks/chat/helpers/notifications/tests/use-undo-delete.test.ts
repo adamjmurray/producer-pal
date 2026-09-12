@@ -327,7 +327,9 @@ describe("useUndoDelete", () => {
     for (let i = 0; i < 12; i++) {
       const notif = result.current.undoNotification;
 
-      if (!notif) break;
+      if (!notif) {
+        break;
+      }
 
       await act(() => notif.action!.onClick());
       await waitForHookState(() =>

@@ -50,8 +50,13 @@ export function useApplyPreset(
       setSmallModelMode(preset.smallModelMode);
 
       // The additive fields, each applied only when the preset captured it.
-      if (preset.enabledTools) setEnabledTools({ ...preset.enabledTools });
-      if (preset.notation) setNotation(preset.notation);
+      if (preset.enabledTools) {
+        setEnabledTools({ ...preset.enabledTools });
+      }
+
+      if (preset.notation) {
+        setNotation(preset.notation);
+      }
     },
     [
       providerStateSetters,

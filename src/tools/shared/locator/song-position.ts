@@ -108,7 +108,9 @@ export function resolveLocatorPositions(
 ): string {
   const entries = value.split(",");
 
-  if (!entries.some((entry) => locatorRef(entry.trim()) != null)) return value;
+  if (!entries.some((entry) => locatorRef(entry.trim()) != null)) {
+    return value;
+  }
 
   const options: SongPositionOptions = {
     ...labels,
@@ -120,7 +122,9 @@ export function resolveLocatorPositions(
     .map((entry) => {
       const trimmed = entry.trim();
 
-      if (locatorRef(trimmed) == null) return entry;
+      if (locatorRef(trimmed) == null) {
+        return entry;
+      }
 
       return abletonBeatsToBarBeat(
         songPositionToBeats(liveSet, trimmed, options),

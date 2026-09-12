@@ -89,7 +89,9 @@ function pitchClassSemitones(letter: string, accidental: string): number {
   // Both callers match with the patterns above, so the letter is always A-G.
   const natural = NATURAL_PITCH_CLASS_VALUES[letter.toLowerCase()] as number;
 
-  if (accidental === "#") return natural + 1;
+  if (accidental === "#") {
+    return natural + 1;
+  }
 
   return accidental === "" ? natural : natural - 1;
 }
@@ -321,7 +323,9 @@ export function stepInScale(
   const start = quantizePitchToScale(basePitch, scaleMask);
   const steps = Math.round(offset);
 
-  if (steps === 0) return start;
+  if (steps === 0) {
+    return start;
+  }
 
   const direction = steps > 0 ? 1 : -1;
   let remaining = Math.abs(steps);
@@ -351,13 +355,17 @@ export function stepInScale(
 function clampToScaleBounds(pitch: number, scaleMask: number): number {
   if (pitch > 127) {
     for (let p = 127; p >= 0; p--) {
-      if ((scaleMask >> (p % 12)) & 1) return p;
+      if ((scaleMask >> (p % 12)) & 1) {
+        return p;
+      }
     }
   }
 
   if (pitch < 0) {
     for (let p = 0; p <= 127; p++) {
-      if ((scaleMask >> (p % 12)) & 1) return p;
+      if ((scaleMask >> (p % 12)) & 1) {
+        return p;
+      }
     }
   }
 

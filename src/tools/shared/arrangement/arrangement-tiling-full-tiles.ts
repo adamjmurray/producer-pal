@@ -60,7 +60,9 @@ export function outOfTime(
   reached: number,
   target: number,
 ): boolean {
-  if (!isDeadlineExceeded(context.deadline ?? null)) return false;
+  if (!isDeadlineExceeded(context.deadline ?? null)) {
+    return false;
+  }
 
   console.warn(
     `Ran out of time while lengthening clip ${targetLabelForId(sourceClipId)}: placed ${placed} of ${total} tiles, ` +
@@ -210,7 +212,9 @@ export function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
         context,
       });
 
-      if (placed != null) createdClips.push(placed);
+      if (placed != null) {
+        createdClips.push(placed);
+      }
     }
 
     currentPosition += arrangementTileLength; // Space tiles at arrangement intervals

@@ -433,7 +433,9 @@ export function evaluateMathFunction(
     const lo = Math.min(bound1, bound2);
     const hi = Math.max(bound1, bound2);
 
-    if (lo === hi) return lo;
+    if (lo === hi) {
+      return lo;
+    }
 
     if (name === "wrap") {
       // wrap: closed range [lo, hi] with range size hi - lo + 1

@@ -48,14 +48,20 @@ const PATH_PATTERNS: [RegExp, LiveObjectType][] = [
 export function detectTypeFromPath(path: string, id?: string): LiveObjectType {
   const exactMatch = EXACT_PATH_TYPES.get(path);
 
-  if (exactMatch) return exactMatch;
+  if (exactMatch) {
+    return exactMatch;
+  }
 
   for (const [pattern, type] of PATH_PATTERNS) {
-    if (pattern.test(path)) return type;
+    if (pattern.test(path)) {
+      return type;
+    }
   }
 
   // Chain detection (broad match - after more specific terminal patterns)
-  if (path.includes("chain") || id?.includes("chain")) return "Chain";
+  if (path.includes("chain") || id?.includes("chain")) {
+    return "Chain";
+  }
 
   return "Device";
 }
@@ -229,11 +235,25 @@ export function getClipProperty(prop: string): unknown[] | null {
  * @returns Mock property value
  */
 function getMixerDeviceProperty(prop: string): unknown[] | null {
-  if (prop === "volume") return children("volume_param_1");
-  if (prop === "panning") return children("panning_param_1");
-  if (prop === "panning_mode") return [0]; // Default to stereo mode
-  if (prop === "left_split_stereo") return children("left_split_param_1");
-  if (prop === "right_split_stereo") return children("right_split_param_1");
+  if (prop === "volume") {
+    return children("volume_param_1");
+  }
+
+  if (prop === "panning") {
+    return children("panning_param_1");
+  }
+
+  if (prop === "panning_mode") {
+    return [0];
+  } // Default to stereo mode
+
+  if (prop === "left_split_stereo") {
+    return children("left_split_param_1");
+  }
+
+  if (prop === "right_split_stereo") {
+    return children("right_split_param_1");
+  }
 
   return null;
 }
@@ -244,8 +264,13 @@ function getMixerDeviceProperty(prop: string): unknown[] | null {
  * @returns Mock property value
  */
 function getDeviceParameterProperty(prop: string): unknown[] | null {
-  if (prop === "display_value") return [0]; // Default 0 dB for volume
-  if (prop === "value") return [0]; // Default center pan
+  if (prop === "display_value") {
+    return [0];
+  } // Default 0 dB for volume
+
+  if (prop === "value") {
+    return [0];
+  } // Default center pan
 
   return null;
 }

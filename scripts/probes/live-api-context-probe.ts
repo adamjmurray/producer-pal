@@ -168,7 +168,9 @@ async function runArm(
   const first = means[0];
   const last = means.at(-1);
 
-  if (first == null || last == null) return;
+  if (first == null || last == null) {
+    return;
+  }
 
   console.log(
     `\nfirst→last: ${first.toFixed(1)} → ${last.toFixed(1)} ms/call ` +
@@ -189,7 +191,9 @@ function count(
   fallback: number,
   name: string,
 ): number {
-  if (value == null) return fallback;
+  if (value == null) {
+    return fallback;
+  }
 
   const parsed = Number(value);
 

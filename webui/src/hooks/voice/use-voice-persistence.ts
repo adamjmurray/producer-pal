@@ -15,21 +15,16 @@ import { type TransferNotificationData } from "#webui/components/chat/TransferNo
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
-  type ActiveMeta,
   type ConversationStore,
-  type SaveSnapshot,
   createConversationStore,
 } from "#webui/lib/conversation-store";
 import { useVoiceBulkDeletes } from "#webui/hooks/voice/helpers/use-voice-bulk-deletes";
 import {
-  deriveVoiceTitle,
+  buildVoiceRecord,
   mergeVoiceHistory,
 } from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
 import { VOICE_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
-import {
-  isGeminiRealtimeModelId,
-  OPENAI_REALTIME_MODEL,
-} from "#webui/lib/constants/models";
+import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   type ConversationRecord,
   type ConversationSummary,
@@ -208,7 +203,9 @@ export function useVoicePersistence(
     void refreshList();
     const hashId = getHashId();
 
-    if (!hashId) return;
+    if (!hashId) {
+      return;
+    }
 
     void loadConversation(hashId).then((record) => {
       if (!record) {
@@ -218,8 +215,11 @@ export function useVoicePersistence(
       }
 
       if (record.sessionType !== "voice") {
-        if (onForeignRecord) onForeignRecord(record);
-        else startNewConversation();
+        if (onForeignRecord) {
+          onForeignRecord(record);
+        } else {
+          startNewConversation();
+        }
 
         return;
       }
@@ -230,7 +230,9 @@ export function useVoicePersistence(
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
   useEffect(() => {
-    if (liveHistory.length === 0) return undefined;
+    if (liveHistory.length === 0) {
+      return undefined;
+    }
 
     // The transcript belongs to whichever conversation is live now. If the user
     // navigates away, or a delete takes it, before the debounce fires, this
@@ -238,11 +240,15 @@ export function useVoicePersistence(
     const scheduledFor = store.liveId();
     const merged = mergeVoiceHistory(priorItemsRef.current, liveHistory);
     const timer = setTimeout(() => {
-      if (store.liveId() !== scheduledFor) return;
+      if (store.liveId() !== scheduledFor) {
+        return;
+      }
 
       const snapshot = store.beginSave(false);
 
-      if (!snapshot) return;
+      if (!snapshot) {
+        return;
+      }
 
       // Copy the metadata now, not inside the queued body: switching or
       // starting a conversation replaces metaRef before the body runs, and this
@@ -263,7 +269,9 @@ export function useVoicePersistence(
           // Unless they have since left, in which case the banner would land on
           // whatever they moved to, which saves fine.
           if (!result.saved) {
-            if (snapshot.id === store.activeId()) showSaveRefused();
+            if (snapshot.id === store.activeId()) {
+              showSaveRefused();
+            }
 
             return;
           }
@@ -339,7 +347,10 @@ export function useVoicePersistence(
       // while the delete runs, and starting a new one then would throw away the
       // one they just opened. liveId, not activeId — a marked slot reports no
       // active id, so the untouched case has to be recognized by id.
-      if (store.liveId() === id) startNewConversation();
+      if (store.liveId() === id) {
+        startNewConversation();
+      }
+
       await refreshList();
     },
     [store, refreshList, startNewConversation, undoDelete],
@@ -368,7 +379,10 @@ export function useVoicePersistence(
     async (id: string) => {
       const conv = conversations.find((c) => c.id === id);
 
-      if (!conv) return;
+      if (!conv) {
+        return;
+      }
+
       const next = !conv.bookmarked;
 
       await setBookmark(id, next);
@@ -390,9 +404,15 @@ export function useVoicePersistence(
     const handler = () => {
       const hashId = getHashId();
 
-      if (hashId === store.activeId()) return;
-      if (hashId) void switchConversation(hashId);
-      else startNewConversation();
+      if (hashId === store.activeId()) {
+        return;
+      }
+
+      if (hashId) {
+        void switchConversation(hashId);
+      } else {
+        startNewConversation();
+      }
     };
 
     window.addEventListener("hashchange", handler);
@@ -448,47 +468,4 @@ function setHashId(id: string | null): void {
       window.location.pathname + window.location.search,
     );
   }
-}
-
-/**
- * Build the record a voice autosave writes.
- * @param snapshot - What the store stamped when the save started
- * @param items - Merged RealtimeItem history to persist
- * @param model - Realtime model id in effect
- * @param meta - The live conversation's metadata, or null before the first save
- * @returns The record to write
- */
-async function buildVoiceRecord(
-  snapshot: SaveSnapshot,
-  items: RealtimeItem[],
-  model: string,
-  meta: ActiveMeta | null,
-): Promise<ConversationRecord> {
-  const existing =
-    snapshot.reuseId == null ? null : await loadConversation(snapshot.reuseId);
-  const now = Date.now();
-
-  return {
-    id: snapshot.id,
-    title: meta?.title ?? deriveVoiceTitle(items),
-    createdAt: existing?.createdAt ?? meta?.createdAt ?? now,
-    updatedAt: now,
-    bookmarked: existing?.bookmarked ?? meta?.bookmarked ?? false,
-    // First-write-wins (like createdAt/bookmarked): a record keeps the provider
-    // and model it was created with. Provider is derived from the model id (the
-    // active backend) so a Gemini voice record isn't mislabeled "OpenAI" in the
-    // sidebar/export; continuing it (Stop → Talk) under different current
-    // settings must not silently re-stamp the original provider/model/label.
-    provider:
-      existing?.provider ??
-      (isGeminiRealtimeModelId(model) ? "gemini" : "openai"),
-    model: existing?.model ?? model,
-    modelLabel: existing?.modelLabel ?? model,
-    thinking: null,
-    smallModelMode: null,
-    totalUsage: null,
-    sessionType: "voice",
-    messages: [],
-    voiceHistory: items,
-  };
 }

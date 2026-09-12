@@ -144,7 +144,9 @@ export const warn = (...args: unknown[]): void => {
  * @param args - Values to log as a warning, on the first call for this key
  */
 export const warnOnce = (key: string, ...args: unknown[]): void => {
-  if (alreadyWarnedOnce(key)) return;
+  if (alreadyWarnedOnce(key)) {
+    return;
+  }
 
   warn(...args);
 };

@@ -13,13 +13,17 @@
  * @returns The value's text
  */
 export function argText(value: unknown, fallback = ""): string {
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    return value;
+  }
 
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
 
-  if (Array.isArray(value)) return value.map((v) => argText(v)).join(",");
+  if (Array.isArray(value)) {
+    return value.map((v) => argText(v)).join(",");
+  }
 
   return fallback;
 }

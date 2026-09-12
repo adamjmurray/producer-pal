@@ -89,21 +89,29 @@ export function warnShortRamp(
   beatsPerBar: number,
   timeSigDenominator: number,
 ): void {
-  if (!hasTimeRange || positions.length < 2) return;
+  if (!hasTimeRange || positions.length < 2) {
+    return;
+  }
 
   const name = findFunctionName(expression, RAMP_NAMES);
 
-  if (name == null) return;
+  if (name == null) {
+    return;
+  }
 
   const span = range.end - range.start;
 
-  if (span <= 0) return;
+  if (span <= 0) {
+    return;
+  }
 
   const last = Math.max(...positions);
   const step = smallestGap(positions);
 
   // One distinct position is one phase, whatever the range: nothing to report.
-  if (step == null || range.end - last <= step + TAIL_EPSILON) return;
+  if (step == null || range.end - last <= step + TAIL_EPSILON) {
+    return;
+  }
 
   const reached = (last - range.start) / span;
 

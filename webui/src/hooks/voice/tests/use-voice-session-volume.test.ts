@@ -43,7 +43,9 @@ const mocks = vi.hoisted(() => {
     }
 
     emit(event: string, payload: unknown) {
-      for (const h of this.listeners.get(event) ?? []) h(payload);
+      for (const h of this.listeners.get(event) ?? []) {
+        h(payload);
+      }
     }
 
     connect(args: unknown) {
@@ -74,7 +76,9 @@ const mocks = vi.hoisted(() => {
       const el = (options as { audioElement?: HTMLAudioElement } | undefined)
         ?.audioElement;
 
-      if (el) el.srcObject = new MediaStream();
+      if (el) {
+        el.srcObject = new MediaStream();
+      }
     }
   }
 

@@ -40,7 +40,10 @@ describe("RETIRED_SKILL_SLOTS", () => {
   it("points every retired name at slots that exist today", () => {
     for (const replacedBy of Object.values(RETIRED_SKILL_SLOTS)) {
       expect(replacedBy.length).toBeGreaterThan(0);
-      for (const name of replacedBy) expect(isSkillSlotName(name)).toBe(true);
+
+      for (const name of replacedBy) {
+        expect(isSkillSlotName(name)).toBe(true);
+      }
     }
   });
 });

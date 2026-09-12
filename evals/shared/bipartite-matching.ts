@@ -41,7 +41,9 @@ export function hasPerfectMatching<L, R>(
    */
   const augment = (i: number, seen: boolean[]): boolean => {
     for (let j = 0; j < right.length; j++) {
-      if (seen[j] || !canPair(left[i] as L, right[j] as R)) continue;
+      if (seen[j] || !canPair(left[i] as L, right[j] as R)) {
+        continue;
+      }
 
       seen[j] = true;
 
@@ -64,8 +66,9 @@ export function hasPerfectMatching<L, R>(
         i,
         Array.from({ length: right.length }, () => false),
       )
-    )
+    ) {
       return false;
+    }
   }
 
   return true;

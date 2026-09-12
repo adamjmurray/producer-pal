@@ -79,10 +79,21 @@ describe("updateLiveSet - locator operations", () => {
 
     it("should skip creation if locator already exists at position", async () => {
       liveSet.get.mockImplementation((prop: string) => {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("existing_cue");
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+
+        if (prop === "is_playing") {
+          return [0];
+        }
+
+        if (prop === "cue_points") {
+          return children("existing_cue");
+        }
 
         return [0];
       });
@@ -166,10 +177,21 @@ describe("updateLiveSet - locator operations", () => {
 
     it("should delete all locators by name", async () => {
       liveSet.get.mockImplementation((prop: string) => {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("cue1", "cue2", "cue3");
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+
+        if (prop === "is_playing") {
+          return [0];
+        }
+
+        if (prop === "cue_points") {
+          return children("cue1", "cue2", "cue3");
+        }
 
         return [0];
       });

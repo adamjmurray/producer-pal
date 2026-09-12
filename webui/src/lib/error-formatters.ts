@@ -21,8 +21,13 @@ export function normalizeErrorMessage(error: unknown): string {
  * @returns {string} Description, without the "Error:" prefix
  */
 function describeError(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (error instanceof Error) return error.message;
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
 
   if (error != null && typeof error === "object") {
     return describeErrorPayload(error as Record<string, unknown>);
@@ -48,7 +53,9 @@ function describeErrorPayload(payload: Record<string, unknown>): string {
     (value): value is string => typeof value === "string" && value !== "",
   );
 
-  if (message == null) return stringifyPayload(payload);
+  if (message == null) {
+    return stringifyPayload(payload);
+  }
 
   const details = [payload.code, errorTypeOf(payload)].filter(
     (value) => value != null && value !== "",

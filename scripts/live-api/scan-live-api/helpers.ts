@@ -49,11 +49,15 @@ export async function callRawApi(
       },
     );
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return null;
+    }
 
     const data = (await res.json()) as { result?: string; isError?: boolean };
 
-    if (data.isError || !data.result) return null;
+    if (data.isError || !data.result) {
+      return null;
+    }
 
     return data.result;
   } catch {
@@ -73,11 +77,15 @@ export async function getInfo(
 ): Promise<string | null> {
   const result = await callRawApi(baseUrl, path, [{ type: "info" }]);
 
-  if (!result) return null;
+  if (!result) {
+    return null;
+  }
 
   const match = /result:"(.*?)\\ndone/.exec(result);
 
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
   return (match[1] as string).replaceAll("\\n", "\n").replaceAll("\\\\", "\\");
 }
@@ -113,15 +121,21 @@ export async function getPropertyValue(
 ): Promise<string | null> {
   const raw = await getProperty(baseUrl, path, property);
 
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
 
   const match = /result:\[(?:"((?:[^"\\]|\\.)*)"|([^,\]]+))/.exec(raw);
 
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
   const value = match[1] ?? match[2];
 
-  if (value == null) return null;
+  if (value == null) {
+    return null;
+  }
 
   return value.replaceAll("\\n", "\n").replaceAll("\\\\", "\\");
 }
@@ -137,7 +151,9 @@ export function parseInfo(info: string): InfoEntry[] {
   for (const line of info.split("\n")) {
     const trimmed = line.trim();
 
-    if (!trimmed || trimmed.startsWith("id ") || trimmed === "done") continue;
+    if (!trimmed || trimmed.startsWith("id ") || trimmed === "done") {
+      continue;
+    }
 
     if (trimmed.startsWith("type ") || trimmed.startsWith("description ")) {
       continue;
@@ -182,11 +198,15 @@ export async function scanPath(
 ): Promise<boolean> {
   const info = await getInfo(ctx.baseUrl, path);
 
-  if (!info) return false;
+  if (!info) {
+    return false;
+  }
 
   const typeName = getTypeName(info);
 
-  if (ctx.seenTypes.has(typeName)) return false;
+  if (ctx.seenTypes.has(typeName)) {
+    return false;
+  }
 
   ctx.seenTypes.add(typeName);
   ctx.results.push({

@@ -117,7 +117,9 @@ export function resolveMoveDestinations(
     return none;
   }
 
-  if (toPath == null && toSlot == null) return none;
+  if (toPath == null && toSlot == null) {
+    return none;
+  }
 
   // A bad destination is one param out of many on a batch update, and the
   // tool's rule is warn-and-skip so the notes still land. Neither param can be
@@ -192,7 +194,9 @@ export function resolveRequestedClips(
   let repeats = 0;
 
   for (const [index, id] of requestedIds.entries()) {
-    if (id == null) continue;
+    if (id == null) {
+      continue;
+    }
 
     // One id at a time so the "does not exist" warnings stay in one place and
     // the survivor keeps the position it was named at.
@@ -200,7 +204,9 @@ export function resolveRequestedClips(
       skipInvalid: true,
     })[0];
 
-    if (clip == null) continue;
+    if (clip == null) {
+      continue;
+    }
 
     // An id and a path can name the same clip, as can a repeated id. Updating
     // it twice compounds every operation — duplicateLoop would double it again.
@@ -259,7 +265,9 @@ function claimDestination(
     claimedBy: Map<string, string>;
   },
 ): void {
-  if (destination == null) return;
+  if (destination == null) {
+    return;
+  }
 
   if (destination.kind !== "slot") {
     batch.destinationById.set(clipId, destination);
@@ -303,7 +311,9 @@ function dropDestinationsHoldingBatchClips(
   batchIds: Set<string>,
 ): void {
   for (const [clipId, destination] of destinationById) {
-    if (destination.kind !== "slot") continue;
+    if (destination.kind !== "slot") {
+      continue;
+    }
 
     const { trackIndex, sceneIndex } = destination;
     const occupant = LiveAPI.from(
@@ -311,9 +321,13 @@ function dropDestinationsHoldingBatchClips(
     );
 
     // A clip's own slot is the no-op the move already handles.
-    if (!occupant.exists() || occupant.id === clipId) continue;
+    if (!occupant.exists() || occupant.id === clipId) {
+      continue;
+    }
 
-    if (!batchIds.has(occupant.id)) continue;
+    if (!batchIds.has(occupant.id)) {
+      continue;
+    }
 
     console.warn(
       `clip ${targetLabelForId(clipId)} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
@@ -441,7 +455,9 @@ function arrangementDestination(
   destination: ClipPath | null | undefined,
   destinationParam: "toPath" | "toSlot",
 ): ArrangementTrack | null {
-  if (destination == null || destination.kind === "slot") return null;
+  if (destination == null || destination.kind === "slot") {
+    return null;
+  }
 
   if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
     console.warn(

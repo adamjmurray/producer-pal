@@ -17,7 +17,9 @@ export function getProviderName(
   provider: Provider,
   style: "brand" | "product" = "brand",
 ): string {
-  if (style === "product" && provider === "gemini") return "Gemini";
+  if (style === "product" && provider === "gemini") {
+    return "Gemini";
+  }
 
   return BRAND_NAMES[provider];
 }

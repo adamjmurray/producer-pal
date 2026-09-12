@@ -230,7 +230,9 @@ export function resolveEnabledTools(
       .filter((name) => name !== ""),
   );
 
-  if (disabled.size === 0) return [...configuredTools];
+  if (disabled.size === 0) {
+    return [...configuredTools];
+  }
 
   return configuredTools.filter((name) => !disabled.has(name));
 }
@@ -290,8 +292,13 @@ export const FORMAT_HEADER = "x-producer-pal-format";
 export function resolveCompactOutput(
   headerValue: string | undefined,
 ): boolean | undefined {
-  if (headerValue === "compact") return true;
-  if (headerValue === "json") return false;
+  if (headerValue === "compact") {
+    return true;
+  }
+
+  if (headerValue === "json") {
+    return false;
+  }
 
   return undefined;
 }

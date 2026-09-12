@@ -36,7 +36,9 @@ export function extractErrorSummary(result: string): string | null {
  * @returns Unwrapped string, or original if not a JSON string
  */
 function unquoteJsonString(s: string): string {
-  if (!s.startsWith('"')) return s;
+  if (!s.startsWith('"')) {
+    return s;
+  }
 
   try {
     const parsed: unknown = JSON.parse(s);
@@ -54,13 +56,18 @@ function unquoteJsonString(s: string): string {
  * @returns Error message or null
  */
 function extractMcpContentError(s: string): string | null {
-  if (!s.startsWith("[")) return null;
+  if (!s.startsWith("[")) {
+    return null;
+  }
 
   try {
     const arr = JSON.parse(s) as Array<{ type: string; text?: string }>;
     const firstText = arr.find((item) => item.type === "text")?.text;
 
-    if (!firstText) return null;
+    if (!firstText) {
+      return null;
+    }
+
     const inner = JSON.parse(firstText) as Record<string, unknown>;
 
     return typeof inner.error === "string" ? inner.error : null;
@@ -99,7 +106,10 @@ function stripTimeoutPrefix(s: string): string | null {
 function stripMcpErrorPrefix(s: string): string | null {
   const match = s.match(/^MCP error -\d+: (.+)$/s);
 
-  if (!match?.[1]) return null;
+  if (!match?.[1]) {
+    return null;
+  }
+
   const msg = match[1];
 
   if (msg.startsWith("Input validation error: ")) {

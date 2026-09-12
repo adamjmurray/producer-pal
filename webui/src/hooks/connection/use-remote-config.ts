@@ -90,7 +90,10 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
         // Drop a response a newer operation already owns, and otherwise claim
         // ownership at apply time (not call time) so a GET that never applies
         // can't supersede an in-flight POST's revert.
-        if (seq < latestConfigSeqRef.current) return;
+        if (seq < latestConfigSeqRef.current) {
+          return;
+        }
+
         latestConfigSeqRef.current = seq;
 
         setServerSmallModelMode(Boolean(config.smallModelMode));
@@ -261,7 +264,10 @@ async function postConfigField(
       console.error(
         `POST /config (${field}) returned ${response.status}${latest ? "; reverting" : "; skipping revert (newer request in flight)"}`,
       );
-      if (latest) await refetch();
+
+      if (latest) {
+        await refetch();
+      }
     }
   } catch (err) {
     const latest = seq === latestSeqRef.current;
@@ -270,6 +276,9 @@ async function postConfigField(
       `POST /config (${field}) failed${latest ? "" : " (skipping revert; newer request in flight)"}:`,
       err,
     );
-    if (latest) await refetch();
+
+    if (latest) {
+      await refetch();
+    }
   }
 }

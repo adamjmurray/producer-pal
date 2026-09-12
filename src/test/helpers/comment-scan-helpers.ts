@@ -76,7 +76,9 @@ export function scanComments(
   let run = 0;
 
   for (const [i, kind] of kinds.entries()) {
-    if (kind === "code") codeLines++;
+    if (kind === "code") {
+      codeLines++;
+    }
 
     if (kind === "comment") {
       commentLines++;
@@ -148,7 +150,9 @@ export function summarizeComments(stats: FileCommentStats[]): CommentSummary {
     summary.commentLines += entry.commentLines;
     summary.codeLines += entry.codeLines;
 
-    if (entry.longestBlock >= LONG_BLOCK_LINES) summary.longBlockFiles++;
+    if (entry.longestBlock >= LONG_BLOCK_LINES) {
+      summary.longBlockFiles++;
+    }
 
     if (entry.longestBlock > summary.longestBlock) {
       summary.longestBlock = entry.longestBlock;
@@ -203,7 +207,9 @@ function classifyLine(
   let hasComment = false;
 
   for (let i = 0; i < line.length; i++) {
-    if ((line[i] as string).trim() === "") continue;
+    if ((line[i] as string).trim() === "") {
+      continue;
+    }
 
     if (mask[offset + i] === 1) {
       hasComment = true;
@@ -212,7 +218,9 @@ function classifyLine(
     }
   }
 
-  if (!hasComment) return "blank";
+  if (!hasComment) {
+    return "blank";
+  }
 
   return DIRECTIVE.test(line) ? "skipped" : "comment";
 }
@@ -224,19 +232,27 @@ function classifyLine(
  */
 function skipLicenseHeader(lines: string[], kinds: LineKind[]): void {
   // A shebang is neither code nor comment, and the license header sits under it.
-  if (lines[0]?.startsWith("#!")) kinds[0] = "skipped";
+  if (lines[0]?.startsWith("#!")) {
+    kinds[0] = "skipped";
+  }
 
   let start = 0;
 
-  while (kinds[start] === "blank" || kinds[start] === "skipped") start++;
+  while (kinds[start] === "blank" || kinds[start] === "skipped") {
+    start++;
+  }
 
   let end = start;
 
-  while (kinds[end] === "comment") end++;
+  while (kinds[end] === "comment") {
+    end++;
+  }
 
   const header = lines.slice(start, end).join("\n");
 
-  if (!header.includes("SPDX-License-Identifier")) return;
+  if (!header.includes("SPDX-License-Identifier")) {
+    return;
+  }
 
   kinds.fill("skipped", start, end);
 }
@@ -272,7 +288,9 @@ function commentMask(source: string, fileName: string): Uint8Array {
       mask.fill(1, range.pos, range.end);
     }
 
-    for (const child of node.getChildren(sourceFile)) visit(child);
+    for (const child of node.getChildren(sourceFile)) {
+      visit(child);
+    }
   };
 
   visit(sourceFile);

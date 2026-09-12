@@ -114,7 +114,9 @@ function assertRegionCleared(
       }
 
       for (const n of before.notes) {
-        if (inWindow(n.start_time, winStart, winEnd)) continue;
+        if (inWindow(n.start_time, winStart, winEnd)) {
+          continue;
+        }
 
         const survived = after.notes.some(
           (m) =>
@@ -171,13 +173,15 @@ function recordClearSyntax(turn: number): EvalAssertion {
 
       let syntax = "other";
 
-      if (/\|\s*\*/.test(sel))
+      if (/\|\s*\*/.test(sel)) {
         syntax = "wildcard"; // N|*
-      else if (/-\s*</.test(sel))
+      } else if (/-\s*</.test(sel)) {
         syntax = "exclusive"; // 3|1-<...
-      else if (/\d\|\d+\.\d+/.test(sel))
+      } else if (/\d\|\d+\.\d+/.test(sel)) {
         syntax = "decimal-stop-short"; // 3|2.99
-      else if (/\d\|\d+\s*-\s*\d\|\d+/.test(sel)) syntax = "inclusive-range"; // 3|1-4|1
+      } else if (/\d\|\d+\s*-\s*\d\|\d+/.test(sel)) {
+        syntax = "inclusive-range"; // 3|1-4|1
+      }
 
       console.log(
         `    [clear-syntax@turn${turn}] ${syntax} — ${sel.slice(0, 80)}`,

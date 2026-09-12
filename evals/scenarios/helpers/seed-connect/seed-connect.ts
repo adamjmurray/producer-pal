@@ -59,9 +59,17 @@ export function shouldSeedConnect(
   scenario: EvalScenario,
   enabled: boolean,
 ): boolean {
-  if (!enabled) return false;
-  if (scenario.seedConnect === false) return false;
-  if (scenario.messages[0] !== CONNECT_MESSAGE) return false;
+  if (!enabled) {
+    return false;
+  }
+
+  if (scenario.seedConnect === false) {
+    return false;
+  }
+
+  if (scenario.messages[0] !== CONNECT_MESSAGE) {
+    return false;
+  }
 
   // A scenario whose only message is the connect message IS the connect test —
   // seeding it would leave nothing the model produced to grade.

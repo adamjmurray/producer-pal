@@ -22,12 +22,16 @@ function findDownloadHrefs(): string[] {
   for (const entry of readdirSync(DIST_DIR, { recursive: true })) {
     const file = String(entry);
 
-    if (!file.endsWith(".html")) continue;
+    if (!file.endsWith(".html")) {
+      continue;
+    }
 
     const html = readFileSync(join(DIST_DIR, file), "utf8");
 
     for (const [, href] of html.matchAll(/href="(\/downloads\/[^"]+)"/g)) {
-      if (href != null) hrefs.add(href);
+      if (href != null) {
+        hrefs.add(href);
+      }
     }
   }
 

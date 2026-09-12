@@ -63,7 +63,9 @@ function captureGuard(
 
   render(wrap ? wrap(probe) : probe);
 
-  if (captured == null) throw new Error("guard was not captured");
+  if (captured == null) {
+    throw new Error("guard was not captured");
+  }
 
   return captured;
 }

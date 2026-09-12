@@ -369,7 +369,10 @@ describe("duplicate take lane", () => {
     lane!.call.mockImplementation((method: string, ...args: unknown[]) => {
       if (method === "create_midi_clip") {
         callCount += 1;
-        if (callCount === 2) return ["id", "0"];
+
+        if (callCount === 2) {
+          return ["id", "0"];
+        }
       }
 
       return original?.(method, ...args);

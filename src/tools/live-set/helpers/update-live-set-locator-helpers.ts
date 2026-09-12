@@ -301,7 +301,9 @@ export function validateLocatorOperation(
   locatorOperation: string | undefined,
   args: { locatorId?: string; locatorTime?: string; locatorName?: string },
 ): void {
-  if (locatorOperation != null) return;
+  if (locatorOperation != null) {
+    return;
+  }
 
   const sent = (["locatorId", "locatorTime", "locatorName"] as const).filter(
     (key) => args[key] != null,

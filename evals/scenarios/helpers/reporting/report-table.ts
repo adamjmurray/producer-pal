@@ -73,18 +73,29 @@ export function printResultsTable(
     const cells = columns.map((col) => {
       const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (!results || results.length === 0) return "—";
-      if (isSkippedCell(results)) return "skip";
+      if (!results || results.length === 0) {
+        return "—";
+      }
+
+      if (isSkippedCell(results)) {
+        return "skip";
+      }
+
       const pct = scorePercentage(results);
 
-      if (pct == null) return "—";
+      if (pct == null) {
+        return "—";
+      }
 
       return `${pct.toFixed(0)}%`;
     });
     const colors = columns.map((col) => {
       const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (results && isSkippedCell(results)) return "gray";
+      if (results && isSkippedCell(results)) {
+        return "gray";
+      }
+
       const pct = results ? scorePercentage(results) : null;
 
       return pct != null ? pctColor(pct) : undefined;
@@ -164,10 +175,14 @@ function columnAverage(
     const results = modelResults.get(col.modelKey)?.get(col.configId);
     const pct = results ? scorePercentage(results) : null;
 
-    if (pct !== null) pcts.push(pct);
+    if (pct !== null) {
+      pcts.push(pct);
+    }
   }
 
-  if (pcts.length === 0) return null;
+  if (pcts.length === 0) {
+    return null;
+  }
 
   return pcts.reduce((a, b) => a + b, 0) / pcts.length;
 }

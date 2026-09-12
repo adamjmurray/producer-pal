@@ -391,12 +391,16 @@ function assertClipIdAtSlot(
   { trackIndex, sceneIndex }: { trackIndex: number; sceneIndex: number },
   param: string,
 ): void {
-  if (clipId == null) return;
+  if (clipId == null) {
+    return;
+  }
 
   const named = LiveAPI.from(clipId);
 
   // An id naming nothing is validateIdType's error to report, not this one's.
-  if (!named.exists()) return;
+  if (!named.exists()) {
+    return;
+  }
 
   const atPath = livePath.track(trackIndex).clipSlot(sceneIndex).clip();
 

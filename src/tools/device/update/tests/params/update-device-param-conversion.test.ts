@@ -41,9 +41,17 @@ describe("updateDevice - param conversion discriminators", () => {
         },
         methods: {
           str_for_value: (v: unknown) => {
-            if (v === -3) return "1/8";
-            if (v === -4) return "1/16";
-            if (v === -6) return "0.5";
+            if (v === -3) {
+              return "1/8";
+            }
+
+            if (v === -4) {
+              return "1/16";
+            }
+
+            if (v === -6) {
+              return "0.5";
+            }
 
             return String(v);
           },
@@ -178,9 +186,17 @@ describe("updateDevice - param conversion discriminators", () => {
         },
         methods: {
           str_for_value: (v: unknown) => {
-            if (v === 1) return "100R";
-            if (v === -1) return "30L";
-            if (v === 0) return "C";
+            if (v === 1) {
+              return "100R";
+            }
+
+            if (v === -1) {
+              return "30L";
+            }
+
+            if (v === 0) {
+              return "C";
+            }
 
             return "5000 Hz";
           },

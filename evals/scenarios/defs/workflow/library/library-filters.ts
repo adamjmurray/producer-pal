@@ -82,7 +82,9 @@ function assertLibraryArgs(
         (call) => call.name === TOOL_LIBRARY,
       );
 
-      if (calls.length === 0) throw new Error(`no ${TOOL_LIBRARY} call`);
+      if (calls.length === 0) {
+        throw new Error(`no ${TOOL_LIBRARY} call`);
+      }
 
       if (!calls.some((call) => filterSetsOf(call.args).some(predicate))) {
         throw new Error(

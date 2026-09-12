@@ -44,14 +44,18 @@ export function refuseRegionWithDuplicateLoop(
   length: string | undefined,
   duplicateLoop: boolean | undefined,
 ): void {
-  if (!duplicateLoop) return;
+  if (!duplicateLoop) {
+    return;
+  }
 
   const sent = [
     start != null ? "start" : null,
     length != null ? "length" : null,
   ].filter((param) => param != null);
 
-  if (sent.length === 0) return;
+  if (sent.length === 0) {
+    return;
+  }
 
   const named = sent.join("/");
   const verb = sent.length > 1 ? "set" : "sets";
@@ -113,7 +117,9 @@ export function refuseSplitWithMove({
 }: SplitMoveArgs): void {
   const splitParam = namedSplitParam(arrangementSplit, split);
 
-  if (splitParam == null) return;
+  if (splitParam == null) {
+    return;
+  }
 
   const conflicts = [
     paramNamesSomething(toPath) ? "toPath" : null,
@@ -125,7 +131,9 @@ export function refuseSplitWithMove({
     paramNamesSomething(arrangementLength) ? "arrangementLength" : null,
   ].filter((param) => param != null);
 
-  if (conflicts.length === 0) return;
+  if (conflicts.length === 0) {
+    return;
+  }
 
   // "pairs", not "pair": subjects joined by "or" take the nearer one.
   const named = conflicts.join(" or ");
@@ -150,7 +158,9 @@ function namedSplitParam(
   arrangementSplit: string | undefined,
   split: string | undefined,
 ): string | null {
-  if (paramNamesSomething(arrangementSplit)) return "arrangementSplit";
+  if (paramNamesSomething(arrangementSplit)) {
+    return "arrangementSplit";
+  }
 
   return paramNamesSomething(split) ? "split" : null;
 }
@@ -168,7 +178,9 @@ function validateWholeCallParams(
   timeSignature: string | undefined,
   quantizePitch: string | undefined,
 ): void {
-  if (timeSignature != null) parseTimeSignature(timeSignature);
+  if (timeSignature != null) {
+    parseTimeSignature(timeSignature);
+  }
 
   if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
     throw new Error(`invalid note name "${quantizePitch}" for quantizePitch`);

@@ -222,7 +222,10 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   // session in the deletion closure so a Settings bulk delete can tear it down.
   useEffect(() => {
     onLiveRecordDeletedRef.current = () => {
-      if (voice.status !== "idle") void voice.disconnect();
+      if (voice.status !== "idle") {
+        void voice.disconnect();
+      }
+
       voice.resetHistory();
     };
 
@@ -241,11 +244,16 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   const prevBackendRef = useRef(isGemini);
 
   useEffect(() => {
-    if (prevBackendRef.current === isGemini) return;
+    if (prevBackendRef.current === isGemini) {
+      return;
+    }
+
     prevBackendRef.current = isGemini;
     const nowInactive = isGemini ? openAiVoice : geminiVoiceSession;
 
-    if (nowInactive.status !== "idle") void nowInactive.disconnect();
+    if (nowInactive.status !== "idle") {
+      void nowInactive.disconnect();
+    }
   }, [isGemini, openAiVoice, geminiVoiceSession]);
   const transfer = useConversationTransfer(persistence.refreshList);
 
@@ -372,8 +380,13 @@ function resolveBackend(
   recordProvider: string | null,
   settingsBackend: "openai" | "gemini" | null,
 ): "openai" | "gemini" {
-  if (recordProvider === "gemini") return "gemini";
-  if (recordProvider === "openai") return "openai";
+  if (recordProvider === "gemini") {
+    return "gemini";
+  }
+
+  if (recordProvider === "openai") {
+    return "openai";
+  }
 
   if (recordModel != null) {
     return isGeminiRealtimeModelId(recordModel) ? "gemini" : "openai";

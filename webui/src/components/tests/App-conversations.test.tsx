@@ -69,7 +69,9 @@ describe("App conversation management", () => {
       b.textContent.includes("New Conversation"),
     );
 
-    if (btn) fireEvent.click(btn);
+    if (btn) {
+      fireEvent.click(btn);
+    }
   };
 
   const clickSelectConversation = () => {
@@ -83,7 +85,9 @@ describe("App conversation management", () => {
       "button[class*='border-l-transparent']",
     );
 
-    if (btn) fireEvent.click(btn);
+    if (btn) {
+      fireEvent.click(btn);
+    }
   };
 
   it("keeps panel open on new conversation on desktop", () => {

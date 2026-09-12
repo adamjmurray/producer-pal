@@ -48,8 +48,13 @@ export function resolveRackTarget(
   id?: string,
   path?: string,
 ): LiveAPI | undefined {
-  if (id != null) return LiveAPI.from(id);
-  if (path == null) return undefined;
+  if (id != null) {
+    return LiveAPI.from(id);
+  }
+
+  if (path == null) {
+    return undefined;
+  }
 
   const resolved = resolvePathToLiveApi(path);
 
@@ -100,7 +105,9 @@ export function selectRackTarget(
   const chain = isPad ? (chainsOnDrumPad(target)[0] ?? null) : target;
   const pad = isPad ? target : drumPadOfChain(rack, target);
 
-  if (pad != null) revealDrumPad(rack, pad);
+  if (pad != null) {
+    revealDrumPad(rack, pad);
+  }
 
   revealChain(rack, chain);
 
@@ -138,7 +145,9 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
 
   const pad = findDrumPad(resolved.liveApiPath, note);
 
-  if (pad != null) return pad;
+  if (pad != null) {
+    return pad;
+  }
 
   const group = resolveDrumPadGroup(resolved.liveApiPath, note);
   const chain = group?.chains[0];
@@ -159,7 +168,9 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
  * @returns The DrumPad, or null for a rack chain or return chain
  */
 function drumPadOfChain(rack: LiveAPI, chain: LiveAPI): LiveAPI | null {
-  if (chain.type !== "DrumChain") return null;
+  if (chain.type !== "DrumChain") {
+    return null;
+  }
 
   return findDrumPadByNote(rack, chain.getProperty("in_note") as number);
 }

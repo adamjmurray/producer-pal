@@ -4,6 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type RealtimeItem } from "@openai/agents/realtime";
+import { isGeminiRealtimeModelId } from "#webui/lib/constants/models";
+import {
+  type ConversationRecord,
+  loadConversation,
+} from "#webui/lib/conversation-db";
+import {
+  type ActiveMeta,
+  type SaveSnapshot,
+} from "#webui/lib/conversation-store";
 
 /**
  * Combine a previously-saved voice transcript with the current live session
@@ -33,7 +42,10 @@ export function mergeVoiceHistory(
   prior: RealtimeItem[],
   live: RealtimeItem[],
 ): RealtimeItem[] {
-  if (prior.length === 0) return live;
+  if (prior.length === 0) {
+    return live;
+  }
+
   const priorIds = new Set(prior.map((i) => i.itemId));
   const additions = live.filter((i) => !priorIds.has(i.itemId));
 
@@ -47,15 +59,63 @@ export function mergeVoiceHistory(
  */
 export function deriveVoiceTitle(items: RealtimeItem[]): string | null {
   for (const item of items) {
-    if (item.type !== "message" || item.role !== "user") continue;
+    if (item.type !== "message" || item.role !== "user") {
+      continue;
+    }
+
     const text = item.content
       .map((c) => (c.type === "input_text" ? c.text : (c.transcript ?? "")))
       .filter(Boolean)
       .join(" ")
       .trim();
 
-    if (text) return text.slice(0, 80);
+    if (text) {
+      return text.slice(0, 80);
+    }
   }
 
   return null;
+}
+
+/**
+ * Build the record a voice autosave writes.
+ * @param snapshot - What the store stamped when the save started
+ * @param items - Merged RealtimeItem history to persist
+ * @param model - Realtime model id in effect
+ * @param meta - The live conversation's metadata, or null before the first save
+ * @returns The record to write
+ */
+export async function buildVoiceRecord(
+  snapshot: SaveSnapshot,
+  items: RealtimeItem[],
+  model: string,
+  meta: ActiveMeta | null,
+): Promise<ConversationRecord> {
+  const existing =
+    snapshot.reuseId == null ? null : await loadConversation(snapshot.reuseId);
+  const now = Date.now();
+
+  return {
+    id: snapshot.id,
+    title: meta?.title ?? deriveVoiceTitle(items),
+    createdAt: existing?.createdAt ?? meta?.createdAt ?? now,
+    updatedAt: now,
+    bookmarked: existing?.bookmarked ?? meta?.bookmarked ?? false,
+    // First-write-wins (like createdAt/bookmarked): a record keeps the provider
+    // and model it was created with. Provider is derived from the model id (the
+    // active backend) so a Gemini voice record isn't mislabeled "OpenAI" in the
+    // sidebar/export; continuing it (Stop → Talk) under different current
+    // settings must not silently re-stamp the original provider/model/label.
+    provider:
+      existing?.provider ??
+      (isGeminiRealtimeModelId(model) ? "gemini" : "openai"),
+    model: existing?.model ?? model,
+    modelLabel: existing?.modelLabel ?? model,
+    thinking: null,
+    smallModelMode: null,
+    totalUsage: null,
+    sessionType: "voice",
+    messages: [],
+    voiceHistory: items,
+  };
 }

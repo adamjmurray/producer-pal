@@ -170,7 +170,10 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
     return () => {
       view.destroy();
       viewRef.current = null;
-      if (editorRef != null) editorRef.current = null;
+
+      if (editorRef != null) {
+        editorRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally seed-only: the editor is uncontrolled. To reset, the parent remounts via `key`.
   }, []);

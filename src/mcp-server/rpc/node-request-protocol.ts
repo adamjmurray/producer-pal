@@ -151,7 +151,9 @@ async function runWithTimeout(
       timeoutPromise,
     ]);
   } finally {
-    if (timer != null) clearTimeout(timer);
+    if (timer != null) {
+      clearTimeout(timer);
+    }
   }
 }
 

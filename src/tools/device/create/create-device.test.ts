@@ -500,7 +500,9 @@ describe("createDevice", () => {
           properties: { devices: children("existing-device") },
         });
         track0.call.mockImplementation((method: string) => {
-          if (method === "insert_device") return ["id", undefined];
+          if (method === "insert_device") {
+            return ["id", undefined];
+          }
 
           return null;
         });

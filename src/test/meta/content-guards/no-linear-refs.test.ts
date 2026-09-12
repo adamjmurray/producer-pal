@@ -80,7 +80,9 @@ describe("no Linear ticket references", () => {
 function findLinearRefsInCommits(): { file: string; reason: string }[] {
   const baseRef = BASE_REF_CANDIDATES.find(refExists);
 
-  if (baseRef == null) return [];
+  if (baseRef == null) {
+    return [];
+  }
 
   // %x1f separates sha from message, %x1e separates commits — neither can
   // appear in a commit message, unlike any printable delimiter.

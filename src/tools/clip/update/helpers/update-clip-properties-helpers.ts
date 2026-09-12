@@ -59,14 +59,22 @@ function addRegionProperties(
   }: RegionProps,
 ): void {
   const addEnd = () => {
-    if (end == null) return;
+    if (end == null) {
+      return;
+    }
 
-    if (writesLoop) propsToSet.loop_end = end;
+    if (writesLoop) {
+      propsToSet.loop_end = end;
+    }
 
-    if (writesEndMarker) propsToSet.end_marker = end;
+    if (writesEndMarker) {
+      propsToSet.end_marker = end;
+    }
   };
 
-  if (setEndFirst) addEnd();
+  if (setEndFirst) {
+    addEnd();
+  }
 
   if (writesLoop && start != null) {
     propsToSet.loop_start = start;
@@ -76,7 +84,9 @@ function addRegionProperties(
     propsToSet.start_marker = startMarker;
   }
 
-  if (!setEndFirst) addEnd();
+  if (!setEndFirst) {
+    addEnd();
+  }
 }
 
 export interface BuildClipPropertiesArgs {

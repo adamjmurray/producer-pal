@@ -218,7 +218,9 @@ async function runClipBatch({
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
 
-    if (stopBatch(deadline, clips, moveOrder, step)) break;
+    if (stopBatch(deadline, clips, moveOrder, step)) {
+      break;
+    }
 
     const written = updatedClips.length;
 
@@ -284,7 +286,9 @@ function stopBatch(
   order: number[],
   step: number,
 ): boolean {
-  if (!isDeadlineExceeded(deadline)) return false;
+  if (!isDeadlineExceeded(deadline)) {
+    return false;
+  }
 
   const skipped = order
     .slice(step)
@@ -402,7 +406,9 @@ async function applyCodeExecToNewClips(
   clipCount: number,
   code?: string,
 ): Promise<void> {
-  if (code == null) return;
+  if (code == null) {
+    return;
+  }
 
   for (let j = prevLen; j < updatedClips.length; j++) {
     const clipResult = updatedClips[j] as ClipResult;

@@ -127,7 +127,9 @@ export function endWarningCapture(capture: WarningCapture): string[] {
  *   some other way, because no response is coming
  */
 export function recordWarning(message: string): boolean {
-  if (activeCapture == null || activeCapture.ended) return false;
+  if (activeCapture == null || activeCapture.ended) {
+    return false;
+  }
 
   if (activeCapture.messages.length < MAX_CAPTURED_WARNINGS) {
     activeCapture.messages.push(message);
@@ -152,9 +154,13 @@ export function recordWarning(message: string): boolean {
  * @returns True when this key already warned this request
  */
 export function alreadyWarnedOnce(key: string): boolean {
-  if (activeCapture == null) return false;
+  if (activeCapture == null) {
+    return false;
+  }
 
-  if (activeCapture.warnedOnce.has(key)) return true;
+  if (activeCapture.warnedOnce.has(key)) {
+    return true;
+  }
 
   activeCapture.warnedOnce.add(key);
 

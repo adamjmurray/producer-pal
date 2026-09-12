@@ -132,9 +132,13 @@ export function updateDrumPadGroup(
   const result: DrumPadUpdateResult = { ...mixer };
   const skipped = ambiguous?.skipped ?? [];
 
-  if (skipped.length > 0) result.params = [...skipped, ...(mixer.params ?? [])];
+  if (skipped.length > 0) {
+    result.params = [...skipped, ...(mixer.params ?? [])];
+  }
 
-  if (pad != null) Object.assign(result, { id: pad.id }, pathField(pad));
+  if (pad != null) {
+    Object.assign(result, { id: pad.id }, pathField(pad));
+  }
 
   if (CHAIN_WRITE_PROPS.some((key) => chainOptions[key] != null)) {
     result.chainIds = chains.map((chain) => chain.id);
@@ -158,11 +162,15 @@ function createChainForSample(
     isSampleParam(entry.name.trim()),
   );
 
-  if (!wantsSample || pad == null) return [];
+  if (!wantsSample || pad == null) {
+    return [];
+  }
 
   const note = midiToNoteName(pad.getProperty("note") as number);
 
-  if (note == null) return [];
+  if (note == null) {
+    return [];
+  }
 
   const chain = resolveOrCreateDrumPadChain(drumRackOfPad(pad), note, []);
 
@@ -203,7 +211,9 @@ function applyToChains(
       index === 0 ? options : broadcastOnly(options),
     );
 
-    if (index === 0) mixer = applied;
+    if (index === 0) {
+      mixer = applied;
+    }
   }
 
   return mixer;
@@ -241,7 +251,9 @@ function dropPerLayerProps(
 ): UpdateTargetOptions {
   const skipped = PER_LAYER_PROPS.filter((key) => options[key] != null);
 
-  if (skipped.length === 0) return options;
+  if (skipped.length === 0) {
+    return options;
+  }
 
   const chainPaths = chains
     .map((_, index) => `${padPath}/c${index}`)
@@ -281,7 +293,9 @@ function dropAmbiguousSamples(
   const params = options.params ?? [];
   const samples = params.filter((entry) => isSampleParam(entry.name.trim()));
 
-  if (samples.length === 0) return null;
+  if (samples.length === 0) {
+    return null;
+  }
 
   // The retries are paths, not param names: a path is what this caller sends.
   const reason = ambiguousLayerReason(

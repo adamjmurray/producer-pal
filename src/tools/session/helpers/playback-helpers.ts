@@ -72,7 +72,9 @@ const ARRANGEMENT_ACTIONS = new Set([
 export function resolveArrangementParams<
   T extends ArrangementParams & LegacyLocatorParams,
 >(action: string, params: T): Partial<T> {
-  if (ARRANGEMENT_ACTIONS.has(action)) return params;
+  if (ARRANGEMENT_ACTIONS.has(action)) {
+    return params;
+  }
 
   const sent = (Object.keys(params) as Array<keyof T>).filter(
     (key) => params[key] != null,
@@ -120,7 +122,9 @@ export function reportArrangementLoop(
   // A refused loop lands nothing, so its params say nothing about the Set — the
   // call is one that left the loop alone, whatever it asked for.
   if (!wroteLoop) {
-    if (!obeysLoop) return {};
+    if (!obeysLoop) {
+      return {};
+    }
 
     const loopEnabled = (liveSet.getProperty("loop") as number) > 0;
 
@@ -142,7 +146,9 @@ export function reportArrangementLoop(
   const reportsStart = !namedStart && worthReporting;
   const reportsEnd = !namedEnd && worthReporting;
 
-  if (!reportsStart && !reportsEnd) return {};
+  if (!reportsStart && !reportsEnd) {
+    return {};
+  }
 
   const bounds = loopBounds(liveSet, timeSigNumerator, timeSigDenominator);
 
@@ -231,7 +237,9 @@ export function readStartTime(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): string | undefined {
-  if (!wroteStartTime && action !== PLAY_ARRANGEMENT) return undefined;
+  if (!wroteStartTime && action !== PLAY_ARRANGEMENT) {
+    return undefined;
+  }
 
   return abletonBeatsToBarBeat(
     liveSet.getProperty("start_time") as number,
@@ -259,7 +267,9 @@ export function foldLocatorParams(
   for (const [position, legacy] of LOCATOR_PARAM_PAIRS) {
     const locator = params[legacy];
 
-    if (locator == null) continue;
+    if (locator == null) {
+      continue;
+    }
 
     // Never pick one: the two params name the same position, so a caller who
     // sent both told us two different things about it.
@@ -289,7 +299,9 @@ export function resolveStartTime(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number | undefined {
-  if (startTime == null) return undefined;
+  if (startTime == null) {
+    return undefined;
+  }
 
   const startTimeBeats = songPositionToBeats(liveSet, startTime, {
     paramName: "startTime",

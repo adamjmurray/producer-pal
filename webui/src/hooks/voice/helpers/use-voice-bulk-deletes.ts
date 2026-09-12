@@ -116,7 +116,10 @@ export function useVoiceBulkDeletes(
       } else {
         // Fire only for a conversation that reached the DB — a session with
         // nothing saved yet has no record to lose.
-        if (store.metaRef.current != null) onLiveRecordDeleted?.();
+        if (store.metaRef.current != null) {
+          onLiveRecordDeleted?.();
+        }
+
         startNewConversation();
       }
 

@@ -121,9 +121,17 @@ export function resolveIdParam(id: string): ResolveIdResult {
 
   const type = object.type;
 
-  if (type === "Track") return { trackId: id, detectedType: "track" };
-  if (type === "Scene") return { sceneId: id, detectedType: "scene" };
-  if (type === "Clip") return { clipId: id, detectedType: "clip" };
+  if (type === "Track") {
+    return { trackId: id, detectedType: "track" };
+  }
+
+  if (type === "Scene") {
+    return { sceneId: id, detectedType: "scene" };
+  }
+
+  if (type === "Clip") {
+    return { clipId: id, detectedType: "clip" };
+  }
 
   if (type.endsWith("Device")) {
     return { deviceId: id, detectedType: "device" };
@@ -176,9 +184,17 @@ export function determineAutoDetailView({
   clipSlotHasClip,
   viewOnly,
 }: AutoDetailViewOptions): "clip" | "device" | "none" | undefined {
-  if (clipId != null || clipSlotHasClip) return "clip";
-  if (deviceId != null || devicePath != null || hasRackTarget) return "device";
-  if (viewOnly) return "none";
+  if (clipId != null || clipSlotHasClip) {
+    return "clip";
+  }
+
+  if (deviceId != null || devicePath != null || hasRackTarget) {
+    return "device";
+  }
+
+  if (viewOnly) {
+    return "none";
+  }
 
   return undefined;
 }
@@ -194,7 +210,9 @@ function namedSelectIds(args: SelectIdArgs): NamedId[] {
   const named: NamedId[] = [];
   const id = namedParam(args.id, "id");
 
-  if (id != null) named.push({ label: "id", id });
+  if (id != null) {
+    named.push({ label: "id", id });
+  }
 
   for (const label of ID_ALIASES) {
     // A value naming nothing is dropped without a word: none of the four is
@@ -264,7 +282,9 @@ function assertChildrenShareATrack(filled: FilledSlots): void {
   const first = children[0];
   const firstTrack = first == null ? null : ownerTrackPath(first.id);
 
-  if (first == null || firstTrack == null) return;
+  if (first == null || firstTrack == null) {
+    return;
+  }
 
   const trackId = LiveAPI.from(firstTrack).id;
 
@@ -313,7 +333,9 @@ function assertSameObject(
   path: PathLike | null,
   error: () => Error,
 ): void {
-  if (path == null) return;
+  if (path == null) {
+    return;
+  }
 
   const object = LiveAPI.from(path);
 

@@ -178,7 +178,9 @@ export function assertSpanPreserved(
  * Assert that clips are contiguous (each starts where the previous ends).
  */
 export function assertContiguousClips(clips: ReadClipResult[]): void {
-  if (clips.length <= 1) return;
+  if (clips.length <= 1) {
+    return;
+  }
 
   const sorted = sortByArrangementStart(clips);
 

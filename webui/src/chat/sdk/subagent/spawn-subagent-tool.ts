@@ -252,7 +252,9 @@ async function resolveWorkerConfig(
 ): Promise<ChatClientConfig> {
   const inherited = buildWorkerConfig(deps.config, session);
 
-  if (!deps.getBriefing) return alwaysWithheldApplied(inherited);
+  if (!deps.getBriefing) {
+    return alwaysWithheldApplied(inherited);
+  }
 
   const narrowed = withheldToolsApplied(inherited);
   const briefing = await deps.getBriefing(narrowed, abortSignal);
@@ -438,7 +440,9 @@ export function isResumeRequest(value: unknown): boolean {
  * @returns The worker index to resume, or undefined when not resuming
  */
 function parseResumeFrom(value: unknown): number | undefined {
-  if (!isResumeRequest(value)) return undefined;
+  if (!isResumeRequest(value)) {
+    return undefined;
+  }
 
   const index = Number(value);
 
@@ -495,7 +499,9 @@ function existingSubagents(deps: SpawnSubagentDeps): number[] {
   const indices: number[] = [];
 
   for (let i = 1; i <= deps.spawnState.nextIndex; i++) {
-    if (deps.getSession?.(i)) indices.push(i);
+    if (deps.getSession?.(i)) {
+      indices.push(i);
+    }
   }
 
   return indices;

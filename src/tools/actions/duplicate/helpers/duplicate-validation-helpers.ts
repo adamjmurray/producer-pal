@@ -211,14 +211,20 @@ export function resolveDestinationTargets(
     return { trackIndex: sourceTrackIndex, takeLane: null };
   };
 
-  if (targets.length === 0) return [ownTrack()];
+  if (targets.length === 0) {
+    return [ownTrack()];
+  }
 
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
   return targets.map((target) => {
-    if (target == null) return null;
+    if (target == null) {
+      return null;
+    }
 
-    if (target.trackIndex == null) return { ...target, ...ownTrack() };
+    if (target.trackIndex == null) {
+      return { ...target, ...ownTrack() };
+    }
 
     return canCopyClipToTrack(sourceClip, target.trackIndex, clipIsMidi)
       ? { ...target, trackIndex: target.trackIndex }

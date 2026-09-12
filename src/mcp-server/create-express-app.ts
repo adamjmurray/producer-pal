@@ -184,7 +184,9 @@ function buildEnrichedCall(
 
       // Only when a header asked: an absent one must leave V8 on its own
       // global rather than pin it to Node's mirror of the device setting.
-      if (compactOutput !== undefined) overrides.compactOutput = compactOutput;
+      if (compactOutput !== undefined) {
+        overrides.compactOutput = compactOutput;
+      }
 
       return overrides;
     }),

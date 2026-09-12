@@ -47,7 +47,9 @@ function getChildAtIndex(
   childType: string,
   index: number,
 ): LiveAPI | null {
-  if (Number.isNaN(index) || index < 0) return null;
+  if (Number.isNaN(index) || index < 0) {
+    return null;
+  }
 
   return parent.getChildAt(childType, index);
 }
@@ -89,7 +91,10 @@ export function navigateRemainingSegments(
         Number.parseInt(seg.slice(isRc ? 2 : 1)),
       );
 
-      if (!c) return { target: null, targetType: "chain" };
+      if (!c) {
+        return { target: null, targetType: "chain" };
+      }
+
       current = c;
       currentType = "chain";
     } else if (seg.startsWith("d")) {
@@ -99,7 +104,10 @@ export function navigateRemainingSegments(
         Number.parseInt(seg.slice(1)),
       );
 
-      if (!c) return { target: null, targetType: "device" };
+      if (!c) {
+        return { target: null, targetType: "device" };
+      }
+
       current = c;
       currentType = "device";
     } else {
@@ -156,7 +164,9 @@ export function drumPadIdsByNote(rack: LiveAPI): Map<number, string> {
 export function findDrumPad(rackPath: string, note: string): LiveAPI | null {
   const rack = LiveAPI.from(rackPath);
 
-  if (!rack.exists()) return null;
+  if (!rack.exists()) {
+    return null;
+  }
 
   const midi = noteNameToMidi(note);
 
@@ -244,12 +254,16 @@ export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
         ? leaf
         : cachedDevicePath(livePathThroughChain);
 
-    if (chain.type !== "DrumChain") return `c${index}`;
+    if (chain.type !== "DrumChain") {
+      return `c${index}`;
+    }
 
     const inNote = chain.getProperty("in_note") as number;
     const noteName = inNote < 0 ? "*" : midiToNoteName(inNote);
 
-    if (noteName == null) return `c${index}`;
+    if (noteName == null) {
+      return `c${index}`;
+    }
 
     const rack = cachedDevicePath(
       livePathThroughChain.replace(CHAINS_TAIL, ""),
@@ -277,7 +291,9 @@ const RACK_RELATIVE_DRUM_CHAIN_WARNING_KEY = "drum-chain-rack-relative-input";
  * @param chain - The object the `cN` segment resolved to
  */
 export function warnRackRelativeDrumChainSpelling(chain: LiveAPI): void {
-  if (chain.type !== "DrumChain") return;
+  if (chain.type !== "DrumChain") {
+    return;
+  }
 
   const chainLiveApiPath = chain.path;
 
@@ -327,15 +343,21 @@ const NESTED_RACK_SEARCH_DEPTH = 4;
  * @returns The nested drum rack, or null if there is none
  */
 export function findNestedDrumRack(device: LiveAPI, depth = 0): LiveAPI | null {
-  if (depth >= NESTED_RACK_SEARCH_DEPTH) return null;
+  if (depth >= NESTED_RACK_SEARCH_DEPTH) {
+    return null;
+  }
 
   for (const chain of device.getChildren("chains")) {
     for (const nested of chain.getChildren("devices")) {
-      if (nested.getProperty("can_have_drum_pads")) return nested;
+      if (nested.getProperty("can_have_drum_pads")) {
+        return nested;
+      }
 
       const deeper = findNestedDrumRack(nested, depth + 1);
 
-      if (deeper != null) return deeper;
+      if (deeper != null) {
+        return deeper;
+      }
     }
   }
 
@@ -357,11 +379,15 @@ export function nestedDrumRackHint(
 ): string {
   const device = LiveAPI.from(liveApiPath);
 
-  if (!device.exists()) return "";
+  if (!device.exists()) {
+    return "";
+  }
 
   const rack = findNestedDrumRack(device);
 
-  if (rack == null) return "";
+  if (rack == null) {
+    return "";
+  }
 
   const suggestion = [`${extractDevicePath(rack.path)}/p${note}`, ...tail].join(
     "/",
@@ -383,18 +409,24 @@ export function resolveDrumPadGroup(
 ): DrumPadGroup | null {
   const rack = LiveAPI.from(liveApiPath);
 
-  if (!rack.exists()) return null;
+  if (!rack.exists()) {
+    return null;
+  }
 
   const inNote = padNoteToInNote(drumPadNote);
 
-  if (inNote == null) return null;
+  if (inNote == null) {
+    return null;
+  }
 
   const chains = chainsForInNote(rack, inNote);
   const pad = findDrumPadByNote(rack, inNote);
 
   // A pad with no chains is a real, empty pad, and resolves so the caller can
   // say why it can't be written. No chains *and* no pad object is nothing.
-  if (chains.length === 0 && pad == null) return null;
+  if (chains.length === 0 && pad == null) {
+    return null;
+  }
 
   return { pad, chains };
 }

@@ -69,7 +69,9 @@ function playbackCall(
 ): { args: Record<string, unknown>; result: Record<string, unknown> } | null {
   const call = getToolCalls(turns, turn).find((c) => c.name === TOOL_PLAYBACK);
 
-  if (call == null) return null;
+  if (call == null) {
+    return null;
+  }
 
   return { args: call.args, result: parsedToolResult(call) ?? {} };
 }
@@ -101,8 +103,9 @@ function assertNavigatedByLocator(
     assert: (turns) => {
       const call = playbackCall(turns, turn);
 
-      if (call == null)
+      if (call == null) {
         throw new Error(`no ${TOOL_PLAYBACK} call in turn ${turn}`);
+      }
 
       // Report the idiom AND the outcome together. A computed position and a
       // wrong result usually have the same cause, and seeing only the first
@@ -131,7 +134,9 @@ function assertNavigatedByLocator(
         );
       }
 
-      if (issues.length > 0) throw new Error(issues.join(" — "));
+      if (issues.length > 0) {
+        throw new Error(issues.join(" — "));
+      }
 
       return true;
     },
@@ -157,8 +162,9 @@ function assertDuplicatedToLocator(turn: number): EvalAssertion {
         (c) => c.name === TOOL_DUPLICATE,
       );
 
-      if (call == null)
+      if (call == null) {
         throw new Error(`no ${TOOL_DUPLICATE} call in turn ${turn}`);
+      }
 
       const named = [
         argText(call.args.toPath),

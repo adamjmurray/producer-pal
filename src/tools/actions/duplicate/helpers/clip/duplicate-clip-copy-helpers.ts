@@ -71,7 +71,9 @@ export async function duplicateOneCopy(
     const resolved = lanes.get(takeLaneLabel(target));
 
     // A rejected source (audio with no sample) warned once during lane resolution.
-    if (resolved == null) return null;
+    if (resolved == null) {
+      return null;
+    }
 
     return recreateCopy(options, resolved.lane, "take-lane");
   }
@@ -81,7 +83,9 @@ export async function duplicateOneCopy(
   // so re-create it here instead. A source with nothing to rebuild from warned
   // once in the caller.
   if (isTakeLaneClip(object)) {
-    if (!options.canPromote) return null;
+    if (!options.canPromote) {
+      return null;
+    }
 
     return recreateCopy(
       options,

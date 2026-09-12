@@ -69,7 +69,9 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   useEffect(() => {
     isLoadingRef.current = isLoading;
 
-    if (isLoading) return;
+    if (isLoading) {
+      return;
+    }
 
     // Everything resolved: release any sends queued during the load. They resume
     // as microtasks after this effect pass, by which point sendRef points at the
@@ -77,7 +79,10 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
     const waiters = waitersRef.current;
 
     waitersRef.current = [];
-    for (const resolve of waiters) resolve();
+
+    for (const resolve of waiters) {
+      resolve();
+    }
   }, [isLoading]);
 
   // On unmount, release any still-parked sends so a caller awaiting the gate
@@ -90,7 +95,10 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
       const waiters = waitersRef.current;
 
       waitersRef.current = [];
-      for (const resolve of waiters) resolve();
+
+      for (const resolve of waiters) {
+        resolve();
+      }
     },
     [],
   );
@@ -102,7 +110,9 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
       // Released by teardown rather than by the load finishing (the user left
       // chat mode mid-park). Sending now would fire an invisible request through
       // the abandoned chat and autosave it into the conversation it left.
-      if (unmountedRef.current) return;
+      if (unmountedRef.current) {
+        return;
+      }
     }
 
     await sendRef.current(message, options);

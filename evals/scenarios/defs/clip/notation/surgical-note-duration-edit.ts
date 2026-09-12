@@ -147,7 +147,9 @@ function assertSurgicalNotRewrite(
         ...calls.map((c) => countPitchTokens(argText(c.args.notes))),
       );
 
-      if (scoped || (maxNotes > 0 && maxNotes < original.length)) return true;
+      if (scoped || (maxNotes > 0 && maxNotes < original.length)) {
+        return true;
+      }
 
       throw new Error(
         `expected a scoped duration transform or a small notes restate, got ` +

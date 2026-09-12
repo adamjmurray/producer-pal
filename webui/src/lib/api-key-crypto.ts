@@ -28,7 +28,9 @@ let keyPromise: Promise<CryptoKey> | null = null;
  * @returns Encrypted envelope, or "" when given ""
  */
 export async function encryptApiKey(plain: string): Promise<string> {
-  if (plain === "") return "";
+  if (plain === "") {
+    return "";
+  }
 
   const key = await getOrCreateKey();
   const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
@@ -56,11 +58,15 @@ export async function encryptApiKey(plain: string): Promise<string> {
  * @returns Cleartext API key, or "" when the envelope can't be decrypted
  */
 export async function decryptApiKey(value: string): Promise<string> {
-  if (!value.startsWith(ENVELOPE_PREFIX)) return value;
+  if (!value.startsWith(ENVELOPE_PREFIX)) {
+    return value;
+  }
 
   const [ivB64, ciphertextB64] = value.slice(ENVELOPE_PREFIX.length).split(":");
 
-  if (ivB64 == null || ciphertextB64 == null) return value;
+  if (ivB64 == null || ciphertextB64 == null) {
+    return value;
+  }
 
   try {
     const key = await getOrCreateKey();
@@ -116,7 +122,9 @@ function getOrCreateKey(): Promise<CryptoKey> {
 async function loadOrGenerateKey(): Promise<CryptoKey> {
   const existing = await readKey();
 
-  if (existing != null) return existing;
+  if (existing != null) {
+    return existing;
+  }
 
   const key = await crypto.subtle.generateKey(
     { name: "AES-GCM", length: 256 },
@@ -183,7 +191,9 @@ function openCryptoDb(): Promise<IDBPDatabase> {
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
 
-  for (const byte of bytes) binary += String.fromCharCode(byte);
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
 
   return btoa(binary);
 }
@@ -198,7 +208,9 @@ function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64);
   const bytes = new Uint8Array(new ArrayBuffer(binary.length));
 
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
 
   return bytes;
 }

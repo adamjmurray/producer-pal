@@ -610,7 +610,9 @@ describe("useChat", () => {
       let initFails = true;
 
       adapter.buildConfig = vi.fn((model: string, thinking: string) => {
-        if (initFails) throw new Error("no connection");
+        if (initFails) {
+          throw new Error("no connection");
+        }
 
         return { model, thinking };
       });

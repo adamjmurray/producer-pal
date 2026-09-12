@@ -95,10 +95,16 @@ function clipsInBarRange(
   return clips.filter((c) => {
     const start = arrangementStartOf(c);
 
-    if (start == null) return false;
+    if (start == null) {
+      return false;
+    }
+
     const barStr = start.split("|")[0];
 
-    if (!barStr) return false;
+    if (!barStr) {
+      return false;
+    }
+
     const bar = parseInt(barStr, 10);
 
     return bar >= minBar && bar <= maxBar;

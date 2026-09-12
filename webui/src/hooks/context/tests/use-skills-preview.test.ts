@@ -40,7 +40,9 @@ function stubFetch(options: StubOptions = {}): ReturnType<typeof vi.fn> {
     const url = String(input);
 
     if (url.startsWith(CONFIG_URL)) {
-      if (config === "throw") return Promise.reject(new Error("config boom"));
+      if (config === "throw") {
+        return Promise.reject(new Error("config boom"));
+      }
 
       return config === "fail"
         ? Promise.resolve(new Response("no", { status: 500 }))
@@ -53,9 +55,13 @@ function stubFetch(options: StubOptions = {}): ReturnType<typeof vi.fn> {
       );
     }
 
-    if (preview === "throw") return Promise.reject("preview boom");
+    if (preview === "throw") {
+      return Promise.reject("preview boom");
+    }
 
-    if (preview === "empty") return Promise.resolve(jsonResponse({}));
+    if (preview === "empty") {
+      return Promise.resolve(jsonResponse({}));
+    }
 
     const params = new URL(url).searchParams;
     const notation = params.get("notation");

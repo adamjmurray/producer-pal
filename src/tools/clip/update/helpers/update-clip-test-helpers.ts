@@ -183,7 +183,9 @@ export function setupArrangementClipPath(
         // position back off the clip to spell its path.
         const copy = clips.get(id);
 
-        if (copy != null) copy.properties.start_time = startTime;
+        if (copy != null) {
+          copy.properties.start_time = startTime;
+        }
 
         return `id ${id}`;
       },
@@ -423,7 +425,9 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
     id: "session-temp",
     set: vi.fn(),
     getProperty: vi.fn().mockImplementation((prop: string) => {
-      if (prop === "end_marker") return fileContentBoundary;
+      if (prop === "end_marker") {
+        return fileContentBoundary;
+      }
 
       return null;
     }),
@@ -480,7 +484,9 @@ export function stubSplitRescan(freshClipId: string): void {
   const origGet = trackMock?.get.getMockImplementation();
 
   trackMock?.get.mockImplementation((prop: string) => {
-    if (prop === "arrangement_clips") return ["id", freshClipId, "id", "0"];
+    if (prop === "arrangement_clips") {
+      return ["id", freshClipId, "id", "0"];
+    }
 
     return origGet ? origGet(prop) : [0];
   });

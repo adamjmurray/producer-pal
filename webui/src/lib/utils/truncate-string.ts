@@ -15,8 +15,14 @@ export function truncateString(
   maxLength: number,
   suffix = "…",
 ): string | null | undefined {
-  if (str == null) return str;
-  if (str.length <= maxLength) return str;
+  if (str == null) {
+    return str;
+  }
+
+  if (str.length <= maxLength) {
+    return str;
+  }
+
   const cutoff = Math.max(0, maxLength - suffix.length);
 
   return str.slice(0, cutoff) + suffix;

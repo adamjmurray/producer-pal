@@ -19,14 +19,21 @@ import {
   putRename,
 } from "#webui/utils/collection-transport";
 import {
+  type DocCollectionEntry,
+  type DocCollectionStatus,
+  clearTimer,
+  mergeEntry,
+  removeEntry,
+} from "./doc-collection-helpers";
+import {
   runGuardedRefresh,
   statusAfterFailedRefresh,
   useCollectionMutator,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
-} from "./use-doc";
+} from "#webui/hooks/context/use-doc";
 
-type TimerRef = { current: ReturnType<typeof setTimeout> | null };
+export { type DocCollectionEntry, type DocCollectionStatus };
 
 /**
  * Read/write one ~/.producer-pal collection (a dynamic set of markdown entries
@@ -40,12 +47,6 @@ type TimerRef = { current: ReturnType<typeof setTimeout> | null };
  * poll from clobbering a concurrent save's echo.
  */
 
-/** Minimum shape a collection entry view must expose (the stable handle). */
-export interface DocCollectionEntry {
-  /** Slug (filename without extension); the stable handle for save/delete. */
-  name: string;
-}
-
 /** What a rename resolved to. */
 export interface RenameOutcome<TView> {
   /** The stored entry, or null if the rename failed. */
@@ -53,12 +54,6 @@ export interface RenameOutcome<TView> {
   /** Why it failed, or null when it succeeded (or the server echoed nothing). */
   error: string | null;
 }
-
-/** Status of a whole doc collection. */
-export type DocCollectionStatus<TView> =
-  | { kind: "loading" }
-  | { kind: "ready"; entries: TView[] }
-  | { kind: "error"; message: string };
 
 export interface UseDocCollectionReturn<TView, TInput> {
   status: DocCollectionStatus<TView>;
@@ -408,7 +403,10 @@ export function useCollectionEntryAutosave(
   // the just-deleted entry from the kept draft. A genuinely-new entry never
   // latches the flag, so it stays false here.
   useLayoutEffect(() => {
-    if (externalKey != null) hadExternalKeyRef.current = true;
+    if (externalKey != null) {
+      hadExternalKeyRef.current = true;
+    }
+
     deletedExternallyRef.current =
       hadExternalKeyRef.current && externalKey == null;
   });
@@ -421,7 +419,9 @@ export function useCollectionEntryAutosave(
     // dropped, and closing the overlay/tab would silently undo the deletion.
     // Re-creating from the kept draft is the explicit Save button's job (see
     // CollectionScreen's deleted-externally banner).
-    if (deletedExternallyRef.current) return;
+    if (deletedExternallyRef.current) {
+      return;
+    }
 
     // A rename in flight owns this draft. Every slug the flush could name is the
     // one the rename is leaving, so a flush here re-creates the entry the rename
@@ -431,13 +431,19 @@ export function useCollectionEntryAutosave(
     // closed meanwhile — by the false it returns, which hands the draft to the
     // caller. (The unmount and tab-close flushes fire without an arming render,
     // so the arming effect's own heldRef check never sees them.)
-    if (heldRef.current) return;
+    if (heldRef.current) {
+      return;
+    }
 
-    if (!canSaveRef.current) return;
+    if (!canSaveRef.current) {
+      return;
+    }
 
     const key = draftKeyRef.current;
 
-    if (key === lastSavedRef.current) return;
+    if (key === lastSavedRef.current) {
+      return;
+    }
 
     // Mark optimistically so overlapping flushes don't double-dispatch; roll
     // the marker back on failure (or adopt the echo on success) so the next
@@ -485,8 +491,13 @@ export function useCollectionEntryAutosave(
     )
       .catch(() => null)
       .then((echoKey) => {
-        if (inFlightRef.current === pending) inFlightRef.current = null;
-        if (!mountedRef.current || lastSavedRef.current !== key) return;
+        if (inFlightRef.current === pending) {
+          inFlightRef.current = null;
+        }
+
+        if (!mountedRef.current || lastSavedRef.current !== key) {
+          return;
+        }
 
         lastSavedRef.current = echoKey ?? previous;
       });
@@ -548,7 +559,9 @@ export function useCollectionEntryAutosave(
   // flushOnLeave (existing entries). A new draft is created explicitly (Create),
   // so its editor prompts a discard confirm on close instead of silently saving.
   useEffect(() => {
-    if (!flushOnLeave) return undefined;
+    if (!flushOnLeave) {
+      return undefined;
+    }
 
     const onBeforeUnload = (): void => flush();
 
@@ -569,7 +582,10 @@ export function useCollectionEntryAutosave(
   useEffect(
     () => () => {
       mountedRef.current = false;
-      if (flushOnLeaveRef.current) flush();
+
+      if (flushOnLeaveRef.current) {
+        flush();
+      }
     },
     [flush],
   );
@@ -607,9 +623,13 @@ export function useCollectionEntryAutosave(
     // puts a flush on the clock that no cleanup will clear, and `persist` still
     // names the slug the rename left. Say so, because the hold also swallowed
     // the unmount flush: the caller owns whatever the draft still holds.
-    if (!mountedRef.current) return false;
+    if (!mountedRef.current) {
+      return false;
+    }
 
-    if (timerRef.current != null) return true;
+    if (timerRef.current != null) {
+      return true;
+    }
 
     if (
       !autosaveOnIdleRef.current ||
@@ -630,60 +650,5 @@ export function useCollectionEntryAutosave(
     adoptExternal,
     settlePendingSave,
     resumePendingSave,
-  };
-}
-
-// --- Helpers below main export ---
-
-/**
- * Clear a setTimeout ref if armed, and null it out.
- * @param ref - The timer ref to clear
- */
-function clearTimer(ref: TimerRef): void {
-  if (ref.current != null) {
-    clearTimeout(ref.current);
-    ref.current = null;
-  }
-}
-
-/**
- * Replace the matching entry in a ready status with the server's echo, or
- * append it when it is new. A non-ready status is returned unchanged (a save
- * can only follow a load).
- * @param prev - The previous collection status
- * @param updated - The server's echo of one entry
- * @returns The status with that entry merged in
- */
-function mergeEntry<TView extends DocCollectionEntry>(
-  prev: DocCollectionStatus<TView>,
-  updated: TView,
-): DocCollectionStatus<TView> {
-  if (prev.kind !== "ready") return prev;
-
-  const exists = prev.entries.some((entry) => entry.name === updated.name);
-  const entries = exists
-    ? prev.entries.map((entry) =>
-        entry.name === updated.name ? updated : entry,
-      )
-    : [...prev.entries, updated];
-
-  return { kind: "ready", entries };
-}
-
-/**
- * Remove the named entry from a ready status.
- * @param prev - The previous collection status
- * @param name - The entry to remove
- * @returns The status without that entry
- */
-function removeEntry<TView extends DocCollectionEntry>(
-  prev: DocCollectionStatus<TView>,
-  name: string,
-): DocCollectionStatus<TView> {
-  if (prev.kind !== "ready") return prev;
-
-  return {
-    kind: "ready",
-    entries: prev.entries.filter((entry) => entry.name !== name),
   };
 }

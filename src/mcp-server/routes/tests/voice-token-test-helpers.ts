@@ -38,8 +38,14 @@ export async function postTokenRequest(
     "Content-Type": "application/json",
   };
 
-  if (opts.key !== null) headers[opts.keyHeader] = opts.key ?? opts.defaultKey;
-  if (opts.origin) headers.Origin = opts.origin;
+  if (opts.key !== null) {
+    headers[opts.keyHeader] = opts.key ?? opts.defaultKey;
+  }
+
+  if (opts.origin) {
+    headers.Origin = opts.origin;
+  }
+
   const body =
     typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body ?? {});
 

@@ -30,12 +30,16 @@ export const PRESETS_STORAGE_KEY = "producer_pal_presets";
 export function loadPresets(): ChatPreset[] {
   const raw = localStorage.getItem(PRESETS_STORAGE_KEY);
 
-  if (raw == null) return [];
+  if (raw == null) {
+    return [];
+  }
 
   try {
     const parsed: unknown = JSON.parse(raw);
 
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
 
     return parsed.filter(isValidPreset);
   } catch {
@@ -109,7 +113,10 @@ export function presetMatchesFields(
  * @returns True when value is a well-formed ChatPreset
  */
 function isValidPreset(value: unknown): value is ChatPreset {
-  if (typeof value !== "object" || value == null) return false;
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+
   const p = value as Record<string, unknown>;
 
   return (

@@ -93,8 +93,13 @@ export function ConversationItem({
                 onEditChange((e.target as HTMLInputElement).value)
               }
               onKeyDown={(e) => {
-                if (e.key === "Enter") onEditCommit();
-                if (e.key === "Escape") onEditCancel();
+                if (e.key === "Enter") {
+                  onEditCommit();
+                }
+
+                if (e.key === "Escape") {
+                  onEditCancel();
+                }
               }}
               onBlur={onEditCommit}
               onClick={(e) => e.stopPropagation()}
@@ -211,7 +216,9 @@ function resolveModelLabel(
 ): string {
   const currentLabel = getModelName(modelId);
 
-  if (currentLabel !== modelId) return currentLabel;
+  if (currentLabel !== modelId) {
+    return currentLabel;
+  }
 
   return storedLabel ?? modelId;
 }

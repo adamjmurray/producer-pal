@@ -71,7 +71,9 @@ export const deviceDrumKit: EvalScenario = {
         );
 
         const oneCallKit = deviceCalls.find((c) => {
-          if (!Array.isArray(c.args.params)) return false;
+          if (!Array.isArray(c.args.params)) {
+            return false;
+          }
 
           const padPads = new Set(
             (c.args.params as Array<{ name?: unknown }>)

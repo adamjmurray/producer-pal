@@ -34,7 +34,9 @@ export function collectToolErrors(
     for (const call of turn.toolCalls) {
       total++;
 
-      if (!toolCallFailed(call)) continue;
+      if (!toolCallFailed(call)) {
+        continue;
+      }
 
       errors.push({
         turnIndex: turn.turnIndex,
@@ -44,7 +46,9 @@ export function collectToolErrors(
     }
   }
 
-  if (total === 0) return undefined;
+  if (total === 0) {
+    return undefined;
+  }
 
   return { count: errors.length, total, errors };
 }

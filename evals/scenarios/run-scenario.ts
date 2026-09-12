@@ -80,10 +80,12 @@ export async function runScenario(
     if (!skipLiveSetOpen) {
       const liveSetPath = resolveLiveSetPath(scenario.liveSet);
 
-      if (!isQuietMode())
+      if (!isQuietMode()) {
         console.log(
           "\n" + styleText("gray", "Opening Live Set: " + liveSetPath),
         );
+      }
+
       await openLiveSetWithRecovery(liveSetPath);
     }
 

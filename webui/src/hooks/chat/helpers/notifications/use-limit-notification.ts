@@ -35,13 +35,19 @@ export function useLimitNotification(): {
   const refusedRef = useRef(false);
 
   const dismiss = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
     refusedRef.current = false;
     setNotification(null);
   }, []);
 
   const showTimed = useCallback((data: TransferNotificationData) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
     refusedRef.current = false;
     setNotification(data);
     timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
@@ -49,7 +55,9 @@ export function useLimitNotification(): {
 
   const show = useCallback(
     (result: EnforceLimitResult) => {
-      if (result.deletedCount === 0 && !result.limitReached) return;
+      if (result.deletedCount === 0 && !result.limitReached) {
+        return;
+      }
 
       const message = result.limitReached
         ? `Conversation limit (${MAX_CONVERSATIONS}) reached — unbookmark or delete conversations to free space`
@@ -73,7 +81,10 @@ export function useLimitNotification(): {
   // an event, so this banner does not auto-dismiss the way a limit warning does.
   // A four-second flash the user blinks past leaves them typing into nothing.
   const showRefused = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
     refusedRef.current = true;
     setNotification({
       message:
@@ -86,7 +97,9 @@ export function useLimitNotification(): {
   // it — otherwise the banner hangs over a new conversation that saves fine.
   // Only retires the refusal: any other banner on screen is left alone.
   const retireRefused = useCallback(() => {
-    if (!refusedRef.current) return;
+    if (!refusedRef.current) {
+      return;
+    }
 
     refusedRef.current = false;
     setNotification(null);
@@ -94,7 +107,9 @@ export function useLimitNotification(): {
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
   }, []);
 

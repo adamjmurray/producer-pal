@@ -53,7 +53,9 @@ export function handleStreamPart(
     msg.reasoning = (msg.reasoning ?? "") + text;
     msg.reasoningParts ??= [];
 
-    if (msg.reasoningParts.length === 0) msg.reasoningParts.push({ text: "" });
+    if (msg.reasoningParts.length === 0) {
+      msg.reasoningParts.push({ text: "" });
+    }
 
     const last = msg.reasoningParts.at(-1) as { text: string };
 
@@ -146,9 +148,13 @@ function captureReasoningSignature(
   const meta = providerMetadata?.anthropic;
   const last = msg.reasoningParts?.at(-1);
 
-  if (!meta || !last) return;
+  if (!meta || !last) {
+    return;
+  }
 
-  if (typeof meta.signature === "string") last.signature = meta.signature;
+  if (typeof meta.signature === "string") {
+    last.signature = meta.signature;
+  }
 
   if (typeof meta.redactedData === "string") {
     last.redactedData = meta.redactedData;
@@ -162,8 +168,13 @@ function captureReasoningSignature(
  * @returns Error message string
  */
 function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
 
   return String(error);
 }

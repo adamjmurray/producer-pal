@@ -61,7 +61,9 @@ function carriedSends(
   sourceRack: LiveAPI,
   destinationRack: LiveAPI,
 ): ChainSend[] {
-  if (sends.length === 0) return [];
+  if (sends.length === 0) {
+    return [];
+  }
 
   if (sourceRack.path === destinationRack.path) {
     return sends.map((send) => ({ return: send.return, gainDb: send.gainDb }));

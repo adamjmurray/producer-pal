@@ -32,7 +32,9 @@ export function copyClipToSlot(
 
   const newClip = destClipSlot.child("clip");
 
-  if (!newClip.exists() || newClip.id === idBefore) return null;
+  if (!newClip.exists() || newClip.id === idBefore) {
+    return null;
+  }
 
   return newClip;
 }
@@ -84,7 +86,9 @@ export function clipCopyBlocker(
  * @returns The clip's id, or null when the slot is empty
  */
 function clipIdInSlot(clipSlot: LiveAPI): string | null {
-  if (!clipSlot.getProperty("has_clip")) return null;
+  if (!clipSlot.getProperty("has_clip")) {
+    return null;
+  }
 
   return clipSlot.child("clip").id;
 }

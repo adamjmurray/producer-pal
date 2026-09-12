@@ -97,7 +97,9 @@ async function findDisplayBoundary(): Promise<[number, number]> {
     const rendered = await labels(raws);
     const at = firstChange(rendered);
 
-    if (at < 0) break;
+    if (at < 0) {
+      break;
+    }
 
     lo = raws[at - 1] as number;
     hi = raws[at] as number;

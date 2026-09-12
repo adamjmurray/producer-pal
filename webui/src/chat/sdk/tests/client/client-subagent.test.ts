@@ -104,7 +104,9 @@ function partsStream(parts: Record<string, unknown>[]): {
   stream: AsyncIterable<Record<string, unknown>>;
 } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
+    for (const p of parts) {
+      yield p;
+    }
   }
 
   return { stream: iterate() };
@@ -223,7 +225,9 @@ describe("ChatSdkClient step budget", () => {
   const steppedStream = (steps: number, finishReason: string) => {
     const parts: Record<string, unknown>[] = [];
 
-    for (let i = 0; i < steps; i++) parts.push({ type: "finish-step" });
+    for (let i = 0; i < steps; i++) {
+      parts.push({ type: "finish-step" });
+    }
 
     parts.push({ type: "finish", finishReason });
 

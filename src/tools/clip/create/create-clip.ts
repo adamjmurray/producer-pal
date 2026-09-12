@@ -311,7 +311,9 @@ function resolveArrangementLocators(
   liveSet: LiveAPI,
   arrangementStart: string | null,
 ): string | null {
-  if (arrangementStart == null) return null;
+  if (arrangementStart == null) {
+    return null;
+  }
 
   return resolveLocatorPositions(liveSet, arrangementStart, {
     paramName: "arrangementStart",

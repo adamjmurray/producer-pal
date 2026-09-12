@@ -38,7 +38,9 @@ import {
 function noteWritingArgs(turns: EvalTurnResult[], turn: number): string {
   const call = lastSuccessfulToolCall(turns, turn, TOOL_UPDATE_CLIP);
 
-  if (!call) throw new Error(`${TOOL_UPDATE_CLIP} not found in turn ${turn}`);
+  if (!call) {
+    throw new Error(`${TOOL_UPDATE_CLIP} not found in turn ${turn}`);
+  }
 
   const text = ["transforms", "notes", "preTransforms"]
     .map((param) => argText(call.args[param]))

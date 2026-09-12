@@ -65,8 +65,12 @@ if (ER) {
     const iL = preLen + sec(t * SIZE);
     const iR = preLen + sec(t * SIZE * 1.08);
 
-    if (iL < N) L[iL] += g;
-    if (iR < N) R[iR] += g;
+    if (iL < N) {
+      L[iL] += g;
+    }
+    if (iR < N) {
+      R[iR] += g;
+    }
   }
 }
 

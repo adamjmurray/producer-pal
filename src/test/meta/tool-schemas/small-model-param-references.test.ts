@@ -191,7 +191,9 @@ function danglingReferences(
     ...Object.keys(hidden),
   ];
 
-  if (removed.length === 0) return [];
+  if (removed.length === 0) {
+    return [];
+  }
 
   const texts: [string, string][] = [
     [
@@ -203,7 +205,9 @@ function danglingReferences(
   for (const [name, schema] of Object.entries(published)) {
     const text = (schema as ZodType).description;
 
-    if (text != null) texts.push([`\`${name}\` description`, searchable(text)]);
+    if (text != null) {
+      texts.push([`\`${name}\` description`, searchable(text)]);
+    }
   }
 
   return removed.flatMap((name) =>

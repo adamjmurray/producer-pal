@@ -69,7 +69,9 @@ function setupTestClient(getServerUrl: () => string): TestState {
   });
 
   afterAll(async () => {
-    if (state.transport) await state.transport.close();
+    if (state.transport) {
+      await state.transport.close();
+    }
   });
 
   return state;

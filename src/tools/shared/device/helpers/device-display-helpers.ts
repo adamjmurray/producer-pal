@@ -50,7 +50,9 @@ function formatParamName(paramApi: LiveAPI): string {
  * @returns True if label is a pan format
  */
 export function isPanLabel(label: string): boolean {
-  if (!label || typeof label !== "string") return false;
+  if (!label || typeof label !== "string") {
+    return false;
+  }
 
   return /^(\d+[LR]|C)$/.test(label);
 }
@@ -156,11 +158,15 @@ function buildPanParamResult(
  * @returns Normalized pan value (-1 to 1)
  */
 export function normalizePan(label: string, maxPanValue: number): number {
-  if (label === "C") return 0;
+  if (label === "C") {
+    return 0;
+  }
 
   const match = label.match(/^(\d+)([LR])$/);
 
-  if (!match) return 0;
+  if (!match) {
+    return 0;
+  }
 
   const num = Number.parseInt(match[1] as string);
   const dir = match[2] as string;
@@ -194,8 +200,13 @@ function addStateFlags(
 ): void {
   const isEnabled = (paramApi.getProperty("is_enabled") as number) > 0;
 
-  if (!isEnabled) result.enabled = false;
-  if (state && state !== "active") result.state = state;
+  if (!isEnabled) {
+    result.enabled = false;
+  }
+
+  if (state && state !== "active") {
+    result.state = state;
+  }
 
   if (automationState && automationState !== "none") {
     result.automation = automationState;
@@ -310,8 +321,14 @@ export function readParameter(
     max: range?.maxValue ?? maxParsed.value ?? rawMax,
   };
 
-  if (reportedUnit) result.unit = reportedUnit;
-  if (sentinel) result.alsoAccepts = sentinel.label;
+  if (reportedUnit) {
+    result.unit = reportedUnit;
+  }
+
+  if (sentinel) {
+    result.alsoAccepts = sentinel.label;
+  }
+
   addStateFlags(result, paramApi, state, automationState);
 
   return result;

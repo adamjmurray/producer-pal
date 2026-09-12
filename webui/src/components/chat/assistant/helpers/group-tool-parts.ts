@@ -35,7 +35,9 @@ const MIN_GROUP_SIZE = 3;
  * @returns True when the part can join a tool-call group
  */
 function isGroupablePart(part: UIPart): part is UIToolPart | UIStepUsagePart {
-  if (part.type === "step-usage") return true;
+  if (part.type === "step-usage") {
+    return true;
+  }
 
   return part.type === "tool" && part.name !== SPAWN_SUBAGENT_TOOL_NAME;
 }
@@ -61,7 +63,9 @@ export function groupToolParts(parts: UIPart[]): RenderItem[] {
       run.parts.push(part);
       run.indices.push(i);
 
-      if (part.type === "tool") toolCount++;
+      if (part.type === "tool") {
+        toolCount++;
+      }
     } else {
       // Subagent calls (and non-tool parts) break the run and render on their
       // own — a subagent renders as its specialized card, never folded into a
@@ -91,7 +95,9 @@ function flushRun(
   run: { parts: (UIToolPart | UIStepUsagePart)[]; indices: number[] },
   toolCount: number,
 ): void {
-  if (run.parts.length === 0) return;
+  if (run.parts.length === 0) {
+    return;
+  }
 
   if (toolCount >= MIN_GROUP_SIZE) {
     result.push({ kind: "tool-group", parts: run.parts, indices: run.indices });

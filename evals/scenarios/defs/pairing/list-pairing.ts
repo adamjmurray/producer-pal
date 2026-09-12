@@ -27,6 +27,7 @@
  */
 
 import { argText } from "../arg-text.ts";
+import { colorReads } from "../color-reads.ts";
 import { clipStarts, asArrangementTrack } from "../arrangement-helpers.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { listEntries } from "../path/path-scenario-helpers.ts";
@@ -53,30 +54,6 @@ const WRITE_TOOLS = new Set([
 ]);
 
 /**
- * Whether a "#RRGGBB" reads as red or as blue. Live's palette holds several of
- * each, so an exact value would grade the swatch the model happened to pick.
- * @param color - The color, as "#RRGGBB"
- * @param hue - Which channel has to dominate
- * @returns True when that channel dominates and is bright enough
- */
-function reads(color: unknown, hue: "red" | "blue"): boolean {
-  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(
-    argText(color),
-  );
-
-  if (!match) return false;
-
-  const [r, g, b] = match.slice(1).map((hex) => Number.parseInt(hex, 16)) as [
-    number,
-    number,
-    number,
-  ];
-  const [lead, other] = hue === "red" ? [r, b] : [b, r];
-
-  return lead >= 0x80 && lead > g * 1.5 && lead > other * 1.5;
-}
-
-/**
  * No write call named fewer list entries than the positions it wrote to.
  *
  * This is the probe. `shorter` is read off the args the model actually sent, so
@@ -95,7 +72,9 @@ function assertNoShortList(
     description: `every ${param} names one value per position (no cycling)`,
     assert: (turns: EvalTurnResult[]) => {
       for (const { name, args } of getToolCalls(turns)) {
-        if (!WRITE_TOOLS.has(name)) continue;
+        if (!WRITE_TOOLS.has(name)) {
+          continue;
+        }
 
         const values = listEntries(args[param]);
         const positions = listEntries(args[countedAgainst]);
@@ -130,7 +109,7 @@ function assertAlternatingColors(): EvalAssertion {
       return (
         clips?.length === 6 &&
         clips.every((clip, i) =>
-          reads(clip.color, i % 2 === 0 ? "red" : "blue"),
+          colorReads(clip.color, i % 2 === 0 ? "red" : "blue"),
         )
       );
     },

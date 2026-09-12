@@ -405,9 +405,17 @@ export function processDrumPads(
     const aNote = a.note as number;
     const bNote = b.note as number;
 
-    if (aNote === -1 && bNote === -1) return 0;
-    if (aNote === -1) return 1; // catch-all at end
-    if (bNote === -1) return -1;
+    if (aNote === -1 && bNote === -1) {
+      return 0;
+    }
+
+    if (aNote === -1) {
+      return 1;
+    } // catch-all at end
+
+    if (bNote === -1) {
+      return -1;
+    }
 
     return aNote - bNote;
   });

@@ -44,8 +44,13 @@ describe("processDeviceChains", () => {
     id: `chain-${name}`,
     type: "Chain",
     getProperty: (prop: string) => {
-      if (prop === "name") return name;
-      if (prop === "solo") return solo;
+      if (prop === "name") {
+        return name;
+      }
+
+      if (prop === "solo") {
+        return solo;
+      }
 
       return 0;
     },
@@ -63,10 +68,21 @@ describe("processDeviceChains", () => {
     id: `chain-${name}`,
     type: "Chain",
     getProperty: (prop: string) => {
-      if (prop === "name") return name;
-      if (prop === "mute") return 0;
-      if (prop === "solo") return 0;
-      if (prop === "muted_via_solo") return 0;
+      if (prop === "name") {
+        return name;
+      }
+
+      if (prop === "mute") {
+        return 0;
+      }
+
+      if (prop === "solo") {
+        return 0;
+      }
+
+      if (prop === "muted_via_solo") {
+        return 0;
+      }
 
       return 0;
     },
@@ -74,7 +90,9 @@ describe("processDeviceChains", () => {
     getColor: () => null,
     child: () => noMixer,
     getChildren: (child: string) => {
-      if (child === "devices") return overrides.devices ?? [];
+      if (child === "devices") {
+        return overrides.devices ?? [];
+      }
 
       return [];
     },
@@ -88,14 +106,24 @@ describe("processDeviceChains", () => {
     returnChains: unknown[] = [],
   ) => ({
     getChildren: (child: string) => {
-      if (child === "chains") return chains;
-      if (child === "return_chains") return returnChains;
+      if (child === "chains") {
+        return chains;
+      }
+
+      if (child === "return_chains") {
+        return returnChains;
+      }
 
       return [];
     },
     getChildCount: (child: string) => {
-      if (child === "chains") return chains.length;
-      if (child === "return_chains") return returnChains.length;
+      if (child === "chains") {
+        return chains.length;
+      }
+
+      if (child === "return_chains") {
+        return returnChains.length;
+      }
 
       return 0;
     },
@@ -202,7 +230,9 @@ describe("processDeviceChains", () => {
       id: `return-chain-${name}`,
       type: "Chain",
       getProperty: (prop: string) => {
-        if (prop === "name") return name;
+        if (prop === "name") {
+          return name;
+        }
 
         return 0;
       },
@@ -210,7 +240,9 @@ describe("processDeviceChains", () => {
       getColor: () => null,
       child: () => noMixer,
       getChildren: (child: string) => {
-        if (child === "devices") return [mockNestedDevice];
+        if (child === "devices") {
+          return [mockNestedDevice];
+        }
 
         return [];
       },
@@ -264,7 +296,9 @@ describe("processDeviceChains", () => {
       id: "chain-A",
       type: "Chain",
       getProperty: (prop: string) => {
-        if (prop === "name") return "Chain A";
+        if (prop === "name") {
+          return "Chain A";
+        }
 
         return 0;
       },
@@ -272,7 +306,9 @@ describe("processDeviceChains", () => {
       getColor: () => null,
       child: () => noMixer,
       getChildren: (child: string) => {
-        if (child === "devices") return [mockDevice1, mockDevice2];
+        if (child === "devices") {
+          return [mockDevice1, mockDevice2];
+        }
 
         return [];
       },

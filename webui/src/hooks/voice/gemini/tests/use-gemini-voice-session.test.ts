@@ -67,7 +67,10 @@ const h = vi.hoisted(() => {
     stop = vi.fn(async () => {});
     start = vi.fn(async (opts: { onChunk: (data: string) => void }) => {
       state.onChunk = opts.onChunk;
-      if (state.micStartGate) await state.micStartGate;
+
+      if (state.micStartGate) {
+        await state.micStartGate;
+      }
 
       return { sampleRate: 16000 };
     });
@@ -81,7 +84,9 @@ const h = vi.hoisted(() => {
     static last: FakePlayer | null = null;
     setVolume = vi.fn();
     resume = vi.fn(async () => {
-      if (state.playerResumeGate) await state.playerResumeGate;
+      if (state.playerResumeGate) {
+        await state.playerResumeGate;
+      }
     });
 
     flush = vi.fn();
@@ -166,7 +171,7 @@ vi.mock(import("#webui/hooks/voice/gemini/gemini-voice-token"), () => ({
   fetchGeminiToken: h.fetchGeminiToken as never,
 }));
 
-import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import {
   useGeminiVoiceSession,
   type UseGeminiVoiceSessionParams,

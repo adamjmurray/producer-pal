@@ -16,13 +16,19 @@ import {
  * @returns Status label, or null for a running call or a real result
  */
 export function haltedToolStatus(result: string | null): string | null {
-  if (result == null) return null;
+  if (result == null) {
+    return null;
+  }
 
   const text = unwrapToolResultText(result);
 
-  if (text === CANCELED_TOOL_RESULT_TEXT) return "stopped";
+  if (text === CANCELED_TOOL_RESULT_TEXT) {
+    return "stopped";
+  }
 
-  if (text === FAILED_TOOL_RESULT_TEXT) return "interrupted";
+  if (text === FAILED_TOOL_RESULT_TEXT) {
+    return "interrupted";
+  }
 
   return null;
 }

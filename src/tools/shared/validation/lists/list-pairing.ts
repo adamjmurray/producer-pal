@@ -57,7 +57,9 @@ export function splitList(
 
   // One trailing comma isn't an entry, the way most languages read a list
   // literal. Without this, "A,B," over three items clears the third name.
-  if (entries.at(-1) === "") entries.pop();
+  if (entries.at(-1) === "") {
+    entries.pop();
+  }
 
   // A gap has two readings — a stray comma, or a value that went missing — and
   // nothing in the call says which. Clearing one item's value inside a list was
@@ -85,7 +87,9 @@ export function valueForIndex(
   index: number,
   parsed: ListEntries | null,
 ): string | undefined {
-  if (value == null) return undefined;
+  if (value == null) {
+    return undefined;
+  }
 
   // A list too short for the items is refused up front, so past the last entry
   // only happens where nothing checked — and there the item keeps what it had.
@@ -152,7 +156,9 @@ export function warnPairingMismatch(
   count: number,
   labels: PairLabels,
 ): void {
-  if (provided === count || provided === 0) return;
+  if (provided === count || provided === 0) {
+    return;
+  }
 
   const { param, noun, item, shortfall } = labels;
   const head = `${param}: ${plural(provided, noun)} for ${plural(count, item)}`;

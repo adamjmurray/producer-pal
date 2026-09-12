@@ -83,7 +83,9 @@ export async function fetchSubagentBriefing(
       },
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
 
     const body: unknown = await response.json();
     const briefing = (body as { briefing?: unknown }).briefing;
@@ -139,7 +141,9 @@ function withoutTools(
 ): ChatClientConfig {
   const enabledTools = { ...config.enabledTools };
 
-  for (const tool of tools) enabledTools[tool] = false;
+  for (const tool of tools) {
+    enabledTools[tool] = false;
+  }
 
   return { ...config, enabledTools };
 }

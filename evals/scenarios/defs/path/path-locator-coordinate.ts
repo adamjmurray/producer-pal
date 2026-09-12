@@ -80,7 +80,9 @@ function assertLocatorCoordinate(options: {
     assert: (turns) => {
       const call = getToolCalls(turns, turn).find((c) => c.name === tool);
 
-      if (call == null) throw new Error(`no ${tool} call in turn ${turn}`);
+      if (call == null) {
+        throw new Error(`no ${tool} call in turn ${turn}`);
+      }
 
       const path = argText(call.args[param]);
 

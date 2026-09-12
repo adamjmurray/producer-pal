@@ -65,7 +65,9 @@ function kick({
 
     let s = Math.sin(ph) * env(i, N, ampK);
 
-    if (i < clickLen) s += click * (1 - i / clickLen) * noise();
+    if (i < clickLen) {
+      s += click * (1 - i / clickLen) * noise();
+    }
 
     out[i] = s;
   }
@@ -111,8 +113,9 @@ function hat({ len = 0.05, ampK = 22, hpCoef = 0.9, metallic = true } = {}) {
     if (metallic) {
       let m = 0;
 
-      for (const f of partials)
+      for (const f of partials) {
         m += Math.sign(Math.sin((2 * Math.PI * f * i) / SR));
+      }
 
       s = hp(s * 0.6 + (m / partials.length) * 0.4);
     }
@@ -135,7 +138,9 @@ function clap({ len = 0.2, bursts = [0, 0.01, 0.02, 0.03] } = {}) {
     for (const b of bursts) {
       const bi = i - sec(b);
 
-      if (bi >= 0) s += hp(noise()) * Math.exp((-40 * bi) / SR);
+      if (bi >= 0) {
+        s += hp(noise()) * Math.exp((-40 * bi) / SR);
+      }
     }
 
     out[i] = s + hp(noise()) * env(i, N, 7) * 0.35;

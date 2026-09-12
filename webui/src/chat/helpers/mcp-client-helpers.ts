@@ -130,7 +130,9 @@ export function filterEnabledTools(
   tools: McpToolDefinition[],
   enabledTools?: Record<string, boolean>,
 ): McpToolDefinition[] {
-  if (!enabledTools) return tools;
+  if (!enabledTools) {
+    return tools;
+  }
 
   return tools.filter((tool) => enabledTools[tool.name] !== false);
 }

@@ -78,7 +78,9 @@ export function useHasUnsavedChanges(
     }
   }, [settingsOpen, settings, appearance, snapshot]);
 
-  if (!settingsOpen || snapshot === "") return false;
+  if (!settingsOpen || snapshot === "") {
+    return false;
+  }
 
   return (
     serialize(settings, appearance) !== snapshot ||

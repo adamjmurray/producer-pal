@@ -334,7 +334,9 @@ export function setupMultiAudioArrangementClipMocks(
       create_audio_clip: (_sampleFile, start) => {
         const props = clipProps[clipCounter];
 
-        if (props != null) props.start_time = start;
+        if (props != null) {
+          props.start_time = start;
+        }
 
         return ["id", `arrangement_audio_clip_${clipCounter++}`];
       },

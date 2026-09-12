@@ -28,7 +28,9 @@ export function findMergeBatches(groups: TimeGroup[]): MergeBatch[] {
   const merged = new Set<number>();
 
   for (let i = 0; i < groups.length; i++) {
-    if (merged.has(i)) continue;
+    if (merged.has(i)) {
+      continue;
+    }
 
     const current = groups[i] as TimeGroup;
     const batch: MergeBatch = { groups: [current] };
@@ -37,12 +39,16 @@ export function findMergeBatches(groups: TimeGroup[]): MergeBatch[] {
 
     // Look ahead for matching groups in the same bar
     for (let j = i + 1; j < groups.length; j++) {
-      if (merged.has(j)) continue;
+      if (merged.has(j)) {
+        continue;
+      }
 
       const candidate = groups[j] as TimeGroup;
 
       // Stop looking once we're past this bar
-      if (candidate.bar !== current.bar) break;
+      if (candidate.bar !== current.bar) {
+        break;
+      }
 
       if (groupsMatch(current, candidate)) {
         batch.groups.push(candidate);
@@ -63,13 +69,17 @@ export function findMergeBatches(groups: TimeGroup[]): MergeBatch[] {
  * @returns True if groups can be merged
  */
 function groupsMatch(a: TimeGroup, b: TimeGroup): boolean {
-  if (a.notes.length !== b.notes.length) return false;
+  if (a.notes.length !== b.notes.length) {
+    return false;
+  }
 
   for (let i = 0; i < a.notes.length; i++) {
     const noteA = a.notes[i] as NoteEvent;
     const noteB = b.notes[i] as NoteEvent;
 
-    if (!notesMatch(noteA, noteB)) return false;
+    if (!notesMatch(noteA, noteB)) {
+      return false;
+    }
   }
 
   return true;

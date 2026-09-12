@@ -41,12 +41,16 @@ export function markOverwrittenCopies(createdObjects: object[]): void {
 
   // A lone copy has nothing in the call that could have buried it — which is
   // most calls, and they skip the read-back entirely.
-  if (slots.length < 2) return;
+  if (slots.length < 2) {
+    return;
+  }
 
   for (const slot of slots) {
     const { path } = slot.entry;
 
-    if (path == null || stillAt(slot.entry.id, path)) continue;
+    if (path == null || stillAt(slot.entry.id, path)) {
+      continue;
+    }
 
     const marker: OverwrittenClipInfo = { path, overwritten: true };
 
@@ -97,7 +101,9 @@ function clipSlots(createdObjects: object[]): ClipSlot[] {
     if ("clips" in entry) {
       const { clips } = entry as { clips: object[] };
 
-      for (let i = 0; i < clips.length; i++) addSlot(slots, clips, i);
+      for (let i = 0; i < clips.length; i++) {
+        addSlot(slots, clips, i);
+      }
 
       continue;
     }

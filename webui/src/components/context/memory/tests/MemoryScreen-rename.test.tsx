@@ -100,7 +100,10 @@ function fakeServer(): {
       land: () => {
         // A rename writes the new slug and drops the old one; a save is an
         // upsert, which is exactly why a stale one re-creates a moved entry.
-        if (isRename) store.delete(slug);
+        if (isRename) {
+          store.delete(slug);
+        }
+
         store.set(target, entry);
         response.resolve(jsonResponse({ entry }));
       },

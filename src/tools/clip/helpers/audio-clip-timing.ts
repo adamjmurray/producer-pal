@@ -187,7 +187,9 @@ export function audioClipSampleSeconds(clip: LiveAPI): number {
   const sampleLength = clip.getProperty("sample_length") as number;
   const sampleRate = clip.getProperty("sample_rate") as number;
 
-  if (!sampleRate || sampleRate <= 0) return 0;
+  if (!sampleRate || sampleRate <= 0) {
+    return 0;
+  }
 
   return sampleLength / sampleRate;
 }

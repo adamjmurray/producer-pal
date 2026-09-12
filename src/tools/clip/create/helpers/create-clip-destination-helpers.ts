@@ -195,7 +195,9 @@ function applyTakeLaneAlias(
   takeLane: number | string | null | undefined,
   clipSlotCount: number,
 ): ArrangementTrackTarget[] {
-  if (!isTakeLaneRequested(takeLane)) return tracks;
+  if (!isTakeLaneRequested(takeLane)) {
+    return tracks;
+  }
 
   // Warn-and-ignore without validating the value: an LLM passing garbage on a
   // request with nowhere to put a lane shouldn't lose the whole call to it.
@@ -313,7 +315,9 @@ function pairTracksWithStarts(
     }));
   }
 
-  if (arrangementStarts.length === 0) noPosition(tracks[0] as ArrangementTrack);
+  if (arrangementStarts.length === 0) {
+    noPosition(tracks[0] as ArrangementTrack);
+  }
 
   const count = Math.max(tracks.length, arrangementStarts.length);
   const pairedTracks = pairValues(tracks, count, {
@@ -332,7 +336,9 @@ function pairTracksWithStarts(
   return pairedTracks.flatMap((entry, i) => {
     const arrangementStart = pairedStarts[i];
 
-    if (entry == null || arrangementStart == null) return [];
+    if (entry == null || arrangementStart == null) {
+      return [];
+    }
 
     const { position: _position, ...track } = entry;
 

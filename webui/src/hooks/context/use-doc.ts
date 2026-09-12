@@ -107,7 +107,9 @@ export function useDoc(
       try {
         const stored = await write(content);
 
-        if (discardSave()) return true;
+        if (discardSave()) {
+          return true;
+        }
 
         setStatus({ kind: "ready", content: stored.content });
         setDrift(stored.drift);
@@ -115,7 +117,9 @@ export function useDoc(
 
         return true;
       } catch (error: unknown) {
-        if (discardSave()) return false;
+        if (discardSave()) {
+          return false;
+        }
 
         setSaveError(errorMessage(error));
         setSaveStatus("error");
@@ -250,7 +254,9 @@ export function useWriteOrdering(): WriteOrdering {
   const claim = useCallback((...names: string[]): (() => boolean) => {
     const sequence = ++sequenceRef.current;
 
-    for (const name of names) latestRef.current.set(name, sequence);
+    for (const name of names) {
+      latestRef.current.set(name, sequence);
+    }
 
     return (): boolean =>
       names.some((name) => latestRef.current.get(name) !== sequence);
@@ -332,8 +338,13 @@ export function useCollectionMutator(): CollectionMutator {
       try {
         const result = await op();
 
-        if (isUnmounted()) return result;
-        if (!superseded()) commit(result);
+        if (isUnmounted()) {
+          return result;
+        }
+
+        if (!superseded()) {
+          commit(result);
+        }
 
         // A superseded write is discarded, so it must not paint "Saved" either:
         // the newer write for this entry is still on the wire, and the indicator
@@ -345,7 +356,9 @@ export function useCollectionMutator(): CollectionMutator {
 
         return result;
       } catch (error: unknown) {
-        if (isUnmounted()) return null;
+        if (isUnmounted()) {
+          return null;
+        }
 
         // Same superseded check as the success path, for the same reason: a
         // newer write for this entry owns the file, so a stale failure must not
@@ -396,11 +409,15 @@ export async function runGuardedRefresh<T>(
   try {
     const data = await load();
 
-    if (discardRefresh()) return;
+    if (discardRefresh()) {
+      return;
+    }
 
     onReady(data);
   } catch (error: unknown) {
-    if (discardRefresh()) return;
+    if (discardRefresh()) {
+      return;
+    }
 
     onError(errorMessage(error));
   }
@@ -444,7 +461,9 @@ export function useRefreshOnFocusAndPoll(
     void refresh();
     window.addEventListener("focus", handleFocus);
     const id = setInterval(() => {
-      if (document.hasFocus()) void refresh();
+      if (document.hasFocus()) {
+        void refresh();
+      }
     }, POLL_INTERVAL_MS);
 
     return () => {

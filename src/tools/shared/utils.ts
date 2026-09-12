@@ -58,9 +58,13 @@ const COERCED_NULLISH = new Set(["null", "undefined"]);
  * @returns True when the value names something
  */
 export function paramNamesSomething(value: unknown): boolean {
-  if (value == null) return false;
+  if (value == null) {
+    return false;
+  }
 
-  if (typeof value !== "string") return true;
+  if (typeof value !== "string") {
+    return true;
+  }
 
   return value.trim() !== "" && !isCoercedNullish(value);
 }
@@ -90,9 +94,13 @@ export function namedParam(
 ): string | undefined {
   const trimmed = value?.trim();
 
-  if (trimmed == null || trimmed === "") return undefined;
+  if (trimmed == null || trimmed === "") {
+    return undefined;
+  }
 
-  if (!isCoercedNullish(trimmed)) return trimmed;
+  if (!isCoercedNullish(trimmed)) {
+    return trimmed;
+  }
 
   console.warn(`${label} "${trimmed}" names nothing`);
 
@@ -149,7 +157,9 @@ function namedAliasedParam(
   const named = namedParam(value, canonical);
   const namedAlias = namedParam(alias, aliasLabel);
 
-  if (named == null) return namedAlias;
+  if (named == null) {
+    return namedAlias;
+  }
 
   if (namedAlias != null && namedAlias !== named) {
     console.warn(
@@ -166,7 +176,9 @@ function namedAliasedParam(
  * @returns Array of trimmed ID strings
  */
 export function parseCommaSeparatedIds(ids?: string | null): string[] {
-  if (ids == null) return [];
+  if (ids == null) {
+    return [];
+  }
 
   return ids
     .split(",")
@@ -215,11 +227,15 @@ export function entriesFrom(
 ): string[] {
   // A blank value is an unsent param (ADR-0029), not a list that names nothing.
   // A lone comma is something the caller typed, and that is the error below.
-  if (raw == null || raw.trim() === "") return [];
+  if (raw == null || raw.trim() === "") {
+    return [];
+  }
 
   const entries = split(raw).map((entry) => entry.trim());
 
-  if (entries.at(-1) === "") entries.pop();
+  if (entries.at(-1) === "") {
+    entries.pop();
+  }
 
   if (entries.every((entry) => entry === "")) {
     throw new Error(`invalid ${label} "${raw}" - it names nothing`);
@@ -344,7 +360,9 @@ export function stripFields(
   items: unknown[] | undefined,
   ...fields: string[]
 ): void {
-  if (!items) return;
+  if (!items) {
+    return;
+  }
 
   for (const item of items) {
     for (const field of fields) {
@@ -462,7 +480,9 @@ export function validateTempo(
   tempo: number | null | undefined,
   disableValue?: number,
 ): void {
-  if (tempo == null || tempo === disableValue) return;
+  if (tempo == null || tempo === disableValue) {
+    return;
+  }
 
   if (tempo < MIN_TEMPO || tempo > MAX_TEMPO) {
     const disableHint =

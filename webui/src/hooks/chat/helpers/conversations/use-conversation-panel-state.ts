@@ -56,11 +56,17 @@ export function useConversationPanelState(
         setViewState({ historyPanelOpen: !viewState.historyPanelOpen }),
       onSelect: (id: string) => {
         handlers.handleSelect(id);
-        if (isMobile()) setViewState({ historyPanelOpen: false });
+
+        if (isMobile()) {
+          setViewState({ historyPanelOpen: false });
+        }
       },
       onNew: () => {
         handlers.handleNew();
-        if (isMobile()) setViewState({ historyPanelOpen: false });
+
+        if (isMobile()) {
+          setViewState({ historyPanelOpen: false });
+        }
       },
       onDelete: handlers.handleDelete,
       onExportItem: transfer.handleExportOne,

@@ -43,7 +43,10 @@ export function RateLimitRetry({
       const next = Math.max(0, until - Date.now());
 
       setRemainingMs(next);
-      if (next === 0) clearInterval(id);
+
+      if (next === 0) {
+        clearInterval(id);
+      }
     }, 250);
 
     return () => clearInterval(id);

@@ -129,7 +129,9 @@ async function duplicateClipToArrangementPositions(
 
   // Only reachable once every named destination was skipped: an omitted toPath
   // resolves to the source's own track. Nowhere left to copy to.
-  if (requested.every((target) => target == null)) return [];
+  if (requested.every((target) => target == null)) {
+    return [];
+  }
 
   const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
     resolveSongPositions(arrangementStart, destinations.arrangementPositions);
@@ -351,7 +353,9 @@ function applyTakeLaneAlias(
   targets: (ArrangementTrack | null)[],
   takeLane: number | string | undefined,
 ): (ArrangementTrack | null)[] {
-  if (!isTakeLaneRequested(takeLane)) return targets;
+  if (!isTakeLaneRequested(takeLane)) {
+    return targets;
+  }
 
   // A destination this call can't use is null and names no lane, so it can't
   // block the alias for the ones around it.

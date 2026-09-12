@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { TOOL_GROUPS as SERVER_TOOL_GROUPS } from "#src/shared/tool-groups";
+import {
+  CONNECT_TOOL_ID,
+  LIVE_API_TOOL_ID,
+  TOOL_GROUPS as SERVER_TOOL_GROUPS,
+} from "#src/shared/tool-groups";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 
@@ -65,4 +69,38 @@ export function groupTools(tools: McpTool[]): GroupedTools[] {
   }
 
   return groups;
+}
+
+/**
+ * The map behind the bulk Enable/Disable buttons. Live API is left out — it
+ * binds to the device flag, not this map (the caller handles it).
+ * @param tools - Available MCP tools
+ * @param enableAll - True for the default toolset, false to disable all
+ * @returns The enabled-tools map to store
+ */
+export function bulkToolSelection(
+  tools: McpTool[],
+  enableAll: boolean,
+): Record<string, boolean> {
+  const selection: Record<string, boolean> = {};
+
+  for (const tool of tools) {
+    if (tool.id === LIVE_API_TOOL_ID) {
+      continue;
+    }
+
+    selection[tool.id] = enableAll || isAlwaysEnabled(tool.id);
+  }
+
+  return selection;
+}
+
+/**
+ * ppal-connect is mandatory — every session needs it, so its checkbox is
+ * always checked and always disabled.
+ * @param toolId - MCP tool identifier
+ * @returns True when the tool cannot be turned off
+ */
+export function isAlwaysEnabled(toolId: string): boolean {
+  return toolId === CONNECT_TOOL_ID;
 }

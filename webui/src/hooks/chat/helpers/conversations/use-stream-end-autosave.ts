@@ -59,13 +59,17 @@ export function useStreamEndAutosave(
 
     // Nothing was streaming, or what was streaming has since been torn down —
     // and the teardown already saved it.
-    if (streamGen == null || streamGen !== teardownGenRef.current) return;
+    if (streamGen == null || streamGen !== teardownGenRef.current) {
+      return;
+    }
 
     autoSaveRef.current?.();
   }, [isAssistantResponding, autoSaveRef]);
 
   return useCallback(() => {
-    if (streamGenRef.current != null) autoSaveRef.current?.();
+    if (streamGenRef.current != null) {
+      autoSaveRef.current?.();
+    }
 
     teardownGenRef.current++;
     clearConversation();

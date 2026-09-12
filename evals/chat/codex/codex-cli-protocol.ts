@@ -126,10 +126,15 @@ export function parseCodexStream(stdout: string): ParsedAgentTurn {
  * @returns Steps this event spent
  */
 export function countCodexSteps(event: Record<string, unknown>): number {
-  if (event.type !== "item.completed") return 0;
+  if (event.type !== "item.completed") {
+    return 0;
+  }
+
   const item = event.item;
 
-  if (item == null || typeof item !== "object") return 0;
+  if (item == null || typeof item !== "object") {
+    return 0;
+  }
 
   return (item as Record<string, unknown>).type === "mcp_tool_call" ? 1 : 0;
 }
@@ -195,7 +200,10 @@ function handleEvent(
  * @param state - Mutable turn accumulator
  */
 function handleItem(itemValue: unknown, state: AgentStreamState): void {
-  if (itemValue == null || typeof itemValue !== "object") return;
+  if (itemValue == null || typeof itemValue !== "object") {
+    return;
+  }
+
   const item = itemValue as Record<string, unknown>;
 
   if (item.type === "agent_message" && typeof item.text === "string") {
@@ -216,12 +224,17 @@ function collectMcpCall(
 ): void {
   const key = callKey(item);
 
-  if (key == null) return;
+  if (key == null) {
+    return;
+  }
 
   let call = state.openCalls.get(key);
 
   if (call == null) {
-    if (typeof item.tool !== "string") return;
+    if (typeof item.tool !== "string") {
+      return;
+    }
+
     call = { name: item.tool, args: toToolArguments(item.arguments) };
     state.toolCalls.push(call);
     state.openCalls.set(key, call);
@@ -230,10 +243,14 @@ function collectMcpCall(
     // completion — so let a non-empty payload replace what landed first.
     const args = toToolArguments(item.arguments);
 
-    if (Object.keys(args).length > 0) call.args = args;
+    if (Object.keys(args).length > 0) {
+      call.args = args;
+    }
   }
 
-  if (item.result != null) recordToolResult(call, item.result);
+  if (item.result != null) {
+    recordToolResult(call, item.result);
+  }
 
   // Only stamp true — a status Codex never reports as failed says nothing about
   // success, so leave `isError` unset there and let grading fall back.
@@ -246,7 +263,9 @@ function collectMcpCall(
 
   // Stop tracking once the call is done, so a later call to the same tool
   // starts a fresh entry instead of merging into this one.
-  if (isFinishedCall(item)) state.openCalls.delete(key);
+  if (isFinishedCall(item)) {
+    state.openCalls.delete(key);
+  }
 }
 
 /**
@@ -257,8 +276,13 @@ function collectMcpCall(
  * @returns Dedup key, or undefined when the item identifies neither
  */
 function callKey(item: Record<string, unknown>): string | undefined {
-  if (typeof item.id === "string") return `id:${item.id}`;
-  if (typeof item.tool === "string") return `tool:${item.tool}`;
+  if (typeof item.id === "string") {
+    return `id:${item.id}`;
+  }
+
+  if (typeof item.tool === "string") {
+    return `tool:${item.tool}`;
+  }
 
   return undefined;
 }
@@ -282,7 +306,10 @@ function isFinishedCall(item: Record<string, unknown>): boolean {
  * @returns Shared token usage or undefined
  */
 function mapCodexUsage(value: unknown): TokenUsage | undefined {
-  if (value == null || typeof value !== "object") return undefined;
+  if (value == null || typeof value !== "object") {
+    return undefined;
+  }
+
   const usage = value as Record<string, unknown>;
   const inputTokens = tokenCount(usage.input_tokens);
   const outputTokens = tokenCount(usage.output_tokens);
@@ -293,8 +320,13 @@ function mapCodexUsage(value: unknown): TokenUsage | undefined {
   const cached = tokenCount(usage.cached_input_tokens);
   const reasoning = tokenCount(usage.reasoning_output_tokens);
 
-  if (cached > 0) result.cacheReadTokens = cached;
-  if (reasoning > 0) result.reasoningTokens = reasoning;
+  if (cached > 0) {
+    result.cacheReadTokens = cached;
+  }
+
+  if (reasoning > 0) {
+    result.reasoningTokens = reasoning;
+  }
 
   return result;
 }
@@ -305,15 +337,22 @@ function mapCodexUsage(value: unknown): TokenUsage | undefined {
  * @returns Error message
  */
 function getErrorMessage(value: Record<string, unknown>): string {
-  if (typeof value.message === "string") return value.message;
+  if (typeof value.message === "string") {
+    return value.message;
+  }
+
   const error = value.error;
 
-  if (typeof error === "string") return error;
+  if (typeof error === "string") {
+    return error;
+  }
 
   if (error != null && typeof error === "object") {
     const message = (error as Record<string, unknown>).message;
 
-    if (typeof message === "string") return message;
+    if (typeof message === "string") {
+      return message;
+    }
   }
 
   return "unknown error";

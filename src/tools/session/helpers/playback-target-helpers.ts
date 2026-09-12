@@ -215,7 +215,9 @@ function dedupeSlotPositions(
   return positions.filter(({ trackIndex, sceneIndex }) => {
     const key = `${trackIndex}/${sceneIndex}`;
 
-    if (seen.has(key)) return false;
+    if (seen.has(key)) {
+      return false;
+    }
 
     seen.add(key);
 
@@ -250,7 +252,9 @@ function readPathParam(
     };
   }
 
-  if (legacy == null) return { entries: [], source: null };
+  if (legacy == null) {
+    return { entries: [], source: null };
+  }
 
   return {
     entries: parseSlotList(legacy, "slots").map(
@@ -277,7 +281,9 @@ function pathSceneRefs(
   entries: ObjectPath[],
   source: PathSource | null,
 ): SceneRef[] {
-  if (source == null) return [];
+  if (source == null) {
+    return [];
+  }
 
   return entries.map((entry) => {
     if (entry.kind === "scene" || entry.kind === "slot") {
@@ -325,7 +331,9 @@ function slotPositionsFrom(
   entries: ObjectPath[],
   source: PathSource | null,
 ): ClipSlotPosition[] | null {
-  if (source == null) return null;
+  if (source == null) {
+    return null;
+  }
 
   return entries.map((entry) => {
     assertClipPath(action, entry, source);
@@ -362,7 +370,9 @@ function resolveSceneTarget(
   const distinct = new Map<number, string>();
 
   for (const { scene, source } of refs) {
-    if (!distinct.has(scene)) distinct.set(scene, source);
+    if (!distinct.has(scene)) {
+      distinct.set(scene, source);
+    }
   }
 
   if (distinct.size > 1) {
@@ -384,7 +394,9 @@ function resolveSceneTarget(
  * @returns One ref per id that names a scene
  */
 function idSceneRefs(ids: string | undefined): SceneRef[] {
-  if (ids == null) return [];
+  if (ids == null) {
+    return [];
+  }
 
   const refs: SceneRef[] = [];
 
@@ -427,7 +439,9 @@ function assertClipPath(
   entry: ObjectPath,
   source: PathSource,
 ): void {
-  if (entry.kind !== "scene") return;
+  if (entry.kind !== "scene") {
+    return;
+  }
 
   const wholeScene =
     action === "play-session-clips"
@@ -462,7 +476,9 @@ function warnUnusedTarget(
     sceneIndex != null ? "sceneIndex" : null,
   ].filter((param) => param != null);
 
-  if (sent.length === 0) return;
+  if (sent.length === 0) {
+    return;
+  }
 
   console.warn(`${sent.join("/")} ignored: action "${action}" takes no target`);
 }

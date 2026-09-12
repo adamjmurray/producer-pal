@@ -38,7 +38,9 @@ const BRIEFING = "## Ableton Live Set\n\n120 bpm, 4/4, 3 tracks";
 
 /** One spawn: delegate, let the worker answer, then report back. */
 function oneSpawn(call: LlmCall): LlmReply {
-  if (call.caller === "worker") return { text: WORKER_REPLY };
+  if (call.caller === "worker") {
+    return { text: WORKER_REPLY };
+  }
 
   return call.afterToolResult
     ? { text: FINAL_REPLY }

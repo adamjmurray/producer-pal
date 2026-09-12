@@ -109,7 +109,9 @@ export function toolCallFailed(call: ToolCall): boolean {
 export function parsedToolResult(
   call: ToolCall,
 ): Record<string, unknown> | null {
-  if (call.result == null) return null;
+  if (call.result == null) {
+    return null;
+  }
 
   try {
     const parsed = parseToolResult(call.result);

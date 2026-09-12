@@ -84,11 +84,15 @@ export function clearClipAtDuplicateTarget(
   context: TilingContext,
   source: LiveAPI | null = null,
 ): boolean {
-  if (!arrangementDuplicateCrashWorkaround) return true;
+  if (!arrangementDuplicateCrashWorkaround) {
+    return true;
+  }
 
   const sourceClip = source ?? LiveAPI.from(toLiveApiId(sourceClipId));
 
-  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return true;
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) {
+    return true;
+  }
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
@@ -196,7 +200,9 @@ export function canClearTiledSpan(
   totalLength: number,
   tileSpacing: number,
 ): boolean {
-  if (!arrangementDuplicateCrashWorkaround) return false;
+  if (!arrangementDuplicateCrashWorkaround) {
+    return false;
+  }
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
@@ -236,11 +242,15 @@ export function sourceOverlapsTarget(
   targetPosition: number,
   targetLength: number,
 ): boolean {
-  if (!arrangementDuplicateCrashWorkaround) return false;
+  if (!arrangementDuplicateCrashWorkaround) {
+    return false;
+  }
 
   const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
 
-  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return false;
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) {
+    return false;
+  }
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
@@ -485,7 +495,9 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
   for (const id of clipIds) {
     const end = LiveAPI.from(id).getProperty("end_time") as number;
 
-    if (end > maxEnd) maxEnd = end;
+    if (end > maxEnd) {
+      maxEnd = end;
+    }
   }
 
   return Math.max(maxEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;

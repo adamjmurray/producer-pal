@@ -36,7 +36,9 @@ export class GeminiPcmPlayer {
       this.gain.connect(this.ctx.destination);
     }
 
-    if (this.ctx.state === "suspended") await this.ctx.resume();
+    if (this.ctx.state === "suspended") {
+      await this.ctx.resume();
+    }
   }
 
   /**
@@ -47,7 +49,9 @@ export class GeminiPcmPlayer {
   setVolume(value: number): void {
     this.volume = value;
 
-    if (this.gain) this.gain.gain.value = value;
+    if (this.gain) {
+      this.gain.gain.value = value;
+    }
   }
 
   /**
@@ -56,10 +60,15 @@ export class GeminiPcmPlayer {
    * @param base64Pcm - Base64-encoded 24 kHz Int16 PCM
    */
   enqueueBase64(base64Pcm: string): void {
-    if (!this.ctx || !this.gain) return;
+    if (!this.ctx || !this.gain) {
+      return;
+    }
+
     const pcm = base64ToInt16(base64Pcm);
 
-    if (pcm.length === 0) return;
+    if (pcm.length === 0) {
+      return;
+    }
 
     const buffer = this.ctx.createBuffer(1, pcm.length, OUTPUT_SAMPLE_RATE);
     const channel = buffer.getChannelData(0);
@@ -154,7 +163,10 @@ export class GeminiPcmPlayer {
 
   /** Fire and clear a pending drain callback once the last source has ended. */
   private notifyIfDrained(): void {
-    if (this.sources.size > 0) return;
+    if (this.sources.size > 0) {
+      return;
+    }
+
     const callback = this.drainedCallback;
 
     this.drainedCallback = null;
@@ -184,7 +196,9 @@ function base64ToInt16(base64Pcm: string): Int16Array {
   const evenLength = binary.length - (binary.length % 2);
   const bytes = new Uint8Array(evenLength);
 
-  for (let i = 0; i < evenLength; i++) bytes[i] = binary.charCodeAt(i);
+  for (let i = 0; i < evenLength; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
 
   return new Int16Array(bytes.buffer);
 }

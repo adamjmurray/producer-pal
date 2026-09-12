@@ -239,7 +239,9 @@ function readCompressorOptions(device: LiveAPI): Record<string, unknown> {
   const trackByName = new Map<string, string>();
 
   for (const t of tracks) {
-    if (!trackByName.has(t.name)) trackByName.set(t.name, t.id);
+    if (!trackByName.has(t.name)) {
+      trackByName.set(t.name, t.id);
+    }
   }
 
   const trackIds: string[] = [];

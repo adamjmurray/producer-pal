@@ -48,7 +48,9 @@ export function filterSchemaForSmallModel(
   const filtered: Record<string, ZodType> = {};
 
   for (const [key, value] of Object.entries(schema)) {
-    if (excludeParams?.includes(key)) continue;
+    if (excludeParams?.includes(key)) {
+      continue;
+    }
 
     // describeWithTags keeps the param()/deprecatedParam() tags on the
     // re-described instance.
@@ -108,7 +110,9 @@ function applyPerParam(
   transform: (schema: ZodType, values: string[]) => ZodType,
 ): void {
   for (const [paramName, values] of Object.entries(valuesByParam)) {
-    if (!(paramName in schema)) continue;
+    if (!(paramName in schema)) {
+      continue;
+    }
 
     schema[paramName] = transform(schema[paramName] as ZodType, values);
   }
@@ -241,7 +245,9 @@ function hideEnumValues(schema: ZodType, valuesToHide: string[]): ZodType {
 
   // A scalar param is the enum, so the override goes straight on it and the
   // instance (tags and all) is kept.
-  if (!isArray) return schema.meta({ enum: kept });
+  if (!isArray) {
+    return schema.meta({ enum: kept });
+  }
 
   // An array advertises its values on `items`, so the override has to go on the
   // element — which means rebuilding the array around it.

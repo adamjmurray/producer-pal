@@ -19,7 +19,9 @@ type StreamPart = { type: string; [key: string]: unknown };
 function fakeResult(parts: StreamPart[]): ReturnType<typeof streamText> {
   return {
     stream: (async function* () {
-      for (const part of parts) yield part;
+      for (const part of parts) {
+        yield part;
+      }
     })(),
   } as unknown as ReturnType<typeof streamText>;
 }

@@ -91,7 +91,9 @@ export function buildModelMessages(
     }
 
     // Persisted UI error messages are not part of the model conversation
-    if (msg.isError) continue;
+    if (msg.isError) {
+      continue;
+    }
 
     appendAssistantMessages(messages, msg, includeReasoning);
   }
@@ -136,7 +138,9 @@ function appendAssistantMessages(
     // Providers reject an empty assistant message, so drop it from the model
     // view — the UI still renders the turn from history. (.length covers both
     // the string and structured-array forms.)
-    if (content.length === 0) return;
+    if (content.length === 0) {
+      return;
+    }
 
     messages.push({ role: "assistant", content });
 
@@ -219,12 +223,16 @@ export function reconcileDanglingToolCalls(
   for (let i = fromIndex; i < history.length; i++) {
     const msg = history[i] as ChatMessage;
 
-    if (msg.role !== "assistant" || !msg.toolCalls?.length) continue;
+    if (msg.role !== "assistant" || !msg.toolCalls?.length) {
+      continue;
+    }
 
     const resultIds = new Set((msg.toolResults ?? []).map((tr) => tr.id));
 
     for (const tc of msg.toolCalls) {
-      if (resultIds.has(tc.id)) continue;
+      if (resultIds.has(tc.id)) {
+        continue;
+      }
 
       msg.toolResults ??= [];
       msg.toolResults.push({

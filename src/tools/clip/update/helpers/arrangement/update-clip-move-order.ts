@@ -93,20 +93,26 @@ export function orderArrangementMoves(
   };
 
   // One clip can't be in its own way.
-  if (clips.length < 2) return inOrder;
+  if (clips.length < 2) {
+    return inOrder;
+  }
 
   // Read from the params alone, before anything asks Live where the clips are:
   // a call that moves none of them can't be in anyone's way either.
   const intents = clips.map((clip) => moveIntent(clip, moves));
 
-  if (intents.every((intent) => intent == null)) return inOrder;
+  if (intents.every((intent) => intent == null)) {
+    return inOrder;
+  }
 
   const spans = clips.map((clip, index) =>
     clipSpan(clip, intents[index] ?? null),
   );
   const dependencies = buildDependencies(spans);
 
-  if (dependencies == null) return inOrder;
+  if (dependencies == null) {
+    return inOrder;
+  }
 
   const vacates = clips.map((clip) => freesCurrentSpan(clip, moves));
 
@@ -139,7 +145,9 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
     destination.kind === "track" ||
     (destination.kind === "slot" && lengthBeats != null);
 
-  if (!usesMainLane) return null;
+  if (!usesMainLane) {
+    return null;
+  }
 
   const startBeats = moves.startBeatsFor(clip);
 
@@ -166,11 +174,15 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
  * @returns True when the clip's current span comes free
  */
 function freesCurrentSpan(clip: LiveAPI, moves: ClipMoves): boolean {
-  if (moves.startBeatsFor(clip) != null) return true;
+  if (moves.startBeatsFor(clip) != null) {
+    return true;
+  }
 
   const destination = moves.destinationById?.get(clip.id);
 
-  if (destination == null) return false;
+  if (destination == null) {
+    return false;
+  }
 
   // A slot alongside an arrangement length is ignored: update-clip tiles the
   // clip where it stands, so it goes nowhere.
@@ -186,18 +198,27 @@ function freesCurrentSpan(clip: LiveAPI, moves: ClipMoves): boolean {
  * @returns The clip's spans, or null when it takes no part
  */
 function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
-  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return null;
-  if (isTakeLaneClip(clip)) return null;
+  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
+    return null;
+  }
+
+  if (isTakeLaneClip(clip)) {
+    return null;
+  }
 
   const trackIndex = clip.trackIndex;
 
-  if (trackIndex == null) return null;
+  if (trackIndex == null) {
+    return null;
+  }
 
   const start = clip.getProperty("start_time") as number;
   const end = clip.getProperty("end_time") as number;
   const current = { trackIndex, start, end };
 
-  if (intent == null) return { current, target: null };
+  if (intent == null) {
+    return { current, target: null };
+  }
 
   // No position of its own means "same place, other lane".
   const targetStart = intent.startBeats ?? start;
@@ -230,14 +251,24 @@ function buildDependencies(
   for (const [mover, span] of spans.entries()) {
     const target = span?.target;
 
-    if (target == null) continue;
+    if (target == null) {
+      continue;
+    }
 
     for (const [victim, other] of spans.entries()) {
-      if (victim === mover || other == null) continue;
-      if (!overlaps(target, other.current)) continue;
+      if (victim === mover || other == null) {
+        continue;
+      }
+
+      if (!overlaps(target, other.current)) {
+        continue;
+      }
+
       // Both headed for one spot: that overwrite is what the call asked for,
       // and the survivor plan already picks which clip wins it.
-      if (landsAt(other.target, target)) continue;
+      if (landsAt(other.target, target)) {
+        continue;
+      }
 
       (dependencies[mover] as Set<number>).add(victim);
       any = true;
@@ -310,7 +341,9 @@ function resolveOrder(
   for (let next = nextReady(); next >= 0; next = nextReady()) {
     emitted.add(next);
 
-    if (vacates[next]) vacated.add(next);
+    if (vacates[next]) {
+      vacated.add(next);
+    }
 
     order.push(next);
   }

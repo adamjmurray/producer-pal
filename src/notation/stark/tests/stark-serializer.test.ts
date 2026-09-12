@@ -19,8 +19,13 @@ function note(
 }
 
 function bucket(velocity: number): "soft" | "normal" | "accent" {
-  if (velocity < 90) return "soft";
-  if (velocity >= 112) return "accent";
+  if (velocity < 90) {
+    return "soft";
+  }
+
+  if (velocity >= 112) {
+    return "accent";
+  }
 
   return "normal";
 }

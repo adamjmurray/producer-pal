@@ -67,11 +67,15 @@ function setRouting(
   property: string,
   value: string | undefined,
 ): void {
-  if (value == null) return;
+  if (value == null) {
+    return;
+  }
 
   const identifier = resolveRoutingIdentifier(track, property, value);
 
-  if (identifier == null) return;
+  if (identifier == null) {
+    return;
+  }
 
   track.setProperty(property, { identifier });
 }

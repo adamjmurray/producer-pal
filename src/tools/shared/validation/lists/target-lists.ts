@@ -99,7 +99,9 @@ export function warnBlankTarget(
   objects: string,
   resolved: number,
 ): void {
-  if (resolved === 0) return;
+  if (resolved === 0) {
+    return;
+  }
 
   const idSide: TargetSide = {
     value: targets.id,
@@ -131,12 +133,16 @@ function warnBlankSide(
   carrying: TargetSide,
   objects: string,
 ): void {
-  if (spelling(blank, paramNamesSomething) != null) return;
+  if (spelling(blank, paramNamesSomething) != null) {
+    return;
+  }
 
   const carried = spelling(carrying, paramNamesSomething);
   const dropped = spelling(blank, isBlank);
 
-  if (carried == null || dropped == null) return;
+  if (carried == null || dropped == null) {
+    return;
+  }
 
   console.warn(`blank ${dropped} ignored — "${carried}" names the ${objects}`);
 }
@@ -151,9 +157,13 @@ function spelling(
   side: TargetSide,
   matches: (value: string | null | undefined) => boolean,
 ): string | null {
-  if (matches(side.value)) return side.name;
+  if (matches(side.value)) {
+    return side.name;
+  }
 
-  if (matches(side.alias)) return side.aliasName;
+  if (matches(side.alias)) {
+    return side.aliasName;
+  }
 
   return null;
 }

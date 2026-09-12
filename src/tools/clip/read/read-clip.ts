@@ -286,7 +286,9 @@ function processMidiClip(
   notation: Notation,
   precomputedDrumMode?: boolean,
 ): void {
-  if (!includeClipNotes) return;
+  if (!includeClipNotes) {
+    return;
+  }
 
   const timeSigNumerator = clip.getProperty("signature_numerator") as number;
   const timeSigDenominator = clip.getProperty(
@@ -330,7 +332,9 @@ function processMidiClip(
     drumMode,
   });
 
-  if (formatted) result.notes = formatted;
+  if (formatted) {
+    result.notes = formatted;
+  }
 }
 
 /**

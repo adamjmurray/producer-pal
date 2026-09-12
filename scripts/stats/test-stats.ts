@@ -167,7 +167,9 @@ function aggregateByTree(
   for (const file of results.testResults) {
     const stats = map.get(treeOf(file.name) as Tree);
 
-    if (!stats) continue;
+    if (!stats) {
+      continue;
+    }
 
     stats.testFiles++;
     stats.durationMs += file.endTime - file.startTime;
@@ -179,7 +181,9 @@ function aggregateByTree(
 
   for (const [filePath, entry] of Object.entries(coverage)) {
     // The json-summary reporter adds a "total" key alongside the file entries.
-    if (filePath === "total") continue;
+    if (filePath === "total") {
+      continue;
+    }
 
     accumulateCoverage(map.get(treeOf(filePath) as Tree), entry);
   }
@@ -217,7 +221,9 @@ function accumulateCoverage(
   stats: TreeStats | undefined,
   entry: CoverageFileEntry,
 ): void {
-  if (!stats) return;
+  if (!stats) {
+    return;
+  }
 
   stats.coverage ??= Object.fromEntries(
     COVERAGE_METRICS.map((m) => [m, { total: 0, covered: 0 }]),

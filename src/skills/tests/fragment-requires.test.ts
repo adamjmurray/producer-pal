@@ -48,7 +48,9 @@ describe("FRAGMENT_REQUIRES", () => {
           start,
         );
 
-        if (seen.has(next)) continue;
+        if (seen.has(next)) {
+          continue;
+        }
 
         seen.add(next);
         queue.push(...fragmentRequires(next));
@@ -77,7 +79,9 @@ describe("FRAGMENT_REQUIRES", () => {
         );
 
         for (const [name, requires] of Object.entries(FRAGMENT_REQUIRES)) {
-          if (!included.has(name)) continue;
+          if (!included.has(name)) {
+            continue;
+          }
 
           for (const required of requires) {
             expect(

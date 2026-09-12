@@ -88,7 +88,9 @@ export function knownParamUnit(
 ): KnownParamUnit | null {
   const entry = lookupEntry(deviceName, paramName);
 
-  if (entry == null) return null;
+  if (entry == null) {
+    return null;
+  }
 
   return sameEnd(entry.min, minValue) && sameEnd(entry.max, maxValue)
     ? entry
@@ -115,7 +117,9 @@ function lookupEntry(
 ): KnownParamUnit | undefined {
   const params = deviceName == null ? undefined : KNOWN_UNITS[deviceName];
 
-  if (params == null) return undefined;
+  if (params == null) {
+    return undefined;
+  }
 
   const nameLower = paramName.toLowerCase();
   const key = Object.keys(params).find((k) => k.toLowerCase() === nameLower);
@@ -155,7 +159,9 @@ export function recordedUnitFor(
   deviceName: string | undefined,
   paramName: string,
 ): KnownParamUnit | null {
-  if (labelUnit != null || range == null) return null;
+  if (labelUnit != null || range == null) {
+    return null;
+  }
 
   return knownParamUnit(deviceName, paramName, range.minValue, range.maxValue);
 }
@@ -193,7 +199,9 @@ export function splitLeadingNumber(
 ): { value: number; trailing: string } | null {
   const match = text.trim().match(/^([+-]?[\d.]+)\s*(.*)$/);
 
-  if (match == null) return null;
+  if (match == null) {
+    return null;
+  }
 
   const value = Number.parseFloat(match[1] as string);
 

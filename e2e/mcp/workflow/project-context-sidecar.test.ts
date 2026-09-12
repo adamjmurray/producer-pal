@@ -73,7 +73,9 @@ async function eventually(
   condition: () => boolean | Promise<boolean>,
 ): Promise<boolean> {
   for (let waited = 0; waited < SETTLE_MS; waited += 100) {
-    if (await condition()) return true;
+    if (await condition()) {
+      return true;
+    }
 
     await sleep(100);
   }

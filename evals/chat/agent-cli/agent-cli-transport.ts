@@ -107,7 +107,9 @@ export function scrubAgentCliEnv(
   const result: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(env)) {
-    if (typeof value === "string" && !drop.has(key)) result[key] = value;
+    if (typeof value === "string" && !drop.has(key)) {
+      result[key] = value;
+    }
   }
 
   return result;

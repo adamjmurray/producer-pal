@@ -34,7 +34,10 @@ export function collapseNewlines(
   for (let i = 0; i < text.length; i++) {
     if (text[i] === "\n") {
       trailing++;
-      if (trailing <= 2) result += "\n";
+
+      if (trailing <= 2) {
+        result += "\n";
+      }
     } else {
       trailing = 0;
       result += text[i];
@@ -55,7 +58,10 @@ export function collapseStdoutNewlines(): void {
     _collapsePatched?: boolean;
   };
 
-  if (stdout._collapsePatched) return;
+  if (stdout._collapsePatched) {
+    return;
+  }
+
   stdout._collapsePatched = true;
 
   const originalWrite = stdout.write.bind(stdout);
@@ -67,7 +73,9 @@ export function collapseStdoutNewlines(): void {
 
     trailingNewlines = collapsed.trailingNewlines;
 
-    if (!collapsed.text) return true;
+    if (!collapsed.text) {
+      return true;
+    }
 
     return originalWrite(collapsed.text, ...(args as []));
   };

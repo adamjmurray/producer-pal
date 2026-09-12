@@ -60,7 +60,9 @@ async function deleteThatFails(
 
   const liveId = view.result.current.activeConversationId;
 
-  if (liveId == null) throw new Error("expected the session to have saved");
+  if (liveId == null) {
+    throw new Error("expected the session to have saved");
+  }
 
   fail.next = true;
   await act(async () => {
@@ -122,7 +124,9 @@ describe("useVoicePersistence when a delete fails", () => {
 function liveIdOf(view: VoicePersistenceHistoryView): string {
   const id = view.result.current.activeConversationId;
 
-  if (id == null) throw new Error("expected an active conversation");
+  if (id == null) {
+    throw new Error("expected an active conversation");
+  }
 
   return id;
 }

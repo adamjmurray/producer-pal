@@ -66,9 +66,17 @@ export function SkillSlotSelect(
  * @returns "✕ " when off, "⚠ " when it wants attention, "✎ " when customized, else ""
  */
 function slotGlyph(slot: SkillSlotView): string {
-  if (!slot.enabled) return "✕ ";
-  if (slot.drifted || slot.splitStale) return "⚠ ";
-  if (slot.override) return "✎ ";
+  if (!slot.enabled) {
+    return "✕ ";
+  }
+
+  if (slot.drifted || slot.splitStale) {
+    return "⚠ ";
+  }
+
+  if (slot.override) {
+    return "✎ ";
+  }
 
   return "";
 }

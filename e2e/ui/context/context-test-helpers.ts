@@ -189,7 +189,11 @@ export async function typeInPrimaryEditor(
   const editor = primaryEditor(page);
 
   await editor.click();
-  if (replace) await page.keyboard.press("ControlOrMeta+a");
+
+  if (replace) {
+    await page.keyboard.press("ControlOrMeta+a");
+  }
+
   await editor.pressSequentially(text);
 }
 
@@ -290,9 +294,16 @@ async function handleSkillSlot(
   if (method === "PUT") {
     const body = readJsonBody(route);
 
-    if (body.content != null) slot.override = body.content;
-    if (body.enabled != null) slot.enabled = body.enabled;
-  } else if (method === "DELETE") slot.override = "";
+    if (body.content != null) {
+      slot.override = body.content;
+    }
+
+    if (body.enabled != null) {
+      slot.enabled = body.enabled;
+    }
+  } else if (method === "DELETE") {
+    slot.override = "";
+  }
 
   await fulfillJson(route, { slot });
 }
@@ -366,8 +377,11 @@ async function putMemory(
   const priorName = isRename ? name : slug;
   const idx = state.memories.findIndex((m) => m.name === priorName);
 
-  if (idx >= 0) state.memories[idx] = entry;
-  else state.memories.push(entry);
+  if (idx >= 0) {
+    state.memories[idx] = entry;
+  } else {
+    state.memories.push(entry);
+  }
 
   await fulfillJson(route, { entry });
 }

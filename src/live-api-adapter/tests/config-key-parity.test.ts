@@ -68,7 +68,9 @@ function findConfigKeys(): string[] {
     const source = fs.readFileSync(file, "utf8");
 
     for (const [, key] of source.matchAll(CONFIG_OUTLET)) {
-      if (key != null) keys.add(key);
+      if (key != null) {
+        keys.add(key);
+      }
     }
   }
 

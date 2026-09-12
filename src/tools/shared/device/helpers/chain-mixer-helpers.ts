@@ -461,7 +461,9 @@ function applyChainSends(
   for (const send of params.sends ?? []) {
     const written = applyChainSend(chain, mixer, send);
 
-    if (written != null) list.push(written);
+    if (written != null) {
+      list.push(written);
+    }
   }
 
   const { winners, collisions } = dedupeSendsByReturn(scalar, list);

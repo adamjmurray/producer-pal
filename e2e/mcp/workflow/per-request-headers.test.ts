@@ -260,7 +260,9 @@ describe("x-producer-pal-disabled-tools", () => {
     // equality above can't pass by both sides removing nothing. A fragment the
     // dev switched off is in neither blob, so it has nothing to prove.
     for (const fragment of GATED_OUT) {
-      if (overrides.disabled?.includes(fragment)) continue;
+      if (overrides.disabled?.includes(fragment)) {
+        continue;
+      }
 
       const marker = longestLine(fragment, overrides);
 

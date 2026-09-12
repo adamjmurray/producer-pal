@@ -8,7 +8,7 @@ import { expect, vi } from "vitest";
 import {
   type DocCollectionStatus,
   type UseDocCollectionReturn,
-} from "#webui/hooks/context/use-doc-collection";
+} from "#webui/hooks/context/helpers/use-doc-collection";
 import {
   deferred,
   jsonResponse,

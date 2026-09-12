@@ -128,7 +128,9 @@ describe("useRemoteConfig", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
       const signal = (init as RequestInit | undefined)?.signal;
 
-      if (signal) signals.push(signal);
+      if (signal) {
+        signals.push(signal);
+      }
 
       return Promise.resolve(mockConfigResponse({ smallModelMode: false }));
     });

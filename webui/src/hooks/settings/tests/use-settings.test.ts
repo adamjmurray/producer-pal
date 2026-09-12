@@ -581,7 +581,10 @@ describe("useSettings", () => {
       await act(() => {
         result.current.setApiKey(s.apiKey);
         result.current.setModel(s.model);
-        if (s.thinking != null) result.current.setThinking(s.thinking);
+
+        if (s.thinking != null) {
+          result.current.setThinking(s.thinking);
+        }
       });
     }
 

@@ -278,12 +278,16 @@ export function gatedOutFragments(
 ): ReadonlySet<string> {
   const dropped = new Set<string>();
 
-  if (enabledTools == null) return dropped;
+  if (enabledTools == null) {
+    return dropped;
+  }
 
   const live = new Set(enabledTools);
 
   for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-    if (typeof gate === "string") continue;
+    if (typeof gate === "string") {
+      continue;
+    }
 
     if (!gate.some((tool) => live.has(tool))) {
       dropped.add(name);
@@ -315,10 +319,14 @@ export function audienceGatedFragments(
 ): ReadonlySet<string> {
   const dropped = new Set<string>();
 
-  if (audience !== "subagent") return dropped;
+  if (audience !== "subagent") {
+    return dropped;
+  }
 
   for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-    if (gate === CONVERSATION_ONLY) dropped.add(name);
+    if (gate === CONVERSATION_ONLY) {
+      dropped.add(name);
+    }
   }
 
   return dropped;

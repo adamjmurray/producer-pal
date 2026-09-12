@@ -84,7 +84,9 @@ Tell the user to check ${SETUP_URL} for configuration help.
     // so there is no device-side state to re-assert here — a device that
     // restarts under us (a fresh one dragged in with default settings, a
     // connector toggle) still sees this client's settings on its next call.
-    if (this.httpClient && this.isConnected) return;
+    if (this.httpClient && this.isConnected) {
+      return;
+    }
 
     // If a connection is already in flight, wait for it instead of starting
     // a second one. Prevents duplicate Client instantiations when concurrent
@@ -175,11 +177,15 @@ Tell the user to check ${SETUP_URL} for configuration help.
    * a throw and a rejection are equally fatal here.
    */
   private _notifyToolListChanged(): void {
-    if (!this.servedFallbackTools) return;
+    if (!this.servedFallbackTools) {
+      return;
+    }
 
     const server = this.mcpServer;
 
-    if (server == null) return;
+    if (server == null) {
+      return;
+    }
 
     logger.info("Sending tools/list_changed after reconnecting");
 

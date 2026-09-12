@@ -81,6 +81,8 @@ export async function runChatLoop<TSession>(
 
     await callbacks.sendMessage(session, input, turnCount);
 
-    if (config.once) break;
+    if (config.once) {
+      break;
+    }
   }
 }

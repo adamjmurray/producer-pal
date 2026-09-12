@@ -136,7 +136,9 @@ function sourcePath(
   isArrangementClip: boolean,
   sourceLane: number | null,
 ): PathLike {
-  if (!isArrangementClip) return livePath.track(0).clipSlot(0).clip();
+  if (!isArrangementClip) {
+    return livePath.track(0).clipSlot(0).clip();
+  }
 
   return sourceLane == null
     ? livePath.track(0).arrangementClip(9)

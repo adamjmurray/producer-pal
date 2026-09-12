@@ -144,8 +144,9 @@ function resolveContainer(
     indexed.push(segment);
   }
 
-  if (indexed.length === 0)
+  if (indexed.length === 0) {
     return cachedDevicePath(trackSegmentPath(root).toString());
+  }
 
   return resolveContainerWithAutoCreate(root, indexed, path);
 }

@@ -54,7 +54,9 @@ export function registerMockObject(
   const previousPath = existing?.path ?? "";
   const mock = existing ?? createRegistration(id, options, defaultMockCall);
 
-  if (existing) applyRegistrationOptions(existing, options);
+  if (existing) {
+    applyRegistrationOptions(existing, options);
+  }
 
   registryById.set(id, mock);
   deletedIds.delete(id);
@@ -106,7 +108,9 @@ export function lookupMockObject(
   if (id != null) {
     const byId = registryById.get(id);
 
-    if (byId) return byId;
+    if (byId) {
+      return byId;
+    }
   }
 
   if (path != null) {
@@ -173,7 +177,9 @@ export function defaultMockCall(
     case "str_for_value":
       return Number(Number(args[0]).toPrecision(6));
     default:
-      if (_simulateDeletes) applyMockDelete(method, args, path);
+      if (_simulateDeletes) {
+        applyMockDelete(method, args, path);
+      }
 
       return null;
   }
@@ -220,11 +226,15 @@ function deleteChainsOnPad(padPath: string): void {
     padPath.replace(/ drum_pads \d+$/, ""),
   );
 
-  if (rack == null || Number.isNaN(note)) return;
+  if (rack == null || Number.isNaN(note)) {
+    return;
+  }
 
   const chains = rack.properties.chains;
 
-  if (!Array.isArray(chains)) return;
+  if (!Array.isArray(chains)) {
+    return;
+  }
 
   // children() interleaves "id" with each child ID.
   for (const chainId of chains.filter((_, index) => index % 2 === 1)) {
@@ -259,7 +269,9 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
 function deleteMockObject(idOrPath: string): void {
   const mock = lookupMockObject(idOrPath, idOrPath);
 
-  if (!mock) return;
+  if (!mock) {
+    return;
+  }
 
   mock.deleted = true;
   refreshHolders(mock);

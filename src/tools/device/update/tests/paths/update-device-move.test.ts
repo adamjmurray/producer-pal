@@ -68,7 +68,9 @@ describe("updateDevice - moving a drum chain", () => {
     // A retarget is a write to in_note, and in_note is what a chain's pad path
     // is derived from — so a mock that swallowed the write would report the
     // chain still on the pad it just left.
-    for (const chain of [chain0, chain1, chain2]) writesThroughSets(chain);
+    for (const chain of [chain0, chain1, chain2]) {
+      writesThroughSets(chain);
+    }
   });
 
   // The result an unmoved C1 pad reports.

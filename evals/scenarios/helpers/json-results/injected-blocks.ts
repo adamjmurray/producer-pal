@@ -36,7 +36,9 @@ export async function externalizeInjectedBlocks(
   const turns = result.turns.map((turn) => ({
     ...turn,
     toolCalls: turn.toolCalls.map((call) => {
-      if (call.injectedBlocks == null) return call;
+      if (call.injectedBlocks == null) {
+        return call;
+      }
 
       return {
         ...call,
@@ -77,7 +79,9 @@ async function writeBlocks(
   dir: string,
   texts: Map<string, string>,
 ): Promise<void> {
-  if (texts.size === 0) return;
+  if (texts.size === 0) {
+    return;
+  }
 
   const blocksDir = join(dir, "blocks");
 

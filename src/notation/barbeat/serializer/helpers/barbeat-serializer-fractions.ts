@@ -60,7 +60,9 @@ export function formatBeatPosition(
     return `1-n${offsetFraction}`;
   }
 
-  if (value % 1 === 0) return value.toString();
+  if (value % 1 === 0) {
+    return value.toString();
+  }
 
   const base = Math.floor(value);
   const fracBeats = value - base;
@@ -88,7 +90,9 @@ export function formatBeatPosition(
   // Dyadic sub-beats round-trip exactly as a decimal, which is always shorter
   // than (and more readable than) the offset form — prefer it. Tuplet positions
   // have lossy decimals, so they fall through to the note-value offset.
-  if (decimalRoundTripsCleanly(value)) return formatDecimal(value);
+  if (decimalRoundTripsCleanly(value)) {
+    return formatDecimal(value);
+  }
 
   return `${base}+n${offsetFraction}`;
 }
@@ -155,7 +159,9 @@ export const BEAT_OFFSET_DENOMINATORS = [
  * @returns Formatted value string (e.g., "/4", "3/8", "/12", "5/4", "1.9638/4")
  */
 export function formatAbsoluteDuration(wholeNoteFraction: number): string {
-  if (wholeNoteFraction === 0) return "0/1";
+  if (wholeNoteFraction === 0) {
+    return "0/1";
+  }
 
   // Prefer dotted/triplet sugar for the implicit-numerator families (`/4d` = 3/8
   // dotted quarter, `/8t` = 1/12 eighth triplet) — a musician reads those faster
@@ -164,7 +170,9 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
   // null here and fall through to their plain fraction.
   const modified = formatModifiedNoteValue(wholeNoteFraction);
 
-  if (modified != null) return modified;
+  if (modified != null) {
+    return modified;
+  }
 
   // Try musically clean denominators first (powers of 2), then triplet family,
   // then less common tuplets. Smallest matching denominator wins.
@@ -173,7 +181,9 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
     ABSOLUTE_DURATION_DENOMINATORS,
   );
 
-  if (fraction != null) return fraction;
+  if (fraction != null) {
+    return fraction;
+  }
 
   // Fallback: a genuinely off-grid value (no exact note-value fraction at any
   // canonical denominator — only ever produced by *measuring* a sample-derived

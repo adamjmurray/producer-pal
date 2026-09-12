@@ -128,7 +128,9 @@ export function warnSendCollisions(
   for (const { index, overrodeScalar } of collisions) {
     const entry = landed.get(index);
 
-    if (entry == null) continue;
+    if (entry == null) {
+      continue;
+    }
 
     const held = `"${entry.return}" ended up at ${String(entry.gainDb)} dB`;
 

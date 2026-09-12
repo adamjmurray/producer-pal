@@ -571,7 +571,9 @@ describe("chatAdapter", () => {
         // Only the worker model fails to build (e.g. custom provider with no
         // URL); the orchestrator's own model must still succeed.
         vi.mocked(createProviderModel).mockImplementation((_p, modelId) => {
-          if (modelId === "broken-worker") throw new Error("needs a URL");
+          if (modelId === "broken-worker") {
+            throw new Error("needs a URL");
+          }
 
           return mockModel;
         });

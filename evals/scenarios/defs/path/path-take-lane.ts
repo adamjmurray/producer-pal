@@ -41,7 +41,9 @@ const ACCEPTED_PATHS = new RegExp(
 function describeLanes(result: unknown): string {
   const lanes = takeLanes(result);
 
-  if (lanes.length === 0) return "none";
+  if (lanes.length === 0) {
+    return "none";
+  }
 
   return lanes
     .map((lane) => `${lane.path ?? "?"}×${lane.clips?.length ?? 0}`)

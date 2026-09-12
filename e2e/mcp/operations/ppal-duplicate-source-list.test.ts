@@ -192,7 +192,9 @@ describe("ppal-duplicate with a source list", () => {
 
     // Every id that came back names a clip that is really there.
     for (const copy of copies) {
-      if (!("id" in copy)) continue;
+      if (!("id" in copy)) {
+        continue;
+      }
 
       expect((await readClip(copy.id)).notes).toContain("D3");
     }
@@ -242,7 +244,9 @@ describe("ppal-duplicate with a source list", () => {
     await sleep(100);
 
     for (const copy of copies) {
-      if (!("id" in copy)) continue;
+      if (!("id" in copy)) {
+        continue;
+      }
 
       expect((await readClip(copy.id)).notes).toContain("C3");
     }

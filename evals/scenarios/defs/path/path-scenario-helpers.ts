@@ -62,7 +62,9 @@ function hiddenSpellings(call: ToolCall): string {
     HIDDEN_LOCATION_PARAMS.has(key),
   );
 
-  if (used.length === 0) return "none";
+  if (used.length === 0) {
+    return "none";
+  }
 
   return used.map((key) => `${key}=${argText(call.args[key])}`).join(", ");
 }
@@ -81,7 +83,9 @@ function requireCall(
 ): ToolCall {
   const call = lastSuccessfulToolCall(turns, turn, tool);
 
-  if (!call) throw new Error(`${tool} not called in turn ${turn}`);
+  if (!call) {
+    throw new Error(`${tool} not called in turn ${turn}`);
+  }
 
   return call;
 }
@@ -135,7 +139,9 @@ export function assertPathArg(options: {
  * @returns Quoted list, or the pattern source
  */
 function describeExpected(expected: string | string[] | RegExp): string {
-  if (expected instanceof RegExp) return `matching ${expected.source}`;
+  if (expected instanceof RegExp) {
+    return `matching ${expected.source}`;
+  }
 
   const accepted = typeof expected === "string" ? [expected] : expected;
 
@@ -156,7 +162,9 @@ function pathAccepted(
   actual: string,
   expected: string | string[] | RegExp,
 ): boolean {
-  if (expected instanceof RegExp) return expected.test(actual);
+  if (expected instanceof RegExp) {
+    return expected.test(actual);
+  }
 
   const accepted = typeof expected === "string" ? [expected] : expected;
 

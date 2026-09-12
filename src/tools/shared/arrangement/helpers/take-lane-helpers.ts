@@ -130,7 +130,9 @@ export function warnUnusedTakeLane(
     ...(paramNamesSomething(takeLaneName) ? ["takeLaneName"] : []),
   ].join(" and ");
 
-  if (unusable === "") return;
+  if (unusable === "") {
+    return;
+  }
 
   if (type !== "clip") {
     warn(
@@ -159,7 +161,9 @@ export interface ResolvedTakeLane {
 export function isTakeLaneRequested(
   takeLane: number | string | null | undefined,
 ): boolean {
-  if (!paramNamesSomething(takeLane)) return false;
+  if (!paramNamesSomething(takeLane)) {
+    return false;
+  }
 
   return takeLane !== 0 && takeLane !== "0";
 }
@@ -262,11 +266,15 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
   for (const target of targets) {
     const { takeLane } = target;
 
-    if (takeLane == null) continue;
+    if (takeLane == null) {
+      continue;
+    }
 
     const key = takeLaneLabel(target);
 
-    if (dropped.has(key)) continue;
+    if (dropped.has(key)) {
+      continue;
+    }
 
     if (takeLane + 1 > MAX_TAKE_LANES) {
       dropped.add(key);
@@ -288,7 +296,9 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
  * @throws If the lane would exceed MAX_TAKE_LANES
  */
 function assertTakeLaneCapacity(laneIndex: number): void {
-  if (laneIndex + 1 <= MAX_TAKE_LANES) return;
+  if (laneIndex + 1 <= MAX_TAKE_LANES) {
+    return;
+  }
 
   throw new Error(takeLaneCapacityMessage(laneIndex));
 }

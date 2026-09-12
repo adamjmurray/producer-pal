@@ -55,7 +55,9 @@ export function chordSymbolPitches(
 ): number[] | null {
   const chord = resolveChordSymbol(root, quality, bass);
 
-  if (chord == null) return null;
+  if (chord == null) {
+    return null;
+  }
 
   return realizeChordSymbol(chord, registerRoot, octaveShift);
 }
@@ -76,11 +78,15 @@ export function resolveChordSymbol(
 ): ResolvedChord | null {
   const rootPc = pitchClassToNumber(root);
 
-  if (rootPc == null) return null;
+  if (rootPc == null) {
+    return null;
+  }
 
   const intervals = CHORD_QUALITY_INTERVALS[quality];
 
-  if (intervals == null) return null;
+  if (intervals == null) {
+    return null;
+  }
 
   if (bass == null) {
     return { rootPc, intervals, bassPc: null };
@@ -89,7 +95,9 @@ export function resolveChordSymbol(
   const bassPc = pitchClassToNumber(bass);
 
   // A slash bass that isn't a spellable pitch class invalidates the symbol.
-  if (bassPc == null) return null;
+  if (bassPc == null) {
+    return null;
+  }
 
   return { rootPc, intervals, bassPc };
 }
@@ -116,7 +124,9 @@ export function realizeChordSymbol(
     let bassMidi = registerRoot + chord.bassPc + octaveShift * 12;
 
     // Drop to the highest octave strictly below the root.
-    while (bassMidi >= rootMidi) bassMidi -= 12;
+    while (bassMidi >= rootMidi) {
+      bassMidi -= 12;
+    }
 
     pitches.unshift(bassMidi);
   }

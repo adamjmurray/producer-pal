@@ -216,14 +216,18 @@ function detectRepeatPattern(
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
 ): RepeatInfo | null {
-  if (positions.length < 3) return null;
+  if (positions.length < 3) {
+    return null;
+  }
 
   const absolutes = positions.map(
     (p) => (p.bar - 1) * beatsPerBar + (p.beat - 1),
   );
   const step = (absolutes[1] as number) - (absolutes[0] as number);
 
-  if (step <= 0) return null;
+  if (step <= 0) {
+    return null;
+  }
 
   for (let i = 2; i < absolutes.length; i++) {
     if (
@@ -249,7 +253,9 @@ function detectRepeatPattern(
     " ",
   );
 
-  if (repeatStr >= listStr.length) return null;
+  if (repeatStr >= listStr.length) {
+    return null;
+  }
 
   return { count: positions.length, step, stepStr };
 }

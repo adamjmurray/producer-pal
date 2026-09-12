@@ -82,7 +82,9 @@ export function handleClipSlotMove({
 
   const destClipSlot = destinationSlot(clip, toSlot, updatedClips, noteResult);
 
-  if (destClipSlot == null) return;
+  if (destClipSlot == null) {
+    return;
+  }
 
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
   // of failing, and the source is deleted right after — check first rather than
@@ -168,7 +170,9 @@ export function handleArrangementToSlotMove({
 
   const destClipSlot = destinationSlot(clip, toSlot, updatedClips, noteResult);
 
-  if (destClipSlot == null) return;
+  if (destClipSlot == null) {
+    return;
+  }
 
   // Read before the source is touched: everything below changes what it holds.
   const losses = recreatedClipLosses(clip);
@@ -197,7 +201,9 @@ export function handleArrangementToSlotMove({
         noteResult,
       );
 
-  if (newClip == null) return;
+  if (newClip == null) {
+    return;
+  }
 
   console.warn(
     `arrangement clip ${targetLabel(clip)} was re-created at ${destPath}` +
@@ -264,7 +270,9 @@ function destinationTrack(
   const path = String(livePath.track(trackIndex));
   const resolved = tracks?.get(trackIndex);
 
-  if (resolved != null && resolved.path === path) return resolved;
+  if (resolved != null && resolved.path === path) {
+    return resolved;
+  }
 
   const track = LiveAPI.from(path);
 
@@ -292,7 +300,9 @@ function destinationSlot(
     livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex),
   );
 
-  if (destClipSlot.exists()) return destClipSlot;
+  if (destClipSlot.exists()) {
+    return destClipSlot;
+  }
 
   console.warn(
     `clip ${targetLabel(clip)} was not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,

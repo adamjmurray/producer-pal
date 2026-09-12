@@ -103,7 +103,9 @@ export function namedHiddenPath(
   value: string | undefined,
   label: string,
 ): string | undefined {
-  if (pathNamesSomething(value)) return value?.trim();
+  if (pathNamesSomething(value)) {
+    return value?.trim();
+  }
 
   // Unlike a coerced null, a comma is something the caller typed, so say the
   // value went nowhere. Silent otherwise, per the note above.
@@ -135,7 +137,9 @@ export function arrangementPath(
   trackIndex: number,
   takeLane?: number | null,
 ): string {
-  if (takeLane == null) return formatObjectPath({ kind: "track", trackIndex });
+  if (takeLane == null) {
+    return formatObjectPath({ kind: "track", trackIndex });
+  }
 
   return formatObjectPath({
     kind: "take-lane",
@@ -272,7 +276,9 @@ export function requireDevicePath(
  * @returns The Live API path builder for that track
  */
 export function trackSegmentPath(track: TrackSegment): TrackPath {
-  if (track.kind === "master-track") return livePath.masterTrack();
+  if (track.kind === "master-track") {
+    return livePath.masterTrack();
+  }
 
   if (track.kind === "return-track") {
     return livePath.returnTrack(track.returnIndex);
@@ -289,8 +295,9 @@ export function trackSegmentPath(track: TrackSegment): TrackPath {
  * @returns The reason, as a sentence fragment
  */
 function describeNonClipPath(path: ObjectPath): string {
-  if (isNewObjectPath(path))
+  if (isNewObjectPath(path)) {
     return `${NEW_OBJECT_NOUNS[path.kind]} holds no clips`;
+  }
 
   switch (path.kind) {
     case "device":

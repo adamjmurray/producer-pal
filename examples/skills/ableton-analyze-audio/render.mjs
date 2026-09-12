@@ -93,10 +93,13 @@ const argv = process.argv.slice(2);
 // back undefined. main()'s catch turns this into a clean stderr line + exit 1.
 const opt = (name, def) => {
   const i = argv.indexOf(name);
-  if (i < 0) return def;
+  if (i < 0) {
+    return def;
+  }
   const v = argv[i + 1];
-  if (v == null || v.startsWith("--"))
+  if (v == null || v.startsWith("--")) {
     throw new Error(`Missing value for ${name}`);
+  }
   return v;
 };
 const flag = (name) => argv.includes(name); // valueless on/off switch
@@ -106,10 +109,11 @@ async function main() {
   const outDir = opt("--out"); // omit → leave the files in the temp dir
   const scene = opt("--session"); // omit → render the arrangement as it stands
   const withReturns = flag("--with-returns"); // default: dry, like Live's own
-  if (scene != null && !argv.includes("--track"))
+  if (scene != null && !argv.includes("--track")) {
     throw new Error(
       "--session needs --track <name> (Main has no Session clips)",
     );
+  }
   const result =
     scene == null
       ? await renderAudio({ track, outDir, withReturns })
@@ -129,8 +133,9 @@ async function main() {
  */
 function sceneIndex(value) {
   const n = Number(value);
-  if (!Number.isInteger(n) || n < 0)
+  if (!Number.isInteger(n) || n < 0) {
     throw new Error(`--session needs a 0-based scene index, got "${value}"`);
+  }
   return n;
 }
 
@@ -163,7 +168,9 @@ async function renderAudio({ track, outDir, label = track, withReturns }) {
   // Rename Live's default-named files to a clean, unique base, moving them to
   // outDir if requested. The PCM twin (.wav/.aiff/.flac) rides along by stem.
   const destDir = outDir ? resolve(outDir) : tmp;
-  if (outDir) mkdirSync(destDir, { recursive: true });
+  if (outDir) {
+    mkdirSync(destDir, { recursive: true });
+  }
   const base = `ppal-${slug(label)}-${stamp()}`;
   const created = [];
   let audio;
@@ -172,10 +179,16 @@ async function renderAudio({ track, outDir, label = track, withReturns }) {
     const dest = join(destDir, base + ext);
     moveFile(join(tmp, f), dest);
     created.push(dest);
-    if (ext.toLowerCase() === ".mp3") audio = dest;
+    if (ext.toLowerCase() === ".mp3") {
+      audio = dest;
+    }
   }
-  if (outDir) rmSync(tmp, { recursive: true, force: true });
-  if (!audio) throw new Error("Export finished but produced no .mp3");
+  if (outDir) {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+  if (!audio) {
+    throw new Error("Export finished but produced no .mp3");
+  }
   return { audio, created };
 }
 
@@ -210,12 +223,15 @@ async function renderSessionClip({ track, scene, outDir, withReturns }) {
       include: ["session-clips", "arrangement-clips"],
     });
     const inherited = (copy.arrangementClips ?? []).map((c) => c.id).join(",");
-    if (inherited) await ppal("ppal-delete", { id: inherited, type: "clip" });
+    if (inherited) {
+      await ppal("ppal-delete", { id: inherited, type: "clip" });
+    }
 
     const wanted = `${temp.path}/s${scene}`;
     const clip = (copy.sessionClips ?? []).find((c) => c.path === wanted);
-    if (clip == null)
+    if (clip == null) {
       throw new Error(`Track "${track}" has no Session clip in scene ${scene}`);
+    }
     // A bare position lands the copy on the source clip's own track, which is
     // the temp track we just made.
     await ppal("ppal-duplicate", {
@@ -251,8 +267,9 @@ async function removeTempTracks() {
     include: ["tracks"],
   });
   const ids = tracks.filter((t) => TEMP_TRACK_RE.test(t.name)).map((t) => t.id);
-  if (ids.length > 0)
+  if (ids.length > 0) {
     await ppal("ppal-delete", { id: ids.join(","), type: "track" });
+  }
 }
 
 /**
@@ -265,10 +282,11 @@ async function findTrackByName(name) {
     include: ["tracks"],
   });
   const track = tracks.find((t) => t.name === name);
-  if (track == null)
+  if (track == null) {
     throw new Error(
       `No track named "${name}". Tracks: ${tracks.map((t) => t.name).join(", ")}`,
     );
+  }
   return track;
 }
 
@@ -292,9 +310,13 @@ async function ppal(tool, args) {
       { cause: err },
     );
   }
-  if (!res.ok) throw new Error(`${tool} failed: HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`${tool} failed: HTTP ${res.status}`);
+  }
   const { result, isError } = await res.json();
-  if (isError) throw new Error(`${tool} failed: ${JSON.stringify(result)}`);
+  if (isError) {
+    throw new Error(`${tool} failed: ${JSON.stringify(result)}`);
+  }
   return result;
 }
 
@@ -496,7 +518,9 @@ async function pollForMp3(dir, { timeoutMs = 300_000, intervalMs = 500 } = {}) {
     const mp3 = readdirSync(dir).find((f) => f.toLowerCase().endsWith(".mp3"));
     if (mp3 != null) {
       const size = statSync(join(dir, mp3)).size;
-      if (size > 0 && size === lastSize) return join(dir, mp3);
+      if (size > 0 && size === lastSize) {
+        return join(dir, mp3);
+      }
       lastSize = size;
     }
     await sleep(intervalMs);
@@ -515,7 +539,9 @@ function moveFile(src, dest) {
   try {
     renameSync(src, dest);
   } catch (err) {
-    if (err.code !== "EXDEV") throw err;
+    if (err.code !== "EXDEV") {
+      throw err;
+    }
     copyFileSync(src, dest);
     rmSync(src, { force: true });
   }

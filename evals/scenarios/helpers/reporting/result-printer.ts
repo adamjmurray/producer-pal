@@ -101,7 +101,9 @@ function printChecksSection(result: JsonEvalResult): void {
 function printSignalsSection(result: JsonEvalResult): void {
   const signals = result.signals;
 
-  if (!signals || signals.length === 0) return;
+  if (!signals || signals.length === 0) {
+    return;
+  }
 
   const { passed, total } = checkTally(signals);
 
@@ -125,7 +127,9 @@ function printSignalsSection(result: JsonEvalResult): void {
 function printToolErrorsSection(result: JsonEvalResult): void {
   const tally = result.toolErrors;
 
-  if (!tally || tally.count === 0) return;
+  if (!tally || tally.count === 0) {
+    return;
+  }
 
   console.log(
     "\n" +
@@ -163,7 +167,9 @@ function firstLine(message: string): string {
 function printEfficiencySection(result: JsonEvalResult): void {
   const eff = result.efficiency;
 
-  if (!eff) return;
+  if (!eff) {
+    return;
+  }
 
   console.log("\n" + formatSubsectionHeader("Efficiency"));
   console.log("");
@@ -189,7 +195,9 @@ function printEfficiencySection(result: JsonEvalResult): void {
 function printJudgeSection(result: JsonEvalResult): void {
   const judge = result.judge;
 
-  if (!judge) return;
+  if (!judge) {
+    return;
+  }
 
   const advisory = judge.advisory === true;
 

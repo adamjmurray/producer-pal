@@ -110,13 +110,17 @@ export async function runOperations(
     isError?: boolean;
   };
 
-  if (body.isError) throw new Error(String(body.result));
+  if (body.isError) {
+    throw new Error(String(body.result));
+  }
 
   const results = (
     body.result as { results?: { result: unknown }[] } | undefined
   )?.results;
 
-  if (!results) throw new Error("ppal-live-api returned no results");
+  if (!results) {
+    throw new Error("ppal-live-api returned no results");
+  }
 
   return results.map((entry) => entry.result);
 }
@@ -174,7 +178,9 @@ function packChunks(chunks: Chunk[]): Chunk[][] {
     size += cost;
   }
 
-  if (pack.length > 0) packs.push(pack);
+  if (pack.length > 0) {
+    packs.push(pack);
+  }
 
   return packs;
 }
@@ -191,11 +197,15 @@ async function sendPack(
 ): Promise<unknown[][]> {
   const results = await tryPack(ctx, pack);
 
-  if (results) return results;
+  if (results) {
+    return results;
+  }
 
   ctx.stats.retries++;
 
-  if (pack.length > 1) return await splitPack(ctx, pack);
+  if (pack.length > 1) {
+    return await splitPack(ctx, pack);
+  }
 
   const chunk = pack[0] as Chunk;
 
@@ -260,7 +270,9 @@ async function tryPack(
 
   // A short result list means the tool answered something other than what was
   // asked; slicing it would misattribute values to the wrong properties.
-  if (raw.length !== ops.length) return null;
+  if (raw.length !== ops.length) {
+    return null;
+  }
 
   const results: unknown[][] = [];
   let cursor = 0;

@@ -307,7 +307,9 @@ function lineLimitOf(block: OxlintOverride): number | undefined {
   const setting = block.rules?.["max-lines"];
   const options = Array.isArray(setting) ? setting[1] : undefined;
 
-  if (typeof options === "number") return options;
+  if (typeof options === "number") {
+    return options;
+  }
 
   return (options as { max?: number } | undefined)?.max;
 }

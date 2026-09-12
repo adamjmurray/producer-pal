@@ -637,12 +637,16 @@ describe("updateDevice - wrapInRack", () => {
   it("should warn but continue when insert_chain fails", () => {
     // Override rack to have no pre-existing chains and fail on insert_chain
     newRack.get.mockImplementation((prop: string) => {
-      if (prop === "chains") return [];
+      if (prop === "chains") {
+        return [];
+      }
 
       return [0];
     });
     newRack.call.mockImplementation((method: string) => {
-      if (method === "insert_chain") return 1; // Failure
+      if (method === "insert_chain") {
+        return 1;
+      } // Failure
 
       return null;
     });

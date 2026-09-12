@@ -44,7 +44,9 @@ const mocks = vi.hoisted(() => {
     }
 
     emit(event: string, payload: unknown) {
-      for (const h of this.listeners.get(event) ?? []) h(payload);
+      for (const h of this.listeners.get(event) ?? []) {
+        h(payload);
+      }
     }
 
     connect(args: unknown) {

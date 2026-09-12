@@ -42,7 +42,9 @@ export function sourceLastOrder(
 
   // A session source is never in the way: nothing about it lives on the
   // arrangement timeline the copies are clearing.
-  if (source.getProperty("is_arrangement_clip") !== 1) return indexes;
+  if (source.getProperty("is_arrangement_clip") !== 1) {
+    return indexes;
+  }
 
   const sourceTrackIndex = source.trackIndex;
   const sourceLane = source.takeLaneIndex;
@@ -97,7 +99,9 @@ export function copySpanBeats(
     (source.getProperty("end_time") as number) -
     (source.getProperty("start_time") as number);
 
-  if (arrangementLength == null || isTakeLaneClip(source)) return sourceLength;
+  if (arrangementLength == null || isTakeLaneClip(source)) {
+    return sourceLength;
+  }
 
   try {
     return parseArrangementLength(

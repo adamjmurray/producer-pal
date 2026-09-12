@@ -225,7 +225,9 @@ function ContextControls(
   const { status, description, widthClass, charCount, builtIn } = props;
   const { hasOverride, drift, onClear, onImport, onExport } = props;
 
-  if (status.kind !== "ready") return null;
+  if (status.kind !== "ready") {
+    return null;
+  }
 
   // With a built-in default and no override yet, the strip's size readout must
   // reflect the default that's actually on screen (not the empty override).

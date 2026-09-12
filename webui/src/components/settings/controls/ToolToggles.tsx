@@ -10,10 +10,15 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import { CONNECT_TOOL_ID, LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { isToolEnabled } from "#webui/lib/utils/enabled-tools";
 import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
-import { type GroupedTools, groupTools } from "./helpers/tool-toggles-helpers";
+import {
+  bulkToolSelection,
+  type GroupedTools,
+  groupTools,
+  isAlwaysEnabled,
+} from "./helpers/tool-toggles-helpers";
 import { NotationSelector } from "./NotationSelector";
 import { Tooltip } from "./Tooltip";
 
@@ -90,8 +95,13 @@ export function ToolToggles({
   }
 
   const isToolDisabled = (toolId: string) => {
-    if (isAlwaysEnabled(toolId)) return true;
-    if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) return true;
+    if (isAlwaysEnabled(toolId)) {
+      return true;
+    }
+
+    if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) {
+      return true;
+    }
 
     return false;
   };
@@ -105,9 +115,14 @@ export function ToolToggles({
   };
 
   const isToolChecked = (toolId: string) => {
-    if (isAlwaysEnabled(toolId)) return true;
+    if (isAlwaysEnabled(toolId)) {
+      return true;
+    }
+
     // Live API binds to the device flag, not the map (see the prop comment).
-    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
+    if (toolId === LIVE_API_TOOL_ID) {
+      return liveApiEnabled;
+    }
 
     // Shared with the MCP layer and preset/transfer code, so the checkbox can't
     // drift from what the model is actually offered.
@@ -115,7 +130,9 @@ export function ToolToggles({
   };
 
   const handleToggle = (toolId: string) => {
-    if (isToolDisabled(toolId)) return;
+    if (isToolDisabled(toolId)) {
+      return;
+    }
 
     if (toolId === LIVE_API_TOOL_ID) {
       setLiveApiEnabled(!liveApiEnabled);
@@ -132,31 +149,15 @@ export function ToolToggles({
     });
   };
 
-  const enableDefaultTools = () => {
-    const defaults: Record<string, boolean> = {};
+  // Both bulk buttons also clear Live API: it's opt-in, so it's not part of the
+  // default toolset either. Respect the forced-on flag: don't fight
+  // ENABLE_LIVE_API.
+  const selectTools = (enableAll: boolean) => {
+    setEnabledTools(bulkToolSelection(tools, enableAll));
 
-    for (const tool of tools) {
-      if (tool.id === LIVE_API_TOOL_ID) continue;
-      defaults[tool.id] = true;
+    if (!liveApiForcedOn) {
+      setLiveApiEnabled(false);
     }
-
-    setEnabledTools(defaults);
-    // Live API is opt-in — not part of the default toolset. Respect the
-    // forced-on flag: don't fight ENABLE_LIVE_API.
-    if (!liveApiForcedOn) setLiveApiEnabled(false);
-  };
-
-  const disableAllTools = () => {
-    const allDisabled: Record<string, boolean> = {};
-
-    for (const tool of tools) {
-      if (tool.id === LIVE_API_TOOL_ID) continue;
-      allDisabled[tool.id] = isAlwaysEnabled(tool.id);
-    }
-
-    setEnabledTools(allDisabled);
-    // Respect the forced-on flag: "disable all" shouldn't fight the env var.
-    if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
   const groups = groupTools(fullToolCatalog(tools));
@@ -174,8 +175,8 @@ export function ToolToggles({
   return (
     <div>
       <ToolsHeaderBar
-        onEnableDefaults={enableDefaultTools}
-        onDisableAll={disableAllTools}
+        onEnableDefaults={() => selectTools(true)}
+        onDisableAll={() => selectTools(false)}
       />
 
       <div className="my-6 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3">
@@ -350,14 +351,4 @@ function EditContextButton({
       Edit Context
     </button>
   );
-}
-
-/**
- * ppal-connect is mandatory — every session needs it, so its checkbox is
- * always checked and always disabled.
- * @param toolId - MCP tool identifier
- * @returns True when the tool cannot be turned off
- */
-function isAlwaysEnabled(toolId: string): boolean {
-  return toolId === CONNECT_TOOL_ID;
 }

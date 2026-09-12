@@ -49,11 +49,15 @@ export function SplitOverrideNote(
   }
 
   // canDisable is false for the drivers alone (see SkillSlotDef.alwaysOn).
-  if (slot.canDisable) return null;
+  if (slot.canDisable) {
+    return null;
+  }
 
   const stale = slots.filter((other) => other.splitStale != null);
 
-  if (stale.length === 0) return null;
+  if (stale.length === 0) {
+    return null;
+  }
 
   return (
     <Banner>

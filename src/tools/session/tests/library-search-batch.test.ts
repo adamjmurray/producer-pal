@@ -51,7 +51,9 @@ async function runSearchBatch(
 ): Promise<SearchBatchResult> {
   const result = await library({ action: "search", searches });
 
-  if (!("results" in result)) throw new Error("expected results");
+  if (!("results" in result)) {
+    throw new Error("expected results");
+  }
 
   return result;
 }
@@ -227,7 +229,11 @@ describe("library tool — searches fan-out", () => {
       "library.search",
       expect.objectContaining({ query: "808" }),
     );
-    if (!("results" in result)) throw new Error("expected results");
+
+    if (!("results" in result)) {
+      throw new Error("expected results");
+    }
+
     expect(itemNamesAt(result, 0)).toStrictEqual(["kick.wav"]);
     expect(itemNamesAt(result, 1)).toStrictEqual(["808.wav"]);
   });
@@ -438,7 +444,10 @@ describe("library tool — searches fan-out", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("results" in result)) throw new Error("expected results");
+    if (!("results" in result)) {
+      throw new Error("expected results");
+    }
+
     expect("dbAvailable" in result).toBe(false);
     expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
       "kick.wav",

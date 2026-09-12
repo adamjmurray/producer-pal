@@ -54,7 +54,9 @@ function parseDeviceSegment(
 ): DeviceSegment {
   const device = DEVICE.exec(segment);
 
-  if (device) return { kind: "device", index: Number(device[1]) };
+  if (device) {
+    return { kind: "device", index: Number(device[1]) };
+  }
 
   const returnChain = RETURN_CHAIN.exec(segment);
 
@@ -64,7 +66,9 @@ function parseDeviceSegment(
 
   const chain = CHAIN.exec(segment);
 
-  if (chain) return { kind: "chain", index: Number(chain[1]) };
+  if (chain) {
+    return { kind: "chain", index: Number(chain[1]) };
+  }
 
   const drumPad = DRUM_PAD.exec(segment);
 
@@ -140,7 +144,9 @@ function canFollow(
   kind: DeviceSegment["kind"],
   previous: DeviceTailStep,
 ): boolean {
-  if (kind === DEVICE_KIND) return previous !== DEVICE_KIND;
+  if (kind === DEVICE_KIND) {
+    return previous !== DEVICE_KIND;
+  }
 
   return (
     previous === DEVICE_KIND || (kind === "chain" && previous === "drum-pad")

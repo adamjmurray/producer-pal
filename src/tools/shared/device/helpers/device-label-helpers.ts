@@ -99,7 +99,9 @@ export function parseLabel(label: string): ParsedLabel {
   for (const pattern of LABEL_PATTERNS) {
     const match = trimmed.match(pattern.regex);
 
-    if (!match) continue;
+    if (!match) {
+      continue;
+    }
 
     if (pattern.fixedValue != null) {
       return { value: pattern.fixedValue, unit: pattern.unit };
@@ -162,7 +164,9 @@ export function unitForLabels(...labels: string[]): string | null {
   for (const label of labels) {
     const { unit } = parseLabel(label);
 
-    if (unit != null) return unit;
+    if (unit != null) {
+      return unit;
+    }
   }
 
   return null;

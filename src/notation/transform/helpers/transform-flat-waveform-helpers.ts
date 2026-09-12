@@ -37,15 +37,21 @@ export function findFunctionName(
   expr: ExpressionNode,
   names: ReadonlySet<string>,
 ): string | null {
-  if (typeof expr === "number" || !("type" in expr)) return null;
+  if (typeof expr === "number" || !("type" in expr)) {
+    return null;
+  }
 
   if (expr.type === "function") {
-    if (names.has(expr.name)) return expr.name;
+    if (names.has(expr.name)) {
+      return expr.name;
+    }
 
     for (const arg of expr.args) {
       const nested = findFunctionName(arg, names);
 
-      if (nested != null) return nested;
+      if (nested != null) {
+        return nested;
+      }
     }
 
     return null;
@@ -85,11 +91,15 @@ export function findWaveformName(expr: ExpressionNode): string | null {
  * @returns True when every value is identical, i.e. the LFO came out flat
  */
 export function isFlatWaveform(name: string, values: number[]): boolean {
-  if (values.length < 2) return false;
+  if (values.length < 2) {
+    return false;
+  }
 
   const first = values[0] as number;
 
-  if (values.some((value) => value !== first)) return false;
+  if (values.some((value) => value !== first)) {
+    return false;
+  }
 
   console.warn(
     `${name}() gave all ${values.length} notes the same value — a flat LFO, ` +

@@ -283,7 +283,9 @@ function mergeSlot(
   prev: SkillOverridesStatus,
   updated: SkillSlotView,
 ): SkillOverridesStatus {
-  if (prev.kind !== "ready") return prev;
+  if (prev.kind !== "ready") {
+    return prev;
+  }
 
   return {
     kind: "ready",
@@ -325,7 +327,9 @@ function toView(raw: RawSkillSlot): SkillSlotView {
  * @returns The gate, or null when absent or unrecognized
  */
 function toGate(raw: unknown): SkillGate | null {
-  if (raw === "always" || raw === "conversation-only") return raw;
+  if (raw === "always" || raw === "conversation-only") {
+    return raw;
+  }
 
   if (Array.isArray(raw) && raw.every((tool) => typeof tool === "string")) {
     return raw;

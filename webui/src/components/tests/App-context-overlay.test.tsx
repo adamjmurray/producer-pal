@@ -30,7 +30,9 @@ describe("App", () => {
     const openContext = (container: ParentNode) => {
       const btn = container.querySelector('button[aria-label="Context"]');
 
-      if (btn) fireEvent.click(btn);
+      if (btn) {
+        fireEvent.click(btn);
+      }
     };
 
     /**
@@ -122,7 +124,11 @@ describe("App", () => {
       );
 
       expect(editBtn).toBeDefined();
-      if (editBtn) fireEvent.click(editBtn);
+
+      if (editBtn) {
+        fireEvent.click(editBtn);
+      }
+
       // Settings runs its close animation first, then Context opens.
       await act(() => {
         vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
@@ -138,7 +144,9 @@ describe("App", () => {
           'button[aria-label="Close context editor"]',
         );
 
-        if (close) fireEvent.click(close);
+        if (close) {
+          fireEvent.click(close);
+        }
       });
 
       expect(contextStub()).toBe(null);
@@ -164,7 +172,9 @@ describe("App", () => {
       await openContextThen(() => {
         const inner = contextStub();
 
-        if (inner) fireEvent.click(inner);
+        if (inner) {
+          fireEvent.click(inner);
+        }
       });
 
       // Backdrop-only dismissal: a click on content shouldn't fire close.

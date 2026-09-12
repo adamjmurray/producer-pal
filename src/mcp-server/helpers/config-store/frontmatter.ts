@@ -60,7 +60,9 @@ export function parseFrontmatter(
   const data: Record<string, string> = {};
 
   for (const line of lines.slice(1, closeIndex)) {
-    if (line.trim() === "") continue; // blank lines inside the block are ignored
+    if (line.trim() === "") {
+      continue;
+    } // blank lines inside the block are ignored
 
     const sep = line.indexOf(":");
     const key = sep === -1 ? "" : line.slice(0, sep).trim();
@@ -111,7 +113,9 @@ export function serializeFrontmatter(
 ): string {
   const keys = Object.keys(data);
 
-  if (keys.length === 0) return body;
+  if (keys.length === 0) {
+    return body;
+  }
 
   const block = keys.map((key) => `${key}: ${data[key]}`).join("\n");
 

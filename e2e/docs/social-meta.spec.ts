@@ -21,7 +21,9 @@ function readMetaTags(html: string): Map<string, string[]> {
   const tags = new Map<string, string[]>();
 
   for (const [, attrs] of html.matchAll(/<meta\s([^>]*)>/g)) {
-    if (attrs == null) continue;
+    if (attrs == null) {
+      continue;
+    }
 
     const key =
       /(?:property|name)="([^"]+)"/.exec(attrs)?.[1] ??
@@ -30,7 +32,9 @@ function readMetaTags(html: string): Map<string, string[]> {
       /content="([^"]*)"/.exec(attrs)?.[1] ??
       /content='([^']*)'/.exec(attrs)?.[1];
 
-    if (key == null || content == null) continue;
+    if (key == null || content == null) {
+      continue;
+    }
 
     tags.set(key, [...(tags.get(key) ?? []), content]);
   }

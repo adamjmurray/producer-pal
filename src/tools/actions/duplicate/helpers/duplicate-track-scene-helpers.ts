@@ -241,7 +241,9 @@ export function duplicateTrack(
 
   const duplicatedClips = processClipsForDuplication(newTrack, withoutClips);
 
-  if (routeToSource) configureRouting(newTrack, sourceTrackIndex);
+  if (routeToSource) {
+    configureRouting(newTrack, sourceTrackIndex);
+  }
 
   return {
     id: newTrack.id,

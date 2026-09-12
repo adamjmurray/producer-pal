@@ -78,7 +78,9 @@ export function useGlobalSettings(): UseGlobalSettingsReturn {
           signal: controller.signal,
         });
 
-        if (!response.ok) return;
+        if (!response.ok) {
+          return;
+        }
 
         const settings = (await response.json()) as Partial<GlobalSettings>;
 
@@ -96,7 +98,9 @@ export function useGlobalSettings(): UseGlobalSettingsReturn {
   const setAutoUpdateCheck = useCallback((enabled: boolean) => {
     setLocalAutoUpdateCheck(enabled);
     void patchGlobalSettings({ autoUpdateCheck: enabled }).then((ok) => {
-      if (!ok) setLocalAutoUpdateCheck(!enabled);
+      if (!ok) {
+        setLocalAutoUpdateCheck(!enabled);
+      }
     });
   }, []);
 

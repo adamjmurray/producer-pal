@@ -80,7 +80,10 @@ export function generateToolPartial(toolDef: ToolDefFunction): string {
   for (const key of schemaKeys) {
     const prop = properties[key];
 
-    if (!prop) continue;
+    if (!prop) {
+      continue;
+    }
+
     const isRequired = required.has(key) && prop.default == null;
 
     const paramExcludedValues = excludedEnumMap[key];
@@ -96,7 +99,10 @@ export function generateToolPartial(toolDef: ToolDefFunction): string {
     const desc = escapeTableCell(prop.description ?? "");
     const isExcluded = excludedParams.has(key);
 
-    if (isExcluded) hasMarker = true;
+    if (isExcluded) {
+      hasMarker = true;
+    }
+
     const paramCell = isExcluded
       ? `\`${key}\` ${LARGE_ONLY_MARKER}`
       : `\`${key}\``;
@@ -142,7 +148,9 @@ export function generateNotationParamsPartial(
   for (const toolDef of toolDefs) {
     const params = notationKeyed.get(toolDef.toolName);
 
-    if (params == null) continue;
+    if (params == null) {
+      continue;
+    }
 
     const { published } = resolveToolSchema(toolDef.toolOptions.inputSchema, {
       notation,
@@ -191,11 +199,15 @@ function findNotationKeyedParams(
       });
 
       for (const key of Object.keys(descriptionOverrides)) {
-        if (key in published) keys.add(key);
+        if (key in published) {
+          keys.add(key);
+        }
       }
     }
 
-    if (keys.size > 0) byTool.set(toolDef.toolName, [...keys]);
+    if (keys.size > 0) {
+      byTool.set(toolDef.toolName, [...keys]);
+    }
   }
 
   return byTool;

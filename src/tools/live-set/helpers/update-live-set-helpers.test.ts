@@ -122,8 +122,13 @@ describe("update-live-set-helpers", () => {
 
       g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
-          if (id === "track-1") return mockMidiTrack;
-          if (id === "id 999") return mockTempClip;
+          if (id === "track-1") {
+            return mockMidiTrack;
+          }
+
+          if (id === "id 999") {
+            return mockTempClip;
+          }
 
           return null;
         }),
@@ -161,8 +166,13 @@ describe("update-live-set-helpers", () => {
 
       g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
-          if (id === "track-1") return mockAudioTrack;
-          if (id === "id 888") return mockArrangementClip;
+          if (id === "track-1") {
+            return mockAudioTrack;
+          }
+
+          if (id === "id 888") {
+            return mockArrangementClip;
+          }
 
           return null;
         }),
@@ -220,9 +230,17 @@ describe("update-live-set-helpers", () => {
 
       g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
-          if (id === "audio-track") return mockAudioTrack;
-          if (id === "midi-track") return mockMidiTrack;
-          if (id === "id 999") return mockTempClip;
+          if (id === "audio-track") {
+            return mockAudioTrack;
+          }
+
+          if (id === "midi-track") {
+            return mockMidiTrack;
+          }
+
+          if (id === "id 999") {
+            return mockTempClip;
+          }
 
           return null;
         }),

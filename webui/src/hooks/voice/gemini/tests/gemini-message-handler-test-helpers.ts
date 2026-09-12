@@ -44,8 +44,11 @@ export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
     enqueueBase64: vi.fn(),
     hasQueued,
     onDrained: vi.fn((callback: () => void) => {
-      if (hasQueued()) pendingDrain = callback;
-      else callback();
+      if (hasQueued()) {
+        pendingDrain = callback;
+      } else {
+        callback();
+      }
     }),
     hasPendingDrain: vi.fn(() => pendingDrain != null),
   } as unknown as GeminiPcmPlayer;

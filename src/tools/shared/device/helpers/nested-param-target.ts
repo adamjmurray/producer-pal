@@ -47,7 +47,9 @@ export function isDrumPadSampleShortcut(
   prefix: string,
   paramName: string,
 ): boolean {
-  if (!isSampleParam(paramName)) return false;
+  if (!isSampleParam(paramName)) {
+    return false;
+  }
 
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
@@ -279,7 +281,9 @@ function resolveDrumPadSampleTarget(
     ? null
     : ambiguousLayerSkip(rack, padNote, padLabel);
 
-  if (ambiguous) return ambiguous;
+  if (ambiguous) {
+    return ambiguous;
+  }
 
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
@@ -375,7 +379,9 @@ function ambiguousLayerSkip(
 ): NestedParamTarget | null {
   const layers = resolveDrumPadGroup(rack.path, padNote)?.chains.length ?? 0;
 
-  if (layers < 2) return null;
+  if (layers < 2) {
+    return null;
+  }
 
   // Name the retries as param names, relative to the rack, since that is what
   // the caller re-sends — not the pad's full path.

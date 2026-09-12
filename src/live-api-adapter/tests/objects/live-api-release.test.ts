@@ -447,7 +447,9 @@ describe("live-api release", () => {
     let reused = 0;
 
     for (let i = 0; i < MAX_POOLED_OBJECTS + overflow; i++) {
-      if (built.has(LiveAPI.from(livePath.track(i)))) reused++;
+      if (built.has(LiveAPI.from(livePath.track(i)))) {
+        reused++;
+      }
     }
 
     expect(reused).toBe(MAX_POOLED_OBJECTS);

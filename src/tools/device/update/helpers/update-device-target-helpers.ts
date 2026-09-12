@@ -122,7 +122,9 @@ export function updateMultipleTargets(
 function resolveIdToTarget(id: string): ResolvedTarget | null {
   const target = LiveAPI.from(id);
 
-  if (!target.exists()) return null;
+  if (!target.exists()) {
+    return null;
+  }
 
   return drumPadTarget(target) ?? { kind: "object", target };
 }
@@ -136,7 +138,9 @@ function resolveIdToTarget(id: string): ResolvedTarget | null {
  * @returns The whole-pad target, or null when this isn't a pad
  */
 function drumPadTarget(target: LiveAPI): ResolvedTarget | null {
-  if (target.type !== "DrumPad") return null;
+  if (target.type !== "DrumPad") {
+    return null;
+  }
 
   return {
     kind: "drum-pad",
@@ -277,7 +281,9 @@ function updateTarget(
     ...pathField(target, written),
   };
 
-  if (params.length > 0) result.params = params;
+  if (params.length > 0) {
+    result.params = params;
+  }
 
   return result;
 }
@@ -356,7 +362,9 @@ function moveDeviceAndName(
 function writtenContainer(
   writtenPath: string | undefined,
 ): WrittenContainer | undefined {
-  if (writtenPath == null) return undefined;
+  if (writtenPath == null) {
+    return undefined;
+  }
 
   const path = writtenPath.replace(OWN_SEGMENT, "");
 

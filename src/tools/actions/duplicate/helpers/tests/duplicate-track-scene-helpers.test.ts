@@ -189,7 +189,9 @@ describe("duplicate-track-scene-helpers", () => {
       const spy = vi
         .spyOn(LiveAPI, "from")
         .mockImplementation((idOrPath: Parameters<typeof realFrom>[0]) => {
-          if (idOrPath === "this_device") throw new Error("Live API not ready");
+          if (idOrPath === "this_device") {
+            throw new Error("Live API not ready");
+          }
 
           return realFrom(idOrPath);
         });

@@ -42,15 +42,25 @@ export function buildRequestHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
-  if (options.smallModelMode != null)
+  if (options.smallModelMode != null) {
     headers[SMALL_MODEL_MODE_HEADER] = String(options.smallModelMode);
-  if (options.notation) headers[NOTATION_HEADER] = options.notation;
-  if (options.jsonOutput != null)
+  }
+
+  if (options.notation) {
+    headers[NOTATION_HEADER] = options.notation;
+  }
+
+  if (options.jsonOutput != null) {
     headers[FORMAT_HEADER] = options.jsonOutput ? "json" : "compact";
-  if (options.liveApiEnabled != null)
+  }
+
+  if (options.liveApiEnabled != null) {
     headers[LIVE_API_HEADER] = String(options.liveApiEnabled);
-  if (options.disabledTools?.length)
+  }
+
+  if (options.disabledTools?.length) {
     headers[DISABLED_TOOLS_HEADER] = options.disabledTools.join(",");
+  }
 
   return headers;
 }

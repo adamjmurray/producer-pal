@@ -39,7 +39,9 @@ export function requireClipSourcePath(
 
   const clip = requireClipPath(path, label);
 
-  if (clip.kind === "slot") return clip;
+  if (clip.kind === "slot") {
+    return clip;
+  }
 
   throw pathError(label, formatObjectPath(clip), laneNamesManyClips(clip));
 }

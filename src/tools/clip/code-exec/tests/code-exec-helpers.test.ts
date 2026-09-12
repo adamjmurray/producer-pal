@@ -314,8 +314,13 @@ describe("code-exec-helpers", () => {
         if (path.includes("tracks 1") && !path.includes("clip")) {
           return {
             getProperty: vi.fn((prop: string) => {
-              if (prop === "name") return "Bass Track";
-              if (prop === "has_midi_input") return 1;
+              if (prop === "name") {
+                return "Bass Track";
+              }
+
+              if (prop === "has_midi_input") {
+                return 1;
+              }
 
               return null;
             }),
@@ -399,8 +404,13 @@ describe("code-exec-helpers", () => {
         if (path.includes("tracks 0") && !path.includes("arrangement")) {
           return {
             getProperty: vi.fn((prop: string) => {
-              if (prop === "name") return "Audio Track";
-              if (prop === "has_midi_input") return 0;
+              if (prop === "name") {
+                return "Audio Track";
+              }
+
+              if (prop === "has_midi_input") {
+                return 0;
+              }
 
               return null;
             }),
@@ -516,8 +526,13 @@ describe("code-exec-helpers", () => {
       const mockClip = {
         path: livePath.track(0).arrangementClip(3),
         getProperty: vi.fn((prop: string) => {
-          if (prop === "is_arrangement_clip") return 1;
-          if (prop === "start_time") return 16;
+          if (prop === "is_arrangement_clip") {
+            return 1;
+          }
+
+          if (prop === "start_time") {
+            return 16;
+          }
 
           return 0;
         }),

@@ -153,8 +153,13 @@ describe("readDevice param-values include option", () => {
         display_value: 1000,
       },
       strForValue: (value) => {
-        if (value === 0) return "20 Hz";
-        if (value === 1) return "20.0 kHz";
+        if (value === 0) {
+          return "20 Hz";
+        }
+
+        if (value === 1) {
+          return "20.0 kHz";
+        }
 
         return "1.00 kHz";
       },
@@ -327,8 +332,13 @@ describe("readDevice recorded units", () => {
  * @returns The dB label Live would display for that value
  */
 function dbStrForValue(value: unknown): string {
-  if (value === 0) return "-inf dB";
-  if (value === 1) return "0 dB";
+  if (value === 0) {
+    return "-inf dB";
+  }
+
+  if (value === 1) {
+    return "0 dB";
+  }
 
   return "-6 dB";
 }

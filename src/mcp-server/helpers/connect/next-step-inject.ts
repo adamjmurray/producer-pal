@@ -107,7 +107,9 @@ function nextStepBlock(config: NextStepConfig): string {
   const empty = emptyLayers(config);
   const nextStep = isNewUser(config) ? ONBOARDING_NEXT_STEP : BASE_NEXT_STEP;
 
-  if (empty.length === 0) return nextStep;
+  if (empty.length === 0) {
+    return nextStep;
+  }
 
   return `Currently empty: ${empty.join(", ")}.\n\n${nextStep}`;
 }
@@ -128,13 +130,19 @@ function emptyLayers(config: NextStepConfig): string[] {
   // and the toolset gate already drops the context skills fragment — so this
   // would be the only mention of them left, in a response that can do nothing
   // about it.
-  if (!hasContextTool(config)) return [];
+  if (!hasContextTool(config)) {
+    return [];
+  }
 
   const empty: string[] = [];
 
-  if (!config.projectContext.trim()) empty.push("project context");
+  if (!config.projectContext.trim()) {
+    empty.push("project context");
+  }
 
-  if (!readGlobalContext().trim()) empty.push("global context");
+  if (!readGlobalContext().trim()) {
+    empty.push("global context");
+  }
 
   if (!config.smallModelMode && listMemoryEntries().length === 0) {
     empty.push("memory");
@@ -159,11 +167,17 @@ function emptyLayers(config: NextStepConfig): string[] {
  * @returns True when the onboarding next step should be used
  */
 function isNewUser(config: NextStepConfig): boolean {
-  if (config.smallModelMode) return false;
+  if (config.smallModelMode) {
+    return false;
+  }
 
-  if (!hasContextTool(config)) return false;
+  if (!hasContextTool(config)) {
+    return false;
+  }
 
-  if (readGlobalContext().trim()) return false;
+  if (readGlobalContext().trim()) {
+    return false;
+  }
 
   return listMemoryEntries().length === 0;
 }

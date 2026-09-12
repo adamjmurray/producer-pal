@@ -114,7 +114,9 @@ export function applyAudioTransform(
     // A bare top-level pitch literal (`gain = C3`) is nonsensical for audio and
     // is warned-and-skipped here (a nested pitch literal is still resolved to
     // its MIDI number in evaluateAudioExpression).
-    if (warnAndSkipBarePitchLiteral(assignment)) continue;
+    if (warnAndSkipBarePitchLiteral(assignment)) {
+      continue;
+    }
 
     try {
       const value = evaluateAudioExpression(
@@ -185,7 +187,9 @@ function nextAudioValue(
 function warnAndSkipBarePitchLiteral(assignment: TransformAssignment): boolean {
   const expr = assignment.expression;
 
-  if (typeof expr !== "object" || expr.type !== "pitchLiteral") return false;
+  if (typeof expr !== "object" || expr.type !== "pitchLiteral") {
+    return false;
+  }
 
   const example = assignment.parameter === "gain" ? "-6" : "12";
 
@@ -466,7 +470,9 @@ function evaluateAudioExpressionWithContext(
  * @returns NoteProperties with clip-level values for function access
  */
 function buildClipNoteProperties(clipContext?: ClipContext): NoteProperties {
-  if (!clipContext) return {};
+  if (!clipContext) {
+    return {};
+  }
 
   const props: NoteProperties = {
     "clip:index": clipContext.clipIndex,

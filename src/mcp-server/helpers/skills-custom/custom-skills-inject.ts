@@ -42,7 +42,9 @@ export function withCustomSkills(
 function customSkillsBlock(): string | null {
   const index = renderEnabledSkillsIndex(listCustomSkills());
 
-  if (!index) return null;
+  if (!index) {
+    return null;
+  }
 
   return (
     "Producer Pal custom skills — user-authored instruction packs for this " +

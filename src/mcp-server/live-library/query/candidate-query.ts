@@ -231,7 +231,10 @@ export function resolveFileIdForPath(
   let currentId = rootRow.file_id;
 
   for (const seg of childSegments) {
-    if (seg === "") continue;
+    if (seg === "") {
+      continue;
+    }
+
     const row = db
       .prepare(
         "SELECT file_id FROM files WHERE parent_id = ? AND name = ? COLLATE NOCASE LIMIT 1",

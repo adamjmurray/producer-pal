@@ -137,7 +137,10 @@ describe("library tool — listPlugins action", () => {
 
     const result = await library({ action: "listPlugins" });
 
-    if (!("plugins" in result)) throw new Error("expected plugins");
+    if (!("plugins" in result)) {
+      throw new Error("expected plugins");
+    }
+
     expect(result.plugins.map((p) => p.name)).toStrictEqual(["Serum"]);
     expect(result.dbAvailable).toBe(true);
   });

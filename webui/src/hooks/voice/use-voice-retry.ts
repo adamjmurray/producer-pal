@@ -76,7 +76,9 @@ export function useVoiceRetry(deps: UseVoiceRetryDeps): {
   const retryResponse = useCallback((): boolean => {
     const session = sessionRef.current;
 
-    if (!session || activeResponseRef.current) return false;
+    if (!session || activeResponseRef.current) {
+      return false;
+    }
 
     try {
       session.transport.sendEvent({ type: "response.create" });
@@ -152,7 +154,9 @@ function useRateLimitAutoRetry(
       // Count the attempt only if the nudge actually fired. A no-op return
       // (idle/active-response) must not burn a capped attempt — otherwise a
       // single stray tick could exhaust the budget without ever retrying.
-      if (retryResponse()) attemptsRef.current += 1;
+      if (retryResponse()) {
+        attemptsRef.current += 1;
+      }
     }, delay);
 
     return () => clearTimeout(id);

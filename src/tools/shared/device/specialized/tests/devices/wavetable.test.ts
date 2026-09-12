@@ -377,7 +377,9 @@ describe("Wavetable actions — setModulation", () => {
       {
         ...buildModMethods([]),
         get_modulation_target_parameter_name: (i: unknown) => {
-          if (addCalled && i === 0) return "Osc 1 Pos";
+          if (addCalled && i === 0) {
+            return "Osc 1 Pos";
+          }
 
           return 1;
         },

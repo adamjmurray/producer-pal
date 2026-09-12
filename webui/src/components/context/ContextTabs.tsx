@@ -123,7 +123,10 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const { confirmLeaveRef } = props;
 
   useEffect(() => {
-    if (confirmLeaveRef == null) return undefined;
+    if (confirmLeaveRef == null) {
+      return undefined;
+    }
+
     confirmLeaveRef.current = leaveGuard.confirmLeave;
 
     return () => {
@@ -134,15 +137,22 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const selectTab = (next: ContextTab): void => {
     // Clicking the already-active tab unmounts nothing, so don't run the leave
     // guard — it would pop a spurious discard prompt over a dirty new draft.
-    if (next === tab) return;
-    if (leaveGuard.confirmLeave()) setTab(next);
+    if (next === tab) {
+      return;
+    }
+
+    if (leaveGuard.confirmLeave()) {
+      setTab(next);
+    }
   };
 
   const guardedClose =
     props.onClose == null
       ? undefined
       : (): void => {
-          if (leaveGuard.confirmLeave()) props.onClose?.();
+          if (leaveGuard.confirmLeave()) {
+            props.onClose?.();
+          }
         };
 
   const tabStrip = <TabStrip tab={tab} onSelect={selectTab} />;

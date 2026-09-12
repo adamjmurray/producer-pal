@@ -124,7 +124,9 @@ function setDeviceIds(container: RegisteredMockObject, ids: string[]): void {
   for (const [index, id] of ids.entries()) {
     const device = lookupMockObject(id);
 
-    if (device != null) repath(device, `${container.path} devices ${index}`);
+    if (device != null) {
+      repath(device, `${container.path} devices ${index}`);
+    }
   }
 }
 

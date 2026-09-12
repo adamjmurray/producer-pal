@@ -178,7 +178,9 @@ function categoryLeafNames(db: DatabaseSync, category: string): string[] {
   for (const { value } of rows) {
     const leaf = value.slice(value.lastIndexOf("|") + 1);
 
-    if (leaf) leaves.add(leaf);
+    if (leaf) {
+      leaves.add(leaf);
+    }
   }
 
   return [...leaves];

@@ -110,8 +110,9 @@ export function useExecuteWithRetry<
       const onMessageUpdate = (msgs: UIMessage[]) => {
         // Skip updates after abort (e.g. user switched conversations), and once
         // a newer turn owns the transcript.
-        if (!stillCurrent() || abortControllerRef.current?.signal.aborted)
+        if (!stillCurrent() || abortControllerRef.current?.signal.aborted) {
           return;
+        }
 
         const hadAssistant = contentState.hasAssistantContent;
 
@@ -156,9 +157,13 @@ export function useExecuteWithRetry<
           // newer turn: a superseded turn's failure is stale, and rendering it
           // would drop an error into the turn currently streaming (and autosave
           // it there).
-          if (!stillCurrent()) return false;
+          if (!stillCurrent()) {
+            return false;
+          }
 
-          if (retryAbortRef.current.signal.aborted) return false;
+          if (retryAbortRef.current.signal.aborted) {
+            return false;
+          }
 
           const rateLimitInfo = detectRateLimit(error);
 

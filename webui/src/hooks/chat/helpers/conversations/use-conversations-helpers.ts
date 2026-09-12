@@ -92,7 +92,9 @@ export function useHashNavigation(params: {
 
       const hashId = getHashConversationId();
 
-      if (hashId === activeId()) return;
+      if (hashId === activeId()) {
+        return;
+      }
 
       if (!confirmLeave()) {
         // The browser already moved; put the id back on the entry we landed on.
@@ -329,7 +331,9 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
   let cacheReadTokens = 0;
 
   for (const msg of messages) {
-    if (msg.role !== "assistant" || !msg.usage) continue;
+    if (msg.role !== "assistant" || !msg.usage) {
+      continue;
+    }
 
     hasUsage = true;
     inputTokens += msg.usage.inputTokens ?? 0;
@@ -338,7 +342,9 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
     cacheReadTokens += msg.usage.cacheReadTokens ?? 0;
   }
 
-  if (!hasUsage) return null;
+  if (!hasUsage) {
+    return null;
+  }
 
   return {
     inputTokens,
@@ -377,7 +383,9 @@ export function deriveTitle(
   const messages = chatHistory as Array<{ role: string; content: string }>;
   const userMessages = messages.filter((m) => m.role === "user");
 
-  if (userMessages.length === 0) return currentTitle;
+  if (userMessages.length === 0) {
+    return currentTitle;
+  }
 
   const firstUserLine = firstLine(userMessages[0]?.content ?? "");
 

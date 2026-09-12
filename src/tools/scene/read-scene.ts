@@ -191,7 +191,9 @@ function readSceneClips(
       { notation },
     );
 
-    if (clip.id == null) continue;
+    if (clip.id == null) {
+      continue;
+    }
 
     // Only for slots that hold something — an empty grid would otherwise pay
     // for a track build per column it has no clip in.

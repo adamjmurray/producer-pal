@@ -55,7 +55,10 @@ function isValidDimensionScore(dim: unknown): dim is DimensionScore {
  * @returns True if all dimensions are valid
  */
 function isValidRawResponse(raw: unknown): raw is RawJudgeResponse {
-  if (typeof raw !== "object" || raw === null) return false;
+  if (typeof raw !== "object" || raw === null) {
+    return false;
+  }
+
   const obj = raw as Record<string, unknown>;
 
   return DIMENSIONS.every((dim) => isValidDimensionScore(obj[dim]));
@@ -115,7 +118,10 @@ export function parseSimpleJudgeResponse(text: string): SimpleJudgeResult {
 function isValidSimpleResponse(
   raw: unknown,
 ): raw is { pass: boolean; issues: string[] } {
-  if (typeof raw !== "object" || raw === null) return false;
+  if (typeof raw !== "object" || raw === null) {
+    return false;
+  }
+
   const obj = raw as Record<string, unknown>;
 
   return (
@@ -146,8 +152,11 @@ function extractJson(text: string): unknown {
     let depth = 0;
 
     for (let i = start; i < text.length; i++) {
-      if (text[i] === "{") depth++;
-      else if (text[i] === "}") depth--;
+      if (text[i] === "{") {
+        depth++;
+      } else if (text[i] === "}") {
+        depth--;
+      }
 
       if (depth === 0) {
         return JSON.parse(text.slice(start, i + 1));

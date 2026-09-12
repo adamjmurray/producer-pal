@@ -47,11 +47,15 @@ export function registerSkillOverridesRoutes(app: Express): void {
   app.put("/skill-overrides/:slot", (req: Request, res: Response): void => {
     const slot = requireSlot(req, res);
 
-    if (!slot) return;
+    if (!slot) {
+      return;
+    }
 
     const write = parseSlotWrite(req, res, slot);
 
-    if (!write) return;
+    if (!write) {
+      return;
+    }
 
     res.json({ slot: writeSkillOverride(slot, write) });
   });
@@ -59,7 +63,9 @@ export function registerSkillOverridesRoutes(app: Express): void {
   app.delete("/skill-overrides/:slot", (req: Request, res: Response): void => {
     const slot = requireSlot(req, res);
 
-    if (!slot) return;
+    if (!slot) {
+      return;
+    }
 
     res.json({ slot: deleteSkillOverride(slot) });
   });

@@ -160,7 +160,9 @@ function buildEfficiency(
     (a) => a.assertion.type === "token_usage",
   );
 
-  if (!tokenResult) return undefined;
+  if (!tokenResult) {
+    return undefined;
+  }
 
   const details = tokenResult.details as
     | { total: number; target: number; percentage: number }
@@ -186,7 +188,9 @@ function buildJudge(
 ): JsonJudge | undefined {
   const judgeResult = assertions.find((a) => a.assertion.type === "llm_judge");
 
-  if (!judgeResult) return undefined;
+  if (!judgeResult) {
+    return undefined;
+  }
 
   const advisoryFlag = advisory ? { advisory: true } : {};
   const details = judgeResult.details as SimpleJudgeResult | undefined;
@@ -214,7 +218,9 @@ function deriveOutcome(
   checks: JsonChecks,
   judge: JsonJudge | undefined,
 ): "pass" | "fail" | "error" {
-  if (result.error != null && result.turns.length === 0) return "error";
+  if (result.error != null && result.turns.length === 0) {
+    return "error";
+  }
 
   return derivePassFail(checks, judge);
 }
@@ -243,13 +249,20 @@ function derivePassFail(
 
   // Need at least one gating signal; otherwise the scenario asserts nothing (an
   // empty scenario, or a judge-only one whose judge was skipped) — not a pass.
-  if (!hasChecks && !judgeGates) return "fail";
+  if (!hasChecks && !judgeGates) {
+    return "fail";
+  }
 
   // Every gating signal that is present must pass: the checks when there are any
   // (checks.pass is false when there are none, so guard on hasChecks), and a
   // non-advisory judge.
-  if (hasChecks && !checks.pass) return "fail";
-  if (judgeFails) return "fail";
+  if (hasChecks && !checks.pass) {
+    return "fail";
+  }
+
+  if (judgeFails) {
+    return "fail";
+  }
 
   return "pass";
 }
@@ -317,7 +330,9 @@ function stripToolResults(
 ): Record<string, unknown> {
   const calls = details.matchingCalls;
 
-  if (!Array.isArray(calls)) return details;
+  if (!Array.isArray(calls)) {
+    return details;
+  }
 
   return {
     ...details,

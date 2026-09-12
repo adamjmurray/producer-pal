@@ -54,7 +54,9 @@ export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
   // ran through still reports its old id and path.
   const survivor = LiveAPI.from(id);
 
-  if (!survivor.exists()) return true;
+  if (!survivor.exists()) {
+    return true;
+  }
 
   // Leaving it parked would silently move the chain to a pad the user never
   // named, so put it back where it was.
@@ -79,7 +81,9 @@ function findUnusedPad(rack: LiveAPI): LiveAPI | null {
   );
 
   for (const [note, padId] of drumPadIdsByNote(rack)) {
-    if (!occupied.has(note)) return LiveAPI.from(padId);
+    if (!occupied.has(note)) {
+      return LiveAPI.from(padId);
+    }
   }
 
   return null;

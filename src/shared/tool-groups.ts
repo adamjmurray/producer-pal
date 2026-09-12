@@ -32,7 +32,9 @@ export function withLiveApiTool(
 ): string[] {
   const has = tools.includes(LIVE_API_TOOL_ID);
 
-  if (enabled === has) return [...tools];
+  if (enabled === has) {
+    return [...tools];
+  }
 
   return enabled
     ? [...tools, LIVE_API_TOOL_ID]
@@ -176,17 +178,25 @@ export function resolveToolNames(
   for (const item of raw.split(/[,\s]+/)) {
     const key = item.trim().toLowerCase();
 
-    if (key === "") continue;
+    if (key === "") {
+      continue;
+    }
 
     const group = TOOL_GROUPS.find((g) => g.alias === key);
 
     if (group) {
-      for (const id of group.toolIds) resolved.add(id);
+      for (const id of group.toolIds) {
+        resolved.add(id);
+      }
+
       continue;
     }
 
     if (key === READ_ONLY_ALIAS) {
-      for (const id of READ_ONLY_TOOLS) resolved.add(id);
+      for (const id of READ_ONLY_TOOLS) {
+        resolved.add(id);
+      }
+
       continue;
     }
 

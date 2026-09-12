@@ -56,7 +56,9 @@ function calculateBlankLineRatio(filePath: string): BlankLineStats {
 }
 
 function shouldSkipFile(fileName: string): boolean {
-  if (SKIP_FILES.has(fileName)) return true;
+  if (SKIP_FILES.has(fileName)) {
+    return true;
+  }
 
   return SKIP_PATTERNS.some((pattern) => pattern.test(fileName));
 }
@@ -74,8 +76,13 @@ function findFilesWithInsufficientBlankLines(
   const items = fs.readdirSync(dirPath);
 
   for (const item of items) {
-    if (excludeDirs.includes(item)) continue;
-    if (SKIP_DIRECTORIES.has(item)) continue;
+    if (excludeDirs.includes(item)) {
+      continue;
+    }
+
+    if (SKIP_DIRECTORIES.has(item)) {
+      continue;
+    }
 
     const fullPath = path.join(dirPath, item);
     const stat = fs.statSync(fullPath);
@@ -87,8 +94,13 @@ function findFilesWithInsufficientBlankLines(
     } else if (stat.isFile()) {
       const ext = path.extname(item);
 
-      if (!SOURCE_EXTENSIONS.has(ext)) continue;
-      if (shouldSkipFile(item)) continue;
+      if (!SOURCE_EXTENSIONS.has(ext)) {
+        continue;
+      }
+
+      if (shouldSkipFile(item)) {
+        continue;
+      }
 
       const stats = calculateBlankLineRatio(fullPath);
 

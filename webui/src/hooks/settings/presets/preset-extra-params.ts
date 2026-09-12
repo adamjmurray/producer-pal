@@ -81,11 +81,15 @@ export function resolveSubagentPreset(
   presets: ChatPreset[],
   getProviderConnection: GetProviderConnection,
 ): ResolvedSubagentPreset | undefined {
-  if (presetId == null || presetId === "") return undefined;
+  if (presetId == null || presetId === "") {
+    return undefined;
+  }
 
   const preset = presets.find((p) => p.id === presetId);
 
-  if (preset == null) return undefined;
+  if (preset == null) {
+    return undefined;
+  }
 
   return {
     ...presetToExtraParams(preset, getProviderConnection),

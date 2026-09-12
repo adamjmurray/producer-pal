@@ -72,7 +72,9 @@ export function resolveDuplicateTakeLanes(
     const { trackIndex, takeLane: target } = destination;
     const key = takeLaneLabel(destination);
 
-    if (lanes.has(key)) continue;
+    if (lanes.has(key)) {
+      continue;
+    }
 
     const { lane, laneIndex } = resolveTakeLane(
       tracks.get(trackIndex) ?? LiveAPI.from(livePath.track(trackIndex)),

@@ -435,7 +435,9 @@ function registerCreatedSimpler(chainIndex = 0): RegisteredMockObject {
   });
 
   simpler.call.mockImplementation((method: string, value: unknown) => {
-    if (method === "replace_sample") sample.properties.file_path = value;
+    if (method === "replace_sample") {
+      sample.properties.file_path = value;
+    }
   });
 
   return simpler;

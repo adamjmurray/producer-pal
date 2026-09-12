@@ -14,32 +14,18 @@ import {
   mapThinkingToRealtimeEffort,
   mapTurnDetectionToConfig,
 } from "#webui/hooks/settings/config-builders";
-import {
-  VOICE_SPEED_DEFAULT,
-  VOICE_VOLUME_DEFAULT,
-  VOICE_VOLUME_MIN,
-} from "#webui/hooks/settings/settings-helpers";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import {
   beginHalfDuplexMute,
   endHalfDuplexMute,
   type HalfDuplexDeps,
 } from "#webui/hooks/voice/helpers/half-duplex-helpers";
-import {
-  setGraphGain,
-  type VoiceAudioGraph,
-} from "#webui/hooks/voice/voice-audio-graph";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   DEFAULT_VOICE_LANGUAGE,
   OPENAI_TRANSCRIPTION_MODEL,
 } from "#webui/lib/constants/voice-language";
-
-// The <audio> element's .volume is hard-capped at unity by the HTML spec — it
-// can attenuate but not boost. Boost above unity goes through the Web Audio
-// GainNode (see voice-audio-graph.ts), so this element-only clamp stays at 1.0
-// even though the slider/GainNode range extends to VOICE_VOLUME_MAX (1.25).
-const ELEMENT_VOLUME_MAX = 1;
 
 /**
  * Fetch an ephemeral `ek_...` token from the backend proxy.
@@ -130,7 +116,10 @@ export function extractResponseFailure(event: unknown): ResponseFailure | null {
   if (response?.status === "incomplete") {
     const reason = response.status_details?.reason;
 
-    if (reason == null) return null;
+    if (reason == null) {
+      return null;
+    }
+
     const message = INCOMPLETE_MESSAGES[reason];
 
     return message == null ? null : { code: reason, message };
@@ -162,10 +151,16 @@ export const DEFAULT_RATE_LIMIT_BACKOFF_SECONDS = 2;
 export function parseRetrySeconds(message: string): number | null {
   const match = /try again in ([\d.]+)\s*(ms|m|s)\b/i.exec(message);
 
-  if (!match?.[1]) return null;
+  if (!match?.[1]) {
+    return null;
+  }
+
   const value = Number.parseFloat(match[1]);
 
-  if (!Number.isFinite(value)) return null;
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
   const multiplier = RETRY_UNIT_SECONDS[match[2]?.toLowerCase() ?? "s"] ?? 1;
 
   return value * multiplier;
@@ -272,7 +267,9 @@ function applyResponseFailure(
       parseRetrySeconds(failure.message) ?? DEFAULT_RATE_LIMIT_BACKOFF_SECONDS;
 
     deps.setRateLimitedUntil(Date.now() + seconds * 1000);
-  } else deps.autoRetryAttemptsRef.current = 0;
+  } else {
+    deps.autoRetryAttemptsRef.current = 0;
+  }
 }
 
 /**
@@ -304,10 +301,15 @@ export function toSeedableHistory(
   const out: RealtimeMessageItem[] = [];
 
   for (const item of history) {
-    if (item.type !== "message") continue;
+    if (item.type !== "message") {
+      continue;
+    }
+
     const seeded = messageToTextOnly(item);
 
-    if (seeded) out.push(seeded);
+    if (seeded) {
+      out.push(seeded);
+    }
   }
 
   return out;
@@ -323,11 +325,15 @@ export function toSeedableHistory(
 function messageToTextOnly(
   item: RealtimeMessageItem,
 ): RealtimeMessageItem | null {
-  if (item.role === "system") return item;
+  if (item.role === "system") {
+    return item;
+  }
 
   if (item.role === "user") {
     const content = item.content.flatMap((c) => {
-      if (c.type === "input_text") return [c];
+      if (c.type === "input_text") {
+        return [c];
+      }
 
       if (c.transcript) {
         return [{ type: "input_text" as const, text: c.transcript }];
@@ -336,13 +342,17 @@ function messageToTextOnly(
       return [];
     });
 
-    if (content.length === 0) return null;
+    if (content.length === 0) {
+      return null;
+    }
 
     return { ...item, content };
   }
 
   const content = item.content.flatMap((c) => {
-    if (c.type === "output_text") return [c];
+    if (c.type === "output_text") {
+      return [c];
+    }
 
     if (c.transcript) {
       return [{ type: "output_text" as const, text: c.transcript }];
@@ -351,7 +361,9 @@ function messageToTextOnly(
     return [];
   });
 
-  if (content.length === 0) return null;
+  if (content.length === 0) {
+    return null;
+  }
 
   return { ...item, content };
 }
@@ -366,18 +378,27 @@ function messageToTextOnly(
  * @returns A non-empty string suitable for display
  */
 export function extractErrorMessage(value: unknown): string {
-  if (value instanceof Error) return value.message;
-  if (typeof value === "string") return value;
+  if (value instanceof Error) {
+    return value.message;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
 
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
 
-    if (typeof obj.message === "string" && obj.message) return obj.message;
+    if (typeof obj.message === "string" && obj.message) {
+      return obj.message;
+    }
 
     if (obj.error && typeof obj.error === "object") {
       const nested = (obj.error as Record<string, unknown>).message;
 
-      if (typeof nested === "string" && nested) return nested;
+      if (typeof nested === "string" && nested) {
+        return nested;
+      }
     }
 
     try {
@@ -390,89 +411,6 @@ export function extractErrorMessage(value: unknown): string {
   }
 
   return String(value);
-}
-
-/**
- * Clamp a volume to the element-playback range, defaulting an undefined/invalid
- * value to unity. Capped at unity (ELEMENT_VOLUME_MAX) because element .volume
- * can't boost; values above unity are realized by the GainNode, not here.
- *
- * @param volume - Desired volume (0.0–1.25), or undefined
- * @returns A finite volume in [VOICE_VOLUME_MIN, ELEMENT_VOLUME_MAX]
- */
-function clampVolume(volume: number | undefined): number {
-  if (volume == null || !Number.isFinite(volume)) return VOICE_VOLUME_DEFAULT;
-
-  return Math.min(ELEMENT_VOLUME_MAX, Math.max(VOICE_VOLUME_MIN, volume));
-}
-
-/**
- * Create the `<audio>` element the WebRTC transport plays remote audio through.
- * Supplying our own (instead of letting the SDK create one) lets us reach the
- * remote stream for the Web Audio GainNode. The SDK sets autoplay + srcObject on
- * it when the remote track arrives. Once the gain graph is built the element is
- * muted; the initial .volume set here is the fallback used when Web Audio is
- * unavailable (capped at unity).
- *
- * @param volume - Initial output volume (0.0–1.25; element clamps to 1.0)
- * @returns A configured, detached audio element
- */
-export function createPlaybackAudioElement(
-  volume: number | undefined,
-): HTMLAudioElement {
-  const audioElement = document.createElement("audio");
-
-  audioElement.autoplay = true;
-  audioElement.volume = clampVolume(volume);
-
-  return audioElement;
-}
-
-/**
- * Apply a live volume change to the playback element (the no-Web-Audio fallback
- * path; capped at unity). No-op when there is no element (idle session). The
- * GainNode is the primary live-volume path — see setGraphGain.
- *
- * @param audioElement - The active playback element, or null
- * @param volume - Desired volume (0.0–1.25; element clamps to 1.0)
- */
-export function setAudioVolume(
-  audioElement: HTMLAudioElement | null,
-  volume: number | undefined,
-): void {
-  if (audioElement != null) audioElement.volume = clampVolume(volume);
-}
-
-/**
- * Apply a live volume change to both paths: the GainNode (the active path, can
- * boost above unity) and the element .volume (the no-Web-Audio fallback, capped
- * at unity). Either may be null when idle or when the graph wasn't built.
- *
- * @param graph - The active Web Audio graph, or null
- * @param audioElement - The active playback element, or null
- * @param volume - Desired volume (0.0–1.25)
- */
-export function applyLiveVolume(
-  graph: VoiceAudioGraph | null,
-  audioElement: HTMLAudioElement | null,
-  volume: number | undefined,
-): void {
-  setGraphGain(graph, volume);
-  setAudioVolume(audioElement, volume);
-}
-
-/**
- * Stop and detach the playback element on teardown so a closed session leaves no
- * element holding the (now-ended) remote stream.
- *
- * @param audioElement - The playback element to tear down, or null
- */
-export function teardownAudioElement(
-  audioElement: HTMLAudioElement | null,
-): void {
-  if (audioElement == null) return;
-  audioElement.pause();
-  audioElement.srcObject = null;
 }
 
 /**
@@ -547,7 +485,9 @@ export async function bailIfStale(
   cleanup: () => Promise<void>,
   session?: RealtimeSession,
 ): Promise<boolean> {
-  if (!isStale) return false;
+  if (!isStale) {
+    return false;
+  }
 
   if (session) {
     try {
@@ -576,8 +516,13 @@ export function seedInitialHistory(
   session: Pick<RealtimeSession, "updateHistory">,
   initialHistory: RealtimeItem[] | undefined,
 ): void {
-  if (!initialHistory || initialHistory.length === 0) return;
+  if (!initialHistory || initialHistory.length === 0) {
+    return;
+  }
+
   const primable = toSeedableHistory(initialHistory);
 
-  if (primable.length > 0) session.updateHistory(primable);
+  if (primable.length > 0) {
+    session.updateHistory(primable);
+  }
 }

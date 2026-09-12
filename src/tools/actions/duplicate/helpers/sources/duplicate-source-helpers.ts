@@ -151,7 +151,9 @@ export function collectSources(
   sources: SourceShare[],
   copyOne: (source: SourceShare, index: number) => object | object[],
 ): object | object[] {
-  if (sources.length === 1) return copyOne(sources[0] as SourceShare, 0);
+  if (sources.length === 1) {
+    return copyOne(sources[0] as SourceShare, 0);
+  }
 
   return sources.flatMap((source, i) => {
     const result = copyOne(source, i);
@@ -218,7 +220,9 @@ function perSource(
 ): (string | undefined)[] {
   // An unsent param reaches every source: a clip with no toPath lands on its
   // own track, and a position can come from toPath instead of arrangementStart.
-  if (entries.length === 0) return Array.from({ length: sources });
+  if (entries.length === 0) {
+    return Array.from({ length: sources });
+  }
 
   // A short list pads with nulls, and only at the end, so dropping them leaves
   // the sources it reached — the rest have nowhere to go.
@@ -282,7 +286,9 @@ function shareDestinations(
   const entries = pathEntries(value, label);
 
   // Nothing to share out. The branch decides whether it can do without one.
-  if (entries.length === 0) return Array.from({ length: sources });
+  if (entries.length === 0) {
+    return Array.from({ length: sources });
+  }
 
   if (entries.length < sources) {
     console.warn(

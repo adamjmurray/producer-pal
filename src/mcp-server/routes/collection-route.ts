@@ -67,7 +67,9 @@ export function registerCollectionRoutes<TInput, TEntry>(
   });
 
   app.put(`${basePath}/:name`, (req: Request, res: Response): void => {
-    if (rejectWrite(req, res, basePath)) return;
+    if (rejectWrite(req, res, basePath)) {
+      return;
+    }
 
     const name = entryName(req);
     const body = requestBody(req);
@@ -102,7 +104,9 @@ export function registerCollectionRoutes<TInput, TEntry>(
   });
 
   app.delete(`${basePath}/:name`, (req: Request, res: Response): void => {
-    if (rejectWrite(req, res, basePath)) return;
+    if (rejectWrite(req, res, basePath)) {
+      return;
+    }
 
     res.json({ existed: config.forget(entryName(req)) });
   });
@@ -130,10 +134,14 @@ function registerRenameRoute<TInput, TEntry>(
 ): void {
   const { basePath, noun, rename } = config;
 
-  if (rename == null) return;
+  if (rename == null) {
+    return;
+  }
 
   app.put(`${basePath}/:name/rename`, (req: Request, res: Response): void => {
-    if (rejectWrite(req, res, basePath)) return;
+    if (rejectWrite(req, res, basePath)) {
+      return;
+    }
 
     const oldName = entryName(req);
     const reqBody = requestBody(req);

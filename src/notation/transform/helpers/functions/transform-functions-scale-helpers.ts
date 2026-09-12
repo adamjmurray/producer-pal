@@ -46,7 +46,9 @@ export function evaluateSnap(
 
   const scaleMask = noteProperties["scale:mask"];
 
-  if (scaleMask == null) return pitch;
+  if (scaleMask == null) {
+    return pitch;
+  }
 
   return quantizePitchToScale(pitch, scaleMask);
 }
@@ -95,7 +97,9 @@ export function evaluateStep(
   );
   const scaleMask = noteProperties["scale:mask"];
 
-  if (scaleMask == null) return basePitch + offset;
+  if (scaleMask == null) {
+    return basePitch + offset;
+  }
 
   return stepInScale(basePitch, offset, scaleMask);
 }

@@ -205,7 +205,9 @@ function autoCreateDrumPadChains(
     // chain in the rack, once per chain created.
     const newChainId = device.getChildIds("chains").at(-1);
 
-    if (newChainId == null) continue;
+    if (newChainId == null) {
+      continue;
+    }
 
     created = LiveAPI.from(newChainId);
     created.set("in_note", targetInNote);

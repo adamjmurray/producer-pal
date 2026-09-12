@@ -84,11 +84,15 @@ function warnIfDestinationOccupied(
   sourceInNote: number,
   targetInNote: number,
 ): void {
-  if (targetInNote === sourceInNote) return;
+  if (targetInNote === sourceInNote) {
+    return;
+  }
 
   const occupants = inNotes.filter((note) => note === targetInNote).length;
 
-  if (occupants === 0) return;
+  if (occupants === 0) {
+    return;
+  }
 
   const label = pathTargetLabel(findDrumPadByNote(rack, targetInNote), toPath);
 
@@ -156,7 +160,9 @@ function targetPadNote(toPath: string, drumRackPath: string): string | null {
  */
 function lastPadIndex(segments: string[]): number {
   for (let index = segments.length - 1; index >= 0; index--) {
-    if (segments[index]?.startsWith("p")) return index;
+    if (segments[index]?.startsWith("p")) {
+      return index;
+    }
   }
 
   return -1;

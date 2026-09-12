@@ -46,7 +46,9 @@ const mocks = vi.hoisted(() => {
     }
 
     emit(event: string, payload: unknown) {
-      for (const h of this.listeners.get(event) ?? []) h(payload);
+      for (const h of this.listeners.get(event) ?? []) {
+        h(payload);
+      }
     }
 
     connect(args: unknown) {
@@ -103,7 +105,7 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
 const {
@@ -320,7 +322,9 @@ describe("useVoiceSession mute / interrupt / retry", () => {
         });
       };
 
-      for (let i = 0; i < 3; i++) await burst();
+      for (let i = 0; i < 3; i++) {
+        await burst();
+      }
 
       // A clean response ends the streak, so the budget resets to full.
       await act(() => {
@@ -332,7 +336,9 @@ describe("useVoiceSession mute / interrupt / retry", () => {
       session.transport.sendEvent.mockClear();
 
       // Three more limits all auto-retry again (budget was refreshed, not spent).
-      for (let i = 0; i < 3; i++) await burst();
+      for (let i = 0; i < 3; i++) {
+        await burst();
+      }
 
       expect(countAutoRetries(session)).toBe(3);
     } finally {

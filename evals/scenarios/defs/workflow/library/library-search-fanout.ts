@@ -80,7 +80,9 @@ function assertFannedOut(): EvalAssertion {
         (call) => call.name === TOOL_LIBRARY,
       );
 
-      if (calls.length === 0) throw new Error(`no ${TOOL_LIBRARY} call`);
+      if (calls.length === 0) {
+        throw new Error(`no ${TOOL_LIBRARY} call`);
+      }
 
       const counts = calls
         .map((call) => searchesOf(call))

@@ -78,11 +78,15 @@ export function useUndoDelete(): UndoDeleteReturn {
   }, []);
 
   const undo = useCallback(async () => {
-    if (undoInFlightRef.current) return;
+    if (undoInFlightRef.current) {
+      return;
+    }
 
     const restored = stackRef.current.at(-1);
 
-    if (!restored) return;
+    if (!restored) {
+      return;
+    }
 
     undoInFlightRef.current = true;
 
@@ -128,7 +132,9 @@ export function useUndoDelete(): UndoDeleteReturn {
 
       await deleteConversation(id);
 
-      if (record) pushDeleted(record);
+      if (record) {
+        pushDeleted(record);
+      }
     },
     [pushDeleted],
   );

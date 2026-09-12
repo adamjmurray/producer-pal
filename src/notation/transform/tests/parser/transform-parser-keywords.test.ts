@@ -82,7 +82,9 @@ describe("Transform Parser - Function Keywords", () => {
       // so it appears in neither name rule.
       declared.add("swing");
 
-      for (const alias of ALIASES) declared.delete(alias);
+      for (const alias of ALIASES) {
+        declared.delete(alias);
+      }
 
       expect(advertisedNames().toSorted()).toStrictEqual(
         [...declared].toSorted(),

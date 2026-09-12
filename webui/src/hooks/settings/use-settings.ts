@@ -225,7 +225,9 @@ export function useSettings(): UseSettingsReturn {
   }, [applyLoadedSettings]);
 
   const saveSettings = useCallback(async (): Promise<boolean> => {
-    if (!warnIfNotLoaded(settingsLoaded)) return false;
+    if (!warnIfNotLoaded(settingsLoaded)) {
+      return false;
+    }
 
     setSaveError(null);
 
@@ -308,7 +310,9 @@ export function useSettings(): UseSettingsReturn {
   // deleting either preset must clear only the copy that named it.
   const forgetDeletedPreset = useCallback(
     (deletedId: string): void => {
-      if (subagentPresetId === deletedId) setSubagentPresetId(null);
+      if (subagentPresetId === deletedId) {
+        setSubagentPresetId(null);
+      }
 
       if (savedSubagentPresetId === deletedId) {
         saveSubagentPresetId(null);
@@ -412,7 +416,10 @@ export function useSettings(): UseSettingsReturn {
  * @returns {boolean} True when save may proceed
  */
 function warnIfNotLoaded(settingsLoaded: boolean): boolean {
-  if (settingsLoaded) return true;
+  if (settingsLoaded) {
+    return true;
+  }
+
   console.warn(
     "Settings not yet loaded; ignoring save to avoid wiping stored apiKeys",
   );
@@ -467,13 +474,19 @@ function applyDecryptedSettings(
 
   loadAllProviderSettingsAsync()
     .then((loaded) => {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
+
       apply(loaded);
       onLoaded?.();
     })
     .catch((err: unknown) => {
       console.error("Failed to load provider settings", err);
-      if (!cancelled) onLoaded?.();
+
+      if (!cancelled) {
+        onLoaded?.();
+      }
     });
 
   return () => {

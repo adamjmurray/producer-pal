@@ -40,7 +40,9 @@ function expectEmptyStaysUnset(
   const omitted = object.safeParse(unsetEmptyParams({}, schema));
 
   // A required param has nothing to read an empty value as.
-  if (!omitted.success) return;
+  if (!omitted.success) {
+    return;
+  }
 
   const nulled = object.safeParse(unsetEmptyParams({ [name]: null }, schema));
 

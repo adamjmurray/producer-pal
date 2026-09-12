@@ -41,7 +41,9 @@ export function withLiveApiTool(
   enabledTools: Record<string, boolean>,
   liveApiEnabled: boolean,
 ): Record<string, boolean> {
-  if (LIVE_API_TOOL_ID in enabledTools) return enabledTools;
+  if (LIVE_API_TOOL_ID in enabledTools) {
+    return enabledTools;
+  }
 
   return { ...enabledTools, [LIVE_API_TOOL_ID]: liveApiEnabled };
 }
@@ -80,7 +82,9 @@ export function isToolEnabled(
 export function disabledToolNames(
   enabledTools?: Record<string, boolean>,
 ): string {
-  if (!enabledTools) return "";
+  if (!enabledTools) {
+    return "";
+  }
 
   return Object.keys(enabledTools)
     .filter((name) => enabledTools[name] === false)
@@ -103,7 +107,9 @@ export function enabledToolsDiverge(
   const toolIds = new Set([...Object.keys(a), ...Object.keys(b)]);
 
   for (const toolId of toolIds) {
-    if (isToolEnabled(a, toolId) !== isToolEnabled(b, toolId)) return true;
+    if (isToolEnabled(a, toolId) !== isToolEnabled(b, toolId)) {
+      return true;
+    }
   }
 
   return false;

@@ -84,7 +84,9 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
       (notes) => {
         const snare = notes.filter((n) => n.pitch === SNARE);
 
-        if (snare.length < 2) return `only ${snare.length} snare note(s)`;
+        if (snare.length < 2) {
+          return `only ${snare.length} snare note(s)`;
+        }
 
         if (snare.some((n) => (n.velocity_deviation ?? 0) !== 0)) {
           return "snare carries a velocity_deviation — that spread re-rolls on every playback";
@@ -101,7 +103,9 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
     clipStateAssertion("hats carry a per-playback velocity spread", (notes) => {
       const hats = notes.filter((n) => n.pitch === HATS);
 
-      if (hats.length < 2) return `only ${hats.length} hat note(s)`;
+      if (hats.length < 2) {
+        return `only ${hats.length} hat note(s)`;
+      }
 
       return hats.every((n) => (n.velocity_deviation ?? 0) > 0)
         ? null
@@ -194,7 +198,9 @@ function clipStateAssertion(
 function notesOf(result: unknown): NoteEvent[] | null {
   const clip = result as { notes?: unknown };
 
-  if (typeof clip.notes !== "string") return null;
+  if (typeof clip.notes !== "string") {
+    return null;
+  }
 
   try {
     return interpretMidiJson(clip.notes);

@@ -212,9 +212,17 @@ function sessionClipCounts(
 function buildTrackInclude(flags: IncludeFlags): string[] {
   const include: string[] = [];
 
-  if (flags.includeRoutings) include.push("routings");
-  if (flags.includeMixer) include.push("mixer");
-  if (flags.includeColor) include.push("color");
+  if (flags.includeRoutings) {
+    include.push("routings");
+  }
+
+  if (flags.includeMixer) {
+    include.push("mixer");
+  }
+
+  if (flags.includeColor) {
+    include.push("color");
+  }
 
   return include;
 }

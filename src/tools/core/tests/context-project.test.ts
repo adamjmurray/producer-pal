@@ -123,7 +123,9 @@ describe("context - project scope (default)", () => {
       ["updates content when project context is present", "", false],
       ["overwrites existing content when forced", "old content", true],
     ])("%s", async (_, initialContent, force) => {
-      if (initialContent) toolContext.projectContext!.content = initialContent;
+      if (initialContent) {
+        toolContext.projectContext!.content = initialContent;
+      }
 
       const result = await context(
         { action: "write", content: "new content", force },

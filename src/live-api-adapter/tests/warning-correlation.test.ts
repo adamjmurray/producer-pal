@@ -68,7 +68,9 @@ function responseFor(requestId: string): McpResponsePayload | null {
       (args) => args[1] === "mcp_response" && args[2] === requestId,
     );
 
-  if (call == null) return null;
+  if (call == null) {
+    return null;
+  }
 
   return JSON.parse(reassembleChunks(call.slice(3))) as McpResponsePayload;
 }
@@ -83,7 +85,9 @@ function responseFor(requestId: string): McpResponsePayload | null {
 function warningsSentFor(requestId: string): string[] | null {
   const response = responseFor(requestId);
 
-  if (response == null) return null;
+  if (response == null) {
+    return null;
+  }
 
   return response.warnings ?? [];
 }

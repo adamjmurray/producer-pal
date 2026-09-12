@@ -154,7 +154,9 @@ export function resolveCreateClipTakeLanes(
     const { trackIndex, takeLane: target } = position;
     const key = takeLaneLabel(position);
 
-    if (lanes.has(key)) continue;
+    if (lanes.has(key)) {
+      continue;
+    }
 
     const { lane, laneIndex } = resolveTakeLane(
       trackFor(position),

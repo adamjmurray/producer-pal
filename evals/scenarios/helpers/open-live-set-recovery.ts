@@ -47,7 +47,9 @@ export async function openLiveSetWithRecovery(
 
       return;
     } catch (error) {
-      if (attempt === MAX_ATTEMPTS) throw error;
+      if (attempt === MAX_ATTEMPTS) {
+        throw error;
+      }
 
       const message = error instanceof Error ? error.message : String(error);
 
@@ -93,7 +95,9 @@ async function killLive(): Promise<void> {
   await run("killall", [ABLETON_PROCESS]);
   await sleep(FORCE_KILL_WAIT_MS);
 
-  if (await liveIsRunning()) await run("killall", ["-9", ABLETON_PROCESS]);
+  if (await liveIsRunning()) {
+    await run("killall", ["-9", ABLETON_PROCESS]);
+  }
 }
 
 /**

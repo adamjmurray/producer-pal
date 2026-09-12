@@ -98,7 +98,9 @@ export function duplicateDeviceWithPaths(
 function withDevicePath(
   result: DeviceCopy | null,
 ): { id: string; path?: string } | null {
-  if (result == null) return null;
+  if (result == null) {
+    return null;
+  }
 
   const { destination, containerId } = result;
 

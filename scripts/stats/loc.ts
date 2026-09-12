@@ -242,7 +242,9 @@ function aggregateByGroup(
     const classified = classifyFile(filePath);
     const stats = map.get(key(classified.group, classified.category));
 
-    if (!stats) continue;
+    if (!stats) {
+      continue;
+    }
 
     accumulateEntry(stats, entry, filePath, funcCounts);
   }
@@ -322,7 +324,9 @@ function countFunctionsInFile(filePath: string): number {
    * @param node - Current AST node
    */
   const visit = (node: ts.Node): void => {
-    if (FUNCTION_KINDS.has(node.kind)) count++;
+    if (FUNCTION_KINDS.has(node.kind)) {
+      count++;
+    }
 
     ts.forEachChild(node, visit);
   };

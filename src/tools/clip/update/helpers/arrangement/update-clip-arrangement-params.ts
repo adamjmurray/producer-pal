@@ -141,7 +141,9 @@ export function beatsForClip(
   beats: ArrangementBeats,
   requestedIndex: number | undefined,
 ): number | null {
-  if (beats.broadcast != null) return beats.broadcast;
+  if (beats.broadcast != null) {
+    return beats.broadcast;
+  }
 
   return requestedIndex == null
     ? null
@@ -160,7 +162,9 @@ function fanOut(
   clipCount: number,
   labels: PairLabels,
 ): ArrangementBeats {
-  if (values.length === 0) return NO_BEATS;
+  if (values.length === 0) {
+    return NO_BEATS;
+  }
 
   return {
     broadcast: values.length === 1 ? (values[0] as number) : null,

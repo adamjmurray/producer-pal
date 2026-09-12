@@ -235,7 +235,9 @@ export function updateTrack(
 
     // A path that named no track already warned; it keeps its slot so later
     // names/colors don't shift onto the wrong track.
-    if (trackId == null) continue;
+    if (trackId == null) {
+      continue;
+    }
 
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
@@ -244,7 +246,9 @@ export function updateTrack(
       skipInvalid: true,
     });
 
-    if (track == null) continue;
+    if (track == null) {
+      continue;
+    }
 
     const trackColor = getColorForIndex(color, i, parsedColors);
 

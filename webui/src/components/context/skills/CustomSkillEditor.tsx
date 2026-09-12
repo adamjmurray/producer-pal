@@ -16,7 +16,7 @@ import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
-import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
+import { useCollectionEntryAutosave } from "#webui/hooks/context/helpers/use-doc-collection";
 
 interface CustomSkillEditorProps {
   /** The collection hook (per-entry save/delete lives here). */
@@ -113,7 +113,10 @@ export function CustomSkillEditor(
   // adoptExternal AFTER these setState calls is safe (it reads externalKey off
   // a ref unaffected by them), unlike noteSaved.
   const handleReload = (): void => {
-    if (entry == null) return;
+    if (entry == null) {
+      return;
+    }
+
     setName(entry.name);
     setDescription(entry.description);
     setEnabled(entry.enabled);
@@ -188,7 +191,9 @@ async function confirmDelete(
   entry: CustomSkillView | null,
   onDeleted: () => void,
 ): Promise<void> {
-  if (entry == null) return;
+  if (entry == null) {
+    return;
+  }
 
   if (
     !window.confirm(
@@ -198,7 +203,9 @@ async function confirmDelete(
     return;
   }
 
-  if (await collection.deleteEntry(entry.name)) onDeleted();
+  if (await collection.deleteEntry(entry.name)) {
+    onDeleted();
+  }
 }
 
 /** Confirm text shown before abandoning an unsaved new-skill draft. */

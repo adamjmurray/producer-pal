@@ -87,7 +87,9 @@ export function readProvenance(
   const producerPalVersion = data.producerPalVersion;
   const builtInHash = data.builtInHash;
 
-  if (!producerPalVersion || !builtInHash) return null;
+  if (!producerPalVersion || !builtInHash) {
+    return null;
+  }
 
   return { producerPalVersion, builtInHash };
 }

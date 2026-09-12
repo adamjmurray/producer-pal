@@ -82,7 +82,9 @@ export function warnMidiOnlyAudioParams(
   sampleFile: string | null,
   params: Record<string, unknown>,
 ): void {
-  if (sampleFile == null) return;
+  if (sampleFile == null) {
+    return;
+  }
 
   warnIgnoredParams(params, "audio clips - the sample defines the clip region");
 }
@@ -96,7 +98,9 @@ export function warnAudioOnlyMidiParams(
   sampleFile: string | null,
   params: Record<string, unknown>,
 ): void {
-  if (sampleFile != null) return;
+  if (sampleFile != null) {
+    return;
+  }
 
   warnIgnoredParams(params, "MIDI clips");
 }

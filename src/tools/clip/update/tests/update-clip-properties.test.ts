@@ -165,10 +165,21 @@ describe("updateClip - Properties and ID handling", () => {
       setupMidiClipMock(mocks.clip123);
 
       mocks.clip123.get.mockImplementation((prop: string) => {
-        if (prop === "color") return [colorValue];
-        if (prop === "is_arrangement_clip") return [0];
-        if (prop === "is_midi_clip") return [1];
-        if (prop === "is_audio_clip") return [0];
+        if (prop === "color") {
+          return [colorValue];
+        }
+
+        if (prop === "is_arrangement_clip") {
+          return [0];
+        }
+
+        if (prop === "is_midi_clip") {
+          return [1];
+        }
+
+        if (prop === "is_audio_clip") {
+          return [0];
+        }
 
         return [0];
       });

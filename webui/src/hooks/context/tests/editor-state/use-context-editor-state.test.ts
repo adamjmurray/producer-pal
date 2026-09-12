@@ -220,7 +220,10 @@ describe("useContextEditorState", () => {
       // so dirty must stay true.
       await act(async () => {
         resolveSave(true);
-        for (let i = 0; i < 3; i++) await Promise.resolve();
+
+        for (let i = 0; i < 3; i++) {
+          await Promise.resolve();
+        }
       });
 
       expect(result.current.dirty).toBe(true);

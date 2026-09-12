@@ -61,7 +61,9 @@ describe("createMcpTools — errored tool-call ids", () => {
         ) => Promise<unknown>)
       | undefined;
 
-    if (execute == null) throw new Error("tool has no execute");
+    if (execute == null) {
+      throw new Error("tool has no execute");
+    }
 
     const output = await execute({}, { toolCallId });
 

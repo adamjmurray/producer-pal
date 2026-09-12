@@ -62,7 +62,9 @@ function param(
 ): Record<string, unknown> {
   const found = params.find((p) => p.name === name);
 
-  if (found == null) throw new Error(`param not found: ${name}`);
+  if (found == null) {
+    throw new Error(`param not found: ${name}`);
+  }
 
   return found;
 }

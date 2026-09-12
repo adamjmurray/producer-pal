@@ -58,10 +58,18 @@ export function buildPath(parts = {}) {
   const segments = [];
   const track = trackSegment(trackIndex, trackType);
 
-  if (track) segments.push(track);
-  if (sceneIndex != null) segments.push(`s${indexSpelling(sceneIndex)}`);
-  if (takeLane != null) segments.push(`l${takeLane}`);
-  if (deviceTail?.length) segments.push(...deviceTail);
+  if (track) {
+    segments.push(track);
+  }
+  if (sceneIndex != null) {
+    segments.push(`s${indexSpelling(sceneIndex)}`);
+  }
+  if (takeLane != null) {
+    segments.push(`l${takeLane}`);
+  }
+  if (deviceTail?.length) {
+    segments.push(...deviceTail);
+  }
 
   const body = segments.join("/");
 
@@ -78,7 +86,9 @@ export function parsePath(path) {
   const coord = /\[([^\]]*)\]$/.exec(text);
   const parts = {};
 
-  if (coord) parts.position = coord[1];
+  if (coord) {
+    parts.position = coord[1];
+  }
 
   const body = coord ? text.slice(0, coord.index) : text;
   const deviceTail = [];
@@ -93,22 +103,34 @@ export function parsePath(path) {
 
     const [, kind, value] = match;
 
-    if (kind === "mt") parts.trackType = "main";
-    else if (kind === "rt") assignTrack(parts, "return", value);
-    else if (kind === "t") assignTrack(parts, "regular", value);
-    else if (kind === "s") parts.sceneIndex = indexValue(value);
-    else parts.takeLane = Number(value);
+    if (kind === "mt") {
+      parts.trackType = "main";
+    } else if (kind === "rt") {
+      assignTrack(parts, "return", value);
+    } else if (kind === "t") {
+      assignTrack(parts, "regular", value);
+    } else if (kind === "s") {
+      parts.sceneIndex = indexValue(value);
+    } else {
+      parts.takeLane = Number(value);
+    }
   }
 
-  if (deviceTail.length > 0) parts.deviceTail = deviceTail;
+  if (deviceTail.length > 0) {
+    parts.deviceTail = deviceTail;
+  }
 
   return parts;
 }
 
 /** The track segment: "mt", "rt0", "t0", or "" when no track is named. */
 function trackSegment(trackIndex, trackType) {
-  if (trackType === "main" || trackType === "master") return "mt";
-  if (trackIndex == null) return "";
+  if (trackType === "main" || trackType === "master") {
+    return "mt";
+  }
+  if (trackIndex == null) {
+    return "";
+  }
 
   // create-track spelled "append" as trackIndex -1; the path spelling is "t+".
   const index = trackIndex === -1 ? "new" : trackIndex;
@@ -118,14 +140,18 @@ function trackSegment(trackIndex, trackType) {
 
 /** "new" is `+`; anything else is a plain 0-based number. */
 function indexSpelling(index) {
-  if (index === "new") return "+";
+  if (index === "new") {
+    return "+";
+  }
 
   return String(index);
 }
 
 /** The inverse: `+` reads back as "new". */
 function indexValue(value) {
-  if (value === "+") return "new";
+  if (value === "+") {
+    return "new";
+  }
 
   return Number(value);
 }
@@ -174,7 +200,9 @@ function migrateTrackTarget(args, key) {
   // trackType alone names a track only for the main track, which has no index.
   // "return" or "regular" without one named nothing then either, so leave the
   // call as it stands rather than inventing index 0.
-  if (args.trackIndex == null && !namesMainTrack(args.trackType)) return;
+  if (args.trackIndex == null && !namesMainTrack(args.trackType)) {
+    return;
+  }
 
   set(args, key, buildPath(takeTrack(args)));
 }
@@ -199,7 +227,9 @@ function migrateCreateTrack(args) {
 }
 
 function migrateSceneTarget(args, key) {
-  if (args.sceneIndex == null) return;
+  if (args.sceneIndex == null) {
+    return;
+  }
 
   set(args, key, buildPath({ sceneIndex: take(args, "sceneIndex") }));
 }
@@ -213,7 +243,9 @@ function migrateRoutingIds(args) {
     "outputRoutingType",
     "outputRoutingChannel",
   ]) {
-    if (args[`${name}Id`] != null) set(args, name, take(args, `${name}Id`));
+    if (args[`${name}Id`] != null) {
+      set(args, name, take(args, `${name}Id`));
+    }
   }
 }
 
@@ -221,12 +253,16 @@ function migrateRoutingIds(args) {
 function migrateSlot(args, from, to) {
   const paths = slotPaths(args, from);
 
-  if (paths.length > 0) set(args, to, paths.join(","));
+  if (paths.length > 0) {
+    set(args, to, paths.join(","));
+  }
 }
 
 /** The slot list as one path each, and the param gone. */
 function slotPaths(args, key) {
-  if (args[key] == null) return [];
+  if (args[key] == null) {
+    return [];
+  }
 
   return splitList(take(args, key)).map((slot) => {
     const [trackIndex, sceneIndex] = slot.split("/");
@@ -257,7 +293,9 @@ function migrateCreateClip(args, notes) {
     paths.push(buildPath(takeTrack(args)));
   }
 
-  if (paths.length > 0) set(args, "path", paths.join(","));
+  if (paths.length > 0) {
+    set(args, "path", paths.join(","));
+  }
 
   if (args.arrangementStart != null) {
     notes.push(
@@ -292,7 +330,9 @@ function migrateUpdateClip(args, notes) {
 }
 
 function migrateLibrary(args, notes) {
-  if (args.action !== "searchBatch") return;
+  if (args.action !== "searchBatch") {
+    return;
+  }
 
   notes.push(
     'action "searchBatch" left as-is: it becomes action "search" with a ' +
@@ -309,7 +349,9 @@ function migrateDuplicate(args, notes) {
       .join(",");
   }
 
-  if (args.arrangementStart == null) return;
+  if (args.arrangementStart == null) {
+    return;
+  }
 
   // `arrangementStart` alone kept the copy on its source's track, which a path
   // spells as a bare "[5|1]". A take lane can't be spelled that way — Live
@@ -357,7 +399,9 @@ function sourceTrack(args) {
     }),
   );
 
-  if (tracks.size !== 1) return null;
+  if (tracks.size !== 1) {
+    return null;
+  }
 
   const [only] = tracks;
 
@@ -385,7 +429,9 @@ function migrateSelect(args, notes) {
     migrateSceneTarget(args, "path");
   }
 
-  if (args.devicePath != null) set(args, "path", take(args, "devicePath"));
+  if (args.devicePath != null) {
+    set(args, "path", take(args, "devicePath"));
+  }
 }
 
 function migratePlayback(args) {
@@ -397,7 +443,9 @@ function migratePlayback(args) {
     ["loopStartLocator", "loopStart"],
     ["loopEndLocator", "loopEnd"],
   ]) {
-    if (args[from] != null) set(args, to, `loc:${take(args, from)}`);
+    if (args[from] != null) {
+      set(args, to, `loc:${take(args, from)}`);
+    }
   }
 }
 
@@ -416,7 +464,9 @@ function takeTrack(args) {
   const trackIndex = take(args, "trackIndex");
   const trackType = take(args, "trackType");
 
-  if (trackIndex == null && trackType == null) return {};
+  if (trackIndex == null && trackType == null) {
+    return {};
+  }
 
   // trackType "master" named the main track on its own, with no index.
   return {
@@ -477,11 +527,15 @@ function unusableLaneNote(value) {
  * undefined for a value the tool refuses.
  */
 function laneIndex(value) {
-  if (value == null || value === "") return null;
+  if (value == null || value === "") {
+    return null;
+  }
 
   const lane = Number(value);
 
-  if (!Number.isInteger(lane) || lane < 0) return undefined;
+  if (!Number.isInteger(lane) || lane < 0) {
+    return undefined;
+  }
 
   return lane === 0 ? null : lane - 1;
 }
@@ -504,7 +558,9 @@ function addParamsPrefixNotes(args, notes) {
 }
 
 function splitList(value) {
-  if (Array.isArray(value)) return value.map(String);
+  if (Array.isArray(value)) {
+    return value.map(String);
+  }
 
   return String(value)
     .split(",")
@@ -716,7 +772,9 @@ function selfTest() {
 }
 
 function main(argv) {
-  if (argv[0] === "--self-test") return selfTest();
+  if (argv[0] === "--self-test") {
+    return selfTest();
+  }
 
   const [toolName, json] = argv;
 
@@ -742,7 +800,9 @@ function main(argv) {
 
   console.log(JSON.stringify(args, null, 2));
 
-  for (const note of notes) console.error(`note: ${note}`);
+  for (const note of notes) {
+    console.error(`note: ${note}`);
+  }
 
   return 0;
 }

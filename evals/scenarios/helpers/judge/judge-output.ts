@@ -22,7 +22,9 @@ export function printJudgeHeader(
   model: string,
   criteria: string,
 ): void {
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   console.log(styleText("gray", `\n  Judging with ${provider}/${model}...`));
   console.log(styleText("gray", `  Criteria: ${criteria}`));
@@ -35,7 +37,9 @@ export function printJudgeHeader(
  * @param text - Text chunk to print
  */
 export function printJudgeChunk(text: string): void {
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   process.stdout.write(text);
 }
@@ -44,7 +48,9 @@ export function printJudgeChunk(text: string): void {
  * Finish judge output with newline
  */
 export function finishJudgeOutput(): void {
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   console.log("\n");
 }

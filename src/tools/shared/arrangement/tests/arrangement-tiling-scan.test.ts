@@ -61,7 +61,9 @@ function setupTiling(tileCount: number) {
     ]),
   });
 
-  for (let i = 0; i < tileCount; i++) setupTileClip(String(200 + i));
+  for (let i = 0; i < tileCount; i++) {
+    setupTileClip(String(200 + i));
+  }
 
   return { sourceClip, track };
 }
@@ -231,7 +233,9 @@ function setupTilingOverExistingClip(tileCount: number, obstacleStart: number) {
     1,
   );
 
-  for (let i = 0; i < tileCount; i++) setupTileClip(String(200 + i));
+  for (let i = 0; i < tileCount; i++) {
+    setupTileClip(String(200 + i));
+  }
 
   return { sourceClip, track: LiveAPI.from(livePath.track(0)) };
 }

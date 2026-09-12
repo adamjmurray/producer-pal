@@ -179,10 +179,15 @@ function rankCandidates(
 
   for (const row of rows) {
     // Exclude the seed itself; skip rows whose format we don't recognize.
-    if (row.file_id === seedFileId) continue;
+    if (row.file_id === seedFileId) {
+      continue;
+    }
+
     const vector = decodeFeatureVector(row.data);
 
-    if (vector == null) continue;
+    if (vector == null) {
+      continue;
+    }
 
     scored.push({
       row,

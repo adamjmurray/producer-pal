@@ -72,7 +72,9 @@ export function resolveCreateSceneIndex(
 ): number | undefined {
   const entry = namedParam(path, "path");
 
-  if (entry == null) return sceneIndex;
+  if (entry == null) {
+    return sceneIndex;
+  }
 
   if (sceneIndex != null) {
     throw new Error(
@@ -82,9 +84,13 @@ export function resolveCreateSceneIndex(
 
   const parsed = parseObjectPath(entry, "path");
 
-  if (parsed.kind === "new-scene") return liveSet.getChildIds("scenes").length;
+  if (parsed.kind === "new-scene") {
+    return liveSet.getChildIds("scenes").length;
+  }
 
-  if (parsed.kind === "scene") return parsed.sceneIndex;
+  if (parsed.kind === "scene") {
+    return parsed.sceneIndex;
+  }
 
   throw pathError(
     "path",

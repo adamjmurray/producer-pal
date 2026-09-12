@@ -54,7 +54,9 @@ function setup(over: DepsOverrides = {}) {
   // Drain the stream so the mock client records what was actually re-sent.
   const executeWithRetry = vi.fn(
     async (args: { executeStream: () => AsyncIterable<TestMessage[]> }) => {
-      for await (const _snapshot of args.executeStream());
+      for await (const _snapshot of args.executeStream()) {
+        // drain
+      }
 
       return true;
     },

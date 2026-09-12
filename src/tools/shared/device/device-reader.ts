@@ -218,7 +218,9 @@ export function findDrumRack(
     for (const chain of device.chains ?? []) {
       const nested = findDrumRack(chain.devices ?? []);
 
-      if (nested != null) return nested;
+      if (nested != null) {
+        return nested;
+      }
     }
   }
 

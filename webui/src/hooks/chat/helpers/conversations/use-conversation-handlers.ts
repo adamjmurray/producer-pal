@@ -34,7 +34,9 @@ export function useConversationHandlers(
   );
 
   const handleNew = useCallback(() => {
-    if (!confirmLeavingStream()) return;
+    if (!confirmLeavingStream()) {
+      return;
+    }
 
     stopResponse();
     manager.startNewConversation();
@@ -42,7 +44,9 @@ export function useConversationHandlers(
   }, [manager, stopResponse, clearViewingMode, confirmLeavingStream]);
   const handleSelect = useCallback(
     (id: string) => {
-      if (!confirmLeavingStream()) return;
+      if (!confirmLeavingStream()) {
+        return;
+      }
 
       stopResponse();
       manager.switchConversation(id).catch(console.error);
@@ -60,7 +64,10 @@ export function useConversationHandlers(
       // the source record with the fork's truncated history.
       // deleteConversation's markDeleted()/drain() pair covers the
       // active-delete resurrection case.
-      if (id === manager.activeConversationId) stopResponse();
+      if (id === manager.activeConversationId) {
+        stopResponse();
+      }
+
       manager.deleteConversation(id).catch(console.error);
     },
     [manager, stopResponse],

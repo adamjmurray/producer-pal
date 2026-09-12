@@ -56,7 +56,9 @@ function loadViewState(): ViewState {
   try {
     const stored = localStorage.getItem(VIEW_STATE_KEY);
 
-    if (!stored) return DEFAULT_VIEW_STATE;
+    if (!stored) {
+      return DEFAULT_VIEW_STATE;
+    }
 
     const parsed = JSON.parse(stored) as Partial<ViewState>;
     const merged = { ...DEFAULT_VIEW_STATE, ...parsed };

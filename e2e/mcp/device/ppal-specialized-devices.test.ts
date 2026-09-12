@@ -104,8 +104,13 @@ async function readDevice(
 ): Promise<ReadDeviceResult> {
   const args: Record<string, unknown> = { id: deviceId };
 
-  if (include) args.include = include;
-  if (paramSearch) args.paramSearch = paramSearch;
+  if (include) {
+    args.include = include;
+  }
+
+  if (paramSearch) {
+    args.paramSearch = paramSearch;
+  }
 
   return parseToolResult<ReadDeviceResult>(
     await ctx.client!.callTool({ name: "ppal-read-device", arguments: args }),

@@ -33,7 +33,9 @@ export function createConfig(
  */
 export function mockStreamParts(parts: Record<string, unknown>[]): void {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
+    for (const p of parts) {
+      yield p;
+    }
   }
 
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -53,7 +55,9 @@ export function failingAfterStream(
   error: unknown,
 ): { stream: AsyncIterable<Record<string, unknown>> } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
+    for (const p of parts) {
+      yield p;
+    }
 
     throw error;
   }

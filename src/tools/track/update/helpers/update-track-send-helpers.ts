@@ -75,7 +75,9 @@ export function resolveTrackSends(
       `sends entry "${send.return}" names no return track, so its gainDb was not written`,
     );
 
-    if (resolved != null) list.push(resolved);
+    if (resolved != null) {
+      list.push(resolved);
+    }
   }
 
   return dedupeSendsByReturn(scalar, list);
@@ -96,7 +98,9 @@ export function applyTrackSends(
   for (const send of sends) {
     const result = applyTrackSend(track, send);
 
-    if (result != null) landed.set(send.index, result);
+    if (result != null) {
+      landed.set(send.index, result);
+    }
   }
 
   return landed;

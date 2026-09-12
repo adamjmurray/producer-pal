@@ -45,7 +45,9 @@ function assertDeleteType(turn: number, type: string): EvalAssertion {
         (call) => call.name === TOOL_DELETE,
       );
 
-      if (calls.length === 0) throw new Error(`no ${TOOL_DELETE} call`);
+      if (calls.length === 0) {
+        throw new Error(`no ${TOOL_DELETE} call`);
+      }
 
       const types = calls.map((call) => String(call.args.type));
 

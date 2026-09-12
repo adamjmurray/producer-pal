@@ -19,7 +19,9 @@ import { checkTally, scorePercentage } from "../reporting/result-format.ts";
  * @returns Positive integer repeat count (minimum 1)
  */
 export function parseRepeatCount(value: string | undefined): number {
-  if (value == null) return 1;
+  if (value == null) {
+    return 1;
+  }
 
   const n = Number.parseInt(value, 10);
 

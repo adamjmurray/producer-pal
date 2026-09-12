@@ -18,7 +18,7 @@ import {
   loadTurnDetection,
   saveTurnDetection,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import { type VoiceModeSettingsFields } from "#webui/types/settings";
 
 export interface UseVoiceModeSettingsReturn extends VoiceModeSettingsFields {

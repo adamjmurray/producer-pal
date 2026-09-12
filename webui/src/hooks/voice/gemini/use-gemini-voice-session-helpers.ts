@@ -14,12 +14,16 @@ import {
   type Session,
   StartSensitivity,
 } from "@google/genai";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
-import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import {
   type GeminiMessageDeps,
   handleGeminiMessage,
 } from "#webui/hooks/voice/gemini/gemini-message-handler";
+import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
+import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
+import { type GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
 import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
@@ -81,7 +85,9 @@ export function buildGeminiConfig(opts: {
     sessionResumption: opts.resumeHandle ? { handle: opts.resumeHandle } : {},
   };
 
-  if (opts.vad) config.realtimeInputConfig = buildRealtimeInputConfig(opts.vad);
+  if (opts.vad) {
+    config.realtimeInputConfig = buildRealtimeInputConfig(opts.vad);
+  }
 
   return config;
 }
@@ -206,8 +212,14 @@ export async function openResumableGeminiSession(
   const mySessionId = ++ctx.sessionGenRef.current;
 
   const handleClose = (fallback: string): void => {
-    if (ctx.sessionGenRef.current !== mySessionId) return;
-    if (dropHandled || ctx.isIntentionalClose() || ctx.isStale()) return;
+    if (ctx.sessionGenRef.current !== mySessionId) {
+      return;
+    }
+
+    if (dropHandled || ctx.isIntentionalClose() || ctx.isStale()) {
+      return;
+    }
+
     dropHandled = true;
     void resumeOrFail(ctx, fallback);
   };
@@ -293,7 +305,10 @@ async function resumeOrFail(
     // Mirror the success-path stale/intentional check: if the user clicked Stop
     // while live.connect() was rejecting, surfacing "Connection lost." would
     // override the disconnect and land the UI on error instead of idle.
-    if (ctx.isStale() || ctx.isIntentionalClose()) return;
+    if (ctx.isStale() || ctx.isIntentionalClose()) {
+      return;
+    }
+
     ctx.onDrop(extractErrorMessage(err));
   }
 }
@@ -305,6 +320,107 @@ async function resumeOrFail(
 export function closeQuietly(session: Session): void {
   try {
     session.close();
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Open the mic and stream its 16 kHz PCM chunks into the live session. The
+ * session is read through the ref per chunk so a resumed session receives audio
+ * without restarting capture.
+ *
+ * @param micRef - Ref the capture is stored on for teardown
+ * @param sessionRef - Ref holding the session chunks are sent to
+ * @param isMutedRef - The user's manual mute, applied before capture starts
+ * @returns The started capture
+ */
+export async function startGeminiMic(
+  micRef: { current: GeminiMicCapture | null },
+  sessionRef: { current: Session | null },
+  isMutedRef: { current: boolean },
+): Promise<GeminiMicCapture> {
+  const mic = new GeminiMicCapture();
+
+  micRef.current = mic;
+  mic.setMuted(isMutedRef.current);
+  await mic.start({
+    onChunk: (data) => {
+      try {
+        sessionRef.current?.sendRealtimeInput({
+          audio: { data, mimeType: GEMINI_INPUT_MIME_TYPE },
+        });
+      } catch {
+        // a chunk racing teardown — drop it
+      }
+    },
+  });
+
+  return mic;
+}
+
+/** The refs a Gemini session teardown clears. */
+export interface GeminiSessionRefs {
+  sessionRef: { current: Session | null };
+  mcpClientRef: { current: Client | null };
+  micRef: { current: GeminiMicCapture | null };
+  playerRef: { current: GeminiPcmPlayer | null };
+  builderRef: { current: GeminiHistoryBuilder | null };
+  connectingRef: { current: boolean };
+  /** Bumped so a connect() suspended on an await bails when it resumes. */
+  connectGenRef: { current: number };
+}
+
+/**
+ * Release everything a live Gemini session holds: mic, player, session, and MCP
+ * client. Clears the refs first so a concurrent caller can't double-close, then
+ * closes. Extracted from useGeminiVoiceSession to keep the hook within its line
+ * budget.
+ *
+ * @param refs - The hook's session-owned refs
+ */
+export async function releaseGeminiSessionResources(
+  refs: GeminiSessionRefs,
+): Promise<void> {
+  const session = refs.sessionRef.current;
+  const mcp = refs.mcpClientRef.current;
+  const mic = refs.micRef.current;
+  const player = refs.playerRef.current;
+
+  refs.sessionRef.current = null;
+  refs.mcpClientRef.current = null;
+  refs.micRef.current = null;
+  refs.playerRef.current = null;
+  refs.builderRef.current = null;
+  refs.connectingRef.current = false;
+  // Invalidate any connect() suspended on an await so it bails on resume.
+  refs.connectGenRef.current++;
+
+  await mic?.stop();
+  await player?.close();
+  await closeSessionAndMcp(session, mcp);
+}
+
+/**
+ * Best-effort teardown of the live session + MCP client. A close that throws
+ * shouldn't stall the rest of cleanup (the refs are already nulled), so each is
+ * swallowed individually.
+ *
+ * @param session - The live session, or null
+ * @param mcp - The MCP client, or null
+ */
+async function closeSessionAndMcp(
+  session: Session | null,
+  mcp: Client | null,
+): Promise<void> {
+  try {
+    session?.close();
+  } catch {
+    // best-effort
+  }
+
+  try {
+    await mcp?.close();
   } catch {
     // best-effort
   }
@@ -325,10 +441,15 @@ export function seedGeminiContext(
   session: Pick<Session, "sendClientContent">,
   initialHistory: RealtimeItem[] | undefined,
 ): void {
-  if (!initialHistory || initialHistory.length === 0) return;
+  if (!initialHistory || initialHistory.length === 0) {
+    return;
+  }
+
   const transcript = transcriptText(initialHistory);
 
-  if (!transcript) return;
+  if (!transcript) {
+    return;
+  }
 
   session.sendClientContent({
     turns: [
@@ -355,8 +476,14 @@ function transcriptText(items: RealtimeItem[]): string {
   const lines: string[] = [];
 
   for (const item of items) {
-    if (item.type !== "message") continue;
-    if (item.role === "system") continue;
+    if (item.type !== "message") {
+      continue;
+    }
+
+    if (item.role === "system") {
+      continue;
+    }
+
     const text = item.content
       .map((c) =>
         "text" in c ? c.text : "transcript" in c ? (c.transcript ?? "") : "",
@@ -364,7 +491,9 @@ function transcriptText(items: RealtimeItem[]): string {
       .filter(Boolean)
       .join(" ");
 
-    if (text) lines.push(`${item.role === "user" ? "User" : "You"}: ${text}`);
+    if (text) {
+      lines.push(`${item.role === "user" ? "User" : "You"}: ${text}`);
+    }
   }
 
   return lines.join("\n");

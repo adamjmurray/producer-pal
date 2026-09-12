@@ -72,11 +72,17 @@ export function setupAppViewMock(
       is_view_visible: (...args: unknown[]) => {
         const view = args[0] as string;
 
-        if (view === DETAIL_CLIP_VIEW_NAME && isDetailClipVisible) return 1;
+        if (view === DETAIL_CLIP_VIEW_NAME && isDetailClipVisible) {
+          return 1;
+        }
 
-        if (view === DETAIL_DEVICE_VIEW_NAME && isDetailDeviceVisible) return 1;
+        if (view === DETAIL_DEVICE_VIEW_NAME && isDetailDeviceVisible) {
+          return 1;
+        }
 
-        if (view === BROWSER_VIEW_NAME && showBrowser) return 1;
+        if (view === BROWSER_VIEW_NAME && showBrowser) {
+          return 1;
+        }
 
         return 0;
       },

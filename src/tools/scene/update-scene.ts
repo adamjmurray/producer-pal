@@ -117,7 +117,9 @@ export function updateScene(
 
     // A path that named no scene already warned; it keeps its slot so later
     // names/colors don't shift onto the wrong scene.
-    if (sceneId == null) continue;
+    if (sceneId == null) {
+      continue;
+    }
 
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
@@ -126,7 +128,9 @@ export function updateScene(
       skipInvalid: true,
     });
 
-    if (scene == null) continue;
+    if (scene == null) {
+      continue;
+    }
 
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);

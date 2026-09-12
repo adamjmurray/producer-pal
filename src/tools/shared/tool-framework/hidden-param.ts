@@ -141,7 +141,9 @@ export function collectHiddenParams(
   for (const [key, schema] of Object.entries(inputSchema)) {
     const info = getHiddenParam(schema);
 
-    if (info != null) hidden[key] = info;
+    if (info != null) {
+      hidden[key] = info;
+    }
   }
 
   return hidden;
@@ -171,7 +173,9 @@ export function hiddenParamWarnings(
   for (const key of usedKeys) {
     const info = hidden[key];
 
-    if (info == null) continue;
+    if (info == null) {
+      continue;
+    }
 
     if (info.kind === "deprecated") {
       warnings.push(

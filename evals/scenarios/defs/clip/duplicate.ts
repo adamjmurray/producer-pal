@@ -66,7 +66,9 @@ export const duplicate: EvalScenario = {
         const calls = getToolCalls(turns, 2);
         const dupCall = calls.find((c) => c.name === TOOL_DUPLICATE);
 
-        if (!dupCall) throw new Error("ppal-duplicate not found in turn 2");
+        if (!dupCall) {
+          throw new Error("ppal-duplicate not found in turn 2");
+        }
 
         if (dupCall.args.type !== "track") {
           throw new Error(
@@ -90,7 +92,9 @@ export const duplicate: EvalScenario = {
         const calls = getToolCalls(turns, 3);
         const dupCall = calls.find((c) => c.name === TOOL_DUPLICATE);
 
-        if (!dupCall) throw new Error("ppal-duplicate not found in turn 3");
+        if (!dupCall) {
+          throw new Error("ppal-duplicate not found in turn 3");
+        }
 
         if (dupCall.args.type !== "clip") {
           throw new Error(
@@ -219,7 +223,9 @@ function secondHalfMirrorsFirst(events: NoteEvent[]): boolean {
   const first = events.filter((n) => n.start_time < HALF_BEATS);
   const second = events.filter((n) => n.start_time >= HALF_BEATS);
 
-  if (first.length === 0 || first.length !== second.length) return false;
+  if (first.length === 0 || first.length !== second.length) {
+    return false;
+  }
 
   const firstKeys = new Set(first.map((n) => `${n.pitch}@${n.start_time}`));
 

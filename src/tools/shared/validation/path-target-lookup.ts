@@ -189,7 +189,9 @@ function idPerPath(
  * @returns What it names, as a noun phrase
  */
 function describePathKind(path: ObjectPath): string {
-  if (isNewObjectPath(path)) return NEW_OBJECT_NOUNS[path.kind];
+  if (isNewObjectPath(path)) {
+    return NEW_OBJECT_NOUNS[path.kind];
+  }
 
   switch (path.kind) {
     case "scene":

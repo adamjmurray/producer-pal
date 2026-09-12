@@ -18,11 +18,25 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
     (pos) => (Number.parseInt(pos.split("|")[0] as string) - 1) * 4,
   ),
   durationToAbletonBeats: vi.fn((dur) => {
-    if (dur === "1bar") return 4;
-    if (dur === "2bar") return 8;
-    if (dur === "1/2") return 2;
-    if (dur === "0bar") return 0;
-    if (dur === "-1bar") return -4;
+    if (dur === "1bar") {
+      return 4;
+    }
+
+    if (dur === "2bar") {
+      return 8;
+    }
+
+    if (dur === "1/2") {
+      return 2;
+    }
+
+    if (dur === "0bar") {
+      return 0;
+    }
+
+    if (dur === "-1bar") {
+      return -4;
+    }
 
     return 0;
   }),

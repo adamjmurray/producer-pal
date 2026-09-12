@@ -189,7 +189,9 @@ describe("updateTrack - mixer properties", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
     mixer1.get.mockImplementation((prop: string) => {
-      if (prop === "panning_mode") return [1]; // Split mode
+      if (prop === "panning_mode") {
+        return [1];
+      } // Split mode
 
       return [0];
     });
@@ -208,7 +210,9 @@ describe("updateTrack - mixer properties", () => {
     const errorSpy = vi.spyOn(console, "warn");
 
     mixer1.get.mockImplementation((prop: string) => {
-      if (prop === "panning_mode") return [1]; // Split mode
+      if (prop === "panning_mode") {
+        return [1];
+      } // Split mode
 
       return [0];
     });
@@ -292,7 +296,9 @@ describe("updateTrack - mixer properties", () => {
   it("should skip split panning when split parameters do not exist", () => {
     // Mixer is in split mode but the split stereo children do not exist.
     mixer1.get.mockImplementation((prop: string) => {
-      if (prop === "panning_mode") return [1]; // Split mode
+      if (prop === "panning_mode") {
+        return [1];
+      } // Split mode
 
       return [0];
     });

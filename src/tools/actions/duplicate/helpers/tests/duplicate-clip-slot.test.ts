@@ -69,7 +69,9 @@ function setupSlotDuplication(
     properties: { has_clip: 1 },
     methods: {
       duplicate_clip_to: () => {
-        if (copyLands) registerMockObject(COPY_ID, { path: destClipPath });
+        if (copyLands) {
+          registerMockObject(COPY_ID, { path: destClipPath });
+        }
 
         return null;
       },

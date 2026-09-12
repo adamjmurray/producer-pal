@@ -62,7 +62,9 @@ const retry = vi.hoisted(() => {
     delayMs: 5,
     /** Called by the mock when the backoff timer starts. */
     begin(): void {
-      for (const resolve of waiting.splice(0)) resolve();
+      for (const resolve of waiting.splice(0)) {
+        resolve();
+      }
     },
     /** Arm before the send; await after it, to land inside the delay. */
     started(): Promise<void> {

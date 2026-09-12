@@ -179,7 +179,9 @@ describe("ChatInput", () => {
           />,
         );
 
-        if (inputValue !== undefined) typeInput(inputValue);
+        if (inputValue !== undefined) {
+          typeInput(inputValue);
+        }
 
         const button = screen.getByRole("button", {
           name: buttonName,
@@ -285,7 +287,9 @@ describe("ChatInput", () => {
           />,
         );
 
-        if (inputValue !== undefined) typeInput(inputValue);
+        if (inputValue !== undefined) {
+          typeInput(inputValue);
+        }
 
         pressEnter(shiftKey);
 

@@ -115,7 +115,9 @@ export function setParamValueAndVerify(
 
   const actual = strForValue(param, param.getProperty("value") as number);
 
-  if (actual === expected) return true;
+  if (actual === expected) {
+    return true;
+  }
 
   console.warn(
     `${label} was not changed — it still reads "${actual}". Live ignores a value outside the parameter's range.`,

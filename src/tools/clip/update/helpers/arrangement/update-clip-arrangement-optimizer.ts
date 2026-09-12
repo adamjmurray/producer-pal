@@ -85,7 +85,9 @@ export function computeOverwritePlan(
   for (const clip of clips) {
     const key = moveGroup(clip, moves);
 
-    if (key == null) continue;
+    if (key == null) {
+      continue;
+    }
 
     const startTime = clip.getProperty("start_time") as number;
     const endTime = clip.getProperty("end_time") as number;
@@ -101,16 +103,23 @@ export function computeOverwritePlan(
   const lengthById = new Map<string, number>();
 
   for (const [key, group] of groups) {
-    if (group.length <= 1) continue;
+    if (group.length <= 1) {
+      continue;
+    }
 
     const { survivors, nonSurvivors } = splitGroup(group);
 
-    if (nonSurvivors.size === 0) continue;
+    if (nonSurvivors.size === 0) {
+      continue;
+    }
 
-    for (const id of nonSurvivors) nonSurvivorIds.add(id);
+    for (const id of nonSurvivors) {
+      nonSurvivorIds.add(id);
+    }
 
-    for (const { clipId, clipLength } of group)
+    for (const { clipId, clipLength } of group) {
       lengthById.set(clipId, clipLength);
+    }
 
     survivorLengthsByGroup.set(
       key,
@@ -170,7 +179,9 @@ function splitGroup(group: ClipMoveInfo[]): {
 function moveGroup(clip: LiveAPI, moves: ClipMoves): string | null {
   const startBeats = moves.startBeatsFor(clip);
 
-  if (startBeats == null || moves.lengthBeatsFor(clip) != null) return null;
+  if (startBeats == null || moves.lengthBeatsFor(clip) != null) {
+    return null;
+  }
 
   const trackIndex = survivorTrack(clip, moves.destinationById?.get(clip.id));
 
@@ -197,11 +208,18 @@ function survivorTrack(
   clip: LiveAPI,
   destination: ClipPath | undefined,
 ): number | null {
-  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return null;
-  if (isTakeLaneClip(clip)) return null;
+  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
+    return null;
+  }
+
+  if (isTakeLaneClip(clip)) {
+    return null;
+  }
 
   if (destination != null) {
-    if (destination.kind !== "track") return null;
+    if (destination.kind !== "track") {
+      return null;
+    }
 
     const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
 

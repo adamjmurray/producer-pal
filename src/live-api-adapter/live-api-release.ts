@@ -256,7 +256,9 @@ export function endLiveApiScope(): void {
   // A stray end (an entry point that forgot its begin) closes nothing, so it
   // must not release either: with no scope open the objects it would free
   // belong to whatever request is actually running.
-  if (openScopes === 0) return;
+  if (openScopes === 0) {
+    return;
+  }
 
   openScopes--;
   // Whatever the finishing request derived went with it, and a request left

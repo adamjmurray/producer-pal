@@ -151,11 +151,15 @@ function isPastTheEnd(
   container: LiveAPI,
   reportPath: string,
 ): boolean {
-  if (position == null) return false;
+  if (position == null) {
+    return false;
+  }
 
   const count = container.getChildIds("devices").length;
 
-  if (position <= count) return false;
+  if (position <= count) {
+    return false;
+  }
 
   console.warn(
     `device not moved: "${reportPath}" is past the end of a container holding ${count} device${count === 1 ? "" : "s"}`,

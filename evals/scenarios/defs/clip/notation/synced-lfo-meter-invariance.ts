@@ -165,8 +165,9 @@ export const syncedLfoMeterInvariance: EvalScenario = {
           (c) => c.name === "ppal-create-clip",
         );
 
-        if (!createCall)
+        if (!createCall) {
           throw new Error("ppal-create-clip not found in turn 1");
+        }
 
         if (!callNamesArrangementPosition(createCall.args, "path")) {
           throw new Error(

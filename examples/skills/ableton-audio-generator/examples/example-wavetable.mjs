@@ -70,7 +70,9 @@ function pwm(m) {
   const out = new Float32Array(FRAME);
   const duty = 0.5 - m * 0.46;
 
-  for (let n = 0; n < FRAME; n++) out[n] = n / FRAME < duty ? 1 : -1;
+  for (let n = 0; n < FRAME; n++) {
+    out[n] = n / FRAME < duty ? 1 : -1;
+  }
 
   return out;
 }
@@ -118,10 +120,11 @@ function formant(m) {
 const GENERATORS = { saw, square, pwm, fold, formant };
 const gen = GENERATORS[TYPE];
 
-if (!gen)
+if (!gen) {
   fail(
     `Unknown --type "${TYPE}". Options: ${Object.keys(GENERATORS).join(", ")}`,
   );
+}
 
 // Build every frame into one contiguous table, then normalize ONCE across the
 // whole thing so the amplitude contour of the sweep survives. No declick.

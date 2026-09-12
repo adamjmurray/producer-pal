@@ -78,7 +78,9 @@ export async function syncProjectContextBackup(
     return null;
   }
 
-  if (!needsSync(filePath, content)) return null;
+  if (!needsSync(filePath, content)) {
+    return null;
+  }
 
   const allowRestore = !hasSyncedThisSession();
 
@@ -110,10 +112,13 @@ export async function syncProjectContextBackup(
   // concurrent tool calls don't trip require-atomic-updates over shared state.
   if (ok) {
     rememberSync(filePath, restored ?? content);
+
     // This sync saw the param as the device loaded it (nothing has been edited
     // yet, or the wipe question is already settled), so it settles the question:
     // either it restored, or the param was non-empty / no backup existed.
-    if (memo.wipe === "open") memo.wipe = "ruledOut";
+    if (memo.wipe === "open") {
+      memo.wipe = "ruledOut";
+    }
   }
 
   return restored;
@@ -147,7 +152,9 @@ export async function backupProjectContextOnEdit(
   const maybeWiped = memo.wipe !== "ruledOut";
 
   // Clearing now would delete the very sidecar the first sync restores from.
-  if (content.trim() === "" && maybeWiped) return;
+  if (content.trim() === "" && maybeWiped) {
+    return;
+  }
 
   const filePath = readLiveSetFilePath();
 
@@ -159,13 +166,17 @@ export async function backupProjectContextOnEdit(
     return;
   }
 
-  if (!needsSync(filePath, content)) return;
+  if (!needsSync(filePath, content)) {
+    return;
+  }
 
   // Writing while the question is open puts the user's own text in the param,
   // so nothing can answer it afterward — latch it stuck so every later edit this
   // session stays conservative too. Set before the await so a concurrent edit
   // sees it.
-  if (maybeWiped) memo.wipe = "stuck";
+  if (maybeWiped) {
+    memo.wipe = "stuck";
+  }
 
   // Manual edits never restore, so allowRestore is always false. isEdit says
   // this write may overwrite an existing, differing sidecar — true for a
@@ -184,7 +195,9 @@ export async function backupProjectContextOnEdit(
     isWrite: true,
   });
 
-  if (ok) rememberSync(filePath, content);
+  if (ok) {
+    rememberSync(filePath, content);
+  }
 }
 
 /**
@@ -198,7 +211,9 @@ export async function backupProjectContextOnEdit(
  * @param content - The blob the load echo carried
  */
 export function noteProjectContextLoaded(content: string): void {
-  if (content.trim() !== "") memo.wipe = "ruledOut";
+  if (content.trim() !== "") {
+    memo.wipe = "ruledOut";
+  }
 }
 
 /** Reset the cross-request memo. Test-only. */
@@ -395,7 +410,9 @@ function handleUnreadableSidecar(
  * tool result for the rest of the session.
  */
 function warnUnreadableRestoreOnce(): void {
-  if (memo.warnedUnreadableRestore) return;
+  if (memo.warnedUnreadableRestore) {
+    return;
+  }
 
   memo.warnedUnreadableRestore = true;
 

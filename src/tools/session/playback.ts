@@ -176,7 +176,9 @@ export function playback(
     { isPlaying: isPlayingBefore },
   );
 
-  if (timelineFollowsAction) writes = writeTimeline();
+  if (timelineFollowsAction) {
+    writes = writeTimeline();
+  }
 
   // Where the next play begins. Not the playhead: writing this leaves the
   // playhead where it was, and starting playback jumps it here.
@@ -212,7 +214,9 @@ export function playback(
  * @param focus - Whether to focus
  */
 function handleFocus(action: string, focus?: boolean): void {
-  if (!focus) return;
+  if (!focus) {
+    return;
+  }
 
   if (action === PLAY_ARRANGEMENT) {
     select({ view: "arrangement" });

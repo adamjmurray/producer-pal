@@ -32,7 +32,9 @@ describe("silent-wav-generator", () => {
     async function freshWavBuffer(): Promise<Buffer> {
       const { ensureSilenceWav, SILENCE_WAV } = await loadFresh();
 
-      if (fs.existsSync(SILENCE_WAV)) fs.unlinkSync(SILENCE_WAV);
+      if (fs.existsSync(SILENCE_WAV)) {
+        fs.unlinkSync(SILENCE_WAV);
+      }
 
       return fs.readFileSync(ensureSilenceWav());
     }
@@ -69,7 +71,9 @@ describe("silent-wav-generator", () => {
     it("creates the file when neither the flag nor the file is present", async () => {
       const { ensureSilenceWav, SILENCE_WAV } = await loadFresh();
 
-      if (fs.existsSync(SILENCE_WAV)) fs.unlinkSync(SILENCE_WAV);
+      if (fs.existsSync(SILENCE_WAV)) {
+        fs.unlinkSync(SILENCE_WAV);
+      }
 
       const writeSpy = vi.spyOn(fs, "writeFileSync");
       const wavPath = ensureSilenceWav();

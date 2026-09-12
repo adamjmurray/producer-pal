@@ -36,7 +36,9 @@ export function createStreamErrorSignal(): {
         while (true) {
           const result = await Promise.race([iterator.next(), errorPromise]);
 
-          if (result.done) return;
+          if (result.done) {
+            return;
+          }
 
           yield result.value;
         }

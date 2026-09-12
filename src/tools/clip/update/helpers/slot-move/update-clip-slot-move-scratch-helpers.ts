@@ -47,7 +47,9 @@ export function recreateIntoEmptySlot(
 ): LiveAPI | null {
   const attempt = attemptRecreate(clip, destClipSlot);
 
-  if (attempt.ok) return attempt.clip;
+  if (attempt.ok) {
+    return attempt.clip;
+  }
 
   reportMoveFailure(clip, attempt, destPath, "n/a", destPath);
   keepClip(clip, updatedClips, noteResult);
@@ -141,7 +143,9 @@ function findScratchSlot(toSlot: ClipSlotPosition): ScratchSlot | null {
   const sceneCount = destTrack.getChildCount("clip_slots");
 
   for (let sceneIndex = 0; sceneIndex < sceneCount; sceneIndex++) {
-    if (sceneIndex === toSlot.sceneIndex) continue;
+    if (sceneIndex === toSlot.sceneIndex) {
+      continue;
+    }
 
     const slot = LiveAPI.from(
       livePath.track(toSlot.trackIndex).clipSlot(sceneIndex),

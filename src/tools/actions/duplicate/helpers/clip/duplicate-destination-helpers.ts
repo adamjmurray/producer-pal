@@ -146,14 +146,18 @@ export function warnUnusedArrangementParams(
   arrangementStart: string | undefined,
   arrangementLength: string | undefined,
 ): void {
-  if (type !== "device" && type !== "drum-pad") return;
+  if (type !== "device" && type !== "drum-pad") {
+    return;
+  }
 
   const sent = [
     arrangementStart != null ? "arrangementStart" : null,
     arrangementLength != null ? "arrangementLength" : null,
   ].filter((param) => param != null);
 
-  if (sent.length === 0) return;
+  if (sent.length === 0) {
+    return;
+  }
 
   console.warn(
     `${sent.join("/")} ignored: a ${type} has no arrangement position (type "${type}")`,
@@ -171,7 +175,9 @@ export function warnUnusedDestination(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
 ): void {
-  if (type === "clip") return;
+  if (type === "clip") {
+    return;
+  }
 
   const toPath = namedParam(rawToPath, "toPath");
   const toSlot = namedHiddenPath(rawToSlot, "toSlot");
@@ -258,7 +264,9 @@ function arrangementDestinations(
       slots.push({ trackIndex: lane.trackIndex, sceneIndex: lane.sceneIndex });
       arrangementTargets.push(null);
     } else {
-      if (fromPath && position == null) throw noPositionError(lane);
+      if (fromPath && position == null) {
+        throw noPositionError(lane);
+      }
 
       arrangementTargets.push({
         trackIndex: lane.trackIndex,

@@ -100,7 +100,9 @@ export function usePresets(): UsePresetsReturn {
 
       const failure = persist([...presets, preset]);
 
-      if (failure != null) return { ok: false, error: failure };
+      if (failure != null) {
+        return { ok: false, error: failure };
+      }
 
       return { ok: true, preset };
     },
@@ -154,13 +156,18 @@ export function usePresets(): UsePresetsReturn {
  * @returns The preset with its description normalized
  */
 function withDescription(preset: ChatPreset, description?: string): ChatPreset {
-  if (description == null) return preset;
+  if (description == null) {
+    return preset;
+  }
 
   const trimmed = description.trim();
   const next = { ...preset };
 
-  if (trimmed) next.description = trimmed;
-  else delete next.description;
+  if (trimmed) {
+    next.description = trimmed;
+  } else {
+    delete next.description;
+  }
 
   return next;
 }

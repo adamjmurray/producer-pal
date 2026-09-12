@@ -264,7 +264,9 @@ function resolveArrangementStart(
   arrangementStart: string | undefined,
   locator: string | undefined,
 ): string | undefined {
-  if (type === "device" || type === "drum-pad") return arrangementStart;
+  if (type === "device" || type === "drum-pad") {
+    return arrangementStart;
+  }
 
   const positions = foldLocatorParam(arrangementStart, locator);
 
@@ -272,7 +274,9 @@ function resolveArrangementStart(
   // mistake in the list gets one word for the call.
   targetEntries(positions, "arrangementStart");
 
-  if (positions == null) return undefined;
+  if (positions == null) {
+    return undefined;
+  }
 
   return resolveLocatorPositions(LiveAPI.from(livePath.liveSet), positions, {
     paramName: "arrangementStart",
@@ -340,7 +344,9 @@ function foldSceneDestination(
   );
 
   for (const entry of entries) {
-    if (entry.lane == null) continue;
+    if (entry.lane == null) {
+      continue;
+    }
 
     throw new Error(
       `toPath "${toPath?.trim()}" names a lane, but a scene ` +
@@ -372,7 +378,9 @@ function namesArrangementPosition(
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): boolean {
-  if (type !== "clip") return hasArrangementPosition(arrangementStart);
+  if (type !== "clip") {
+    return hasArrangementPosition(arrangementStart);
+  }
 
   refuseDoubledPosition(toPath, arrangementStart, "toPath");
 
@@ -392,7 +400,9 @@ function foldLocatorParam(
   arrangementStart: string | undefined,
   locator: string | undefined,
 ): string | undefined {
-  if (locator == null) return arrangementStart;
+  if (locator == null) {
+    return arrangementStart;
+  }
 
   // Never pick one: the two params name the same position, so a caller who sent
   // both told us two different things about it.

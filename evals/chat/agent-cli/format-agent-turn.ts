@@ -45,12 +45,20 @@ export function formatAgentTurn(
   }
 
   if (parsed.text !== "") {
-    if (parts.length > 0) parts.push("\n");
+    if (parts.length > 0) {
+      parts.push("\n");
+    }
+
     parts.push(parsed.text);
   }
 
-  if (parts.length === 0) return "";
-  if (!showUsage) parts.push("\n");
+  if (parts.length === 0) {
+    return "";
+  }
+
+  if (!showUsage) {
+    parts.push("\n");
+  }
 
   return parts.join("");
 }

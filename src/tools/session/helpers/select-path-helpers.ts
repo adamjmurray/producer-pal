@@ -146,8 +146,13 @@ function merge<T>(
   explicit: T | undefined,
   fromPath: T | undefined,
 ): T | undefined {
-  if (explicit == null) return fromPath;
-  if (fromPath == null || explicit === fromPath) return explicit;
+  if (explicit == null) {
+    return fromPath;
+  }
+
+  if (fromPath == null || explicit === fromPath) {
+    return explicit;
+  }
 
   throw pathConflict(name);
 }
@@ -243,7 +248,9 @@ function assertIdAgrees(
  * @returns The track, or null when the path named none
  */
 function trackNamedDirectly(target: PathTarget): ImpliedTrack | null {
-  if (target.category == null) return null;
+  if (target.category == null) {
+    return null;
+  }
 
   return { trackIndex: target.trackIndex, category: target.category };
 }
@@ -275,7 +282,9 @@ function assertDeviceOnTrack(deviceId: string, track: ImpliedTrack): void {
  * @param path - Where the path says that object is
  */
 function assertSameObject(id: string, path: PathLike | null): void {
-  if (path == null) return;
+  if (path == null) {
+    return;
+  }
 
   const object = LiveAPI.from(path);
 

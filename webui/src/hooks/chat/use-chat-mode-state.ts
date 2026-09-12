@@ -366,7 +366,9 @@ export function useBranchNav(
     let cancelled = false;
 
     void listAllConversationSummaries().then((summaries) => {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       setPoints(computeBranchPoints(activeConversationId, summaries));
     });

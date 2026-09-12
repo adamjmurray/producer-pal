@@ -18,7 +18,9 @@ export function trackTypeField(
   isMidiTrack: boolean,
   category: string,
 ): { type?: string } {
-  if (category !== "regular") return {};
+  if (category !== "regular") {
+    return {};
+  }
 
   return { type: isMidiTrack ? "midi" : "audio" };
 }

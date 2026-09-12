@@ -153,7 +153,9 @@ function expandInclude(
 
   const included = readFragment(name, options);
 
-  if (included == null) return "";
+  if (included == null) {
+    return "";
+  }
 
   options.onFragment?.(name, included);
 
@@ -187,7 +189,9 @@ function joinExpansion(
     // A mid-line directive never owned a line, so there is no framing blank
     // line to take: eating one would pull the next paragraph up into whatever
     // else the line held (a list item, say).
-    if (!seam.atLineStart) return trailing;
+    if (!seam.atLineStart) {
+      return trailing;
+    }
 
     return seam.blankBefore || trailing.length < 2 ? "" : "\n";
   }
@@ -199,7 +203,9 @@ function joinExpansion(
     seam.blankBefore ? "" : "\n",
   );
 
-  if (trailing === "") return body;
+  if (trailing === "") {
+    return body;
+  }
 
   return (body + trailing).replace(SEAM_BLANK_RUN, "\n\n");
 }
@@ -276,7 +282,9 @@ function normalizeIncludeRef(
     ? interpolated.slice(2)
     : interpolated;
 
-  if (!isSafeIncludeRef(withoutPrefix)) return null;
+  if (!isSafeIncludeRef(withoutPrefix)) {
+    return null;
+  }
 
   return withoutPrefix.endsWith(".md")
     ? withoutPrefix.slice(0, -3)
@@ -292,9 +300,17 @@ function normalizeIncludeRef(
  * @returns True when the ref stays inside the skills dir
  */
 function isSafeIncludeRef(ref: string): boolean {
-  if (ref === "") return false;
-  if (/^[./~]/.test(ref)) return false;
-  if (ref.includes("..")) return false;
+  if (ref === "") {
+    return false;
+  }
+
+  if (/^[./~]/.test(ref)) {
+    return false;
+  }
+
+  if (ref.includes("..")) {
+    return false;
+  }
 
   return !ref.includes("\\") && !ref.includes("\0");
 }

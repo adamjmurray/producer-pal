@@ -85,7 +85,10 @@ export function spawnAgentCli(
      */
     const clearTimers = (): void => {
       clearTimeout(timer);
-      if (killTimer != null) clearTimeout(killTimer);
+
+      if (killTimer != null) {
+        clearTimeout(killTimer);
+      }
     };
 
     child.stdout.setEncoding("utf8");
@@ -157,7 +160,9 @@ function spawnError(
   executable: string,
   error: Error,
 ): Error {
-  if ((error as NodeJS.ErrnoException).code !== "ENOENT") return error;
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+    return error;
+  }
 
   return new Error(
     `${transport.label} executable "${executable}" not found. ` +

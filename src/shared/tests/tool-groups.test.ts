@@ -39,7 +39,9 @@ describe("TOOL_GROUPS", () => {
 
     expect(new Set(aliases).size).toBe(aliases.length);
 
-    for (const alias of aliases) expect(alias).toMatch(/^[a-z]+(-[a-z]+)*$/);
+    for (const alias of aliases) {
+      expect(alias).toMatch(/^[a-z]+(-[a-z]+)*$/);
+    }
   });
 
   it("keeps the read-only alias out of the group aliases", () => {
@@ -49,7 +51,9 @@ describe("TOOL_GROUPS", () => {
   });
 
   it("draws read-only entirely from the catalog", () => {
-    for (const name of READ_ONLY_TOOLS) expect(ALL_TOOL_IDS).toContain(name);
+    for (const name of READ_ONLY_TOOLS) {
+      expect(ALL_TOOL_IDS).toContain(name);
+    }
   });
 
   it("includes the opt-in Direct Live API tool in the catalog", () => {

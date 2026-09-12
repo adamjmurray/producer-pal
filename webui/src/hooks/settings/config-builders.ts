@@ -6,7 +6,7 @@
 import {
   type SemanticEagerness,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
@@ -197,10 +197,14 @@ function supportsXHigh(model: string): boolean {
   const version = extractGptVersion(model);
 
   // gpt-5.2+ supports xhigh
-  if (version !== null && version >= 5.2) return true;
+  if (version !== null && version >= 5.2) {
+    return true;
+  }
 
   // Special case: gpt-5.1-codex-max supports xhigh
-  if (model.startsWith("gpt-5.1-codex-max")) return true;
+  if (model.startsWith("gpt-5.1-codex-max")) {
+    return true;
+  }
 
   return false;
 }

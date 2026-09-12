@@ -46,7 +46,9 @@ describe("streaming-helpers", () => {
     it("should handle successful stream", async () => {
       const mockHistory: MockMessage[][] = [[{ role: "user", content: "hi" }]];
       const mockStream = (async function* () {
-        for (const h of mockHistory) yield h;
+        for (const h of mockHistory) {
+          yield h;
+        }
       })();
       const onUpdate = vi.fn();
 

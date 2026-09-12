@@ -94,7 +94,9 @@ export function registerGrowingChainRack(
     if (prop === "chains") {
       const chains: string[] = [];
 
-      for (let i = 0; i < chainCount; i++) chains.push("id", `chain-${i}`);
+      for (let i = 0; i < chainCount; i++) {
+        chains.push("id", `chain-${i}`);
+      }
 
       return chains;
     }

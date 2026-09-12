@@ -41,7 +41,9 @@ export interface MockLiveAPIContext {
 function deriveId(path?: string): string | undefined {
   // An empty path reports "0" on Live 12.4.3, the same as any path that
   // doesn't resolve — so exists() stays false after set_path "".
-  if (path === "") return "0";
+  if (path === "") {
+    return "0";
+  }
 
   return path?.startsWith("id ")
     ? path.slice(3)
@@ -126,7 +128,9 @@ export class LiveAPI {
 
     this._copiedKeys = [];
 
-    if (this._registered == null || this._registered.deleted) return;
+    if (this._registered == null || this._registered.deleted) {
+      return;
+    }
 
     for (const [key, value] of Object.entries(this._registered.properties)) {
       // Preserve core LiveAPI getters/setters.
@@ -171,9 +175,17 @@ export class LiveAPI {
     // A held object keeps its id after its target dies — measured on 12.4.3, so
     // exists() lies too. Only a fresh look-up reads "0", which is what
     // confirmDeleted in tools/actions/delete/delete.ts relies on.
-    if (this._registered) return this._registered.id;
-    if (isMockObjectDeleted(this._id)) return "0";
-    if (isNonExistentByDefault()) return "0";
+    if (this._registered) {
+      return this._registered.id;
+    }
+
+    if (isMockObjectDeleted(this._id)) {
+      return "0";
+    }
+
+    if (isNonExistentByDefault()) {
+      return "0";
+    }
 
     return this._id ?? "";
   }
@@ -193,7 +205,9 @@ export class LiveAPI {
     if (this._registered) {
       // A dead target clears its path while keeping its id. The path is the
       // half that tells the truth.
-      if (this._registered.deleted) return "";
+      if (this._registered.deleted) {
+        return "";
+      }
 
       return this._registered.returnPath ?? this._registered.path;
     }
@@ -273,7 +287,9 @@ export class LiveAPI {
   }
 
   get type(): LiveObjectType {
-    if (this._registered) return this._registered.type;
+    if (this._registered) {
+      return this._registered.type;
+    }
 
     return detectTypeFromPath(this.path, this._id);
   }

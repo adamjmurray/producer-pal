@@ -8,7 +8,7 @@
 // formatter. Generic over the entry view (`TView`) shape, with no dependency on
 // the collection hook's state types, so it lives beside the other fetch
 // utilities rather than inside the hook module (see
-// #webui/hooks/context/use-doc-collection).
+// #webui/hooks/context/helpers/use-doc-collection).
 
 import { fetchWithDeadline } from "#webui/utils/fetch-with-deadline";
 
@@ -146,8 +146,9 @@ async function writeRequest<T>(
     { ...init, keepalive: true },
     `${label} update timed out`,
     async (response) => {
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(await writeErrorMessage(response, label));
+      }
 
       return await readBody(response);
     },

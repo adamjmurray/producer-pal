@@ -155,7 +155,9 @@ export function planClipUpdate({
     destinationById.delete(clipId);
   };
 
-  for (const id of blockedIds) destinationById.delete(id);
+  for (const id of blockedIds) {
+    destinationById.delete(id);
+  }
 
   // Both halves go: a resize clears the span it tiles across just as a move
   // clears its destination, so letting it run alone would destroy the very
@@ -234,12 +236,16 @@ function applySplittingIfNeeded(
 ): LiveAPI[] {
   const request = resolveSplitRequest(arrangementSplit, split);
 
-  if (request == null) return clips;
+  if (request == null) {
+    return clips;
+  }
 
   const { value, mode } = request;
 
   const arrangementClips = clips.filter((clip) => {
-    if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
+    if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
+      return false;
+    }
 
     // performSplitting uses duplicate_clip_to_arrangement (Track-only) which
     // can't target take lanes. Warn-and-skip rather than silently misroute
@@ -302,7 +308,9 @@ function resolveSplitRequest(
     return { value: arrangementSplit, mode: ARRANGEMENT_SPLIT_MODE };
   }
 
-  if (split != null) return { value: split, mode: LEGACY_SPLIT_MODE };
+  if (split != null) {
+    return { value: split, mode: LEGACY_SPLIT_MODE };
+  }
 
   return null;
 }

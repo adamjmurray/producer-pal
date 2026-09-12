@@ -58,11 +58,15 @@ export function validateListLengths(args: ListArg[]): void {
 
   const first = lists[0];
 
-  if (first == null) return;
+  if (first == null) {
+    return;
+  }
 
   const odd = lists.find((list) => list.count !== first.count);
 
-  if (odd == null) return;
+  if (odd == null) {
+    return;
+  }
 
   throw new Error(
     `${first.param} names ${plural(first.count, first.noun)} but ` +
@@ -87,7 +91,9 @@ export function requireSameLength(
   a: { param: string; count: number },
   b: { param: string; count: number },
 ): void {
-  if (a.count <= 1 || b.count <= 1 || a.count === b.count) return;
+  if (a.count <= 1 || b.count <= 1 || a.count === b.count) {
+    return;
+  }
 
   throw new Error(
     `${a.param} names ${plural(a.count, "entry")} but ${b.param} names ` +
@@ -105,8 +111,13 @@ export function requireSameLength(
  * @returns True when the arg has to agree with the other lists
  */
 function isList(arg: ListArg): boolean {
-  if (arg.count != null) return arg.count > 1;
-  if (arg.value == null) return false;
+  if (arg.count != null) {
+    return arg.count > 1;
+  }
+
+  if (arg.value == null) {
+    return false;
+  }
 
   // A comma makes it a list even when it names one entry — "A," is a malformed
   // list, and dropping it here would let it pass unchallenged. A path's comma
@@ -123,7 +134,9 @@ function isList(arg: ListArg): boolean {
  * @returns The entry count
  */
 function entryCount(arg: ListArg): number {
-  if (arg.count != null) return arg.count;
+  if (arg.count != null) {
+    return arg.count;
+  }
 
   return arg.value == null ? 1 : countEntries(arg.value, arg.isPath);
 }
@@ -159,7 +172,9 @@ export function countPathEntries(value: string | null | undefined): number {
 function countEntries(value: string, isPath = false): number {
   const entries = isPath ? splitPathEntries(value) : value.split(",");
 
-  if ((entries.at(-1) ?? "").trim() === "") entries.pop();
+  if ((entries.at(-1) ?? "").trim() === "") {
+    entries.pop();
+  }
 
   return entries.length;
 }
@@ -171,7 +186,9 @@ function countEntries(value: string, isPath = false): number {
  * @returns The counted phrase
  */
 function plural(count: number, noun: string): string {
-  if (count === 1) return `${count} ${noun}`;
+  if (count === 1) {
+    return `${count} ${noun}`;
+  }
 
   const plur = noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`;
 
