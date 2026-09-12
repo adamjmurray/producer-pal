@@ -172,4 +172,26 @@ describe("readLiveSet - inclusion", () => {
     expect(result.name).toBeUndefined();
     expect(result).not.toHaveProperty("name");
   });
+
+  it("rounds tempo to Live's 2dp display precision", () => {
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      objects: {
+        LiveSet: {
+          name: "Tempo Rounding Test",
+          tempo: 123.456787109375, // raw float32 noise for 123.456789
+          signature_numerator: 4,
+          signature_denominator: 4,
+          back_to_arranger: 1,
+          is_playing: 0,
+          tracks: [],
+          scenes: [],
+        },
+      },
+    });
+
+    const result = readLiveSet();
+
+    expect(result.tempo).toBe(123.46);
+  });
 });

@@ -16,6 +16,7 @@ import {
   parseIncludeArray,
   READ_SONG_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { round2dp, roundDisplayValue } from "#src/tools/shared/utils.ts";
 import {
   readTrack,
   readTrackGeneric,
@@ -58,7 +59,7 @@ export function readLiveSet(
   const liveSetName = liveSet.getName();
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
-    tempo: liveSet.getProperty("tempo"),
+    tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
     timeSignature: liveSet.timeSignature,
   };
 

@@ -80,6 +80,24 @@ describe("readTrack - mixer properties", () => {
     expect(result).toHaveProperty("pan", -0.3);
   });
 
+  it("rounds pan and gain when Max serializes a tiny float32 as an exponent string", () => {
+    setupTrackMixerMocks({
+      volumeProperties: {
+        // Max serializes some float32 values as exponent-notation strings,
+        // not numbers — this must still round, not pass through as text.
+        display_value: "9.999999747378752e-05",
+      },
+      panningProperties: {
+        value: "9.999999747378752e-05",
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("pan", 0);
+  });
+
   it("includes mixer properties for return tracks", () => {
     setupTrackMixerMocks({
       trackPath: String(livePath.returnTrack(0)),

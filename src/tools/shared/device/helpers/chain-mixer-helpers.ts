@@ -10,10 +10,13 @@ import {
   type SendResult,
   dedupeSendsByReturn,
   readSendBack,
+  readSendGainDb,
   warnSendCollisions,
 } from "#src/tools/shared/sends/send-list-helpers.ts";
 import {
+  asFiniteNumber,
   findReturnIndex,
+  roundDisplayValue,
   roundGainDb,
   roundPan,
 } from "#src/tools/shared/utils.ts";
@@ -77,9 +80,9 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
   const gainDb = mixer.child("volume").getProperty("display_value");
 
   // Round before the check, same as pan below.
-  const roundedGainDb = typeof gainDb === "number" ? roundGainDb(gainDb) : null;
+  const roundedGainDb = roundDisplayValue(gainDb, roundGainDb);
 
-  if (roundedGainDb != null && roundedGainDb !== 0) {
+  if (typeof roundedGainDb === "number" && roundedGainDb !== 0) {
     info.gainDb = roundedGainDb;
   }
 
@@ -87,8 +90,10 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 
   // Round before the check: sub-1% noise is centered as far as Live is
   // concerned, and reporting it as `pan: 0` would contradict "non-default only".
-  if (typeof pan === "number" && roundPan(pan) !== 0) {
-    info.pan = roundPan(pan);
+  const roundedPan = roundDisplayValue(pan, roundPan);
+
+  if (typeof roundedPan === "number" && roundedPan !== 0) {
+    info.pan = roundedPan;
   }
 
   const sends = readActiveSends(chain, mixer);
@@ -504,9 +509,9 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
     .getChildren("sends")
     .map((send, index) => ({ send, index }))
     .filter(({ send }) => {
-      const value = send.getProperty("value");
+      const value = asFiniteNumber(send.getProperty("value"));
 
-      return typeof value === "number" && value > 0;
+      return value != null && value > 0;
     });
 
   if (active.length === 0) {
@@ -523,7 +528,7 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
     const name =
       rawName == null || rawName === "" ? `Return ${index + 1}` : rawName;
 
-    return readSendBack(send, name, info?.id);
+    return readSendGainDb(send, name, info?.id);
   });
 }
 

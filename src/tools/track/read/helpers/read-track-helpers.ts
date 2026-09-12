@@ -22,7 +22,12 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { roundGainDb, roundPan, stripFields } from "#src/tools/shared/utils.ts";
+import {
+  roundDisplayValue,
+  roundGainDb,
+  roundPan,
+  stripFields,
+} from "#src/tools/shared/utils.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   processAvailableRouting,
@@ -445,9 +450,7 @@ export function readMixerProperties(
  * @returns Pan from -1 to 1
  */
 function readPan(param: LiveAPI): unknown {
-  const pan = param.getProperty("value");
-
-  return typeof pan === "number" ? roundPan(pan) : pan;
+  return roundDisplayValue(param.getProperty("value"), roundPan);
 }
 
 /**
@@ -456,9 +459,7 @@ function readPan(param: LiveAPI): unknown {
  * @returns Gain in dB
  */
 function readGainDb(param: LiveAPI): unknown {
-  const gainDb = param.getProperty("display_value");
-
-  return typeof gainDb === "number" ? roundGainDb(gainDb) : gainDb;
+  return roundDisplayValue(param.getProperty("display_value"), roundGainDb);
 }
 
 /**

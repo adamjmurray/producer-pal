@@ -18,6 +18,8 @@ import {
 import {
   namedIdParam,
   namedParam,
+  round2dp,
+  roundDisplayValue,
   stripFields,
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
@@ -128,7 +130,7 @@ export function readScene(
 
   // Only include tempo/timeSignature when enabled
   if (isTempoEnabled) {
-    result.tempo = scene.getProperty("tempo");
+    result.tempo = roundDisplayValue(scene.getProperty("tempo"), round2dp);
   }
 
   if (isTimeSignatureEnabled) {

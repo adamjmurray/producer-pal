@@ -257,6 +257,18 @@ in a probe means driving Live's **Edit → Freeze Track** menu. That acts on the
 UI's selected track, and writing `live_set view selected_track` does not move it
 — the write reports as applied and the menu still acts elsewhere.
 
+### Rounding a Float Property for a Result
+
+Round to display precision — the number Live's UI shows: 2dp for dB, pan, and
+tempo; a device parameter uses its own display precision (already applied by
+parsing its label text). Round centrally with `roundDisplayValue` from
+`src/tools/shared/utils.ts`, at the point a raw float becomes a result field —
+not per site, and never on a value that still feeds arithmetic or bar|beat
+conversion (beat positions, times, lengths). Max serializes some float32 values
+(tiny pan, gain, or tempo noise) as an exponent-notation STRING, not a number,
+so narrow with `asFiniteNumber`/`roundDisplayValue` rather than
+`typeof value === "number"` alone.
+
 ### Live API Paths — Use `livePath` Builders
 
 **Never hardcode Live API path strings.** Use `livePath` from

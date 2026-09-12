@@ -94,6 +94,33 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  it("reads back a noisy tempo rounded to Live's 2dp display precision", async () => {
+    const { originalTempo } = await readLiveSetOriginals();
+
+    // Live stores tempo as a 32-bit float, so a value like 123.456789 comes
+    // back with float32 noise (e.g. 123.456787109375) unless the read rounds
+    // it to what Live's UI shows.
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { tempo: 123.456789 },
+    });
+
+    await sleep(100);
+    const afterRead = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const afterParsed = parseToolResult<ReadResult>(afterRead);
+
+    expect(afterParsed.tempo).toBe(123.46);
+
+    // Restore original tempo
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { tempo: originalTempo },
+    });
+  });
+
   it("updates scale and multiple parameters", async () => {
     // Store original values to restore later
     const { originalTempo, originalTimeSig } = await readLiveSetOriginals();

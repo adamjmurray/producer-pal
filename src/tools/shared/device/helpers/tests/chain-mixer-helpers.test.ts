@@ -48,9 +48,11 @@ function registerChainWithMixer({
   type = "DrumChain",
   disabled = [],
 }: {
-  gainDb?: number;
-  pan?: number;
-  sends?: { value: number; display_value: number }[];
+  // Max can serialize a tiny float32 as an exponent-notation string, so tests
+  // exercising that need to pass one through here.
+  gainDb?: number | string;
+  pan?: number | string;
+  sends?: { value: number | string; display_value: number }[];
   type?: "Chain" | "DrumChain";
   disabled?: ("volume" | "panning")[];
 } = {}): MixerMocks {
@@ -152,6 +154,15 @@ describe("readChainMixer", () => {
     expect(readChainMixer(chainApi())).toStrictEqual({});
   });
 
+  it("rounds gain and pan when Max serializes a tiny float32 as an exponent string", () => {
+    registerChainWithMixer({
+      gainDb: "9.999999747378752e-05",
+      pan: "9.999999747378752e-05",
+    });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
   it("names active sends after the rack's return chains and skips silent ones", () => {
     registerChainWithMixer({
       sends: [
@@ -165,6 +176,17 @@ describe("readChainMixer", () => {
       // The id rides along so a read round-trips straight back into `sends`.
       // The gain is rounded: Live's raw float32 is -12.333000183105469.
       sends: [{ return: "Reverb", returnId: "rc-1", gainDb: -12.33 }],
+    });
+  });
+
+  it("treats a tiny send value Max serialized as an exponent string as active", () => {
+    registerChainWithMixer({
+      sends: [{ value: "9.999999747378752e-05", display_value: -80.3 }],
+    });
+    registerReturnChains("Reverb");
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "Reverb", returnId: "rc-0", gainDb: -80.3 }],
     });
   });
 

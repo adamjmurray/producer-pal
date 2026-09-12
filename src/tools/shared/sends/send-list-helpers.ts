@@ -5,7 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import { roundGainDb } from "#src/tools/shared/utils.ts";
+import { roundDisplayValue, roundGainDb } from "#src/tools/shared/utils.ts";
 
 /** A `sends` entry paired with the return it resolved to. */
 export interface IndexedSend extends SendEntry {
@@ -50,6 +50,28 @@ export function readSendBack(
     // vanish from the result over that — an omission reads as "no write".
     gainDb:
       typeof gainDb === "number" ? roundGainDb(gainDb) : (written ?? gainDb),
+  };
+}
+
+/**
+ * Read a send's level for a pure read (no write behind it, so there is no
+ * written value to fall back on). Unlike {@link readSendBack}, this rounds a
+ * value Max serialized as a numeric string instead of passing the raw text
+ * through — a read has nothing else to report.
+ * @param send - The send DeviceParameter
+ * @param name - The resolved return's name
+ * @param id - The resolved return's id, when there is one
+ * @returns The entry to report for this send
+ */
+export function readSendGainDb(
+  send: LiveAPI,
+  name: string,
+  id?: string,
+): SendResult {
+  return {
+    return: name,
+    ...(id == null ? {} : { returnId: id }),
+    gainDb: roundDisplayValue(send.getProperty("display_value"), roundGainDb),
   };
 }
 
