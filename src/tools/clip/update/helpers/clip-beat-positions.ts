@@ -11,7 +11,7 @@ import {
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   targetLabel,
   targetLabelForId,

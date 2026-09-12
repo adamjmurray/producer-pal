@@ -12,15 +12,16 @@ import {
 import {
   getColorForIndex,
   parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
+} from "#src/tools/shared/validation/color-parsing.ts";
 import {
   getNameForIndex,
   parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/validation/name-parsing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
-import { unwrapSingleResult, validateTempo } from "#src/tools/shared/utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
   resolveCreateSceneIndex,
   resolveCreateSceneSpots,

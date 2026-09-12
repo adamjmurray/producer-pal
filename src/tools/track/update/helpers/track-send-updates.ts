@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
+import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
   type ReturnTrackInfo,
   readReturnTrackInfo,
@@ -15,9 +15,9 @@ import {
   type SendResult,
   dedupeSendsByReturn,
   readSendBack,
-} from "#src/tools/shared/sends/send-list-helpers.ts";
+} from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import { findReturnIndex } from "#src/tools/shared/utils.ts";
+import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A send level matched to a return track, ready to write on any track. */

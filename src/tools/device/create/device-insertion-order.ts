@@ -12,7 +12,7 @@ import {
   requireDeviceContainer,
   trackSegmentPath,
   type DeviceContainerPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   formatObjectPath,
   parseObjectPath,

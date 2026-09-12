@@ -13,7 +13,7 @@ import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 export interface AudioSessionClipResult {
   clip: LiveAPI;

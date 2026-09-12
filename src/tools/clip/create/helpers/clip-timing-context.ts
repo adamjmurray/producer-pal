@@ -13,8 +13,8 @@ import {
   resolveTakeLane,
   takeLaneLabel,
   takeLaneTargetsThatFit,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
-import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
 

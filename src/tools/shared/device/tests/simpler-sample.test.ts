@@ -17,7 +17,7 @@ import {
   setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 function registerSimpler(opts: { multiSampleMode?: number } = {}) {

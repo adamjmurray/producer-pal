@@ -10,12 +10,12 @@
 // is created, so a bad destination fails instead of quietly landing the copy
 // somewhere else.
 
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
   parseClipDestinationList,
@@ -24,7 +24,7 @@ import {
 import {
   namedHiddenPath,
   type ClipPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   parseSlotList,

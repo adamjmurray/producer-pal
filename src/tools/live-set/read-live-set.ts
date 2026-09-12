@@ -9,14 +9,17 @@ import {
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
 import { readOneScene } from "#src/tools/scene/read-scene.ts";
-import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
+import { readLocators } from "#src/tools/shared/locator/locators.ts";
 import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import {
   type IncludeFlags,
   parseIncludeArray,
   READ_SONG_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { round2dp, roundDisplayValue } from "#src/tools/shared/utils.ts";
+import {
+  round2dp,
+  roundDisplayValue,
+} from "#src/tools/shared/helpers/rounding.ts";
 import {
   readOneTrack,
   readTrackGeneric,

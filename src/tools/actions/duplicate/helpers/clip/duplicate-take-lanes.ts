@@ -10,8 +10,8 @@ import {
   takeLaneLabel,
   takeLaneTargetsThatFit,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
-import { paramNamesSomething } from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   canRecreateClip,
   recreatedClipLosses,

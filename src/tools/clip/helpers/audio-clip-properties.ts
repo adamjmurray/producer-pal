@@ -13,7 +13,7 @@ import {
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
 } from "#src/tools/constants.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 
 export interface AudioClipProperties {
   /** Audio clip gain in decibels (-70 to 24) */

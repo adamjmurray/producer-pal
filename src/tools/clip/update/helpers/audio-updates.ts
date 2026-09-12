@@ -12,7 +12,10 @@ import {
   setAudioClipProperties,
 } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
-import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.ts";
+import {
+  dbToLiveGain,
+  liveGainToDb,
+} from "#src/tools/shared/helpers/gain-conversion.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface AudioParams extends AudioClipProperties {

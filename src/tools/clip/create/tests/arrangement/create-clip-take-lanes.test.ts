@@ -9,7 +9,7 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,

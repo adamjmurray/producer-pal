@@ -17,7 +17,7 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
+import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   readFanOut,
   type ReadResult,

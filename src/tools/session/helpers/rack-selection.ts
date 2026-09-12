@@ -21,7 +21,7 @@ import {
   resolvePathToLiveApi,
   type ResolvedPath,
 } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /** Live shows 4 pad rows at a time out of 32, so the last row it can top is 28. */
 const MAX_PAD_SCROLL = 28;

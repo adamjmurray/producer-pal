@@ -15,13 +15,15 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedIdParam,
   namedParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
+import {
   round2dp,
   roundDisplayValue,
-  stripFields,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/rounding.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   readFanOut,

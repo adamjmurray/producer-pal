@@ -9,7 +9,7 @@ import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   takeLaneLabel,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   unreachedPositionsWarning,
   type UnreachedDestination,

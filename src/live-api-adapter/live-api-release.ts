@@ -76,7 +76,7 @@
  * (freepeer) and 3.5 s (collected) until the device was reloaded.
  */
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 const trackedObjects: LiveAPI[] = [];

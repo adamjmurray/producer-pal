@@ -11,7 +11,7 @@
  */
 
 import Max from "max-api";
-import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-responses.ts";
 import * as console from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;

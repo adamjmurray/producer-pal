@@ -8,7 +8,7 @@
  * accidental, and octave (absolute number and/or `'`/`,` marks) into MIDI.
  */
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 
 /** A pitched token's spelling, as the grammar produces it. */
 export interface StarkPitchSpelling {

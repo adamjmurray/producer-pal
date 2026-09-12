@@ -9,9 +9,9 @@ import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/a
 import {
   createAudioClipInSession,
   type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 

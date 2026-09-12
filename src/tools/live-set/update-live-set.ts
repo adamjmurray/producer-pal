@@ -13,8 +13,9 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   findLocator,
   getLocatorId,
-} from "#src/tools/shared/locator/locator-helpers.ts";
-import { parseTimeSignature, validateTempo } from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/locator/locators.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
   deleteLocator,
   renameLocator,

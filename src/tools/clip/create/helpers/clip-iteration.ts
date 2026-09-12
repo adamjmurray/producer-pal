@@ -16,7 +16,7 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,

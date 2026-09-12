@@ -18,9 +18,12 @@ import {
   namedHiddenPath,
   requireClipSlotPath,
   slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
-import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =

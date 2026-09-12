@@ -8,12 +8,12 @@
  * These functions create shortened clips in a holding area and adjust pre-roll.
  */
 
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
   type TilingContext,
-} from "./helpers/arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-clips.ts";
 
 export interface HoldingClipResult {
   holdingClipId: string;

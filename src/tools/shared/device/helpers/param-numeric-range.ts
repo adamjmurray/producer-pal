@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel, strForValue } from "./device-label-helpers.ts";
+import { parseLabel, strForValue } from "./param-label-parsing.ts";
 
 // Probes to find where a sentinel word ends. Each is one str_for_value call,
 // but the word sits on the endpoint alone in every case seen in Live, so the

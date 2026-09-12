@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { errorMessage } from "#src/shared/error-message";
 import {
   DEFAULT_NOTATION,
   isNotation,

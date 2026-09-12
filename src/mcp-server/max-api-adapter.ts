@@ -7,13 +7,13 @@
 
 import crypto from "node:crypto";
 import Max from "max-api";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatErrorResponse,
   reassembleChunks,
   WARNING_PREFIX,
   type McpErrorCode,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";

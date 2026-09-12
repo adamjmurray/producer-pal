@@ -10,7 +10,7 @@ import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   claimLabels,
   labelColor,

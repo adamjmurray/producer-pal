@@ -1,0 +1,873 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type RegisteredMockObject,
+  keepsParamValue,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  applyChainMixer,
+  carryChainMixer,
+  readChainMixer,
+  sourceChain,
+  warnIfChainMixerLeftBehind,
+} from "../chain-mixer.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+const rackPath = livePath.track(0).device(0);
+const chainPath = rackPath.chain(1);
+const mixerPath = `${chainPath} mixer_device`;
+
+interface MixerMocks {
+  chain: RegisteredMockObject;
+  volume: RegisteredMockObject;
+  panning: RegisteredMockObject;
+}
+
+/**
+ * Register a chain with a mixer at track 0 / device 0 / chain 1
+ * @param overrides - Mixer values (defaults are all neutral)
+ * @param overrides.gainDb - Volume in dB
+ * @param overrides.pan - Pan -1..1
+ * @param overrides.sends - Send {value, display_value} pairs
+ * @param overrides.type - Chain type
+ * @returns The registered chain and its volume/panning parameters
+ */
+function registerChainWithMixer({
+  gainDb = 0,
+  pan = 0,
+  sends = [],
+  type = "DrumChain",
+  disabled = [],
+}: {
+  // Max can serialize a tiny float32 as an exponent-notation string, so tests
+  // exercising that need to pass one through here.
+  gainDb?: number | string;
+  pan?: number | string;
+  sends?: { value: number | string; display_value: number }[];
+  type?: "Chain" | "DrumChain";
+  disabled?: ("volume" | "panning")[];
+} = {}): MixerMocks {
+  const chain = registerMockObject("chain-1", {
+    path: chainPath,
+    type,
+    properties: { name: "Snare" },
+  });
+
+  registerMockObject("mixer-1", {
+    path: mixerPath,
+    type: "ChainMixerDevice",
+    properties: {
+      sends: children(...sends.map((_, i) => `send-${i}`)),
+    },
+  });
+  const volume = registerMockObject("volume-1", {
+    path: `${mixerPath} volume`,
+    type: "DeviceParameter",
+    properties: {
+      display_value: gainDb,
+      is_enabled: disabled.includes("volume") ? 0 : 1,
+    },
+  });
+  const panning = registerMockObject("panning-1", {
+    path: `${mixerPath} panning`,
+    type: "DeviceParameter",
+    properties: {
+      value: pan,
+      is_enabled: disabled.includes("panning") ? 0 : 1,
+    },
+  });
+
+  for (const [i, send] of sends.entries()) {
+    registerMockObject(`send-${i}`, {
+      type: "DeviceParameter",
+      properties: send,
+    });
+  }
+
+  return { chain, volume, panning };
+}
+
+/**
+ * Register the rack holding the chain, with one return chain per name. Sends
+ * are matched to returns by position, so the order is the send order. A
+ * number simulates Live returning an all-digit name as a number, not a string.
+ * @param names - Return chain names
+ */
+function registerReturnChains(...names: (string | number)[]): void {
+  registerMockObject("rack-1", {
+    path: rackPath,
+    type: "RackDevice",
+    properties: { return_chains: children(...names.map((_, i) => `rc-${i}`)) },
+  });
+
+  for (const [i, name] of names.entries()) {
+    registerMockObject(`rc-${i}`, { type: "Chain", properties: { name } });
+  }
+}
+
+/**
+ * Point a fresh LiveAPI at the registered chain
+ * @returns The chain object
+ */
+function chainApi(): LiveAPI {
+  return LiveAPI.from(chainPath);
+}
+
+describe("readChainMixer", () => {
+  it("returns nothing when every setting is at its default", () => {
+    registerChainWithMixer();
+
+    expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
+  it("returns nothing when the chain has no mixer device", () => {
+    mockNonExistentObjects();
+    registerMockObject("chain-1", { path: chainPath, type: "Chain" });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
+  it("reports a non-zero gain and pan, rounding both to Live's display steps", () => {
+    registerChainWithMixer({
+      gainDb: -6.333000183105469,
+      pan: -0.30000001192092896,
+    });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      gainDb: -6.33,
+      pan: -0.3,
+    });
+  });
+
+  it("treats sub-1% pan as centered rather than reporting pan 0", () => {
+    registerChainWithMixer({ pan: 0.004 });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
+  it("rounds gain and pan when Max serializes a tiny float32 as an exponent string", () => {
+    registerChainWithMixer({
+      gainDb: "9.999999747378752e-05",
+      pan: "9.999999747378752e-05",
+    });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
+  it("names active sends after the rack's return chains and skips silent ones", () => {
+    registerChainWithMixer({
+      sends: [
+        { value: 0, display_value: -70 },
+        { value: 0.6, display_value: -12.333000183105469 },
+      ],
+    });
+    registerReturnChains("Delay", "Reverb");
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      // The id rides along so a read round-trips straight back into `sends`.
+      // The gain is rounded: Live's raw float32 is -12.333000183105469.
+      sends: [{ return: "Reverb", returnId: "rc-1", gainDb: -12.33 }],
+    });
+  });
+
+  it("treats a tiny send value Max serialized as an exponent string as active", () => {
+    registerChainWithMixer({
+      sends: [{ value: "9.999999747378752e-05", display_value: -80.3 }],
+    });
+    registerReturnChains("Reverb");
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "Reverb", returnId: "rc-0", gainDb: -80.3 }],
+    });
+  });
+
+  it("reports an all-digit return chain name as a string", () => {
+    // The send result must report it like every other name.
+    registerChainWithMixer({
+      sends: [{ value: 0.6, display_value: -12 }],
+    });
+    registerReturnChains(5678);
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "5678", returnId: "rc-0", gainDb: -12 }],
+    });
+  });
+
+  it("falls back to a numbered return name when the rack has none", () => {
+    registerChainWithMixer({ sends: [{ value: 0.5, display_value: -14 }] });
+    registerReturnChains();
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "Return 1", gainDb: -14 }],
+    });
+  });
+
+  it("falls back to a numbered return name when the return chain has no name", () => {
+    // getName() reports "" for a nameless return chain — `??` would keep that
+    // "" instead of falling back, so this must use `||`.
+    registerChainWithMixer({ sends: [{ value: 0.5, display_value: -14 }] });
+    registerReturnChains("");
+
+    expect(readChainMixer(chainApi())).toStrictEqual({
+      sends: [{ return: "Return 1", returnId: "rc-0", gainDb: -14 }],
+    });
+  });
+});
+
+describe("applyChainMixer", () => {
+  it("sets volume in dB and pan as a raw value", () => {
+    const { volume, panning } = registerChainWithMixer();
+
+    applyChainMixer(chainApi(), { gainDb: -6, pan: 0.25 });
+
+    expect(volume.set).toHaveBeenCalledWith("display_value", -6);
+    expect(panning.set).toHaveBeenCalledWith("value", 0.25);
+  });
+
+  it("reports the gain and pan Live kept, not the ones asked for", () => {
+    const { volume, panning } = registerChainWithMixer();
+
+    keepsParamValue(volume, -6.02);
+    keepsParamValue(panning, 0.25999999046325684);
+
+    const applied = applyChainMixer(chainApi(), { gainDb: -6, pan: 0.25 });
+
+    expect(applied).toStrictEqual({ gainDb: -6.02, pan: 0.26 });
+  });
+
+  // Max serializes an exponent-notation float as a string. Nothing came back to
+  // read, so the argument stands in rather than vanishing from the result, and
+  // it is rounded the way a read-back would be — reporting the centered pan the
+  // argument amounts to, not the sub-1% number the caller wrote.
+  it("falls back to the written pan when Live answers with a string", () => {
+    const { panning } = registerChainWithMixer();
+
+    keepsParamValue(panning, "9.999999747378752e-05");
+
+    expect(applyChainMixer(chainApi(), { pan: 0.0001 })).toStrictEqual({
+      pan: 0,
+    });
+  });
+
+  it("leaves the other setting alone when only one is given", () => {
+    const { volume, panning } = registerChainWithMixer();
+
+    applyChainMixer(chainApi(), { pan: -1 });
+
+    expect(volume.set).not.toHaveBeenCalled();
+    expect(panning.set).toHaveBeenCalledWith("value", -1);
+
+    applyChainMixer(chainApi(), { gainDb: -6 });
+
+    expect(volume.set).toHaveBeenCalledWith("display_value", -6);
+    expect(panning.set).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns and skips when the chain has no mixer device", () => {
+    mockNonExistentObjects();
+    registerMockObject("chain-1", { path: chainPath, type: "Chain" });
+
+    applyChainMixer(chainApi(), { gainDb: -6 });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("has no mixer device"),
+    );
+  });
+
+  // Live accepts a set on a macro-mapped parameter and ignores it, so an
+  // unguarded write would report success and change nothing.
+  it("warns and skips a macro-mapped gain, per parameter", () => {
+    const { volume, panning } = registerChainWithMixer({
+      disabled: ["volume"],
+    });
+
+    applyChainMixer(chainApi(), { gainDb: -6, pan: 0.25 });
+
+    expect(volume.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        'chain "Snare" t0/d0/c1 (id chain-1) gainDb is disabled',
+      ),
+    );
+    // Mapping one parameter must not block the others on the same chain
+    expect(panning.set).toHaveBeenCalledWith("value", 0.25);
+  });
+
+  it("warns and skips a macro-mapped pan", () => {
+    const { panning } = registerChainWithMixer({ disabled: ["panning"] });
+
+    applyChainMixer(chainApi(), { pan: -1 });
+
+    expect(panning.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        'chain "Snare" t0/d0/c1 (id chain-1) pan is disabled',
+      ),
+    );
+  });
+
+  describe("sends", () => {
+    const silent = { value: 0, display_value: -70 };
+
+    /**
+     * Register the chain with two silent sends and name the rack's return chains
+     * @param returnNames - Return chain names in send order
+     * @returns The registered send parameters
+     */
+    function registerChainWithSends(
+      returnNames: string[] = ["a Delay", "b Reverb"],
+    ): RegisteredMockObject[] {
+      registerChainWithMixer({ sends: [silent, silent] });
+      registerReturnChains(...returnNames);
+
+      return [
+        registerMockObject("send-0", { type: "DeviceParameter" }),
+        registerMockObject("send-1", { type: "DeviceParameter" }),
+      ];
+    }
+
+    it("sets the send matched by exact return chain name", () => {
+      const [first, second] = registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "b Reverb" });
+
+      expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      expect(first?.set).not.toHaveBeenCalled();
+    });
+
+    it("matches a return chain by its letter, ignoring case", () => {
+      const [first] = registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: 0, sendReturn: "A" });
+
+      expect(first?.set).toHaveBeenCalledWith("display_value", 0);
+    });
+
+    it("matches a return chain by id", () => {
+      // Same name on both: no name or letter tells them apart, so this is the
+      // case only an id can address.
+      const [first, second] = registerChainWithSends(["Verb", "Verb"]);
+
+      applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "rc-1" });
+
+      expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      expect(first?.set).not.toHaveBeenCalled();
+    });
+
+    // The tools refuse a half pair before they reach a chain, so by here it is
+    // "neither was sent": write nothing, and say nothing either.
+    it("ignores only one of sendGainDb and sendReturn", () => {
+      const sends = registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: -6 });
+      applyChainMixer(chainApi(), { sendReturn: "a" });
+
+      expect(capturedWarnings()).toStrictEqual([]);
+      expect(sends[0]?.set).not.toHaveBeenCalled();
+    });
+
+    it("warns with the available returns when none matches", () => {
+      registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "Chorus" });
+
+      expect(capturedWarnings()).toContain(
+        'chain "Snare" t0/d0/c1 (id chain-1): no return chain matching "Chorus" (returns: a Delay, b Reverb)',
+      );
+    });
+
+    it("warns when the rack has no return chains", () => {
+      registerChainWithSends([]);
+
+      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "a" });
+
+      expect(capturedWarnings()).toContain(
+        'chain "Snare" t0/d0/c1 (id chain-1): no return chain matching "a" (rack has no return chains; they can only be added in Live)',
+      );
+    });
+
+    it("warns and skips a macro-mapped send", () => {
+      registerChainWithSends();
+      const send = registerMockObject("send-1", {
+        type: "DeviceParameter",
+        properties: { is_enabled: 0 },
+      });
+
+      applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "b Reverb" });
+
+      expect(send.set).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(
+          'chain "Snare" t0/d0/c1 (id chain-1) send "b Reverb" is disabled',
+        ),
+      );
+    });
+
+    it("warns when the chain has fewer sends than the rack has returns", () => {
+      registerChainWithSends(["a Delay", "b Reverb", "c Chorus"]);
+
+      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" });
+
+      expect(capturedWarnings()).toContain(
+        'chain "Snare" t0/d0/c1 (id chain-1) has no send for return "c"',
+      );
+    });
+
+    // The `sends` list is the multi-send spelling. It reuses the single-send
+    // path, so only the list behavior itself needs covering here.
+    describe("as a list", () => {
+      it("sets every send in one call", () => {
+        const [first, second] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -6.02);
+        keepsParamValue(second as RegisteredMockObject, -11.98);
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "b Reverb", gainDb: -12 },
+          ],
+        });
+
+        expect(first?.set).toHaveBeenCalledWith("display_value", -6);
+        expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+        // Keyed by the return that resolved, with the id a write can quote
+        // back, and the level read off the send — Live kept neither argument.
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", returnId: "rc-0", gainDb: -6.02 },
+          { return: "b Reverb", returnId: "rc-1", gainDb: -11.98 },
+        ]);
+      });
+
+      it("reports only the entries that landed, and warns about the rest", () => {
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -6.02);
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "nope", gainDb: -12 },
+          ],
+        });
+
+        expect(first?.set).toHaveBeenCalledWith("display_value", -6);
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", returnId: "rc-0", gainDb: -6.02 },
+        ]);
+        expect(capturedWarnings().join()).toContain(
+          'no return chain matching "nope"',
+        );
+      });
+
+      it("honors both the scalar pair and the list in one call", () => {
+        const [first, second] = registerChainWithSends();
+
+        applyChainMixer(chainApi(), {
+          sendGainDb: -3,
+          sendReturn: "a Delay",
+          sends: [{ return: "b Reverb", gainDb: -12 }],
+        });
+
+        expect(first?.set).toHaveBeenCalledWith("display_value", -3);
+        expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      });
+
+      it("lets the list win when it names the same return as the pair", () => {
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -11.98);
+
+        const applied = applyChainMixer(chainApi(), {
+          sendGainDb: -3,
+          sendReturn: "a Delay",
+          sends: [{ return: "a Delay", gainDb: -12 }],
+        });
+
+        expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
+        // Both writes succeeded, so both used to be reported — naming a level
+        // the send does not have, to a model that reads this back.
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
+        ]);
+        // "ended up at" is a claim about the final state, so it names the
+        // level read back — not the one that won the argument list.
+        expect(capturedWarnings().join()).toContain(
+          'sends overrides sendGainDb/sendReturn: "a Delay" ended up at -11.98 dB',
+        );
+      });
+
+      // A send holds one value, so the second write overwrites the first.
+      it("reports one entry per return when the list names one twice", () => {
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -11.98);
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "a Delay", gainDb: -12 },
+          ],
+        });
+
+        expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
+        ]);
+        expect(capturedWarnings().join()).toContain(
+          'sends names one return more than once: "a Delay" ended up at -11.98 dB',
+        );
+      });
+
+      // Warning once per write would name the level each one lost to the next,
+      // and quoting any of them would contradict the result beside it: Live
+      // clamped every one of these to -70.
+      it("names the level the send ended up at, not any that were asked for", () => {
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -70);
+
+        applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "a Delay", gainDb: -9 },
+            { return: "a Delay", gainDb: -12 },
+          ],
+        });
+
+        const warnings = capturedWarnings().join();
+
+        expect(warnings).toContain(
+          'sends names one return more than once: "a Delay" ended up at -70 dB',
+        );
+        expect(warnings).not.toContain("-6 dB");
+        expect(warnings).not.toContain("-9 dB");
+        expect(warnings).not.toContain("-12 dB");
+      });
+
+      // Two spellings of one return are still one send.
+      it("collapses two spellings of the same return", () => {
+        const [first] = registerChainWithSends();
+
+        keepsParamValue(first as RegisteredMockObject, -11.98);
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "a", gainDb: -12 },
+          ],
+        });
+
+        // Reported by the return that resolved, not by either spelling.
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
+        ]);
+        // And the warning names it the same way. Naming the winner's own
+        // spelling ("a") would point at a return the result never mentions.
+        expect(capturedWarnings().join()).toContain(
+          'sends names one return more than once: "a Delay" ended up at -11.98 dB',
+        );
+      });
+
+      // Live clamps a send to -70..0 and hands the level back as a 32-bit
+      // float, so the argument is not what the send ends up holding.
+      describe("read back off the send", () => {
+        it("reports the level Live kept, not the one asked for", () => {
+          const [first] = registerChainWithSends();
+
+          keepsParamValue(first as RegisteredMockObject, -70);
+
+          const applied = applyChainMixer(chainApi(), {
+            sends: [{ return: "a Delay", gainDb: -100 }],
+          });
+
+          expect(applied.sends).toStrictEqual([
+            { return: "a Delay", returnId: "rc-0", gainDb: -70 },
+          ]);
+        });
+
+        it("rounds the raw float32 to Live's display resolution", () => {
+          const [first] = registerChainWithSends();
+
+          // Live snapped the request to a nearby step and handed back its raw
+          // float32, so the rounded read-back is not the rounded argument.
+          keepsParamValue(first as RegisteredMockObject, -6.333000183105469);
+
+          const applied = applyChainMixer(chainApi(), {
+            sends: [{ return: "a Delay", gainDb: -6.5 }],
+          });
+
+          expect(applied.sends).toStrictEqual([
+            { return: "a Delay", returnId: "rc-0", gainDb: -6.33 },
+          ]);
+        });
+
+        // Max serializes an exponent-notation float as a string. The level
+        // landed, so reporting nothing for it would read as "no write".
+        it("falls back to the written level when Live answers with a string", () => {
+          const [first] = registerChainWithSends();
+
+          keepsParamValue(
+            first as RegisteredMockObject,
+            "-1.000000013351432e-01",
+          );
+
+          const applied = applyChainMixer(chainApi(), {
+            sends: [{ return: "a Delay", gainDb: -0.1 }],
+          });
+
+          expect(applied.sends).toStrictEqual([
+            { return: "a Delay", returnId: "rc-0", gainDb: -0.1 },
+          ]);
+        });
+      });
+
+      it("writes nothing for an empty list", () => {
+        const [first, second] = registerChainWithSends();
+
+        const applied = applyChainMixer(chainApi(), { sends: [] });
+
+        expect(first?.set).not.toHaveBeenCalled();
+        expect(second?.set).not.toHaveBeenCalled();
+        expect(applied.sends).toBeUndefined();
+      });
+    });
+  });
+});
+
+describe("warnIfChainMixerLeftBehind", () => {
+  const devicePath = chainPath.device(0);
+  let destination: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("device-1", {
+      path: devicePath,
+      type: "SimplerDevice",
+    });
+    destination = registerMockObject("dest-chain", {
+      path: rackPath.chain(2),
+      type: "DrumChain",
+    });
+  });
+
+  it("warns with the mixer values and a pad-move hint for a drum chain", () => {
+    registerChainWithMixer({ gainDb: -15 });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
+    );
+  });
+
+  it("omits the pad-move hint when the destination is in another rack", () => {
+    // Both pad operations stay within one rack, so offering them here would
+    // point at something that gets refused.
+    registerChainWithMixer({ gainDb: -15 });
+
+    const otherRack = registerMockObject("other-chain", {
+      path: livePath.track(1).device(0).chain(0),
+      type: "DrumChain",
+    });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(otherRack.path),
+    );
+
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("omits the pad-move hint for a regular chain", () => {
+    registerChainWithMixer({ pan: 0.5, type: "Chain" });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("phrases a copy as a copy and points at a pad copy", () => {
+    registerChainWithMixer({ gainDb: -15 });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(destination.path),
+      true,
+    );
+
+    expect(capturedWarnings()).toContain(
+      `chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
+    );
+  });
+
+  it("points at update-track when the destination is a track", () => {
+    registerChainWithMixer({ gainDb: -15 });
+    const track = registerMockObject("dest-track", {
+      path: livePath.track(2),
+      type: "Track",
+    });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(track.path),
+    );
+
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("counts sends rather than listing them", () => {
+    registerChainWithMixer({
+      gainDb: -15,
+      sends: [
+        { value: 0.5, display_value: -12 },
+        { value: 0.5, display_value: -6 },
+      ],
+    });
+    registerReturnChains("a D", "b R");
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
+    );
+  });
+
+  it("stays quiet when the chain mixer is at its defaults", () => {
+    registerChainWithMixer();
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("stays quiet when the device stays in the same chain", () => {
+    registerChainWithMixer({ gainDb: -15 });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      chainApi(),
+    );
+
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("stays quiet when the device is not inside a chain", () => {
+    registerMockObject("track-device", {
+      path: livePath.track(0).device(3),
+      type: "SimplerDevice",
+    });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(livePath.track(0).device(3))),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  it("stays quiet when the source chain no longer exists", () => {
+    mockNonExistentObjects();
+    registerMockObject("device-1", {
+      path: devicePath,
+      type: "SimplerDevice",
+    });
+
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+});
+
+describe("carryChainMixer", () => {
+  const silent = { value: 0, display_value: -70 };
+  const carried = {
+    from: 'chain "Snare"',
+    mixer: {
+      gainDb: -15,
+      sends: [
+        { return: "a Delay", gainDb: -12 },
+        { return: "b Reverb", gainDb: -6 },
+      ],
+    },
+  };
+
+  /**
+   * Register the destination chain with two sends, naming the rack's returns
+   * @param disabledSends - Sends a rack macro owns, by index
+   * @param disabled - Mixer parameters a rack macro owns
+   * @returns The destination's send parameters
+   */
+  function registerDestination(
+    disabledSends: number[] = [],
+    disabled: ("volume" | "panning")[] = [],
+  ): RegisteredMockObject[] {
+    registerChainWithMixer({ sends: [silent, silent], disabled });
+    registerReturnChains("a Delay", "b Reverb");
+
+    return [0, 1].map((i) =>
+      registerMockObject(`send-${i}`, {
+        type: "DeviceParameter",
+        properties: { is_enabled: disabledSends.includes(i) ? 0 : 1 },
+      }),
+    );
+  }
+
+  it("counts only the sends that landed", () => {
+    // A rack macro owns the destination's second send, so Live ignores that
+    // write. Counting it would name a send the chain never got.
+    const [first, second] = registerDestination([1]);
+
+    carryChainMixer(carried, chainApi());
+
+    expect(first?.set).toHaveBeenCalledWith("display_value", -12);
+    expect(second?.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
+    );
+  });
+
+  it("reports nothing carried when neither the gain nor a send lands", () => {
+    // Every write is macro-owned, so the send list comes back empty — which is
+    // not a carry, however many sends were offered.
+    registerDestination([0, 1], ["volume"]);
+
+    carryChainMixer(carried, chainApi());
+
+    expect(capturedWarnings()).toContain(
+      'chain "Snare" trim could not be carried onto the destination chain — it stays on the chain the device left',
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("carried onto the destination chain, which was"),
+    );
+  });
+});

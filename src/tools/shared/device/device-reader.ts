@@ -18,8 +18,8 @@ import {
   readABCompare,
   readDeviceParameters,
   readMacroVariations,
-} from "./helpers/device-reader-helpers.ts";
-import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
+} from "./helpers/device-reading.ts";
+import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
   applySpecializedInactiveStates,

@@ -6,8 +6,8 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getMinimalClipInfo,

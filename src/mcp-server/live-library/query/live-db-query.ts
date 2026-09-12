@@ -14,7 +14,7 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { detectStalenessRisk } from "../db-staleness.ts";
 import { type StalenessRisk } from "../library-types.ts";
 import { findLiveFilesDbPath } from "../live-db-path.ts";

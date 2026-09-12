@@ -8,11 +8,11 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   type ArrangementTrack,
   takeLaneFromPath,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { handleArrangementOperations } from "../arrangement/arrangement-move.ts";

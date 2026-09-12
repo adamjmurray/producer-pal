@@ -6,13 +6,13 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import {
-  targetEntries,
   namedIdParam,
   namedPathParam,
-  validateSendPair,
-} from "#src/tools/shared/utils.ts";
-import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
-import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { parseColors } from "#src/tools/shared/validation/color-parsing.ts";
+import { parseNames } from "#src/tools/shared/validation/name-parsing.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";

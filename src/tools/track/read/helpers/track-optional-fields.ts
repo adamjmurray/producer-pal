@@ -7,7 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/clip-resolution.ts";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
-import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
+import { computeState } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
   readReturnTrackInfo,
   type ReturnTrackInfo,
@@ -20,7 +20,7 @@ import {
   roundDisplayValue,
   roundGainDb,
   roundPan,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/rounding.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,

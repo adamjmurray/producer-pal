@@ -7,10 +7,10 @@ import {
   forgetRequestMemo,
   requestMemo,
 } from "#src/live-api-adapter/live-api-release.ts";
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
-import { fromLiveApiId } from "#src/tools/shared/utils.ts";
+import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   type ChainSegmentFn,
   buildDrumPadPath,

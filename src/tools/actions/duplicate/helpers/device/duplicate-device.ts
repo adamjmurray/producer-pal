@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import {
   extractDevicePath,
   insertionContainerPath,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   claimLabels,
@@ -25,7 +25,7 @@ import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 /** A finished device copy: what it is, where it was sent, and what it landed in. */
 interface DeviceCopy {

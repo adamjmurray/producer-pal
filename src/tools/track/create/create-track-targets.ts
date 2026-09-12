@@ -10,7 +10,7 @@ import {
   repeatForCount,
   validateCount,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 

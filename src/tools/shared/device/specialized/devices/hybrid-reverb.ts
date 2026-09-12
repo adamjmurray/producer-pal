@@ -4,10 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import {
-  readBoolProp,
-  writeBoolProp,
-} from "../specialized-device-param-helpers.ts";
+import { readBoolProp, writeBoolProp } from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Hybrid Reverb (HybridReverbDevice). See

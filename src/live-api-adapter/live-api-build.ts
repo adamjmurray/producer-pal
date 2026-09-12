@@ -65,7 +65,7 @@ import {
   recordLiveApiConstruct,
   recordLiveApiResolve,
 } from "./live-api-build-stats.ts";
-import { NONEXISTENT_ID } from "./live-api-path-utils.ts";
+import { NONEXISTENT_ID } from "./live-api-id-or-path.ts";
 import {
   acquirePooledObject,
   memoizeObject,

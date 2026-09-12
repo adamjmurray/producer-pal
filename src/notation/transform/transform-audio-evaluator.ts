@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
-import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
 import {
   type ClipContext,

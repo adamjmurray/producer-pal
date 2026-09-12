@@ -8,8 +8,8 @@ import {
   namedIdParam,
   namedParam,
   namedPathParam,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
@@ -20,7 +20,7 @@ import {
   namedHiddenPath,
   parseObjectPathList,
   requireClipSlotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   type ClipSlotPosition,
   parseSlotList,

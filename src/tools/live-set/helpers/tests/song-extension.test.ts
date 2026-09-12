@@ -7,13 +7,13 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { cleanupTempClip, extendSongIfNeeded } from "../song-extension.ts";
 
 vi.mock(
-  import("#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts"),
+  import("#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts"),
   () => ({
     createAudioClipInSession: vi.fn(),
   }),
 );
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 
 const g = globalThis as Record<string, unknown>;
 

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { errorMessage } from "#src/shared/error-message";
 import { fetchWithDeadline } from "#webui/utils/fetch-with-deadline";
 
 /** How often to re-read the document while the editor is open and focused. */

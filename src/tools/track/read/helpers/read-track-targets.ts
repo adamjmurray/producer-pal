@@ -5,7 +5,10 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type ReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
-import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { trackApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 

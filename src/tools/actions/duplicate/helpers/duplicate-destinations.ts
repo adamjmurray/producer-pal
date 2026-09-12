@@ -11,7 +11,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type ArrangementTrack,
   warnUnusedTakeLane,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {

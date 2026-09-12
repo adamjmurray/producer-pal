@@ -8,7 +8,7 @@
  * V8 sends code + globals to Node, awaits the sandboxed result via Promise.
  */
 
-import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
+import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import {

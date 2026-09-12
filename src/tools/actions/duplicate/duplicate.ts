@@ -9,8 +9,8 @@ import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpe
 import {
   namedIdParam,
   namedPathParam,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseClipDestinationList,

@@ -5,7 +5,7 @@
 
 // The clip shape every duplicate result reports a copy with.
 
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface MinimalClipInfo {

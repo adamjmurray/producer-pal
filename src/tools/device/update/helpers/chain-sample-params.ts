@@ -12,7 +12,7 @@ import {
   type ParamOutcome,
   type ParamResult,
   refreshParamValues,
-} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+} from "#src/tools/shared/device/helpers/param-reading.ts";
 import { resolveDrumChainSampleTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { setParamValues } from "../update-device-param-setters.ts";

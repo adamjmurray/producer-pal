@@ -5,11 +5,11 @@
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { buildOrReuse } from "./live-api-build.ts";
-import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-path-utils.ts";
+import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-id-or-path.ts";
 
 if (typeof LiveAPI !== "undefined") {
   /**

@@ -15,7 +15,8 @@
 // Resolved before anything is created, so a bad destination fails instead of
 // quietly landing clips somewhere else.
 
-import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
+import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -23,13 +24,13 @@ import {
   normalizeTakeLaneTarget,
   takeLaneFromPath,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   arrangementPath,
   namedHiddenPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   parseSlotList,

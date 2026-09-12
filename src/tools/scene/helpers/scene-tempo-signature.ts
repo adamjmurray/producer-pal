@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * Applies tempo property to a scene

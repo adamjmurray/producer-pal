@@ -10,13 +10,13 @@ import {
   setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
+import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   enumParam,
   readBoolProp,
   writeBoolProp,
   writeIntFromSet,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import {
   type PseudoParamWrite,
   type SpecializedDeviceSpec,

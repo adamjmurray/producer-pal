@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -11,14 +11,14 @@ import {
   chainMixerToCarry,
   sourceChain,
   warnIfChainMixerLeftBehind,
-} from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { deviceHasInstrument } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
+import { deviceHasInstrument } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
   type InsertionPathResolution,
   resolveInsertionPath,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * What a device move did. The caller words "no-destination" and "refused",

@@ -7,10 +7,13 @@ import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.ts";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
+import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import {
+  namedIdParam,
+  namedParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import {
   readFanOut,
   type ReadResult,

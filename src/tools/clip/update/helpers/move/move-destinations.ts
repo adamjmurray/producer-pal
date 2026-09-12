@@ -3,8 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { namedParam, paramNamesSomething } from "#src/tools/shared/utils.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import {
+  namedParam,
+  paramNamesSomething,
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -13,7 +16,7 @@ import {
   pathEntries,
   pathNamesSomething,
   slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   requireClipDestinationPath,
   type ClipDestinationPath,

@@ -8,13 +8,13 @@ import { type ParamEntry } from "#src/tools/device/update/device-params-schema.t
 import {
   type ParamResult,
   refreshParamValues,
-} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+} from "#src/tools/shared/device/helpers/param-reading.ts";
 import { applyChainSampleParams } from "./chain-sample-params.ts";
 import {
   applyChainMixer,
   type ChainMixerApplied,
   type ChainSend,
-} from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
 import {

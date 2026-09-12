@@ -21,7 +21,7 @@ import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
   type WrittenPseudoParam,
-} from "../helpers/device-display-helpers.ts";
+} from "../helpers/param-reading.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {

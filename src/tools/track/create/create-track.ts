@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -12,16 +12,16 @@ import {
   type Insertion,
   planInsertions,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   getColorForIndex,
   parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
+} from "#src/tools/shared/validation/color-parsing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
   parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/validation/name-parsing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   type CreateTrackTarget,

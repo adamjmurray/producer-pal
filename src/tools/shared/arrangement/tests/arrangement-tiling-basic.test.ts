@@ -17,7 +17,7 @@ import {
 import {
   createAndDeleteTempClip,
   createAudioClipInSession,
-} from "../helpers/arrangement-tiling-helpers.ts";
+} from "../helpers/arrangement-tiling-clips.ts";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,

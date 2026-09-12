@@ -11,7 +11,7 @@ import {
   type LibrarySearchResult,
   type StalenessRisk,
 } from "#src/mcp-server/live-library/library-types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 /** Hard cap on queries per `searches` fan-out. Internal — not a user param.

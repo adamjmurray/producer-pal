@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { toLiveApiView } from "#src/tools/shared/utils.ts";
+import { toLiveApiView } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   applyDetailView,
   applyPluginEditorWindow,

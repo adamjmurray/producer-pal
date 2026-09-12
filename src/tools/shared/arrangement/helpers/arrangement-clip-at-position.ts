@@ -9,7 +9,7 @@
 // starting there (ADR-0037).
 
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 import {
@@ -18,7 +18,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { isTakeLaneClip } from "./take-lane-helpers.ts";
+import { isTakeLaneClip } from "./take-lanes.ts";
 
 /**
  * The arrangement clip covering a complete path's position.

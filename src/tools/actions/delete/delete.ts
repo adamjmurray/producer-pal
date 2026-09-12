@@ -16,9 +16,11 @@ import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.
 import {
   namedIdParam,
   namedPathParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
+import {
   targetEntries,
   unwrapSingleResult,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/target-entries.ts";
 import {
   type IdentifiedObject,
   validateObjectTypes,

@@ -3,14 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneClip,
   takeLaneLabel,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
 import { getMinimalClipInfo } from "../minimal-clip-info.ts";
 import {
@@ -77,7 +77,7 @@ export async function duplicateOneCopy(
   }
 
   // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
-  // silently no-ops on a take-lane source id (see take-lane-helpers.ts header),
+  // silently no-ops on a take-lane source id (see take-lanes.ts header),
   // so re-create it here instead. A source with nothing to rebuild from warned
   // once in the caller.
   if (isTakeLaneClip(object)) {

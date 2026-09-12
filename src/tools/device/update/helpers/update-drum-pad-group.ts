@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ParamResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   ambiguousLayerReason,
   isSampleParam,
 } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
-import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
+import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import {
   type DrumPadGroup,
   drumRackOfPad,

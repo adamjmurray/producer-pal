@@ -9,7 +9,7 @@
 // The location has to name one clip: a slot, or a song position on one
 // arrangement lane. A bare track or lane holds many clips and is refused.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
@@ -17,7 +17,7 @@ import {
   requireClipSourcePath,
   type ClipSourcePath,
 } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**

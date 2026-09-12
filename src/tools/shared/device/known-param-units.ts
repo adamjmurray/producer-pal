@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "./helpers/device-label-helpers.ts";
+import { parseLabel } from "./helpers/param-label-parsing.ts";
 
 /**
  * A unit Live knows but never reports. `DeviceParameter` exposes no unit at

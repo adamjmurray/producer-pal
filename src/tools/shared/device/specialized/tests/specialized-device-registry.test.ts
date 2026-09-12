@@ -7,7 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { type WrittenPseudoParam } from "../../helpers/device-display-helpers.ts";
+import { type WrittenPseudoParam } from "../../helpers/param-reading.ts";
 import { driftSpec } from "../devices/drift.ts";
 import {
   autoFilterSpec,

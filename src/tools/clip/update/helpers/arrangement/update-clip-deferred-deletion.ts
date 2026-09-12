@@ -25,9 +25,9 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-optimizer.ts";
 import {

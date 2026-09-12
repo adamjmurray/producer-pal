@@ -15,13 +15,13 @@
 // a list whose length is a guess, so it throws before anything runs, like a
 // hole in `id`.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   pathEntries,
   trackSegmentPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   isNewObjectPath,
   NEW_OBJECT_NOUNS,

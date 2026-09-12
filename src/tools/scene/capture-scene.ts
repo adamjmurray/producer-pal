@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   ensureSceneCountForIndex,

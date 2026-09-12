@@ -10,7 +10,7 @@
 // MCP and REST diff against different schemas on purpose — see the callers.
 
 import { type ZodType } from "zod";
-import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
+import { WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 
 /**
  * Names the arguments a caller sent that the schema does not accept.

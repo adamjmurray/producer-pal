@@ -9,8 +9,8 @@ import {
   readOneClip,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {

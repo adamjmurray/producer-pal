@@ -14,7 +14,7 @@ import {
 } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
@@ -31,7 +31,7 @@ import {
 import { buildClipPropertiesToSet } from "./clip-properties-to-set.ts";
 import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "./move/position-operations.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,

@@ -7,14 +7,14 @@
  * Emptying a take-lane clip in place, for the moves Live's API can't finish.
  *
  * A move is copy-then-delete, and there is no take-lane delete (see the notes
- * in take-lane-helpers.ts). Clearing the original where it stands is the
+ * in take-lanes.ts). Clearing the original where it stands is the
  * closest Live allows, and what's left is an obvious, muted marker to delete in
  * the UI.
  *
  * MIDI really does empty — the notes go. Audio can't: a clip's sample can't be
  * swapped, and writing a silent clip over it doesn't work either, because an
  * arrangement clip's extent can't be stretched from the LOM (see the API notes
- * in take-lane-helpers.ts). So an audio take is muted and marked instead.
+ * in take-lanes.ts). So an audio take is muted and marked instead.
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";

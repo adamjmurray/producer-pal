@@ -8,13 +8,13 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   drumRackOfPad,
   invalidateRackChains,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { deleteDrumChain } from "./delete-drum-chain.ts";
 import { deleteTrackObject } from "./delete-track-object.ts";

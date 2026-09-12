@@ -10,7 +10,10 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
+import {
+  toLiveApiId,
+  toLiveApiView,
+} from "#src/tools/shared/helpers/live-api-values.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 

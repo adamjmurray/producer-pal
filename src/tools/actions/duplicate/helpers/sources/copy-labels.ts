@@ -10,12 +10,12 @@
 import {
   getColorForIndex,
   parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
+} from "#src/tools/shared/validation/color-parsing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
   parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/validation/name-parsing.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /** The names and colors a call hands out, and where the current source is. */

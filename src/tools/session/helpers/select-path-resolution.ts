@@ -7,7 +7,7 @@
 // on, so the kind the path parses to picks the target.
 
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   formatObjectPath,
   isNewObjectPath,
@@ -17,7 +17,7 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
-import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { isSameLiveApiId, parseClipSlot } from "./select-id-resolution.ts";
 import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 

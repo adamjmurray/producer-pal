@@ -11,7 +11,7 @@ import {
   keepClip,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import {
   clipCopyBlocker,
@@ -21,13 +21,13 @@ import {
   canRecreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   objectPathForApi,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   recreateIntoEmptySlot,
   recreateIntoOccupiedSlot,

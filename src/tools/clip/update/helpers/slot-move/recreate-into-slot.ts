@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -14,7 +14,7 @@ import {
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** What trying to build the replacement clip found. */

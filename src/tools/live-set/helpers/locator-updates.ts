@@ -14,7 +14,7 @@ import {
   findLocator,
   findLocatorsByName,
   getLocatorId,
-} from "#src/tools/shared/locator/locator-helpers.ts";
+} from "#src/tools/shared/locator/locators.ts";
 
 interface DeleteLocatorOptions {
   locatorId?: string;

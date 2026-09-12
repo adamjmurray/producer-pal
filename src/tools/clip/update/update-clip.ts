@@ -4,20 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   getColorForIndex,
   parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
+} from "#src/tools/shared/validation/color-parsing.ts";
 import {
   getNameForIndex,
   parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/validation/name-parsing.ts";
 import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-optimizer.ts";
 import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
 import {

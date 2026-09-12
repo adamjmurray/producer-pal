@@ -74,8 +74,9 @@ Prefer specific, descriptive names over generic terms:
 - `clip-operations.ts` instead of `clip-utils.ts`
 - `message-transforms.ts` instead of `message-helper.ts`
 
-Exception: `utils.ts` is acceptable for general utilities within a specific
-domain (e.g., `src/tools/shared/utils.ts`).
+There is no exception for `utils.ts` or `-helpers.ts`: a ratchet test
+(`src/test/meta/naming/module-name-limits.test.ts`) caps how many modules may be
+named for nothing, and the cap only goes down.
 
 ## Imports
 
@@ -264,11 +265,11 @@ UI's selected track, and writing `live_set view selected_track` does not move it
 Round to display precision — the number Live's UI shows: 2dp for dB, pan, and
 tempo; a device parameter uses its own display precision (already applied by
 parsing its label text). Round centrally with `roundDisplayValue` from
-`src/tools/shared/utils.ts`, at the point a raw float becomes a result field —
-not per site, and never on a value that still feeds arithmetic or bar|beat
-conversion (beat positions, times, lengths). Max serializes some float32 values
-(tiny pan, gain, or tempo noise) as an exponent-notation STRING, not a number,
-so narrow with `asFiniteNumber`/`roundDisplayValue` rather than
+`src/tools/shared/helpers/rounding.ts`, at the point a raw float becomes a
+result field — not per site, and never on a value that still feeds arithmetic or
+bar|beat conversion (beat positions, times, lengths). Max serializes some
+float32 values (tiny pan, gain, or tempo noise) as an exponent-notation STRING,
+not a number, so narrow with `asFiniteNumber`/`roundDisplayValue` rather than
 `typeof value === "number"` alone.
 
 ### Live API Paths — Use `livePath` Builders

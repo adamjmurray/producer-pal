@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 

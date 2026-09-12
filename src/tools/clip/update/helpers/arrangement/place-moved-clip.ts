@@ -3,17 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import {
   type ArrangementTrack,
   isTakeLaneClip,
   resolveTakeLane,
   type TakeLaneTarget,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
   canRecreateClip,
@@ -21,7 +21,7 @@ import {
   recreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { tallyMovedClip, type MoveGroup } from "./update-clip-move-groups.ts";
 

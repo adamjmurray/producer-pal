@@ -8,7 +8,7 @@
 // all, so the pad's chains — not its `drum_pads` entry — are what every step
 // resolves against.
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import { readDevice as readDeviceShared } from "#src/tools/shared/device/device-reader.ts";
@@ -16,8 +16,8 @@ import {
   buildDrumPadFields,
   buildDrumPadFromChains,
   drumPadChainSummary,
-} from "#src/tools/shared/device/helpers/device-reader-drum-helpers.ts";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
+} from "#src/tools/shared/device/helpers/drum-pads-from-chains.ts";
+import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
 import {
   chainsForInNote,
   chainsOnDrumPad,

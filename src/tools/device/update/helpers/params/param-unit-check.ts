@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import {
   type KnownParamUnit,
   canonicalUnit,

@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-response-utils.ts";
+import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   executeNoteCodeWithData,

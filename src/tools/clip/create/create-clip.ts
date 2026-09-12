@@ -5,9 +5,9 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
-import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
-import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { parseColors } from "#src/tools/shared/validation/color-parsing.ts";
+import { parseNames } from "#src/tools/shared/validation/name-parsing.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";

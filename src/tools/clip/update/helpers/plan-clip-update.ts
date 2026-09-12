@@ -13,9 +13,12 @@ import {
   performSplitting,
   type SplitMode,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
-import { namedParam, paramNamesSomething } from "#src/tools/shared/utils.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  namedParam,
+  paramNamesSomething,
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   computeOverwritePlan,
   type OverwritePlan,

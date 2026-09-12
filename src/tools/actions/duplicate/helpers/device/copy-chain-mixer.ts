@@ -11,7 +11,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   applyChainMixer,
   type ChainSend,
-} from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+} from "#src/tools/shared/device/helpers/chain-mixer.ts";
 
 interface ReadSend {
   return: string;

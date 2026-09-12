@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
@@ -16,12 +16,12 @@ import {
   isPanLabel,
   normalizePan,
   readParameterBasic,
-} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+} from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   resolveEnumIndex,
   strForValue,
   unitForLabels,
-} from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import {
   isDrumPadSampleShortcut,
   resolveNestedParamTarget,
@@ -41,7 +41,7 @@ import {
   isParamEnabled,
   setParamValueAndVerify,
   warnParamDisabled,
-} from "#src/tools/shared/device/helpers/param-write-helpers.ts";
+} from "#src/tools/shared/device/helpers/param-writing.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   pathPrefix,

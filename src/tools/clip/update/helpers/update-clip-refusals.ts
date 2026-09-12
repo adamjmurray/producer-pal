@@ -4,10 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import {
-  paramNamesSomething,
-  parseTimeSignature,
-} from "#src/tools/shared/utils.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   refuseDoubledPosition,
   requireClipDestinationPath,
@@ -15,7 +13,7 @@ import {
 import {
   pathEntries,
   pathNamesSomething,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**

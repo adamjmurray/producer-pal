@@ -13,7 +13,7 @@ import { findDrumPadByNote } from "#src/tools/shared/device/helpers/path/device-
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { pathTargetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**

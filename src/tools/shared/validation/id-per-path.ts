@@ -9,17 +9,17 @@
 // caller's call: `delete` keeps the slot and reports the object undeleted,
 // `duplicate` refuses the whole call before it makes anything.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import {
   findDrumPad,
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   sceneIdPerPath,
   trackIdPerPath,

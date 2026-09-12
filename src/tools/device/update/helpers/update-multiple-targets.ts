@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
-import { type ParamResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   type DrumPadGroup,
   chainsOnDrumPad,
@@ -17,12 +17,12 @@ import {
   insertionContainerPath,
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
-import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type WrittenContainer,
   pathField,

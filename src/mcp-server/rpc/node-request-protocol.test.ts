@@ -9,7 +9,7 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   END_OF_CHUNKS,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import {
   clearNodeRoutes,
   handleNodeRequest,

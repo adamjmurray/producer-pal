@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { strForValue } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import { strForValue } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 

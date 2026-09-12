@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { stripReturnSlotLetter } from "#src/tools/shared/validation/name-utils.ts";
+import { stripReturnSlotLetter } from "#src/tools/shared/validation/name-parsing.ts";
 
 /**
  * Live prepends a rack return chain's send letter to its name, so writing back

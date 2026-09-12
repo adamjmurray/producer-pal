@@ -15,7 +15,7 @@ import {
   END_OF_CHUNKS,
   planChunks,
   reassembleChunks,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,

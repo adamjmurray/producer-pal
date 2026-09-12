@@ -12,7 +12,7 @@ import {
 import {
   requireDevicePath,
   trackSegmentPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { warnRackRelativeDrumChainSpelling } from "./device-drumpad-navigation.ts";
 import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 

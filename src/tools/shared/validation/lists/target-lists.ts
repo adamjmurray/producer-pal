@@ -14,8 +14,8 @@ import {
   namedIdParam,
   namedPathParam,
   paramNamesSomething,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   countListEntries,
   countPathEntries,

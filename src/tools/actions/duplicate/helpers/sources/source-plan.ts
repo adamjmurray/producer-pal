@@ -8,7 +8,7 @@
 // thing to settle here is how the destinations are shared out.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { targetEntries } from "#src/tools/shared/utils.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import {
   pairValues,
@@ -18,7 +18,7 @@ import { targetIds } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   pathEntries,
   pathNamesSomething,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   resolveClipDestinations,
   type ClipDestinations,

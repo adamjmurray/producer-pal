@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
+import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
-  fromLiveApiId,
   namedParam,
   paramNamesSomething,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import { buildTrackPath } from "./selection-updates.ts";
 import { rackOfTarget } from "./rack-selection.ts";

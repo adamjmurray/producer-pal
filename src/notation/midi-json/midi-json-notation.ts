@@ -30,7 +30,7 @@ import {
 } from "#src/notation/midi-json/parser/midi-json-parser.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 const DEFAULT_DENOMINATOR = 4;

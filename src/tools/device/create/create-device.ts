@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
@@ -13,18 +13,21 @@ import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import {
   type ParamResult,
   refreshParamValues,
-} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/param-reading.ts";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import {
   invalidateDevicePathCache,
   withDevicePathCache,
 } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
-import { targetEntries, unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import {
+  targetEntries,
+  unwrapSingleResult,
+} from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
   parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/validation/name-parsing.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { validateInsertionOrder } from "./device-insertion-order.ts";

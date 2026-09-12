@@ -7,7 +7,7 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
@@ -18,13 +18,13 @@ import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
   takeLaneLabel,
   type TakeLaneTarget,
-} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
-import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
 import { type ArrangementPosition } from "./create-clip-destinations.ts";

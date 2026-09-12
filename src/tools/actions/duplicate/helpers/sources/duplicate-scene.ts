@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   createClipsForLength,

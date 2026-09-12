@@ -20,7 +20,7 @@ import { afterEach, beforeEach, expect, vi } from "vitest";
 import { type CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
 import { handleNodeRequest } from "#src/mcp-server/rpc/node-request-protocol.ts";
-import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
 
 /**
  * Build a fake inner callLiveApi that resolves to the given response. Shared by

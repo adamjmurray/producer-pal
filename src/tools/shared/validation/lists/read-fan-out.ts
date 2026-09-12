@@ -10,14 +10,14 @@
 // more get one entry each, and a target that can't be read keeps its slot as a
 // miss so the entries still line up with what the caller asked for.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import {
   namedIdParam,
   namedPathParam,
   paramNamesSomething,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   warnBlankTarget,
   type TargetParams,

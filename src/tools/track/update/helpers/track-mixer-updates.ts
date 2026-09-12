@@ -7,8 +7,8 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type MixerApplied,
   setParamAndReadBack,
-} from "#src/tools/shared/device/helpers/param-write-helpers.ts";
-import { roundGainDb, roundPan } from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/device/helpers/param-writing.ts";
+import { roundGainDb, roundPan } from "#src/tools/shared/helpers/rounding.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface MixerParams extends PanParams {

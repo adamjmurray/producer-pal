@@ -5,7 +5,7 @@
 
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
 import {

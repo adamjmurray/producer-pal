@@ -10,18 +10,18 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
-import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { invalidateRackChains } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   pathField,
   pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   claimLabels,
   labelName,

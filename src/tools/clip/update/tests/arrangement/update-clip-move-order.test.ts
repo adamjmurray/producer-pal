@@ -14,7 +14,7 @@ import {
 import { type ClipMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-arrangement-optimizer.ts";
 import { orderArrangementMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-move-order.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 /** One clip in a row, and where the call sends it. */
 interface RowClip {

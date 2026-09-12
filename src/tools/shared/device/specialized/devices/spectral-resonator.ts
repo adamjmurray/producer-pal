@@ -9,7 +9,7 @@ import {
   writeBoolProp,
   writeIntFromSet,
   writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Spectral Resonator (SpectralResonatorDevice, class_name "Transmute").

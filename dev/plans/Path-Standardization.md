@@ -39,7 +39,7 @@ results or a take-lane clip has no path to report.
 
 Merged the clip-side and device-side parsers into
 [object-path.ts](../../src/tools/shared/validation/object-path.ts) +
-[object-path-helpers.ts](../../src/tools/shared/validation/object-path-helpers.ts):
+[object-paths.ts](../../src/tools/shared/validation/helpers/object-paths.ts):
 one parse → discriminated union → resolve. Added the `l` segment, the `s` root,
 and the tolerant legacy values.
 

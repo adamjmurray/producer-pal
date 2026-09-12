@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { errorMessage } from "#src/shared/error-message";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import { useApplyPreset } from "./presets/preset-apply";

@@ -8,7 +8,7 @@
 // and copy_pad brings all of it. A device-level duplicate can't: it moves the
 // device out of its chain and leaves the chain (and its fader) behind.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import {
@@ -19,7 +19,7 @@ import {
   buildDrumPadPath,
   extractDevicePath,
   resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DuplicateDrumPadResult {

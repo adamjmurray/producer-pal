@@ -200,7 +200,7 @@ For audio clips, the temp clip is created via session (since arrangement audio
 creation doesn't support length control). For MIDI, `create_midi_clip` is used
 directly.
 
-Files: `arrangement-tiling-helpers.ts` (`createAndDeleteTempClip`),
+Files: `arrangement-tiling-clips.ts` (`createAndDeleteTempClip`),
 `arrangement-length-changes.ts` (`truncateWithTempClip`)
 
 ### Session-Based Tiling
@@ -213,7 +213,7 @@ When you need an arrangement audio clip with a specific length:
    arrangement length
 4. Clean up session clip via `slot.call("delete_clip")`
 
-Files: `arrangement-tiling-helpers.ts` (`createAudioClipInSession`),
+Files: `arrangement-tiling-clips.ts` (`createAudioClipInSession`),
 `unlooped-lengthening.ts` (`lengthenWarpedUnloopedAudio`)
 
 ### Duplicate Crash Workaround
@@ -416,7 +416,7 @@ whole param is refused.
 | `arrangement-length-changes.ts` | Looped lengthening, shortening, temp clip truncation      |
 | `unlooped-lengthening.ts`       | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
 | `arrangement-tiling.ts`         | Tiling, holding area, crash workaround, clip movement     |
-| `arrangement-tiling-helpers.ts` | Low-level primitives (temp clips, session clip creation)  |
+| `arrangement-tiling-clips.ts`   | Low-level primitives (temp clips, session clip creation)  |
 | `arrangement-splitting.ts`      | Clip splitting algorithm                                  |
 | `arrangement-move.ts`           | Update-clip integration (move + lengthen orchestration)   |
 
