@@ -366,8 +366,7 @@ Entry: `handleArrangementShortening()` in `arrangement-operations-helpers.ts`
 
 ### Moving (Arrangement Start)
 
-Entry: `handleArrangementStartOperation()` in
-`update-clip-arrangement-helpers.ts`
+Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
 
 1. `duplicate_clip_to_arrangement` at new position
 2. Verify duplicate succeeded
@@ -411,15 +410,15 @@ whole param is refused.
 
 ## Source File Reference
 
-| File                                 | Role                                                      |
-| ------------------------------------ | --------------------------------------------------------- |
-| `arrangement-operations.ts`          | Top-level dispatcher (lengthen vs shorten)                |
-| `arrangement-operations-helpers.ts`  | Looped lengthening, shortening, temp clip truncation      |
-| `arrangement-unlooped-helpers.ts`    | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
-| `arrangement-tiling.ts`              | Tiling, holding area, crash workaround, clip movement     |
-| `arrangement-tiling-helpers.ts`      | Low-level primitives (temp clips, session clip creation)  |
-| `arrangement-splitting.ts`           | Clip splitting algorithm                                  |
-| `update-clip-arrangement-helpers.ts` | Update-clip integration (move + lengthen orchestration)   |
+| File                                | Role                                                      |
+| ----------------------------------- | --------------------------------------------------------- |
+| `arrangement-operations.ts`         | Top-level dispatcher (lengthen vs shorten)                |
+| `arrangement-operations-helpers.ts` | Looped lengthening, shortening, temp clip truncation      |
+| `arrangement-unlooped-helpers.ts`   | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
+| `arrangement-tiling.ts`             | Tiling, holding area, crash workaround, clip movement     |
+| `arrangement-tiling-helpers.ts`     | Low-level primitives (temp clips, session clip creation)  |
+| `arrangement-splitting.ts`          | Clip splitting algorithm                                  |
+| `arrangement-move.ts`               | Update-clip integration (move + lengthen orchestration)   |
 
 All arrangement source files are under `src/tools/shared/arrangement/` or
 `src/tools/clip/arrangement/helpers/`. Test files are colocated under `tests/`

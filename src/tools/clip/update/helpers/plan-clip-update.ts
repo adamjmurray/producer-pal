@@ -25,12 +25,12 @@ import {
   parseArrangementParams,
 } from "./arrangement/update-clip-arrangement-params.ts";
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
-import { refuseSplitWithMove } from "./update-clip-refusal-helpers.ts";
+import { refuseSplitWithMove } from "./update-clip-refusals.ts";
 import {
   moveDestinationParam,
   resolveMoveDestinations,
   resolveRequestedClips,
-} from "./update-clip-session-helpers.ts";
+} from "./move/move-destinations.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ClipUpdatePlanArgs {

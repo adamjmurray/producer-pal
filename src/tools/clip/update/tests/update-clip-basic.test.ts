@@ -16,8 +16,8 @@ import {
 } from "#src/test/test-data-builders.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/update-clip-helpers.ts";
-import * as sessionHelpers from "#src/tools/clip/update/helpers/update-clip-session-helpers.ts";
+import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/process-single-clip-update.ts";
+import * as sessionHelpers from "#src/tools/clip/update/helpers/move/position-operations.ts";
 import {
   mockMergeNoteTracking,
   setupAudioClipMock,

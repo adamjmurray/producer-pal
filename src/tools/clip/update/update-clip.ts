@@ -28,16 +28,16 @@ import { trackMoveSkips } from "./helpers/arrangement/update-clip-move-skip.ts";
 import {
   planClipUpdate,
   type ClipUpdatePlan,
-} from "./helpers/update-clip-prep-helpers.ts";
+} from "./helpers/plan-clip-update.ts";
 import {
   refuseRegionWithDuplicateLoop,
   refuseUnreadableCall,
-} from "./helpers/update-clip-refusal-helpers.ts";
+} from "./helpers/update-clip-refusals.ts";
 import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
-} from "./helpers/update-clip-helpers.ts";
+} from "./helpers/process-single-clip-update.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {

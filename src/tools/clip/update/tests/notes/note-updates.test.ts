@@ -9,7 +9,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
-} from "../../helpers/update-clip-notes-helpers.ts";
+} from "../../helpers/note-updates.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 
 // Minimal ClipContext for handleNoteUpdates (only used by transform variables,
@@ -53,7 +53,7 @@ function removeNoteCalls(clip: {
   );
 }
 
-describe("update-clip-notes-helpers", () => {
+describe("note-updates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

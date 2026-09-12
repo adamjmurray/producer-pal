@@ -22,7 +22,7 @@ import {
   deferNonSurvivorDeletion,
   removeMovedSource,
 } from "./update-clip-deferred-deletion.ts";
-import { placeMovedClip } from "./update-clip-lane-move-helpers.ts";
+import { placeMovedClip } from "./place-moved-clip.ts";
 import {
   recordLandedClip,
   tallyMovedClip,

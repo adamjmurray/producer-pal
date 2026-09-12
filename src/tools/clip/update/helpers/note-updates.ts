@@ -28,7 +28,7 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
   hasNoteEdits,
-} from "./update-clip-transform-helpers.ts";
+} from "./note-transforms.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**

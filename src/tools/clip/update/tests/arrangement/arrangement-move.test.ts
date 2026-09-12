@@ -16,7 +16,7 @@ import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/tak
 import {
   handleArrangementOperations,
   handleArrangementStartOperation,
-} from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
+} from "../../helpers/arrangement/arrangement-move.ts";
 import { type OverwritePlan } from "../../helpers/arrangement/update-clip-arrangement-optimizer.ts";
 import { flushDeferredDeletions } from "../../helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
@@ -90,7 +90,7 @@ function runStartOperation(
   });
 }
 
-describe("update-clip-arrangement-helpers", () => {
+describe("arrangement-move", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

@@ -7,7 +7,7 @@ import {
   applyAudioTransforms,
   handleWarpMarkerOperation,
   setAudioParameters,
-} from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
+} from "#src/tools/clip/update/helpers/audio-updates.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type

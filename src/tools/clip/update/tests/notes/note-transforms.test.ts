@@ -9,7 +9,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
-} from "../../helpers/update-clip-transform-helpers.ts";
+} from "../../helpers/note-transforms.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -33,7 +33,7 @@ function createSessionClipMock(length = 8) {
   };
 }
 
-describe("update-clip-transform-helpers", () => {
+describe("note-transforms", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

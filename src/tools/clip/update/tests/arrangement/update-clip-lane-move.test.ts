@@ -13,7 +13,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
-import { handleArrangementStartOperation } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
+import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
 import {
   emitArrangementWarnings,
   moveGroupKey,

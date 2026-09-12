@@ -21,25 +21,22 @@ import {
   forceWarpForLooping,
   setAudioParameters,
   handleWarpMarkerOperation,
-} from "./update-clip-audio-helpers.ts";
+} from "./audio-updates.ts";
 import {
   handleDuplicateLoop,
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
   handleQuantization,
-} from "./update-clip-notes-helpers.ts";
-import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
+} from "./note-updates.ts";
+import { buildClipPropertiesToSet } from "./clip-properties-to-set.ts";
 import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
-import { handlePositionOperations } from "./update-clip-session-helpers.ts";
+import { handlePositionOperations } from "./move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
-} from "./update-clip-timing-helpers.ts";
-import {
-  buildClipContext,
-  hasNoteEdits,
-} from "./update-clip-transform-helpers.ts";
+} from "./clip-beat-positions.ts";
+import { buildClipContext, hasNoteEdits } from "./note-transforms.ts";
 
 interface ClipResult {
   id: string;

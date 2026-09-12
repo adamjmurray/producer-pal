@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { calculateBeatPositions } from "../helpers/update-clip-timing-helpers.ts";
+import { calculateBeatPositions } from "../helpers/clip-beat-positions.ts";
 import {
   capturedWarnings,
   clearCapturedWarnings,
 } from "#src/shared/max/v8-warning-capture.ts";
 
-describe("update-clip-timing-helpers", () => {
+describe("clip-beat-positions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

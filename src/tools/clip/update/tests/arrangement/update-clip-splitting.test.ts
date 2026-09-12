@@ -23,7 +23,7 @@ import {
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
-import { planClipUpdate } from "#src/tools/clip/update/helpers/update-clip-prep-helpers.ts";
+import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 

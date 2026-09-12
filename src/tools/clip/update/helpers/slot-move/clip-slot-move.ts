@@ -31,7 +31,7 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpe
 import {
   recreateIntoEmptySlot,
   recreateIntoOccupiedSlot,
-} from "./update-clip-slot-move-scratch-helpers.ts";
+} from "./recreate-into-slot.ts";
 
 interface SlotMoveArgs {
   clip: LiveAPI;
@@ -183,7 +183,7 @@ export function handleArrangementToSlotMove({
   // An occupied destination tries the safe path first (build the replacement
   // elsewhere, verify it, swap it in atomically) and only destroys the
   // occupant up front when the track has nowhere else to build in. See
-  // update-clip-slot-move-scratch-helpers.ts.
+  // recreate-into-slot.ts.
   const newClip = destinationWasOccupied
     ? recreateIntoOccupiedSlot(
         clip,
