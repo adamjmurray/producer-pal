@@ -40,21 +40,23 @@ Test files should follow this pattern:
    - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
 
 2. **Split tests**: `{filename}-{feature-group}.test.ts` (or `.tsx`) - When test
-   files exceed size limits (325 lines for source, 650 for whole test suites),
+   files exceed size limits (375 lines for source, 650 for whole test suites),
    split by feature area
    - Example: `update-clip-audio-arrangement.test.ts`
    - Example: `read-track-drums-advanced.test.ts`
    - Example: `duplicate-arrangement-length.test.ts`
 
-3. **Helper files**: `{filename}-helpers.ts` - Source helper functions
-   - Example: `duplicate-helpers.ts`
+3. **Support modules**: named for what they do, not for the file they were split
+   from. Existing `{filename}-helpers.ts` files are being renamed; don't add new
+   ones.
+   - Example: `audio-clip-warping.ts`
 
-4. **Helper tests**: `{filename}-helpers.test.ts` - Tests for helper functions
-   - Example: `duplicate-helpers.test.ts`
+4. **Support module tests**: `{filename}.test.ts` beside the module
+   - Example: `audio-clip-warping.test.ts`
 
 5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities, fixtures,
    and shared test setup. A test file (see dev/Testing.md), but not a suite, so
-   it keeps the 325-line source budget.
+   it keeps the 375-line source budget.
    - Example: `duplicate-test-helpers.ts`
    - Example: `update-clip-test-helpers.ts`
 

@@ -27,7 +27,7 @@ step.
 
 - **Line limits**: whole test suites (`*.test.*`, `*.spec.*`, `*-test-cases.ts`)
   get 650 lines per file and 630 per function. Test helpers and fixtures use the
-  standard 325 / 115.
+  standard 375 / 115.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
   split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the

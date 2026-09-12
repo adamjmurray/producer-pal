@@ -182,13 +182,15 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   changes under them. The grammar specs in `dev/specs/` have no test guarding
   them, so update them by hand when you change grammar syntax.
 
-- **File size limits** (blank and comment lines don't count): 325 lines per
+- **File size limits** (blank and comment lines don't count): 375 lines per
   source file, 650 for a whole test suite; 115 lines per function; `max-depth`
-  4; `complexity` 20. When a file gets close, extract cohesive helpers into
-  `{feature}-helpers.ts` beside it — don't compress code to squeak under the
-  limit. Once a directory has 2+ helper files, move them into `helpers/`. Split
-  test files as `{feature}-{area}.test.ts`, and give a feature its own `tests/`
-  directory once it has 3+ test files.
+  4; `complexity` 20. When a file gets close, split it by responsibility into
+  modules named for what they do (`audio-clip-warping.ts`, not
+  `update-clip-helpers.ts`) — never by line count, and never compressed to
+  squeak under the limit. A `-helpers` suffix says nothing about what's inside,
+  so don't add new files with one. Once a directory has 2+ support files, move
+  them into `helpers/`. Split test files as `{feature}-{area}.test.ts`, and give
+  a feature its own `tests/` directory once it has 3+ test files.
 
 - **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
   work, but the rule requiring a `-- reason` on every directive only sees the
