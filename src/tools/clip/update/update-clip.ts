@@ -139,6 +139,7 @@ export async function updateClip(
     args.quantizePitch,
     toPath,
     arrangementStart,
+    requestedIds.length,
   );
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 

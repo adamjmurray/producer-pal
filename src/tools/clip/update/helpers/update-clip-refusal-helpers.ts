@@ -8,25 +8,83 @@ import {
   paramNamesSomething,
   parseTimeSignature,
 } from "#src/tools/shared/utils.ts";
-import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { pathNamesSomething } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import {
+  refuseDoubledPosition,
+  requireClipDestinationPath,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import {
+  pathEntries,
+  pathNamesSomething,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
  * Refuses a call there is no reading of, before any clip is touched: a
- * whole-call param with no valid value, or one position spelled two ways.
+ * whole-call param with no valid value, one position spelled two ways, or one
+ * toPath that names a lane or slot for more than one clip.
  * @param timeSignature - Whole-call meter, if sent
  * @param quantizePitch - Whole-call quantize pitch, if sent
  * @param toPath - Destination path(s), if sent
  * @param arrangementStart - Deprecated destination position(s), if sent
+ * @param targetCount - How many ids the call named
  */
 export function refuseUnreadableCall(
   timeSignature: string | undefined,
   quantizePitch: string | undefined,
   toPath: string | undefined,
   arrangementStart: string | undefined,
+  targetCount: number,
 ): void {
   validateWholeCallParams(timeSignature, quantizePitch);
   refuseDoubledPosition(toPath, arrangementStart, "toPath");
+  refuseSharedClipDestination(toPath, targetCount);
+}
+
+/**
+ * Refuse a single toPath that names a lane or slot (`t0`, `t0/l0`, `t0/s1`,
+ * `t0[5|1]`) for more than one clip. One place holds one object, so it has to
+ * be named once per target; a bare `[5|1]` is fine; it leaves each clip on its
+ * own lane and only sets where on it they land.
+ * @param toPath - Destination path(s), if sent
+ * @param targetCount - How many ids the call named
+ */
+function refuseSharedClipDestination(
+  toPath: string | undefined,
+  targetCount: number,
+): void {
+  if (!paramNamesSomething(toPath) || targetCount <= 1) {
+    return;
+  }
+
+  const entries = pathEntries(toPath, "toPath");
+
+  if (entries.length !== 1) {
+    return;
+  }
+
+  let destination;
+
+  try {
+    destination = requireClipDestinationPath(
+      parseObjectPath(entries[0] as string, "toPath"),
+      "toPath",
+    );
+  } catch {
+    // Not this function's job: the entry gets its own warning where toPath is
+    // actually resolved, once the call runs.
+    return;
+  }
+
+  if (destination.lane == null) {
+    return;
+  }
+
+  const spot = destination.lane.kind === "slot" ? "slot" : "spot";
+
+  throw new Error(
+    `${targetCount} clips can't share one ${spot}; give one toPath per clip, ` +
+      `or a bare [pos] to keep each clip's own track`,
+  );
 }
 
 /**

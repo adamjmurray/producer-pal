@@ -643,16 +643,17 @@ describe("updateClip - moving a row of arrangement clips", () => {
     ]);
   });
 
-  // One destination for two clips pads the second with null, leaving it parked
-  // on the span the first one is moving into.
-  it("keeps a clip past the end of a short destination list", async () => {
-    const result = await updateClip({ id: "114,113", toPath: "t0[1|1]" });
+  // t0[1|1] fully determines a lane and a position, so it can't cover two
+  // clips at once: refuse instead of padding the second one with null.
+  it("refuses one track-qualified toPath for two clips", async () => {
+    await expect(
+      updateClip({ id: "114,113", toPath: "t0[1|1]" }),
+    ).rejects.toThrow(
+      "2 clips can't share one spot; give one toPath per clip, or a bare " +
+        "[pos] to keep each clip's own track",
+    );
 
     expect(movedTo()).toStrictEqual([]);
-    expect(result).toStrictEqual([
-      { id: "114", path: "t0[5|1]" },
-      { id: "113", path: "t0[1|1]" },
-    ]);
   });
 
   it("refuses a swap written as arrangementStart too", async () => {

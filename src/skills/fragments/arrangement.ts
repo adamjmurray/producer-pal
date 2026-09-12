@@ -43,7 +43,15 @@ create-clip's \`path\` takes a comma-separated list and may mix the two kinds, s
 
 ### Moving Clips
 
-\`toPath\` says where a clip goes: a session slot (\`t2/s3\`), a spot on a track's arrangement (\`t2[5|1]\`), a take lane (\`t2/l0[5|1]\`), or \`[5|1]\` on its own to move it in time and keep its lane. A lane with no position keeps the clip's own start. In update-clip, \`toPath\` and \`arrangementLength\` each take a list paired in order with the ids: \`id: "c1,c2,c3"\` with \`toPath: "[1|1],[5|1],[9|1]"\` sends each clip to its own bar. One \`arrangementLength\` covers every clip, and so does one bare \`[5|1]\` — each clip keeps its own lane, so they land in different places. A \`toPath\` naming a lane or slot does not: name one per clip, since two clips in one slot means the second overwrites the first. A clip moved into a slot or onto a take lane is re-created there, so it loses its automation envelopes. Moving clips changes their IDs - re-read to get new IDs.
+\`toPath\` says where a clip goes: a session slot (\`t2/s3\`), a spot on a track's arrangement (\`t2[5|1]\`), a take lane (\`t2/l0[5|1]\`), or \`[5|1]\` on its own to move it in time and keep its lane. A lane with no position keeps the clip's own start. In update-clip, \`toPath\` and \`arrangementLength\` each take a list paired in order with the ids: \`id: "c1,c2,c3"\` with \`toPath: "[1|1],[5|1],[9|1]"\` sends each clip to its own bar. One \`arrangementLength\` covers every clip. A single \`toPath\` fans out only when it doesn't fully name a place:
+
+| toPath | with N ids | result |
+|---|---|---|
+| one bare \`[5|1]\` | any N | every clip keeps its own lane and moves to that position |
+| one \`t0[5|1]\`, \`t0/l0[5|1]\`, or \`t0/s1\` | N > 1 | refused: a lane or slot names one place, so it can't cover several clips |
+| N destinations (\`[1|1],[5|1]\`, \`t0,t1\`, ...) | N | each clip gets the destination at its own position |
+
+A clip moved into a slot or onto a take lane is re-created there, so it loses its automation envelopes. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
 \`arrangementSplit\` cuts clips at song positions — the same timeline a \`[...]\` coordinate names, not offsets into the clip. Positions outside a clip are ignored, so one call can cut several clips at the same bar. A cut makes new clips with new ids, so it can't be combined with \`toPath\` or \`arrangementLength\`: cut in one call, then move or resize the pieces in the next, using the ids the cut returned.
 When several clips land on one spot, the ones buried underneath come back with \`deleted: true\` and the address they had before the call; \`deleted: false\` means the clip is still there because the move that would have covered it never landed.
