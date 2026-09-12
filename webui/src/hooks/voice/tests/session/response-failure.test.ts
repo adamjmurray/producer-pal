@@ -3,23 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/**
- * @vitest-environment happy-dom
- */
-import { type RealtimeItem } from "@openai/agents/realtime";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  buildSessionOptions,
   extractResponseFailure,
   parseRetrySeconds,
-  toSeedableHistory,
-} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
-import {
-  createPlaybackAudioElement,
-  setAudioVolume,
-  teardownAudioElement,
-} from "#webui/hooks/voice/helpers/voice-audio-element-helpers";
-import { DEFAULT_VOICE_LANGUAGE } from "#webui/lib/constants/voice-language";
+} from "#webui/hooks/voice/helpers/response-failure";
 
 const doneEvent = (response: unknown) => ({ type: "response.done", response });
 
@@ -126,96 +114,5 @@ describe("parseRetrySeconds", () => {
   it("returns null when the matched number is not finite", () => {
     // A bare "." matches [\d.]+ but parses to NaN, which must not become a wait.
     expect(parseRetrySeconds("Please try again in .s")).toBeNull();
-  });
-});
-
-describe("buildSessionOptions", () => {
-  it("defaults the transcription language to English when none is given", () => {
-    const options = buildSessionOptions({} as never, {}) as {
-      config: { audio: { input: { transcription: { language: string } } } };
-    };
-
-    expect(options.config.audio.input.transcription.language).toBe(
-      DEFAULT_VOICE_LANGUAGE,
-    );
-  });
-});
-
-describe("toSeedableHistory", () => {
-  it("rewrites an assistant audio message to text and drops one with no transcript", () => {
-    const history = [
-      {
-        itemId: "1",
-        type: "message",
-        role: "assistant",
-        status: "completed",
-        content: [{ type: "output_audio", transcript: "Hello" }],
-      },
-      {
-        itemId: "2",
-        type: "message",
-        role: "assistant",
-        status: "completed",
-        content: [{ type: "output_audio", transcript: null }],
-      },
-    ] as unknown as RealtimeItem[];
-
-    const out = toSeedableHistory(history);
-
-    expect(out).toHaveLength(1);
-    expect(out[0]?.content).toStrictEqual([
-      { type: "output_text", text: "Hello" },
-    ]);
-  });
-});
-
-describe("createPlaybackAudioElement", () => {
-  it("creates an autoplay element at the given volume", () => {
-    const el = createPlaybackAudioElement(0.5);
-
-    expect(el.autoplay).toBe(true);
-    expect(el.volume).toBe(0.5);
-  });
-
-  it("defaults to unity when volume is undefined", () => {
-    expect(createPlaybackAudioElement(undefined).volume).toBe(1);
-  });
-
-  it("clamps an out-of-range volume to [0, 1]", () => {
-    expect(createPlaybackAudioElement(5).volume).toBe(1);
-    expect(createPlaybackAudioElement(-1).volume).toBe(0);
-  });
-});
-
-describe("setAudioVolume", () => {
-  it("applies a clamped volume to the element", () => {
-    const el = createPlaybackAudioElement(1);
-
-    setAudioVolume(el, 0.25);
-    expect(el.volume).toBe(0.25);
-
-    setAudioVolume(el, 5);
-    expect(el.volume).toBe(1);
-  });
-
-  it("is a no-op when there is no element", () => {
-    expect(() => setAudioVolume(null, 0.5)).not.toThrow();
-  });
-});
-
-describe("teardownAudioElement", () => {
-  it("pauses and detaches the stream", () => {
-    const el = createPlaybackAudioElement(1);
-    const pause = vi.spyOn(el, "pause");
-
-    el.srcObject = new MediaStream();
-    teardownAudioElement(el);
-
-    expect(pause).toHaveBeenCalled();
-    expect(el.srcObject).toBeNull();
-  });
-
-  it("is a no-op when there is no element", () => {
-    expect(() => teardownAudioElement(null)).not.toThrow();
   });
 });

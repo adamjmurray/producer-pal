@@ -12,13 +12,13 @@ import {
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 import {
-  buildSessionOptions,
-  extractErrorMessage,
   handleTransportEvent,
   type TransportEventDeps,
-} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
-import { createPlaybackAudioElement } from "#webui/hooks/voice/helpers/voice-audio-element-helpers";
+} from "#webui/hooks/voice/helpers/transport-events";
+import { buildSessionOptions } from "#webui/hooks/voice/helpers/voice-session-setup";
+import { createPlaybackAudioElement } from "#webui/hooks/voice/helpers/playback-audio-element";
 import {
   buildOpenAIVoiceInstructions,
   getVoiceLanguage,

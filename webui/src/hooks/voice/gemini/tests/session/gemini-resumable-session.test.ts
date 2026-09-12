@@ -14,9 +14,10 @@ import {
   msg,
 } from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
 import {
+  closeQuietly,
   openResumableGeminiSession,
   type ResumableSessionContext,
-} from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
+} from "#webui/hooks/voice/gemini/gemini-resumable-session";
 import {
   MAX_RESUME_ATTEMPTS,
   RESUME_BACKOFF_MS,
@@ -406,5 +407,17 @@ describe("openResumableGeminiSession", () => {
     await flushBackoff(1);
 
     expect(ctx.onDrop).not.toHaveBeenCalled();
+  });
+});
+
+describe("closeQuietly", () => {
+  it("swallows a close that throws", () => {
+    const session = {
+      close: () => {
+        throw new Error("boom");
+      },
+    } as unknown as Session;
+
+    expect(() => closeQuietly(session)).not.toThrow();
   });
 });

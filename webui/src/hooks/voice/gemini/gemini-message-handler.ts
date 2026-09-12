@@ -10,10 +10,10 @@ import {
   type BooleanRef,
   endGeminiHalfDuplexMute,
   type MutableMic,
-} from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+} from "#webui/hooks/voice/gemini/gemini-half-duplex-mute";
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { type GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
-import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 
 /** Dependencies handleGeminiMessage needs from the hook. */
 export interface GeminiMessageDeps {

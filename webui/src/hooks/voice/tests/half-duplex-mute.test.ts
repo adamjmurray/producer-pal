@@ -8,11 +8,11 @@ import {
   beginHalfDuplexMute,
   endHalfDuplexMute,
   type HalfDuplexDeps,
-} from "#webui/hooks/voice/helpers/half-duplex-helpers";
+} from "#webui/hooks/voice/helpers/half-duplex-mute";
 import {
   handleTransportEvent,
   type TransportEventDeps,
-} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+} from "#webui/hooks/voice/helpers/transport-events";
 
 /**
  * Build an endHalfDuplexMute deps bag: auto-muted, nothing manually muted, and

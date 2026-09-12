@@ -22,7 +22,7 @@ import { useVoiceBulkDeletes } from "#webui/hooks/voice/helpers/use-voice-bulk-d
 import {
   buildVoiceRecord,
   mergeVoiceHistory,
-} from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
+} from "#webui/hooks/voice/helpers/voice-record";
 import { VOICE_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {

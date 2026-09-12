@@ -10,14 +10,14 @@ import {
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { fetchEphemeralToken } from "#webui/hooks/voice/helpers/ephemeral-token";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 import {
   bailIfStale,
-  extractErrorMessage,
-  fetchEphemeralToken,
   seedInitialHistory,
-} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
-import { applyLiveVolume } from "#webui/hooks/voice/helpers/voice-audio-element-helpers";
-import { releaseVoiceSessionResources } from "#webui/hooks/voice/helpers/voice-session-teardown-helpers";
+} from "#webui/hooks/voice/helpers/voice-session-setup";
+import { applyLiveVolume } from "#webui/hooks/voice/helpers/playback-audio-element";
+import { releaseVoiceSessionResources } from "#webui/hooks/voice/helpers/voice-session-teardown";
 import { createWiredSession } from "#webui/hooks/voice/helpers/voice-session-wiring";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import { useVoiceRetry } from "#webui/hooks/voice/use-voice-retry";

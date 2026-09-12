@@ -11,23 +11,25 @@ import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detec
 import {
   applyManualMute,
   endGeminiHalfDuplexMute,
-} from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+} from "#webui/hooks/voice/gemini/gemini-half-duplex-mute";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
 import { buildGeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { type GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
 import { GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
 import { fetchGeminiToken } from "#webui/hooks/voice/gemini/gemini-voice-token";
+import { createGenAIClient } from "#webui/hooks/voice/gemini/gemini-client";
 import {
   closeQuietly,
-  createGenAIClient,
   openResumableGeminiSession,
-  releaseGeminiSessionResources,
   type ResumeState,
+} from "#webui/hooks/voice/gemini/gemini-resumable-session";
+import {
+  releaseGeminiSessionResources,
   seedGeminiContext,
   startGeminiMic,
-} from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
-import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+} from "#webui/hooks/voice/gemini/gemini-session-resources";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 import {
   type UseVoiceSessionReturn,
   type VoiceStatus,

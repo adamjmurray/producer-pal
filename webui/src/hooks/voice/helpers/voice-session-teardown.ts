@@ -5,7 +5,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeSession } from "@openai/agents/realtime";
-import { teardownAudioElement } from "#webui/hooks/voice/helpers/voice-audio-element-helpers";
+import { teardownAudioElement } from "#webui/hooks/voice/helpers/playback-audio-element";
 import {
   teardownVoiceAudioGraph,
   type VoiceAudioGraph,
@@ -27,9 +27,7 @@ export interface VoiceSessionRefs {
 /**
  * Release everything a live voice session holds: the audio graph and element,
  * the session itself, and the MCP client. Clears the refs first so a concurrent
- * caller can't double-close, then closes. Extracted from useVoiceSession to keep
- * the hook within its line budget.
- *
+ * caller can't double-close, then closes.
  * @param refs - The hook's session-owned refs
  */
 export async function releaseVoiceSessionResources(
@@ -68,13 +66,10 @@ export async function releaseVoiceSessionResources(
 
 /**
  * Tear a realtime session down: cancel a still-running response first (so the
- * server isn't left holding/billing an orphaned response and a stop→restart
- * can't race a lingering one), then close. Both steps are best-effort — a throw
- * from either must not abort teardown.
- *
+ * server isn't left billing an orphan and a stop→restart can't race a lingering
+ * one), then close. Both steps are best-effort — a throw must not abort it.
  * @param session - The session to close
- * @param cancelInFlight - Whether a response is active and should be cancelled
- *   (via interrupt) before closing
+ * @param cancelInFlight - Whether to interrupt an active response first
  */
 function closeRealtimeSession(
   session: RealtimeSession,
