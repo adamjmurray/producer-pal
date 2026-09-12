@@ -39,7 +39,7 @@ One grammar names where a clip goes, counting from 0 throughout: \`t2/s0\` is th
 
 create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time.
 
-\`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot (\`t0/s1\`) or an arrangement clip's own spot (\`t0[5|1]\`) instead of \`id\`, so knowing where a clip is saves reading it first just to learn its id. \`t0[5|1]\` means *starts at* bar 5, not covers it. Write results report the clip's \`path\` beside its \`id\`, so a follow-up call can use it without re-reading.
+\`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot (\`t0/s1\`) or an arrangement clip's own spot (\`t0[5|1]\`) instead of \`id\`, so knowing where a clip is saves reading it first just to learn its id. \`t0[5|1]\` resolves to the clip covering bar 5, even if it started earlier. Write results report the clip's \`path\` beside its \`id\`, so a follow-up call can use it without re-reading.
 
 ### Moving Clips
 

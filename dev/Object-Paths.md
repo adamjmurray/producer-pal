@@ -148,7 +148,7 @@ name either or both:
 
 | Path       | As a source             | As a destination                    |
 | ---------- | ----------------------- | ----------------------------------- |
-| `t0[5\|1]` | the clip starting there | that lane, that position            |
+| `t0[5\|1]` | the clip covering there | that lane, that position            |
 | `t0`       | ❌ names many clips     | that lane, keep the clip's position |
 | `[5\|1]`   | ❌ names many clips     | keep the clip's lane, that position |
 
@@ -159,9 +159,10 @@ errors there.
 **Complete as a source.** A partial path names more than one clip, so a tool
 addressing a specific clip refuses it. Both partials work as destinations.
 
-`t0[5|1]` means **starts at**, not covers: a clip running from 3|1 through bar 6
-is not at `[5|1]`. That path resolves to nothing, and the call warns and skips
-like any other target that isn't there (ADR-0035).
+`t0[5|1]` resolves to the clip **covering** `5|1`, even if it started earlier —
+a clip running from 3|1 through bar 6 is at `[5|1]`. When no clip covers the
+position, the path resolves to nothing and the call warns and skips like any
+other target that isn't there (ADR-0035).
 
 ### Which lists pair and which broadcast
 
