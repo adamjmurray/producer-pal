@@ -15,7 +15,7 @@
 
 import { execFile } from "node:child_process";
 import { styleText } from "node:util";
-import { openLiveSet } from "../open-live-set.ts";
+import { openLiveSet } from "../../open-live-set.ts";
 
 const ABLETON_PROCESS = "Live";
 

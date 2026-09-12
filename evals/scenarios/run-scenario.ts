@@ -17,7 +17,7 @@ import {
   type EvalSession,
 } from "./eval-session.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
-import { openLiveSetWithRecovery } from "./helpers/open-live-set-recovery.ts";
+import { openLiveSetWithRecovery } from "./helpers/open-live-set/open-live-set-recovery.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
 import {
   computeTotalUsage,
