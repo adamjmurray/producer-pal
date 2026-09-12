@@ -25,6 +25,15 @@ interface SelectTargets {
   devicePath?: string;
 }
 
+/** What the existence check already resolved, for callers to reuse. */
+export interface SelectTargetsResolved {
+  /** The device at `devicePath`, so the selection and response steps don't
+   * re-resolve it from the path string. Undefined when there was no
+   * devicePath, or it didn't resolve to a device (left for the selection
+   * step to reject). */
+  device?: LiveAPI;
+}
+
 /**
  * Refuse a select naming something that isn't there. IDs are checked where
  * they're resolved, so this covers the path and index spellings.
@@ -36,6 +45,7 @@ interface SelectTargets {
  * @param targets.sceneIndex - 0-based scene index
  * @param targets.clipSlot - Clip slot coordinates
  * @param targets.devicePath - Device path, e.g. "t0/d1"
+ * @returns Targets already resolved while checking, for reuse
  */
 export function requireSelectTargets({
   trackId,
@@ -45,7 +55,7 @@ export function requireSelectTargets({
   sceneIndex,
   clipSlot,
   devicePath,
-}: SelectTargets): void {
+}: SelectTargets): SelectTargetsResolved {
   const trackPath =
     trackId == null ? buildTrackPath(category, trackIndex) : null;
 
@@ -69,9 +79,9 @@ export function requireSelectTargets({
     requireClipSlot(clipSlot);
   }
 
-  if (devicePath != null) {
-    requireDevice(devicePath);
-  }
+  return {
+    device: devicePath == null ? undefined : requireDevice(devicePath),
+  };
 }
 
 // --- Helpers below main exports ---
@@ -137,13 +147,18 @@ function requireClipSlot({
  * Refuse a device path pointing at nothing. A path naming a chain instead of a
  * device is left to the selection itself to reject.
  * @param devicePath - The device path, e.g. "t0/d1"
+ * @returns The resolved device, or undefined when the path names a non-device
  */
-function requireDevice(devicePath: string): void {
+function requireDevice(devicePath: string): LiveAPI | undefined {
   const resolved = resolvePathToLiveApi(devicePath);
 
   if (resolved.targetType !== "device") {
-    return;
+    return undefined;
   }
 
-  requireTarget(LiveAPI.from(resolved.liveApiPath), "device", devicePath);
+  const device = LiveAPI.from(resolved.liveApiPath);
+
+  requireTarget(device, "device", devicePath);
+
+  return device;
 }

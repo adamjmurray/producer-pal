@@ -12,8 +12,7 @@ import {
 import {
   buildClipResponseFromId,
   buildClipResponseFromSlot,
-  buildDeviceResponseFromId,
-  buildDeviceResponseFromPath,
+  buildDeviceResponseFromDevice,
   buildSceneResponseFromId,
   buildTrackResponseFromId,
   readFullState,
@@ -256,69 +255,56 @@ describe("select-response-helpers", () => {
     });
   });
 
-  describe("buildDeviceResponseFromId", () => {
-    it("returns device info", () => {
+  describe("buildDeviceResponseFromDevice", () => {
+    it("returns device info, deriving the path when none was given", () => {
       registerMockObject("device_1", {
         path: String(livePath.track(0)) + " devices 0",
         type: "Device",
       });
 
-      const result = buildDeviceResponseFromId("id device_1");
+      const result = buildDeviceResponseFromDevice(
+        LiveAPI.from("id device_1"),
+        undefined,
+      );
 
       expect(result).toStrictEqual({ id: "device_1", path: "t0/d0" });
     });
 
-    it("returns undefined for non-existent device", () => {
-      mockNonExistentObjects();
-
-      const result = buildDeviceResponseFromId("id nonexistent");
-
-      expect(result).toBeUndefined();
-    });
-
-    it("returns undefined when device path cannot be extracted", () => {
-      registerMockObject("device_bad_path", {
-        path: "some/unrecognized/path",
-        type: "Device",
-      });
-
-      const result = buildDeviceResponseFromId("id device_bad_path");
-
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe("buildDeviceResponseFromPath", () => {
-    it("returns device info for valid path", () => {
-      registerMockObject("track_0", {
-        path: String(livePath.track(0)),
-        type: "Track",
-      });
-
+    it("returns device info using the caller's own path when given", () => {
       registerMockObject("device_at_path", {
         path: String(livePath.track(0)) + " devices 1",
         type: "Device",
       });
 
-      const result = buildDeviceResponseFromPath("t0/d1");
+      const result = buildDeviceResponseFromDevice(
+        LiveAPI.from("id device_at_path"),
+        "t0/d1",
+      );
 
       expect(result).toStrictEqual({ id: "device_at_path", path: "t0/d1" });
     });
 
-    it("returns undefined when device does not exist at path", () => {
-      registerMockObject("track_0", {
-        path: String(livePath.track(0)),
-        type: "Track",
-      });
+    it("returns undefined for non-existent device", () => {
       mockNonExistentObjects();
 
-      const result = buildDeviceResponseFromPath("t0/d99");
+      const result = buildDeviceResponseFromDevice(
+        LiveAPI.from("id nonexistent"),
+        undefined,
+      );
 
       expect(result).toBeUndefined();
     });
 
-    it("returns undefined when path resolves to a non-device target", () => {
-      const result = buildDeviceResponseFromPath("t0/d0/c0");
+    it("returns undefined when device path cannot be extracted and none was given", () => {
+      registerMockObject("device_bad_path", {
+        path: "some/unrecognized/path",
+        type: "Device",
+      });
+
+      const result = buildDeviceResponseFromDevice(
+        LiveAPI.from("id device_bad_path"),
+        undefined,
+      );
 
       expect(result).toBeUndefined();
     });

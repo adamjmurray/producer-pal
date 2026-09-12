@@ -279,16 +279,28 @@ function assertChildrenShareATrack(filled: FilledSlots): void {
   const children = SLOTS_ON_A_TRACK.map((slot) => filled[slot]).filter(
     (named): named is NamedId => named != null,
   );
-  const first = children[0];
-  const firstTrack = first == null ? null : ownerTrackPath(first.id);
 
-  if (first == null || firstTrack == null) {
+  // A single child has nothing to disagree with — comparing it to itself
+  // would only spend a resolution and a track build on a check that can't fail.
+  if (children.length < 2) {
+    return;
+  }
+
+  const [first, ...rest] = children;
+
+  if (first == null) {
+    return;
+  }
+
+  const firstTrack = ownerTrackPath(first.id);
+
+  if (firstTrack == null) {
     return;
   }
 
   const trackId = LiveAPI.from(firstTrack).id;
 
-  for (const other of children.slice(1)) {
+  for (const other of rest) {
     assertSameObject(trackId, ownerTrackPath(other.id), () =>
       idConflict(first, other, "tracks"),
     );

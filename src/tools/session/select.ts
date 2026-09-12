@@ -31,8 +31,7 @@ import {
 import {
   buildClipResponseFromId,
   buildClipResponseFromSlot,
-  buildDeviceResponseFromId,
-  buildDeviceResponseFromPath,
+  buildDeviceResponseFromDevice,
   buildSceneResponseFromId,
   buildTrackResponseFromId,
   readFullState,
@@ -115,7 +114,7 @@ export function select(
     return readFullState();
   }
 
-  requireSelectTargets({
+  const requiredTargets = requireSelectTargets({
     trackId,
     category,
     trackIndex,
@@ -171,6 +170,7 @@ export function select(
     deviceId,
     devicePath,
     devicePathParam,
+    resolvedDevice: requiredTargets.device,
   });
 
   let pluginWindowOpen: boolean | undefined;
@@ -215,7 +215,7 @@ export function select(
   addTrackToResponse(result, trackResult.selectedTrackId);
   addSceneToResponse(result, sceneResult.selectedSceneId);
   addClipToResponse(result, resolved, clipSlotHasClip);
-  addDeviceToResponse(result, resolved);
+  addDeviceToResponse(result, resolved, selectedDeviceAPI);
   Object.assign(result, rackSelection);
 
   if (pluginWindowOpen != null && result.selectedDevice != null) {
@@ -415,25 +415,27 @@ function addClipToResponse(
 }
 
 /**
- * Add device info to action response if a device was selected
+ * Add device info to action response if a device was selected, reusing the
+ * device the selection step already resolved.
  * @param result - Response being built
  * @param resolved - Resolved args
+ * @param selectedDeviceAPI - The device selection resolved, if any
  */
 function addDeviceToResponse(
   result: SelectResult,
   resolved: ResolvedArgs,
+  selectedDeviceAPI: LiveAPI | undefined,
 ): void {
-  if (resolved.deviceId != null) {
-    const info = buildDeviceResponseFromId(resolved.deviceId);
+  if (selectedDeviceAPI == null) {
+    return;
+  }
 
-    if (info) {
-      result.selectedDevice = info;
-    }
-  } else if (resolved.devicePath != null) {
-    const info = buildDeviceResponseFromPath(resolved.devicePath);
+  const info = buildDeviceResponseFromDevice(
+    selectedDeviceAPI,
+    resolved.devicePath,
+  );
 
-    if (info) {
-      result.selectedDevice = info;
-    }
+  if (info) {
+    result.selectedDevice = info;
   }
 }

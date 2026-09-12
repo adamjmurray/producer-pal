@@ -58,6 +58,9 @@ interface UpdateDeviceSelectionOptions {
   deviceId?: string;
   devicePath?: string;
   devicePathParam: "path" | "devicePath";
+  /** The device already resolved for `devicePath` by the existence check, so
+   * this doesn't re-resolve it from the path string. */
+  resolvedDevice?: LiveAPI;
 }
 
 interface UpdateHighlightedClipSlotOptions {
@@ -236,6 +239,7 @@ export function updateSceneSelection({
  * @param options.deviceId - Device ID to select
  * @param options.devicePath - Device path (e.g. "t0/d1")
  * @param options.devicePathParam - The param the device path came from
+ * @param options.resolvedDevice - The device already resolved for `devicePath`
  * @returns The resolved device, or undefined if none was targeted/found
  */
 export function updateDeviceSelection({
@@ -243,6 +247,7 @@ export function updateDeviceSelection({
   deviceId,
   devicePath,
   devicePathParam,
+  resolvedDevice,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
     const deviceAPI = validateIdType(deviceId, "device");
@@ -251,15 +256,8 @@ export function updateDeviceSelection({
 
     return deviceAPI;
   } else if (devicePath != null) {
-    const resolved = resolvePathToLiveApi(devicePath);
-
-    if (resolved.targetType !== "device") {
-      throw new Error(
-        `${devicePathParam} "${devicePath}" does not resolve to a device`,
-      );
-    }
-
-    const deviceAPI = LiveAPI.from(resolved.liveApiPath);
+    const deviceAPI =
+      resolvedDevice ?? resolveDeviceFromPath(devicePath, devicePathParam);
 
     songView.call("select_device", toLiveApiId(deviceAPI.id));
 
@@ -267,6 +265,28 @@ export function updateDeviceSelection({
   }
 
   return undefined;
+}
+
+/**
+ * Resolve a device path when the existence check didn't already resolve it
+ * (a path naming a chain or other non-device target).
+ * @param devicePath - Device path (e.g. "t0/d1")
+ * @param devicePathParam - The param the device path came from
+ * @returns The resolved device
+ */
+function resolveDeviceFromPath(
+  devicePath: string,
+  devicePathParam: "path" | "devicePath",
+): LiveAPI {
+  const resolved = resolvePathToLiveApi(devicePath);
+
+  if (resolved.targetType !== "device") {
+    throw new Error(
+      `${devicePathParam} "${devicePath}" does not resolve to a device`,
+    );
+  }
+
+  return LiveAPI.from(resolved.liveApiPath);
 }
 
 /**

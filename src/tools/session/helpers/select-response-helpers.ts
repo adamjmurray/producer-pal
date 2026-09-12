@@ -6,7 +6,6 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   objectPathForApi,
   pathField,
@@ -120,45 +119,23 @@ export function buildClipResponseFromSlot(slot: {
 }
 
 /**
- * Build response fields for device selection by ID
- * @param deviceId - Live API device ID (e.g., "id device_123")
+ * Build response fields for an already-resolved selected device, reusing the
+ * object the selection step built rather than resolving it again.
+ * @param device - The selected device
+ * @param devicePath - The short path the caller selected it by, if any
  * @returns Device info, or undefined
  */
-export function buildDeviceResponseFromId(
-  deviceId: string,
+export function buildDeviceResponseFromDevice(
+  device: LiveAPI,
+  devicePath: string | undefined,
 ): SelectResult["selectedDevice"] {
-  const device = LiveAPI.from(deviceId);
-
   if (!device.exists()) {
     return undefined;
   }
 
-  const path = extractDevicePath(device.path);
+  const path = devicePath ?? extractDevicePath(device.path);
 
   return path ? { id: device.id, path } : undefined;
-}
-
-/**
- * Build response fields for device selection by path
- * @param devicePath - Short device path (e.g., "t0/d1")
- * @returns Device info, or undefined
- */
-export function buildDeviceResponseFromPath(
-  devicePath: string,
-): SelectResult["selectedDevice"] {
-  const resolved = resolvePathToLiveApi(devicePath);
-
-  if (resolved.targetType !== "device") {
-    return undefined;
-  }
-
-  const device = LiveAPI.from(resolved.liveApiPath);
-
-  if (!device.exists()) {
-    return undefined;
-  }
-
-  return { id: device.id, path: devicePath };
 }
 
 /**
