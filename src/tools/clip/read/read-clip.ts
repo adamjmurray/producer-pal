@@ -25,12 +25,14 @@ import {
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import {
   clipRegionBeats,
-  isDrumRackTrack,
   processWarpMarkers,
+  WARP_MODE_MAPPING,
+} from "./helpers/clip-region-and-warp.ts";
+import {
+  isDrumRackTrack,
   resolveClip,
   resolveClipLocation,
-  WARP_MODE_MAPPING,
-} from "./helpers/read-clip-helpers.ts";
+} from "./helpers/clip-resolution.ts";
 
 interface ReadClipArgs {
   /** Clip slot, "t<track>/s<scene>" */

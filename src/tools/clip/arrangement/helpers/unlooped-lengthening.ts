@@ -4,7 +4,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
-import { type ClipIdResult } from "./arrangement-operations-helpers.ts";
+import { type ClipIdResult } from "./arrangement-length-changes.ts";
 
 const EPSILON = 0.001;
 

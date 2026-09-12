@@ -14,7 +14,7 @@ import { createClip } from "../create-clip.ts";
 import {
   buildClipProperties,
   buildClipResult,
-} from "../helpers/create-clip-result-helpers.ts";
+} from "../helpers/created-clip-result.ts";
 import {
   expectClipCreated,
   expectNotesAdded,

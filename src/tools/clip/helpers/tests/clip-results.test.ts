@@ -9,9 +9,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildClipResultObject,
   prepareSessionClipSlot,
-} from "../clip-result-helpers.ts";
+} from "../clip-results.ts";
 
-describe("clip-result-helpers", () => {
+describe("clip-results", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     registerMockObject("live-set", {

@@ -11,16 +11,14 @@ import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
-import {
-  createClips,
-  prepareClipData,
-} from "./helpers/create-clip-loop-helpers.ts";
+import { resolveCreateClipDestinations } from "./helpers/create-clip-destinations.ts";
+import { prepareClipData } from "./helpers/clip-data-preparation.ts";
+import { createClips } from "./helpers/create-clips-loop.ts";
 import {
   resolveClipTimingContext,
   resolveCreateClipTakeLanes,
   validateArrangementPositions,
-} from "./helpers/create-clip-prep-helpers.ts";
+} from "./helpers/clip-timing-context.ts";
 import {
   handleAutoPlayback,
   validateCreateClipParams,
@@ -28,7 +26,7 @@ import {
   validatePositions,
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
-} from "./helpers/create-clip-validation-helpers.ts";
+} from "./helpers/create-clip-validation.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 

@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
-import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
+import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const EPSILON = 0.001;

@@ -7,7 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ClipResult,
   type NoteUpdateResult,
-} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   type ArrangementTrack,

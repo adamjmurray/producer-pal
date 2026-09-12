@@ -15,8 +15,8 @@ import {
   takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
-import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
-import { convertTimingParameters } from "./create-clip-helpers.ts";
+import { type ArrangementPosition } from "./create-clip-destinations.ts";
+import { convertTimingParameters } from "./timing-parameters.ts";
 
 export interface ClipTimingContext {
   songTimeSigNumerator: number;

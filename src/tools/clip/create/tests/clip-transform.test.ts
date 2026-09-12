@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ClipTransformInputs,
   resolveClipTransform,
-} from "../helpers/create-clip-transform-helpers.ts";
+} from "../helpers/clip-transform.ts";
 
 // Mock applyTransforms so we can (a) detect whether the guard let the transform
 // run and (b) capture the ClipContext the helper builds (clipDuration /

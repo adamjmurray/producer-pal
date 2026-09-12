@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "./arrangement-operations.ts";
-import * as helpers from "./helpers/arrangement-operations-helpers.ts";
+import * as helpers from "./helpers/arrangement-length-changes.ts";
 
 interface MockClipOptions {
   id?: string;

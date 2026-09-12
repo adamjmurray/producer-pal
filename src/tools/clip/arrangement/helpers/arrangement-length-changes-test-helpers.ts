@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Test helpers for arrangement-operations-helpers tests.
+ * Test helpers for arrangement-length-changes tests.
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";

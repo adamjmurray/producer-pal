@@ -12,10 +12,10 @@ import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import {
-  validateCodeNotes,
-  buildCodeExecutionContext,
   extractNotesFromClip,
-} from "#src/tools/clip/code-exec/code-exec-helpers.ts";
+  validateCodeNotes,
+} from "#src/tools/clip/code-exec/clip-notes-exchange.ts";
+import { buildCodeExecutionContext } from "#src/tools/clip/code-exec/code-execution-context.ts";
 import {
   type CodeExecutionContext,
   type CodeExecutionResult,

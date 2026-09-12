@@ -16,14 +16,14 @@ import {
   createMockClip,
   setupArrangementClipPath,
   setupArrangementMocks,
-} from "./arrangement-operations-test-helpers.ts";
+} from "./arrangement-length-changes-test-helpers.ts";
 import {
   type ClipIdResult,
   handleArrangementLengthening,
   handleArrangementShortening,
-} from "./arrangement-operations-helpers.ts";
+} from "./arrangement-length-changes.ts";
 
-describe("arrangement-operations-helpers", () => {
+describe("arrangement-length-changes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

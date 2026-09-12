@@ -10,7 +10,7 @@ import {
   handleArrangementShortening,
   type ArrangementContext,
   type ClipIdResult,
-} from "./helpers/arrangement-operations-helpers.ts";
+} from "./helpers/arrangement-length-changes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface HandleArrangementLengthOperationArgs {

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { requireCreatedClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAudioClipInSession,
@@ -13,7 +13,7 @@ import {
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
+import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 
 export interface ArrangementContext {
   silenceWavPath?: string;

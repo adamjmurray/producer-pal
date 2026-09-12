@@ -11,7 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { handleArrangementToSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 

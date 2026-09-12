@@ -8,7 +8,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import {
   requireCreatedClip,
   requireCreatedSessionClip,
-} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { rawNotesToNoteEvents, readAllClipNotes } from "./clip-notes.ts";
 

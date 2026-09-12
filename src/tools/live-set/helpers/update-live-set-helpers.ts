@@ -10,7 +10,7 @@ import {
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
-import { requireCreatedClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";

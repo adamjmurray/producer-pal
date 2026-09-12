@@ -9,7 +9,7 @@ import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts"
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   getClipNoteCount,

@@ -8,7 +8,7 @@ import {
   prepareSessionClipSlot,
   requireCreatedClip,
   requireCreatedSessionClip,
-} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 import {
   arrangementPath,

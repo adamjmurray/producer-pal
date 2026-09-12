@@ -201,7 +201,7 @@ creation doesn't support length control). For MIDI, `create_midi_clip` is used
 directly.
 
 Files: `arrangement-tiling-helpers.ts` (`createAndDeleteTempClip`),
-`arrangement-operations-helpers.ts` (`truncateWithTempClip`)
+`arrangement-length-changes.ts` (`truncateWithTempClip`)
 
 ### Session-Based Tiling
 
@@ -214,7 +214,7 @@ When you need an arrangement audio clip with a specific length:
 4. Clean up session clip via `slot.call("delete_clip")`
 
 Files: `arrangement-tiling-helpers.ts` (`createAudioClipInSession`),
-`arrangement-unlooped-helpers.ts` (`lengthenWarpedUnloopedAudio`)
+`unlooped-lengthening.ts` (`lengthenWarpedUnloopedAudio`)
 
 ### Duplicate Crash Workaround
 
@@ -255,7 +255,7 @@ This enables three-way logic for unlooped warped audio lengthening:
 - **Cap**: some hidden content, but not enough for the full target
 - **Proceed**: sufficient content for the full target
 
-Files: `arrangement-unlooped-helpers.ts` (`tileWarpedAudioContent`)
+Files: `unlooped-lengthening.ts` (`tileWarpedAudioContent`)
 
 ---
 
@@ -264,7 +264,7 @@ Files: `arrangement-unlooped-helpers.ts` (`tileWarpedAudioContent`)
 ### Lengthening — Looped Clips (MIDI & Audio Warped)
 
 Entry: `handleArrangementLengthening()` → looped branch in
-`arrangement-operations-helpers.ts`
+`arrangement-length-changes.ts`
 
 Two sub-cases based on whether the target is shorter or longer than the clip's
 loop region:
@@ -285,7 +285,7 @@ loop region:
 ### Lengthening — Unlooped MIDI
 
 Entry: `handleUnloopedLengthening()` → `!isAudioClip` branch in
-`arrangement-unlooped-helpers.ts`
+`unlooped-lengthening.ts`
 
 Sets `loop_end` directly on the source clip to extend the arrangement length.
 Also extends `end_marker` so notes are visible in the extended region. No
@@ -303,7 +303,7 @@ and automation).
 ### Lengthening — Unlooped Warped Audio
 
 Entry: `handleUnloopedLengthening()` → `isWarped` branch in
-`arrangement-unlooped-helpers.ts`
+`unlooped-lengthening.ts`
 
 Sets `loop_end` directly on the source clip. Unlike unwarped clips, Ableton does
 **not** auto-clamp at the file boundary for warped clips, so boundary detection
@@ -330,7 +330,7 @@ and automation).
 ### Lengthening — Unlooped Unwarped Audio
 
 Entry: `handleUnloopedLengthening()` → `!isWarped` branch in
-`arrangement-unlooped-helpers.ts`
+`unlooped-lengthening.ts`
 
 This is the simplest audio lengthening case. For unwarped clips, `loop_start`
 and `loop_end` are in **seconds** and are directly writable. Setting `loop_end`
@@ -357,7 +357,7 @@ No tiling, no session clips, no holding area. Returns a single clip.
 
 ### Shortening
 
-Entry: `handleArrangementShortening()` in `arrangement-operations-helpers.ts`
+Entry: `handleArrangementShortening()` in `arrangement-length-changes.ts`
 
 1. Calculate the region to remove: `[currentStartTime + target, currentEndTime]`
 2. Create temp clip covering that region (audio via session, MIDI directly)
@@ -410,15 +410,15 @@ whole param is refused.
 
 ## Source File Reference
 
-| File                                | Role                                                      |
-| ----------------------------------- | --------------------------------------------------------- |
-| `arrangement-operations.ts`         | Top-level dispatcher (lengthen vs shorten)                |
-| `arrangement-operations-helpers.ts` | Looped lengthening, shortening, temp clip truncation      |
-| `arrangement-unlooped-helpers.ts`   | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
-| `arrangement-tiling.ts`             | Tiling, holding area, crash workaround, clip movement     |
-| `arrangement-tiling-helpers.ts`     | Low-level primitives (temp clips, session clip creation)  |
-| `arrangement-splitting.ts`          | Clip splitting algorithm                                  |
-| `arrangement-move.ts`               | Update-clip integration (move + lengthen orchestration)   |
+| File                            | Role                                                      |
+| ------------------------------- | --------------------------------------------------------- |
+| `arrangement-operations.ts`     | Top-level dispatcher (lengthen vs shorten)                |
+| `arrangement-length-changes.ts` | Looped lengthening, shortening, temp clip truncation      |
+| `unlooped-lengthening.ts`       | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
+| `arrangement-tiling.ts`         | Tiling, holding area, crash workaround, clip movement     |
+| `arrangement-tiling-helpers.ts` | Low-level primitives (temp clips, session clip creation)  |
+| `arrangement-splitting.ts`      | Clip splitting algorithm                                  |
+| `arrangement-move.ts`           | Update-clip integration (move + lengthen orchestration)   |
 
 All arrangement source files are under `src/tools/shared/arrangement/` or
 `src/tools/clip/arrangement/helpers/`. Test files are colocated under `tests/`

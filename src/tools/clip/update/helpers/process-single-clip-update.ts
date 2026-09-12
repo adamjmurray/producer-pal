@@ -12,7 +12,7 @@ import {
   markerBeatsPerUnit,
   markerClampSeconds,
 } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";

@@ -24,7 +24,7 @@ import {
   buildClipResultObject,
   type ClipResult,
   type NoteUpdateResult,
-} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";

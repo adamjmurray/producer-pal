@@ -6,7 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/read-clip-helpers.ts";
+import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/clip-resolution.ts";
 import {
   readOneClip,
   type ReadClipResult,

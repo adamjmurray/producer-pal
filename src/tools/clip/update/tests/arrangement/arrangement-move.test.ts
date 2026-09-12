@@ -9,7 +9,7 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";

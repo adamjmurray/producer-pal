@@ -4,14 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { createClip } from "../create-clip.ts";
-import { convertTimingParameters } from "../helpers/create-clip-helpers.ts";
+import { convertTimingParameters } from "../helpers/timing-parameters.ts";
 import {
   calculateClipLength,
   handleAutoPlayback,
-} from "../helpers/create-clip-validation-helpers.ts";
+} from "../helpers/create-clip-validation.ts";
 import {
   expectClipCreated,
   expectNotesAdded,

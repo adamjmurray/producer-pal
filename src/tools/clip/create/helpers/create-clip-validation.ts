@@ -5,10 +5,10 @@
 
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import { type ClipDestinations } from "./create-clip-destination-helpers.ts";
+import { type ClipDestinations } from "./create-clip-destinations.ts";
 
 /**
  * Validates that the call named somewhere to put a clip

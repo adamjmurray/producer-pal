@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { prepareClipData } from "../helpers/create-clip-loop-helpers.ts";
+import { prepareClipData } from "../helpers/clip-data-preparation.ts";
 import { createClip } from "../create-clip.ts";
 import { setupSessionMocks } from "./create-clip-test-helpers.ts";
 

@@ -19,7 +19,7 @@
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** What the executor needs to re-decide a move after the one before it ran. */
