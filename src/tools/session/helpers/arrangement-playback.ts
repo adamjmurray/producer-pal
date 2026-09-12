@@ -4,12 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { applyArrangementLoop } from "./arrangement-loop.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type PlaybackState } from "./scene-playback.ts";
 
 /** What a timeline write actually landed. */
 export interface TimelineWrites {
@@ -314,22 +312,6 @@ export function resolveStartTime(
   return startTimeBeats;
 }
 
-/** The scene play-scene fired, for the response */
-export interface FiredScene {
-  id: string;
-  path?: string;
-  name: string;
-}
-
-export interface PlaybackState {
-  isPlaying: boolean;
-  /**
-   * Set by play-scene only. The scene can be named by a scene id or by a clip
-   * in it, so the caller doesn't always know which one fired.
-   */
-  scene?: FiredScene;
-}
-
 /**
  * Handle playing the arrangement view. Playback begins at the arrangement
  * start position, which the caller sets with startTime or leaves as it is.
@@ -341,34 +323,4 @@ export function handlePlayArrangement(liveSet: LiveAPI): PlaybackState {
   liveSet.call("start_playing");
 
   return { isPlaying: true };
-}
-
-/**
- * Handle playing a scene in session view
- * @param sceneIndex - Scene index to play
- * @returns Updated playback state
- */
-export function handlePlayScene(sceneIndex: number | undefined): PlaybackState {
-  if (sceneIndex == null) {
-    throw new Error(
-      `path "s<scene>" or a scene id is required for action "play-scene"`,
-    );
-  }
-
-  const scene = LiveAPI.from(livePath.scene(sceneIndex));
-
-  if (!scene.exists()) {
-    throw new Error(`scene at index ${sceneIndex} does not exist`);
-  }
-
-  scene.call("fire");
-
-  return {
-    isPlaying: true,
-    scene: {
-      id: scene.id,
-      ...pathField(scene),
-      name: sceneDisplayName(scene, sceneIndex),
-    },
-  };
 }

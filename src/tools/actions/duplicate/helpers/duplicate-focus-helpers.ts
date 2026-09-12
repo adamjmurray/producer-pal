@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 
 /**
  * Determines the target view based on destination and type

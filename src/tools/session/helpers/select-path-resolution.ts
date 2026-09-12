@@ -18,12 +18,8 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { parseClipSlot } from "./select-id-helpers.ts";
-import {
-  buildTrackPath,
-  isSameLiveApiId,
-  type TrackCategory,
-} from "./select-helpers.ts";
+import { isSameLiveApiId, parseClipSlot } from "./select-id-resolution.ts";
+import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
 export interface PathTarget {
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };

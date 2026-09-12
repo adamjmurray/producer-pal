@@ -9,19 +9,21 @@ import {
   applyArrangementTimeline,
   foldLocatorParams,
   handlePlayArrangement,
-  handlePlayScene,
   PLAY_ARRANGEMENT,
   readStartTime,
   reportArrangementLoop,
   resolveArrangementParams,
+  type TimelineWrites,
+} from "./helpers/arrangement-playback.ts";
+import {
+  handlePlayScene,
   type FiredScene,
   type PlaybackState,
-  type TimelineWrites,
-} from "./helpers/playback-helpers.ts";
+} from "./helpers/scene-playback.ts";
 import {
   resolveClipSlotPositions,
   resolvePlaybackTarget,
-} from "./helpers/playback-target-helpers.ts";
+} from "./helpers/playback-target.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { select } from "./select.ts";
 

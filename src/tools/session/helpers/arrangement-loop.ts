@@ -6,7 +6,7 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
-import { type ArrangementParams } from "./playback-helpers.ts";
+import { type ArrangementParams } from "./arrangement-playback.ts";
 
 /** Where the loop should end up: Live stores a start and a length, not two ends. */
 interface LoopPlan {

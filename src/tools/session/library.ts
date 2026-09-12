@@ -23,7 +23,7 @@ import {
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { runSearchBatch } from "./library-search-batch-helpers.ts";
+import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
 
 // deviceKind doubles as the plugin category filter for listPlugins. Only the

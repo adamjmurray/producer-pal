@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import {
   targetEntries,
   namedIdParam,

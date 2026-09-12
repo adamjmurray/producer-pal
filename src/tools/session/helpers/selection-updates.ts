@@ -10,11 +10,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import {
-  fromLiveApiId,
-  toLiveApiId,
-  toLiveApiView,
-} from "#src/tools/shared/utils.ts";
+import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -26,18 +22,6 @@ export interface TrackSelectionResult {
 
 export interface SceneSelectionResult {
   selectedSceneId?: string;
-}
-
-interface ValidateParametersOptions {
-  trackId?: string;
-  category?: TrackCategory;
-  trackIndex?: number;
-  sceneId?: string;
-  sceneIndex?: number;
-  deviceId?: string;
-  devicePath?: string;
-  devicePathParam: "path" | "devicePath";
-  slot?: { trackIndex: number; sceneIndex: number };
 }
 
 interface UpdateTrackSelectionOptions {
@@ -101,65 +85,6 @@ export function buildTrackPath(
   }
 
   return null;
-}
-
-/**
- * Validate selection parameters for conflicts
- * @param options - Parameters object
- * @param options.trackId - Track ID
- * @param options.category - Track category
- * @param options.trackIndex - Track index
- * @param options.sceneId - Scene ID
- * @param options.sceneIndex - Scene index
- * @param options.deviceId - Device ID
- * @param options.devicePath - Device path
- * @param options.devicePathParam - The param the device path came from
- * @param options.slot - Clip slot coordinates
- */
-export function validateParameters({
-  trackId,
-  category,
-  trackIndex,
-  sceneId,
-  sceneIndex,
-  deviceId,
-  devicePath,
-  devicePathParam,
-  slot: _slot,
-}: ValidateParametersOptions): void {
-  // Track selection validation
-  if (category === "master" && trackIndex != null) {
-    throw new Error(
-      "trackIndex should not be provided when trackType is 'master'",
-    );
-  }
-
-  // Device selection validation
-  if (deviceId != null && devicePath != null) {
-    throw new Error(`cannot specify both id and ${devicePathParam}`);
-  }
-
-  // Cross-validation for track ID vs index (requires Live API calls)
-  if (trackId != null && trackIndex != null) {
-    const trackPath = buildTrackPath(category, trackIndex);
-
-    if (trackPath) {
-      const trackAPI = LiveAPI.from(trackPath);
-
-      if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
-        throw new Error("id and trackIndex refer to different tracks");
-      }
-    }
-  }
-
-  // Cross-validation for scene ID vs index
-  if (sceneId != null && sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
-
-    if (sceneAPI.exists() && !isSameLiveApiId(sceneAPI.id, sceneId)) {
-      throw new Error("id and sceneIndex refer to different scenes");
-    }
-  }
 }
 
 /**
@@ -457,14 +382,4 @@ export function updateClipSelection({
   }
 
   return requiredView;
-}
-
-/**
- * Compare two Live API ids, which reach us with or without the "id " prefix.
- * @param idA - One id
- * @param idB - The other id
- * @returns Whether they name the same object
- */
-export function isSameLiveApiId(idA: string, idB: string): boolean {
-  return fromLiveApiId(idA) === fromLiveApiId(idB);
 }

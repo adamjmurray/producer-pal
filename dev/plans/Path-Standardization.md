@@ -213,7 +213,7 @@ second (`t0`, `rt1`, `mt`), so the field keeps only the first.
 
 Both remaining sites of the conflation move together: `computeTrackType` in
 [read-track.ts](../../src/tools/track/read/read-track.ts) and the second copy in
-[select-response-helpers.ts](../../src/tools/session/helpers/select-response-helpers.ts).
+[select-responses.ts](../../src/tools/session/helpers/select-responses.ts).
 
 ### Phase 9 — creating by path
 

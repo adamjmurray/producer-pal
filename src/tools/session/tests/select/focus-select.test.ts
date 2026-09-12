@@ -9,7 +9,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 
 describe("focusSelect", () => {
   it("warns instead of throwing when the id resolves to nothing", () => {

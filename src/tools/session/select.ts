@@ -9,33 +9,34 @@ import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
   applyDetailView,
   applyPluginEditorWindow,
+  buildTrackPath,
   updateClipSelection,
   updateClipSlotSelection,
   updateDeviceSelection,
   updateSceneSelection,
   updateTrackSelection,
-  validateParameters,
   type TrackCategory,
-} from "./helpers/select-helpers.ts";
-import { requireSelectTargets } from "./helpers/select-existence-helpers.ts";
+} from "./helpers/selection-updates.ts";
+import { requireSelectTargets } from "./helpers/require-select-targets.ts";
 import {
   determineAutoDetailView,
+  isSameLiveApiId,
   resolveNamedIds,
   type SelectIdArgs,
-} from "./helpers/select-id-helpers.ts";
-import { resolvePath } from "./helpers/select-path-helpers.ts";
+} from "./helpers/select-id-resolution.ts";
+import { resolvePath } from "./helpers/select-path-resolution.ts";
 import {
   resolveRackTarget,
   selectRackTarget,
-} from "./helpers/select-rack-helpers.ts";
-import { readFullState } from "./helpers/select-response-helpers.ts";
+} from "./helpers/rack-selection.ts";
 import {
   addClipToResponse,
   addDeviceToResponse,
   addSceneToResponse,
   addTrackToResponse,
+  readFullState,
   type ResolvedArgs,
-} from "./helpers/select-result-helpers.ts";
+} from "./helpers/select-responses.ts";
 
 export interface SelectArgs extends SelectIdArgs {
   // External params (from schema)
@@ -214,6 +215,77 @@ export function select(
   }
 
   return result;
+}
+
+interface ValidateParametersOptions {
+  trackId?: string;
+  category?: TrackCategory;
+  trackIndex?: number;
+  sceneId?: string;
+  sceneIndex?: number;
+  deviceId?: string;
+  devicePath?: string;
+  devicePathParam: "path" | "devicePath";
+  slot?: { trackIndex: number; sceneIndex: number };
+}
+
+/**
+ * Validate selection parameters for conflicts
+ * @param options - Parameters object
+ * @param options.trackId - Track ID
+ * @param options.category - Track category
+ * @param options.trackIndex - Track index
+ * @param options.sceneId - Scene ID
+ * @param options.sceneIndex - Scene index
+ * @param options.deviceId - Device ID
+ * @param options.devicePath - Device path
+ * @param options.devicePathParam - The param the device path came from
+ * @param options.slot - Clip slot coordinates
+ */
+function validateParameters({
+  trackId,
+  category,
+  trackIndex,
+  sceneId,
+  sceneIndex,
+  deviceId,
+  devicePath,
+  devicePathParam,
+  slot: _slot,
+}: ValidateParametersOptions): void {
+  // Track selection validation
+  if (category === "master" && trackIndex != null) {
+    throw new Error(
+      "trackIndex should not be provided when trackType is 'master'",
+    );
+  }
+
+  // Device selection validation
+  if (deviceId != null && devicePath != null) {
+    throw new Error(`cannot specify both id and ${devicePathParam}`);
+  }
+
+  // Cross-validation for track ID vs index (requires Live API calls)
+  if (trackId != null && trackIndex != null) {
+    const trackPath = buildTrackPath(category, trackIndex);
+
+    if (trackPath) {
+      const trackAPI = LiveAPI.from(trackPath);
+
+      if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
+        throw new Error("id and trackIndex refer to different tracks");
+      }
+    }
+  }
+
+  // Cross-validation for scene ID vs index
+  if (sceneId != null && sceneIndex != null) {
+    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
+
+    if (sceneAPI.exists() && !isSameLiveApiId(sceneAPI.id, sceneId)) {
+      throw new Error("id and sceneIndex refer to different scenes");
+    }
+  }
 }
 
 interface ResolveEffectiveViewOptions {

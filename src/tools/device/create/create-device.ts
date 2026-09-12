@@ -9,7 +9,7 @@ import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { validateParamEntries } from "#src/tools/device/update/helpers/params/param-entry-validation.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import {
   type ParamResult,
   refreshParamValues,

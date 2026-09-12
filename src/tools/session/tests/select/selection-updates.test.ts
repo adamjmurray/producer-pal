@@ -16,7 +16,7 @@ import {
   updateClipSlotSelection,
   updateHighlightedClipSlot,
   updateTrackSelection,
-} from "#src/tools/session/helpers/select-helpers.ts";
+} from "#src/tools/session/helpers/selection-updates.ts";
 
 /**
  * Register the song view backing mock and return both it (for `set` spy
@@ -33,7 +33,7 @@ function setupSongView(): { mock: RegisteredMockObject; api: LiveAPI } {
   return { mock, api: LiveAPI.from(livePath.view.song) };
 }
 
-describe("select-helpers", () => {
+describe("selection-updates", () => {
   beforeEach(() => {
     clearMockRegistry();
   });

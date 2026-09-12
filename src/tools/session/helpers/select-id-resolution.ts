@@ -4,10 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { namedParam, paramNamesSomething } from "#src/tools/shared/utils.ts";
+import {
+  fromLiveApiId,
+  namedParam,
+  paramNamesSomething,
+} from "#src/tools/shared/utils.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
-import { buildTrackPath, isSameLiveApiId } from "./select-helpers.ts";
-import { rackOfTarget } from "./select-rack-helpers.ts";
+import { buildTrackPath } from "./selection-updates.ts";
+import { rackOfTarget } from "./rack-selection.ts";
 
 export type DetectedType =
   | "track"
@@ -197,6 +201,16 @@ export function determineAutoDetailView({
   }
 
   return undefined;
+}
+
+/**
+ * Compare two Live API ids, which reach us with or without the "id " prefix.
+ * @param idA - One id
+ * @param idB - The other id
+ * @returns Whether they name the same object
+ */
+export function isSameLiveApiId(idA: string, idB: string): boolean {
+  return fromLiveApiId(idA) === fromLiveApiId(idB);
 }
 
 // --- Helpers below main exports ---

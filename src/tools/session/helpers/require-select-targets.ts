@@ -13,7 +13,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { buildTrackPath, type TrackCategory } from "./select-helpers.ts";
+import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
 interface SelectTargets {
   trackId?: string;

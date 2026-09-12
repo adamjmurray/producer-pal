@@ -16,7 +16,7 @@ import {
   buildSceneResponseFromId,
   buildTrackResponseFromId,
   readFullState,
-} from "#src/tools/session/helpers/select-response-helpers.ts";
+} from "#src/tools/session/helpers/select-responses.ts";
 import {
   resetSelectTestState,
   setupTrackOnlyViewState,
@@ -31,7 +31,7 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
   return selectSharedUtilsMockBody(await importOriginal());
 });
 
-describe("select-response-helpers", () => {
+describe("select-responses", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetSelectTestState();
