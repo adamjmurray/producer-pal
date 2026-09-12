@@ -10,16 +10,16 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
-import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
+import { stripReturnTrackLetter } from "../helpers/return-track-letter.ts";
 import {
   type TrackMixerApplied,
   applyMixerProperties,
-} from "./helpers/update-track-mixer-helpers.ts";
-import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
+} from "./helpers/track-mixer-updates.ts";
+import { applyRoutingProperties } from "./helpers/track-routing-updates.ts";
 import {
   applyTrackSends,
   resolveTrackSends,
-} from "./helpers/update-track-send-helpers.ts";
+} from "./helpers/track-send-updates.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   type SendResult,
@@ -96,7 +96,7 @@ interface UpdateTrackResult extends TrackMixerApplied {
 /**
  * Apply monitoring state to a track. Monitoring exists only on armable tracks,
  * so it is warn-and-skipped on non-armable tracks (return/master) — mirroring
- * the read-side `canBeArmed` guard in track-routing-helpers.ts.
+ * the read-side `canBeArmed` guard in track-routing.ts.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off)
  */

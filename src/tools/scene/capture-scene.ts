@@ -10,7 +10,7 @@ import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   ensureSceneCountForIndex,
   validateSceneIndexCap,
-} from "./scene-helpers.ts";
+} from "./helpers/scene-slots.ts";
 
 interface CapturedClip {
   id: string;

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
+import { sceneDisplayName } from "#src/tools/scene/helpers/scene-slots.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The scene play-scene fired, for the response */

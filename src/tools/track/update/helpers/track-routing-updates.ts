@@ -21,7 +21,7 @@ export interface RoutingParams {
 /**
  * Apply routing properties to a track. Input routing exists only on regular,
  * non-group tracks, so it is warn-and-skipped on group/return/master tracks —
- * mirroring the read-side guard in track-routing-helpers.ts processCurrentRouting
+ * mirroring the read-side guard in track-routing.ts processCurrentRouting
  * (`!isGroup && category === "regular"`). Output routing applies to the tracks
  * that expose it (regular and return).
  * @param track - Track object

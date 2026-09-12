@@ -18,11 +18,11 @@ import {
 import {
   drumMapReadDepth,
   postProcessDrumMap,
-} from "./helpers/read-device-drum-map-helpers.ts";
+} from "./helpers/drum-map-post-processing.ts";
 import {
   buildDrumPadInfo,
   readDrumPadByPath,
-} from "./helpers/read-device-drum-pad-helpers.ts";
+} from "./helpers/drum-pad-reading.ts";
 import { type ReadOptions } from "./helpers/read-device-options.ts";
 
 // ============================================================================

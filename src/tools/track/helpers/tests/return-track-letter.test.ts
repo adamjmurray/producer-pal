@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { stripReturnTrackLetter } from "#src/tools/track/helpers/track-name-helpers.ts";
+import { stripReturnTrackLetter } from "#src/tools/track/helpers/return-track-letter.ts";
 
 /**
  * A return track's Live API path.

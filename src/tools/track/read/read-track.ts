@@ -23,33 +23,35 @@ import {
   type ReadResult,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-field.ts";
 import {
   resolveReadTrackTarget,
   type ReadTrackArgs,
-} from "./helpers/read-track-target-helpers.ts";
+} from "./helpers/read-track-targets.ts";
 import {
   categorizeDevices,
   readDevicesFlat,
   type CategorizedDevices,
-} from "./helpers/read-track-device-helpers.ts";
+} from "./helpers/track-devices.ts";
+import {
+  countArrangementClips,
+  countSessionClips,
+  readArrangementClips,
+  readSessionClips,
+  readTakeLanes,
+  type ReadTakeLaneResult,
+} from "./helpers/track-clips.ts";
 import {
   addOptionalBooleanProperties,
   addProducerPalHostInfo,
   addRoutingInfo,
   addSlotIndices,
   addStateIfNotDefault,
-  countArrangementClips,
-  countSessionClips,
+  drumModeForTrack,
   getInstrumentName,
   handleNonExistentTrack,
-  drumModeForTrack,
-  readArrangementClips,
   readMixerProperties,
-  readSessionClips,
-  readTakeLanes,
-  type ReadTakeLaneResult,
-} from "./helpers/read-track-helpers.ts";
+} from "./helpers/track-optional-fields.ts";
 
 interface ReadTrackGenericArgs {
   track: LiveAPI;

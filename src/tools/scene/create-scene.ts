@@ -22,12 +22,14 @@ import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
 import { unwrapSingleResult, validateTempo } from "#src/tools/shared/utils.ts";
 import {
-  applyTempoProperty,
-  applyTimeSignatureProperty,
   resolveCreateSceneIndex,
   resolveCreateSceneSpots,
   validateSceneIndexCap,
-} from "./scene-helpers.ts";
+} from "./helpers/scene-slots.ts";
+import {
+  applyTempoProperty,
+  applyTimeSignatureProperty,
+} from "./helpers/scene-tempo-signature.ts";
 
 interface SceneResult {
   id: string;

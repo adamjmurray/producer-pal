@@ -9,7 +9,7 @@ import {
   readOneClip,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
-import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
+import { sceneDisplayName } from "#src/tools/scene/helpers/scene-slots.ts";
 import {
   expandWildcardIncludes,
   parseIncludeArray,

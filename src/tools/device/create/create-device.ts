@@ -27,7 +27,7 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { validateInsertionOrder } from "./create-device-helpers.ts";
+import { validateInsertionOrder } from "./device-insertion-order.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;

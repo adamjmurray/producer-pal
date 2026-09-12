@@ -100,7 +100,7 @@ export const toolDefContext = defineTool("ppal-context", {
       smallModel: null,
     }),
 
-    // The escape hatch for the clobber guard (context-helpers.ts's
+    // The escape hatch for the clobber guard (project-context-operations.ts's
     // clobberWarning), and deliberately NOT taught in the skills: the model
     // learns of it from the warning, at the moment it is relevant, so it never
     // reaches for it casually. Declared in EVERY mode — including small-model,

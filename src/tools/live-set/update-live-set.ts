@@ -16,18 +16,17 @@ import {
 } from "#src/tools/shared/locator/locator-helpers.ts";
 import { parseTimeSignature, validateTempo } from "#src/tools/shared/utils.ts";
 import {
-  applyScale,
-  applyTempo,
-  cleanupTempClip,
-  extendSongIfNeeded,
-} from "./helpers/update-live-set-helpers.ts";
-import {
   deleteLocator,
   renameLocator,
   stopPlaybackIfNeeded,
   validateLocatorOperation,
   waitForPlayheadPosition,
-} from "./helpers/update-live-set-locator-helpers.ts";
+} from "./helpers/locator-updates.ts";
+import {
+  cleanupTempClip,
+  extendSongIfNeeded,
+} from "./helpers/song-extension.ts";
+import { applyScale, applyTempo } from "./helpers/tempo-and-scale-updates.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;

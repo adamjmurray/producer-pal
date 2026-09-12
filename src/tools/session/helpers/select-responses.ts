@@ -11,7 +11,7 @@ import {
   pathField,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-field.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
 import { type SelectResult } from "../select.ts";
 import { type TrackCategory } from "./selection-updates.ts";

@@ -26,7 +26,7 @@ import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   type CreateTrackTarget,
   resolveCreateTrackTargets,
-} from "./create-track-target-helpers.ts";
+} from "./create-track-targets.ts";
 
 interface CreateTrackArgs {
   path?: string;

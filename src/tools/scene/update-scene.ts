@@ -30,7 +30,7 @@ import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
-} from "./scene-helpers.ts";
+} from "./helpers/scene-tempo-signature.ts";
 
 interface UpdateSceneResult {
   id: string;

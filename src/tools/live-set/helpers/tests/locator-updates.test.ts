@@ -8,7 +8,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   stopPlaybackIfNeeded,
   waitForPlayheadPosition,
-} from "./update-live-set-locator-helpers.ts";
+} from "../locator-updates.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("stopPlaybackIfNeeded", () => {

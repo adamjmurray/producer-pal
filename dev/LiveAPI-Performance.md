@@ -208,13 +208,12 @@ pad-resolution path called it once per addressed pad. An 8-pad kit build spent
 28 of its 45 resolutions there.
 
 `pad.getChildCount("chains")` gives the count with no objects at all, and the
-read path already uses exactly that (see `read-device-drum-pad-helpers.ts`,
-where the comment records why the two collections aren't interchangeable: the
-rack's chain list and the pad's hold the same chains in different orders once a
-pad is layered). That only helps callers wanting a count, though — the
-chain-index resolver needs the actual objects to index into, so the rack's chain
-scan is memoized per request instead: every pad of the same rack now shares one
-scan.
+read path already uses exactly that (see `drum-pad-reading.ts`, where the
+comment records why the two collections aren't interchangeable: the rack's chain
+list and the pad's hold the same chains in different orders once a pad is
+layered). That only helps callers wanting a count, though — the chain-index
+resolver needs the actual objects to index into, so the rack's chain scan is
+memoized per request instead: every pad of the same rack now shares one scan.
 
 ## Re-measuring
 
