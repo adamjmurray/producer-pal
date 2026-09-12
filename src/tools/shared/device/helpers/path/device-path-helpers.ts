@@ -19,7 +19,7 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { resolveDevicePath } from "./device-path-to-live-api.ts";
-import { cachedDevicePath } from "./with-device-path-cache.ts";
+import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 // Re-export all functions for backwards compatibility
 export { extractDevicePath } from "./device-path-builders.ts";
@@ -145,7 +145,7 @@ function resolveContainer(
   }
 
   if (indexed.length === 0) {
-    return cachedDevicePath(trackSegmentPath(root).toString());
+    return liveApiAtDevicePath(trackSegmentPath(root).toString());
   }
 
   return resolveContainerWithAutoCreate(root, indexed, path);
@@ -162,7 +162,7 @@ function resolveDrumPadContainer(
   segments: DeviceSegment[],
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
-  const rack = cachedDevicePath(resolved.liveApiPath);
+  const rack = liveApiAtDevicePath(resolved.liveApiPath);
 
   return resolveOrCreateDrumPadChain(
     rack,

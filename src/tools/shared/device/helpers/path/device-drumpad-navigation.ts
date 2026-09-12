@@ -12,7 +12,7 @@ import {
   buildDrumPadPath,
   extractDevicePath,
 } from "./device-path-builders.ts";
-import { cachedDevicePath } from "./with-device-path-cache.ts";
+import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 export type DrumPadTargetType = "chain" | "device";
 
@@ -247,12 +247,12 @@ export function drumRackOfPad(pad: LiveAPI): LiveAPI {
  */
 export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
   return (livePathThroughChain, index) => {
-    // cachedDevicePath, not LiveAPI.from: a caller resolving the same path
+    // liveApiAtDevicePath, not LiveAPI.from: a caller resolving the same path
     // (input resolution, then this for the result) shares the one build.
     const chain =
       livePathThroughChain === leaf.path
         ? leaf
-        : cachedDevicePath(livePathThroughChain);
+        : liveApiAtDevicePath(livePathThroughChain);
 
     if (chain.type !== "DrumChain") {
       return `c${index}`;
@@ -265,7 +265,7 @@ export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
       return `c${index}`;
     }
 
-    const rack = cachedDevicePath(
+    const rack = liveApiAtDevicePath(
       livePathThroughChain.replace(CHAINS_TAIL, ""),
     );
     const layer = chainsForInNote(rack, inNote).findIndex(
@@ -443,7 +443,7 @@ export function resolveDrumPadFromPath(
   drumPadNote: string,
   remainingSegments: string[],
 ): DrumPadResolution {
-  const device = cachedDevicePath(liveApiPath);
+  const device = liveApiAtDevicePath(liveApiPath);
 
   if (!device.exists()) {
     return { target: null, targetType: "chain" };

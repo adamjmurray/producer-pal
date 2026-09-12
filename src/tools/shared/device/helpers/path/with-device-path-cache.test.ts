@@ -11,7 +11,7 @@ import {
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
 import {
-  cachedDevicePath,
+  liveApiAtDevicePath,
   invalidateDevicePathCache,
   withDevicePathCache,
 } from "./with-device-path-cache.ts";
@@ -25,27 +25,31 @@ describe("withDevicePathCache", () => {
 
   it("hands back the same object for a repeated path", () => {
     withDevicePathCache(() => {
-      expect(cachedDevicePath(trackPath)).toBe(cachedDevicePath(trackPath));
+      expect(liveApiAtDevicePath(trackPath)).toBe(
+        liveApiAtDevicePath(trackPath),
+      );
     });
   });
 
   it("resolves fresh outside a scope", () => {
-    expect(cachedDevicePath(trackPath)).not.toBe(cachedDevicePath(trackPath));
+    expect(liveApiAtDevicePath(trackPath)).not.toBe(
+      liveApiAtDevicePath(trackPath),
+    );
   });
 
   it("never caches an id, which follows a path once resolved", () => {
     withDevicePathCache(() => {
-      expect(cachedDevicePath("id 1")).not.toBe(cachedDevicePath("id 1"));
+      expect(liveApiAtDevicePath("id 1")).not.toBe(liveApiAtDevicePath("id 1"));
     });
   });
 
   it("resolves fresh after an index shift is announced", () => {
     withDevicePathCache(() => {
-      const before = cachedDevicePath(trackPath);
+      const before = liveApiAtDevicePath(trackPath);
 
       invalidateDevicePathCache();
 
-      expect(cachedDevicePath(trackPath)).not.toBe(before);
+      expect(liveApiAtDevicePath(trackPath)).not.toBe(before);
     });
   });
 
@@ -56,13 +60,13 @@ describe("withDevicePathCache", () => {
 
     withDevicePathCache(() => {
       const missing = livePath.track(0).device(3).toString();
-      const before = cachedDevicePath(missing);
+      const before = liveApiAtDevicePath(missing);
 
       expect(before.exists()).toBe(false);
 
       registerMockObject("new-device", { path: livePath.track(0).device(3) });
 
-      expect(cachedDevicePath(missing).exists()).toBe(true);
+      expect(liveApiAtDevicePath(missing).exists()).toBe(true);
     });
   });
 
@@ -75,7 +79,7 @@ describe("withDevicePathCache", () => {
     registerMockObject("dev-a", { path: livePath.track(0).device(0) });
 
     withDevicePathCache(() => {
-      const before = cachedDevicePath(devicePath);
+      const before = liveApiAtDevicePath(devicePath);
 
       expect(before.id).toBe("dev-a");
 
@@ -84,7 +88,7 @@ describe("withDevicePathCache", () => {
       registerMockObject("dev-a", { path: livePath.track(0).device(1) });
       registerMockObject("dev-b", { path: livePath.track(0).device(0) });
 
-      expect(cachedDevicePath(devicePath).id).toBe("dev-b");
+      expect(liveApiAtDevicePath(devicePath).id).toBe("dev-b");
     });
   });
 
@@ -94,27 +98,29 @@ describe("withDevicePathCache", () => {
     simulateMockDeletes();
 
     withDevicePathCache(() => {
-      const before = cachedDevicePath(trackPath);
+      const before = liveApiAtDevicePath(trackPath);
 
       LiveAPI.from(livePath.liveSet).call("delete_track", 0);
 
       expect(before.path).toBe("");
-      expect(cachedDevicePath(trackPath)).not.toBe(before);
+      expect(liveApiAtDevicePath(trackPath)).not.toBe(before);
     });
   });
 
   it("refuses an async callback rather than tearing the cache down early", () => {
-    expect(() => withDevicePathCache(async () => cachedDevicePath(trackPath))) //
+    expect(() =>
+      withDevicePathCache(async () => liveApiAtDevicePath(trackPath)),
+    ) //
       .toThrow("synchronous callback");
   });
 
   it("restores the enclosing scope's cache when a nested one ends", () => {
     withDevicePathCache(() => {
-      const outer = cachedDevicePath(trackPath);
+      const outer = liveApiAtDevicePath(trackPath);
 
-      withDevicePathCache(() => cachedDevicePath(trackPath));
+      withDevicePathCache(() => liveApiAtDevicePath(trackPath));
 
-      expect(cachedDevicePath(trackPath)).toBe(outer);
+      expect(liveApiAtDevicePath(trackPath)).toBe(outer);
     });
   });
 
@@ -123,13 +129,13 @@ describe("withDevicePathCache", () => {
 
     expect(() =>
       withDevicePathCache(() => {
-        inner = cachedDevicePath(trackPath);
+        inner = liveApiAtDevicePath(trackPath);
         throw new Error("boom");
       }),
     ).toThrow("boom");
 
     withDevicePathCache(() => {
-      expect(cachedDevicePath(trackPath)).not.toBe(inner);
+      expect(liveApiAtDevicePath(trackPath)).not.toBe(inner);
     });
   });
 });

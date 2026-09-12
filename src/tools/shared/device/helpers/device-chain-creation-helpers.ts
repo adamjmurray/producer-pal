@@ -20,7 +20,7 @@ import {
   resolveDrumPadFromPath,
   warnRackRelativeDrumChainSpelling,
 } from "./path/device-drumpad-navigation.ts";
-import { cachedDevicePath } from "./path/with-device-path-cache.ts";
+import { liveApiAtDevicePath } from "./path/with-device-path-cache.ts";
 
 /** A chain segment: everything an IndexedSegment can be except a device. */
 type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
@@ -41,7 +41,7 @@ export function resolveContainerWithAutoCreate(
   path: string,
 ): LiveAPI {
   let currentPath = trackSegmentPath(root).toString();
-  let current = cachedDevicePath(currentPath);
+  let current = liveApiAtDevicePath(currentPath);
 
   if (!current.exists()) {
     throw new Error(`Track in path "${path}" does not exist`);
@@ -73,7 +73,7 @@ function navigateToDevice(
   fullPath: string,
 ): LiveAPI {
   const devicePath = `${currentPath} devices ${index}`;
-  const device = cachedDevicePath(devicePath);
+  const device = liveApiAtDevicePath(devicePath);
 
   if (!device.exists()) {
     throw new Error(`Device in path "${fullPath}" does not exist`);
@@ -100,7 +100,7 @@ function navigateToChain(
 
   // Return chains are never auto-created
   if (segment.kind === "return-chain") {
-    const chain = cachedDevicePath(chainPath);
+    const chain = liveApiAtDevicePath(chainPath);
 
     if (!chain.exists()) {
       throw new Error(`Return chain in path "${fullPath}" does not exist`);
@@ -113,14 +113,14 @@ function navigateToChain(
   // existing chain costs one build for both jobs. A chain the next line
   // creates has no type to check yet, and Live refuses to auto-create one in
   // a Drum Rack anyway, so there is nothing to say about it.
-  const existing = cachedDevicePath(chainPath);
+  const existing = liveApiAtDevicePath(chainPath);
 
   warnRackRelativeDrumChainSpelling(existing);
 
   if (segment.index >= parentDevice.getChildCount("chains")) {
     autoCreateChains(parentDevice, segment.index, fullPath);
 
-    return cachedDevicePath(chainPath);
+    return liveApiAtDevicePath(chainPath);
   }
 
   return existing;
