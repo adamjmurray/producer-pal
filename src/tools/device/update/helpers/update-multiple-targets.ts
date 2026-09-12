@@ -31,21 +31,16 @@ import {
 // Type-only, and it has to stay that way: update-device.ts imports
 // updateMultipleTargets from here, so a value import would be a runtime cycle.
 import { type TargetItem } from "../update-device.ts";
-import { moveDrumChainToPath } from "./update-device-drum-move-helpers.ts";
-import { updateDrumPadGroup } from "./update-device-drum-pad-helpers.ts";
-import {
-  moveDeviceToPath,
-  stripReturnChainLetter,
-} from "./update-device-helpers.ts";
+import { moveDeviceToPath } from "./move-device.ts";
+import { moveDrumChainToPath } from "./move-drum-chain.ts";
+import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
+import { updateDrumPadGroup } from "./update-drum-pad-group.ts";
 import {
   type UpdateTargetOptions,
   updateDeviceProperties,
   updateNonDeviceProperties,
-} from "./update-device-property-helpers.ts";
-import {
-  isDeviceType,
-  isValidUpdateType,
-} from "./update-device-type-helpers.ts";
+} from "./update-device-properties.ts";
+import { isDeviceType, isValidUpdateType } from "./update-target-types.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
 interface UpdateTargetResult extends ChainMixerApplied {

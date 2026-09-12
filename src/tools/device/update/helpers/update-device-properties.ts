@@ -9,24 +9,20 @@ import {
   type ParamResult,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { applyChainSampleParams } from "./sample-param-helpers.ts";
+import { applyChainSampleParams } from "./chain-sample-params.ts";
 import {
   applyChainMixer,
   type ChainMixerApplied,
   type ChainSend,
 } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { setParamValues } from "../update-device-param-setters.ts";
 import {
-  setParamValues,
   updateABCompare,
   updateMacroCount,
   updateMacroVariation,
-} from "./update-device-helpers.ts";
-import {
-  isChainType,
-  isRackDevice,
-  warnIfSet,
-} from "./update-device-type-helpers.ts";
+} from "./rack-macro-updates.ts";
+import { isChainType, isRackDevice, warnIfSet } from "./update-target-types.ts";
 
 export interface UpdatePropertyOptions {
   params?: ParamEntry[];
@@ -225,3 +221,17 @@ function hasChainMixerParams(options: UpdatePropertyOptions): boolean {
     options.sends != null
   );
 }
+
+// ============================================================================
+// Collapsed state — kept for potential future use
+// ============================================================================
+
+// export function updateCollapsedState(
+//   device: LiveAPI,
+//   collapsed: boolean,
+// ): void {
+//   const deviceView = LiveAPI.from(`${device.path} view`);
+//   if (deviceView.exists()) {
+//     deviceView.set("is_collapsed", collapsed ? 1 : 0);
+//   }
+// }

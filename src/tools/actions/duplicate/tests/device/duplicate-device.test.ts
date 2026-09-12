@@ -13,13 +13,10 @@ import {
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 // Mock moveDeviceToPath to track calls
-vi.mock(
-  import("#src/tools/device/update/helpers/update-device-helpers.ts"),
-  () => ({
-    // Reports a completed move; tests that need a failed one override it.
-    moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
-  }),
-);
+vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
+  // Reports a completed move; tests that need a failed one override it.
+  moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
+}));
 
 // Mock console.error to capture warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -32,7 +29,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 import {
   type DeviceMove,
   moveDeviceToPath as moveDeviceToPathMock,
-} from "#src/tools/device/update/helpers/update-device-helpers.ts";
+} from "#src/tools/device/update/helpers/move-device.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 describe("duplicate - device duplication", () => {

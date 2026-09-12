@@ -5,7 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
+import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import {
   extractDevicePath,
   insertionContainerPath,

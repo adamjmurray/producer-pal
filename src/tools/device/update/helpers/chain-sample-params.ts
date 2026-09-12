@@ -16,8 +16,8 @@ import {
 import { resolveDrumChainSampleTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
-import { type UpdatePropertyOptions } from "./update-device-property-helpers.ts";
-import { warnIfSet } from "./update-device-type-helpers.ts";
+import { type UpdatePropertyOptions } from "./update-device-properties.ts";
+import { warnIfSet } from "./update-target-types.ts";
 
 /**
  * Apply a `params` write aimed at a drum pad rather than at its rack.

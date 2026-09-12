@@ -13,10 +13,10 @@ import {
 } from "#src/tools/shared/utils.ts";
 import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
 import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
-import { validateParamEntries } from "./helpers/param-entry-validation.ts";
-import { type UpdateTargetOptions } from "./helpers/update-device-property-helpers.ts";
-import { updateMultipleTargets } from "./helpers/update-device-target-helpers.ts";
-import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
+import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
+import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
+import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
+import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,

@@ -19,13 +19,13 @@ import {
   pathField,
   pathTargetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { stripReturnChainLetter } from "./update-device-helpers.ts";
+import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
 import {
   type NonDeviceApplied,
   type UpdateTargetOptions,
   updateNonDeviceProperties,
-} from "./update-device-property-helpers.ts";
-import { moveDrumChainToPath } from "./update-device-drum-move-helpers.ts";
+} from "./update-device-properties.ts";
+import { moveDrumChainToPath } from "./move-drum-chain.ts";
 
 // Settings that belong to one layer. Writing one absolute value to every layer
 // of a stacked pad flattens the balance between them, and `name` has no pad-wide

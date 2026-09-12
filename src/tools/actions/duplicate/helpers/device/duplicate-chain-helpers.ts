@@ -9,7 +9,7 @@
 // move already crosses racks freely.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
+import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import {
   resolveDrumPadFromPath,

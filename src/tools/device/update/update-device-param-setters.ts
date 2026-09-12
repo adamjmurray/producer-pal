@@ -47,13 +47,13 @@ import {
   pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
+import { findRawValueForDisplay } from "./helpers/params/param-display-search.ts";
 import {
   resolveParamById,
   resolveParamsByName,
   warnIfAmbiguousName,
-} from "./helpers/param-name-resolution.ts";
-import { displayValueForWrite } from "./helpers/param-unit-check.ts";
+} from "./helpers/params/param-name-resolution.ts";
+import { displayValueForWrite } from "./helpers/params/param-unit-check.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 /**
