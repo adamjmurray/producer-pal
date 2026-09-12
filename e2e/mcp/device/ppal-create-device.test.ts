@@ -187,6 +187,70 @@ describe("ppal-create-device", () => {
     expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before);
   });
 
+  // A position past the end of a chain appends, and an appended audio effect
+  // goes last, so the entry after it still names the slot it named. This used
+  // to be read as two positioned inserts in one chain and refused.
+  it("allows a path list whose first entry is past the end of the chain", async () => {
+    const trackIndex = await createTrack("audio");
+    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        deviceName: "Utility",
+        path: `t${trackIndex}/d${before + 5},t${trackIndex}/d0`,
+      },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(extractToolResultText(result)).not.toContain("is spelled through");
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 2);
+  });
+
+  // Two entries both past the end of the same chain both just append, in the
+  // order named — an audio effect never re-sorts, so nothing about the first
+  // append moves what the second one lands after.
+  it("allows two past-the-end entries into the same chain, in order", async () => {
+    const trackIndex = await createTrack("audio");
+    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const { data: results, warnings } = parseToolResultWithWarnings<
+      CreateDeviceResult[]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Utility",
+          path: `t${trackIndex}/d${before + 99},t${trackIndex}/d${before + 98}`,
+          name: "First,Second",
+        },
+      }),
+    );
+
+    // Each past-the-end entry warns that it appended instead.
+    expect(warnings).toHaveLength(2);
+    expect(results).toHaveLength(2);
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 2);
+    expect(results[0]?.path).toBe(`t${trackIndex}/d${before}`);
+    expect(results[1]?.path).toBe(`t${trackIndex}/d${before + 1}`);
+  });
+
+  // pD1/c0 and the rack's c1 are one chain, so the first insert renumbers what
+  // the second entry names. Comparing the spellings would miss it.
+  it("refuses two spellings of one drum chain in a path list", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Utility",
+          path: `${rackPath}/pD1/c0/d0,${rackPath}/c1/d0`,
+        },
+      }),
+    );
+
+    expect(text).toContain("is spelled through");
+    expect(text).toContain(`${rackPath}/pD1/c0`);
+  });
+
   it("allows a MIDI effect before a track's instrument", async () => {
     const device = await createDevice("Arpeggiator", "t1/d0");
 
