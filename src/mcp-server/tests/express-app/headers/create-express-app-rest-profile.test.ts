@@ -174,43 +174,41 @@ describe("REST API per-request notation header", () => {
 
 describe("REST API per-request small-model-mode header", () => {
   /**
-   * Whether ppal-create-track's catalog schema still exposes the `count` param —
+   * Whether ppal-create-track's catalog schema still exposes the `mute` param —
    * present in full mode, dropped under small-model mode.
    *
    * @param headers - Request headers to send
-   * @returns True when `count` is in the served schema
+   * @returns True when `mute` is in the served schema
    */
-  async function createTrackHasCount(
+  async function createTrackHasMute(
     headers: Record<string, string>,
   ): Promise<boolean> {
     const tools = await catalog(headers);
 
-    return (
-      tools.get("ppal-create-track")?.inputSchema.properties?.count != null
-    );
+    return tools.get("ppal-create-track")?.inputSchema.properties?.mute != null;
   }
 
   describe("GET /api/tools", () => {
     it("shrinks the served schemas when the header is true", async () => {
       expect(
-        await createTrackHasCount({ [SMALL_MODEL_MODE_HEADER]: "true" }),
+        await createTrackHasMute({ [SMALL_MODEL_MODE_HEADER]: "true" }),
       ).toBe(false);
     });
 
     it("keeps full schemas when the header is explicitly false", async () => {
       expect(
-        await createTrackHasCount({ [SMALL_MODEL_MODE_HEADER]: "false" }),
+        await createTrackHasMute({ [SMALL_MODEL_MODE_HEADER]: "false" }),
       ).toBe(true);
     });
 
     it("falls back to the global default (full schemas) when absent", async () => {
-      expect(await createTrackHasCount({})).toBe(true);
+      expect(await createTrackHasMute({})).toBe(true);
     });
 
     it("does not leak one request's mode onto the next", async () => {
-      await createTrackHasCount({ [SMALL_MODEL_MODE_HEADER]: "true" });
+      await createTrackHasMute({ [SMALL_MODEL_MODE_HEADER]: "true" });
 
-      expect(await createTrackHasCount({})).toBe(true);
+      expect(await createTrackHasMute({})).toBe(true);
     });
   });
 

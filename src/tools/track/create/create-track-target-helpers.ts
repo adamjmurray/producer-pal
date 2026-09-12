@@ -4,7 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { namedParam } from "#src/tools/shared/utils.ts";
+import {
+  type InsertionSpot,
+  refuseCountWithPathList,
+  repeatForCount,
+  validateCount,
+} from "#src/tools/shared/validation/lists/insertion-plan.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
@@ -13,41 +19,38 @@ export type CreateTrackType = "midi" | "audio" | "return";
 export interface CreateTrackTarget {
   /** Which Live call makes the track */
   type: CreateTrackType;
-  /** Where it goes; -1 appends */
-  trackIndex: number;
+  /** Where it goes; "end" appends */
+  spot: InsertionSpot;
 }
 
 interface CreateTrackTargetArgs {
   path?: string;
   trackIndex?: number;
+  count?: number;
   type?: CreateTrackType;
 }
 
 /**
- * Reads where a new track goes, from its path or the params the path replaced.
+ * Reads where the new tracks go, from the path list or the params it replaced.
  * @param args - The create call's addressing params
- * @param args.path - "t+" to append, "t2" to insert at 2, "rt+" for a return
+ * @param args.path - "t+", "t2", "rt+", comma-separated for several tracks
  * @param args.trackIndex - Deprecated index, -1 or unset to append
- * @param args.type - Which signal the track carries
- * @returns The Live call to make and the index to make it at
+ * @param args.count - Deprecated repeat of a single path
+ * @param args.type - Which signal a regular track carries
+ * @returns One target per track to create, in the order the call named them
  */
-export function resolveCreateTrackTarget({
+export function resolveCreateTrackTargets({
   path,
   trackIndex,
+  count,
   type = "midi",
-}: CreateTrackTargetArgs): CreateTrackTarget {
-  const entry = namedParam(path, "path");
+}: CreateTrackTargetArgs): CreateTrackTarget[] {
+  const entries = pathEntries(path, "path");
 
-  if (entry == null) {
-    // A return track is still reachable by the retired spelling, so say what
-    // replaced it rather than refusing a call that works.
-    if (type === "return") {
-      console.warn(
-        'type "return" is deprecated and will be removed; use path "rt+" instead',
-      );
-    }
+  if (entries.length === 0) {
+    validateCount(count);
 
-    return { type, trackIndex: trackIndex ?? -1 };
+    return repeatForCount([targetFromIndex(trackIndex, type)], count);
   }
 
   if (trackIndex != null) {
@@ -56,16 +59,48 @@ export function resolveCreateTrackTarget({
     );
   }
 
-  return targetFromPath(entry, type);
+  refuseCountWithPathList(count, entries.length, "track", "t+,t+,t+");
+  validateCount(count);
+
+  return repeatForCount(
+    entries.map((entry) => targetFromPath(entry, type)),
+    count,
+  );
 }
 
 // --- Helpers below main exports ---
 
 /**
+ * Reads the params the path replaced as a place to put a new track.
+ * @param trackIndex - Deprecated index, -1 or unset to append
+ * @param type - Which signal the track carries
+ * @returns The Live call to make and where to make it
+ */
+function targetFromIndex(
+  trackIndex: number | undefined,
+  type: CreateTrackType,
+): CreateTrackTarget {
+  // A return track is still reachable by the retired spelling, so say what
+  // replaced it rather than refusing a call that works.
+  if (type === "return") {
+    console.warn(
+      'type "return" is deprecated and will be removed; use path "rt+" instead',
+    );
+
+    return { type: "return", spot: "end" };
+  }
+
+  return {
+    type,
+    spot: trackIndex == null || trackIndex === -1 ? "end" : trackIndex,
+  };
+}
+
+/**
  * Reads a path as a place to put a new track.
  * @param entry - The path as written
  * @param type - Which signal the track carries, where the path leaves a choice
- * @returns The Live call to make and the index to make it at
+ * @returns The Live call to make and where to make it
  */
 function targetFromPath(
   entry: string,
@@ -77,11 +112,11 @@ function targetFromPath(
     // A return track is audio-only and Live appends it, so the path settles
     // both the type and the position on its own.
     case "new-return-track":
-      return { type: "return", trackIndex: -1 };
+      return { type: "return", spot: "end" };
     case "new-track":
-      return { type: signalType(type, entry), trackIndex: -1 };
+      return { type: signalType(type, entry), spot: "end" };
     case "track":
-      return { type: signalType(type, entry), trackIndex: path.trackIndex };
+      return { type: signalType(type, entry), spot: path.trackIndex };
     case "return-track":
       throw pathError(
         "path",

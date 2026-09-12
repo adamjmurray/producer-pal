@@ -23,11 +23,11 @@ A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a re
 
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
-Make several tracks or scenes with \`count\`, not a list of paths: each insert shifts everything after it, so a list couldn't name places that stay put.`;
+Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. \`name\` and \`color\` pair with the list 1:1.`;
 
-// The small-model half. Not a trim for its own sake: `count` is hidden in
-// small-model mode, so teaching it there points at a param the model can't see,
-// and the `type` note answers a question the small document never raises.
+// The small-model half. Not a trim for its own sake: a small model makes one
+// object at a time, so a path list points at something it never writes, and the
+// `type` note answers a question the small document never raises.
 //
 // What's left is the 1-based rule and the roots, in that order. Small models
 // already know paths count from 0 — they say so while getting it wrong. What

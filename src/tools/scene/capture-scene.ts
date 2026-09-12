@@ -53,7 +53,7 @@ export function captureScene({
     // before the target index. "s+" resolves to the scene count, whose
     // predecessor is the last scene. An index past the end has no predecessor
     // to select, so pad with empty scenes first, same as create mode.
-    validateSceneIndexCap(sceneIndex, 1);
+    validateSceneIndexCap([sceneIndex]);
     ensureSceneCountForIndex(liveSet, sceneIndex);
 
     const scene = LiveAPI.from(livePath.scene(sceneIndex - 1));

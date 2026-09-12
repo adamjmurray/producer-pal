@@ -116,6 +116,7 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `trackIndex` + `trackType`                           | `path`: `t2`, `rt0`, `mt`                           |
 | `trackIndex: -1` on create-track                     | `path: "t+"` (append)                               |
 | `sceneIndex`                                         | `path: "s2"`                                        |
+| `count` on create-track / create-scene               | one path entry per object: `path: "t+,t+,t+"`       |
 | `slot: "1/0"`, `slots`, `toSlot`                     | `path` / `toPath`: `t1/s0`                          |
 | `arrangementStart: "5\|1"`                           | fused onto the path: `t1[5\|1]`                     |
 | `takeLane: "1"`                                      | `/l0` on the path                                   |
@@ -125,8 +126,26 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `inputRoutingTypeId` and the other three `*Id`       | drop the `Id` suffix                                |
 
 The last row is a plain rename: the surviving param already accepts a name or an
-id. Most of the rest are mechanical. **Two are not**, and a find-and-replace on
-them writes a call that quietly does the wrong thing.
+id. Most of the rest are mechanical. **Three are not**, and a find-and-replace
+on them writes a call that quietly does the wrong thing.
+
+### `count` becomes one path entry per object
+
+`ppal-create-track` and `ppal-create-scene` used to make several objects from
+one path plus a `count`. Now the path names each one, the way `ppal-create-clip`
+and `ppal-create-device` always have. `name` and `color` lists pair with it 1:1,
+and `count` sent alongside a path list is refused.
+
+```js
+// before: three tracks on the end
+{ path: "t+", count: 3, name: "Kick,Snare,Hat" }
+// after
+{ path: "t+,t+,t+", name: "Kick,Snare,Hat" }
+```
+
+Repeating an index inserts in list order, so `path: "t2,t2"` puts the first new
+track at `t2` and the second at `t3`. Each result reports where its object ended
+up, which is what `count` could never say once entries named different places.
 
 ### `takeLane` counts from 1; `l<n>` counts from 0
 

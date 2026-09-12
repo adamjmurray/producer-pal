@@ -18,17 +18,15 @@
  * Run with: npm run e2e:mcp -- workflow/hidden-params-runtime
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
-import {
-  hiddenParamWarnings,
-  type HiddenParamInfo,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
+import {
+  expectedWarnings,
+  hiddenByTool,
+} from "./hidden-params-runtime-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -84,37 +82,6 @@ const state = {
   outputRoutingTypeId: "",
   outputRoutingChannelId: "",
 };
-
-/**
- * The hidden params each tool declares, keyed by tool name.
- * @returns Hidden-param info per tool
- */
-function hiddenByTool(): Record<string, Record<string, HiddenParamInfo>> {
-  return Object.fromEntries(
-    STANDARD_TOOL_DEFS.map((def) => [
-      def.toolName,
-      resolveToolSchema(def.toolOptions.inputSchema, {}).hidden,
-    ]),
-  );
-}
-
-/**
- * The warnings the framework produces for a call. Aliases that fold onto the
- * same param are grouped into one line, so this is built from every hidden
- * param the call actually sent, not from the one under test.
- * @param tool - Tool name, for the hidden-param lookup
- * @param args - The arguments the call sent
- * @returns The expected warning texts
- */
-function expectedWarnings(
-  tool: string,
-  args: Record<string, unknown>,
-): string[] {
-  const hidden = hiddenByTool()[tool] ?? {};
-  const used = Object.keys(hidden).filter((key) => key in args);
-
-  return hiddenParamWarnings(used, hidden);
-}
 
 async function call(
   tool: string,
@@ -200,6 +167,13 @@ const CASES: Case[] = [
     },
   },
   {
+    tool: "ppal-create-track",
+    param: "count",
+    // A path list replaced it, but one path plus count still appends.
+    args: () => ({ path: "t+", count: 2, name: "Counted Track" }),
+    verify: (d) => expect(d as unknown as AnyResult[]).toHaveLength(2),
+  },
+  {
     tool: "ppal-update-track",
     param: "ids",
     args: () => ({ ids: state.trackId, name: "Aliased Track" }),
@@ -265,6 +239,13 @@ const CASES: Case[] = [
     // The Set has s0-s7, so 8 appends and shifts nothing.
     args: () => ({ sceneIndex: 8, name: "Hidden Param Scene" }),
     verify: (d) => expect(d.path).toBe("s8"),
+  },
+  {
+    tool: "ppal-create-scene",
+    param: "count",
+    // A path list replaced it, but one path plus count still appends.
+    args: () => ({ path: "s+", count: 2, name: "Counted Scene" }),
+    verify: (d) => expect(d as unknown as AnyResult[]).toHaveLength(2),
   },
   {
     tool: "ppal-update-scene",

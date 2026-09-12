@@ -9,6 +9,11 @@ import { atomToString } from "#src/shared/max/max-atoms.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
+  type Insertion,
+  planInsertions,
+} from "#src/tools/shared/validation/lists/insertion-plan.ts";
+import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import {
   getColorForIndex,
   parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
@@ -18,7 +23,10 @@ import {
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { resolveCreateTrackTarget } from "./create-track-target-helpers.ts";
+import {
+  type CreateTrackTarget,
+  resolveCreateTrackTargets,
+} from "./create-track-target-helpers.ts";
 
 interface CreateTrackArgs {
   path?: string;
@@ -38,165 +46,60 @@ interface CreatedTrackResult {
 }
 
 /**
- * Create a single track via Live API
- * @param liveSet - Live set object
- * @param type - Track type (midi, audio, return)
- * @param currentIndex - Current index for midi/audio tracks
- * @returns Track ID
- */
-function createSingleTrack(
-  liveSet: LiveAPI,
-  type: string,
-  currentIndex: number,
-): string {
-  let result;
-
-  if (type === "return") {
-    result = liveSet.call("create_return_track");
-  } else if (type === "midi") {
-    result = liveSet.call("create_midi_track", currentIndex);
-  } else {
-    result = liveSet.call("create_audio_track", currentIndex);
-  }
-
-  // Live API returns ["id", 123] — the second element is a NUMBER, verified
-  // against Live 12.4.3. Every other tool derives its id from `api.id`, which
-  // is always a string, so stringify here to keep `id` one type across the
-  // whole tool surface (and to make this function's return type honest).
-  return atomToString(
-    assertDefined((result as unknown[])[1], "track id from result"),
-  );
-}
-
-/**
- * Validate track creation parameters
- * @param count - Number of tracks to create
- * @param type - Track type
- * @param trackIndex - Track index
- * @param effectiveTrackIndex - Effective track index
- */
-function validateTrackCreation(
-  count: number,
-  type: string,
-  trackIndex: number | undefined,
-  effectiveTrackIndex: number,
-): void {
-  if (count < 1) {
-    throw new Error("count must be at least 1");
-  }
-
-  // The count alone must not exceed the cap, in ANY mode. The index-reach check
-  // below only fires for an insert at a non-negative index, so append (the
-  // default -1 index) and return tracks would otherwise create an unbounded
-  // number of tracks (e.g. count: 9999).
-  if (count > MAX_AUTO_CREATED_TRACKS) {
-    throw new Error(
-      `creating ${count} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
-    );
-  }
-
-  if (type === "return" && trackIndex != null) {
-    console.warn(
-      "trackIndex is ignored for return tracks (always added at end)",
-    );
-  }
-
-  if (
-    type !== "return" &&
-    effectiveTrackIndex >= 0 &&
-    effectiveTrackIndex + count > MAX_AUTO_CREATED_TRACKS
-  ) {
-    throw new Error(
-      `creating ${count} tracks at index ${effectiveTrackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
-    );
-  }
-}
-
-/**
- * Calculate result index based on track type and creation mode
- * @param type - Track type
- * @param effectiveTrackIndex - Effective track index (-1 for append)
- * @param baseTrackCount - Base count before creation
- * @param loopIndex - Current loop index
- * @returns Result index
- */
-function calculateResultIndex(
-  type: string,
-  effectiveTrackIndex: number,
-  baseTrackCount: number,
-  loopIndex: number,
-): number {
-  if (type === "return" || effectiveTrackIndex === -1) {
-    return baseTrackCount + loopIndex;
-  }
-
-  return effectiveTrackIndex + loopIndex;
-}
-
-/**
- * Get base track count before creation for result index calculation
- * @param liveSet - Live set object
- * @param type - Track type
- * @param effectiveTrackIndex - Effective track index
- * @returns Base track count
- */
-function getBaseTrackCount(
-  liveSet: LiveAPI,
-  type: string,
-  effectiveTrackIndex: number,
-): number {
-  if (type === "return") {
-    return liveSet.getChildIds("return_tracks").length;
-  }
-
-  if (effectiveTrackIndex === -1) {
-    return liveSet.getChildIds("tracks").length;
-  }
-
-  return 0;
-}
-
-/**
- * Creates new tracks at the specified index
+ * Creates tracks at the places a path names
  * @param args - The track parameters
- * @param args.path - Where the track goes: "t+", "t<index>", or "rt+"
+ * @param args.path - Where they go: "t+", "t<index>" or "rt+", comma-separated for several
  * @param args.trackIndex - Deprecated index (0-based, -1 or omit to append)
- * @param args.count - Number of tracks to create
- * @param args.name - Base name for the tracks
- * @param args.color - Color for the tracks (CSS format: hex)
+ * @param args.count - Deprecated repeat of a single path
+ * @param args.name - Name for all, or one per track, in order
+ * @param args.color - Color for all, or one per track, in order (CSS format: hex)
  * @param args.type - Type of tracks ("midi", "audio", or "return")
  * @param args.mute - Mute state for the tracks
  * @param args.solo - Solo state for the tracks
  * @param args.arm - Arm state for the tracks
  * @param _context - Internal context object (unused)
- * @returns Single track object when count=1, array when count>1
+ * @returns One object per track, unwrapped when the call named one
  */
 export function createTrack(
   args: CreateTrackArgs = {},
   _context: Partial<ToolContext> = {},
 ): CreatedTrackResult | CreatedTrackResult[] {
-  const { count = 1, name, color, mute, solo, arm } = args;
-  const { type, trackIndex: effectiveTrackIndex } =
-    resolveCreateTrackTarget(args);
+  const { count, name, color, mute, solo, arm } = args;
+  const targets = resolveCreateTrackTargets(args);
 
-  validateTrackCreation(count, type, args.trackIndex, effectiveTrackIndex);
+  if (args.type === "return" && args.trackIndex != null) {
+    console.warn(
+      "trackIndex is ignored for return tracks (always added at end)",
+    );
+  }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
-  const baseTrackCount = getBaseTrackCount(liveSet, type, effectiveTrackIndex);
-  const createdTracks: CreatedTrackResult[] = [];
-  let currentIndex = effectiveTrackIndex;
+  const insertions = planTrackInsertions(liveSet, targets);
+
+  validateTrackCap(targets.length, insertions);
 
   validateListLengths([
-    { param: "count", count, noun: "track" },
+    {
+      param: count == null ? "path" : "count",
+      count: targets.length,
+      noun: "track",
+    },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
 
-  const parsedNames = parseNames(name, count, "track");
-  const parsedColors = parseColors(color, count, "track");
+  const parsedNames = parseNames(name, targets.length, "track");
+  const parsedColors = parseColors(color, targets.length, "track");
+  const created: CreatedTrackResult[] = [];
+  let returnIndex = returnTrackBase(liveSet, targets);
+  let nextInsertion = 0;
 
-  for (let i = 0; i < count; i++) {
-    const trackId = createSingleTrack(liveSet, type, currentIndex);
+  for (const [i, target] of targets.entries()) {
+    const insertion =
+      target.type === "return"
+        ? null
+        : (insertions[nextInsertion++] as Insertion);
+    const trackId = createSingleTrack(liveSet, target, insertion);
     const track = LiveAPI.from(`id ${trackId}`);
 
     track.setAll({
@@ -207,30 +110,116 @@ export function createTrack(
       arm,
     });
 
-    const resultIndex = calculateResultIndex(
-      type,
-      effectiveTrackIndex,
-      baseTrackCount,
-      i,
-    );
-
-    createdTracks.push({
+    created.push({
       id: trackId,
       path: formatObjectPath(
-        type === "return"
-          ? { kind: "return-track", returnIndex: resultIndex }
-          : { kind: "track", trackIndex: resultIndex },
+        insertion == null
+          ? { kind: "return-track", returnIndex: returnIndex++ }
+          : { kind: "track", trackIndex: insertion.finalIndex },
       ),
     });
-
-    // For subsequent midi/audio tracks with explicit index, increment since tracks shift right
-    if (type !== "return" && effectiveTrackIndex !== -1) {
-      currentIndex++;
-    }
   }
 
-  // Return single object if count=1, array if count>1
-  return count === 1
-    ? assertDefined(createdTracks[0], "created track")
-    : createdTracks;
+  return unwrapSingleResult(created);
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Where each regular track is created and where it ends up. Return tracks are
+ * not in this plan: Live always puts them on the end of their own list.
+ * @param liveSet - Live set object
+ * @param targets - Every track the call creates, in order
+ * @returns One entry per regular track, in order
+ */
+function planTrackInsertions(
+  liveSet: LiveAPI,
+  targets: CreateTrackTarget[],
+): Insertion[] {
+  const spots = targets
+    .filter((target) => target.type !== "return")
+    .map((target) => target.spot);
+
+  if (spots.length === 0) {
+    return [];
+  }
+
+  return planInsertions(spots, liveSet.getChildIds("tracks").length);
+}
+
+/**
+ * The index the first new return track lands on, read only when the call makes
+ * one.
+ * @param liveSet - Live set object
+ * @param targets - Every track the call creates, in order
+ * @returns The existing return track count, or 0 when none are created
+ */
+function returnTrackBase(
+  liveSet: LiveAPI,
+  targets: CreateTrackTarget[],
+): number {
+  return targets.some((target) => target.type === "return")
+    ? liveSet.getChildIds("return_tracks").length
+    : 0;
+}
+
+/**
+ * Refuses a call that would grow the Set past the track cap, before any track
+ * is made.
+ * @param total - How many tracks the call creates
+ * @param insertions - Where each regular track goes
+ */
+function validateTrackCap(total: number, insertions: Insertion[]): void {
+  // The total must not exceed the cap in ANY mode. The reach check below only
+  // sees inserts at a named index, so appends and return tracks would otherwise
+  // be unbounded.
+  if (total > MAX_AUTO_CREATED_TRACKS) {
+    throw new Error(
+      `creating ${total} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
+    );
+  }
+
+  const indexes = insertions
+    .map((insertion) => insertion.insertIndex)
+    .filter((index): index is number => index !== "end");
+
+  if (Math.max(-1, ...indexes) + 1 > MAX_AUTO_CREATED_TRACKS) {
+    throw new Error(
+      `creating ${total} tracks at index ${indexes[0]} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
+    );
+  }
+}
+
+/**
+ * Create a single track via Live API
+ * @param liveSet - Live set object
+ * @param target - Which Live call to make
+ * @param insertion - Where a regular track goes; null for a return track
+ * @returns Track ID
+ */
+function createSingleTrack(
+  liveSet: LiveAPI,
+  target: CreateTrackTarget,
+  insertion: Insertion | null,
+): string {
+  let result;
+
+  if (insertion == null) {
+    result = liveSet.call("create_return_track");
+  } else {
+    const index = insertion.insertIndex === "end" ? -1 : insertion.insertIndex;
+
+    result =
+      target.type === "midi"
+        ? liveSet.call("create_midi_track", index)
+        : liveSet.call("create_audio_track", index);
+  }
+
+  // Live API returns ["id", 123] — the second element is a NUMBER, verified
+  // against Live 12.4.3. Every other tool derives its id from `api.id`, which
+  // is always a string, so stringify here to keep `id` one type across the
+  // whole tool surface (and to make this function's return type honest).
+  return atomToString(
+    assertDefined((result as unknown[])[1], "track id from result"),
+  );
 }

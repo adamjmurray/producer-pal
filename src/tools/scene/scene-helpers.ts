@@ -4,19 +4,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { namedParam, parseTimeSignature } from "#src/tools/shared/utils.ts";
+import {
+  type InsertionSpot,
+  refuseCountWithPathList,
+  repeatForCount,
+  validateCount,
+} from "#src/tools/shared/validation/lists/insertion-plan.ts";
+import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
- * Refuses an index/count combination that would auto-create too many scenes.
- * @param sceneIndex - The target scene index
- * @param count - How many scenes the call would create at and after that index
+ * Refuses a set of insert positions that would auto-create too many scenes.
+ * @param insertIndexes - Where each new scene is created, in order
  */
-export function validateSceneIndexCap(sceneIndex: number, count: number): void {
-  if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
+export function validateSceneIndexCap(insertIndexes: number[]): void {
+  const count = insertIndexes.length;
+
+  if (Math.max(-1, ...insertIndexes) + 1 > MAX_AUTO_CREATED_SCENES) {
     throw new Error(
-      `creating ${count} scene${count === 1 ? "" : "s"} at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+      `creating ${count} scene${count === 1 ? "" : "s"} at index ${insertIndexes[0]} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
     );
   }
 }
@@ -93,7 +101,8 @@ export function sceneDisplayName(scene: LiveAPI, sceneIndex: number): string {
 }
 
 /**
- * Reads where new scenes go, from a path or the index the path replaced.
+ * Reads where the one captured scene goes, from a path or the index it
+ * replaced. Capture makes a single scene, so it takes a single path.
  * @param path - "s+" to append, "s2" to insert at 2
  * @param sceneIndex - Deprecated index
  * @param liveSet - Live set, read only to append
@@ -104,7 +113,8 @@ export function resolveCreateSceneIndex(
   sceneIndex: number | undefined,
   liveSet: LiveAPI,
 ): number | undefined {
-  const entry = namedParam(path, "path");
+  const entries = pathEntries(path, "path");
+  const entry = entries[0];
 
   if (entry == null) {
     return sceneIndex;
@@ -116,10 +126,74 @@ export function resolveCreateSceneIndex(
     );
   }
 
+  if (entries.length > 1) {
+    throw new Error(
+      `capture makes one scene, but path names ${entries.length} places - send one`,
+    );
+  }
+
+  const spot = sceneSpotFromPath(entry);
+
+  return spot === "end" ? liveSet.getChildIds("scenes").length : spot;
+}
+
+/**
+ * Reads where the new scenes go, from the path list or the index it replaced.
+ * @param path - "s+", "s2", comma-separated for several scenes
+ * @param sceneIndex - Deprecated index
+ * @param count - Deprecated repeat of a single path
+ * @param sceneCount - Scenes in the Set before the call, where "s+" lands
+ * @returns One spot per scene to create, in the order the call named them
+ */
+export function resolveCreateSceneSpots(
+  path: string | undefined,
+  sceneIndex: number | undefined,
+  count: number | undefined,
+  sceneCount: number,
+): number[] {
+  const entries = pathEntries(path, "path");
+
+  if (entries.length === 0) {
+    if (sceneIndex == null) {
+      throw new Error("path is required");
+    }
+
+    validateCount(count);
+
+    return repeatForCount([sceneIndex], count);
+  }
+
+  if (sceneIndex != null) {
+    throw new Error(
+      "path says where the scene goes - don't send sceneIndex with it",
+    );
+  }
+
+  refuseCountWithPathList(count, entries.length, "scene", "s+,s+");
+  validateCount(count);
+
+  return repeatForCount(
+    entries.map((entry) => {
+      const spot = sceneSpotFromPath(entry);
+
+      return spot === "end" ? sceneCount : spot;
+    }),
+    count,
+  );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Reads one path as a place to put a new scene.
+ * @param entry - The path as written
+ * @returns The index to insert at, or "end" to append
+ */
+function sceneSpotFromPath(entry: string): InsertionSpot {
   const parsed = parseObjectPath(entry, "path");
 
   if (parsed.kind === "new-scene") {
-    return liveSet.getChildIds("scenes").length;
+    return "end";
   }
 
   if (parsed.kind === "scene") {

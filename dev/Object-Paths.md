@@ -91,8 +91,10 @@ write that would create one refuses instead. An existing one still resolves.
 Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
 
 A `+` is a root — `t+`, `rt+`, `s+` — and only the tool that creates that kind
-of object accepts one. Every other path names something that exists, or an index
-a tool fills in up to (a take lane, a chain).
+of object accepts a `+` path for it. Every other path must name something that
+already exists, or an index a tool fills in up to. So there is no `l+`: a take
+lane is reached by its index in a clip path, and the clip tools create the lanes
+up to that index. A rack chain works the same way.
 
 ## Song-timeline positions
 
@@ -225,14 +227,16 @@ Four tiers, in order of preference.
    `trackType` and `trackIndex` on `read-track` and `select`, `sceneIndex` on
    `read-scene`, `select` and `create-scene`, and `trackIndex` on
    `create-track`. `create-track`'s `type: "return"` goes the same way, trimmed
-   out of the published enum but still accepted — `rt+` asks for one now.
-   `arrangementStart` on `create-clip`, `update-clip` and `duplicate` joins them
-   once the coordinate ships — a deprecation with a long runway, not a permanent
-   alias: it is a name we coined, so a model that never reads it in the Skills
-   has no reason to emit it, and the runway is for people scripting Live.
-   `trackIndex` and `sceneIndex` on the _clip_ tools are permanent aliases, not
-   part of that migration: models reach for them unprompted, and catching the
-   guess beats a round trip. See
+   out of the published enum but still accepted — `rt+` asks for one now. So
+   does `count` on `create-track` and `create-scene`: a repeated path entry says
+   the same thing and can name a different place per object. `arrangementStart`
+   on `create-clip`, `update-clip` and `duplicate` joins them once the
+   coordinate ships — a deprecation with a long runway, not a permanent alias:
+   it is a name we coined, so a model that never reads it in the Skills has no
+   reason to emit it, and the runway is for people scripting Live. `trackIndex`
+   and `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
+   migration: models reach for them unprompted, and catching the guess beats a
+   round trip. See
    [hidden-param.ts](../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
@@ -392,17 +396,25 @@ list making the same point several times over only gets told once.
 ## Lists of paths
 
 A path param takes a comma-separated list (`paths` is accepted as a plural
-spelling wherever `path` is). Two shapes are refused rather than half-applied:
+spelling wherever `path` is).
 
-- **A list that reads through its own inserts.** Inserting a device renumbers
-  the chain, so `path: "t0/d1,t0/d2"` would put both new devices at d1 and d2
-  and push the originals past them — the second entry never lands where it was
-  named. Refused before anything is created. Entries naming different chains are
-  fine, and appending an audio effect renumbers nothing, so that stays allowed.
-- **Several tracks or scenes from a path list.** Insertion points move:
-  inserting at `t1` shifts everything after it, so every entry past the first
-  would be in coordinates the caller never wrote. `count` says "consecutively
-  from here", which can't drift, and is what the create tools take.
+**Creating tracks and scenes reads the list in the caller's coordinates.** Every
+entry names a place in the Set as the caller read it, so `t+,t+,t+` appends
+three tracks and `t2,t2` inserts two at 2, the second landing after the first.
+An entry can move a new object an earlier entry already made, so each result
+reports where that object ended up rather than the index Live was asked for.
+`count` is the retired spelling of a repeated path, and is refused alongside a
+list.
+
+One shape is refused rather than half-applied:
+
+- **A device list that reads through its own inserts.** Inserting a device
+  renumbers the chain, so `path: "t0/d1,t0/d2"` would put both new devices at d1
+  and d2 and push the originals past them — the second entry never lands where
+  it was named. Refused before anything is created. Entries naming different
+  chains are fine, and appending an audio effect renumbers nothing, so that
+  stays allowed. Tracks and scenes have no such case: they sit in one flat list
+  each, so the tool can work out every final position up front.
 
 ## Not paths
 
