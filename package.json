@@ -144,7 +144,7 @@
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
     "@eslint-community/eslint-plugin-eslint-comments": "4.7.2",
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.63.0",
     "@preact/preset-vite": "2.10.6",
     "@stryker-mutator/core": "9.6.1",
     "@stryker-mutator/vitest-runner": "9.6.1",
@@ -160,7 +160,7 @@
     "eslint-plugin-sonarjs": "4.2.0",
     "eslint-plugin-unicorn": "73.0.0",
     "fake-indexeddb": "6.2.5",
-    "happy-dom": "20.12.0",
+    "happy-dom": "20.14.0",
     "jscpd": "5.1.2",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
