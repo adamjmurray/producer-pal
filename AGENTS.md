@@ -296,8 +296,10 @@ them without asking:**
   silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
   `@ts-expect-error`, and v8-ignore comments.
-- `src/test/helpers/comment-limits.ts` — per-tree caps on comment lines and
-  comment-block length, enforced by `src/test/comment-limits.test.ts`.
+- `src/test/helpers/comment-limits.ts` — per-tree caps on comment density
+  (comment lines per code line), one repo-wide cap on comment-block length, and
+  the per-file allowances for blocks that were already over it. Enforced by
+  `src/test/comment-limits.test.ts`.
 - `src/test/helpers/module-name-limits.ts` — per-tree caps on modules named for
   nothing (`-helpers`, `-utils`), enforced by
   `src/test/meta/naming/module-name-limits.test.ts`.

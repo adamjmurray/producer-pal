@@ -149,11 +149,20 @@ approval.
 comment block per tree, and names the worst files (`--all` lists every file).
 The license header and lint directives don't count.
 
-`src/test/comment-limits.test.ts` ratchets those numbers: comment lines, longest
-block, and how many files hold a block of 8+ lines. The caps live in
-`src/test/helpers/comment-limits.ts`, and `--markdown` prints them beside the
-current counts. Lower a limit when a count falls; raising one needs user
-approval.
+`src/test/comment-limits.test.ts` ratchets two numbers, neither of which moves
+when files are split, merged or renamed:
+
+- **Comment density** per tree — comment lines per code line, capped to 3
+  decimals within 0.005 of the current number. Lower a cap when density falls;
+  raising one needs user approval.
+- **Block length** — no comment block over `MAX_BLOCK_LINES` (25), repo-wide.
+  Files that were already over it are listed in `LONG_BLOCK_ALLOWANCES`, each at
+  its exact longest block. That list only shrinks: shortening or moving a block
+  means updating its entry in the same commit, and new long blocks don't get an
+  entry.
+
+The caps live in `src/test/helpers/comment-limits.ts`, and `--markdown` prints
+them beside the current numbers.
 
 ## Module names
 
