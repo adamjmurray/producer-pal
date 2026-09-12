@@ -73,7 +73,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "src/notation/stark/stark-serializer.ts": 39,
   "src/shared/max/v8-warning-capture.ts": 37,
   "src/skills/build-skills.ts": 28,
-  "src/skills/builtin-fragments.ts": 44,
   "src/skills/fragments/transforms/transforms-core.ts": 42,
   "src/skills/notation/barbeat-standard.ts": 28,
   "src/skills/skill-slots.ts": 34,
