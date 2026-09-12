@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { CollectionList } from "#webui/components/context/collection/CollectionList";
 import { CollectionScreen } from "#webui/components/context/collection/CollectionScreen";
 import { type UseMemoryCollectionReturn } from "#webui/hooks/context/use-memory-collection";
 import { MemoryEntryEditor } from "./MemoryEntryEditor";
-import { MemoryList } from "./MemoryList";
 
 interface MemoryScreenProps {
   /** The memory collection hook (mounted in ContextTabs). */
@@ -19,8 +19,9 @@ interface MemoryScreenProps {
 
 /**
  * The Memory tab: the shared two-pane {@link CollectionScreen} bound to the
- * memory collection — a flat, name-sorted left index ({@link MemoryList}) and a
- * right per-entry form ({@link MemoryEntryEditor}).
+ * memory collection — a flat, name-sorted left index ({@link CollectionList},
+ * with a trash on each row) and a right per-entry form ({@link
+ * MemoryEntryEditor}).
  * @param props - Screen props
  * @returns Screen element
  */
@@ -44,13 +45,15 @@ export function MemoryScreen(props: MemoryScreenProps): preact.JSX.Element {
         onNew,
         onDelete,
       }) => (
-        <MemoryList
+        <CollectionList
           entries={entries}
+          newLabel="New memory"
+          emptyLabel="No memories yet."
           selectedName={selectedName}
           creating={creating}
           onSelect={onSelect}
           onNew={onNew}
-          onDelete={onDelete}
+          rowDelete={{ noun: "memory", onDelete }}
         />
       )}
       renderEditor={({ entry, onSaved, onRenamed }) => (

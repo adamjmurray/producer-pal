@@ -3,16 +3,106 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Shared left-pane list chrome for the collection managers (memory, custom
-// skills): the solid "New …" button and one entry row (slug over its
-// description). Both mirror the conversation-history panel — a filled action
-// button above flush, divider-separated rows with a full-cell hover and a blue
-// selected accent, and an always-visible per-row trash. Custom skills
-// additionally dims disabled rows via `dimmed`/`trailing`, and memory adds the
-// trash via `onDelete`, but the button and row otherwise render identically, so
-// they live here.
+// The left pane of the collection managers (memory, custom skills): a fixed
+// "New …" toolbar above a flat, name-sorted, scrolling list, mirroring the
+// conversation-history panel. What differs per collection is a label, an
+// optional per-row trash, and an optional row decoration (custom skills dim and
+// tag their disabled entries), so one list serves both.
 
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
+import { confirmEntryDelete } from "#webui/components/context/collection/collection-delete-confirm";
+
+/** The fields the list reads off an entry; each collection carries more. */
+interface ListEntry {
+  name: string;
+  description: string;
+}
+
+/** Per-row extras a collection can add (custom skills' dimmed "off" rows). */
+interface RowDecoration {
+  dimmed?: boolean;
+  trailing?: preact.ComponentChildren;
+}
+
+interface CollectionListProps<TEntry extends ListEntry> {
+  /** All stored entries (sorted by name here for display). */
+  entries: TEntry[];
+  /** The "New …" button's label, e.g. "New memory". */
+  newLabel: string;
+  /** What to show instead of rows when nothing is stored. */
+  emptyLabel: string;
+  /** The name of the entry being edited, or null while creating a new one. */
+  selectedName: string | null;
+  /** Whether the create form is active (highlights the New button). */
+  creating: boolean;
+  /** Select an existing entry to edit. */
+  onSelect: (name: string) => void;
+  /** Start a new (empty) entry. */
+  onNew: () => void;
+  /**
+   * A per-row trash, with the noun for its confirm. Omitted by collections whose
+   * delete lives in the editor instead (custom skills).
+   */
+  rowDelete?: { noun: string; onDelete: (name: string) => void };
+  /** Decorate a row (dim it, tag it). */
+  decorateRow?: (entry: TEntry) => RowDecoration;
+}
+
+/**
+ * The left pane: the "New …" button over the name-sorted entry rows, each
+ * showing the slug above its one-line description. Mirrors the always-injected
+ * index the assistant sees, so what the user edits here is what the model reads.
+ * @param props - List props
+ * @returns List element
+ */
+export function CollectionList<TEntry extends ListEntry>(
+  props: CollectionListProps<TEntry>,
+): preact.JSX.Element {
+  const { entries, selectedName, onSelect, rowDelete, decorateRow } = props;
+  const sorted = entries.toSorted((a, b) => a.name.localeCompare(b.name));
+
+  const confirmDelete =
+    rowDelete == null
+      ? undefined
+      : (name: string): void => {
+          if (confirmEntryDelete(rowDelete.noun, name)) {
+            rowDelete.onDelete(name);
+          }
+        };
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-b border-zinc-300 px-2 py-2 dark:border-zinc-700">
+        <NewEntryButton
+          label={props.newLabel}
+          active={props.creating}
+          onClick={props.onNew}
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {entries.length === 0 ? (
+          <p className="px-3 py-3 text-xs text-zinc-400 dark:text-zinc-500">
+            {props.emptyLabel}
+          </p>
+        ) : (
+          sorted.map((entry) => (
+            <EntryRow
+              key={entry.name}
+              name={entry.name}
+              description={entry.description}
+              selected={entry.name === selectedName}
+              onSelect={onSelect}
+              onDelete={confirmDelete}
+              {...decorateRow?.(entry)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Helpers below main export ---
 
 interface NewEntryButtonProps {
   /** Button text, e.g. "New memory". */
@@ -29,7 +119,7 @@ interface NewEntryButtonProps {
  * @param props - Button props
  * @returns Button element
  */
-export function NewEntryButton(props: NewEntryButtonProps): preact.JSX.Element {
+function NewEntryButton(props: NewEntryButtonProps): preact.JSX.Element {
   return (
     <button
       type="button"
@@ -69,7 +159,7 @@ interface EntryRowProps {
  * @param props - Row props
  * @returns Row element
  */
-export function EntryRow(props: EntryRowProps): preact.JSX.Element {
+function EntryRow(props: EntryRowProps): preact.JSX.Element {
   const { name, description, selected, onSelect, dimmed, trailing, onDelete } =
     props;
 

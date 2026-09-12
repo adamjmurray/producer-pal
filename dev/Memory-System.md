@@ -38,7 +38,7 @@ built generic so a second collection is a thin binding, not a rewrite:
 second, user-authored **custom skills** collection
 (`~/.producer-pal/skills-custom/`) exists end to end: store
 (`helpers/skills-custom/`), REST routes, V8↔Node RPC routes, and a complete
-webui screen (`CustomSkillsScreen` / `CustomSkillsList` / `CustomSkillEditor` +
+webui screen (`CustomSkillsScreen` / `CustomSkillEditor` +
 `use-custom-skills-collection`), all with tests. It was hidden in v1.5.0 rather
 than removed, and every entry point that could reach a user or the model is
 disconnected:
@@ -357,8 +357,8 @@ A **Memory** tab in the five-tab context editor
 Skills, Memory), backed by `useMemoryCollection` (a thin binding of
 `useDocCollection` to the `/memory` REST routes) and rendered by
 `components/context/memory/` (`MemoryScreen` — the two-pane orchestration;
-`MemoryList` — the flat, name-sorted left index; `MemoryEntryEditor` — the
-right-pane form):
+`MemoryEntryEditor` — the right-pane form) over the shared `CollectionList` left
+index:
 
 - Left pane: the flat index (no grouping) with create/select/delete.
 - Right pane: an editor for the selected entry's name, description, and body.

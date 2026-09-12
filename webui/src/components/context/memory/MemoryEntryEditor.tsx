@@ -6,12 +6,13 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
   BodyField,
+  CollectionEditorShell,
   DescriptionField,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
 import { useDraftLeaveGuard } from "#webui/components/context/collection/leave-guard";
-import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import { type SaveStatus } from "#webui/hooks/context/use-doc";
+import { useCollectionEntryDraft } from "#webui/hooks/context/helpers/use-collection-entry-draft";
 import {
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
@@ -56,15 +57,8 @@ export function MemoryEntryEditor(
   props: MemoryEntryEditorProps,
 ): preact.JSX.Element {
   const { collection, entry, onSaved, onRenamed } = props;
-  const isNew = entry == null;
-  const [name, setName] = useState(entry?.name ?? "");
-  const [description, setDescription] = useState(entry?.description ?? "");
-  const [body, setBody] = useState(entry?.body ?? "");
-  // Remount key for the seed-only body editor; bumped on an external reload so
-  // the adopted body reaches the (otherwise uncontrolled) markdown editor.
-  const [bodyEditorKey, setBodyEditorKey] = useState(0);
-
-  const targetName = isNew ? name : entry.name;
+  const draft = useCollectionEntryDraft(entry);
+  const { isNew, name, description, body, targetName } = draft;
   const validation = useMemoryValidation(isNew, name, description, body);
   // Gate the write on the fields it actually writes. Creating, that's all three.
   // Editing, the name field is a rename control and the write targets
@@ -94,22 +88,18 @@ export function MemoryEntryEditor(
     onSaved,
   });
 
-  // A new draft with any field filled guards against silent loss: leaving it
+  // A new draft with anything typed in it guards against silent loss: leaving it
   // (select another memory, switch tabs, close, or close the browser tab)
   // confirms a discard first. A blank draft (or an existing entry) guards
   // nothing.
-  const isDirtyNew =
-    isNew &&
-    (name.trim() !== "" || description.trim() !== "" || body.trim() !== "");
-
-  useDraftLeaveGuard(isDirtyNew, DISCARD_NEW_MEMORY_MESSAGE);
+  useDraftLeaveGuard(draft.isDirtyNew, DISCARD_NEW_MEMORY_MESSAGE);
 
   // The name field's error + change/rename handlers (rename commit, and
   // surfacing a failed rename's reason under the field). See useMemoryRename.
   const { nameError, renaming, onNameChange, onRename } = useMemoryRename({
     collection,
     entry,
-    setName,
+    setName: draft.setName,
     description,
     body,
     canSave,
@@ -120,31 +110,25 @@ export function MemoryEntryEditor(
     onRenamed,
   });
 
-  // Adopt the server's current fields as the new draft AND advance the
-  // autosave baseline. Order matters: adoptExternal reads externalKey off a
-  // ref that isn't affected by these setState calls, so it's safe to call
-  // after them (see the hook's adoptExternal doc for why the analogous
-  // noteSaved-after-setState order would be unsafe).
+  // Adopt the server's fields as the draft AND advance the autosave baseline.
+  // adoptExternal reads externalKey off a ref the reseed doesn't touch, so
+  // calling it after is safe — see its doc for why the analogous
+  // noteSaved-after-setState order would not be.
   const handleReload = (): void => {
     if (entry == null) {
       return;
     }
 
-    setName(entry.name);
-    setDescription(entry.description);
-    setBody(entry.body);
-    setBodyEditorKey((key) => key + 1);
+    draft.reseed(entry);
     adoptExternal();
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-      {externalUpdate && (
-        <ExternalUpdateBanner
-          message="This memory was changed elsewhere (the assistant or another tab)."
-          onReload={handleReload}
-        />
-      )}
+    <CollectionEditorShell
+      externalUpdate={externalUpdate}
+      externalMessage="This memory was changed elsewhere (the assistant or another tab)."
+      onReload={handleReload}
+    >
       <NameField
         isNew={isNew}
         name={name}
@@ -159,15 +143,15 @@ export function MemoryEntryEditor(
       <DescriptionField
         hint="One-line recall hook shown in the index."
         value={description}
-        onChange={setDescription}
+        onChange={draft.setDescription}
         onBlur={() => validation.markTouched("description")}
         error={validation.errors.description}
       />
       <BodyField
         label="Memory"
         value={body}
-        onChange={setBody}
-        editorKey={bodyEditorKey}
+        onChange={draft.setBody}
+        editorKey={draft.bodyEditorKey}
         heightClass="h-72"
         onBlur={() => validation.markTouched("body")}
         error={validation.errors.body}
@@ -179,7 +163,7 @@ export function MemoryEntryEditor(
           saveError={collection.saveError}
         />
       )}
-    </div>
+    </CollectionEditorShell>
   );
 }
 
