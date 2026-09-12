@@ -6,22 +6,16 @@
 // Addressing tracks and scenes by where they are instead of by id, so a caller
 // that just read a Set can act on what it found without carrying ids around.
 //
-// On a tool taking a list, a path that names the wrong kind of thing, or
-// nothing at all, warns and contributes nothing — the same as an id that
-// doesn't resolve, so one bad entry costs its own object rather than the whole
-// batch. A read naming one object has nothing left to return, so it throws.
-//
-// A hole in the list itself ("t0,,t1") is neither: nothing can line up against
-// a list whose length is a guess, so it throws before anything runs, like a
-// hole in `id`.
+// On a tool taking a list, a path that names the wrong kind of thing warns and
+// contributes nothing. A read naming one object has nothing left to return, so
+// it throws instead.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  pathEntries,
-  trackSegmentPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
+  existingId,
+  idPerPath,
+} from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
+import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   isNewObjectPath,
   NEW_OBJECT_NOUNS,
@@ -40,8 +34,12 @@ export function trackIdPerPath(
   paths: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, label, (path, entry) =>
-    trackAtPath(path, entry, label),
+  return idPerPath(paths, label, (entry) =>
+    existingId(trackAtPath(parseObjectPath(entry, label), entry, label), {
+      noun: "track",
+      label,
+      entry,
+    }),
   );
 }
 
@@ -55,8 +53,12 @@ export function sceneIdPerPath(
   paths: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, label, (path, entry) =>
-    sceneAtPath(path, entry, label),
+  return idPerPath(paths, label, (entry) =>
+    existingId(sceneAtPath(parseObjectPath(entry, label), entry, label), {
+      noun: "scene",
+      label,
+      entry,
+    }),
   );
 }
 
@@ -146,41 +148,6 @@ function existing(object: LiveAPI, entry: string, label: string): LiveAPI {
   }
 
   return object;
-}
-
-/**
- * Resolves each entry through a type-specific lookup, keeping one slot per
- * path so a caller pairing paths against another list keeps its positions.
- * @param paths - The raw path param
- * @param label - Param name the paths came from, for warnings
- * @param resolve - Turns a parsed path into the object it names, or throws
- * @returns One id per path entry, null where a path named none
- */
-function idPerPath(
-  paths: string,
-  label: string,
-  resolve: (path: ObjectPath, entry: string) => LiveAPI,
-): Array<string | null> {
-  const ids: Array<string | null> = [];
-
-  for (const entry of pathEntries(paths, label)) {
-    try {
-      const object = resolve(parseObjectPath(entry, label), entry);
-
-      if (object.exists()) {
-        ids.push(object.id);
-        continue;
-      }
-
-      console.warn(`nothing at ${label} "${entry}"`);
-    } catch (error) {
-      console.warn(errorMessage(error));
-    }
-
-    ids.push(null);
-  }
-
-  return ids;
 }
 
 /**

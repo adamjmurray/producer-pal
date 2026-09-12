@@ -80,7 +80,7 @@ describe("updateTrack by path", () => {
     mockNonExistentObjects();
 
     expect(updateTrack({ path: "t9", name: "Nowhere" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('nothing at path "t9"');
+    expect(capturedWarnings()).toContain('no track at path "t9"');
   });
 
   it("still asks for a target when neither id nor path is given", () => {

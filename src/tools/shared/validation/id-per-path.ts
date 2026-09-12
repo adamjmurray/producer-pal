@@ -9,7 +9,6 @@
 // caller's call: `delete` keeps the slot and reports the object undeleted,
 // `duplicate` refuses the whole call before it makes anything.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import {
@@ -19,7 +18,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { idPerPath } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
   sceneIdPerPath,
   trackIdPerPath,
@@ -51,18 +50,9 @@ export function idPerPathForType(type: string): IdPerPath {
  * @returns One id per path entry, null where a path named none
  */
 function chainIdPerPath(paths: string, type: string): Array<string | null> {
-  const ids: Array<string | null> = [];
-
-  for (const entry of pathEntries(paths)) {
-    try {
-      ids.push(resolvePathToId(resolvePathToLiveApi(entry), entry, type));
-    } catch (e) {
-      console.warn(errorMessage(e));
-      ids.push(null);
-    }
-  }
-
-  return ids;
+  return idPerPath(paths, "path", (entry) =>
+    resolvePathToId(resolvePathToLiveApi(entry), entry, type),
+  );
 }
 
 /**

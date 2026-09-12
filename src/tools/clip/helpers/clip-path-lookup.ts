@@ -9,15 +9,13 @@
 // The location has to name one clip: a slot, or a song position on one
 // arrangement lane. A bare track or lane holds many clips and is refused.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
+import { requireClipSourcePath } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import {
-  requireClipSourcePath,
-  type ClipSourcePath,
-} from "#src/tools/shared/validation/helpers/clip-source-path.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+  existingId,
+  idPerPath,
+} from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
@@ -45,41 +43,22 @@ export function clipIdPerPath(
   paths: string,
   label = "path",
 ): Array<string | null> {
-  const ids: Array<string | null> = [];
-
-  for (const entry of pathEntries(paths, label)) {
-    try {
-      const source = requireClipSourcePath(
-        parseObjectPath(entry, label),
-        label,
-      );
-      const clip = clipAtSource(source, label);
-
-      if (clip != null && clip.exists()) {
-        ids.push(clip.id);
-        continue;
-      }
-
-      console.warn(`no clip at ${label} "${entry}"`);
-    } catch (error) {
-      console.warn(errorMessage(error));
-    }
-
-    ids.push(null);
-  }
-
-  return ids;
+  return idPerPath(paths, label, (entry) =>
+    existingId(clipAtPath(entry, label), { noun: "clip", label, entry }),
+  );
 }
 
 // --- Helpers below main exports ---
 
 /**
  * The clip at one location, whichever kind of location it is.
- * @param source - A parsed slot or arrangement position
+ * @param entry - One clip path, a slot or an arrangement position
  * @param label - Param name the path came from
  * @returns The clip, or null when nothing is there
  */
-function clipAtSource(source: ClipSourcePath, label: string): LiveAPI | null {
+function clipAtPath(entry: string, label: string): LiveAPI | null {
+  const source = requireClipSourcePath(parseObjectPath(entry, label), label);
+
   if (source.kind === "slot") {
     return LiveAPI.from(
       livePath.track(source.trackIndex).clipSlot(source.sceneIndex).clip(),

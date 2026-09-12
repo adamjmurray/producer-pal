@@ -65,7 +65,7 @@ describe("updateScene by path", () => {
     mockNonExistentObjects();
 
     expect(updateScene({ path: "s9", name: "Nowhere" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('nothing at path "s9"');
+    expect(capturedWarnings()).toContain('no scene at path "s9"');
   });
 
   it("still asks for a target when neither id nor path is given", () => {

@@ -88,7 +88,7 @@ describe("deleteObject by track and scene path", () => {
       type: "scene",
       deleted: false,
     });
-    expect(capturedWarnings()).toContain('nothing at path "s9"');
+    expect(capturedWarnings()).toContain('no scene at path "s9"');
   });
 
   it("reports a path that names the wrong kind of object", () => {
