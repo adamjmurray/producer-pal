@@ -185,6 +185,32 @@ describe("updateDevice", () => {
         updateDevice({ id: "123", params: [{ name: "789", value: "  " }] }),
       ).toThrow('params entry "789" has an empty value');
     });
+
+    // Values are read back once after every write in the call lands, so an
+    // earlier write to the same param would report a value it never produced.
+    it("should refuse the same param named twice", () => {
+      expect(() =>
+        updateDevice({
+          id: "123",
+          params: [
+            { name: "Volume", value: "-6" },
+            { name: "Volume", value: "-12" },
+          ],
+        }),
+      ).toThrow('params entry "Volume" is set more than once');
+    });
+
+    it("should refuse the same param named twice with different case", () => {
+      expect(() =>
+        updateDevice({
+          id: "123",
+          params: [
+            { name: "Volume", value: "-6" },
+            { name: "volume", value: "-12" },
+          ],
+        }),
+      ).toThrow('params entry "volume" is set more than once');
+    });
   });
 
   describe("params - enum values", () => {
