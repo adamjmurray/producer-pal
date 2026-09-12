@@ -22,7 +22,13 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     id: z.coerce
       .string()
       .optional()
-      .describe("device or drum pad ID to read. provide this or path"),
+      .describe(
+        "device or drum pad ID(s) to read, comma-separated for multiple",
+      ),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
 
     deviceId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
@@ -30,7 +36,11 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     path: z.coerce
       .string()
       .optional()
-      .describe("path (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')"),
+      .describe(
+        "path(s) to read, comma-separated (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')",
+      ),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     include: param(
       z
         .array(

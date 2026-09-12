@@ -18,6 +18,10 @@ import {
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { stripFields } from "#src/tools/shared/utils.ts";
+import {
+  readFanOut,
+  type ReadResult,
+} from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
 import {
@@ -84,12 +88,33 @@ interface NestedClipReads {
 }
 
 /**
- * Read comprehensive information about a track
+ * Read comprehensive information about the track(s) a call names
+ * @param args - The parameters
+ * @param context - Internal context object (supplies the active notation)
+ * @returns One track, or one entry per track named
+ */
+export function readTrack(
+  args: ReadTrackArgs = {},
+  context: Partial<ToolContext> = {},
+): ReadResult<Record<string, unknown>> {
+  return readFanOut(
+    args,
+    {
+      object: "track",
+      idAlias: "trackId",
+      oneTargetParams: ["trackIndex", "trackType"],
+    },
+    (one) => readOneTrack(one, context),
+  );
+}
+
+/**
+ * Read comprehensive information about one track
  * @param args - The parameters
  * @param context - Internal context object (supplies the active notation)
  * @returns Track information
  */
-export function readTrack(
+export function readOneTrack(
   args: ReadTrackArgs = {},
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {

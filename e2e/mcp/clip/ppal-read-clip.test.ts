@@ -15,9 +15,11 @@ import {
   getToolErrorMessage,
   parseAliasedToolResult,
   isToolError,
+  parseBatchResult,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
+  type ReadMissResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 import { arrangementStartOf } from "./helpers/arrangement-start-test-helpers.ts";
@@ -292,6 +294,67 @@ describe("ppal-read-clip drum spelling", () => {
 
     expect(inScene("t0/s0")).toBe(drums);
     expect(inScene("t2/s0")).toBe(chords);
+  });
+});
+
+describe("ppal-read-clip over a list of targets", () => {
+  const readClips = (args: Record<string, unknown>) =>
+    ctx.client!.callTool({ name: "ppal-read-clip", arguments: args });
+
+  it("returns one entry per path, in the order named", async () => {
+    const clips = parseBatchResult<ReadClipResult>(
+      await readClips({ path: "t2/s0,t0/s0,t1/s0" }),
+      3,
+    );
+
+    expect(clips.map((clip) => clip.path)).toStrictEqual([
+      "t2/s0",
+      "t0/s0",
+      "t1/s0",
+    ]);
+    expect(clips.map((clip) => clip.name)).toStrictEqual([
+      "Chords",
+      "Beat",
+      "Bassline",
+    ]);
+  });
+
+  it("reads ids and paths together, ids first", async () => {
+    const beat = parseToolResult<ReadClipResult>(
+      await readClips({ path: "t0/s0" }),
+    );
+    const clips = parseBatchResult<ReadClipResult>(
+      await readClips({ id: beat.id!, path: "t2/s0" }),
+      2,
+    );
+
+    expect(clips[0]!.id).toBe(beat.id);
+    expect(clips[1]!.path).toBe("t2/s0");
+    expect(clips.map((clip) => clip.name)).toStrictEqual(["Beat", "Chords"]);
+  });
+
+  it("keeps a slot for an empty clip slot and reads the rest", async () => {
+    // t8 holds no clips. A lone read of an empty slot warns instead; in a list
+    // the entry carries it, and parseBatchResult throws on any warning.
+    const entries = parseBatchResult<ReadClipResult | ReadMissResult>(
+      await readClips({ path: "t0/s0,t8/s0,t1/s0" }),
+      3,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0/s0", name: "Beat" }),
+      { path: "t8/s0", ok: false, reason: "no clip at t8/s0" },
+      expect.objectContaining({ path: "t1/s0", name: "Bassline" }),
+    ]);
+  });
+
+  it("unwraps a single target", async () => {
+    const clip = parseToolResult<ReadClipResult>(
+      await readClips({ path: "t0/s0" }),
+    );
+
+    expect(Array.isArray(clip)).toBe(false);
+    expect(clip.path).toBe("t0/s0");
   });
 });
 

@@ -8,7 +8,7 @@ import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/read-clip-helpers.ts";
 import {
-  readClip,
+  readOneClip,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
@@ -81,7 +81,7 @@ export function readSessionClips(
   return track
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) =>
-      readClip(
+      readOneClip(
         {
           trackIndex,
           sceneIndex,
@@ -140,7 +140,7 @@ export function readArrangementClips(
   return track
     .getChildIds("arrangement_clips")
     .map((clipId) =>
-      readClip(
+      readOneClip(
         {
           id: clipId,
           drumMode,
@@ -184,7 +184,7 @@ export function readTakeLanes(
     const clips = lane
       .getChildIds("arrangement_clips")
       .map((clipId) =>
-        readClip(
+        readOneClip(
           { id: clipId, drumMode, ...(include && { include }) },
           { notation },
         ),
@@ -464,7 +464,7 @@ function readGainDb(param: LiveAPI): unknown {
 
 /**
  * Whether nested clip reads for this track will serialize notes — the only case
- * drum-rack detection feeds. Mirrors readClip's own include gating
+ * drum-rack detection feeds. Mirrors readOneClip's own include gating
  * (READ_CLIP_DEFAULTS), so the drum-rack device walk is skipped when notes
  * aren't requested (e.g. a clips-without-notes track read).
  * @param include - The include array threaded to the nested clip reads

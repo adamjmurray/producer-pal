@@ -8,7 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
@@ -199,7 +199,7 @@ describe("EQ Eight via read-device", () => {
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableEqEight();
 
-    const result = readDevice({ id: "eq8-1", include: ["params"] });
+    const result = readOneDevice({ id: "eq8-1", include: ["params"] });
 
     expect(result.parameters).toStrictEqual([
       { name: "globalMode", value: "L/R" },
@@ -211,7 +211,7 @@ describe("EQ Eight via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableEqEight();
 
-    const result = readDevice({ id: "eq8-1", include: ["options"] });
+    const result = readOneDevice({ id: "eq8-1", include: ["options"] });
 
     expect(
       (result.options as Record<string, unknown>).paramOptions,

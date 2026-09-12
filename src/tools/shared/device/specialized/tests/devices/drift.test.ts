@@ -8,7 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
@@ -472,7 +472,7 @@ describe("Drift via read-device", () => {
   it("includes all pseudo-params in parameters and omits modulations", () => {
     registerReadableDrift();
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "filterMod1Source",
@@ -500,7 +500,7 @@ describe("Drift via read-device", () => {
   it("includes all 15 pseudo-params", () => {
     registerReadableDrift();
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toHaveLength(15);
   });
@@ -508,7 +508,7 @@ describe("Drift via read-device", () => {
   it("reads 'None' target correctly via read-device", () => {
     registerReadableDrift({ mod_matrix_target_2_index: 0 });
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "mod2Target",
@@ -519,7 +519,7 @@ describe("Drift via read-device", () => {
   it("omits a free-slot source whose target is 'None' via read-device", () => {
     registerReadableDrift({ mod_matrix_target_2_index: 0 });
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
     const names = (result.parameters as Array<{ name: string }>).map(
       (p) => p.name,
     );
@@ -533,7 +533,7 @@ describe("Drift via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableDrift();
 
-    const result = readDevice({ id: "drift-1", include: ["options"] });
+    const result = readOneDevice({ id: "drift-1", include: ["options"] });
     const paramOptions = (result.options as Record<string, unknown>)
       .paramOptions as Record<string, unknown>;
 

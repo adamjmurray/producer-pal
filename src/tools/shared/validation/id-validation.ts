@@ -110,29 +110,6 @@ export function validateObjectTypes(
 }
 
 /**
- * Validates that exactly one of two mutually exclusive parameters is provided
- * @param param1 - First parameter value
- * @param param2 - Second parameter value
- * @param name1 - Name of first parameter for error message
- * @param name2 - Name of second parameter for error message
- * @throws If neither or both parameters are provided
- */
-export function validateExclusiveParams(
-  param1: unknown,
-  param2: unknown,
-  name1: string,
-  name2: string,
-): void {
-  if (!param1 && !param2) {
-    throw new Error(`Either ${name1} or ${name2} must be provided`);
-  }
-
-  if (param1 && param2) {
-    throw new Error(`Provide either ${name1} or ${name2}, not both`);
-  }
-}
-
-/**
  * Checks if the Live API type matches the expected tool-level type.
  * Handles device subclasses (e.g., "HybridReverbDevice" matches "device").
  * @param actualType - The Live API object type (e.g., "Track", "Eq8Device")

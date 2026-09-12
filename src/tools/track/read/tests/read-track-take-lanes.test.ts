@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
 interface TakeLane {
   path: string;
@@ -68,11 +68,11 @@ function registerArrangementClip(id: string, path: PathLike) {
   });
 }
 
-describe("readTrack take lanes", () => {
+describe("readOneTrack take lanes", () => {
   it("returns takeLaneCount in overview when arrangement-clips not included", () => {
     registerTrackWithTakeLanes();
 
-    const result = readTrack({ trackIndex: 2 });
+    const result = readOneTrack({ trackIndex: 2 });
 
     expect(result.takeLaneCount).toBe(2);
     expect(result).not.toHaveProperty("takeLanes");
@@ -81,7 +81,10 @@ describe("readTrack take lanes", () => {
   it("returns the full takeLanes list when arrangement-clips is included", () => {
     registerTrackWithTakeLanes();
 
-    const result = readTrack({ trackIndex: 2, include: ["arrangement-clips"] });
+    const result = readOneTrack({
+      trackIndex: 2,
+      include: ["arrangement-clips"],
+    });
 
     expect(result).not.toHaveProperty("takeLaneCount");
 
@@ -107,7 +110,10 @@ describe("readTrack take lanes", () => {
       properties: { name: 5678, arrangement_clips: children("clip_a") },
     });
 
-    const result = readTrack({ trackIndex: 2, include: ["arrangement-clips"] });
+    const result = readOneTrack({
+      trackIndex: 2,
+      include: ["arrangement-clips"],
+    });
     const takeLanes = result.takeLanes as TakeLane[];
 
     expect(takeLanes[0]!.name).toBe("5678");
@@ -116,7 +122,10 @@ describe("readTrack take lanes", () => {
   it("strips fields redundant with the parent track from take lane clips", () => {
     registerTrackWithTakeLanes();
 
-    const result = readTrack({ trackIndex: 2, include: ["arrangement-clips"] });
+    const result = readOneTrack({
+      trackIndex: 2,
+      include: ["arrangement-clips"],
+    });
     const clip = (result.takeLanes as TakeLane[])[0]!.clips[0]!;
 
     expect(clip.id).toBe("clip_a");
@@ -141,12 +150,12 @@ describe("readTrack take lanes", () => {
       },
     });
 
-    const overview = readTrack({ trackIndex: 2 });
+    const overview = readOneTrack({ trackIndex: 2 });
 
     expect(overview).not.toHaveProperty("takeLaneCount");
     expect(overview).not.toHaveProperty("takeLanes");
 
-    const detailed = readTrack({
+    const detailed = readOneTrack({
       trackIndex: 2,
       include: ["arrangement-clips"],
     });
@@ -157,7 +166,7 @@ describe("readTrack take lanes", () => {
   it("omits take lanes for group tracks", () => {
     registerTrackWithTakeLanes({ is_foldable: 1 });
 
-    const result = readTrack({ trackIndex: 2 });
+    const result = readOneTrack({ trackIndex: 2 });
 
     expect(result.isGroup).toBe(true);
     expect(result).not.toHaveProperty("takeLaneCount");
@@ -176,7 +185,7 @@ describe("readTrack take lanes", () => {
       },
     });
 
-    const result = readTrack({ trackType: "return", trackIndex: 0 });
+    const result = readOneTrack({ trackType: "return", trackIndex: 0 });
 
     expect(result).not.toHaveProperty("takeLaneCount");
     expect(result).not.toHaveProperty("takeLanes");

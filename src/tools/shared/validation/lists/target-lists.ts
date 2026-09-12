@@ -96,16 +96,16 @@ export function targetIds(
   ];
 }
 
-/** One of the two ways to name a target, canonical param and its alias. */
-interface TargetSide {
-  /** The canonical param's value */
-  value: string | null | undefined;
-  /** The canonical param's name */
+/** One param naming a target, by the name the caller would have written. */
+export interface ParamSpelling {
   name: string;
-  /** The alias param's value */
-  alias: string | null | undefined;
-  /** The alias param's name */
-  aliasName: string;
+  value: string | null | undefined;
+}
+
+/** One of the two ways to name a target, by every spelling it accepts. */
+interface TargetSide {
+  /** Each spelling of this side, canonical first */
+  spellings: ParamSpelling[];
 }
 
 /**
@@ -121,27 +121,30 @@ interface TargetSide {
  * @param targets - The call's id/ids and path/paths params
  * @param objects - What this tool's targets are, plural ("clips")
  * @param resolved - How many targets the call ended up with
+ * @param idAlias - A tool's own spelling of `id` ("clipId"), where it has one
  */
 export function warnBlankTarget(
   targets: TargetParams,
   objects: string,
   resolved: number,
+  idAlias?: ParamSpelling,
 ): void {
   if (resolved === 0) {
     return;
   }
 
   const idSide: TargetSide = {
-    value: targets.id,
-    name: "id",
-    alias: targets.ids,
-    aliasName: "ids",
+    spellings: [
+      { name: "id", value: targets.id },
+      { name: "ids", value: targets.ids },
+      ...(idAlias == null ? [] : [idAlias]),
+    ],
   };
   const pathSide: TargetSide = {
-    value: targets.path,
-    name: "path",
-    alias: targets.paths,
-    aliasName: "paths",
+    spellings: [
+      { name: "path", value: targets.path },
+      { name: "paths", value: targets.paths },
+    ],
   };
 
   warnBlankSide(idSide, pathSide, objects);
@@ -151,7 +154,7 @@ export function warnBlankTarget(
 /**
  * Warn when `blank` named nothing because it arrived blank, and `carrying`
  * named the targets in its place. Both are reported by the spelling the caller
- * actually wrote, which for either side may be the alias.
+ * actually wrote, which for either side may be an alias.
  * @param blank - The side that may have arrived blank
  * @param carrying - The side that may have named the targets
  * @param objects - What this tool's targets are, plural
@@ -176,24 +179,16 @@ function warnBlankSide(
 }
 
 /**
- * Which of a side's two spellings the test holds for, canonical first.
- * @param side - The canonical param and its alias
+ * Which of a side's spellings the test holds for, canonical first.
+ * @param side - Every param naming this side
  * @param matches - What the spelling has to be
- * @returns The param name to report, or null when neither matches
+ * @returns The param name to report, or null when none matches
  */
 function spelling(
   side: TargetSide,
   matches: (value: string | null | undefined) => boolean,
 ): string | null {
-  if (matches(side.value)) {
-    return side.name;
-  }
-
-  if (matches(side.alias)) {
-    return side.aliasName;
-  }
-
-  return null;
+  return side.spellings.find(({ value }) => matches(value))?.name ?? null;
 }
 
 /**

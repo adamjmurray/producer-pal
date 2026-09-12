@@ -46,7 +46,7 @@ export function readDrumPadByPath(
   const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
-    throw new Error(`Device not found at path: ${liveApiPath}`);
+    throw new Error(`nothing at path "${fullPath}"`);
   }
 
   // The grammar already validated the note, so this always converts; the

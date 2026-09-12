@@ -176,6 +176,10 @@ describe("hidden params", () => {
       ["ppal-read-track", "trackId"],
       ["ppal-read-scene", "sceneId"],
       ["ppal-read-device", "deviceId"],
+      ["ppal-read-clip", "ids"],
+      ["ppal-read-track", "ids"],
+      ["ppal-read-scene", "ids"],
+      ["ppal-read-device", "ids"],
       ["ppal-update-track", "ids"],
       ["ppal-update-scene", "ids"],
       ["ppal-update-clip", "ids"],
@@ -212,6 +216,10 @@ describe("hidden params", () => {
   // well-founded guess `ids` is.
   it("publishes path and accepts paths as a fallback", () => {
     const aliases: Array<[string, string]> = [
+      ["ppal-read-clip", "paths"],
+      ["ppal-read-track", "paths"],
+      ["ppal-read-scene", "paths"],
+      ["ppal-read-device", "paths"],
       ["ppal-update-track", "paths"],
       ["ppal-update-scene", "paths"],
       ["ppal-update-clip", "paths"],

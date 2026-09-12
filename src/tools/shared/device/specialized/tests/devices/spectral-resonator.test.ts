@@ -8,7 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
@@ -367,7 +367,7 @@ describe("Spectral Resonator via read-device", () => {
   it("includes all six pseudo-params in parameters and omits modulations", () => {
     registerReadableSpectralResonator();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "spectral-resonator-1",
       include: ["params"],
     });
@@ -386,7 +386,7 @@ describe("Spectral Resonator via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableSpectralResonator();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "spectral-resonator-1",
       include: ["options"],
     });

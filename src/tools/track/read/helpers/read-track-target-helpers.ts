@@ -12,7 +12,11 @@ import { trackApiAtPath } from "#src/tools/shared/validation/path-target-lookup.
 export interface ReadTrackArgs {
   trackIndex?: number;
   id?: string;
+  /** Hidden alias for id */
+  ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   /** Hidden alias for id */
   trackId?: string;
   trackType?: string;

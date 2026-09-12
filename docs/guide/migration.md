@@ -81,6 +81,12 @@ failures are now included instead of dropped. Its results are also in **request
 order** now, not internal deletion order, so you can pair results to targets by
 index.
 
+The read tools do the same: `ppal-read-clip`, `-track`, `-scene` and `-device`
+take comma-separated `id`/`path` lists, and a call naming two or more targets
+returns an array in request order, with a target that couldn't be read holding
+its slot as `{id or path, ok: false, reason}`. Naming one target still returns
+the object on its own.
+
 ### Three values read differently without the field changing
 
 - **An all-digit name is a string.** A track named `5678` used to serialize as

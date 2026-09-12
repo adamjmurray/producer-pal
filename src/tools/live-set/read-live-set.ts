@@ -8,7 +8,7 @@ import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
-import { readScene } from "#src/tools/scene/read-scene.ts";
+import { readOneScene } from "#src/tools/scene/read-scene.ts";
 import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
 import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import {
@@ -18,7 +18,7 @@ import {
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { round2dp, roundDisplayValue } from "#src/tools/shared/utils.ts";
 import {
-  readTrack,
+  readOneTrack,
   readTrackGeneric,
 } from "#src/tools/track/read/read-track.ts";
 
@@ -66,7 +66,7 @@ export function readLiveSet(
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
     result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
-      readScene(
+      readOneScene(
         {
           sceneIndex,
           include: trackInclude,
@@ -89,7 +89,7 @@ export function readLiveSet(
   // Tracks: full details or counts
   if (includeFlags.includeTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
-      readTrack(
+      readOneTrack(
         {
           trackIndex,
           include: trackInclude,
@@ -208,7 +208,7 @@ function sessionClipCounts(
 /**
  * Build include array to propagate to track/scene readers
  * @param flags - Parsed include flags
- * @returns Array of include options recognized by readTrack/readScene
+ * @returns Array of include options recognized by readOneTrack/readOneScene
  */
 function buildTrackInclude(flags: IncludeFlags): string[] {
   const include: string[] = [];

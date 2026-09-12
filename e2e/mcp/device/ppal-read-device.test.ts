@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -12,7 +13,9 @@
 import { describe, expect, it } from "vitest";
 import {
   parseAliasedToolResult,
+  parseBatchResult,
   parseToolResult,
+  type ReadMissResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -210,8 +213,73 @@ describe("ppal-read-device", () => {
   });
 });
 
+describe("ppal-read-device over a list of targets", () => {
+  const readDevices = (args: Record<string, unknown>) =>
+    ctx.client!.callTool({ name: "ppal-read-device", arguments: args });
+
+  it("returns one entry per path, in the order named", async () => {
+    const devices = parseBatchResult<ReadDeviceResult>(
+      await readDevices({ path: "t1/d0,t3/d1,t0/d0" }),
+      3,
+    );
+
+    expect(devices.map((device) => device.path)).toStrictEqual([
+      "t1/d0",
+      "t3/d1",
+      "t0/d0",
+    ]);
+    expect(devices[0]!.type).toBe("instrument-rack");
+    expect(devices[1]!.type).toContain("Compressor");
+    expect(devices[2]!.type).toBe("drum-rack");
+  });
+
+  it("reads ids and paths together, ids first", async () => {
+    const compressor = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t3/d1" }),
+    );
+    const devices = parseBatchResult<ReadDeviceResult>(
+      await readDevices({ id: String(compressor.id), path: "t1/d0" }),
+      2,
+    );
+
+    expect(String(devices[0]!.id)).toBe(String(compressor.id));
+    expect(devices[0]!.type).toContain("Compressor");
+    expect(devices[1]!.path).toBe("t1/d0");
+    expect(devices[1]!.type).toBe("instrument-rack");
+  });
+
+  it("keeps a slot for a device that isn't there and reads the rest", async () => {
+    // t8 is the empty track, so t8/d0 names nothing. The reason carries the
+    // Live API path, which says which object was missing.
+    const entries = parseBatchResult<ReadDeviceResult | ReadMissResult>(
+      await readDevices({ path: "t3/d1,t8/d0,t1/d0" }),
+      3,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t3/d1" }),
+      {
+        path: "t8/d0",
+        ok: false,
+        reason: 'nothing at path "t8/d0"',
+      },
+      expect.objectContaining({ path: "t1/d0" }),
+    ]);
+  });
+
+  it("unwraps a single target", async () => {
+    const device = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t1/d0" }),
+    );
+
+    expect(Array.isArray(device)).toBe(false);
+    expect(device.path).toBe("t1/d0");
+  });
+});
+
 interface ReadDeviceResult {
   id: string | number | null;
+  path?: string;
   type?: string;
   name?: string;
   collapsed?: boolean;

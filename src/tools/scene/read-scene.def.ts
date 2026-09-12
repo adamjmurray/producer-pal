@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -19,7 +20,14 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce.string().optional().describe("provide this or path"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("scene ID(s) to read, comma-separated for multiple"),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
 
     sceneId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
@@ -28,8 +36,10 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
       .string()
       .optional()
       .describe(
-        "scene path instead of id: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
+        "scene path(s) to read, comma-separated: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
       ),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
     }),

@@ -11,7 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedOptions,
@@ -619,7 +619,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({ id: "comp-1", include: ["params"] });
+    const result = readOneDevice({ id: "comp-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "sidechainSourceTrackId",
@@ -636,7 +636,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "comp-1",
       include: ["params", "options"],
     });
@@ -651,7 +651,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({ id: "comp-1", include: ["params"] });
+    const result = readOneDevice({ id: "comp-1", include: ["params"] });
 
     expect(result.options).toBeUndefined();
   });
@@ -660,7 +660,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "comp-1",
       include: ["params", "options"],
     });

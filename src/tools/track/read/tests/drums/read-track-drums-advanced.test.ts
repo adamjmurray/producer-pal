@@ -12,9 +12,9 @@ import {
   createDrumChainMock,
   createSimpleInstrumentMock,
   mockTrackProperties,
-} from "./helpers/read-track-test-helpers.ts";
-import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+} from "../helpers/read-track-test-helpers.ts";
+import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+import { readOneTrack } from "../../read-track.ts";
 
 /**
  * Creates a standard drum rack mock object for testing
@@ -117,7 +117,7 @@ function registerKickAndEmptyChains(includeSnare: boolean): void {
   });
 }
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   describe("drumPads", () => {
     it("returns null when instrument rack first chain has no devices", () => {
       setupTrackWithInstrumentRack("Track Instrument Rack Empty Chain");
@@ -128,7 +128,7 @@ describe("readTrack", () => {
           devices: [],
         },
       });
-      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -146,7 +146,7 @@ describe("readTrack", () => {
         "wavetable",
         livePath.track(0).device(0).chain(0).device(0),
       );
-      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -220,7 +220,7 @@ describe("readTrack", () => {
         "snaredevice",
         livePath.track(0).device(1).chain(0).device(0).chain(0).device(0),
       );
-      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toStrictEqual({ C3: "Direct Kick" });
     });
@@ -229,7 +229,7 @@ describe("readTrack", () => {
       setupTrackWithDrumRack(["kick_chain", "empty_chain"]);
       registerKickAndEmptyChains(false);
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["notes", "devices", "session-clips", "arrangement-clips"],
       });
@@ -265,7 +265,7 @@ describe("readTrack", () => {
       setupTrackWithDrumRack(["kick_chain", "empty_chain", "snare_chain"]);
       registerKickAndEmptyChains(true);
 
-      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
       // drumMap should only include pads with instruments (kick and snare), not empty pad
       expect(result.drumMap).toStrictEqual({
@@ -320,7 +320,7 @@ describe("readTrack", () => {
         properties: createSimpleInstrumentMock(),
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: [
           "notes",

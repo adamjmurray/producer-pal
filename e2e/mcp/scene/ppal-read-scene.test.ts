@@ -15,7 +15,9 @@ import {
   getToolErrorMessage,
   parseAliasedToolResult,
   isToolError,
+  parseBatchResult,
   parseToolResult,
+  type ReadMissResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -153,6 +155,64 @@ describe("ppal-read-scene", () => {
 
     expect(message).not.toContain("executing tool");
     expect(message).toBe("Error: id or path is required");
+  });
+});
+
+describe("ppal-read-scene over a list of targets", () => {
+  const readScenes = (args: Record<string, unknown>) =>
+    ctx.client!.callTool({ name: "ppal-read-scene", arguments: args });
+
+  it("returns one entry per path, in the order named", async () => {
+    const scenes = parseBatchResult<ReadSceneResult>(
+      await readScenes({ path: "s2,s0,s1" }),
+      3,
+    );
+
+    expect(scenes.map((scene) => scene.path)).toStrictEqual(["s2", "s0", "s1"]);
+    expect(scenes.map((scene) => scene.name)).toStrictEqual([
+      "Chorus",
+      "Intro",
+      "Verse 1",
+    ]);
+  });
+
+  it("reads ids and paths together, ids first", async () => {
+    const intro = parseToolResult<ReadSceneResult>(
+      await readScenes({ path: "s0" }),
+    );
+    const scenes = parseBatchResult<ReadSceneResult>(
+      await readScenes({ id: intro.id!, path: "s1" }),
+      2,
+    );
+
+    expect(scenes[0]!.id).toBe(intro.id);
+    expect(scenes[1]!.path).toBe("s1");
+    expect(scenes.map((scene) => scene.name)).toStrictEqual([
+      "Intro",
+      "Verse 1",
+    ]);
+  });
+
+  it("keeps a slot for a scene past the end and reads the rest", async () => {
+    const entries = parseBatchResult<ReadSceneResult | ReadMissResult>(
+      await readScenes({ path: "s0,s999,s1" }),
+      3,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "s0", name: "Intro" }),
+      { path: "s999", ok: false, reason: 'nothing at path "s999"' },
+      expect.objectContaining({ path: "s1", name: "Verse 1" }),
+    ]);
+  });
+
+  it("unwraps a single target", async () => {
+    const scene = parseToolResult<ReadSceneResult>(
+      await readScenes({ path: "s0" }),
+    );
+
+    expect(Array.isArray(scene)).toBe(false);
+    expect(scene.path).toBe("s0");
   });
 });
 

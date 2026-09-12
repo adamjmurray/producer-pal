@@ -20,7 +20,14 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce.string().optional().describe("provide this or path"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("clip ID(s) to read, comma-separated for multiple"),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
 
     clipId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
@@ -29,8 +36,10 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .string()
       .optional()
       .describe(
-        "where the clip is, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip by where it starts, 't<track>[<position>]' (e.g., 't0[5|1]'). provide this or id",
+        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip by where it starts, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
 
     slot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

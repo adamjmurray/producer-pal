@@ -8,7 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedOptions,
@@ -465,7 +465,7 @@ describe("Hybrid Reverb via read-device", () => {
   it("includes pseudo-params in parameters and options.irFileList when requested", () => {
     registerReadableHybridReverb();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "hr-1",
       include: ["params", "options"],
     });
@@ -504,7 +504,7 @@ describe("Hybrid Reverb via read-device", () => {
   it("omits options when the include does not contain options", () => {
     registerReadableHybridReverb();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "hr-1",
       include: ["params"],
     });
@@ -515,7 +515,7 @@ describe("Hybrid Reverb via read-device", () => {
   it("omits modulations for Hybrid Reverb", () => {
     registerReadableHybridReverb();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "hr-1",
       include: ["params", "options"],
     });

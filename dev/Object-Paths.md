@@ -254,20 +254,20 @@ Four tiers, in order of preference.
 4. **Never pick one.** Honoring one param and dropping the other is the silent
    wrong-target bug this grammar exists to prevent. What to do instead depends
    on what the param names:
-   - **A source — throw.** Where the call acts on one target (`read-clip`,
-     `read-device`, `read-track`, `read-scene`, `update-device`, `playback`'s
+   - **A source — throw.** Where the call acts on one target (`playback`'s
      `play-scene`), two params naming different things has no answer, so it
      errors. Naming the same target twice over is not a conflict: `play-scene`
-     with `t0/s1,t2/s1` fires scene 1, and `read-clip` takes an `id` that sits
-     at the `path`.
+     with `t0/s1,t2/s1` fires scene 1.
    - **A set — union.** Where the call already acts on a list (`delete`,
-     `duplicate`, `update-clip`, `update-track`, `update-scene`, `playback`'s
-     clip actions), `id` and `path` both name members of it, so the targets
-     combine. `delete` and `playback` also collapse duplicates, because firing
-     or deleting an object twice is a different Live call than doing it once.
-     The update tools don't: writing the same value twice lands the same way,
-     and a slot per entry is what keeps a paired `name` or `color` list aligned.
-     Neither does `duplicate` — a source named twice is two copies.
+     `duplicate`, `update-clip`, `update-track`, `update-scene`,
+     `update-device`, the four read tools, `playback`'s clip actions), `id` and
+     `path` both name members of it, so the targets combine. `delete` and
+     `playback` also collapse duplicates, because firing or deleting an object
+     twice is a different Live call than doing it once. The update tools don't:
+     writing the same value twice lands the same way, and a slot per entry is
+     what keeps a paired `name` or `color` list aligned. Neither does
+     `duplicate` — a source named twice is two copies — nor the reads, whose
+     entry per target is what lines the results up with the call.
 
 ## Results
 
