@@ -16,13 +16,13 @@ import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk
 import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
+import { buildLockedSettings } from "#webui/hooks/chat/helpers/conversations/conversation-save-record";
+import { resolvePanelNotification } from "#webui/hooks/chat/helpers/conversations/panel-notification";
 import {
-  buildLockedSettings,
   getHashConversationId,
-  resolvePanelNotification,
   setLocationHash,
   useHashNavigation,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-hash-navigation";
 import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
 import {
   type SyncActiveMetaParams,

@@ -11,12 +11,9 @@ import {
   toSentMessage,
 } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
-import {
-  beginTurn,
-  filterOverrides,
-  runChatTurn,
-  showMissingApiKeyError,
-} from "./helpers/streaming-helpers";
+import { showMissingApiKeyError } from "./helpers/streaming/chat-error-recovery";
+import { filterOverrides } from "./helpers/streaming/connect-client";
+import { beginTurn, runChatTurn } from "./helpers/streaming/run-chat-turn";
 import { useActiveSettings } from "./helpers/use-active-settings";
 import { useExecuteWithRetry } from "./helpers/use-execute-with-retry";
 import { useInitializeChat } from "./helpers/use-initialize-chat";

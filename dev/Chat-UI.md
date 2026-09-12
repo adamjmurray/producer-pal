@@ -260,13 +260,14 @@ interface ConversationRecord {
 
 **Files**:
 
-| File                                              | Purpose                                                                       |
-| ------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `lib/conversation-db.ts`                          | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
-| `lib/conversation-db-helpers.ts`                  | DB open/upgrade, version mismatch handling, JSON export                       |
-| `hooks/chat/use-conversations.ts`                 | Orchestration hook (save/load/switch/new/delete/rename)                       |
-| `hooks/chat/helpers/use-conversations-helpers.ts` | Title derivation, URL hash, locked settings builders                          |
-| `components/chat/ConversationPanel.tsx`           | Slide-out sidebar panel with inline rename                                    |
+| File                                                           | Purpose                                                                       |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `lib/conversation-db.ts`                                       | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
+| `lib/conversation-db-helpers.ts`                               | DB open/upgrade, version mismatch handling, JSON export                       |
+| `hooks/chat/use-conversations.ts`                              | Orchestration hook (save/load/switch/new/delete/rename)                       |
+| `hooks/chat/helpers/conversations/conversation-save-record.ts` | Title derivation, save/fork record builders, locked settings                  |
+| `hooks/chat/helpers/conversations/use-hash-navigation.ts`      | URL hash read/write and back/forward routing                                  |
+| `components/chat/ConversationPanel.tsx`                        | Slide-out sidebar panel with inline rename                                    |
 
 **Auto-save triggers** (wired in `App.tsx`):
 

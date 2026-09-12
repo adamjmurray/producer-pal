@@ -10,7 +10,8 @@ import {
   type UserMessage,
   normalizeUserMessage,
 } from "#webui/chat/sdk/types";
-import type * as StreamingHelpers from "#webui/hooks/chat/helpers/streaming-helpers";
+import type * as ConnectClient from "#webui/hooks/chat/helpers/streaming/connect-client";
+import type * as RunChatTurn from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -343,31 +344,22 @@ export function lockedSettings(
 }
 
 /**
- * Factory body for `vi.mock("#webui/hooks/chat/helpers/streaming-helpers", ...)`.
- * The real module is replaced with a pass-through `handleMessageStream` that
- * forwards every yielded chat history through the formatter so tests can
- * assert on the resulting `UIMessage[]` updates.
+ * Factory body for the `run-chat-turn` mock. Replaces `handleMessageStream`
+ * with a pass-through that forwards every yielded chat history through the
+ * formatter, so tests can assert on the resulting `UIMessage[]` updates. The
+ * rest stays real — the turn machinery itself is what these tests exercise.
  *
- * @returns The mocked streaming-helpers module exports
+ * @returns The mocked run-chat-turn module exports
  */
-export async function streamingHelpersMockBody(): Promise<
-  Partial<typeof StreamingHelpers>
+export async function runChatTurnMockBody(): Promise<
+  Partial<typeof RunChatTurn>
 > {
-  const actual = await vi.importActual<typeof StreamingHelpers>(
-    "#webui/hooks/chat/helpers/streaming-helpers",
+  const actual = await vi.importActual<typeof RunChatTurn>(
+    "#webui/hooks/chat/helpers/streaming/run-chat-turn",
   );
 
   return {
-    // Pure helpers (no streaming side effects) — keep the real implementations
-    // so client (re)init still resolves the locked provider/model correctly and
-    // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
-    beginTurn: actual.beginTurn,
-    resolveInitConnection: actual.resolveInitConnection,
-    resolveLockedNotation: actual.resolveLockedNotation,
-    resolveLockedSmallModelMode: actual.resolveLockedSmallModelMode,
-    recoverFromChatError: actual.recoverFromChatError,
-    runChatTurn: actual.runChatTurn,
-    connectClient: actual.connectClient,
+    ...actual,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));
@@ -375,9 +367,28 @@ export async function streamingHelpersMockBody(): Promise<
 
       return true;
     }),
+  };
+}
+
+/**
+ * Factory body for the `connect-client` mock. Stubs out the MCP check and lets
+ * per-message overrides through unfiltered; `connectClient` and
+ * `resolveInitConnection` stay real so client (re)init still resolves the
+ * locked provider/model correctly.
+ *
+ * @returns The mocked connect-client module exports
+ */
+export async function connectClientMockBody(): Promise<
+  Partial<typeof ConnectClient>
+> {
+  const actual = await vi.importActual<typeof ConnectClient>(
+    "#webui/hooks/chat/helpers/streaming/connect-client",
+  );
+
+  return {
+    ...actual,
     validateMcpConnection: vi.fn(),
     filterOverrides: vi.fn((overrides) => overrides),
-    showMissingApiKeyError: actual.showMissingApiKeyError,
   };
 }
 

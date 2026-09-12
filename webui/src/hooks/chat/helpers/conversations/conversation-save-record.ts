@@ -3,9 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect } from "preact/hooks";
 import { type TokenUsage } from "#webui/chat/sdk/types";
-import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ConversationLockedSettings,
   type PendingFork,
@@ -22,116 +20,6 @@ import { type Provider } from "#webui/types/settings";
 /** Ref snapshot for building a save record */
 export interface ActiveRefs extends ActiveMeta {
   id: string;
-}
-
-/**
- * Read the conversation ID from the URL hash.
- * @returns The conversation ID, or null if no hash is set
- */
-export function getHashConversationId(): string | null {
-  const hash = window.location.hash.slice(1);
-
-  return hash || null;
-}
-
-/**
- * Set the URL hash to the given conversation ID (or clear it).
- * @param id - Conversation ID, or null to clear the hash
- */
-export function setLocationHash(id: string | null): void {
-  if (id) {
-    window.location.hash = id;
-  } else {
-    // Remove hash without scrolling — pushState avoids hashchange event issues
-    history.replaceState(
-      null,
-      "",
-      window.location.pathname + window.location.search,
-    );
-  }
-}
-
-/**
- * Route browser back/forward (hashchange) to the matching conversation: switch
- * to the hashed id, or start a new conversation when the hash clears. Ignores
- * the programmatic hash writes the manager makes itself (guarded by a ref flag).
- *
- * Back/Forward tears the conversation down exactly as the sidebar does — the
- * teardown stops a streaming response — so it asks the same question first, and
- * rewrites the hash back to the active conversation when the answer is no.
- * @param params - Navigation dependencies
- * @param params.programmaticHashRef - Flag set when the manager wrote the hash itself
- * @param params.programmaticHashRef.current - The mutable flag value
- * @param params.activeId - Reads the current active conversation id
- * @param params.switchConversation - Loads and activates a conversation by id
- * @param params.startNewConversation - Clears state for a brand-new conversation
- * @param params.confirmLeave - Asks before a navigation cuts a streaming turn off
- */
-export function useHashNavigation(params: {
-  programmaticHashRef: { current: boolean };
-  activeId: () => string | null;
-  switchConversation: (id: string) => Promise<void>;
-  startNewConversation: () => void;
-  confirmLeave: () => boolean;
-}): void {
-  const {
-    programmaticHashRef,
-    activeId,
-    switchConversation,
-    startNewConversation,
-    confirmLeave,
-  } = params;
-
-  useEffect(() => {
-    const handler = () => {
-      if (programmaticHashRef.current) {
-        programmaticHashRef.current = false;
-
-        return;
-      }
-
-      const hashId = getHashConversationId();
-
-      if (hashId === activeId()) {
-        return;
-      }
-
-      if (!confirmLeave()) {
-        // The browser already moved; put the id back on the entry we landed on.
-        // replaceState rather than assigning the hash: no new history entry, and
-        // no second hashchange to re-enter this handler.
-        restoreHash(activeId());
-
-        return;
-      }
-
-      if (hashId) {
-        void switchConversation(hashId);
-      } else {
-        startNewConversation();
-      }
-    };
-
-    window.addEventListener("hashchange", handler);
-
-    return () => window.removeEventListener("hashchange", handler);
-  }, [
-    programmaticHashRef,
-    activeId,
-    switchConversation,
-    startNewConversation,
-    confirmLeave,
-  ]);
-}
-
-/**
- * Rewrite the current history entry's hash without firing a hashchange.
- * @param id - Conversation id to put back, or null to clear the hash
- */
-function restoreHash(id: string | null): void {
-  const base = window.location.pathname + window.location.search;
-
-  history.replaceState(null, "", id ? `${base}#${id}` : base);
 }
 
 /**
@@ -400,56 +288,4 @@ export function deriveTitle(
   }
 
   return firstUserLine || null;
-}
-
-/**
- * Pick which banner the conversation panel shows and the matching dismiss
- * handler. Rank by severity first — an error (a save failure / data-loss
- * signal) outranks a warning — then let the fresher undo-delete banner win
- * within the same severity. Severity-first matters because the undo banner
- * never auto-expires, so without it a stale "Deleted …" banner would
- * indefinitely mask a later save-error banner.
- * @param undo - Undo-delete notification state and dismiss handler
- * @param undo.undoNotification - The pending undo banner, or null when none
- * @param undo.dismissUndoNotification - Clears all pending undos
- * @param limit - Limit/save-error notification state and dismiss handler
- * @param limit.limitNotification - The limit/save-error banner, or null
- * @param limit.dismissLimitNotification - Clears the limit/save-error banner
- * @returns The active notification and the handler that dismisses it
- */
-export function resolvePanelNotification(
-  undo: {
-    undoNotification: TransferNotificationData | null;
-    dismissUndoNotification: () => void;
-  },
-  limit: {
-    limitNotification: TransferNotificationData | null;
-    dismissLimitNotification: () => void;
-  },
-): {
-  notification: TransferNotificationData | null;
-  dismissNotification: () => void;
-} {
-  const undoNote = undo.undoNotification;
-  const limitNote = limit.limitNotification;
-  // The limit/save-error banner wins when there is no undo to defer to, or when
-  // it is an error and the undo banner is merely a warning.
-  const limitWins =
-    limitNote != null &&
-    (undoNote == null ||
-      (limitNote.type === "error" && undoNote.type !== "error"));
-
-  if (limitWins) {
-    return {
-      notification: limitNote,
-      dismissNotification: limit.dismissLimitNotification,
-    };
-  }
-
-  return {
-    notification: undoNote ?? limitNote,
-    dismissNotification: undoNote
-      ? undo.dismissUndoNotification
-      : limit.dismissLimitNotification,
-  };
 }

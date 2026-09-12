@@ -37,7 +37,7 @@ export const LONGEST_BLOCK_LIMITS: TreeLimits = {
 export const LONG_BLOCK_FILE_LIMITS: TreeLimits = {
   src: 375,
   scripts: 35,
-  webui: 204,
+  webui: 206,
   evals: 113,
   e2e: 2,
 };

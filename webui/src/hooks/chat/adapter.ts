@@ -17,7 +17,7 @@ import {
   resolveLockedNotation,
   resolveLockedSmallModelMode,
   resolveMaxToolSteps,
-} from "#webui/hooks/chat/helpers/streaming-helpers";
+} from "#webui/hooks/chat/helpers/streaming/locked-settings";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,

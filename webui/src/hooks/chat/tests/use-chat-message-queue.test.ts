@@ -21,12 +21,25 @@ import {
 } from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers (mirrors use-chat.test.ts so handleSend can stream).
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } =
-    await import("./helpers/use-chat-test-helpers");
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming/run-chat-turn"),
+  async () => {
+    const { runChatTurnMockBody } =
+      await import("./helpers/use-chat-test-helpers");
 
-  return await streamingHelpersMockBody();
-});
+    return await runChatTurnMockBody();
+  },
+);
+
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming/connect-client"),
+  async () => {
+    const { connectClientMockBody } =
+      await import("./helpers/use-chat-test-helpers");
+
+    return await connectClientMockBody();
+  },
+);
 
 const mockAdapter = createMockAdapter();
 const defaultProps = createDefaultProps(mockAdapter);

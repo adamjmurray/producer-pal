@@ -6,7 +6,7 @@
 import { type MutableRef, useCallback } from "preact/hooks";
 import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
 import { type UserMessage, toSentMessage } from "#webui/chat/sdk/types";
-import { beginTurn } from "#webui/hooks/chat/helpers/streaming-helpers";
+import { beginTurn } from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 import {
   type ChatAdapter,
   type ChatClient,
