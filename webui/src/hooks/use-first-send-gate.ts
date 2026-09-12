@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef } from "preact/hooks";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
-
-type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
+import { type UserMessage } from "#webui/chat/sdk/types";
+import {
+  type MessageOverrides,
+  type SendMessageHandler,
+} from "#webui/hooks/chat/use-chat-types";
 
 /**
  * Defer a chat send while any value the first turn will LOCK is still loading.
@@ -54,7 +56,10 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
  * @param send - The underlying send handler to gate
  * @returns A send handler that waits out the initial load before sending
  */
-export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
+export function useFirstSendGate(
+  isLoading: boolean,
+  send: SendMessageHandler,
+): SendMessageHandler {
   // Latest-value refs (updated in effects, not during render): the gated
   // callback is stable but reads the current flag/handler when a send fires.
   const isLoadingRef = useRef(isLoading);
@@ -103,18 +108,21 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
     [],
   );
 
-  return useCallback(async (message: string, options?: MessageOverrides) => {
-    if (isLoadingRef.current) {
-      await new Promise<void>((resolve) => waitersRef.current.push(resolve));
+  return useCallback(
+    async (message: UserMessage, options?: MessageOverrides) => {
+      if (isLoadingRef.current) {
+        await new Promise<void>((resolve) => waitersRef.current.push(resolve));
 
-      // Released by teardown rather than by the load finishing (the user left
-      // chat mode mid-park). Sending now would fire an invisible request through
-      // the abandoned chat and autosave it into the conversation it left.
-      if (unmountedRef.current) {
-        return;
+        // Released by teardown rather than by the load finishing (the user left
+        // chat mode mid-park). Sending now would fire an invisible request through
+        // the abandoned chat and autosave it into the conversation it left.
+        if (unmountedRef.current) {
+          return;
+        }
       }
-    }
 
-    await sendRef.current(message, options);
-  }, []);
+      await sendRef.current(message, options);
+    },
+    [],
+  );
 }

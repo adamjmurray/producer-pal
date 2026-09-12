@@ -580,6 +580,29 @@ describe("conversation-transfer", () => {
     expect(imported).not.toHaveProperty("enabledTools");
   });
 
+  it("round-trips a user message's attached images", async () => {
+    const images = [{ mediaType: "image/png", data: "AAA" }];
+    const imported = await importThenReread(
+      {
+        version: 1,
+        conversations: [
+          {
+            id: "with-images",
+            createdAt: 100,
+            messages: [{ role: "user", content: "match this", images }],
+          },
+        ],
+      },
+      "with-images",
+    );
+
+    expect(imported.messages[0]).toStrictEqual({
+      role: "user",
+      content: "match this",
+      images,
+    });
+  });
+
   it("round-trips a well-formed subagent transcript and index", async () => {
     const imported = await importThenReread(
       withSubagentResult("good-subagent", {

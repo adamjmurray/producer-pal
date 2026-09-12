@@ -178,6 +178,9 @@ function renderSinglePart(
     );
   } else if (part.type === "text") {
     return <AssistantText key={i} content={part.content} />;
+  } else if (part.type === "image") {
+    // User-only part: the user bubble renders these (UserImages), never here.
+    return null;
   }
 
   // TypeScript has narrowed this to UIErrorPart

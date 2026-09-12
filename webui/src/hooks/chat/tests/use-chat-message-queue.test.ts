@@ -8,6 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { type UserMessage } from "#webui/chat/sdk/types";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
@@ -416,5 +417,44 @@ describe("useChat message queuing", () => {
     expect(result.current.queuedMessages.map((m) => m.text)).toStrictEqual([
       "B",
     ]);
+  });
+
+  it("sends attached images, and coalesces queued ones into the next turn", async () => {
+    const png = { mediaType: "image/png", data: "AAA" };
+    const jpeg = { mediaType: "image/jpeg", data: "BBB" };
+    const sent: UserMessage[] = [];
+    let enqueue: ((message: UserMessage) => void) | null = null;
+    const adapter = createScriptedAdapter(
+      mockAdapter,
+      (client) =>
+        async function* (message: UserMessage): AsyncIterable<TestMessage[]> {
+          sent.push(message);
+          yield echoUserTurn(client, message);
+
+          // Queue two follow-ups while the first turn streams: one with text
+          // and an image, one with nothing but an image.
+          if (sent.length === 1) {
+            enqueue?.({ text: "and this", images: [jpeg] });
+            enqueue?.({ text: "", images: [png] });
+          }
+
+          client.chatHistory.push({ role: "assistant", content: "ok" });
+          yield [...client.chatHistory];
+        },
+    );
+
+    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+    enqueue = result.current.enqueueMessage;
+
+    await act(async () => {
+      await result.current.handleSend({ text: "Hello", images: [png] });
+    });
+
+    expect(sent[0]).toStrictEqual({ text: "Hello", images: [png] });
+    expect(sent[1]).toStrictEqual({
+      text: "and this",
+      images: [jpeg, png],
+    });
   });
 });

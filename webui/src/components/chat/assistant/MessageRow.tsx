@@ -10,6 +10,7 @@ import { type TokenUsage } from "#webui/chat/sdk/types";
 import { CompactButton } from "#webui/components/chat/controls/CompactButton";
 import { RetryButton } from "#webui/components/chat/controls/RetryButton";
 import { EditButton } from "#webui/components/chat/EditButton";
+import { UserImages } from "#webui/components/chat/assistant/UserImages";
 import { UserMessageEditor } from "#webui/components/chat/UserMessageEditor";
 import { ErrorBoundary } from "#webui/components/ErrorBoundary";
 import {
@@ -84,6 +85,7 @@ function UserRow({
         className="min-w-0 rounded-lg bg-blue-100 px-3 py-0.5 text-black shadow-sm dark:border dark:border-blue-700/40 dark:bg-blue-900/80 dark:text-white dark:shadow-white/10"
         data-message-index={originalIdx}
       >
+        <UserImages parts={message.parts} />
         {isEditing ? (
           <UserMessageEditor
             text={editText}

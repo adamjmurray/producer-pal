@@ -5,6 +5,7 @@
 
 import { isNotation, type Notation } from "#src/shared/notation";
 import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
+import { type ChatImage } from "#webui/chat/sdk/types";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -128,6 +129,7 @@ export function filterOverrides(
  * @param clientRef.current - The live client, whose history wins when it exists
  * @param pendingHistoryRef - Ref holding the restored-but-not-yet-sent history
  * @param pendingHistoryRef.current - That history, extended by this function
+ * @param images - Images attached to the message, kept for the retry
  */
 export function showMissingApiKeyError<
   TClient extends ChatClient<TMessage>,
@@ -139,8 +141,9 @@ export function showMissingApiKeyError<
   setMessages: (msgs: UIMessage[]) => void,
   clientRef: { current: TClient | null },
   pendingHistoryRef: { current: TMessage[] | null },
+  images?: ChatImage[],
 ): void {
-  const entry = adapter.createUserMessage(userMessage);
+  const entry = adapter.createUserMessage(userMessage, images);
   // Keep the conversation this message was sent from. Showing (and stashing)
   // the message alone truncated a restored conversation to it, and the next
   // send bootstrapped a client from that truncation and saved it over the

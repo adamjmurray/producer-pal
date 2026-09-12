@@ -4,10 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback } from "preact/hooks";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
+import { type UserMessage } from "#webui/chat/sdk/types";
+import {
+  type MessageOverrides,
+  type SendMessageHandler,
+} from "#webui/hooks/chat/use-chat-types";
 
 interface ChatHookResult {
-  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  handleSend: SendMessageHandler;
   clearConversation: () => void;
 }
 
@@ -17,10 +21,7 @@ interface UseConversationLockProps<T extends ChatHookResult> {
 
 interface UseConversationLockReturn<T extends ChatHookResult> {
   chat: T;
-  wrappedHandleSend: (
-    message: string,
-    options?: MessageOverrides,
-  ) => Promise<void>;
+  wrappedHandleSend: SendMessageHandler;
   wrappedClearConversation: () => void;
 }
 
@@ -38,7 +39,7 @@ export function useConversationLock<T extends ChatHookResult>({
   chat,
 }: UseConversationLockProps<T>): UseConversationLockReturn<T> {
   const wrappedHandleSend = useCallback(
-    async (message: string, options?: MessageOverrides) => {
+    async (message: UserMessage, options?: MessageOverrides) => {
       await chat.handleSend(message, options);
     },
     [chat],

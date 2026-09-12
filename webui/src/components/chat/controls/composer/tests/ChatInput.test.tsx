@@ -9,7 +9,7 @@
 import { EditorView } from "@codemirror/view";
 import { act, render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ChatInput } from "#webui/components/chat/controls/ChatInput";
+import { ChatInput } from "#webui/components/chat/controls/composer/ChatInput";
 
 /**
  * The chat input's live CodeMirror view.

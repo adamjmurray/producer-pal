@@ -159,6 +159,10 @@ overrides it for individual messages.
 
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
+- **📎 Attach images** - Attach PNG, JPEG, GIF or WebP images (up to 10 per
+  message, 5 MB each). You can also paste an image or drop one on the text area.
+  Thumbnails appear above the input, each with an ✕ to remove it, and an image
+  can be sent with no text at all.
 
 The text area is a markdown editor, so **Tab** and **Shift+Tab** indent and
 outdent rather than moving focus. To leave it with the keyboard, press

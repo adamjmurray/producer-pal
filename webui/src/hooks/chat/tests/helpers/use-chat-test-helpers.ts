@@ -4,7 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import {
+  type ChatImage,
+  type TokenUsage,
+  type UserMessage,
+  normalizeUserMessage,
+} from "#webui/chat/sdk/types";
 import type * as StreamingHelpers from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   type ChatAdapter,
@@ -17,6 +22,7 @@ import { type UIMessage } from "#webui/types/messages";
 export interface TestMessage {
   role: "user" | "assistant";
   content: string;
+  images?: ChatImage[];
   isError?: boolean;
 }
 
@@ -45,14 +51,14 @@ export class MockChatClient implements ChatClient<TestMessage> {
 
   /**
    * Simulates sending a message and streaming responses
-   * @param message - User message to send
+   * @param message - User message to send (text, or text plus images)
    * @param signal - Abort signal
    * @param _overrides - Unused overrides parameter
    * @param shouldInterrupt - Optional interrupt callback (invoked for coverage)
    * @yields Chat history snapshots
    */
   async *sendMessage(
-    message: string,
+    message: UserMessage,
     signal: AbortSignal,
     _overrides?: unknown,
     shouldInterrupt?: () => boolean,
@@ -61,14 +67,20 @@ export class MockChatClient implements ChatClient<TestMessage> {
       throw new Error("AbortError");
     }
 
-    this.chatHistory.push({ role: "user", content: message });
+    const { text, images } = normalizeUserMessage(message);
+
+    this.chatHistory.push({
+      role: "user",
+      content: text,
+      ...(images?.length ? { images } : {}),
+    });
     yield [...this.chatHistory];
 
     shouldInterrupt?.();
 
     this.chatHistory.push({
       role: "assistant",
-      content: `Response to: ${message}`,
+      content: `Response to: ${text}`,
     });
     yield [...this.chatHistory];
   }
@@ -158,10 +170,19 @@ export function createMockAdapter(): ChatAdapter<
       return message.role === "user" ? message.content : undefined;
     }),
 
-    createUserMessage: vi.fn((text: string): TestMessage => ({
-      role: "user",
-      content: text,
-    })),
+    extractUserImages: vi.fn(
+      (message: TestMessage): ChatImage[] | undefined => {
+        return message.role === "user" ? message.images : undefined;
+      },
+    ),
+
+    createUserMessage: vi.fn(
+      (text: string, images?: ChatImage[]): TestMessage => ({
+        role: "user",
+        content: text,
+        ...(images?.length ? { images } : {}),
+      }),
+    ),
 
     createCompactionSummary: vi.fn((summary: string): TestMessage => ({
       role: "user",
@@ -224,10 +245,10 @@ export function trackingAdapter(
     clients.push(client);
 
     client.sendMessage = async function* (
-      message: string,
+      message: UserMessage,
       signal: AbortSignal,
     ) {
-      sent?.push(message);
+      sent?.push(normalizeUserMessage(message).text);
       signals?.push(signal);
       yield echoUserTurn(client, message);
 
@@ -249,14 +270,20 @@ export async function tick(): Promise<void> {
  * Record the user's message on a client's history and hand back the snapshot to
  * yield — the two lines every scripted stream opens with.
  * @param client - The mock client whose history the turn lands on
- * @param message - The user's message text
+ * @param message - The user's message (text, or text plus images)
  * @returns The history snapshot to yield
  */
 export function echoUserTurn(
   client: MockChatClient,
-  message: string,
+  message: UserMessage,
 ): TestMessage[] {
-  client.chatHistory.push({ role: "user", content: message });
+  const { text, images } = normalizeUserMessage(message);
+
+  client.chatHistory.push({
+    role: "user",
+    content: text,
+    ...(images?.length ? { images } : {}),
+  });
 
   return [...client.chatHistory];
 }

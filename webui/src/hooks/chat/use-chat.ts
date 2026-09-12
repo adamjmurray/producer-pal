@@ -5,6 +5,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { haltRunningToolCalls } from "#webui/chat/helpers/halt-running-tool-calls";
+import {
+  type UserMessage,
+  normalizeUserMessage,
+  toSentMessage,
+} from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
 import {
   beginTurn,
@@ -26,7 +31,7 @@ import {
 import { useCompaction } from "./use-compaction";
 import { useConversationActions } from "./use-conversation-actions";
 import { useGetChatHistory } from "./use-get-chat-history";
-import { useMessageQueue } from "./use-message-queue";
+import { coalesceQueuedMessages, useMessageQueue } from "./use-message-queue";
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -248,14 +253,17 @@ export function useChat<
   );
 
   const handleSend = useCallback(
-    async (message: string, options?: MessageOverrides) => {
-      let currentMessage = message;
+    async (message: UserMessage, options?: MessageOverrides) => {
+      let currentMessage = normalizeUserMessage(message);
       let currentOptions = options;
 
       while (true) {
-        const userMessage = currentMessage.trim();
+        const userMessage = currentMessage.text.trim();
+        const images = currentMessage.images;
 
-        if (!userMessage) {
+        // Images alone are a message: an attachment with no words still asks
+        // the model something.
+        if (!userMessage && !images?.length) {
           return;
         }
 
@@ -277,12 +285,13 @@ export function useChat<
             setMessages,
             clientRef,
             pendingHistoryRef,
+            images,
           );
 
           return;
         }
 
-        const userMessageEntry = adapter.createUserMessage(userMessage);
+        const userMessageEntry = adapter.createUserMessage(userMessage, images);
         const sendOptions = currentOptions;
 
         const succeeded = await runWithChat(async (stillCurrent) => {
@@ -353,7 +362,7 @@ export function useChat<
           return await executeWithRetry({
             executeStream: () =>
               client.sendMessage(
-                userMessage,
+                toSentMessage({ text: userMessage, images }),
                 controller.signal,
                 filtered,
                 shouldInterrupt,
@@ -380,10 +389,11 @@ export function useChat<
           return;
         }
 
-        // Queued follow-ups coalesce into a single user turn (joined by blank
-        // lines); the overrides (currently just `thinking`) were captured once
-        // from the first queued message and apply to the merged turn.
-        currentMessage = queued.map((m) => m.text).join("\n\n");
+        // Queued follow-ups coalesce into a single user turn (texts joined by
+        // blank lines, images concatenated); the overrides (currently just
+        // `thinking`) were captured once from the first queued message and
+        // apply to the merged turn.
+        currentMessage = coalesceQueuedMessages(queued);
         currentOptions = overrides;
       }
     },
@@ -411,7 +421,7 @@ export function useChat<
       return;
     }
 
-    await handleSend(queued.map((m) => m.text).join("\n\n"), overrides);
+    await handleSend(coalesceQueuedMessages(queued), overrides);
   }, [drainQueue, handleSend]);
 
   const { handleRetry, handleEdit } = useConversationActions({

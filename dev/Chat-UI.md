@@ -175,6 +175,18 @@ the underlying provider implementation is swappable):
 - `restoreChatHistory(chatHistory)` - Loads saved history into state without
   creating an AI client (lazy — avoids MCP connection until next send)
 
+### Image Attachments
+
+Users attach images to a message by pasting, dropping them on the editor, or
+picking them with the attach button (`useImageAttachments` +
+`utils/image-attachments.ts`; paste and drag are intercepted in the CAPTURE
+phase on a wrapper around the editor, so CodeMirror never inserts the file).
+They ride on `ChatMessage.images` as base64, reach the model as AI SDK image
+parts ahead of the text (`buildModelMessages`), render as thumbnails in the user
+bubble (`UserImages`), and persist with the conversation like any other message
+field. A message may be images with no text at all, so both the send path and
+the composer treat attachments as content.
+
 ### Message Queue
 
 Users can keep sending while the AI is responding. `use-message-queue.ts` is a
@@ -401,7 +413,7 @@ briefings for why the blob belongs in the system prompt.
 `formatter.ts` transforms the stream into UI-friendly format:
 
 - Merges consecutive assistant messages into single UI messages
-- Converts to typed parts: `text`, `thought`, `tool`, `error`
+- Converts to typed parts: `text`, `image`, `thought`, `tool`, `error`
 - Matches tool results to tool calls by ID
 - Tracks original indices for retry functionality
 

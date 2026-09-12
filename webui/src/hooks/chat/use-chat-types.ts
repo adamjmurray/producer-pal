@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Notation } from "#src/shared/notation";
+import { type ChatImage, type UserMessage } from "#webui/chat/sdk/types";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -12,6 +13,18 @@ import { type Provider } from "#webui/types/settings";
 export interface MessageOverrides {
   thinking?: string;
 }
+
+/** Send a user message (text, or text plus attached images) and stream a reply. */
+export type SendMessageHandler = (
+  message: UserMessage,
+  options?: MessageOverrides,
+) => Promise<void>;
+
+/** Queue a user message while the assistant is still responding. */
+export type EnqueueMessageHandler = (
+  message: UserMessage,
+  overrides?: MessageOverrides,
+) => void;
 
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
@@ -24,7 +37,7 @@ export interface ChatClient<TMessage> {
   toolLimitReached?: boolean;
   initialize: () => Promise<void>;
   sendMessage: (
-    message: string,
+    message: UserMessage,
     signal: AbortSignal,
     overrides?: MessageOverrides,
     shouldInterrupt?: () => boolean,
@@ -82,8 +95,11 @@ export interface ChatAdapter<
   /** Extract user message text from a message for retry */
   extractUserMessage: (message: TMessage) => string | undefined;
 
+  /** Extract a user message's attached images, so retry/edit re-send them */
+  extractUserImages: (message: TMessage) => ChatImage[] | undefined;
+
   /** Create initial user message for error display */
-  createUserMessage: (text: string) => TMessage;
+  createUserMessage: (text: string, images?: ChatImage[]) => TMessage;
 
   /** Create a synthetic compaction summary message */
   createCompactionSummary: (summary: string) => TMessage;
@@ -161,7 +177,7 @@ export interface UseChatReturn {
   activeMaxToolSteps: number | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
-  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  enqueueMessage: EnqueueMessageHandler;
   removeMessage: (id: number) => void;
   /** True when the last response stopped at the tool-call step limit */
   toolLimitReached: boolean;
@@ -169,7 +185,7 @@ export interface UseChatReturn {
   isCompacting: boolean;
   /** True when the most recent compaction can still be undone (in-memory) */
   canUndoCompaction: boolean;
-  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  handleSend: SendMessageHandler;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
   /**
