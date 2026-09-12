@@ -201,17 +201,26 @@ describe("ppal-select", () => {
     expect(bySlot.selectedClip!.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
   });
 
-  it("warns when the view asked for can't hold the selected clip", async () => {
-    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
-    const result = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: `id ${clipId}`, view: "arrangement" },
-    });
-    const warnings = getToolWarnings(result);
+  it("infers the view from a clip's own location when none is requested", async () => {
+    const sessionClipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+    const arrangementClipId = await createClip(`t${EMPTY_MIDI_TRACK}[5|1]`);
 
-    expect(warnings.length).toBe(1);
-    expect(warnings[0]).toContain("ignoring view");
-    expect(warnings[0]).toContain("requires session view");
+    await select({ view: "arrangement" });
+    expect((await select({ id: `id ${sessionClipId}` })).view).toBe("session");
+
+    await select({ view: "session" });
+    expect((await select({ id: `id ${arrangementClipId}` })).view).toBe(
+      "arrangement",
+    );
+  });
+
+  it("keeps an explicit view even when it conflicts with the clip's own", async () => {
+    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+
+    const result = await select({ id: `id ${clipId}`, view: "arrangement" });
+
+    expect(result.view).toBe("arrangement");
+    expect(result.selectedClip!.id).toBe(clipId);
   });
 
   it("selects a device by id and by path", async () => {

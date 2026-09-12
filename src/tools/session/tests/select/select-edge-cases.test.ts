@@ -88,6 +88,22 @@ describe("select edge cases", () => {
       expect(result.view).toBe("arrangement");
       expect(result.selectedClip).toBeDefined();
     });
+
+    it("infers session view when a session clip is selected without explicit view", () => {
+      const appView = setupAppViewMock();
+
+      setupSongViewMock();
+      registerMockObject("session_clip_infer", {
+        path: livePath.track(0).clipSlot(1).clip(),
+        type: "Clip",
+        properties: { trackIndex: 0, clipSlotIndex: 1 },
+      });
+
+      const result = select({ id: "id session_clip_infer" });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.view).toBe("session");
+    });
   });
 
   describe("selections Live makes but the response can't describe", () => {

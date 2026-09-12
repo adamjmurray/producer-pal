@@ -28,14 +28,14 @@ import {
   resolveRackTarget,
   selectRackTarget,
 } from "./helpers/select-rack-helpers.ts";
+import { readFullState } from "./helpers/select-response-helpers.ts";
 import {
-  buildClipResponseFromId,
-  buildClipResponseFromSlot,
-  buildDeviceResponseFromDevice,
-  buildSceneResponseFromId,
-  buildTrackResponseFromId,
-  readFullState,
-} from "./helpers/select-response-helpers.ts";
+  addClipToResponse,
+  addDeviceToResponse,
+  addSceneToResponse,
+  addTrackToResponse,
+  type ResolvedArgs,
+} from "./helpers/select-result-helpers.ts";
 
 export interface SelectArgs extends SelectIdArgs {
   // External params (from schema)
@@ -131,23 +131,6 @@ export function select(
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
 
-  // View switching
-  let effectiveView: string | undefined;
-
-  if (view != null) {
-    appView.call("show_view", toLiveApiView(view));
-    effectiveView = view;
-  }
-
-  // Auto-switch to session view for scene/slot (session-only concepts)
-  const needsSessionView =
-    sceneId != null || sceneIndex != null || parsedClipSlot != null;
-
-  if (view == null && needsSessionView) {
-    appView.call("show_view", toLiveApiView("session"));
-    effectiveView = "session";
-  }
-
   // Perform selections
   const trackResult = updateTrackSelection({
     songView,
@@ -161,9 +144,17 @@ export function select(
     sceneIndex,
   });
 
-  if (clipId !== undefined) {
-    updateClipSelection({ appView, songView, clipId, requestedView: view });
-  }
+  // Scene/slot are session-only concepts, so they force session view.
+  const needsSessionView =
+    sceneId != null || sceneIndex != null || parsedClipSlot != null;
+
+  const effectiveView = resolveEffectiveView({
+    appView,
+    songView,
+    view,
+    needsSessionView,
+    clipId,
+  });
 
   const selectedDeviceAPI = updateDeviceSelection({
     songView,
@@ -225,6 +216,55 @@ export function select(
   return result;
 }
 
+interface ResolveEffectiveViewOptions {
+  appView: LiveAPI;
+  songView: LiveAPI;
+  view?: "session" | "arrangement";
+  needsSessionView: boolean;
+  clipId?: string;
+}
+
+/**
+ * Decide the view select ends on and switch Live to it. An explicit `view`
+ * always wins; otherwise a scene/slot target forces session view, and a clip
+ * target infers session or arrangement from where the clip lives.
+ * @param options - Inputs to the decision
+ * @param options.appView - LiveAPI instance for live_app view
+ * @param options.songView - LiveAPI instance for live_set view
+ * @param options.view - The caller's own `view` param, if given
+ * @param options.needsSessionView - Whether a scene/slot target forces session
+ * @param options.clipId - Clip ID being selected, if any
+ * @returns The view select switched to and should report, if any
+ */
+function resolveEffectiveView({
+  appView,
+  songView,
+  view,
+  needsSessionView,
+  clipId,
+}: ResolveEffectiveViewOptions): "session" | "arrangement" | undefined {
+  if (view != null) {
+    appView.call("show_view", toLiveApiView(view));
+  } else if (needsSessionView) {
+    appView.call("show_view", toLiveApiView("session"));
+  }
+
+  let effectiveView = view ?? (needsSessionView ? "session" : undefined);
+
+  if (clipId !== undefined) {
+    const clipView = updateClipSelection({
+      appView,
+      songView,
+      clipId,
+      switchView: view == null,
+    });
+
+    effectiveView = view == null ? clipView : effectiveView;
+  }
+
+  return effectiveView;
+}
+
 interface ApplyViewChangesOptions {
   appView: LiveAPI;
   detailView?: "clip" | "device" | "none";
@@ -278,23 +318,6 @@ function applyViewChanges({
   appView.call("hide_view", LIVE_API_VIEW_NAMES.BROWSER);
 }
 
-interface ResolvedArgs {
-  trackId?: string;
-  sceneId?: string;
-  clipId?: string;
-  deviceId?: string;
-  trackIndex?: number;
-  category: TrackCategory;
-  sceneIndex?: number;
-  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
-  devicePath?: string;
-  devicePathParam?: "path" | "devicePath";
-  rackTargetId?: string;
-  rackTargetPath?: string;
-  hasArgs: boolean;
-  viewOnly: boolean;
-}
-
 /**
  * Resolve external params (id, path, slot string) to internal representations
  * @param args - Raw select arguments
@@ -342,100 +365,4 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     hasArgs,
     viewOnly,
   };
-}
-
-/**
- * Add track info to action response if a track was selected
- * @param result - Response being built
- * @param selectedTrackId - Live API ID of selected track, if any
- */
-function addTrackToResponse(
-  result: SelectResult,
-  selectedTrackId: string | undefined,
-): void {
-  if (selectedTrackId != null) {
-    const info = buildTrackResponseFromId(selectedTrackId);
-
-    if (info) {
-      result.selectedTrack = info;
-    }
-  }
-}
-
-/**
- * Add scene info to action response if a scene was selected
- * @param result - Response being built
- * @param selectedSceneId - Live API ID of selected scene, if any
- */
-function addSceneToResponse(
-  result: SelectResult,
-  selectedSceneId: string | undefined,
-): void {
-  if (selectedSceneId != null) {
-    const info = buildSceneResponseFromId(selectedSceneId);
-
-    if (info) {
-      result.selectedScene = info;
-    }
-  }
-}
-
-/**
- * Add clip info to action response if a clip was selected
- * @param result - Response being built
- * @param resolved - Resolved args
- * @param clipSlotHasClip - Whether clipSlot had a clip
- */
-function addClipToResponse(
-  result: SelectResult,
-  resolved: ResolvedArgs,
-  clipSlotHasClip: boolean,
-): void {
-  if (resolved.clipId != null) {
-    const info = buildClipResponseFromId(resolved.clipId);
-
-    if (info) {
-      result.selectedClip = info;
-
-      // A clip selection always switches Live to the clip's required view
-      // (session for slotted clips, arrangement otherwise), so report that view
-      // even when it overrides an explicitly requested, conflicting view.
-      result.view =
-        LiveAPI.from(resolved.clipId).clipSlotIndex == null
-          ? "arrangement"
-          : "session";
-    }
-  } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
-    const info = buildClipResponseFromSlot(resolved.parsedClipSlot);
-
-    if (info) {
-      result.selectedClip = info;
-    }
-  }
-}
-
-/**
- * Add device info to action response if a device was selected, reusing the
- * device the selection step already resolved.
- * @param result - Response being built
- * @param resolved - Resolved args
- * @param selectedDeviceAPI - The device selection resolved, if any
- */
-function addDeviceToResponse(
-  result: SelectResult,
-  resolved: ResolvedArgs,
-  selectedDeviceAPI: LiveAPI | undefined,
-): void {
-  if (selectedDeviceAPI == null) {
-    return;
-  }
-
-  const info = buildDeviceResponseFromDevice(
-    selectedDeviceAPI,
-    resolved.devicePath,
-  );
-
-  if (info) {
-    result.selectedDevice = info;
-  }
 }

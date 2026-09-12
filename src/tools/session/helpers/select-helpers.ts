@@ -412,38 +412,36 @@ interface UpdateClipSelectionOptions {
   appView: LiveAPI;
   songView: LiveAPI;
   clipId: string;
-  requestedView?: "session" | "arrangement";
+  /** Switch to the clip's view (session/arrangement). False when the caller
+   * gave an explicit `view` — that wins, so this only selects the clip. */
+  switchView: boolean;
 }
 
 /**
- * Update clip selection in Live, switching to the appropriate view
+ * Update clip selection in Live, inferring session/arrangement view from
+ * where the clip lives unless the caller already picked a view explicitly.
  * @param options - Selection parameters
  * @param options.appView - LiveAPI instance for live_app view
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.clipId - Clip ID to select
- * @param options.requestedView - User-requested view (may be overridden)
+ * @param options.switchView - Whether to switch to the clip's required view
+ * @returns The view the clip lives in
  */
 export function updateClipSelection({
   appView,
   songView,
   clipId,
-  requestedView,
-}: UpdateClipSelectionOptions): void {
+  switchView,
+}: UpdateClipSelectionOptions): "session" | "arrangement" {
   const clipAPI = validateIdType(clipId, "clip");
   const isSessionClip =
     clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null;
   const requiredView = isSessionClip ? "session" : "arrangement";
 
-  // Warn if user explicitly requested a conflicting view
-  if (requestedView != null && requestedView !== requiredView) {
-    console.warn(
-      `ignoring view="${requestedView}" - clip ${targetLabel(clipAPI)} requires ${requiredView} view`,
-    );
+  // Live API ignores a detail_clip set if in the wrong view.
+  if (switchView) {
+    appView.call("show_view", toLiveApiView(requiredView));
   }
-
-  // Switch to appropriate view for the clip type
-  // (Live API ignores detail_clip set if in wrong view)
-  appView.call("show_view", toLiveApiView(requiredView));
 
   songView.setProperty("detail_clip", toLiveApiId(clipAPI.id));
 
@@ -457,6 +455,8 @@ export function updateClipSelection({
       },
     });
   }
+
+  return requiredView;
 }
 
 /**
