@@ -155,6 +155,14 @@ block, and how many files hold a block of 8+ lines. The caps live in
 current counts. Lower a limit when a count falls; raising one needs user
 approval.
 
+## Module names
+
+`src/test/meta/naming/module-name-limits.test.ts` ratchets how many non-test
+modules per tree end in a nothing word (`helpers`, `utils`, `misc`, `common`,
+`support`). The caps live in `src/test/helpers/module-name-limits.ts` and must
+match the current count exactly, so renaming a file means lowering the cap in
+the same commit. Test support files (`-test-helpers.ts`) don't count.
+
 ## Auditing coverage
 
 **Don't audit by grepping for a name.** A table-driven test registers its cases

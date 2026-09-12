@@ -298,6 +298,9 @@ them without asking:**
   `@ts-expect-error`, and v8-ignore comments.
 - `src/test/helpers/comment-limits.ts` — per-tree caps on comment lines and
   comment-block length, enforced by `src/test/comment-limits.test.ts`.
+- `src/test/helpers/module-name-limits.ts` — per-tree caps on modules named for
+  nothing (`-helpers`, `-utils`), enforced by
+  `src/test/meta/naming/module-name-limits.test.ts`.
 - `vitest.config.ts` (thresholds) — coverage.
 - `config/.jscpd*.json` (`threshold`) — code duplication.
 
