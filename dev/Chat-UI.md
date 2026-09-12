@@ -187,6 +187,11 @@ bubble (`UserImages`), and persist with the conversation like any other message
 field. A message may be images with no text at all, so both the send path and
 the composer treat attachments as content.
 
+Anything over 1568 px on its longest side is scaled down to that in the browser
+(canvas redraw, re-encoded as the same type) before it's read to base64. GIFs
+are left alone so animation survives, and the 5 MB cap applies to what scaling
+produced — a 12 MB screenshot attaches fine.
+
 ### Message Queue
 
 Users can keep sending while the AI is responding. `use-message-queue.ts` is a

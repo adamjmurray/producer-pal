@@ -8,7 +8,7 @@
  */
 import { EditorView } from "@codemirror/view";
 import { act, fireEvent, render, screen } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatInput } from "#webui/components/chat/controls/composer/ChatInput";
 import {
   MAX_IMAGES_PER_MESSAGE,
@@ -68,6 +68,18 @@ async function attachViaPicker(files: File[]): Promise<void> {
 }
 
 describe("ChatInput image attachments", () => {
+  beforeEach(() => {
+    // happy-dom can't decode an image; report one small enough to skip scaling.
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn().mockResolvedValue({ width: 8, height: 8, close: vi.fn() }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("attaches an image picked with the attach button", async () => {
     render(<ChatInput {...defaultProps} />);
 

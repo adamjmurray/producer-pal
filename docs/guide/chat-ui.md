@@ -160,7 +160,8 @@ overrides it for individual messages.
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
 - **📎 Attach images** - Attach PNG, JPEG, GIF or WebP images (up to 10 per
-  message, 5 MB each). You can also paste an image or drop one on the text area.
+  message, 5 MB each). Large images are scaled down to 1568 px on the longest
+  side before sending. You can also paste an image or drop one on the text area.
   Thumbnails appear above the input, each with an ✕ to remove it, and an image
   can be sent with no text at all.
 

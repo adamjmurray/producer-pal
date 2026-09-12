@@ -47,4 +47,41 @@ test.describe("chat image attachments", () => {
 
     expectNoConsoleOutput(captured);
   });
+
+  test("scales a large image down to 1568 px on its longest side", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await page.goto("/chat-ui.html");
+
+    // A 4000x2000 canvas, encoded in the page: no image fixture to check in.
+    const bigPng = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+
+      canvas.width = 4000;
+      canvas.height = 2000;
+
+      return canvas.toDataURL("image/png").split(",")[1] ?? "";
+    });
+
+    await page.getByTestId("image-file-input").setInputFiles({
+      name: "huge.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(bigPng, "base64"),
+    });
+
+    const thumbnail = page.getByAltText("Attachment 1");
+
+    await expect(thumbnail).toBeVisible();
+    await expect
+      .poll(async () =>
+        thumbnail.evaluate((img) => [
+          (img as HTMLImageElement).naturalWidth,
+          (img as HTMLImageElement).naturalHeight,
+        ]),
+      )
+      .toStrictEqual([1568, 784]);
+
+    expectNoConsoleOutput(captured);
+  });
 });

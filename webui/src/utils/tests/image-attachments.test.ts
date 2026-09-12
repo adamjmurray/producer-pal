@@ -6,19 +6,39 @@
 /**
  * @vitest-environment happy-dom
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  type Mock,
+  type MockInstance,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   IMAGE_ACCEPT,
   IMAGE_READ_ERROR_MESSAGE,
   IMAGE_TOO_LARGE_MESSAGE,
   MAX_IMAGES_PER_MESSAGE,
   MAX_IMAGE_BYTES,
+  MAX_IMAGE_DIMENSION,
   NOT_AN_IMAGE_MESSAGE,
   TOO_MANY_IMAGES_MESSAGE,
   attachImages,
   imageDataUrl,
   imageFilesFrom,
 } from "#webui/utils/image-attachments";
+
+/** "scaled" base64-encoded: what a stubbed canvas encode comes back as. */
+const SCALED_DATA = "c2NhbGVk";
+
+/** A decoded image the way `createImageBitmap` hands it over. */
+interface StubBitmap {
+  width: number;
+  height: number;
+  close: Mock;
+}
 
 /**
  * A real File the browser's FileReader can read.
@@ -37,7 +57,82 @@ function makeFile(name: string, type: string, size?: number): File {
   return file;
 }
 
+/**
+ * Stub decoding, since happy-dom can't decode an image.
+ * @param width - Decoded width to report
+ * @param height - Decoded height to report
+ * @returns The stub bitmap `createImageBitmap` resolves to
+ */
+function stubBitmap(width: number, height: number): StubBitmap {
+  const bitmap = { width, height, close: vi.fn() };
+
+  vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(bitmap));
+
+  return bitmap;
+}
+
+/**
+ * Stub the canvas, since happy-dom has no 2D context and no encoder.
+ * @param encode - What `toBlob` gives back for a requested media type
+ * @returns The drawImage spy (which records the target size) and the toBlob spy
+ */
+function stubCanvas(
+  encode: (type: string) => Blob | null = (type) =>
+    new Blob(["scaled"], { type }),
+): { drawImage: Mock; toBlob: MockInstance } {
+  const drawImage = vi.fn();
+
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    drawImage,
+  } as unknown as CanvasRenderingContext2D);
+
+  const toBlob = vi
+    .spyOn(HTMLCanvasElement.prototype, "toBlob")
+    .mockImplementation((callback, type) => {
+      callback(encode(String(type)));
+    });
+
+  return { drawImage, toBlob };
+}
+
+/**
+ * Stub the `<img>` decode path taken when `createImageBitmap` is missing.
+ * @param size - Natural size to report, or null to fail the load
+ * @returns The revokeObjectURL spy
+ */
+function stubImageElement(
+  size: { width: number; height: number } | null,
+): MockInstance {
+  vi.stubGlobal("createImageBitmap", undefined);
+  vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:stub");
+
+  const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+  vi.stubGlobal(
+    "Image",
+    class {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      naturalWidth = size?.width ?? 0;
+      naturalHeight = size?.height ?? 0;
+      set src(_url: string) {
+        if (size == null) {
+          this.onerror?.();
+        } else {
+          this.onload?.();
+        }
+      }
+    },
+  );
+
+  return revoke;
+}
+
 describe("attachImages", () => {
+  beforeEach(() => {
+    stubBitmap(100, 50);
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -66,13 +161,13 @@ describe("attachImages", () => {
     expect(result.notice).toBe(NOT_AN_IMAGE_MESSAGE);
   });
 
-  it("rejects an image over the size cap but keeps the others", async () => {
+  it("rejects an image still over the size cap but keeps the others", async () => {
+    const huge = new File([new Uint8Array(MAX_IMAGE_BYTES + 1)], "huge.gif", {
+      type: "image/gif",
+    });
     const result = await attachImages(
       [],
-      [
-        makeFile("huge.png", "image/png", MAX_IMAGE_BYTES + 1),
-        makeFile("ok.webp", "image/webp"),
-      ],
+      [huge, makeFile("ok.webp", "image/webp")],
     );
 
     expect(result.notice).toBe(IMAGE_TOO_LARGE_MESSAGE);
@@ -126,6 +221,146 @@ describe("attachImages", () => {
 
     expect(attached.images).toStrictEqual([]);
     expect(attached.notice).toBe(IMAGE_READ_ERROR_MESSAGE);
+  });
+});
+
+describe("image scaling", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("passes an image at or under the limit through untouched", async () => {
+    const bitmap = stubBitmap(MAX_IMAGE_DIMENSION, 900);
+    const { drawImage } = stubCanvas();
+    const result = await attachImages([], [makeFile("fits.png", "image/png")]);
+
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(bitmap.close).toHaveBeenCalled();
+    expect(result.images).toStrictEqual([
+      { mediaType: "image/png", data: "eHk=" },
+    ]);
+  });
+
+  it.each([
+    { shape: "landscape", width: 4000, height: 2000, drawn: [1568, 784] },
+    { shape: "portrait", width: 2000, height: 4000, drawn: [784, 1568] },
+  ])("scales a $shape image down", async ({ width, height, drawn }) => {
+    const bitmap = stubBitmap(width, height);
+    const { drawImage } = stubCanvas();
+    const result = await attachImages([], [makeFile("big.png", "image/png")]);
+
+    expect(drawImage).toHaveBeenCalledExactlyOnceWith(bitmap, 0, 0, ...drawn);
+    expect(result.images).toStrictEqual([
+      { mediaType: "image/png", data: SCALED_DATA },
+    ]);
+  });
+
+  it("leaves a GIF untouched so its animation survives", async () => {
+    const decode = vi.fn();
+
+    vi.stubGlobal("createImageBitmap", decode);
+
+    const { drawImage } = stubCanvas();
+    const result = await attachImages([], [makeFile("loop.gif", "image/gif")]);
+
+    expect(decode).not.toHaveBeenCalled();
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(result.images).toStrictEqual([
+      { mediaType: "image/gif", data: "eHk=" },
+    ]);
+  });
+
+  it("falls back to PNG when the browser can't encode WebP", async () => {
+    stubBitmap(4000, 2000);
+
+    const { toBlob } = stubCanvas((type) =>
+      type === "image/webp" ? null : new Blob(["scaled"], { type }),
+    );
+    const result = await attachImages([], [makeFile("big.webp", "image/webp")]);
+
+    expect(toBlob).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      "image/webp",
+      0.9,
+    );
+    expect(result.images).toStrictEqual([
+      { mediaType: "image/png", data: SCALED_DATA },
+    ]);
+  });
+
+  it("attaches an oversized file once scaling has shrunk it", async () => {
+    stubBitmap(8000, 4000);
+    stubCanvas();
+
+    const twelveMegabytes = 12 * 1024 * 1024;
+    const result = await attachImages(
+      [],
+      [makeFile("screenshot.png", "image/png", twelveMegabytes)],
+    );
+
+    expect(result.notice).toBeNull();
+    expect(result.images).toStrictEqual([
+      { mediaType: "image/png", data: SCALED_DATA },
+    ]);
+  });
+
+  it("rejects an image that's still too large once encoded", async () => {
+    stubBitmap(4000, 2000);
+    stubCanvas(
+      (type) => new Blob([new Uint8Array(MAX_IMAGE_BYTES + 1)], { type }),
+    );
+
+    const result = await attachImages([], [makeFile("big.png", "image/png")]);
+
+    expect(result.images).toStrictEqual([]);
+    expect(result.notice).toBe(IMAGE_TOO_LARGE_MESSAGE);
+  });
+
+  it("reports an unreadable image when decoding fails", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn().mockRejectedValue(new Error()));
+
+    const result = await attachImages([], [makeFile("x.png", "image/png")]);
+
+    expect(result.images).toStrictEqual([]);
+    expect(result.notice).toBe(IMAGE_READ_ERROR_MESSAGE);
+  });
+
+  it("reports an unreadable image when the canvas has no 2D context", async () => {
+    stubBitmap(4000, 2000);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+
+    const result = await attachImages([], [makeFile("big.png", "image/png")]);
+
+    expect(result.images).toStrictEqual([]);
+    expect(result.notice).toBe(IMAGE_READ_ERROR_MESSAGE);
+  });
+
+  it("decodes with an <img> when createImageBitmap is missing", async () => {
+    const revoke = stubImageElement({ width: 4000, height: 2000 });
+    const { drawImage } = stubCanvas();
+    const result = await attachImages([], [makeFile("big.png", "image/png")]);
+
+    expect(drawImage).toHaveBeenCalledExactlyOnceWith(
+      expect.anything(),
+      0,
+      0,
+      1568,
+      784,
+    );
+    expect(revoke).toHaveBeenCalledWith("blob:stub");
+    expect(result.images).toStrictEqual([
+      { mediaType: "image/png", data: SCALED_DATA },
+    ]);
+  });
+
+  it("reports an unreadable image when the <img> fallback fails to load", async () => {
+    const revoke = stubImageElement(null);
+    const result = await attachImages([], [makeFile("x.png", "image/png")]);
+
+    expect(revoke).toHaveBeenCalledWith("blob:stub");
+    expect(result.images).toStrictEqual([]);
+    expect(result.notice).toBe(IMAGE_READ_ERROR_MESSAGE);
   });
 });
 
