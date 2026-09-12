@@ -171,3 +171,54 @@ export function unitForLabels(...labels: string[]): string | null {
 
   return null;
 }
+
+/** Off/On labels a two-option param plausibly uses for a toggle. */
+const OFF_LABELS = new Set(["off", "false", "0"]);
+const ON_LABELS = new Set(["on", "true", "1"]);
+
+/**
+ * The index an enum (quantized) param's value_items resolves to for an input
+ * value, or -1 if none does.
+ *
+ * Matching is case-insensitive: the option list is closed, so there is no
+ * ambiguity a stricter match would be protecting against. A two-option param
+ * whose labels are an Off/On pair also accepts the booleans and 0/1 a model
+ * plausibly sends for a toggle — `false`/`0` for Off, `true`/`1` for On —
+ * since both arrive as strings after schema coercion.
+ * @param valueItems - The param's value_items, in index order
+ * @param inputValue - The value to resolve, as normalizeParamValue left it
+ * @returns The matching index, or -1 if nothing matches
+ */
+export function resolveEnumIndex(
+  valueItems: string[],
+  inputValue: string | number,
+): number {
+  const wanted = String(inputValue).toLowerCase();
+  const exact = valueItems.findIndex((item) => item.toLowerCase() === wanted);
+
+  if (exact !== -1) {
+    return exact;
+  }
+
+  if (valueItems.length !== 2) {
+    return -1;
+  }
+
+  const lower = valueItems.map((item) => item.toLowerCase());
+  const offIndex = lower.indexOf("off");
+  const onIndex = lower.indexOf("on");
+
+  if (offIndex === -1 || onIndex === -1) {
+    return -1;
+  }
+
+  if (OFF_LABELS.has(wanted)) {
+    return offIndex;
+  }
+
+  if (ON_LABELS.has(wanted)) {
+    return onIndex;
+  }
+
+  return -1;
+}

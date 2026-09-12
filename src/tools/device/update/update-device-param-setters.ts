@@ -18,6 +18,7 @@ import {
   readParameterBasic,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import {
+  resolveEnumIndex,
   strForValue,
   unitForLabels,
 } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
@@ -302,7 +303,7 @@ function setParamValue(
   // no continuous range to search, so numeric input is always a label lookup.
   if (isQuantized) {
     const valueItems = param.getPropertyList("value_items") as string[];
-    const index = valueItems.indexOf(String(inputValue));
+    const index = resolveEnumIndex(valueItems, inputValue);
 
     if (index === -1) {
       console.warn(

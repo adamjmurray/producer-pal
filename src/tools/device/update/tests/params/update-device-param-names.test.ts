@@ -335,3 +335,89 @@ describe("updateDevice - two rack macros renamed the same", () => {
     expect(macro2.set).not.toHaveBeenCalled();
   });
 });
+
+describe("updateDevice - enum values", () => {
+  let warpMode: RegisteredMockObject;
+  let deviceOn: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("124", {
+      path: livePath.track(0).device(1),
+      type: "Device",
+      properties: {
+        parameters: children("p-warp", "p-on"),
+      },
+    });
+
+    warpMode = registerMockObject("p-warp", {
+      properties: {
+        name: "Warp Mode",
+        original_name: "Warp Mode",
+        is_quantized: 1,
+        value_items: ["Repitch", "Fade", "Jump"],
+      },
+    });
+
+    deviceOn = registerMockObject("p-on", {
+      properties: {
+        name: "Device On",
+        original_name: "Device On",
+        is_quantized: 1,
+        value_items: ["Off", "On"],
+      },
+    });
+  });
+
+  it("matches an option case-insensitively", () => {
+    const result = updateDevice({
+      id: "124",
+      params: [{ name: "Warp Mode", value: "fade" }],
+    });
+
+    expect(warpMode.set).toHaveBeenCalledWith("value", 1);
+    expect(result).toStrictEqual({
+      id: "124",
+      path: "t0/d1",
+      params: [{ id: "p-warp", name: "Warp Mode", value: "Fade" }],
+    });
+  });
+
+  // The result reports the label read back from the device, not the caller's
+  // spelling — a write only ever echoes what the API confirms.
+  it.each([
+    ["On", 1, "On"],
+    ["on", 1, "On"],
+    ["true", 1, "On"],
+    ["1", 1, "On"],
+    ["Off", 0, "Off"],
+    ["off", 0, "Off"],
+    ["false", 0, "Off"],
+    ["0", 0, "Off"],
+  ])("accepts %s on an Off/On param as index %i", (value, index, label) => {
+    const result = updateDevice({
+      id: "124",
+      params: [{ name: "Device On", value }],
+    });
+
+    expect(deviceOn.set).toHaveBeenCalledWith("value", index);
+    expect(result).toStrictEqual({
+      id: "124",
+      path: "t0/d1",
+      params: [{ id: "p-on", name: "Device On", value: label }],
+    });
+  });
+
+  it("still refuses a value that names neither state", () => {
+    const result = updateDevice({
+      id: "124",
+      params: [{ name: "Device On", value: "peak" }],
+    });
+
+    expect(capturedWarnings()).toContain(
+      't0/d1 (id 124) param "Device On" (id p-on): "peak" is not valid. ' +
+        "Options: Off, On",
+    );
+    expect(deviceOn.set).not.toHaveBeenCalledWith("value", expect.anything());
+    expect(result).toStrictEqual({ id: "124", path: "t0/d1" });
+  });
+});

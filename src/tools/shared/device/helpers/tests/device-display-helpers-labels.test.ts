@@ -17,7 +17,7 @@ import {
   normalizeDivisionLabel,
   normalizePan,
 } from "../device-display-helpers.ts";
-import { parseLabel } from "../device-label-helpers.ts";
+import { parseLabel, resolveEnumIndex } from "../device-label-helpers.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [
@@ -452,5 +452,48 @@ describe("extractMaxPanValue", () => {
   it("returns default 50 for non-matching labels", () => {
     expect(extractMaxPanValue("C")).toBe(50);
     expect(extractMaxPanValue("invalid")).toBe(50);
+  });
+});
+
+describe("resolveEnumIndex", () => {
+  it("matches an option by exact label", () => {
+    expect(resolveEnumIndex(["Repitch", "Fade", "Jump"], "Fade")).toBe(1);
+  });
+
+  it("matches an option case-insensitively", () => {
+    expect(resolveEnumIndex(["Repitch", "Fade", "Jump"], "fade")).toBe(1);
+  });
+
+  it("returns -1 when nothing matches", () => {
+    expect(resolveEnumIndex(["Repitch", "Fade", "Jump"], "Warp")).toBe(-1);
+  });
+
+  it.each([
+    ["On", 1],
+    ["on", 1],
+    ["true", 1],
+    [1, 1],
+    ["1", 1],
+    ["Off", 0],
+    ["off", 0],
+    ["false", 0],
+    [0, 0],
+    ["0", 0],
+  ])("accepts %s as index %i for an Off/On pair", (value, index) => {
+    expect(resolveEnumIndex(["Off", "On"], value)).toBe(index);
+  });
+
+  it("accepts an On/Off pair in either order", () => {
+    expect(resolveEnumIndex(["On", "Off"], "false")).toBe(1);
+    expect(resolveEnumIndex(["On", "Off"], "true")).toBe(0);
+  });
+
+  it("does not treat 0/1 or booleans as toggles when the pair isn't Off/On", () => {
+    expect(resolveEnumIndex(["Peak", "RMS"], "0")).toBe(-1);
+    expect(resolveEnumIndex(["Peak", "RMS"], "true")).toBe(-1);
+  });
+
+  it("does not treat 0/1 or booleans as toggles for more than two options", () => {
+    expect(resolveEnumIndex(["Off", "On", "Auto"], "true")).toBe(-1);
   });
 });
