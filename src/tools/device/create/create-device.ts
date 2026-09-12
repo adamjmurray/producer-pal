@@ -24,10 +24,8 @@ import {
   unwrapSingleResult,
 } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { validateInsertionOrder } from "./device-insertion-order.ts";
@@ -136,7 +134,11 @@ export function createDevice(
   const results = withDevicePathCache(() => {
     validateInsertionOrder(paths, deviceName);
 
-    const parsedNames = parseNames(name, paths.length, "device");
+    const { parsedNames } = pairLabels({
+      noun: "device",
+      count: paths.length,
+      name,
+    });
 
     return createDevicesAtPaths(deviceName, paths, name, parsedNames, params);
   });

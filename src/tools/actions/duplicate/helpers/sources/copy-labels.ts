@@ -7,15 +7,9 @@
 // indices run across every copy the call makes, not across each source's own —
 // so "a,b,c,d" over two sources of two copies names them a, b, c, d.
 
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-parsing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /** The names and colors a call hands out, and where the current source is. */
@@ -73,14 +67,16 @@ export function claimLabels(labels: CopyLabels, copies: number): void {
 
   // The first source settles the total, and nothing has been copied yet, so a
   // name list that doesn't match the copies is still refusable up front.
-  validateListLengths([
-    { param: "this call", count: labels.total, noun: "copy" },
-    { param: "name", value: labels.name },
-    { param: "color", value: labels.color },
-  ]);
+  const { parsedNames, parsedColors } = labelNewTargets({
+    noun: "copy",
+    param: "this call",
+    count: labels.total,
+    name: labels.name,
+    color: labels.color,
+  });
 
-  labels.names = parseNames(labels.name, labels.total, "copy");
-  labels.colors = parseColors(labels.color, labels.total, "copy");
+  labels.names = parsedNames;
+  labels.colors = parsedColors;
 }
 
 /**

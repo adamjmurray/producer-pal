@@ -11,8 +11,7 @@ import {
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { parseColors } from "#src/tools/shared/validation/color-parsing.ts";
-import { parseNames } from "#src/tools/shared/validation/name-parsing.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
@@ -136,8 +135,12 @@ export function updateDevice(
     ]);
 
     const items = targetItems(ids, path);
-    const parsedNames = parseNames(name, items.length, "device");
-    const parsedColors = parseColors(color, items.length, "device");
+    const { parsedNames, parsedColors } = pairLabels({
+      noun: "device",
+      count: items.length,
+      name,
+      color,
+    });
 
     const updateOptions: UpdateTargetOptions = {
       toPath,

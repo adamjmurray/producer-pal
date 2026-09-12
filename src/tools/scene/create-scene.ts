@@ -9,15 +9,12 @@ import {
   type Insertion,
   planInsertions,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-parsing.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+  labelNewTargets,
+  pairLabels,
+} from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
@@ -108,18 +105,14 @@ export function createScene(
 
   validateSceneIndexCap(insertions.map((insertion) => insertion.insertIndex));
 
-  validateListLengths([
-    {
-      param: count == null ? "path" : "count",
-      count: spots.length,
-      noun: "scene",
-    },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
+  const { parsedNames, parsedColors } = labelNewTargets({
+    noun: "scene",
+    param: count == null ? "path" : "count",
+    count: spots.length,
+    name,
+    color,
+  });
 
-  const parsedNames = parseNames(name, spots.length, "scene");
-  const parsedColors = parseColors(color, spots.length, "scene");
   const createdScenes = insertions.map((insertion, i) =>
     createSingleScene(liveSet, insertion, {
       name: getNameForIndex(name, i, parsedNames),
@@ -157,7 +150,7 @@ function runCapture(
 ): CaptureSceneResult {
   // A malformed color would otherwise only surface inside setColor, after
   // captureScene has already captured the playing clips into a real scene.
-  parseColors(props.color, 1, "scene");
+  pairLabels({ noun: "scene", count: 1, color: props.color });
 
   // The index is Live's answer to where the capture landed; it stays out of
   // the result, where `path` already says it.

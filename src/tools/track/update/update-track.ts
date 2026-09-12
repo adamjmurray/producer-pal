@@ -28,25 +28,14 @@ import {
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-parsing.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  targetCount,
-  targetIds,
-  targetParamLabel,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { trackIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 interface UpdateTrackArgs {
@@ -196,33 +185,23 @@ export function updateTrack(
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
-  const named = { id, ids, path, paths };
-
-  if (targetCount(named) === 0) {
-    throw new Error("id or path is required");
-  }
+  const {
+    ids: trackIds,
+    parsedNames,
+    parsedColors,
+  } = resolveLabeledTargets({
+    noun: "track",
+    targets: { id, ids, path, paths },
+    idPerPath: trackIdPerPath,
+    name,
+    color,
+  });
 
   validateSendPair(sendGainDb, sendReturn);
 
   // Resolved once: the return tracks belong to the Live Set, so a per-track
   // lookup would repeat one warning down the list.
   const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
-
-  // Every list in the call is checked together, before any of them is split:
-  // once one is split nothing knows whether the others are lists at all.
-  validateListLengths([
-    { param: targetParamLabel(named), count: targetCount(named) },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
-
-  const trackIds = targetIds(named, trackIdPerPath);
-
-  // Parse names/colors against the original id count so the positional mapping
-  // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
-  // mid-list — otherwise every later name/color shifts onto the wrong track.
-  const parsedNames = parseNames(name, trackIds.length, "track");
-  const parsedColors = parseColors(color, trackIds.length, "track");
 
   const updatedTracks: UpdateTrackResult[] = [];
   // The collisions belong to the call, not to a track, so they are announced

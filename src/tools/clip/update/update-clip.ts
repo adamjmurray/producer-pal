@@ -10,14 +10,9 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-parsing.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-optimizer.ts";
 import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
@@ -198,8 +193,12 @@ async function runClipBatch({
 }: RunClipBatchArgs): Promise<ClipResult[]> {
   const { clips, moveOrder, destinationById } = plan;
   const { name, color } = args;
-  const parsedNames = parseNames(name, clips.length, "clip");
-  const parsedColors = parseColors(color, clips.length, "clip");
+  const { parsedNames, parsedColors } = pairLabels({
+    noun: "clip",
+    count: clips.length,
+    name,
+    color,
+  });
   const updatedClips: ClipResult[] = [];
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.

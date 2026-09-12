@@ -6,8 +6,10 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { parseColors } from "#src/tools/shared/validation/color-parsing.ts";
-import { parseNames } from "#src/tools/shared/validation/name-parsing.ts";
+import {
+  type PairedLabels,
+  pairLabels,
+} from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
@@ -27,7 +29,6 @@ import {
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 export interface CreateClipArgs {
@@ -193,8 +194,7 @@ export async function createClip(
     transformString,
   );
 
-  // Parse comma-separated names/colors for multi-clip creation
-  const { parsedNames, parsedColors } = parseMultiClipParams(
+  const { parsedNames, parsedColors } = clipLabels(
     name,
     color,
     clipSlots.length + arrangementPositions.length,
@@ -360,23 +360,21 @@ function finalizeCreatedClips(
 }
 
 /**
- * Parse comma-separated names and colors for multi-clip creation
- * @param name - Name parameter (may contain commas)
- * @param color - Color parameter (may contain commas)
- * @param totalPositionCount - Total number of clip positions
- * @returns Parsed names and colors arrays
+ * The names and colors for the positions this call fills
+ * @param name - The raw name param
+ * @param color - The raw color param
+ * @param count - How many positions the call fills
+ * @returns The call's name and color lists
  */
-function parseMultiClipParams(
+function clipLabels(
   name: string | null,
   color: string | null,
-  totalPositionCount: number,
-): { parsedNames: ListEntries | null; parsedColors: ListEntries | null } {
-  const parsedNames = parseNames(name ?? undefined, totalPositionCount, "clip");
-  const parsedColors = parseColors(
-    color ?? undefined,
-    totalPositionCount,
-    "clip",
-  );
-
-  return { parsedNames, parsedColors };
+  count: number,
+): PairedLabels {
+  return pairLabels({
+    noun: "clip",
+    count,
+    name: name ?? undefined,
+    color: color ?? undefined,
+  });
 }

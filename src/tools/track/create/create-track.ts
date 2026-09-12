@@ -13,15 +13,9 @@ import {
   planInsertions,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-parsing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   type CreateTrackTarget,
@@ -78,18 +72,14 @@ export function createTrack(
 
   validateTrackCap(targets.length, insertions);
 
-  validateListLengths([
-    {
-      param: count == null ? "path" : "count",
-      count: targets.length,
-      noun: "track",
-    },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
+  const { parsedNames, parsedColors } = labelNewTargets({
+    noun: "track",
+    param: count == null ? "path" : "count",
+    count: targets.length,
+    name,
+    color,
+  });
 
-  const parsedNames = parseNames(name, targets.length, "track");
-  const parsedColors = parseColors(color, targets.length, "track");
   const created: CreatedTrackResult[] = [];
   let returnIndex = returnTrackBase(liveSet, targets);
   let nextInsertion = 0;

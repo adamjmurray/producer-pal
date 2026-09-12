@@ -8,22 +8,11 @@ import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantiz
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-parsing.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-parsing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  targetCount,
-  targetIds,
-  targetParamLabel,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
@@ -78,29 +67,19 @@ export function updateScene(
   }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
-  const named = { id, ids, path, paths };
-
-  if (targetCount(named) === 0) {
-    throw new Error("id or path is required");
-  }
+  const {
+    ids: sceneIds,
+    parsedNames,
+    parsedColors,
+  } = resolveLabeledTargets({
+    noun: "scene",
+    targets: { id, ids, path, paths },
+    idPerPath: sceneIdPerPath,
+    name,
+    color,
+  });
 
   validateTempo(tempo, -1);
-
-  // Every list in the call is checked together, before any of them is split:
-  // once one is split nothing knows whether the others are lists at all.
-  validateListLengths([
-    { param: targetParamLabel(named), count: targetCount(named) },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
-
-  const sceneIds = targetIds(named, sceneIdPerPath);
-
-  // Parse names/colors against the original id count so the positional mapping
-  // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
-  // mid-list — otherwise every later name/color shifts onto the wrong scene.
-  const parsedNames = parseNames(name, sceneIds.length, "scene");
-  const parsedColors = parseColors(color, sceneIds.length, "scene");
 
   // Validate timeSignature format up front so a malformed value fails before
   // any scene is mutated, instead of throwing mid-loop after partial updates.
