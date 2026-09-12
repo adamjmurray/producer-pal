@@ -148,7 +148,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
     wrapInRack: param(z.boolean().optional(), {
-      default: "Wrap device(s) in a new rack (auto-detects type from device)",
+      default:
+        "Wrap device(s) in a new rack (auto-detects type from device); only one instrument at a time",
       smallModel: null,
     }),
   },

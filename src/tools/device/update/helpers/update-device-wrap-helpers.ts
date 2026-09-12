@@ -18,7 +18,10 @@ import {
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type TargetItem, targetItems } from "../update-device.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  pathField,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -39,6 +42,7 @@ interface WrapDevicesOptions {
 
 interface WrapResult {
   id: string;
+  path?: string;
   type: string;
   deviceCount: number;
 }
@@ -66,7 +70,7 @@ export function wrapDevicesInRack({
     return null;
   }
 
-  const rackType = determineRackType(devices);
+  const rackType = determineRackType(devices.map((d) => d.device));
 
   if (rackType == null) {
     return null;
@@ -74,12 +78,27 @@ export function wrapDevicesInRack({
 
   // Instruments require temp-track workaround
   if (rackType === RACK_TYPE_INSTRUMENT) {
-    return wrapInstrumentsInRack(devices, toPath, name);
+    // Live allows one instrument per track, so a second move onto the staging
+    // track would silently do nothing — refuse before anything is staged.
+    if (devices.length > 1) {
+      const named = devices.map((d) => `${d.kind} "${d.value}"`).join(", ");
+
+      throw new Error(
+        `wrapInRack can wrap only one instrument at a time; ` +
+          `${devices.length} named: ${named}`,
+      );
+    }
+
+    return wrapInstrumentInRack(
+      assertDefined(devices[0], "first device").device,
+      toPath,
+      name,
+    );
   }
 
   const destination = toPath
     ? rackDestination(toPath)
-    : getDeviceInsertionPoint(assertDefined(devices[0], "first device"));
+    : getDeviceInsertionPoint(assertDefined(devices[0], "first device").device);
 
   if (destination == null) {
     return null;
@@ -108,7 +127,7 @@ export function wrapDevicesInRack({
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   for (let i = 0; i < devices.length; i++) {
-    const device = assertDefined(devices[i], `device at index ${i}`);
+    const device = assertDefined(devices[i], `device at index ${i}`).device;
 
     // Ensure chain exists (create if needed)
     const currentChainCount = rack.getChildCount("chains");
@@ -138,24 +157,36 @@ export function wrapDevicesInRack({
     );
   }
 
-  return { id: rack.id, type: rackType, deviceCount: devices.length };
+  return {
+    id: rack.id,
+    ...pathField(rack),
+    type: rackType,
+    deviceCount: rack.getChildCount("chains"),
+  };
+}
+
+/** A device the call named, alongside the param and spelling that named it. */
+interface ResolvedDevice extends TargetItem {
+  device: LiveAPI;
 }
 
 /**
  * Resolve the devices a call named to LiveAPI objects
  * @param items - The targets, each tagged with the param it came from
- * @returns Array of device LiveAPI objects
+ * @returns Array of resolved devices, each still carrying its own kind/value
  */
-function resolveDevices(items: TargetItem[]): LiveAPI[] {
-  const devices: LiveAPI[] = [];
+function resolveDevices(items: TargetItem[]): ResolvedDevice[] {
+  const devices: ResolvedDevice[] = [];
 
-  for (const { value: item, kind } of items) {
+  for (const item of items) {
+    const { value, kind } = item;
+
     try {
       const device =
-        kind === "id" ? LiveAPI.from(item) : resolveDeviceFromPath(item);
+        kind === "id" ? LiveAPI.from(value) : resolveDeviceFromPath(value);
 
       if (!device?.exists()) {
-        console.warn(`wrapInRack: device not found at "${item}"`);
+        console.warn(`wrapInRack: device not found at "${value}"`);
       } else if (isProducerPalDevice(device)) {
         // Wrapping moves the device into a chain, which is a move like any
         // other — and this one would take the connection with it.
@@ -163,10 +194,10 @@ function resolveDevices(items: TargetItem[]): LiveAPI[] {
           `wrapInRack: cannot wrap the Producer Pal device ${targetLabel(device)}, skipping`,
         );
       } else if (device.type.endsWith("Device")) {
-        devices.push(device);
+        devices.push({ ...item, device });
       } else {
         console.warn(
-          `wrapInRack: "${item}" is not a device (type: ${device.type})`,
+          `wrapInRack: "${value}" is not a device (type: ${device.type})`,
         );
       }
     } catch (error) {
@@ -275,24 +306,25 @@ function getDeviceInsertionPoint(device: LiveAPI): {
 }
 
 /**
- * Wrap instrument(s) in an Instrument Rack using temp-track workaround.
- * Live doesn't allow creating Instrument Rack on track with existing instrument.
- * @param devices - Instrument device(s) to wrap
+ * Wrap one instrument in an Instrument Rack using a temp-track workaround.
+ * Live doesn't allow creating an Instrument Rack on a track that already has
+ * an instrument, and doesn't allow two instruments on one track — so this
+ * only ever handles one instrument; the caller refuses more than one up front.
+ * @param device - Instrument device to wrap
  * @param toPath - Target path for the new rack
  * @param name - Name for the new rack
  * @returns Info about the created rack
  */
-function wrapInstrumentsInRack(
-  devices: LiveAPI[],
+function wrapInstrumentInRack(
+  device: LiveAPI,
   toPath?: string,
   name?: string,
 ): WrapResult | null {
   const liveSet = LiveAPI.from(livePath.liveSet);
-  const firstDevice = assertDefined(devices[0], "first device");
 
-  // 1. Get source track from first instrument
+  // 1. Get source track from the instrument
   const { container: sourceContainer, position: devicePosition } =
-    getDeviceInsertionPoint(firstDevice);
+    getDeviceInsertionPoint(device);
 
   // 2. Resolve and validate the destination BEFORE moving anything. A bad
   // toPath must fail here, while the instruments are still safely on their
@@ -319,17 +351,13 @@ function wrapInstrumentsInRack(
   const tempTrackIndex = tempTrack.trackIndex;
 
   try {
-    // 4. Move ALL instruments to temp track
-    const tempTrackIdForMove = toLiveApiId(tempTrack.id);
-
-    for (const device of devices) {
-      liveSet.call(
-        "move_device",
-        toLiveApiId(device.id),
-        tempTrackIdForMove,
-        0,
-      );
-    }
+    // 4. Move the instrument to the temp track
+    liveSet.call(
+      "move_device",
+      toLiveApiId(device.id),
+      toLiveApiId(tempTrack.id),
+      0,
+    );
 
     // 5. Create Instrument Rack on source track (or toPath)
     const rackId = container.call(
@@ -343,33 +371,27 @@ function wrapInstrumentsInRack(
       rack.set("name", name);
     }
 
-    // 6. Move each instrument from temp into rack's chains
-    // Instruments are now at devices 0, 1, 2... on temp track (in reverse order)
-    // We need to process them in reverse to maintain original order
-    for (let i = devices.length - 1; i >= 0; i--) {
-      // Create chain
-      rack.call("insert_chain");
-      const chainIndex = rack.getChildCount("chains") - 1;
-      const chain = LiveAPI.from(`${rack.path} chains ${chainIndex}`);
+    // 6. Move the instrument from the temp track into the rack's chain
+    rack.call("insert_chain");
+    const chainIndex = rack.getChildCount("chains") - 1;
+    const chain = LiveAPI.from(`${rack.path} chains ${chainIndex}`);
+    const tempDevice = LiveAPI.from(`${tempTrack.path} devices 0`);
 
-      // Get device at position 0 (always 0 since we move from front)
-      const tempDevice = LiveAPI.from(`${tempTrack.path} devices 0`);
-
-      liveSet.call(
-        "move_device",
-        toLiveApiId(tempDevice.id),
-        toLiveApiId(chain.id),
-        0,
-      );
-    }
+    liveSet.call(
+      "move_device",
+      toLiveApiId(tempDevice.id),
+      toLiveApiId(chain.id),
+      0,
+    );
 
     // 7. Delete temp track
     liveSet.call("delete_track", tempTrackIndex);
 
     return {
       id: rack.id,
+      ...pathField(rack),
       type: RACK_TYPE_INSTRUMENT,
-      deviceCount: devices.length,
+      deviceCount: rack.getChildCount("chains"),
     };
   } catch (error) {
     // The instruments were staged on the temp track before/while the rack was
