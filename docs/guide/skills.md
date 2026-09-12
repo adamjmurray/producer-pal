@@ -223,7 +223,7 @@ into the skill folder.
 
 ## Companion skills
 
-The `producer-pal` skill is the connection. Two more skills build on it:
+The `producer-pal` skill is the connection. Three more skills come with it:
 
 - **`ableton-audio-generator`**: synthesize audio from scratch with plain
   Node.js DSP and place it in Live: drum kits and Drum Racks, samples for
@@ -238,9 +238,14 @@ The `producer-pal` skill is the connection. Two more skills build on it:
   Ableton involved, needs a `GEMINI_API_KEY`. The analysis is one short script
   against one HTTP endpoint, so swapping in a different audio-capable model or
   service is a small edit.
+- **`ableton-read-als`**: read Live Set files straight from disk, without
+  opening Live or needing the device in the Set. Tracks, device chains with
+  racks and macros, parameters, clips, mixer, routing, scenes. Point it at a
+  whole projects folder to compare many Sets at once, like "what master chain do
+  I usually use?". Live 12 files, any platform, read-only.
 
 <a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
-has all three. Unzip it the same way:
+has all four. Unzip it the same way:
 
 ```bash
 curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip

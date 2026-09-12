@@ -79,6 +79,15 @@ menus/dialogs with AppleScript and then polls for the rendered file — a
 different shape from the generator above, which synthesizes files directly in
 Node.
 
+## Read Sets without opening Live
+
+- **[`ableton-read-als`](ableton-read-als/)** — read `.als` files straight from
+  disk: tracks, device chains (racks, drum pads, macros, parameters, presets),
+  clips, mixer, routing, scenes, locators. Point it at one Set or a whole
+  projects folder. The one skill here that needs neither Live nor the device, so
+  it's the way to compare many projects at once ("what master chain do I usually
+  use?"). Live 12 files, any platform, read-only.
+
 ## Shared conventions
 
 - **Plain-Node DSP** — oscillators, envelopes, filters, and WAV headers written
@@ -93,4 +102,5 @@ Node.
 
 - Ableton Live running with the **Producer Pal** Max for Live device loaded
   (shows "Producer Pal Running"). Default endpoint `http://localhost:3350`.
+  `ableton-read-als` is the exception: it only reads files.
 - Node.js 18+.
