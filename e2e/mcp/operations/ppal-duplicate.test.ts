@@ -325,6 +325,62 @@ describe("ppal-duplicate", () => {
     expect(parseToolResult<ReadClipResult>(readCopy).color).toBeDefined();
   });
 
+  it("refuses a scene duplicate whose toPath names no arrangement position", async () => {
+    const scenesResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["scenes"] },
+    });
+    const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
+    const initialSceneCount = scenes.scenes!.length;
+
+    const dupResult = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "scene",
+        id: scenes.scenes![0]!.id,
+        toPath: `t${EMPTY_MIDI_TRACK}/s5`,
+      },
+    });
+
+    expect(isToolError(dupResult)).toBe(true);
+    expect(getToolErrorMessage(dupResult)).toContain("[5|1]");
+
+    await sleep(100);
+
+    // Nothing was inserted — a call this refuses changes nothing.
+    const afterResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["scenes"] },
+    });
+    const after = parseToolResult<ReadLiveSetResult>(afterResult);
+
+    expect(after.scenes!.length).toBe(initialSceneCount);
+  });
+
+  it("warns and ignores count when a scene duplicate names several arrangement positions", async () => {
+    const scenesResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["scenes"] },
+    });
+    const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
+
+    const dupResult = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "scene",
+        id: scenes.scenes![7]!.id,
+        toPath: "[49|1],[53|1]",
+        count: 2,
+      },
+    });
+    const { data: dup, warnings } =
+      parseToolResultWithWarnings<Array<{ clips: unknown[] }>>(dupResult);
+
+    // Two positions named, one copy each — count added nothing.
+    expect(dup).toHaveLength(2);
+    expect(warnings.join(" ")).toContain("count ignored");
+  });
+
   it("duplicates clips", async () => {
     // Test 1: Session clip to session
     // First create a clip to duplicate on empty track

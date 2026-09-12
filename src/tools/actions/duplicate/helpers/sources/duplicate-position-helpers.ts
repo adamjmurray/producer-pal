@@ -9,6 +9,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   claimLabels,
@@ -71,16 +72,22 @@ export async function duplicateSceneToArrangementAtPositions(
     throw new Error(`no scene index for id "${id}" (path="${object.path}")`);
   }
 
-  // When single position + count > 1, expand to sequential positions
+  // When single position + count > 1, expand to sequential positions. A list
+  // of positions already names one copy per position, so count adds nothing.
   const sceneLength = calculateSceneLength(sceneIndex);
-  const allPositions =
-    positions.length === 1 && count > 1
-      ? Array.from(
-          { length: count },
-          // bounded by count, index always valid
-          (_, i) => (positions[0] as number) + i * sceneLength,
-        )
-      : positions;
+  let allPositions = positions;
+
+  if (positions.length === 1 && count > 1) {
+    allPositions = Array.from(
+      { length: count },
+      // bounded by count, index always valid
+      (_, i) => (positions[0] as number) + i * sceneLength,
+    );
+  } else if (positions.length > 1 && count > 1) {
+    console.warn(
+      "count ignored for scenes: one copy per position — list more in toPath",
+    );
+  }
 
   const createdObjects: object[] = [];
 
