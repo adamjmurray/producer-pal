@@ -3,20 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  namedParam,
-  paramNamesSomething,
-} from "#src/tools/shared/helpers/param-presence.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ClipPath,
-  namedHiddenPath,
   pathEntries,
   pathNamesSomething,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { warnDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import {
   requireClipDestinationPath,
   type ClipDestinationPath,
@@ -88,20 +85,23 @@ export function resolveMoveDestinations(
     destinations: Array.from({ length: clipCount }, () => null),
     positions: Array.from({ length: clipCount }, () => null),
   };
-  // A blank param names nothing, so read it as omitted rather than as a
-  // destination that failed to parse.
-  const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
+  // A warning, not a refusal: the rest of the update (name, color, length)
+  // still lands, and nothing was created that the caller would have to clean up
+  // before retrying — unlike create-clip and duplicate, which refuse.
+  const named = warnDoubledSpelling({
+    param: "toPath",
+    value: rawToPath,
+    alias: "toSlot",
+    aliasValue: rawToSlot,
+    noun: "a destination",
+    outcome: "no clip was moved",
+  });
 
-  // Honoring one and dropping the other would move the clip somewhere the
-  // caller didn't ask for, so move it nowhere and say so.
-  if (toPath != null && toSlot != null) {
-    console.warn(
-      "toPath and toSlot both name a destination, so no clip was moved; use toPath alone (toSlot is deprecated)",
-    );
-
+  if (named == null) {
     return none;
   }
+
+  const { value: toPath, aliasValue: toSlot } = named;
 
   if (toPath == null && toSlot == null) {
     return none;
@@ -109,7 +109,7 @@ export function resolveMoveDestinations(
 
   // A bad destination is one param out of many on a batch update, and the
   // tool's rule is warn-and-skip so the notes still land. Neither param can be
-  // empty here: namedHiddenPath drops a toSlot that names nothing, and toPath
+  // empty here: the guard above drops a toSlot that names nothing, and toPath
   // refuses one when it splits its entries.
   try {
     const entries: Array<ClipDestinationPath | null> =

@@ -27,10 +27,8 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import {
-  arrangementPath,
-  namedHiddenPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   parseSlotList,
@@ -83,24 +81,19 @@ export function resolveCreateClipDestinations(
   params: ClipDestinationParams,
   arrangementStart?: string | null,
 ): ClipDestinations {
-  // A blank param names nothing, so read it as omitted rather than as a
-  // destination that failed to parse. A position list that is not blank but
-  // still names nothing warns instead: a real position beside a slot-only path
-  // is refused, so one that parses to nothing must not just vanish.
-  const path = namedParam(params.path, "path");
-  const slot = namedHiddenPath(params.slot ?? undefined, "slot");
+  const { value: path, aliasValue: slot } = refuseDoubledSpelling({
+    param: "path",
+    value: params.path,
+    alias: "slot",
+    aliasValue: params.slot,
+    noun: "a destination",
+  });
+  // A position list that is not blank but still names nothing warns rather than
+  // vanishing: a real position beside a slot-only path is refused.
   const arrangementStarts = targetEntries(
     namedParam(arrangementStart, "arrangementStart"),
     "arrangementStart",
   );
-
-  // Honoring one and dropping the other is exactly the silent-destination bug
-  // path replaces, so refuse instead of picking.
-  if (path != null && slot != null) {
-    throw new Error(
-      "path and slot both name a destination; use path alone (slot is deprecated)",
-    );
-  }
 
   const { clipSlots, tracks } =
     path != null

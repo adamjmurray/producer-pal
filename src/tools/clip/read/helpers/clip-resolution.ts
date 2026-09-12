@@ -15,15 +15,12 @@ import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers
 import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import { type ArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 import {
-  namedHiddenPath,
   requireClipSlotPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
-import {
-  namedIdParam,
-  namedParam,
-} from "#src/tools/shared/helpers/param-presence.ts";
+import { namedIdParam } from "#src/tools/shared/helpers/param-presence.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -189,17 +186,13 @@ interface ClipLocation {
  */
 export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   const clipId = namedIdParam(args.id, args.clipId, "clipId") ?? null;
-  const path = namedParam(args.path, "path");
-  const slot = namedHiddenPath(args.slot ?? undefined, "slot");
-
-  // Honoring one and dropping the other is the silent wrong-clip bug path
-  // replaces, so refuse instead of picking — the same trade every other tool
-  // takes.
-  if (path != null && slot != null) {
-    throw new Error(
-      "path and slot both name a clip; use path alone (slot is deprecated)",
-    );
-  }
+  const { value: path, aliasValue: slot } = refuseDoubledSpelling({
+    param: "path",
+    value: args.path,
+    alias: "slot",
+    aliasValue: args.slot,
+    noun: "a clip",
+  });
 
   if (path != null) {
     // The aliases are a fallback for a caller that did not use path.

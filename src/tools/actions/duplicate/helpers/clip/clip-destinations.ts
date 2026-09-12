@@ -25,6 +25,7 @@ import {
   namedHiddenPath,
   type ClipPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   parseSlotList,
@@ -71,18 +72,13 @@ export function resolveClipDestinations(
   rawToSlot: string | undefined,
   hasArrangementParams: boolean,
 ): ClipDestinations {
-  // A blank param names nothing, so read it as omitted rather than as a
-  // destination that failed to parse.
-  const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
-
-  // Honoring one and dropping the other is exactly the silent-destination bug
-  // toPath replaces, so refuse instead of picking.
-  if (toPath != null && toSlot != null) {
-    throw new Error(
-      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
-    );
-  }
+  const { value: toPath, aliasValue: toSlot } = refuseDoubledSpelling({
+    param: "toPath",
+    value: rawToPath,
+    alias: "toSlot",
+    aliasValue: rawToSlot,
+    noun: "a destination",
+  });
 
   if (toSlot != null) {
     return legacySlotDestinations(toSlot, hasArrangementParams);
