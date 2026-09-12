@@ -14,7 +14,12 @@ should follow from them unambiguously, without being spelled out here.
    object's `id` explicitly, and its `path` explicitly unless the nesting around
    it already gives it, where it's omitted to save tokens. Anything with no `id`
    is named by `path` alone. A `path` or `id` a tool returns can be sent
-   straight back as input and names the same object.
+   straight back as input and names the same object. A write to a position past
+   the end of a container creates what's missing when the path alone determines
+   what to create (a scene, a take lane, a rack chain). Anything in between is
+   created bare, creation is capped, and the result entry reports what was
+   created. When the path leaves a choice open (a track's type), the call
+   refuses and the error names the tool that creates it.
 
 2. Multi-target: Every tool that could possibly operate on multiple objects
    supports it by allowing a single value or a comma-separated list in any
