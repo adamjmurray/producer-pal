@@ -128,11 +128,13 @@ function planLoop({
   const slid = startBeats ?? (endBeats as number) - currentLengthBeats;
 
   if (slid < 0) {
-    return {
-      refusal:
-        `loopEnd ${barBeat(endBeats as number)} would start the loop before ` +
-        `1|1 — leaving the loop as it was`,
-    };
+    const refusal =
+      startBeats != null
+        ? `loopStart ${barBeat(startBeats)} is before 1|1 — leaving the loop as it was`
+        : `loopEnd ${barBeat(endBeats as number)} would set the loop start before ` +
+          `1|1 — leaving the loop as it was`;
+
+    return { refusal };
   }
 
   return { plan: { startBeats: slid, lengthBeats: currentLengthBeats } };
