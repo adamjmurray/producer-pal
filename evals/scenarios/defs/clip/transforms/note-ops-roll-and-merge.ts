@@ -234,7 +234,7 @@ function assertRepeatGrew(createTurn: number, editTurn: number): EvalAssertion {
     description:
       "used repeat(offset, copies) and the note count grew (no resize)",
     assert: (turns) => {
-      const editCall = getToolCalls(turns, editTurn).find(
+      const editCall = getToolCalls(turns, editTurn).findLast(
         (c) => c.name === TOOL_UPDATE_CLIP,
       );
       const transforms = getTransforms(turns, editTurn, TOOL_UPDATE_CLIP);

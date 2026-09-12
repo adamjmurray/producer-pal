@@ -67,7 +67,9 @@ function playbackCall(
   turns: EvalTurnResult[],
   turn: number,
 ): { args: Record<string, unknown>; result: Record<string, unknown> } | null {
-  const call = getToolCalls(turns, turn).find((c) => c.name === TOOL_PLAYBACK);
+  const call = getToolCalls(turns, turn).findLast(
+    (c) => c.name === TOOL_PLAYBACK,
+  );
 
   if (call == null) {
     return null;
@@ -158,7 +160,7 @@ function assertDuplicatedToLocator(turn: number): EvalAssertion {
     type: "custom",
     description: "placed the copy by naming the Bridge locator",
     assert: (turns) => {
-      const call = getToolCalls(turns, turn).find(
+      const call = getToolCalls(turns, turn).findLast(
         (c) => c.name === TOOL_DUPLICATE,
       );
 

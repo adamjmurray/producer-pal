@@ -78,7 +78,7 @@ export const swingAndQuantize: EvalScenario = {
         const getSwingAmount = (turn: number): number => {
           const calls = getToolCalls(turns, turn);
 
-          const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
+          const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
 
           const transforms = argText(updateCall?.args.transforms);
           const match = swingPattern.exec(transforms);

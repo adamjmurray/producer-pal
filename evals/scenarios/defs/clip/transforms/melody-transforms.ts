@@ -49,7 +49,7 @@ export const melodyTransforms: EvalScenario = {
       description: "melody extended with notes copied into 8 bars",
       assert: (turns) => {
         const calls = getToolCalls(turns, 2);
-        const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
+        const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
 
         if (!updateCall) {
           throw new Error("ppal-update-clip not found in turn 2");
@@ -81,7 +81,7 @@ export const melodyTransforms: EvalScenario = {
       description: "pitch transposition uses step() with correct amounts",
       assert: (turns) => {
         const calls = getToolCalls(turns, 3);
-        const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
+        const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
 
         if (!updateCall) {
           throw new Error("ppal-update-clip not found in turn 3");

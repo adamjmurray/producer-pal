@@ -78,7 +78,7 @@ function assertLocatorCoordinate(options: {
     type: "custom",
     description: `${tool} turn ${turn}: ${param} names the ${locator} locator`,
     assert: (turns) => {
-      const call = getToolCalls(turns, turn).find((c) => c.name === tool);
+      const call = getToolCalls(turns, turn).findLast((c) => c.name === tool);
 
       if (call == null) {
         throw new Error(`no ${tool} call in turn ${turn}`);

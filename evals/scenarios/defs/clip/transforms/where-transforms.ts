@@ -75,7 +75,7 @@ function toTransformString(raw: unknown): string {
  * @returns The combined transform string (transforms then preTransforms)
  */
 function getWhereTransform(turns: EvalTurnResult[], turn: number): string {
-  const call = getToolCalls(turns, turn).find(
+  const call = getToolCalls(turns, turn).findLast(
     (c) => c.name === TOOL_UPDATE_CLIP,
   );
 
