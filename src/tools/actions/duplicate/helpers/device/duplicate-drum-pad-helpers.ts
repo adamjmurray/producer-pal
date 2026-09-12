@@ -11,7 +11,10 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
-import { findDrumPadByNote } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
+  findDrumPadByNote,
+  invalidateRackChains,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   buildDrumPadPath,
   extractDevicePath,
@@ -115,6 +118,7 @@ export function duplicateDrumPad(
     findDrumPadByNote(rack, destination.midi)?.getChildCount("chains") ?? 0;
 
   rack.call("copy_pad", source.midi, destination.midi);
+  invalidateRackChains(rack);
 
   return finishPadCopy(rack, destination, toPath, chainsBefore, name);
 }

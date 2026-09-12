@@ -8,7 +8,10 @@
 // pad. Only a Drum Rack with pads of its own has one to borrow.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { drumPadIdsByNote } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
+  drumPadIdsByNote,
+  invalidateRackChains,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** Where a pad's chain sits under its rack. */
@@ -49,6 +52,7 @@ export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
 
   chain.set("in_note", scratchPad.getProperty("note"));
   scratchPad.call("delete_all_chains");
+  invalidateRackChains(rack);
 
   // Look the id up again: a dead one lands nowhere, while the object the clear
   // ran through still reports its old id and path.

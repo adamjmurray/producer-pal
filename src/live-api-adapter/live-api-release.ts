@@ -186,6 +186,16 @@ export function requestMemo<T>(key: string, compute: () => T): T {
   return value;
 }
 
+/**
+ * Forget one {@link requestMemo} value, so the next ask for that key recomputes
+ * it. For a value a write inside the same request can invalidate — a rack's
+ * chain list, say, after a chain is inserted or deleted on it.
+ * @param key - The key passed to {@link requestMemo}
+ */
+export function forgetRequestMemo(key: string): void {
+  memoizedValues.delete(key);
+}
+
 /** Forget everything memoized, so the next lookup of each resolves afresh. */
 export function clearLiveApiMemo(): void {
   memoizedObjects.clear();

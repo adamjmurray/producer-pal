@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  forgetRequestMemo,
+  requestMemo,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
@@ -195,15 +199,48 @@ function padNoteToInNote(drumPadNote: string): number | null {
 }
 
 /**
+ * The {@link requestMemo} key for a rack's chain list.
+ * @param rack - The drum rack device
+ * @returns The memo key
+ */
+function rackChainsMemoKey(rack: LiveAPI): string {
+  return `drum-rack-chains ${rack.path}`;
+}
+
+/**
+ * Every chain on a rack, in rack order. Memoized per request: resolving one
+ * pad of an N-pad kit builds every chain to read its `in_note`, so an
+ * unmemoized scan made building a kit quadratic in pad count.
+ *
+ * A chain inserted or deleted on the rack mid-request goes stale here — every
+ * such site must call {@link invalidateRackChains} on the same rack.
+ * @param rack - The drum rack device
+ * @returns The rack's chains, in rack order
+ */
+function allChainsOnRack(rack: LiveAPI): LiveAPI[] {
+  return requestMemo(rackChainsMemoKey(rack), () => rack.getChildren("chains"));
+}
+
+/**
+ * Forget a rack's memoized chain list. Call this right after inserting or
+ * deleting a chain on the rack, so the next {@link chainsForInNote} in the same
+ * request sees the change instead of the pre-write list.
+ * @param rack - The drum rack device a chain was just inserted into or deleted from
+ */
+export function invalidateRackChains(rack: LiveAPI): void {
+  forgetRequestMemo(rackChainsMemoKey(rack));
+}
+
+/**
  * Every chain a drum rack routes to one pad.
  * @param rack - The drum rack device
  * @param inNote - The pad's in_note (-1 for the catch-all)
  * @returns The chains, in rack order
  */
 export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
-  return rack
-    .getChildren("chains")
-    .filter((c) => c.getProperty("in_note") === inNote);
+  return allChainsOnRack(rack).filter(
+    (c) => c.getProperty("in_note") === inNote,
+  );
 }
 
 /**

@@ -10,6 +10,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
+import {
+  drumRackOfPad,
+  invalidateRackChains,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { deleteDrumChain } from "./delete-chain-helpers.ts";
@@ -199,7 +203,10 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
  * @returns true if the pad's chains are gone, false if any survived
  */
 function deleteDrumPadObject(object: LiveAPI): boolean {
+  const rack = drumRackOfPad(object);
+
   object.call("delete_all_chains");
+  invalidateRackChains(rack);
 
   // The pad outlives its own delete, so there is no dead object to test for.
   // Read the chains back instead: a refused clear is otherwise indistinguishable

@@ -15,6 +15,7 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { invalidateRackChains } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   pathField,
   pathPrefix,
@@ -258,6 +259,8 @@ function rackAtPath(toPath: string): LiveAPI | null {
 function insertChain(rack: LiveAPI): LiveAPI | null {
   // insert_chain returns ["id", chainId] on success, or 1 on failure.
   const result = rack.call("insert_chain");
+
+  invalidateRackChains(rack);
 
   if (!Array.isArray(result) || result[0] !== "id") {
     console.warn(

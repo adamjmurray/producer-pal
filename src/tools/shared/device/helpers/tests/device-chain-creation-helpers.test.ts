@@ -6,6 +6,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -200,6 +204,59 @@ describe("resolveOrCreateDrumPadChain", () => {
       resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", ["c15"]),
     ).not.toThrow();
     expect(rack.call).toHaveBeenCalledTimes(16);
+  });
+
+  // The rack's chain scan is memoized per request (see allChainsOnRack in
+  // device-drumpad-navigation.ts). Insert has to invalidate that memo, or a
+  // later target in the same multi-target call — e.g. "pC1/sample" then
+  // "pC1/c0" — misses the chain the first target just created.
+  it("resolves a chain created earlier in the same request scope", () => {
+    let insertCount = 0;
+    const chainIds: string[] = [];
+
+    registerMockObject("new-chain", {
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+    const rack = registerMockObject("drum-rack", {
+      path: DEVICE_PATH,
+      type: "RackDevice",
+      properties: { chains: chainIds, can_have_drum_pads: 1 },
+      methods: {
+        insert_chain: () => {
+          insertCount++;
+          chainIds.push("id", "new-chain");
+
+          return ["id", "new-chain"];
+        },
+      },
+    });
+
+    beginLiveApiScope();
+
+    try {
+      const created = resolveOrCreateDrumPadChain(
+        LiveAPI.from(DEVICE_PATH),
+        "C1",
+        [],
+      );
+
+      expect(created?.id).toBe("new-chain");
+
+      const resolved = resolveOrCreateDrumPadChain(
+        LiveAPI.from(DEVICE_PATH),
+        "C1",
+        [],
+      );
+
+      expect(resolved?.id).toBe("new-chain");
+      // Found, not created again — a stale memo would see no chain on the pad
+      // and insert a second one.
+      expect(insertCount).toBe(1);
+      expect(rack.call).toHaveBeenCalledTimes(1);
+    } finally {
+      endLiveApiScope();
+    }
   });
 
   /**

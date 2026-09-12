@@ -16,6 +16,7 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import {
+  invalidateRackChains,
   navigateRemainingSegments,
   resolveDrumPadFromPath,
   warnRackRelativeDrumChainSpelling,
@@ -200,6 +201,7 @@ function autoCreateDrumPadChains(
   for (let i = 0; i < chainsToCreate; i++) {
     // A new chain appends to the end on note 36, so move it to the pad we want.
     device.call("insert_chain");
+    invalidateRackChains(device);
 
     // By id, not getChildren: naming the last chain would otherwise build every
     // chain in the rack, once per chain created.

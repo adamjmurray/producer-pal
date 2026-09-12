@@ -6,16 +6,22 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  chainsForInNote,
   drumChainSegmentNamer,
   drumPadIdsByNote,
   findDrumPad,
   findNestedDrumRack,
+  invalidateRackChains,
   navigateRemainingSegments,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
@@ -498,5 +504,47 @@ describe("findNestedDrumRack", () => {
     }
 
     expect(findNestedDrumRack(LiveAPI.from(RACK_PATH))).toBe(null);
+  });
+});
+
+describe("invalidateRackChains", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("forgets a chain removed from the rack mid-request, the way delete_all_chains does", () => {
+    const chainIds = ["id", "chain0"];
+
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: chainIds },
+    });
+    registerMockObject("chain0", {
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    const rack = LiveAPI.from(RACK_PATH);
+
+    beginLiveApiScope();
+
+    try {
+      expect(chainsForInNote(rack, 36)).toHaveLength(1);
+
+      // Remove the chain the way delete_all_chains does, in place — a
+      // re-registration would clear the whole memo and prove nothing.
+      chainIds.length = 0;
+
+      // Without invalidating, the memoized scan still answers with the chain
+      // that is already gone.
+      expect(chainsForInNote(rack, 36)).toHaveLength(1);
+
+      invalidateRackChains(rack);
+
+      expect(chainsForInNote(rack, 36)).toHaveLength(0);
+    } finally {
+      endLiveApiScope();
+    }
   });
 });
