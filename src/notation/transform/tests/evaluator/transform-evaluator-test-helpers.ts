@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import { type NoteContext } from "#src/notation/transform/helpers/transform-context.ts";
+import {
+  type EvalContext,
+  type NoteContext,
+} from "#src/notation/transform/helpers/transform-context.ts";
+import { evaluateExpression } from "#src/notation/transform/helpers/transform-evaluation.ts";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -83,6 +87,27 @@ export function createContext({
     position: 0,
     timeSig: { numerator, denominator },
     ...rest,
+  };
+}
+
+/**
+ * An evaluation context for calling the expression/function evaluators directly:
+ * one 4/4 bar, no note properties, and the real expression evaluator.
+ *
+ * @param overrides - Context properties to override
+ * @returns Context object for the expression and function evaluators
+ */
+export function createEvalContext(
+  overrides: Partial<EvalContext> = {},
+): EvalContext {
+  return {
+    position: 0,
+    timeSigNumerator: 4,
+    timeSigDenominator: 4,
+    timeRange: { start: 0, end: 4 },
+    noteProperties: {},
+    evaluateExpression,
+    ...overrides,
   };
 }
 

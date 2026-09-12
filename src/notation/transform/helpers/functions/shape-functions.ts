@@ -4,30 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import { type EvaluateExpressionFn } from "../../transform-functions.ts";
 import * as waveforms from "../../transform-waveforms.ts";
-import { type NoteProperties, type TimeRange } from "../transform-context.ts";
+import { type EvalContext } from "../transform-context.ts";
 import { computePhase, evaluateArgs } from "./function-arguments.ts";
 
 /**
  * Evaluate curve function
  * @param args - Function arguments (exactly 3: start, end, exponent)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Exponentially interpolated value
  */
 export function evaluateCurve(
   args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (args.length !== 3) {
     throw new Error(
@@ -35,70 +24,29 @@ export function evaluateCurve(
     );
   }
 
-  const [start, end, exponent] = evaluateArgs(
-    args,
-    [0, 1, 2],
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-    evaluateExpression,
-  );
+  const [start, end, exponent] = evaluateArgs(args, [0, 1, 2], ctx);
 
   if (exponent <= 0) {
     throw new Error(`Function curve() exponent must be > 0, got ${exponent}`);
   }
 
-  const phase = computePhase(position, timeRange);
-
-  return waveforms.curve(phase, start, end, exponent);
+  return waveforms.curve(computePhase(ctx), start, end, exponent);
 }
 
 /**
  * Evaluate pow function (exactly 2 arguments: base, exponent)
  * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns base raised to the power of exponent
  */
-export function evaluatePow(
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
+export function evaluatePow(args: ExpressionNode[], ctx: EvalContext): number {
   if (args.length !== 2) {
     throw new Error(
       `Function pow() requires exactly 2 arguments: pow(base, exponent)`,
     );
   }
 
-  const base = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  const exponent = evaluateExpression(
-    args[1] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
+  const [base, exponent] = evaluateArgs(args, [0, 1], ctx);
   const result = Math.pow(base, exponent);
 
   if (!Number.isFinite(result)) {
@@ -114,38 +62,19 @@ export function evaluatePow(
  * Evaluate min/max function (variadic - accepts 2+ arguments)
  * @param name - Function name ("min" or "max")
  * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Min or max of all arguments
  */
 export function evaluateMinMax(
   name: string,
   args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (args.length < 2) {
     throw new Error(`Function ${name}() requires at least 2 arguments`);
   }
 
-  const values = args.map((arg) =>
-    evaluateExpression(
-      arg,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    ),
-  );
+  const values = args.map((arg) => ctx.evaluateExpression(arg, ctx));
 
   return name === "min" ? Math.min(...values) : Math.max(...values);
 }
@@ -154,23 +83,13 @@ export function evaluateMinMax(
  * Evaluate math function (round, floor, ceil, abs, clamp, wrap, reflect)
  * @param name - Function name
  * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Math function result
  */
 export function evaluateMathFunction(
   name: string,
   args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (name === "clamp" || name === "wrap" || name === "reflect") {
     if (args.length !== 3) {
@@ -179,19 +98,7 @@ export function evaluateMathFunction(
       );
     }
 
-    const evalArg = (i: number): number =>
-      evaluateExpression(
-        args[i] as ExpressionNode,
-        position,
-        timeSigNumerator,
-        timeSigDenominator,
-        timeRange,
-        noteProperties,
-      );
-
-    const value = evalArg(0);
-    const bound1 = evalArg(1);
-    const bound2 = evalArg(2);
+    const [value, bound1, bound2] = evaluateArgs(args, [0, 1, 2], ctx);
 
     if (name === "clamp") {
       return Math.min(
@@ -227,14 +134,7 @@ export function evaluateMathFunction(
     );
   }
 
-  const value = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
+  const value = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
 
   switch (name) {
     case "round":

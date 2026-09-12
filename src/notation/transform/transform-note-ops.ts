@@ -15,7 +15,10 @@ import {
 } from "./helpers/note-ops/note-cuts.ts";
 import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
 import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
-import { evaluateExpression } from "./helpers/transform-evaluation.ts";
+import {
+  constantEvalContext,
+  evaluateExpression,
+} from "./helpers/transform-evaluation.ts";
 import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
 
 /**
@@ -261,10 +264,10 @@ function resolveRatchetPlan(
   try {
     // Args are constants (no per-note context). nDuration/barDuration evaluate
     // to musical beats; a count evaluates to a number.
-    value = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
+    value = evaluateExpression(
+      arg,
+      constantEvalContext(numerator, denominator),
+    );
   } catch (error) {
     console.warn(
       `ratchet() argument could not be evaluated (${errorMessage(error)}); skipping`,
@@ -444,10 +447,10 @@ function resolveMergeTolerance(
 
   if (typeof arg === "object" && arg.type === "nDuration") {
     // A note value is a pure constant — evaluates to musical beats, total.
-    const musicalBeats = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
+    const musicalBeats = evaluateExpression(
+      arg,
+      constantEvalContext(numerator, denominator),
+    );
 
     return musicalBeats * (4 / denominator); // musical -> Ableton beats
   }

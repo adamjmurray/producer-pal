@@ -5,34 +5,21 @@
 
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import {
-  type EvaluateExpressionFn,
-  parsePeriod,
-} from "../../transform-functions.ts";
-import { type TimeRange, type NoteProperties } from "../transform-context.ts";
+import { parsePeriod } from "../../transform-functions.ts";
+import { type EvalContext } from "../transform-context.ts";
 
 /**
  * Evaluate swing function (delay off-beat notes for swing feel).
  * Returns absolute position — use with `timing =`.
  * @param args - Function arguments (1-2: amount, optional grid)
  * @param raw - If true, skip auto-quantize
- * @param position - Note position in musical beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Absolute position with swing applied
  */
 export function evaluateSwing(
   args: ExpressionNode[],
   raw: boolean,
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (args.length === 0 || args.length > 2) {
     throw new Error(
@@ -40,14 +27,7 @@ export function evaluateSwing(
     );
   }
 
-  const amount = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
+  const amount = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
 
   // Default grid is half a musical beat — the off-beat between the meter's
   // beats: an 8th note in x/4, a 16th in x/8, etc. (the natural swing
@@ -56,16 +36,7 @@ export function evaluateSwing(
   let grid = 0.5;
 
   if (args.length === 2) {
-    grid = parsePeriod(
-      args[1] as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-      "swing",
-    );
+    grid = parsePeriod(args[1] as ExpressionNode, ctx, "swing");
   }
 
   const period = grid * 2;
@@ -73,12 +44,12 @@ export function evaluateSwing(
   // Auto-quantize: snap to grid/4 before applying swing (unless raw).
   // Uses grid/4 (not grid) to preserve notes at finer subdivisions
   // (e.g. 16th notes during 8th-note swing).
-  let effectivePosition = position;
+  let effectivePosition = ctx.position;
 
   if (!raw) {
     const quantGrid = grid / 4;
 
-    effectivePosition = Math.round(position / quantGrid) * quantGrid;
+    effectivePosition = Math.round(ctx.position / quantGrid) * quantGrid;
   }
 
   // Phase within the period cycle (0-1)
@@ -94,22 +65,12 @@ export function evaluateSwing(
  * Evaluate quant function (snap timing to nearest grid point).
  * Returns absolute position — use with `timing =`.
  * @param args - Function arguments (exactly 1: grid size)
- * @param position - Note position in musical beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Position snapped to nearest grid point
  */
 export function evaluateQuant(
   args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (args.length !== 1) {
     throw new Error(
@@ -117,18 +78,9 @@ export function evaluateQuant(
     );
   }
 
-  const grid = parsePeriod(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-    evaluateExpression,
-    "quant",
-  );
+  const grid = parsePeriod(args[0] as ExpressionNode, ctx, "quant");
 
-  return Math.round(position / grid) * grid;
+  return Math.round(ctx.position / grid) * grid;
 }
 
 /**
@@ -137,57 +89,40 @@ export function evaluateQuant(
  * treating starts within tolerance as the same chord. Falls back to clip end
  * for the last note.
  * @param args - Function arguments (0 or 1: optional tolerance in beats)
- * @param position - Current note position
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties including _legatoContext
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context (noteProperties includes _legatoContext)
  * @returns Duration to next distinct start time
  */
 export function evaluateLegato(
   args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (args.length > 1) {
     throw new Error("legato() accepts at most 1 argument (tolerance)");
   }
 
-  const ctx = noteProperties._legatoContext;
+  const legato = ctx.noteProperties._legatoContext;
 
-  if (!ctx) {
+  if (!legato) {
     throw new Error("legato(): not available in this context");
   }
 
   const tolerance =
     args.length === 1
-      ? evaluateExpression(
-          args[0] as ExpressionNode,
-          position,
-          timeSigNumerator,
-          timeSigDenominator,
-          timeRange,
-          noteProperties,
-        )
+      ? ctx.evaluateExpression(args[0] as ExpressionNode, ctx)
       : 0;
 
-  const noteStart = ctx.starts[ctx.cursor] as number;
+  const noteStart = legato.starts[legato.cursor] as number;
 
   // Scan forward for next start beyond tolerance
-  for (let k = ctx.cursor + 1; k < ctx.starts.length; k++) {
-    if (Math.abs((ctx.starts[k] as number) - noteStart) > tolerance) {
-      return (ctx.starts[k] as number) - noteStart;
+  for (let k = legato.cursor + 1; k < legato.starts.length; k++) {
+    if (Math.abs((legato.starts[k] as number) - noteStart) > tolerance) {
+      return (legato.starts[k] as number) - noteStart;
     }
   }
 
   // Last note — extend to clip end
-  if (ctx.clipEnd != null) {
-    return ctx.clipEnd - noteStart;
+  if (legato.clipEnd != null) {
+    return legato.clipEnd - noteStart;
   }
 
   // No next note and no known clip end (e.g. the final note in a context that
@@ -198,5 +133,5 @@ export function evaluateLegato(
   );
 
   // duration is always populated by buildNoteProperties for note transforms.
-  return noteProperties.duration as number;
+  return ctx.noteProperties.duration as number;
 }

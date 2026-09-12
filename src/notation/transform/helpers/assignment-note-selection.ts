@@ -16,6 +16,7 @@ import { evaluatePredicate } from "./predicate-evaluation.ts";
 import { timeRangeBoundsInMusicalBeats } from "./time-range-bounds.ts";
 import {
   type ClipContext,
+  type EvalContext,
   type NoteContext,
   type TimeRange,
 } from "./transform-context.ts";
@@ -75,14 +76,7 @@ export function selectAssignmentNotes(
       clipTimeRange,
     );
 
-    const activeTimeRange = calculateActiveTimeRange(
-      assignment,
-      noteContext.bar,
-      noteContext.beat,
-      timeSigNumerator,
-      clipTimeRange,
-      noteContext.position,
-    );
+    const activeTimeRange = calculateActiveTimeRange(assignment, noteContext);
 
     if (activeTimeRange.skip) {
       continue;
@@ -91,15 +85,20 @@ export function selectAssignmentNotes(
     // where() predicate filter, AND-combined with the pitch/time selectors above.
     if (
       assignment.predicate != null &&
-      !noteMatchesPredicate(
-        assignment.predicate,
-        note,
-        noteContext.position,
+      !noteMatchesPredicate(assignment.predicate, {
+        position: noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
-        predicateTimeRange,
-        clipContext,
-      )
+        timeRange: predicateTimeRange,
+        noteProperties: buildNoteProperties(
+          note,
+          0,
+          0,
+          timeSigDenominator,
+          clipContext,
+        ),
+        evaluateExpression,
+      })
     ) {
       continue;
     }
@@ -114,46 +113,21 @@ export function selectAssignmentNotes(
  * Evaluate a where() predicate against one note for selection. Predicate variables
  * are restricted at parse time to the six intrinsic note properties, and the two
  * selection-derived functions (legato/seq) are rejected there too — so the 0-valued
- * index/count and the absent next/legato context here are never read. Other
- * functions (math, waveforms, ramp/curve, quant/swing, snap/step, clipseq,
- * rand/choose) resolve from `position`, `timeRange` (the line's selector bounds),
- * and the threaded `clipContext` (scale mask, clip index/position). A failed
- * evaluation warns and excludes the note (warn-and-skip), matching the apply path.
+ * index/count in the context's note properties, and its absent next/legato context,
+ * are never read. Other functions (math, waveforms, ramp/curve, quant/swing,
+ * snap/step, clipseq, rand/choose) resolve from the context's position and
+ * timeRange (the line's selector bounds). A failed evaluation warns and excludes
+ * the note (warn-and-skip), matching the apply path.
  * @param predicate - where() predicate AST
- * @param note - Note event to test
- * @param position - Note position in musical beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Predicate normalization window (line's selector bounds or clip range)
- * @param clipContext - Optional clip-level context for clip-axis functions
+ * @param ctx - Evaluation context for the note under test
  * @returns Whether the note satisfies the predicate
  */
 function noteMatchesPredicate(
   predicate: PredicateNode,
-  note: NoteEvent,
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  clipContext?: ClipContext,
+  ctx: EvalContext,
 ): boolean {
-  const noteProperties = buildNoteProperties(
-    note,
-    0,
-    0,
-    timeSigDenominator,
-    clipContext,
-  );
-
   try {
-    return evaluatePredicate(predicate, {
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    });
+    return evaluatePredicate(predicate, ctx);
   } catch (error) {
     console.warn(
       `Failed to evaluate where() predicate: ${errorMessage(error)}`,

@@ -11,7 +11,10 @@ import {
   type ExpressionNode,
   type NoteOp,
 } from "../../parser/transform-parser.ts";
-import { evaluateExpression } from "../transform-evaluation.ts";
+import {
+  constantEvalContext,
+  evaluateExpression,
+} from "../transform-evaluation.ts";
 import { MAX_NOTE_PIECES } from "./note-cuts.ts";
 
 /**
@@ -141,10 +144,10 @@ function resolveRepeatOffset(
   }
 
   // A note value / bar duration is a pure constant — evaluates to musical beats.
-  const musicalBeats = evaluateExpression(arg, 0, numerator, denominator, {
-    start: 0,
-    end: 0,
-  });
+  const musicalBeats = evaluateExpression(
+    arg,
+    constantEvalContext(numerator, denominator),
+  );
   const abletonBeats = musicalBeats * (4 / denominator); // musical -> Ableton
 
   if (abletonBeats <= 0) {
@@ -190,10 +193,10 @@ function resolveRepeatCopies(
     // Args are constants (no per-note context); a count evaluates to a number.
     // evaluateExpression only throws on non-finite for pow(); plain arithmetic
     // can still overflow to ±Infinity or yield NaN, so guard explicitly below.
-    value = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
+    value = evaluateExpression(
+      arg,
+      constantEvalContext(numerator, denominator),
+    );
   } catch (error) {
     console.warn(
       `repeat() copy count could not be evaluated (${errorMessage(error)}); skipping`,

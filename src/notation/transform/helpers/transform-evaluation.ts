@@ -20,9 +20,9 @@ import {
   timeRangeBoundsInMusicalBeats,
 } from "./time-range-bounds.ts";
 import {
+  type EvalContext,
   type NoteContext,
   type NoteProperties,
-  type TimeRange,
   type TimeRangeResult,
   type TransformResult,
 } from "./transform-context.ts";
@@ -63,9 +63,6 @@ export function evaluateTransformAST(
   noteContext: NoteContext,
   noteProperties: NoteProperties = {},
 ): Record<string, TransformResult> {
-  const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
-  const { numerator, denominator } = timeSig;
-
   const result: Record<string, TransformResult> = {};
 
   for (const assignment of ast) {
@@ -77,13 +74,7 @@ export function evaluateTransformAST(
 
     const assignmentResult = processAssignment(
       assignment,
-      position,
-      pitch,
-      bar,
-      beat,
-      numerator,
-      denominator,
-      clipTimeRange,
+      noteContext,
       noteProperties,
     );
 
@@ -103,27 +94,17 @@ export function evaluateTransformAST(
 /**
  * Process a single transform assignment
  * @param assignment - Transform assignment to process
- * @param position - Note position in beats
- * @param pitch - Note pitch (optional)
- * @param bar - Note bar number (optional)
- * @param beat - Note beat number (optional)
- * @param numerator - Time signature numerator
- * @param denominator - Time signature denominator
- * @param clipTimeRange - Clip time range (optional)
+ * @param noteContext - Note context for evaluation
  * @param noteProperties - Note properties for variable access
  * @returns Assignment result or skip indicator
  */
 function processAssignment(
   assignment: TransformAssignment,
-  position: number,
-  pitch: number | undefined,
-  bar: number | undefined,
-  beat: number | undefined,
-  numerator: number,
-  denominator: number,
-  clipTimeRange: TimeRange | undefined,
+  noteContext: NoteContext,
   noteProperties: NoteProperties,
 ): ProcessAssignmentResult {
+  const { position, pitch, timeSig } = noteContext;
+
   try {
     // Apply pitch filtering. Per-line: a line's pitch selector applies only to
     // that line (no selector = all pitches); there is no carryover from earlier
@@ -137,46 +118,32 @@ function processAssignment(
     }
 
     // Calculate the active timeRange for this assignment
-    const activeTimeRange = calculateActiveTimeRange(
-      assignment,
-      bar,
-      beat,
-      numerator,
-      clipTimeRange,
-      position,
-    );
+    const activeTimeRange = calculateActiveTimeRange(assignment, noteContext);
 
     if (activeTimeRange.skip) {
       return { skip: true };
     }
+
+    const ctx: EvalContext = {
+      position,
+      timeSigNumerator: timeSig.numerator,
+      timeSigDenominator: timeSig.denominator,
+      timeRange: activeTimeRange.timeRange,
+      noteProperties,
+      evaluateExpression,
+    };
 
     // where() predicate filter, AND-combined with the positional selector: the
     // note must satisfy the predicate too. A throw here (e.g. a missing property)
     // is caught below and warn-and-skipped like any other eval failure.
     if (
       assignment.predicate != null &&
-      !evaluatePredicate(assignment.predicate, {
-        position,
-        timeSigNumerator: numerator,
-        timeSigDenominator: denominator,
-        timeRange: activeTimeRange.timeRange,
-        noteProperties,
-        evaluateExpression,
-      })
+      !evaluatePredicate(assignment.predicate, ctx)
     ) {
       return { skip: true };
     }
 
-    const value = evaluateExpression(
-      assignment.expression,
-      position,
-      numerator,
-      denominator,
-      activeTimeRange.timeRange,
-      noteProperties,
-    );
-
-    return { value };
+    return { value: evaluateExpression(assignment.expression, ctx) };
   } catch (error) {
     console.warn(
       `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
@@ -189,21 +156,16 @@ function processAssignment(
 /**
  * Calculate active time range for an assignment
  * @param assignment - Transform assignment
- * @param bar - Note bar number (optional)
- * @param beat - Note beat number (optional)
- * @param numerator - Time signature numerator (musical beats per bar)
- * @param clipTimeRange - Clip time range (optional)
- * @param position - Note position in beats
+ * @param noteContext - Note context supplying the note's position and meter
  * @returns Time range result or skip indicator
  */
 export function calculateActiveTimeRange(
   assignment: TransformAssignment,
-  bar: number | undefined,
-  beat: number | undefined,
-  numerator: number,
-  clipTimeRange: TimeRange | undefined,
-  position: number,
+  noteContext: NoteContext,
 ): TimeRangeResult {
+  const { position, bar, beat, clipTimeRange } = noteContext;
+  const numerator = noteContext.timeSig.numerator;
+
   if (assignment.timeRange) {
     const { start: startBeats, end: endBeats } = timeRangeBoundsInMusicalBeats(
       assignment.timeRange,
@@ -238,14 +200,6 @@ type BinaryOpNode = {
   right: ExpressionNode;
 };
 
-type EvalContext = {
-  position: number;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
-  timeRange: TimeRange;
-  noteProperties: NoteProperties;
-};
-
 /**
  * Evaluate a binary operation node
  * @param node - Binary operation node
@@ -253,31 +207,11 @@ type EvalContext = {
  * @returns Result of the operation
  */
 function evaluateBinaryOp(node: BinaryOpNode, ctx: EvalContext): number {
-  const {
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  } = ctx;
-  const left = evaluateExpression(
-    node.left,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
+  return applyBinaryOp(
+    node.type,
+    evaluateExpression(node.left, ctx),
+    evaluateExpression(node.right, ctx),
   );
-  const right = evaluateExpression(
-    node.right,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  return applyBinaryOp(node.type, left, right);
 }
 
 /**
@@ -322,21 +256,15 @@ export function applyBinaryOp(
 /**
  * Evaluate an expression AST node
  * @param node - Expression node to evaluate
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
+ * @param ctx - Evaluation context
  * @returns Evaluated numeric result
  */
 export function evaluateExpression(
   node: ExpressionNode,
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties = {},
+  ctx: EvalContext,
 ): number {
+  const { noteProperties } = ctx;
+
   // Base case: number literal
   if (typeof node === "number") {
     return node;
@@ -354,14 +282,14 @@ export function evaluateExpression(
   if (node.type === "nDuration") {
     return wholeNoteFractionToMusicalBeats(
       node.wholeNoteFraction,
-      timeSigDenominator,
+      ctx.timeSigDenominator,
     );
   }
 
   // Bar duration (<count>bar) — N bars in musical beats (beats-per-bar = numerator),
   // identical to N * clip.barDuration
   if (node.type === "barDuration") {
-    return node.bars * timeSigNumerator;
+    return node.bars * ctx.timeSigNumerator;
   }
 
   // Variable lookup
@@ -405,33 +333,37 @@ export function evaluateExpression(
     node.type === "divide" ||
     node.type === "modulo"
   ) {
-    return evaluateBinaryOp(node, {
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    });
+    return evaluateBinaryOp(node, ctx);
   }
 
   // Function calls - node.type can only be "function" at this point
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- exhaustiveness check for type narrowing
   if (node.type === "function") {
-    return evaluateFunction(
-      node.name,
-      node.args,
-      node.sync,
-      node.raw,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    );
+    return evaluateFunction(node.name, node.args, node.sync, node.raw, ctx);
   }
 
   throw new Error(
     `Unknown expression node type: ${(node as { type: string }).type}`,
   );
+}
+
+/**
+ * Context for evaluating a constant expression, such as a note-op argument with
+ * no note in scope. Only the meter can affect the result.
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns A context with no note position, time range, or properties
+ */
+export function constantEvalContext(
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): EvalContext {
+  return {
+    position: 0,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange: { start: 0, end: 0 },
+    noteProperties: {},
+    evaluateExpression,
+  };
 }

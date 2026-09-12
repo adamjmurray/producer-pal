@@ -4,52 +4,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import { type EvaluateExpressionFn } from "../../transform-functions.ts";
-import { type NoteProperties, type TimeRange } from "../transform-context.ts";
+import { type EvalContext } from "../transform-context.ts";
 
 /**
  * Evaluate multiple arguments by index, returning results as a tuple.
  * @param args - All function arguments
  * @param indices - Which argument indices to evaluate
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Tuple of evaluated values in the same order as indices
  */
 export function evaluateArgs<T extends number[]>(
   args: ExpressionNode[],
   indices: [...T],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): { [K in keyof T]: number } {
   // Cast is safe: map preserves array length, matching the input tuple
   return indices.map((i) =>
-    evaluateExpression(
-      args[i] as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    ),
+    ctx.evaluateExpression(args[i] as ExpressionNode, ctx),
   ) as { [K in keyof T]: number };
 }
 
 /**
- * Calculate normalized phase from position within a time range.
- * @param position - Current position in beats
- * @param timeRange - Active time range
+ * Calculate normalized phase from the context's position within its time range.
+ * @param ctx - Evaluation context
  * @returns Phase value between 0 and 1
  */
-export function computePhase(position: number, timeRange: TimeRange): number {
-  const duration = timeRange.end - timeRange.start;
+export function computePhase(ctx: EvalContext): number {
+  const { start, end } = ctx.timeRange;
+  const duration = end - start;
 
-  return duration > 0 ? (position - timeRange.start) / duration : 0;
+  return duration > 0 ? (ctx.position - start) / duration : 0;
 }

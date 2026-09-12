@@ -16,7 +16,10 @@ import {
 } from "#src/notation/transform/parser/transform-parser.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
-import { createContext } from "./evaluator/transform-evaluator-test-helpers.ts";
+import {
+  createContext,
+  createEvalContext,
+} from "./evaluator/transform-evaluator-test-helpers.ts";
 
 // The note the scalar evaluator is asked about in these branch tests.
 const NOTE_PROPERTIES = { pitch: 60, velocity: 100 };
@@ -180,14 +183,10 @@ describe("Transform Branch Coverage", () => {
     // The parser never produces these shapes, and the `never` in each switch
     // default keeps it that way. Reached here by casting so the fall-through
     // stays exercised if a node type or operator is ever added.
-    const ctx = {
-      position: 0,
-      timeSigNumerator: 4,
-      timeSigDenominator: 4,
-      timeRange: { start: 0, end: 4 },
+    const ctx = createEvalContext({
       noteProperties: NOTE_PROPERTIES,
       evaluateExpression: () => 60,
-    };
+    });
 
     it("falls through on an unknown predicate node type", () => {
       const node = { type: "nope" } as unknown as PredicateNode;

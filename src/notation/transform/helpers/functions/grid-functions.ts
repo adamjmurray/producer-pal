@@ -5,43 +5,21 @@
 
 import { quantizePitchToScale, stepInScale } from "#src/shared/pitch.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import { type EvaluateExpressionFn } from "../../transform-functions.ts";
-import { type TimeRange, type NoteProperties } from "../transform-context.ts";
+import { type EvalContext } from "../transform-context.ts";
 
 /**
  * Evaluate snap function (snap pitch to nearest in-scale pitch)
  * @param args - Function arguments (exactly 1: pitch value)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access (includes scale:mask)
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context (noteProperties includes scale:mask)
  * @returns Quantized pitch value, or input unchanged if no scale
  */
-export function evaluateSnap(
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
+export function evaluateSnap(args: ExpressionNode[], ctx: EvalContext): number {
   if (args.length !== 1) {
     throw new Error(`Function snap() requires exactly 1 argument: snap(pitch)`);
   }
 
-  const pitch = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  const scaleMask = noteProperties["scale:mask"];
+  const pitch = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
+  const scaleMask = ctx.noteProperties["scale:mask"];
 
   if (scaleMask == null) {
     return pitch;
@@ -53,46 +31,19 @@ export function evaluateSnap(
 /**
  * Evaluate step function (move pitch by N scale steps)
  * @param args - Function arguments (exactly 2: basePitch, offset)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access (includes scale:mask)
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context (noteProperties includes scale:mask)
  * @returns Pitch moved by offset scale steps, or basePitch + offset if no scale
  */
-export function evaluateStep(
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
+export function evaluateStep(args: ExpressionNode[], ctx: EvalContext): number {
   if (args.length !== 2) {
     throw new Error(
       `Function step() requires exactly 2 arguments: step(basePitch, offset)`,
     );
   }
 
-  const basePitch = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-  const offset = evaluateExpression(
-    args[1] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-  const scaleMask = noteProperties["scale:mask"];
+  const basePitch = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
+  const offset = ctx.evaluateExpression(args[1] as ExpressionNode, ctx);
+  const scaleMask = ctx.noteProperties["scale:mask"];
 
   if (scaleMask == null) {
     return basePitch + offset;

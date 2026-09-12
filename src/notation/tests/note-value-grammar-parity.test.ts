@@ -41,7 +41,10 @@ import {
   durationToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { evaluateExpression } from "#src/notation/transform/helpers/transform-evaluation.ts";
+import {
+  constantEvalContext,
+  evaluateExpression,
+} from "#src/notation/transform/helpers/transform-evaluation.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
 import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 
@@ -90,14 +93,7 @@ function durationViaTransform(token: string, num: number, den: number): number {
     throw new Error(`transform did not parse duration "${token}"`);
   }
 
-  const musicalBeats = evaluateExpression(
-    expr,
-    0,
-    num,
-    den,
-    { start: 0, end: 0 },
-    {},
-  );
+  const musicalBeats = evaluateExpression(expr, constantEvalContext(num, den));
 
   return musicalBeats * (4 / den); // musical beats → Ableton beats
 }

@@ -350,21 +350,17 @@ function evaluateAudioExpression(
     funcNode.args,
     funcNode.sync,
     funcNode.raw,
-    0, // position
-    numerator, // timeSigNumerator (= clip beats-per-bar)
-    denominator, // timeSigDenominator
-    { start: 0, end: numerator }, // timeRange (one bar in musical beats)
-    clipProps,
-    (expr, pos, num, denom, range, _props) =>
-      evaluateAudioExpressionWithContext(
-        expr,
-        audioProperties,
-        clipContext,
-        pos,
-        num,
-        denom,
-        range,
-      ),
+    {
+      position: 0,
+      timeSigNumerator: numerator, // = clip beats-per-bar
+      timeSigDenominator: denominator,
+      timeRange: { start: 0, end: numerator }, // one bar in musical beats
+      noteProperties: clipProps,
+      // The audio path resolves variables from the clip, not from a note, so the
+      // per-note fields of the context handed back to us are ignored.
+      evaluateExpression: (expr) =>
+        evaluateAudioExpression(expr, audioProperties, clipContext),
+    },
   );
 }
 
@@ -439,31 +435,6 @@ function evaluateBinaryOp(
   );
 
   return applyBinaryOp(node.type, left, right);
-}
-
-/**
- * Evaluate expression with context (for function callbacks)
- * @param node - Expression node to evaluate
- * @param audioProperties - Audio properties for variable access
- * @param clipContext - Optional clip-level context
- * @param _position - Position in beats (unused in audio context)
- * @param _timeSigNumerator - Time signature numerator (unused)
- * @param _timeSigDenominator - Time signature denominator (unused)
- * @param _timeRange - Time range (unused)
- * @param _timeRange.start - Start of time range
- * @param _timeRange.end - End of time range
- * @returns Evaluated numeric result
- */
-function evaluateAudioExpressionWithContext(
-  node: ExpressionNode,
-  audioProperties: AudioProperties,
-  clipContext: ClipContext | undefined,
-  _position: number,
-  _timeSigNumerator: number,
-  _timeSigDenominator: number,
-  _timeRange: { start: number; end: number },
-): number {
-  return evaluateAudioExpression(node, audioProperties, clipContext);
 }
 
 /**

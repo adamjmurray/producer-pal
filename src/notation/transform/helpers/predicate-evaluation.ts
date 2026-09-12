@@ -3,34 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  type ExpressionNode,
-  type PredicateNode,
-} from "../parser/transform-parser.ts";
-import { type NoteProperties, type TimeRange } from "./transform-context.ts";
+import { type PredicateNode } from "../parser/transform-parser.ts";
+import { type EvalContext } from "./transform-context.ts";
 import { SELECTOR_EPSILON } from "./transform-selector-epsilon.ts";
-
-/** Evaluates an arithmetic expression node to a number. Injected (rather than
- * imported) so this module only takes a type dependency on the evaluator helpers,
- * avoiding a value import cycle — the same pattern evaluateFunction uses. */
-type EvaluateExpressionFn = (
-  node: ExpressionNode,
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-) => number;
-
-/** Per-note context for evaluating a where() predicate. */
-export interface PredicateContext {
-  position: number;
-  timeSigNumerator: number;
-  timeSigDenominator: number;
-  timeRange: TimeRange;
-  noteProperties: NoteProperties;
-  evaluateExpression: EvaluateExpressionFn;
-}
 
 /**
  * Evaluate a where() predicate to a boolean for one note. Boolean/comparison nodes
@@ -45,7 +20,7 @@ export interface PredicateContext {
  */
 export function evaluatePredicate(
   node: PredicateNode,
-  ctx: PredicateContext,
+  ctx: EvalContext,
 ): boolean {
   switch (node.type) {
     case "or":
@@ -59,26 +34,12 @@ export function evaluatePredicate(
     case "not":
       return !evaluatePredicate(node.operand, ctx);
 
-    case "comparison": {
-      const left = ctx.evaluateExpression(
-        node.left,
-        ctx.position,
-        ctx.timeSigNumerator,
-        ctx.timeSigDenominator,
-        ctx.timeRange,
-        ctx.noteProperties,
+    case "comparison":
+      return compareValues(
+        node.op,
+        ctx.evaluateExpression(node.left, ctx),
+        ctx.evaluateExpression(node.right, ctx),
       );
-      const right = ctx.evaluateExpression(
-        node.right,
-        ctx.position,
-        ctx.timeSigNumerator,
-        ctx.timeSigDenominator,
-        ctx.timeRange,
-        ctx.noteProperties,
-      );
-
-      return compareValues(node.op, left, right);
-    }
 
     // Unreachable: every node type is handled above, and the `never` keeps it
     // that way if a new one is added.

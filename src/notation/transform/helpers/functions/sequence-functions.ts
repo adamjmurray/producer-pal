@@ -5,30 +5,16 @@
 
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import { type EvaluateExpressionFn } from "../../transform-functions.ts";
 import * as waveforms from "../../transform-waveforms.ts";
-import { type NoteProperties, type TimeRange } from "../transform-context.ts";
+import { type EvalContext } from "../transform-context.ts";
 
 /**
  * Evaluate rand function
  * @param args - Function arguments (0, 1, or 2)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns Random value in configured range
  */
-export function evaluateRand(
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
+export function evaluateRand(args: ExpressionNode[], ctx: EvalContext): number {
   if (args.length > 2) {
     throw new Error(
       `Function rand() accepts 0-2 arguments: rand(), rand(max), or rand(min, max)`,
@@ -42,75 +28,34 @@ export function evaluateRand(
 
   // One arg: random 0 to max
   if (args.length === 1) {
-    const max = evaluateExpression(
-      args[0] as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
+    return waveforms.rand(
+      0,
+      ctx.evaluateExpression(args[0] as ExpressionNode, ctx),
     );
-
-    return waveforms.rand(0, max);
   }
 
   // Two args: random min to max
-  const min = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
+  return waveforms.rand(
+    ctx.evaluateExpression(args[0] as ExpressionNode, ctx),
+    ctx.evaluateExpression(args[1] as ExpressionNode, ctx),
   );
-  const max = evaluateExpression(
-    args[1] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  return waveforms.rand(min, max);
 }
 
 /**
  * Evaluate choose function
  * @param args - Function arguments (at least 1)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
+ * @param ctx - Evaluation context
  * @returns One randomly selected value from the arguments
  */
 export function evaluateChoose(
   args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
+  ctx: EvalContext,
 ): number {
   if (args.length === 0) {
     throw new Error("Function choose() requires at least 1 argument");
   }
 
-  const values = args.map((arg) =>
-    evaluateExpression(
-      arg,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    ),
-  );
-
-  return waveforms.choose(values);
+  return waveforms.choose(args.map((arg) => ctx.evaluateExpression(arg, ctx)));
 }
 
 /**
@@ -135,19 +80,12 @@ function buildIndexedSeq(
   missingWarning: string,
   fallbackKey?: string,
 ): typeof evaluateRand {
-  return function evaluate(
-    args,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-    evaluateExpression,
-  ) {
+  return function evaluate(args, ctx) {
     if (args.length === 0) {
       throw new Error(`Function ${fnName}() requires at least 1 argument`);
     }
 
+    const { noteProperties } = ctx;
     const rawIndex =
       noteProperties[axisKey] ??
       (fallbackKey != null ? noteProperties[fallbackKey] : undefined);
@@ -159,14 +97,7 @@ function buildIndexedSeq(
 
     const pick = missing ? 0 : rawIndex % args.length;
 
-    return evaluateExpression(
-      args[pick] as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    );
+    return ctx.evaluateExpression(args[pick] as ExpressionNode, ctx);
   };
 }
 

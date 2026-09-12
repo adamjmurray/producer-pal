@@ -6,6 +6,8 @@
 // The context types a transform is evaluated against, shared by the note and
 // audio evaluators, the transform functions, and the clip tools.
 
+import { type ExpressionNode } from "../parser/transform-parser.ts";
+
 export interface TimeRange {
   start: number;
   end: number;
@@ -35,6 +37,27 @@ export interface LegatoContext {
 export type NoteProperties = Record<string, number | undefined> & {
   _legatoContext?: LegatoContext;
 };
+
+/** Evaluates an arithmetic expression node to a number. Carried on the context
+ * rather than imported so the function helpers only take a type dependency on
+ * the evaluators, avoiding a value import cycle. The note and audio paths each
+ * inject their own. */
+export type EvaluateExpressionFn = (
+  node: ExpressionNode,
+  ctx: EvalContext,
+) => number;
+
+/** Everything an expression, function call, or where() predicate is evaluated
+ * against. Passed as one object so the six values can't be threaded out of
+ * order through the evaluator's call chain. */
+export interface EvalContext {
+  position: number;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+  timeRange: TimeRange;
+  noteProperties: NoteProperties;
+  evaluateExpression: EvaluateExpressionFn;
+}
 
 export interface ClipContext {
   clipDuration: number; // musical beats

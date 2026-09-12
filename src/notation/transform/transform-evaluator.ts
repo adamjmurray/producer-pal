@@ -296,14 +296,14 @@ function applyAssignmentToNotes(
     );
 
     try {
-      const value = evaluateExpression(
-        assignment.expression,
-        noteContext.position,
+      const value = evaluateExpression(assignment.expression, {
+        position: noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
-        evalTimeRange,
+        timeRange: evalTimeRange,
         noteProperties,
-      );
+        evaluateExpression,
+      });
 
       if (waveformName != null) {
         deferred.push({ note, index: i, value });
