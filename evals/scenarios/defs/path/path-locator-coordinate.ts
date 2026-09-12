@@ -28,8 +28,8 @@
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { asArrangementTrack, clipStarts } from "../arrangement-helpers.ts";
-import { assertCallResult } from "./path-scenario-helpers.ts";
+import { asArrangementTrack, clipStarts } from "../arrangement-readback.ts";
+import { assertCallResult } from "./path-assertions.ts";
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =

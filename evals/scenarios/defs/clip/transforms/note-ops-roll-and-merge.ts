@@ -43,15 +43,17 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
-  clearClipSlots,
-  getTransforms,
   MSG_CONNECT,
-  readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import {
+  clearClipSlots,
+  getTransforms,
+  readClipNotesFromTurn,
+} from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** 4-track Live Set used by the split scenarios (Lead + Bass tracks). */

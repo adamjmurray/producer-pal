@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Helpers for the repeat/trials feature in the eval CLI
+ * Repeat/trials runs for the eval CLI: repeat count, per-trial Live Set opens,
+ * and the multi-trial summary.
  */
 
 import { type InspectColor, styleText } from "node:util";

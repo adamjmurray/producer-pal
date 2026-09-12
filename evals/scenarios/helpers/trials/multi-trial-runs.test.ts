@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { parseRepeatCount, planTrialLiveSetOpens } from "./trial-helpers.ts";
+import { parseRepeatCount, planTrialLiveSetOpens } from "./multi-trial-runs.ts";
 
 describe("parseRepeatCount", () => {
   it("defaults to a single trial", () => {

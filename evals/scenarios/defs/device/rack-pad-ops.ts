@@ -36,7 +36,7 @@ import {
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
 
 const TOOL_UPDATE_DEVICE = "ppal-update-device";
 const TOOL_DUPLICATE = "ppal-duplicate";

@@ -37,10 +37,12 @@ import {
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
+  seedContext,
+} from "./helpers/context-scenario-setup.ts";
+import {
   assertContextWrite,
   assertNoContextWrite,
-  seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-write-assertions.ts";
 
 /** A prior decline, recorded as memory — what makes the offer one-shot. */
 const DECLINED = "declined-personal-context";

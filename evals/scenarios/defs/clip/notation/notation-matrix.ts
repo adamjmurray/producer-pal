@@ -33,16 +33,20 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
-  clearClipSlots,
   diffNotes,
   type ExpectedNote,
-  getCreatedClip,
-  slotToPath,
-  MSG_CONNECT,
   notesMatch,
+} from "../helpers/clip-note-assertions.ts";
+import {
+  MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_READ_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import {
+  clearClipSlots,
+  getCreatedClip,
+  slotToPath,
+} from "../helpers/clip-turn-readers.ts";
 
 /** create-clip tool name (turn-1 create assertion). */
 const TOOL_CREATE_CLIP = "ppal-create-clip";

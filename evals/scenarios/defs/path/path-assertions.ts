@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Assertion helpers for the object-path scenarios.
+ * Assertions for the object-path scenarios.
  *
  * These grade the path the MODEL wrote, not only where the object landed. Both
  * matter, and they fail for different reasons: a path that lands right via a
@@ -21,7 +21,7 @@ import { argText } from "../arg-text.ts";
 import {
   TOOL_CONNECT,
   TOOL_CREATE_CLIP,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
 import {
   getToolCalls,
   lastSuccessfulToolCall,

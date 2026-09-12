@@ -11,8 +11,8 @@ import { argText } from "../../arg-text.ts";
 import { expect } from "vitest";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalScenario } from "../../../types.ts";
-import { assertNamesTarget } from "../../path/path-scenario-helpers.ts";
-import { assertNotesRead } from "../helpers/clip-scenario-helpers.ts";
+import { assertNamesTarget } from "../../path/path-assertions.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 

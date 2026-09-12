@@ -17,8 +17,8 @@ import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertPathArg } from "./path-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
+import { assertPathArg } from "./path-assertions.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 

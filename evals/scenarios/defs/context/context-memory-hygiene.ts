@@ -22,11 +22,13 @@ import {
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
-  assertContextWrite,
-  assertMemoryDeleted,
-  assertNoContextWrite,
   seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-scenario-setup.ts";
+import {
+  assertContextWrite,
+  assertNoContextWrite,
+} from "./helpers/context-write-assertions.ts";
+import { assertMemoryDeleted } from "./helpers/memory-assertions.ts";
 
 const FAVORITE_SYNTH = "favorite-synth";
 const JAMIE_COLLAB = "jamie-collab-deadline";

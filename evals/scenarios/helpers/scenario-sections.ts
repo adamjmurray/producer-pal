@@ -24,7 +24,7 @@ import { maybeInjectReflection } from "./self-reflection.ts";
 import {
   runCorrectnessAssertion,
   toCheckSummaries,
-} from "../run-scenario-helpers.ts";
+} from "../run-scenario/message-turns.ts";
 import {
   type EvalAssertion,
   type EvalScenario,

@@ -21,11 +21,13 @@ import { openLiveSetWithRecovery } from "./helpers/open-live-set/open-live-set-r
 import { type RunEnv } from "./run-env/run-env.ts";
 import {
   computeTotalUsage,
+  runMessageTurns,
+} from "./run-scenario/message-turns.ts";
+import {
   mergeConfigs,
   resolveLiveSetPath,
-  runMessageTurns,
   validateConfig,
-} from "./run-scenario-helpers.ts";
+} from "./run-scenario/scenario-config.ts";
 import {
   runAllAssertions,
   type JudgeOverride,

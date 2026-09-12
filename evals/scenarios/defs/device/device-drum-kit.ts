@@ -23,7 +23,7 @@
 
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
+import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
 
 /**

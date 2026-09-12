@@ -36,7 +36,7 @@ import {
   type EvalTurnResult,
 } from "../../types.ts";
 import { argText } from "../arg-text.ts";
-import { asArrangementTrack, clipStarts } from "../arrangement-helpers.ts";
+import { asArrangementTrack, clipStarts } from "../arrangement-readback.ts";
 
 const TOOL_PLAYBACK = "ppal-playback";
 const TOOL_DUPLICATE = "ppal-duplicate";

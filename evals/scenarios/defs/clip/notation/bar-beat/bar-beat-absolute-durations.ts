@@ -17,10 +17,8 @@
 
 import { CONNECT_MESSAGE } from "../../../../helpers/seed-connect/seed-connect.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
-import {
-  clearClipSlots,
-  clipStateAssertion,
-} from "../../helpers/clip-scenario-helpers.ts";
+import { clipStateAssertion } from "../../helpers/clip-note-assertions.ts";
+import { clearClipSlots } from "../../helpers/clip-turn-readers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";

@@ -35,13 +35,13 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import { callNamesArrangementPosition } from "../../arrangement-helpers.ts";
+import { callNamesArrangementPosition } from "../../arrangement-readback.ts";
 import {
-  getTransforms,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import { getTransforms } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 

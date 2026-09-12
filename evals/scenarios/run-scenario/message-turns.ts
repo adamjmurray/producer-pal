@@ -4,14 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Helper functions for the scenario runner
+ * Running a scenario's message turns and grading them: one turn at a time, then
+ * the correctness assertions, their judge summaries, and the run's token total.
  */
 
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { styleText } from "node:util";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   assertCustom,
@@ -20,23 +18,20 @@ import {
   assertState,
   assertResponseContains,
   type CheckSummary,
-} from "./assertions/index.ts";
-import { type EvalSession } from "./eval-session.ts";
-import { assertionLabel } from "./helpers/json-results/assertion-label.ts";
-import { isQuietMode } from "./helpers/output-config.ts";
+} from "../assertions/index.ts";
+import { type EvalSession } from "../eval-session.ts";
+import { assertionLabel } from "../helpers/json-results/assertion-label.ts";
+import { isQuietMode } from "../helpers/output-config.ts";
 import {
   seedConnectTurn,
   shouldSeedConnect,
-} from "./helpers/seed-connect/seed-connect.ts";
-import { type RunEnv } from "./run-env/run-env.ts";
+} from "../helpers/seed-connect/seed-connect.ts";
 import {
   type EvalAssertion,
   type EvalAssertionResult,
   type EvalScenario,
   type EvalTurnResult,
-} from "./types.ts";
-
-const LIVE_SETS_DIR = "evals/live-sets";
+} from "../types.ts";
 
 /**
  * Run the scenario's message turns, appending one result per turn.
@@ -137,72 +132,6 @@ export function toCheckSummaries(
     label: assertionLabel(r.assertion),
     message: r.message,
   }));
-}
-
-/**
- * Build the config POSTed to the server for a scenario run. The run environment
- * (CLI flags) is authoritative for its four keys; the scenario still contributes
- * its bound config (projectContext, sampleFolder). This mirrors the product: the
- * operator's settings panel wins, the conversation supplies its own context.
- *
- * @param scenarioConfig - Scenario-bound config (projectContext, sampleFolder)
- * @param runEnv - The active run environment (CLI-driven)
- * @returns The merged config to send to the server
- */
-export function mergeConfigs(
-  scenarioConfig: ConfigOptions | undefined,
-  runEnv: RunEnv,
-): ConfigOptions {
-  return {
-    ...scenarioConfig,
-    smallModelMode: runEnv.smallModelMode,
-    jsonOutput: runEnv.jsonOutput,
-    tools: runEnv.tools,
-    liveApiEnabled: runEnv.liveApiEnabled,
-  };
-}
-
-/**
- * Validate config before sending to the server.
- * Throws if sampleFolder is set but the directory doesn't exist.
- *
- * @param config - Config to validate
- */
-export function validateConfig(config: ConfigOptions): void {
-  if (config.sampleFolder && !existsSync(config.sampleFolder)) {
-    throw new Error(`sampleFolder does not exist: ${config.sampleFolder}`);
-  }
-}
-
-/**
- * Resolve a liveSet value to a full path.
- * If it's a short name (no `/`), resolves to the Ableton project structure.
- *
- * @param liveSet - Short name or full path
- * @returns Full path to the .als file
- */
-export function resolveLiveSetPath(liveSet: string): string {
-  if (liveSet.includes("/")) {
-    return liveSet;
-  }
-
-  // Ableton stores .als files in "{name} Project/{name}.als"
-  return `${LIVE_SETS_DIR}/${liveSet} Project/${liveSet}.als`;
-}
-
-/**
- * Resolve a samples folder path to an absolute path within the live sets dir.
- * Short names (no `/`) resolve to `evals/live-sets/{name}`.
- *
- * @param folder - Short name (e.g. "samples") or absolute path
- * @returns Absolute path to the samples folder
- */
-export function resolveSamplesPath(folder: string): string {
-  if (folder.includes("/")) {
-    return folder;
-  }
-
-  return resolve(LIVE_SETS_DIR, folder);
 }
 
 /**

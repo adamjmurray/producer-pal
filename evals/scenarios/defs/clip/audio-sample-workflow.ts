@@ -7,7 +7,7 @@
  * Scenario: Browse samples, create audio clip, modify audio properties
  */
 
-import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
+import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
 import { type EvalScenario } from "../../types.ts";
 
 export const audioSampleWorkflow: EvalScenario = {

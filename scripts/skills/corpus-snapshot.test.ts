@@ -5,11 +5,7 @@
 
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  compareCorpora,
-  formatChanges,
-  parseArgs,
-} from "./snapshot-helpers.ts";
+import { compareCorpora, formatChanges, parseArgs } from "./corpus-snapshot.ts";
 
 const DEFAULT_DIR = "/repo/dev/skills-snapshots";
 

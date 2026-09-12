@@ -20,10 +20,8 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import {
-  assertNotesRead,
-  TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { TOOL_UPDATE_CLIP } from "../helpers/clip-tool-constants.ts";
 
 /**
  * Everything a model wrote to place notes in one turn: `transforms`, `notes`

@@ -32,7 +32,7 @@ import {
   parseTypeInfo,
   redactFilePaths,
   type ListingEntry,
-} from "./walk-live-set-helpers.ts";
+} from "./live-set-listing.ts";
 
 // Every LOM object lists its parent as a child. The value is still recorded as
 // a property; only the walk skips it. Following it would hang an alias path off
