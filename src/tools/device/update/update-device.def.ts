@@ -6,8 +6,8 @@
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
@@ -27,16 +27,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
-
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
 
     toPath: param(z.coerce.string().optional(), {
       default:

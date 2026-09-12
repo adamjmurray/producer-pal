@@ -10,11 +10,9 @@ import {
   TAKE_LANE_NOTE,
 } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
@@ -42,7 +40,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "id(s) of the object(s) to duplicate, comma-separated for multiple",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
@@ -51,7 +49,6 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "path of the object to duplicate instead of id (e.g., 't0' or 't0/s1')",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {

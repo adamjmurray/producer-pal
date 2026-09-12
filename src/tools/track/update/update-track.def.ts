@@ -5,11 +5,9 @@
 
 import { z } from "zod";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -28,9 +26,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .optional()
       .describe("track ID(s) to update, comma-separated for multiple"),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "track path(s) to update instead of id, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt<index>' (return), or 'mt' (main) - e.g. 't0' or 't0,rt1'",
@@ -38,7 +34,6 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         "track path to update instead of id: 't<index>', where t0 is the first track (a user's \"track 3\" is t2)",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated one per track, in order, ideally unique",

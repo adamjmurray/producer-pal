@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
   aliasParam,
@@ -25,21 +26,13 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .optional()
       .describe("clip ID(s) to read, comma-separated for multiple"),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
-
-    clipId: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases({ idAlias: "clipId" }),
     path: z.coerce
       .string()
       .optional()
       .describe(
         "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip by where it starts, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
-
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
 
     slot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

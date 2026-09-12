@@ -4,11 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
@@ -27,13 +25,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       .optional()
       .describe("track ID(s) to read, comma-separated for multiple"),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
-
-    trackId: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases({ idAlias: "trackId" }),
     path: z.coerce
       .string()
       .optional()
@@ -41,7 +33,6 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         "track path(s) to read, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt0' for a return, 'mt' for the main track",
       ),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     trackType: deprecatedParam(
       z.enum(["regular", "return", "master"]).optional(),
       { replacedBy: "path" },

@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadDevice = defineTool("ppal-read-device", {
@@ -26,13 +26,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
         "device or drum pad ID(s) to read, comma-separated for multiple",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
-
-    deviceId: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases({ idAlias: "deviceId" }),
     path: z.coerce
       .string()
       .optional()
@@ -40,7 +34,6 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
         "path(s) to read, comma-separated (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')",
       ),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     include: param(
       z
         .array(

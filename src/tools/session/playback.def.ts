@@ -4,11 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -72,9 +70,7 @@ stop: session and arrangement; takes startTime to park the next play`,
         "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: z.coerce
       .string()
       .optional()
@@ -82,7 +78,6 @@ stop: session and arrangement; takes startTime to park the next play`,
         "clip slot(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
           "for play-scene, a scene 's<scene>' (e.g., 's3') or any position in it",
       ),
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
 
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

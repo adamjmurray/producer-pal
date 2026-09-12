@@ -6,11 +6,10 @@
 import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
+import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -32,9 +31,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .optional()
       .describe("clip ID(s) to update, comma-separated for multiple"),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "clip(s) to update instead of id, comma-separated: a clip slot 't<track>/s<scene>', " +
@@ -43,7 +40,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "clip to update instead of id: 't0/s1', or 't0[5|1]' in the arrangement",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default: "name for all, or comma-separated one per clip, in order",
       smallModel: "clip name",
@@ -125,24 +121,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
 
     // Audio clip parameters
-    gainDb: z.coerce
-      .number()
-      .min(-70)
-      .max(24)
-      .optional()
-      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
-    pitchShift: z.coerce
-      .number()
-      .min(-48)
-      .max(48)
-      .optional()
-      .describe(
-        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
-      ),
-    warpMode: z
-      .enum(["beats", "tones", "texture", "repitch", "complex", "pro"])
-      .optional()
-      .describe("audio clip warp mode (ignored for MIDI)"),
+    ...audioClipParams(),
     warping: z
       .boolean()
       .optional()
