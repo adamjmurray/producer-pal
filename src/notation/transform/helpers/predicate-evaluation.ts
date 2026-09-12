@@ -7,10 +7,7 @@ import {
   type ExpressionNode,
   type PredicateNode,
 } from "../parser/transform-parser.ts";
-import {
-  type NoteProperties,
-  type TimeRange,
-} from "./transform-evaluator-helpers.ts";
+import { type NoteProperties, type TimeRange } from "./transform-context.ts";
 import { SELECTOR_EPSILON } from "./transform-selector-epsilon.ts";
 
 /** Evaluates an arithmetic expression node to a number. Injected (rather than

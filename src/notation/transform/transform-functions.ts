@@ -5,30 +5,34 @@
 
 import * as console from "./transform-warning-label.ts";
 import {
-  type TimeRange,
-  type NoteProperties,
-} from "./helpers/transform-evaluator-helpers.ts";
-import {
   computePhase,
   evaluateArgs,
+} from "./helpers/functions/function-arguments.ts";
+import {
+  evaluateSnap,
+  evaluateStep,
+} from "./helpers/functions/grid-functions.ts";
+import {
   evaluateChoose,
   evaluateClipSeq,
+  evaluateRand,
+  evaluateSeq,
+} from "./helpers/functions/sequence-functions.ts";
+import {
   evaluateCurve,
   evaluateMathFunction,
   evaluateMinMax,
   evaluatePow,
-  evaluateRand,
-  evaluateSeq,
-} from "./helpers/functions/transform-functions-helpers.ts";
-import {
-  evaluateSnap,
-  evaluateStep,
-} from "./helpers/functions/transform-functions-scale-helpers.ts";
+} from "./helpers/functions/shape-functions.ts";
 import {
   evaluateLegato,
   evaluateQuant,
   evaluateSwing,
-} from "./helpers/functions/transform-functions-timing-helpers.ts";
+} from "./helpers/functions/timing-functions.ts";
+import {
+  type NoteProperties,
+  type TimeRange,
+} from "./helpers/transform-context.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
 import * as waveforms from "./transform-waveforms.ts";
 

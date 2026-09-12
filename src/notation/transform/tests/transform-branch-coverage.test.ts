@@ -8,8 +8,8 @@ import { evaluateTransform } from "#src/notation/transform/transform-evaluator.t
 import {
   applyBinaryOp,
   evaluateTransformAST,
-} from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
-import { evaluatePredicate } from "#src/notation/transform/helpers/transform-predicate-helpers.ts";
+} from "#src/notation/transform/helpers/transform-evaluation.ts";
+import { evaluatePredicate } from "#src/notation/transform/helpers/predicate-evaluation.ts";
 import {
   type PredicateNode,
   type TransformAssignment,
@@ -117,7 +117,7 @@ describe("Transform Branch Coverage", () => {
     });
   });
 
-  describe("transform-evaluator-helpers.js branch coverage", () => {
+  describe("transform-evaluation branch coverage", () => {
     it("handles assignment with pitch range that filters out the note", () => {
       // When a note is outside the pitch range, assignment is skipped
       // and assignmentResult.value will be null/undefined
@@ -176,7 +176,7 @@ describe("Transform Branch Coverage", () => {
     });
   });
 
-  describe("transform-predicate-helpers.js branch coverage", () => {
+  describe("predicate-evaluation branch coverage", () => {
     // The parser never produces these shapes, and the `never` in each switch
     // default keeps it that way. Reached here by casting so the fall-through
     // stays exercised if a node type or operator is ever added.

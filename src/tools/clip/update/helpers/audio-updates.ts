@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {

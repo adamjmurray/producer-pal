@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import { type NoteContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type NoteContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";

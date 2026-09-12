@@ -8,7 +8,7 @@ import {
   type ClipContext,
   type LegatoContext,
   type NoteProperties,
-} from "./transform-evaluator-helpers.ts";
+} from "./transform-context.ts";
 
 /**
  * Build note properties object including note, next note, and clip context

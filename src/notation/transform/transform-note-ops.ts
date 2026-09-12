@@ -12,10 +12,10 @@ import {
   MAX_NOTE_PIECES,
   splitNoteAtCuts,
   splitNotes,
-} from "./helpers/note-cut-helpers.ts";
-import { evaluateExpression } from "./helpers/transform-evaluator-helpers.ts";
-import { repeatNotes } from "./helpers/transform-repeat-helpers.ts";
-import { noteInTimeRange } from "./helpers/transform-time-range-helpers.ts";
+} from "./helpers/note-ops/note-cuts.ts";
+import { repeatNotes } from "./helpers/note-ops/repeat-notes.ts";
+import { noteInTimeRange } from "./helpers/time-range-bounds.ts";
+import { evaluateExpression } from "./helpers/transform-evaluation.ts";
 import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
 
 /**

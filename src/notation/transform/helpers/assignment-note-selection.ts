@@ -11,16 +11,18 @@ import {
   type PredicateNode,
   type TransformAssignment,
 } from "../parser/transform-parser.ts";
+import { buildNoteProperties } from "./note-properties.ts";
+import { evaluatePredicate } from "./predicate-evaluation.ts";
+import { timeRangeBoundsInMusicalBeats } from "./time-range-bounds.ts";
 import {
-  calculateActiveTimeRange,
   type ClipContext,
-  evaluateExpression,
   type NoteContext,
   type TimeRange,
-} from "./transform-evaluator-helpers.ts";
-import { buildNoteProperties } from "./transform-evaluator-note-helpers.ts";
-import { evaluatePredicate } from "./transform-predicate-helpers.ts";
-import { timeRangeBoundsInMusicalBeats } from "./transform-time-range-helpers.ts";
+} from "./transform-context.ts";
+import {
+  calculateActiveTimeRange,
+  evaluateExpression,
+} from "./transform-evaluation.ts";
 
 /**
  * Select the note indices an assignment applies to: those whose current pitch

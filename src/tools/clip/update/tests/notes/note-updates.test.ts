@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   handleDuplicateLoopWithEdits,

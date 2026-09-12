@@ -6,13 +6,13 @@
 import { isSameSlot } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "../transform-warning-label.ts";
+import * as console from "../../transform-warning-label.ts";
 import {
   type ExpressionNode,
   type NoteOp,
-} from "../parser/transform-parser.ts";
-import { MAX_NOTE_PIECES } from "./note-cut-helpers.ts";
-import { evaluateExpression } from "./transform-evaluator-helpers.ts";
+} from "../../parser/transform-parser.ts";
+import { evaluateExpression } from "../transform-evaluation.ts";
+import { MAX_NOTE_PIECES } from "./note-cuts.ts";
 
 /**
  * Repeat (echo) matched notes: keep the originals and emit `copies` time-shifted

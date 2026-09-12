@@ -6,10 +6,7 @@
 import { quantizePitchToScale, stepInScale } from "#src/shared/pitch.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import { type EvaluateExpressionFn } from "../../transform-functions.ts";
-import {
-  type TimeRange,
-  type NoteProperties,
-} from "../transform-evaluator-helpers.ts";
+import { type TimeRange, type NoteProperties } from "../transform-context.ts";
 
 /**
  * Evaluate snap function (snap pitch to nearest in-scale pitch)

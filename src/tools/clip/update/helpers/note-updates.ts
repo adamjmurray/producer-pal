@@ -11,7 +11,7 @@ import {
   resolveNotation,
 } from "#src/notation/notation.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
-import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";

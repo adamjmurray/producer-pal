@@ -7,12 +7,14 @@ import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-c
 import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "./transform-warning-label.ts";
 import {
-  applyBinaryOp,
   type ClipContext,
-  isNoteOp,
   type NoteProperties,
+} from "./helpers/transform-context.ts";
+import {
+  applyBinaryOp,
+  isNoteOp,
   operatorDisplay,
-} from "./helpers/transform-evaluator-helpers.ts";
+} from "./helpers/transform-evaluation.ts";
 import {
   type ExpressionNode,
   type TransformAssignment,

@@ -9,10 +9,7 @@ import {
   type EvaluateExpressionFn,
   parsePeriod,
 } from "../../transform-functions.ts";
-import {
-  type TimeRange,
-  type NoteProperties,
-} from "../transform-evaluator-helpers.ts";
+import { type TimeRange, type NoteProperties } from "../transform-context.ts";
 
 /**
  * Evaluate swing function (delay off-beat notes for swing feel).

@@ -41,7 +41,7 @@ import {
   durationToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { evaluateExpression } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { evaluateExpression } from "#src/notation/transform/helpers/transform-evaluation.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
 import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 

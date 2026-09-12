@@ -35,7 +35,7 @@ export const LONGEST_BLOCK_LIMITS: TreeLimits = {
 
 /** Cap on how many files hold a long comment block per tree. */
 export const LONG_BLOCK_FILE_LIMITS: TreeLimits = {
-  src: 375,
+  src: 380,
   scripts: 35,
   webui: 206,
   evals: 113,

@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "../transform-warning-label.ts";
+import * as console from "../../transform-warning-label.ts";
 import {
   type BarBeatPointNode,
   type NoteOp,
-} from "../parser/transform-parser.ts";
+} from "../../parser/transform-parser.ts";
 
 // Per-note ceiling on pieces a note-count op may produce — bounds note
 // explosion. Shared by ratchet (a roll) and split (explicit cuts). A note cut

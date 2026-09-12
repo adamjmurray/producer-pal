@@ -11,7 +11,7 @@
 
 import { type NoteEvent } from "../../types.ts";
 import { type TransformAssignment } from "../parser/transform-parser.ts";
-import { isFlatWaveform } from "./transform-flat-waveform-helpers.ts";
+import { isFlatWaveform } from "./flat-waveforms.ts";
 
 /** A waveform value evaluated but not yet written to its note. */
 export interface DeferredWrite {

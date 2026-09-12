@@ -10,9 +10,9 @@ import {
 import {
   evaluateExpression,
   evaluateTransformAST,
-} from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+} from "#src/notation/transform/helpers/transform-evaluation.ts";
 import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
-import { evaluateMathFunction } from "#src/notation/transform/helpers/functions/transform-functions-helpers.ts";
+import { evaluateMathFunction } from "#src/notation/transform/helpers/functions/shape-functions.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {
   createTestNote,

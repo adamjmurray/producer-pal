@@ -9,31 +9,33 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
 import {
+  type DeferredWrite,
+  applyTransformResult,
+  commitWaveformWrites,
+} from "./helpers/apply-transform-result.ts";
+import {
+  buildNoteContext,
+  selectAssignmentNotes,
+} from "./helpers/assignment-note-selection.ts";
+import {
+  rejectsPitchLiteralValue,
+  warnShortRamp,
+} from "./helpers/assignment-warnings.ts";
+import { findWaveformName } from "./helpers/flat-waveforms.ts";
+import { buildNoteProperties } from "./helpers/note-properties.ts";
+import { timeRangeBoundsInMusicalBeats } from "./helpers/time-range-bounds.ts";
+import {
   type ClipContext,
-  evaluateExpression,
-  evaluateTransformAST,
-  isNoteOp,
   type NoteContext,
   type NoteProperties,
   type TimeRange,
   type TransformResult,
-} from "./helpers/transform-evaluator-helpers.ts";
+} from "./helpers/transform-context.ts";
 import {
-  type DeferredWrite,
-  applyTransformResult,
-  commitWaveformWrites,
-} from "./helpers/transform-apply-helpers.ts";
-import { findWaveformName } from "./helpers/transform-flat-waveform-helpers.ts";
-import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
-import {
-  buildNoteContext,
-  selectAssignmentNotes,
-} from "./helpers/transform-evaluator-selection-helpers.ts";
-import {
-  rejectsPitchLiteralValue,
-  warnShortRamp,
-} from "./helpers/transform-assignment-warning-helpers.ts";
-import { timeRangeBoundsInMusicalBeats } from "./helpers/transform-time-range-helpers.ts";
+  evaluateExpression,
+  evaluateTransformAST,
+  isNoteOp,
+} from "./helpers/transform-evaluation.ts";
 import {
   type PitchRange,
   type TransformAssignment,

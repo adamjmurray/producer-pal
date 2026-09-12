@@ -14,11 +14,9 @@ import {
   type TransformAssignment,
 } from "../parser/transform-parser.ts";
 import * as console from "../transform-warning-label.ts";
-import {
-  operatorDisplay,
-  type TimeRange,
-} from "./transform-evaluator-helpers.ts";
-import { findFunctionName } from "./transform-flat-waveform-helpers.ts";
+import { findFunctionName } from "./flat-waveforms.ts";
+import { type TimeRange } from "./transform-context.ts";
+import { operatorDisplay } from "./transform-evaluation.ts";
 
 /**
  * Reject a bare pitch literal used as a value for anything but `pitch`.
