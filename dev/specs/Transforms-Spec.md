@@ -86,7 +86,10 @@ taught it the feature was unsupported, so it hand-wrote the result instead.
     - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
       any meter.
   - **Bar-length cycle** (`<count>bar`): meter-aware bars, e.g. `cos(1bar)` (1
-    bar) or `cos(4bar)` (4 bars).
+    bar) or `cos(4bar)` (4 bars). The bare-count `n`-prefixed form (`n1bar`,
+    `n4bar`) is an untaught input-tolerance alias, same as clip `length` and
+    note durations — it parses to the same value. Fraction forms (`n/1bar`,
+    `n3/4bar`) stay rejected: no bar count can be guessed from a fraction.
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
     - A bare number is treated as a period in beats

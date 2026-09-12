@@ -135,15 +135,17 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     any meter) and `<count>bar±n<fraction>` mixed (e.g. `1bar+n3/4`, or
     `1bar-n/16` = "almost a full bar") are also valid inline durations. The tail
     may add or subtract the note value; the `bar` term never wears an `n`, and
-    the note-value tail keeps its own `n`. So `n1bar` is invalid — write `1bar`.
-    The `n`-prefixed bar forms (`n1bar`, `n/1bar`, `n3/4bar`) are a common model
-    hallucination, so every duration site rejects them with a targeted error
-    ("bar durations don't use the `n` prefix — write <count>bar"), not the
-    generic format error. A plural `bars` (`2bars`) is accepted as an
-    input-tolerance alias of `<count>bar` on every duration site; serialized
-    output is always singular (`2bar`). The minus form is input-tolerance only —
-    the serializer emits the canonical on-grid `n<fraction>`/`<count>bar`, never
-    a `-n` tail
+    the note-value tail keeps its own `n`. The bare-count `n`-prefixed form
+    (`n1bar`, `n4bar`) is an untaught input-tolerance alias of `<count>bar` on
+    every duration site — unambiguous, so it parses to the same value; output
+    always serializes as the bare form (`1bar`). The `n`-prefixed FRACTION forms
+    (`n/1bar`, `n3/4bar`) stay rejected — no bar count can be guessed from a
+    fraction — with a targeted error ("an n fraction and a bar count are
+    different things"), not the generic format error. A plural `bars` (`2bars`)
+    is accepted as an input-tolerance alias of `<count>bar` on every duration
+    site; serialized output is always singular (`2bar`). The minus form is
+    input-tolerance only — the serializer emits the canonical on-grid
+    `n<fraction>`/`<count>bar`, never a `-n` tail
   - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
   - NOTE: clip `length` and arrangement durations use this same duration
@@ -247,7 +249,11 @@ before a time position are buffered and emitted together when a time is reached.
 ### Pitch Buffering
 
 - **Consecutive pitches form chords:** `C3 E3 G3 1|1` emits all three notes at
-  1|1
+  1|1. A bare `(...)` around a single chord (`(C3 E3 G3) 1|1`) is an untaught
+  input-tolerance alias — parens have no other meaning outside a `[...]` pattern
+  bracket, so a stray pair around one chord is unambiguous and parses the same
+  as the unparenthesized form. A single-element bracketed chord
+  (`[(C3 E3 G3)] 1|1`) is equally tolerated for the same reason
 - **First pitch after time clears buffer:** `C1 1|1 D1 1|2` emits C1 at 1|1,
   then D1 at 1|2
 - **Pitches persist until changed:** `C1 1|1 1|2 1|3` emits C1 at three

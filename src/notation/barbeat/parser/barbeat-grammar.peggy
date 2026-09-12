@@ -102,7 +102,7 @@ elementSep
   / &"["
 
 element
-  = barCopy / timePoints / stream / probability / velocity / duration / pitch / badNumericToken
+  = barCopy / timePoints / stream / probability / velocity / duration / chord / pitch / badNumericToken
 
 barCopy "bar copy operation"
   = '@' 'clear' {
@@ -172,11 +172,17 @@ stepInterval
   = "@" bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
       return { bars, fraction: frac ?? 0 };
     }
-  / "@" "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
-      // `n`-prefixed bar step (`@n1bar`, `@n/1bar`, `@n3/4bar`): same category
-      // error as the duration sites — bars are the bare `<count>bar` form. Placed
-      // before the `@n<frac>` branch so it catches the trailing `bar` first.
-      throw new Error(`"@${text().slice(1)}" is invalid: bar steps don't use the "n" prefix — write @<count>bar (e.g. @${last}bar).`);
+  / "@" "n" count:$([0-9]+) "bar" "s"? {
+      // Untaught tolerance: @n1bar/@n4bar alias @<count>bar (ADR-0018), same as
+      // the duration site. Placed before the fraction branch so it catches the
+      // trailing `bar` first.
+      return { bars: parseInt(count, 10), fraction: 0 };
+    }
+  / "@" "n" num:$([0-9]*) "/" den:$([0-9]+) "bar" "s"? {
+      // `n`-prefixed FRACTION bar step (`@n/1bar`, `@n3/4bar`): same category
+      // error as the duration sites — a bar count can't be guessed from a
+      // fraction.
+      throw new Error(`"@${text().slice(1)}" is invalid: an n fraction and a bar count are different things — write @n${num}/${den} for a note value, or @<count>bar (e.g. @4bar) for bars, not combined.`);
     }
   / "@" "n" frac:unsignedFraction {
       return { bars: 0, fraction: frac };
@@ -237,7 +243,12 @@ velocity "velocity value"
   }
 
 duration "duration value"
-  = badBarDuration
+  = "n" count:$([0-9]+) "bar" "s"? {
+    // Untaught tolerance: n1bar/n4bar reach for the n sigil out of habit; the
+    // bare count is unambiguous, so it aliases <count>bar (ADR-0018).
+    return { bars: parseInt(count, 10), duration: 0 };
+  }
+  / badBarDuration
   / bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
     // <count>bar (e.g. 1bar) or <count>bar±nA/B (e.g. 1bar+n3/4, 1bar-n/16). `bar` is
     // meter-aware and never wears an `n`; the interpreter resolves it against
@@ -259,12 +270,14 @@ badAbsoluteValue
   = unsignedMixedNumber { return text(); }
   / unsignedDecimal { return text(); }
 
-// `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
-// the `n` sigil marks a note-value fraction (denominator required); bars are the
-// bare `<count>bar` form. Matched only to raise a targeted "did you mean <count>bar" error.
+// `n`-prefixed FRACTION bar duration (`n/1bar`, `n3/4bar`): a category error —
+// the `n` sigil marks a note-value fraction (denominator required), and a bar
+// count can't be guessed from a fraction. The bare-count form (`n1bar`) is
+// handled above as an accepted alias, so this only matches when a `/` is
+// present.
 badBarDuration
-  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
-      throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write <count>bar (e.g. ${last}bar).`);
+  = "n" num:$([0-9]*) "/" den:$([0-9]+) "bar" "s"? {
+      throw new Error(`"${text()}" is invalid: an n fraction and a bar count are different things — write n${num}/${den} for a note value, or <count>bar (e.g. 4bar) for bars, not combined.`);
     }
 
 pitch "note pitch"
@@ -311,6 +324,10 @@ streamValue
   / pr:probability { return { kind: "probability", value: pr }; }
   / p:pitch { return { kind: "pitch", value: [p] }; }
 
+// Also usable as a bare top-level element (`element` includes `chord`), not just
+// inside a `[...]` bracket: `(C3 Eb3 G3) 1|1` is untaught tolerance for the plain
+// chord form `C3 Eb3 G3 1|1` (ADR-0018) — a lone `(...)` around one chord is an
+// easy mistake with no ambiguity, so it parses to the same pitch list either way.
 chord "chord"
   = "(" _ head:pitch tail:(WS pitch)* _ ")" {
     return [head, ...tail.map(t => t[1])];
