@@ -362,6 +362,45 @@ describe("ppal-create-scene", () => {
       arguments: { action: "stop" },
     });
   });
+
+  // An index past the end of the scenes has no predecessor to select, so
+  // capture mode has to pad with empty scenes first, same as create mode.
+  it("pads with empty scenes when capturing past the end", async () => {
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", sceneIndex: 0 },
+    });
+    await sleep(1500);
+
+    const before = await sceneIds();
+    const targetIndex = before.length + 3;
+
+    const captured = parseToolResult<CaptureSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: {
+          path: `s${String(targetIndex)}`,
+          capture: true,
+          name: "CAP-PAST-END",
+        },
+      }),
+    );
+
+    expect(captured.path).toBe(`s${String(targetIndex)}`);
+
+    await sleep(100);
+    const after = await sceneIds();
+
+    expect(after).toHaveLength(targetIndex + 1);
+    expect(after[targetIndex]).toBe(captured.id);
+    expect(after.slice(0, before.length)).toStrictEqual(before);
+
+    // Cleanup: stop playback
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "stop" },
+    });
+  });
 });
 
 interface LiveSetResult {

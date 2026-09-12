@@ -3,9 +3,43 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { namedParam, parseTimeSignature } from "#src/tools/shared/utils.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+
+/**
+ * Refuses an index/count combination that would auto-create too many scenes.
+ * @param sceneIndex - The target scene index
+ * @param count - How many scenes the call would create at and after that index
+ */
+export function validateSceneIndexCap(sceneIndex: number, count: number): void {
+  if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
+    throw new Error(
+      `creating ${count} scene${count === 1 ? "" : "s"} at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+    );
+  }
+}
+
+/**
+ * Pads the live set with empty scenes so index `sceneIndex` exists.
+ * @param liveSet - The LiveAPI live_set object
+ * @param sceneIndex - The target scene index
+ */
+export function ensureSceneCountForIndex(
+  liveSet: LiveAPI,
+  sceneIndex: number,
+): void {
+  const currentSceneCount = liveSet.getChildIds("scenes").length;
+
+  if (sceneIndex > currentSceneCount) {
+    const scenesToPad = sceneIndex - currentSceneCount;
+
+    for (let i = 0; i < scenesToPad; i++) {
+      liveSet.call("create_scene", -1);
+    }
+  }
+}
 
 /**
  * Applies tempo property to a scene

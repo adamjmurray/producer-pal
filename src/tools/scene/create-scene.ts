@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
   getColorForIndex,
@@ -21,7 +20,9 @@ import { validateTempo } from "#src/tools/shared/utils.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
+  ensureSceneCountForIndex,
   resolveCreateSceneIndex,
+  validateSceneIndexCap,
 } from "./scene-helpers.ts";
 
 interface SceneResult {
@@ -182,28 +183,7 @@ function validateCreateSceneArgs(
     throw new Error("count must be at least 1");
   }
 
-  if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
-    throw new Error(
-      `creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
-    );
-  }
-}
-
-/**
- * Ensures enough scenes exist to insert at the specified index
- * @param liveSet - The LiveAPI live_set object
- * @param sceneIndex - The target scene index
- */
-function ensureSceneCountForIndex(liveSet: LiveAPI, sceneIndex: number): void {
-  const currentSceneCount = liveSet.getChildIds("scenes").length;
-
-  if (sceneIndex > currentSceneCount) {
-    const scenesToPad = sceneIndex - currentSceneCount;
-
-    for (let i = 0; i < scenesToPad; i++) {
-      liveSet.call("create_scene", -1);
-    }
-  }
+  validateSceneIndexCap(sceneIndex, count);
 }
 
 /**
