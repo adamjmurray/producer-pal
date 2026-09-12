@@ -14,7 +14,7 @@ import {
 import {
   type ConversationStore,
   type SaveSnapshot,
-} from "#webui/lib/conversation-store";
+} from "#webui/lib/conversations/conversation-store";
 import {
   type EnforceLimitResult,
   saveConversation,

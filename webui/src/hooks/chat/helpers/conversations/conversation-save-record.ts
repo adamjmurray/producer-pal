@@ -8,7 +8,7 @@ import {
   type ConversationLockedSettings,
   type PendingFork,
 } from "#webui/hooks/chat/use-chat-types";
-import { type ActiveMeta } from "#webui/lib/conversation-store";
+import { type ActiveMeta } from "#webui/lib/conversations/conversation-store";
 import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branches";
 import {

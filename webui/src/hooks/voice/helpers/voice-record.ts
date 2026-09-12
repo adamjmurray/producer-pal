@@ -12,7 +12,7 @@ import {
 import {
   type ActiveMeta,
   type SaveSnapshot,
-} from "#webui/lib/conversation-store";
+} from "#webui/lib/conversations/conversation-store";
 
 /**
  * Combine a previously-saved voice transcript with the current live session

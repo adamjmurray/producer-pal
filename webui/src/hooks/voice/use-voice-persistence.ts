@@ -15,9 +15,14 @@ import { type TransferNotificationData } from "#webui/components/chat/TransferNo
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
+  deleteOneConversation,
+  renameStoredConversation,
+  toggleStoredBookmark,
+} from "#webui/lib/conversations/conversation-edits";
+import {
   type ConversationStore,
   createConversationStore,
-} from "#webui/lib/conversation-store";
+} from "#webui/lib/conversations/conversation-store";
 import { useVoiceBulkDeletes } from "#webui/hooks/voice/helpers/use-voice-bulk-deletes";
 import {
   buildVoiceRecord,
@@ -30,9 +35,7 @@ import {
   type ConversationSummary,
   listConversations,
   loadConversation,
-  renameConversation as dbRenameConversation,
   saveConversation,
-  setBookmark,
 } from "#webui/lib/conversation-db";
 
 interface UseVoicePersistenceParams {
@@ -328,31 +331,14 @@ export function useVoicePersistence(
   }, []);
 
   const deleteConversation = useCallback(
-    async (id: string) => {
-      const isLive = id === store.activeId();
-      const undoMark = isLive ? store.markDeleted() : null;
-
-      await store.drain();
-
-      try {
-        await undoDelete.deleteWithUndo(id);
-      } catch (error) {
-        // The row is still there, so leaving the slot marked would silently
-        // stop autosaving the session the user is still in.
-        undoMark?.();
-        throw error;
-      }
-
-      // Ask again rather than trusting isLive: the user can switch conversations
-      // while the delete runs, and starting a new one then would throw away the
-      // one they just opened. liveId, not activeId — a marked slot reports no
-      // active id, so the untouched case has to be recognized by id.
-      if (store.liveId() === id) {
-        startNewConversation();
-      }
-
-      await refreshList();
-    },
+    (id: string) =>
+      deleteOneConversation({
+        store,
+        id,
+        deleteWithUndo: undoDelete.deleteWithUndo,
+        refreshList,
+        onLiveGone: startNewConversation,
+      }),
     [store, refreshList, startNewConversation, undoDelete],
   );
 
@@ -366,30 +352,13 @@ export function useVoicePersistence(
     });
 
   const renameConversation = useCallback(
-    async (id: string, title: string | null) => {
-      await dbRenameConversation(id, title);
-      store.patchActiveMeta(id, { title });
-
-      await refreshList();
-    },
+    (id: string, title: string | null) =>
+      renameStoredConversation(store, refreshList, id, title),
     [store, refreshList],
   );
 
   const toggleBookmark = useCallback(
-    async (id: string) => {
-      const conv = conversations.find((c) => c.id === id);
-
-      if (!conv) {
-        return;
-      }
-
-      const next = !conv.bookmarked;
-
-      await setBookmark(id, next);
-      store.patchActiveMeta(id, { bookmarked: next });
-
-      await refreshList();
-    },
+    (id: string) => toggleStoredBookmark(store, refreshList, conversations, id),
     [store, conversations, refreshList],
   );
 
