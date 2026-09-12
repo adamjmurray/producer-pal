@@ -178,6 +178,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       trackIndex,
     });
 
+    registerMockObject("temp-midi", { type: "Clip" });
+
     // Mock duplicate_clip_to_arrangement to return moved clip
     overrideCall(track, function (method: string) {
       if (method === "duplicate_clip_to_arrangement") {

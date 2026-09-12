@@ -155,12 +155,10 @@ describe("update-clip-arrangement-helpers", () => {
       const trackIndex = 3;
       let dupCount = 0;
 
-      // The real workaround runs here (this file does not mock it). The source
-      // [0,16] moved to beat 4 overlaps its own target [4,20]:
-      // clearClipAtDuplicateTarget returns false, so the move routes through the
-      // holding area — copy to holding, trim/overwrite the original, place a full
-      // copy — then deletes the original, leaving one full-length clip at the new
-      // position.
+      // Real workaround, no mock: source [0,16] moved to 4 overlaps its own
+      // target [4,20], so the move routes through holding — copy to holding,
+      // trim/overwrite the original, place a full copy — then deletes the
+      // original, leaving one full-length clip at the new position.
       const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
         path: `live_set tracks ${trackIndex}`,
         properties: { arrangement_clips: ["id", "700"] },
@@ -190,25 +188,17 @@ describe("update-clip-arrangement-helpers", () => {
       registerMockObject("720", {
         path: livePath.track(trackIndex).arrangementClip(2),
       });
+      registerMockObject("730", { type: "Clip" }); // temp clip
 
+      const clipProps: Record<string, number> = {
+        is_arrangement_clip: 1,
+        start_time: 0,
+        end_time: 16,
+      };
       const mockClip = {
         id: "700",
         path: `live_set tracks ${trackIndex} arrangement_clips 0`,
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") {
-            return 1;
-          }
-
-          if (prop === "start_time") {
-            return 0;
-          }
-
-          if (prop === "end_time") {
-            return 16;
-          }
-
-          return null;
-        }),
+        getProperty: vi.fn((prop) => clipProps[prop] ?? null),
         trackIndex,
         exists: () => true,
       };

@@ -10,9 +10,11 @@ import {
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
+import { requireCreatedClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 // Create lowercase versions for case-insensitive comparison
 const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>
@@ -80,7 +82,10 @@ export function extendSongIfNeeded(
       targetBeats,
       1,
     ) as string;
-    const tempClip = LiveAPI.from(tempClipResult);
+    const tempClip = requireCreatedClip(
+      LiveAPI.from(tempClipResult),
+      pathPrefix(selectedTrack),
+    );
 
     return { track: selectedTrack, clipId: tempClip.id, isMidiTrack: true };
   }

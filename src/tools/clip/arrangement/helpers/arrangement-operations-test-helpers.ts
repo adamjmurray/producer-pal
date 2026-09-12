@@ -24,6 +24,7 @@ interface RegisterOptions {
   path?: PathLike;
   type?: LiveObjectType;
   properties?: Record<string, unknown>;
+  methods?: Record<string, (...args: unknown[]) => unknown>;
 }
 
 function setupArrangementMock(id: string, options: RegisterOptions = {}): void {
@@ -39,14 +40,20 @@ export function setupArrangementClipPath(
   clipId: string,
   trackIndex: number = 0,
 ): void {
+  const tempClipId = `${clipId}-temp`;
+
   setupArrangementMock(`track-${trackIndex}`, {
     path: livePath.track(trackIndex),
     type: "Track",
+    methods: { create_midi_clip: () => ["id", tempClipId] },
   });
   setupArrangementMock(clipId, {
     path: livePath.track(trackIndex).arrangementClip(0),
     type: "Clip",
   });
+  // A shortening path can drop a temp clip via create_midi_clip; register a
+  // Clip answer so requireCreatedClip doesn't refuse it as an unregistered id.
+  setupArrangementMock(tempClipId, { type: "Clip" });
 }
 
 /**

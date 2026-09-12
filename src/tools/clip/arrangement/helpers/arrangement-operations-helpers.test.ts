@@ -399,6 +399,7 @@ describe("arrangement-operations-helpers", () => {
       setupArrangementClipPath("789");
       const track = requireMockObject(livePath.track(0));
 
+      registerMockObject("temp-midi", { type: "Clip" });
       overrideCall(track, (method: string) => {
         if (method === "create_midi_clip") {
           return "id temp-midi";
@@ -420,6 +421,37 @@ describe("arrangement-operations-helpers", () => {
       expect(track.call).toHaveBeenCalledWith("create_midi_clip", 4.0, 4.0);
       // Should delete the temp clip
       expect(track.call).toHaveBeenCalledWith("delete_clip", "id temp-midi");
+    });
+
+    it("throws when create_midi_clip answers with something that is not a clip", () => {
+      // A refused create_midi_clip answers with the Live Set (id 1), never
+      // undefined — an unchecked id here would hand delete_clip the Live Set.
+      setupArrangementClipPath("789");
+      const track = requireMockObject(livePath.track(0));
+
+      overrideCall(track, (method: string) => {
+        if (method === "create_midi_clip") {
+          return "id 1";
+        }
+
+        return USE_CALL_FALLBACK;
+      });
+
+      expect(() =>
+        handleArrangementShortening({
+          clip: { id: "789", trackIndex: 0 } as unknown as LiveAPI,
+          isAudioClip: false,
+          arrangementLengthBeats: 4,
+          currentStartTime: 0,
+          currentEndTime: 8,
+          context: {},
+        }),
+      ).toThrow(/Live created no clip/);
+
+      expect(track.call).not.toHaveBeenCalledWith(
+        "delete_clip",
+        expect.anything(),
+      );
     });
   });
 });

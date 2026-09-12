@@ -192,7 +192,11 @@ export function setupArrangementClipPath(
       create_midi_clip: () => {
         tempMidiCounter += 1;
 
-        return `id temp_midi_${String(tempMidiCounter)}`;
+        const tempId = `temp_midi_${String(tempMidiCounter)}`;
+
+        registerMockObject(tempId, { type: "Clip" });
+
+        return `id ${tempId}`;
       },
       delete_clip: () => null,
     },

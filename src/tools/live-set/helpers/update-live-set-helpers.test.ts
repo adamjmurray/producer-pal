@@ -98,7 +98,9 @@ describe("update-live-set-helpers", () => {
         from: vi
           .fn()
           .mockImplementation((id) =>
-            id === "track-1" ? mockMidiTrack : { id: "999" },
+            id === "track-1"
+              ? mockMidiTrack
+              : { id: "999", exists: () => true, type: "Clip" },
           ),
       };
 
@@ -118,7 +120,7 @@ describe("update-live-set-helpers", () => {
         getProperty: vi.fn().mockReturnValue(1), // has_midi_input = 1
         call: vi.fn().mockReturnValue("id 999"),
       };
-      const mockTempClip = { id: "999" };
+      const mockTempClip = { id: "999", exists: () => true, type: "Clip" };
 
       g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {
@@ -147,6 +149,40 @@ describe("update-live-set-helpers", () => {
         "create_midi_clip",
         200,
         1,
+      );
+    });
+
+    it("throws when create_midi_clip answers with something that is not a clip", () => {
+      // A refused create_midi_clip answers with the Live Set (id 1), never
+      // undefined — an unchecked id here would poison the returned clipId.
+      const mockMidiTrack = {
+        getProperty: vi.fn().mockReturnValue(1),
+        call: vi.fn().mockReturnValue("id 1"),
+      };
+      const mockLiveSetObject = {
+        id: "1",
+        exists: () => true,
+        type: "LiveSet",
+      };
+
+      g.LiveAPI = {
+        from: vi.fn().mockImplementation((id) => {
+          if (id === "track-1") {
+            return mockMidiTrack;
+          }
+
+          if (id === "id 1") {
+            return mockLiveSetObject;
+          }
+
+          return null;
+        }),
+      };
+
+      const mockLiveSet = mockLiveSetWithTracks();
+
+      expect(() => extendSongIfNeeded(mockLiveSet, 200, {})).toThrow(
+        /Live created no clip/,
       );
     });
 
@@ -226,7 +262,7 @@ describe("update-live-set-helpers", () => {
         getProperty: vi.fn().mockReturnValue(1), // MIDI track
         call: vi.fn().mockReturnValue("id 999"),
       };
-      const mockTempClip = { id: "999" };
+      const mockTempClip = { id: "999", exists: () => true, type: "Clip" };
 
       g.LiveAPI = {
         from: vi.fn().mockImplementation((id) => {

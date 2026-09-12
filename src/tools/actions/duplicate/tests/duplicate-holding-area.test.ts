@@ -100,6 +100,7 @@ function setupShortenOverHoldingArea(): {
       // Shortening drops a temp clip at the new end, truncating the copy there.
       create_midi_clip: (position: unknown) => {
         registerHoldingClip(position as number);
+        setupArrangementClip("301", 0, {}, 3);
 
         return ["id", "301"];
       },
@@ -233,6 +234,8 @@ function setupTrackTrackingItsClips(): LiveAPI {
               at;
           }
         }
+
+        setupArrangementClip("temp", 0, {}, clipIds.length + 1);
 
         return ["id", "temp"];
       },

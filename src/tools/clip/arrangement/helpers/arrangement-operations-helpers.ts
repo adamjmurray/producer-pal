@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { requireCreatedClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAudioClipInSession,
@@ -10,6 +12,7 @@ import {
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 
 export interface ArrangementContext {
@@ -390,7 +393,10 @@ function truncateWithTempClip({
       position,
       length,
     ) as string;
-    const tempClip = LiveAPI.from(tempClipResult);
+    const tempClip = requireCreatedClip(
+      LiveAPI.from(tempClipResult),
+      pathPrefix(track),
+    );
 
     track.call("delete_clip", toLiveApiId(tempClip.id));
   }

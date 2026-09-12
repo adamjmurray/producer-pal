@@ -11,7 +11,9 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { requireCreatedClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
 
 /**
@@ -125,7 +127,10 @@ export function createAndDeleteTempClip(
       string,
       string | number,
     ];
-    const tempClip = LiveAPI.from(tempResult);
+    const tempClip = requireCreatedClip(
+      LiveAPI.from(tempResult),
+      pathPrefix(track),
+    );
 
     track.call("delete_clip", toLiveApiId(tempClip.id));
   } else {

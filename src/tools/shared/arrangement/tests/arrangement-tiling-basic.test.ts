@@ -14,7 +14,10 @@ import {
   setupTrackWithQueuedMethods,
   setupScene,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
-import { createAudioClipInSession } from "../helpers/arrangement-tiling-helpers.ts";
+import {
+  createAndDeleteTempClip,
+  createAudioClipInSession,
+} from "../helpers/arrangement-tiling-helpers.ts";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,
@@ -95,6 +98,26 @@ describe("createAudioClipInSession", () => {
   });
 });
 
+describe("createAndDeleteTempClip", () => {
+  it("throws when create_midi_clip answers with something that is not a clip", () => {
+    // Live answers a refused create_midi_clip with the Live Set (id 1), never
+    // undefined — an unchecked id here would hand delete_clip the Live Set.
+    const track = setupTrackWithQueuedMethods(0, {
+      create_midi_clip: [["id", "1"]],
+      delete_clip: [null],
+    });
+
+    expect(() =>
+      createAndDeleteTempClip(track, 0, 4, true, mockContext),
+    ).toThrow(/Live created no clip/);
+
+    expect(track.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+      expect.anything(),
+    );
+  });
+});
+
 describe("createShortenedClipInHolding", () => {
   /**
    * Set up standard mocks for a shortening test.
@@ -120,6 +143,7 @@ describe("createShortenedClipInHolding", () => {
     setupClip("200", {
       properties: { end_time: opts.holdingEndTime },
     });
+    setupClip("300", {});
 
     return { sourceClip, track };
   }
@@ -394,6 +418,8 @@ describe("adjustClipPreRoll", () => {
       create_midi_clip: [["id", "300"]],
       delete_clip: [null],
     });
+
+    setupClip("300", {});
     const clip = LiveAPI.from("id 100");
 
     adjustClipPreRoll(clip, track, true, mockContext);
@@ -415,6 +441,8 @@ describe("adjustClipPreRoll", () => {
       create_midi_clip: [["id", "400"]],
       delete_clip: [null],
     });
+
+    setupClip("400", {});
     const clip = LiveAPI.from("id 100");
 
     adjustClipPreRoll(clip, track, true, mockContext);
