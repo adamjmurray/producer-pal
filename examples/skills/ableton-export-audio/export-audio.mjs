@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-// render.mjs — get audio OUT of Ableton Live so it can be analyzed.
+// export-audio.mjs — get audio OUT of Ableton Live: a bounce, a stem, or one
+// Session clip, as a file on disk.
 //
 // Renders the Main mix OR any single track via File ▸ Export Audio/Video (⇧⌘R),
 // driving the dialog with AppleScript (macOS only). It's automatable because
@@ -23,7 +24,7 @@
 // running (REST on :3350); the rest of the script needs only Live.
 //
 // One clip per render, deliberately: several clips laid end to end would leave
-// the analysis no way to tell which audio came from which clip. To do a few,
+// the listener no way to tell which audio came from which clip. To do a few,
 // call this script once per clip.
 //
 // Filenames: we do NOT type into the save panel (reliably replacing its field
@@ -50,11 +51,11 @@
 // English Live UI and default shortcuts are assumed.
 //
 // Usage:
-//   node render.mjs                          # whole mix (Main) → temp .mp3
-//   node render.mjs --track "Bass"           # one track by name → temp .mp3
-//   node render.mjs --track "Drums" --session 0   # its Session clip in scene 0
-//   node render.mjs --track "Bass" --with-returns # include send/master effects
-//   node render.mjs --out ~/renders          # move the files into a chosen dir
+//   node export-audio.mjs                          # whole mix (Main) → temp .mp3
+//   node export-audio.mjs --track "Bass"           # one track by name → temp .mp3
+//   node export-audio.mjs --track "Drums" --session 0   # its Session clip in scene 0
+//   node export-audio.mjs --track "Bass" --with-returns # include send/master effects
+//   node export-audio.mjs --out ~/renders          # move the files into a chosen dir
 //
 // Prints JSON on stdout: {"audio":"<path.mp3>","created":["<path.mp3>", ...]}.
 // Status/progress → stderr.

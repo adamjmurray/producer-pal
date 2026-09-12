@@ -62,22 +62,18 @@ for content that's already associated, so those two need a manual drag. The
 skill still does the hard part (generate a correct file, optionally stage it as
 a draggable Session clip); only the final drop is manual.
 
-## Render and analyze
+## Export and analyze
 
-- **[`ableton-analyze-audio`](ableton-analyze-audio/)** — get audio _out_ of
-  Live. Two halves that also work on their own:
-  - **Render** the Main mix, a single track, or one Session clip to a file (a
-    render always spans the whole arrangement). **macOS only** — AppleScript UI
-    automation. No API key needed, so this is also the way to get a plain bounce
-    or stem on disk.
-  - **Analyze** any audio file with Google's Gemini API for feedback on timbre,
-    mix, and arrangement. Needs `GEMINI_KEY` (or `GEMINI_API_KEY`); works on
-    files from anywhere, no Ableton involved.
-
-Ableton exposes no Live API for rendering, so this one drives Live's
-menus/dialogs with AppleScript and then polls for the rendered file — a
-different shape from the generator above, which synthesizes files directly in
-Node.
+- **[`ableton-export-audio`](ableton-export-audio/)** — get audio _out_ of Live:
+  the Main mix, a single track, or one Session clip to an MP3 (a render always
+  spans the whole arrangement). **macOS only** — Ableton exposes no Live API for
+  rendering, so this drives the Export dialog with AppleScript and polls for the
+  file. No API key needed.
+- **[`ableton-analyze-audio`](ableton-analyze-audio/)** — listen to any audio
+  file with Google's Gemini API for feedback on timbre, mix, and arrangement.
+  Needs `GEMINI_KEY` (or `GEMINI_API_KEY`); works on files from anywhere, no
+  Ableton involved. Uses `ableton-export-audio` to get the file out of Live
+  first.
 
 ## Read Sets without opening Live
 
@@ -102,5 +98,6 @@ Node.
 
 - Ableton Live running with the **Producer Pal** Max for Live device loaded
   (shows "Producer Pal Running"). Default endpoint `http://localhost:3350`.
-  `ableton-read-als` is the exception: it only reads files.
+  `ableton-read-als` and `ableton-analyze-audio` are the exceptions: one only
+  reads files, the other only sends them to Gemini.
 - Node.js 18+.

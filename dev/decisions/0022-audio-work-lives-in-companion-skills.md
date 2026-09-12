@@ -25,6 +25,7 @@ limit.
 
 Both live outside the device, in the companion Agent Skills
 (`examples/skills/ableton-audio-generator`,
+`examples/skills/ableton-export-audio`,
 `examples/skills/ableton-analyze-audio`). The agent writes DSP for the specific
 request and hands Producer Pal a finished sample file to load, which the
 existing tools already do.
@@ -57,6 +58,5 @@ existing tools already do.
 - The Limitations section on the Features page and the "Drive it from a coding
   agent" section on Extending both state this as settled, not as a roadmap item.
   If that ever reverses, both need updating along with a superseding ADR.
-- The analysis skill's render step is macOS-only (AppleScript against the Export
-  dialog). Nothing about this decision fixes that; it's Live's missing render
-  API.
+- The export skill is macOS-only (AppleScript against the Export dialog).
+  Nothing about this decision fixes that; it's Live's missing render API.
