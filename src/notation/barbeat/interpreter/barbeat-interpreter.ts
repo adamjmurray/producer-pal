@@ -27,31 +27,31 @@ import {
   extractBufferState,
   validateBufferedState,
   type InterpreterState,
-} from "./helpers/barbeat-interpreter-buffer-helpers.ts";
+} from "./helpers/interpreter-buffer-state.ts";
 import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
   handleClearBuffer,
   type BarCopyElement,
-} from "./helpers/barbeat-interpreter-copy-helpers.ts";
+} from "./helpers/bar-copy-destinations.ts";
 import {
   buildPitchState,
   calculatePositions,
   handlePitchEmission,
   type TimeElement,
-} from "./helpers/barbeat-interpreter-pitch-helpers.ts";
+} from "./helpers/pitch-emission.ts";
 import {
   processDurationUpdate,
   processProbabilityUpdate,
   processVelocityRangeUpdate,
   processVelocityUpdate,
-} from "./helpers/barbeat-interpreter-property-helpers.ts";
-import { acceptPitch } from "./helpers/barbeat-interpreter-range-helpers.ts";
+} from "./helpers/property-updates.ts";
+import { acceptPitch } from "./helpers/value-clamping.ts";
 import {
   buildDurationStream,
   buildProbabilityStream,
   buildVelocityStream,
-} from "./helpers/barbeat-interpreter-stream-helpers.ts";
+} from "./helpers/value-streams.ts";
 
 interface InterpretOptions {
   beatsPerBar?: number;

@@ -15,12 +15,12 @@ import {
   type PitchState,
   type InterpreterState,
   type TimePosition,
-} from "./barbeat-interpreter-buffer-helpers.ts";
+} from "./interpreter-buffer-state.ts";
 import {
   advanceStreamCursors,
   applyStreamOverrides,
   streamValueAt,
-} from "./barbeat-interpreter-stream-helpers.ts";
+} from "./value-streams.ts";
 
 export interface RepeatPattern {
   start: number;

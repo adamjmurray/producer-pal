@@ -18,7 +18,7 @@ export const NOTHING_WORDS = ["helpers", "utils", "misc", "common", "support"];
 
 /** Cap on non-test files with a nothing-word basename per tree. */
 export const NOTHING_WORD_FILE_LIMITS: Record<CommentTree, number> = {
-  src: 103,
+  src: 95,
   scripts: 3,
   webui: 18,
   evals: 8,

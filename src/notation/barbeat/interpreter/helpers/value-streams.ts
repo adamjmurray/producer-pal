@@ -16,11 +16,8 @@ import {
   type InterpreterState,
   type PitchState,
   type StreamVelocityValue,
-} from "./barbeat-interpreter-buffer-helpers.ts";
-import {
-  clampProbability,
-  clampVelocity,
-} from "./barbeat-interpreter-range-helpers.ts";
+} from "./interpreter-buffer-state.ts";
+import { clampProbability, clampVelocity } from "./value-clamping.ts";
 
 /**
  * Resolve a velocity stream's raw AST values into emit-ready velocity values.

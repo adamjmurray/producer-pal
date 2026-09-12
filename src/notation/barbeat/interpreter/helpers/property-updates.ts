@@ -13,11 +13,8 @@ import {
   handlePropertyUpdate,
   type InterpreterState,
   type PitchState,
-} from "./barbeat-interpreter-buffer-helpers.ts";
-import {
-  clampProbability,
-  clampVelocity,
-} from "./barbeat-interpreter-range-helpers.ts";
+} from "./interpreter-buffer-state.ts";
+import { clampProbability, clampVelocity } from "./value-clamping.ts";
 
 /**
  * Process a velocity update (single value)

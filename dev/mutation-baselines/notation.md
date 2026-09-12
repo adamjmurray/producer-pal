@@ -22,12 +22,12 @@ lower it without triaging the regression.
 
 Lowest-scoring files (remaining triage targets):
 
-| File                                                                | Score | Survived |
-| ------------------------------------------------------------------- | ----- | -------- |
-| `barbeat/interpreter/helpers/barbeat-interpreter-buffer-helpers.ts` | 78.5% | 14       |
-| `transform/transform-audio-evaluator.ts`                            | 78.7% | 64       |
-| `barbeat/serializer/helpers/barbeat-serializer-drum.ts`             | 81.2% | 26       |
-| `stark/stark-serializer.ts`                                         | 82.7% | 33       |
+| File                                                      | Score | Survived |
+| --------------------------------------------------------- | ----- | -------- |
+| `barbeat/interpreter/helpers/interpreter-buffer-state.ts` | 78.5% | 14       |
+| `transform/transform-audio-evaluator.ts`                  | 78.7% | 64       |
+| `barbeat/serializer/helpers/barbeat-serializer-drum.ts`   | 81.2% | 26       |
+| `stark/stark-serializer.ts`                               | 82.7% | 33       |
 
 These are **not** cheap wins: the survivors cluster on `± *_EPSILON` boundary
 flips (killing them over-fits to a ~1e-9 / 0.001 slack), warning/error message
@@ -58,4 +58,4 @@ sorted input, so the sort was untested.
 `resolveSplitPoints` de-dupe + ascending sort of cut points, the
 `MAX_NOTE_PIECES` clamp boundary, and the `validateBufferedState` `buffered > 0`
 guard (in `transform-split-note-op.test.ts` and
-`barbeat-interpreter-helpers.test.ts`).
+`interpreter-buffer-state.test.ts`).

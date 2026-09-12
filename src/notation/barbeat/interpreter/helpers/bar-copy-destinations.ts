@@ -9,11 +9,8 @@ import {
   validateBufferedState,
   type BufferState,
   type BarCopyResult,
-} from "./barbeat-interpreter-buffer-helpers.ts";
-import {
-  copyBarToBar,
-  copyNoteToDestination,
-} from "./barbeat-interpreter-copy-bar-helpers.ts";
+} from "./interpreter-buffer-state.ts";
+import { copyBarToBar, copyNoteToDestination } from "./copy-bar.ts";
 
 export interface BarCopyElement {
   destination: { bar?: number; range?: [number, number] };
