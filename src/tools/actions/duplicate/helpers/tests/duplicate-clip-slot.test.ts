@@ -10,9 +10,9 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
-import { copyLabels } from "../sources/duplicate-label-helpers.ts";
-import { duplicateClipSlot } from "../clip/duplicate-clip-slot-helpers.ts";
+import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
+import { copyLabels } from "../sources/copy-labels.ts";
+import { duplicateClipSlot } from "../clip/duplicate-clip-slot.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Source clip, in slot 0/0 */
@@ -237,3 +237,122 @@ describe("duplicateClipWithPositions to clip slots", () => {
     );
   });
 });
+
+describe("duplicateClipSlot with a missing slot or clip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws error when source clip slot does not exist", () => {
+    (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+      sourceExists: false,
+      sourceHasClip: false,
+      destExists: true,
+    });
+
+    expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
+      "no clip slot at t0/s0",
+    );
+  });
+
+  it("throws error when source clip slot has no clip", () => {
+    (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+      sourceExists: true,
+      sourceHasClip: false,
+      destExists: true,
+    });
+
+    expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow("no clip at t0/s0");
+  });
+
+  it("warns and skips when the destination clip slot does not exist", () => {
+    // Per destination, so the copies a multi-slot toPath already made survive.
+    (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+      sourceExists: true,
+      sourceHasClip: true,
+      destExists: false,
+    });
+
+    expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("was not duplicated: no clip slot at t1/s0"),
+    );
+  });
+});
+
+interface ClipSlotMockOptions {
+  sourceExists: boolean;
+  sourceHasClip: boolean;
+  destExists: boolean;
+}
+
+interface ClipSlotMockLiveAPIInstance {
+  path: string;
+  exists: () => boolean;
+  getProperty: (prop: string) => boolean | null;
+  child: (name: string) => ClipSlotMockLiveAPIInstance;
+  id: string;
+}
+
+interface ClipSlotMockLiveAPIConstructor {
+  new (path: string): ClipSlotMockLiveAPIInstance;
+  from: (
+    idOrPath: string | { toString: () => string },
+  ) => ClipSlotMockLiveAPIInstance;
+}
+
+/**
+ * Helper to create a mock LiveAPI class for clip slot duplication tests
+ * @param options - Mock configuration options
+ * @param options.sourceExists - Whether source clip slot exists
+ * @param options.sourceHasClip - Whether source has a clip
+ * @param options.destExists - Whether destination clip slot exists
+ * @returns Mock LiveAPI constructor
+ */
+function createClipSlotMockLiveAPI({
+  sourceExists,
+  sourceHasClip,
+  destExists,
+}: ClipSlotMockOptions): ClipSlotMockLiveAPIConstructor {
+  class MockLiveAPI implements ClipSlotMockLiveAPIInstance {
+    path: string;
+
+    constructor(path: string) {
+      this.path = path;
+    }
+
+    static from(idOrPath: string | { toString: () => string }): MockLiveAPI {
+      return new MockLiveAPI(String(idOrPath));
+    }
+
+    child(name: string): MockLiveAPI {
+      return new MockLiveAPI(`${this.path} ${name}`);
+    }
+
+    exists(): boolean {
+      if (this.path.includes("tracks 0 clip_slots 0")) {
+        return sourceExists;
+      }
+
+      if (this.path.includes("tracks 1 clip_slots 0")) {
+        return destExists;
+      }
+
+      return true;
+    }
+
+    getProperty(prop: string): boolean | null {
+      if (prop === "has_clip" && this.path.includes("tracks 0 clip_slots 0")) {
+        return sourceHasClip;
+      }
+
+      return null;
+    }
+
+    get id(): string {
+      return this.path.replaceAll(" ", "/");
+    }
+  }
+
+  return MockLiveAPI;
+}

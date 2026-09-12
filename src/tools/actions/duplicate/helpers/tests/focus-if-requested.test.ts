@@ -5,14 +5,14 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import { focusIfRequested } from "../duplicate-focus-helpers.ts";
+import { focusIfRequested } from "../focus-if-requested.ts";
 
 // Mock the select module to avoid Live API dependencies
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
-describe("duplicate-focus-helpers", () => {
+describe("focus-if-requested", () => {
   describe("focusIfRequested", () => {
     const selectMock = setupSelectMock();
 

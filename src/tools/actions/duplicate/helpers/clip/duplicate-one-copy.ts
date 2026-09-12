@@ -11,15 +11,13 @@ import {
   takeLaneLabel,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
-import {
-  duplicateClipToArrangement,
-  getMinimalClipInfo,
-} from "../duplicate-helpers.ts";
+import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
+import { getMinimalClipInfo } from "../minimal-clip-info.ts";
 import {
   PartialRecreateError,
   recreateClip,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
+import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**

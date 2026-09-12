@@ -10,7 +10,7 @@ import {
   resolveClipDestinations,
   warnInapplicableClipParams,
   warnUnusedDestination,
-} from "./duplicate-destination-helpers.ts";
+} from "./clip-destinations.ts";
 
 /**
  * The resolved shape for a session destination.

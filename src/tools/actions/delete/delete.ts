@@ -5,8 +5,8 @@
 
 import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { sortForPositionalDelete } from "./helpers/delete-sort-helpers.ts";
-import { deleteObjectByType } from "./helpers/delete-by-type-helpers.ts";
+import { sortForPositionalDelete } from "./helpers/positional-delete-order.ts";
+import { deleteObjectByType } from "./helpers/delete-object-by-type.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import {
   objectPathForApi,

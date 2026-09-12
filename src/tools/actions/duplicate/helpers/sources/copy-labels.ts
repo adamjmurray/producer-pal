@@ -56,12 +56,9 @@ export function copyLabels(
 }
 
 /**
- * Claims the next source's share of the labels.
- *
- * Every source asks for the same number of copies, so the first one to report
- * settles the batch total. The total has to be settled before any name is
- * handed out: it decides whether a comma-separated value splits at all, and
- * that answer must be the same for every source.
+ * Claims this source's share of the labels. Copies are the same for every
+ * source, so the first to report settles the batch total — and it must settle
+ * before any name is handed out: it decides whether one value splits into many.
  * @param labels - The call's label pool
  * @param copies - Copies this source asks for
  */

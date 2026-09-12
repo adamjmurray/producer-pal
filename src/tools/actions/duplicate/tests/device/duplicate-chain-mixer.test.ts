@@ -26,7 +26,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/duplicate-chain-mixer-helpers.ts";
+import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/copy-chain-mixer.ts";
 import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 

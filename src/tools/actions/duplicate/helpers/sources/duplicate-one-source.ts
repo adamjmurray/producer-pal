@@ -5,36 +5,31 @@
 
 // One source's turn: the branch that makes its copies, and the count-based loop
 // tracks and scenes take. Which destinations the source gets is settled before
-// it starts — see duplicate-source-helpers.ts.
+// it starts — see source-plan.ts.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
-import { type ClipDestinations } from "../clip/duplicate-destination-helpers.ts";
-import { duplicateChainWithPaths } from "../device/duplicate-chain-helpers.ts";
-import { duplicateDeviceWithPaths } from "../device/duplicate-device-helpers.ts";
+import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
+import { type ClipDestinations } from "../clip/clip-destinations.ts";
+import { duplicateChainWithPaths } from "../device/duplicate-chain.ts";
+import { duplicateDeviceWithPaths } from "../device/duplicate-device.ts";
 import {
   duplicateDrumPad,
   resolveSourcePad,
   type PadTarget,
-} from "../device/duplicate-drum-pad-helpers.ts";
+} from "../device/duplicate-drum-pad.ts";
 import {
   claimLabels,
   labelColor,
   labelName,
   type CopyLabels,
-} from "./duplicate-label-helpers.ts";
-import { duplicateSceneToArrangementAtPositions } from "./duplicate-position-helpers.ts";
-import {
-  collectSources,
-  type SourceShare,
-} from "./duplicate-source-helpers.ts";
-import {
-  duplicateTrack,
-  duplicateScene,
-} from "../duplicate-track-scene-helpers.ts";
+} from "./copy-labels.ts";
+import { duplicateSceneToArrangementAtPositions } from "./scene-arrangement-positions.ts";
+import { collectSources, type SourceShare } from "./source-plan.ts";
+import { duplicateTrack } from "./duplicate-track.ts";
+import { duplicateScene } from "./duplicate-scene.ts";
 
 /** The params a track or scene copy reads beyond its name and color. */
 export interface DuplicateParams {

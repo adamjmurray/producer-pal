@@ -7,7 +7,7 @@
 // landed on top of.
 
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { type MinimalClipInfo } from "../duplicate-helpers.ts";
+import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 
 /** A copy a later copy in the same call replaced. It has no id: it is gone. */
 interface OverwrittenClipInfo {

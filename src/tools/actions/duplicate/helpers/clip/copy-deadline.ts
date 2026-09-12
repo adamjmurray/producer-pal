@@ -13,7 +13,7 @@ import {
 import {
   unreachedPositionsWarning,
   type UnreachedDestination,
-} from "../sources/duplicate-position-helpers.ts";
+} from "../sources/scene-arrangement-positions.ts";
 
 /**
  * Whether the request is out of time before it has made anything, warning about

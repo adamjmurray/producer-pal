@@ -16,8 +16,8 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { deleteDrumChain } from "./delete-chain-helpers.ts";
-import { deleteTrackObject } from "./delete-track-helpers.ts";
+import { deleteDrumChain } from "./delete-drum-chain.ts";
+import { deleteTrackObject } from "./delete-track-object.ts";
 
 /**
  * Deletes an object based on its type

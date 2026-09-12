@@ -9,7 +9,7 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { requireSameLength } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { parseArrangementLength } from "../duplicate-helpers.ts";
+import { parseArrangementLength } from "./arrangement-length.ts";
 
 /**
  * Copy order that keeps the source clip whole for as long as possible.

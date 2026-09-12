@@ -17,24 +17,26 @@ import {
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
-import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
+import { focusIfRequested } from "./helpers/focus-if-requested.ts";
+import { copyLabels } from "./helpers/sources/copy-labels.ts";
 import {
   duplicateChainSources,
   duplicateOneSource,
-} from "./helpers/sources/duplicate-run-source-helpers.ts";
+} from "./helpers/sources/duplicate-one-source.ts";
 import {
   planSources,
   resolveSourceClipDestinations,
-} from "./helpers/sources/duplicate-source-helpers.ts";
-import { markOverwrittenCopies } from "./helpers/clip/duplicate-overwrite-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
+} from "./helpers/sources/source-plan.ts";
+import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
 import {
   hasArrangementPosition,
   resolveDestinationAndWarn,
+} from "./helpers/duplicate-destinations.ts";
+import {
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-} from "./helpers/duplicate-validation-helpers.ts";
+} from "./helpers/duplicate-input-validation.ts";
 
 interface DuplicateArgs {
   type: string;

@@ -16,19 +16,12 @@ import {
   labelColor,
   labelName,
   type CopyLabels,
-} from "../sources/duplicate-label-helpers.ts";
-import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
-import {
-  destinationTracks,
-  duplicateOneCopy,
-} from "./duplicate-clip-copy-helpers.ts";
-import {
-  copySpanBeats,
-  planCopies,
-  sourceLastOrder,
-} from "./duplicate-clip-order-helpers.ts";
-import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
-import { type UnreachedDestination } from "../sources/duplicate-position-helpers.ts";
+} from "../sources/copy-labels.ts";
+import { type ClipDestinations } from "./clip-destinations.ts";
+import { destinationTracks, duplicateOneCopy } from "./duplicate-one-copy.ts";
+import { copySpanBeats, planCopies, sourceLastOrder } from "./copy-plan.ts";
+import { duplicateClipToSlots } from "./duplicate-clip-slot.ts";
+import { type UnreachedDestination } from "../sources/scene-arrangement-positions.ts";
 import {
   canRecreateClip,
   recreatedClipLosses,
@@ -37,16 +30,16 @@ import {
   labelDuplicateDestinations,
   noBudgetForCopies,
   stopMidFanOut,
-} from "./duplicate-clip-deadline-helpers.ts";
+} from "./copy-deadline.ts";
 import {
   resolveDuplicateTakeLanes,
   type ResolvedDuplicateLane,
-} from "./duplicate-take-lane-helpers.ts";
+} from "./duplicate-take-lanes.ts";
 import {
   arrangementPositionToBeats,
   resolveArrangementPositions,
   resolveDestinationTargets,
-} from "../duplicate-validation-helpers.ts";
+} from "../duplicate-destinations.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**

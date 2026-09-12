@@ -16,7 +16,7 @@ import {
   setupLiveSet,
   setupTrack,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-tiling-test-helpers.ts";
-import { createClipsForLength } from "../helpers/duplicate-helpers.ts";
+import { createClipsForLength } from "../helpers/clip/arrangement-length.ts";
 
 /** An 8-bar source clip at the top of the arrangement. */
 const SOURCE_LENGTH = 32;

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Position-based duplication: the scene loop, plus the warning both position
-// loops (scenes here, clips in duplicate-clip-position-helpers) share when the
+// loops (scenes here, clips in duplicate-clip-with-positions) share when the
 // request's deadline cuts them short.
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -16,12 +16,12 @@ import {
   labelColor,
   labelName,
   type CopyLabels,
-} from "./duplicate-label-helpers.ts";
+} from "./copy-labels.ts";
 import {
   calculateSceneLength,
   duplicateSceneToArrangement,
-} from "../duplicate-track-scene-helpers.ts";
-import { resolveArrangementPositions } from "../duplicate-validation-helpers.ts";
+} from "./duplicate-scene.ts";
+import { resolveArrangementPositions } from "../duplicate-destinations.ts";
 
 /** The arrangement params a scene duplication reads. */
 interface SceneArrangementParams {

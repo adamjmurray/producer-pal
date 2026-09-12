@@ -15,12 +15,12 @@ import {
   claimLabels,
   labelName,
   type CopyLabels,
-} from "../sources/duplicate-label-helpers.ts";
+} from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
   withTempTrackCopy,
-} from "./duplicate-temp-track-helpers.ts";
+} from "./temp-track-copy.ts";
 import {
   pathField,
   targetLabel,

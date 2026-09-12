@@ -22,7 +22,7 @@ import {
 import {
   resolveClipDestinations,
   type ClipDestinations,
-} from "../clip/duplicate-destination-helpers.ts";
+} from "../clip/clip-destinations.ts";
 
 /** One source's turn: which object to copy, and where its copies go. */
 export interface SourceShare {

@@ -1052,7 +1052,7 @@
     // redundant to oxlint and required by tsc under noUncheckedIndexedAccess.
     {
       "files": [
-        "src/tools/actions/duplicate/helpers/duplicate-focus-helpers.ts",
+        "src/tools/actions/duplicate/helpers/focus-if-requested.ts",
         "vitest.config.ts"
       ],
       "plugins": ["typescript"],

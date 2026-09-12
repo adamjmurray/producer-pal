@@ -16,11 +16,11 @@ import {
   labelColor,
   labelName,
   type CopyLabels,
-} from "../sources/duplicate-label-helpers.ts";
+} from "../sources/copy-labels.ts";
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
-} from "../duplicate-helpers.ts";
+} from "../minimal-clip-info.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The source objects every copy in one call shares. */

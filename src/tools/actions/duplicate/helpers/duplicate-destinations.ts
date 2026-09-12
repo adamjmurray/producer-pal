@@ -8,7 +8,6 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
 import {
   type ArrangementTrack,
   warnUnusedTakeLane,
@@ -21,9 +20,10 @@ import {
   warnInapplicableClipParams,
   warnUnusedArrangementParams,
   warnUnusedDestination,
-} from "./clip/duplicate-destination-helpers.ts";
+} from "./clip/clip-destinations.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { validateDestinationParameter } from "./duplicate-input-validation.ts";
 
 /**
  * Resolves the comma-separated arrangementStart list to beats. Shared by clip
@@ -75,76 +75,6 @@ export function arrangementPositionToBeats(
 }
 
 /**
- * Validates basic input parameters for duplication
- * @param type - Type of object to duplicate
- * @param id - ID(s) of the object(s) to duplicate
- * @param count - Number of duplicates to create
- * @param path - Path(s) of the object(s) to duplicate
- */
-export function validateBasicInputs(
-  type: string,
-  id: string | undefined,
-  count: number,
-  path?: string,
-): void {
-  if (!type) {
-    throw new Error("type is required");
-  }
-
-  if (!(DUPLICATE_TYPES as readonly string[]).includes(type)) {
-    throw new Error(`type must be one of ${DUPLICATE_TYPES.join(", ")}`);
-  }
-
-  // `id` and `path` name different objects and add up, so either will do and
-  // both together are a longer source list, not a conflict.
-  if (id == null && path == null) {
-    throw new Error("id or path is required");
-  }
-
-  if (count < 1) {
-    throw new Error("count must be at least 1");
-  }
-}
-
-/**
- * Validates and configures route to source parameters
- * @param type - Type of object being duplicated
- * @param routeToSource - Whether to route to source track
- * @param withoutClips - Whether to exclude clips
- * @param withoutDevices - Whether to exclude devices
- * @returns Configured withoutClips and withoutDevices values
- */
-export function validateAndConfigureRouteToSource(
-  type: string,
-  routeToSource: boolean | undefined,
-  withoutClips: boolean | undefined,
-  withoutDevices: boolean | undefined,
-): { withoutClips: boolean | undefined; withoutDevices: boolean | undefined } {
-  if (!routeToSource) {
-    return { withoutClips, withoutDevices };
-  }
-
-  if (type !== "track") {
-    throw new Error("routeToSource is only supported for type 'track'");
-  }
-
-  // Emit warnings if user provided conflicting parameters
-  if (withoutClips === false) {
-    console.warn(
-      "routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
-    );
-  }
-
-  if (withoutDevices === false) {
-    console.warn(
-      "routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
-    );
-  }
-
-  return { withoutClips: true, withoutDevices: true };
-}
-
-/**
  * Reports whether the call names an arrangement position.
  * @param arrangementStart - Bar|beat position(s)
  * @returns True when one is named
@@ -157,7 +87,7 @@ export function hasArrangementPosition(
 
 /**
  * Infers the duplication destination for a track, scene, or device. Clips
- * resolve theirs from toPath (see duplicate-destination-helpers.ts).
+ * resolve theirs from toPath (see clip-destinations.ts).
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
  * @returns Inferred destination
@@ -264,20 +194,6 @@ function canCopyClipToTrack(
   }
 
   return true;
-}
-
-/**
- * Validates destination parameter compatibility with object type
- * @param type - Type of object being duplicated
- * @param destination - Inferred destination
- */
-export function validateDestinationParameter(
-  type: string,
-  destination: string | undefined,
-): void {
-  if (type === "track" && destination === "arrangement") {
-    throw new Error("tracks cannot be duplicated to arrangement");
-  }
 }
 
 interface DestinationParams {

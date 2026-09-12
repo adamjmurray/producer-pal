@@ -26,13 +26,13 @@ import {
   claimLabels,
   labelName,
   type CopyLabels,
-} from "../sources/duplicate-label-helpers.ts";
+} from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
   withTempTrackCopy,
-} from "./duplicate-temp-track-helpers.ts";
-import { copyChainMixerTo } from "./duplicate-chain-mixer-helpers.ts";
+} from "./temp-track-copy.ts";
+import { copyChainMixerTo } from "./copy-chain-mixer.ts";
 
 /**
  * Copy one chain to each destination rack a comma-separated toPath names.

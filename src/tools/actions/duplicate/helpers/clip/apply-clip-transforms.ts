@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { type MinimalClipInfo } from "../duplicate-helpers.ts";
-import { collectClipResults } from "./duplicate-overwrite-helpers.ts";
+import { type MinimalClipInfo } from "../minimal-clip-info.ts";
+import { collectClipResults } from "./overwritten-copies.ts";
 
 /**
  * Apply transforms and/or code to the clips produced by a duplicate operation.
