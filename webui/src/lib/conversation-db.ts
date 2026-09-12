@@ -201,12 +201,14 @@ export async function deleteAllConversations(): Promise<void> {
 }
 
 /**
- * Delete all unbookmarked conversations.
+ * Delete all unbookmarked conversations. Reads and deletes in one transaction,
+ * so a bookmark toggled between the read and the delete can't be missed (see
+ * {@link saveConversation}).
  */
 export async function deleteUnbookmarkedConversations(): Promise<void> {
   const db = await getConversationDb();
-  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
   const tx = db.transaction(STORE_NAME, "readwrite");
+  const all = (await tx.store.getAll()) as ConversationRecord[];
 
   for (const record of all) {
     if (!record.bookmarked) {
@@ -218,7 +220,8 @@ export async function deleteUnbookmarkedConversations(): Promise<void> {
 }
 
 /**
- * Rename a conversation.
+ * Rename a conversation. Reads and writes in one transaction, so a delete
+ * landing between them can't resurrect the row (see {@link saveConversation}).
  * @param id - Conversation ID
  * @param title - New title (null to clear)
  */
@@ -227,20 +230,24 @@ export async function renameConversation(
   title: string | null,
 ): Promise<void> {
   const db = await getConversationDb();
-  const record = (await db.get(STORE_NAME, id)) as
-    | ConversationRecord
-    | undefined;
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const record = (await tx.store.get(id)) as ConversationRecord | undefined;
 
   if (!record) {
+    await tx.done;
+
     return;
   }
 
   record.title = title;
-  await db.put(STORE_NAME, record);
+  void tx.store.put(record);
+  await tx.done;
 }
 
 /**
- * Set the bookmarked state of a conversation.
+ * Set the bookmarked state of a conversation. Reads and writes in one
+ * transaction, so a delete landing between them can't resurrect the row (see
+ * {@link saveConversation}).
  * @param id - Conversation ID
  * @param bookmarked - Whether to bookmark
  */
@@ -249,16 +256,18 @@ export async function setBookmark(
   bookmarked: boolean,
 ): Promise<void> {
   const db = await getConversationDb();
-  const record = (await db.get(STORE_NAME, id)) as
-    | ConversationRecord
-    | undefined;
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const record = (await tx.store.get(id)) as ConversationRecord | undefined;
 
   if (!record) {
+    await tx.done;
+
     return;
   }
 
   record.bookmarked = bookmarked;
-  await db.put(STORE_NAME, record);
+  void tx.store.put(record);
+  await tx.done;
 }
 
 /**
