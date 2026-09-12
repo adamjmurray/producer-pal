@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -420,6 +420,12 @@ describe("select path param", () => {
     expect(() => select({ id: "track_0", path: "t0/s3" })).not.toThrow();
     expect(() => select({ id: "scene_3", path: "t0/s3" })).not.toThrow();
     expect(() => select({ id: "clip_0_3", path: "t0/s3" })).not.toThrow();
+  });
+
+  it("rejects an arrangement position, naming the clip there as the way in", () => {
+    expect(() => select({ path: "t0[1|1]" })).toThrow(
+      /an arrangement position is not selectable; select the clip there by id/,
+    );
   });
 
   it("rejects a take lane, which names no one thing to select", () => {

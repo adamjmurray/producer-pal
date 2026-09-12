@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Reading select's `path` param. One grammar covers every shape select can act
@@ -371,6 +371,12 @@ function targetFromPath(path: ObjectPath): PathTarget {
         impliedTrack: { trackIndex: path.trackIndex, category: "regular" },
         impliedScene: path.sceneIndex,
       };
+    case "arrangement-position":
+      throw pathError(
+        "path",
+        formatObjectPath(path),
+        'an arrangement position is not selectable; select the clip there by id, or its track with "t<track>"',
+      );
     default:
       throw pathError(
         "path",
