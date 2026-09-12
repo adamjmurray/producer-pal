@@ -8,38 +8,31 @@ should follow from them unambiguously, without being spelled out here.
    except a leaf object that is really a property of its container. That one is
    modeled as a property, not as an object with a path: it is named within its
    container by `id` or `name`, and carries only what names it and what the call
-   is about — a device parameter belongs to a device. An object being created
-   doesn't have an `id` yet, so it can only be referenced by `path`. Paths also
-   address positions within objects. Results, errors, and warnings report an
-   object's `id` explicitly, and its `path` explicitly unless the nesting around
-   it already gives it, where it's omitted to save tokens. Anything with no `id`
-   is named by `path` alone. A `path` or `id` a tool returns can be sent
-   straight back as input and names the same object. A write to a position past
-   the end of a container creates what's missing when the path alone determines
-   what to create (a scene, a take lane, a rack chain). Anything in between is
-   created bare, creation is capped, and the result entry reports what was
-   created. When the path leaves a choice open (a track's type), the call
-   refuses and the error names the tool that creates it.
+   is about — a device parameter belongs to a device. A new object has no `id`
+   yet. Paths also address positions within objects. Results, errors, and
+   warnings report an object's `id`, and its `path` unless the nesting around it
+   already gives it. A `path` or `id` a tool returns can be sent straight back
+   as input and names the same object. A write to a position past the end of a
+   container creates what's missing when the path alone determines what to
+   create (a scene, a take lane, a rack chain); creation is capped and the
+   result entry reports what was created. When the path leaves a choice open (a
+   track's type), the call refuses and the error names the tool that creates it.
 
 2. Multi-target: Every tool that could possibly operate on multiple objects
    supports it by allowing a single value or a comma-separated list in any
    relevant args, which are always named in the singular. Lists pair 1:1 with
    their targets, so all lists must be the same length. A single value applies
    to all of them, unless it fully determines a location — one place holds one
-   object, so it must be named once per target rather than broadcast. Lists
-   contain values, not placeholders: an empty entry is refused rather than
-   guessed at, because dropping it shifts every later pairing and keeping it
-   names nothing. A call that named N targets returns N entries in the order
-   they were named. A single target returns its entry unwrapped: an array where
-   they asked for one object confuses small models.
+   object, so it must be named once per target rather than broadcast. An empty
+   entry is refused rather than guessed at. A call that named N targets returns
+   N entries in the order they were named. A single target returns its entry
+   unwrapped: an array where they asked for one object confuses small models.
 
 3. Relocation: Any object that can exist at different paths always supports
-   moving and duplicating to a different location. When the API does not support
-   duplicating or moving, a new object is created in the new location with the
-   result entry reporting anything that could not be recreated exactly. When the
-   API does not directly support moving, it is done by duplicating and deleting.
-   When the API does not support deleting, an empty disabled object is left
-   behind with an explanation in the result entry.
+   moving and duplicating to a different location. Where the API lacks a move,
+   duplicate and delete; where it lacks a duplicate, create anew and report in
+   the result entry what couldn't be recreated exactly; where it lacks a delete,
+   leave an empty disabled object and say so in the result entry.
 
 4. Partial completion: A call that can do part of what was asked does what it
    can and skips the rest, rather than refusing the whole. Skips are reported in
@@ -53,12 +46,12 @@ should follow from them unambiguously, without being spelled out here.
 5. Observability: On a write, don't report an arg that took effect as intended.
    Report a value the API changed, reading it back off the object, with a reason
    when it's not self-explanatory. Don't count small rounding errors as a
-   change. Report when the arg and the value read back aren't comparable.
-   Properties the call didn't touch aren't returned, with two exceptions: state
-   that governs what the call just did, because the caller may never have read
-   it, and a property the API moved on its own, because nothing else reveals it.
-   A read returns the least that answers what was asked; more detail is opt-in
-   and named by the caller.
+   change, but do report when the arg and the value read back can't be compared
+   at all. Properties the call didn't touch aren't returned, with two
+   exceptions: state that governs what the call just did, because the caller may
+   never have read it, and a property the API moved on its own, because nothing
+   else reveals it. A read returns the least that answers what was asked; more
+   detail is opt-in and named by the caller.
 
 6. Warnings: A warning is only for what no result can carry: a whole-call arg
    that couldn't be applied at all, an effect on objects the caller didn't name
@@ -89,8 +82,8 @@ should follow from them unambiguously, without being spelled out here.
    the same object or position (a locator), the result uses the spelling that
    stays valid longest. Where the API reaches one object by more than one route,
    one is canonical and the rest only resolve on input. Canonical is the route
-   that carries the most context: `pC1/c1` says which drum pad's layers it
-   counts and names the pitch that plays them, where a bare `cN` says neither.
+   that carries the most context: `pC1/c1` names the pad and the pitch that
+   plays it; a bare `cN` names neither.
 
 10. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
     as few tokens as the other principles allow.
