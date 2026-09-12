@@ -12,7 +12,7 @@
  *
  * Handles these formats (in priority order):
  * 1. MCP content array with `error` field in inner JSON
- * 2. `Error executing tool '...': message` prefix
+ * 2. `Error: message` prefix
  * 3. `Tool call '...' timed out after Nms` prefix
  * 4. `MCP error -NNNNN: message` prefix (with optional `Input validation error:` sub-prefix)
  *
@@ -24,7 +24,7 @@ export function extractErrorSummary(result: string): string | null {
 
   return (
     extractMcpContentError(text) ??
-    stripToolErrorPrefix(text) ??
+    stripErrorPrefix(text) ??
     stripTimeoutPrefix(text) ??
     stripMcpErrorPrefix(text)
   );
@@ -36,7 +36,9 @@ export function extractErrorSummary(result: string): string | null {
  * @returns Unwrapped string, or original if not a JSON string
  */
 function unquoteJsonString(s: string): string {
-  if (!s.startsWith('"')) return s;
+  if (!s.startsWith('"')) {
+    return s;
+  }
 
   try {
     const parsed: unknown = JSON.parse(s);
@@ -54,13 +56,18 @@ function unquoteJsonString(s: string): string {
  * @returns Error message or null
  */
 function extractMcpContentError(s: string): string | null {
-  if (!s.startsWith("[")) return null;
+  if (!s.startsWith("[")) {
+    return null;
+  }
 
   try {
     const arr = JSON.parse(s) as Array<{ type: string; text?: string }>;
     const firstText = arr.find((item) => item.type === "text")?.text;
 
-    if (!firstText) return null;
+    if (!firstText) {
+      return null;
+    }
+
     const inner = JSON.parse(firstText) as Record<string, unknown>;
 
     return typeof inner.error === "string" ? inner.error : null;
@@ -70,12 +77,12 @@ function extractMcpContentError(s: string): string | null {
 }
 
 /**
- * Strip `Error executing tool '...': ` prefix.
+ * Strip the `Error: ` prefix a failed tool result carries.
  * @param s - Error message string
  * @returns Message after prefix, or null
  */
-function stripToolErrorPrefix(s: string): string | null {
-  const match = s.match(/^Error executing tool '[^']+': (.+)$/s);
+function stripErrorPrefix(s: string): string | null {
+  const match = s.match(/^Error: (.+)$/s);
 
   return match?.[1] ?? null;
 }
@@ -99,7 +106,10 @@ function stripTimeoutPrefix(s: string): string | null {
 function stripMcpErrorPrefix(s: string): string | null {
   const match = s.match(/^MCP error -\d+: (.+)$/s);
 
-  if (!match?.[1]) return null;
+  if (!match?.[1]) {
+    return null;
+  }
+
   const msg = match[1];
 
   if (msg.startsWith("Input validation error: ")) {

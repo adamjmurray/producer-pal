@@ -6,9 +6,11 @@
 /**
  * E2E tests for ppal-select tool
  * Tests view state reading, view switching, selection controls,
- * ID auto-detection, slot, and devicePath.
+ * ID auto-detection, slot, devicePath, and openPluginWindow.
+ * Uses: e2e-test-set (t8 is the empty MIDI track, t3/d0 is Drift)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- ppal-select
+ * Run with: npm run e2e:mcp -- control/ppal-select
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -18,245 +20,264 @@ import {
   getToolWarnings,
   isToolError,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
+async function select(args: Record<string, unknown>): Promise<SelectResult> {
+  return parseToolResult<SelectResult>(
+    await ctx.client!.callTool({ name: "ppal-select", arguments: args }),
+  );
+}
+
+async function createClip(path: string): Promise<string> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: { path, notes: "C3 1|1", length: "1bar" },
+  });
+
+  return parseToolResult<{ id: string }>(result).id;
+}
+
+async function expectRefusal(
+  args: Record<string, unknown>,
+  message: string,
+): Promise<void> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-select",
+    arguments: args,
+  });
+
+  expect(isToolError(result), `expected ${JSON.stringify(args)} to fail`).toBe(
+    true,
+  );
+  expect(getToolErrorMessage(result)).toContain(message);
+}
+
 describe("ppal-select", () => {
-  it("reads and updates view state and selections", async () => {
-    // Test 1: Read initial state (no args)
-    const initialResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: {},
-    });
-    const initial = parseToolResult<SelectResult>(initialResult);
+  it("reads the current state with no arguments", async () => {
+    expect((await select({})).view).toBeDefined();
+  });
 
-    expect(initial.view).toBeDefined();
+  it("switches views, and a view-only change returns only the view", async () => {
+    expect((await select({ view: "session" })).view).toBe("session");
 
-    // Test 2: Switch to session view
-    const sessionResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { view: "session" },
-    });
-    const session = parseToolResult<SelectResult>(sessionResult);
-
-    expect(session.view).toBe("session");
-
-    // Test 3: Switch to arrangement view
-    const arrangementResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { view: "arrangement" },
-    });
-    const arrangement = parseToolResult<SelectResult>(arrangementResult);
+    const arrangement = await select({ view: "arrangement" });
 
     expect(arrangement.view).toBe("arrangement");
+    expect(arrangement.selectedTrack).toBeUndefined();
+    expect(arrangement.selectedScene).toBeUndefined();
+  });
 
-    // Test 4: Select regular track by index
-    const regularTrackResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { trackIndex: 0 },
-    });
-    const regularTrack = parseToolResult<SelectResult>(regularTrackResult);
+  it("selects regular, return and master tracks", async () => {
+    const regular = await select({ path: "t0" });
 
-    expect(regularTrack.selectedTrack).toBeDefined();
-    expect(regularTrack.selectedTrack!.type).toBe("midi");
-    expect(regularTrack.selectedTrack!.trackIndex).toBe(0);
-    expect(regularTrack.selectedTrack!.id).toBeDefined();
+    expect(regular.selectedTrack!.type).toBe("midi");
+    expect(regular.selectedTrack!.path).toBe("t0");
+    expect(regular.selectedTrack!.id).toBeDefined();
 
-    // Test 5: Select return track by index
-    const returnTrackResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { trackIndex: 0, trackType: "return" },
-    });
-    const returnTrack = parseToolResult<SelectResult>(returnTrackResult);
+    const returnTrack = await select({ path: "rt0" });
 
-    expect(returnTrack.selectedTrack!.type).toBe("return");
-    expect(returnTrack.selectedTrack!.trackIndex).toBe(0);
+    expect(returnTrack.selectedTrack!.path).toBe("rt0");
 
-    // Test 6: Select master track
-    const masterResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { trackType: "master" },
-    });
-    const master = parseToolResult<SelectResult>(masterResult);
+    const master = await select({ path: "mt" });
 
-    expect(master.selectedTrack!.type).toBe("master");
-    expect(master.selectedTrack!.trackIndex).toBeUndefined();
+    expect(master.selectedTrack!.path).toBe("mt");
+  });
 
-    // Test 7: Select scene by index
-    const sceneResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { sceneIndex: 0 },
-    });
-    const scene = parseToolResult<SelectResult>(sceneResult);
+  it("selects a scene by path, switching to session view for it", async () => {
+    const scene = await select({ path: "s0" });
 
-    expect(scene.selectedScene!.sceneIndex).toBe(0);
+    expect(scene.selectedScene!.path).toBe("s0");
     expect(scene.selectedScene!.id).toBeDefined();
-    // Scene selection auto-switches to session view
     expect(scene.view).toBe("session");
+  });
 
-    // Test 8: Select track by ID (auto-detection), spelled the way a model
-    // guesses it. "trackId" is a permanent alias that folds onto id, so the
-    // type still comes from the object — this checks the select and the steer.
-    const trackId = regularTrack.selectedTrack!.id;
-    const selectByIdResult = await ctx.client!.callTool({
+  it("selects a track by id, spelled the way a model guesses it", async () => {
+    // "trackId" is a permanent alias that folds onto id, so the type still
+    // comes from the object — this checks the select and the steer.
+    const trackId = (await select({ path: "t0" })).selectedTrack!.id;
+    const result = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { trackId: `id ${trackId}` },
     });
-    const byId = parseAliasedToolResult<SelectResult>(
-      selectByIdResult,
-      "ppal-select",
-      "trackId",
-      "id",
+    const byId = parseAliasedToolResult<SelectResult>(result, "trackId", "id");
+
+    expect(byId.selectedTrack!.id).toBe(trackId);
+  });
+
+  // The aliases are the only way to name two objects by id at once, and reading
+  // just the first used to drop the rest while the migration notice said every
+  // one had been honored. Live is read back: the response naming both is not
+  // proof both landed.
+  it("selects a track and a scene named by separate id aliases", async () => {
+    const trackId = (await select({ path: "t2" })).selectedTrack!.id;
+    const sceneId = (await select({ path: "s1" })).selectedScene!.id;
+
+    await select({ path: "t0" });
+    await select({ path: "s0" });
+
+    const { data, warnings } = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { trackId: `id ${trackId}`, sceneId: `id ${sceneId}` },
+      }),
     );
 
-    expect(byId.selectedTrack).toBeDefined();
-    expect(byId.selectedTrack!.id).toBe(trackId);
+    expect(data.selectedTrack!.id).toBe(trackId);
+    expect(data.selectedScene!.id).toBe(sceneId);
+    // Aliases onto one canonical are named in a single steer, and that steer
+    // says the value was honored — which is only true now both are.
+    expect(warnings).toStrictEqual([
+      'WARNING: "trackId", "sceneId" accepted as fallbacks; "id" names one object, so keep them as they are for several',
+    ]);
 
-    // Test 9: Create a clip and select it by ID
-    // Use empty track t8 (9-MIDI) to avoid conflicts with pre-populated clips
-    const emptyMidiTrack = 8;
+    const state = await select({});
 
-    const createClipResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${emptyMidiTrack}/s0`,
-        notes: "C3 1|1",
-        length: "1bar",
-      },
-    });
-    const createdClip = parseToolResult<{ id: string }>(createClipResult);
+    expect(state.selectedTrack!.id).toBe(trackId);
+    expect(state.selectedScene!.id).toBe(sceneId);
+  });
 
-    const selectClipResult = await ctx.client!.callTool({
+  // Each of these writes the other's selection as a side effect, so honoring
+  // both would report one object while Live sits on another.
+  it("refuses two ids Live can't hold selected at once", async () => {
+    const trackId = (await select({ path: "t2" })).selectedTrack!.id;
+    const sceneId = (await select({ path: "s1" })).selectedScene!.id;
+    // t0/s0 "Beat" is on neither of those.
+    const clipId = (await select({ path: "t0/s0" })).selectedClip!.id;
+    const padId = (await select({ path: "t0/d0/pC1" })).selectedDrumPad!.id;
+    const driftId = (await select({ path: "t3/d0" })).selectedDevice!.id;
+
+    await expectRefusal(
+      { trackId: `id ${trackId}`, clipId: `id ${clipId}` },
+      "trackId and clipId name different tracks",
+    );
+    await expectRefusal(
+      { sceneId: `id ${sceneId}`, clipId: `id ${clipId}` },
+      "sceneId and clipId name different scenes",
+    );
+    await expectRefusal(
+      { id: `id ${padId}`, deviceId: `id ${driftId}` },
+      "deviceId and id name different devices",
+    );
+    const otherTrackId = (await select({ path: "t0" })).selectedTrack!.id;
+
+    await expectRefusal(
+      { id: `id ${trackId}`, trackId: `id ${otherTrackId}` },
+      "id and trackId name different tracks",
+    );
+  });
+
+  // A drum pad and the rack it sits in are one selection, not two, so the
+  // deviceId that names that rack is the one pairing select allows. (A pad
+  // *path* beside any deviceId is refused before this: id and path never name
+  // a device together.)
+  it("takes a deviceId naming the rack a pad sits in", async () => {
+    const padId = (await select({ path: "t0/d0/pC1" })).selectedDrumPad!.id;
+    const rackId = (await select({ path: "t0/d0" })).selectedDevice!.id;
+    const { data } = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { id: `id ${padId}`, deviceId: `id ${rackId}` },
+      }),
+    );
+
+    expect(data.selectedDrumPad!.path).toBe("t0/d0/pC1");
+  });
+
+  it("selects a clip by id and by slot path", async () => {
+    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+
+    const byId = await select({ id: `id ${clipId}` });
+
+    expect(byId.selectedClip!.id).toBe(clipId);
+    expect(byId.selectedClip!.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
+
+    const bySlot = await select({ path: `t${EMPTY_MIDI_TRACK}/s0` });
+
+    expect(bySlot.selectedClip!.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
+  });
+
+  it("warns when the view asked for can't hold the selected clip", async () => {
+    const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+    const result = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: `id ${createdClip.id}` },
+      arguments: { id: `id ${clipId}`, view: "arrangement" },
     });
-    const withClip = parseToolResult<SelectResult>(selectClipResult);
+    const warnings = getToolWarnings(result);
 
-    expect(withClip.selectedClip).toBeDefined();
-    expect(withClip.selectedClip!.id).toBe(createdClip.id);
-    expect(withClip.selectedClip!.path).toBe(`t${emptyMidiTrack}/s0`);
+    expect(warnings.length).toBe(1);
+    expect(warnings[0]).toContain("ignoring view");
+    expect(warnings[0]).toContain("requires session view");
+  });
 
-    // Test 9b: Select session clip with conflicting view arg - should warn
-    const conflictingViewResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: `id ${createdClip.id}`, view: "arrangement" },
-    });
-    const conflictWarnings = getToolWarnings(conflictingViewResult);
-
-    expect(conflictWarnings.length).toBe(1);
-    expect(conflictWarnings[0]).toContain("ignoring view");
-    expect(conflictWarnings[0]).toContain("requires session view");
-
-    // Test 10: Create a device and select it by ID
+  it("selects a device by id and by path", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
 
-    const selectDeviceResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: `id ${deviceId}` },
-    });
-    const withDevice = parseToolResult<SelectResult>(selectDeviceResult);
+    const byId = await select({ id: `id ${deviceId}` });
 
-    expect(withDevice.selectedDevice).toBeDefined();
-    expect(withDevice.selectedDevice!.id).toBe(deviceId);
-    expect(withDevice.selectedDevice!.path).toBeDefined();
+    expect(byId.selectedDevice!.id).toBe(deviceId);
+    expect(byId.selectedDevice!.path).toBeDefined();
 
-    // Test 11: Select device by path
-    const selectDevicePathResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { path: "t0/d0" },
-    });
-    const withDevicePath = parseToolResult<SelectResult>(
-      selectDevicePathResult,
-    );
+    const byPath = await select({ path: "t0/d0" });
 
-    expect(withDevicePath.selectedDevice).toBeDefined();
-    expect(withDevicePath.selectedDevice!.path).toBe("t0/d0");
+    expect(byPath.selectedDevice!.path).toBe("t0/d0");
+  });
 
-    // Test 12: Select clip slot (occupied)
-    const clipSlotResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { path: `t${emptyMidiTrack}/s0` },
-    });
-    const clipSlot = parseToolResult<SelectResult>(clipSlotResult);
+  it("selects a scene by id", async () => {
+    const sceneId = (await select({ path: "s0" })).selectedScene!.id;
+    const byId = await select({ id: `id ${sceneId}` });
 
-    expect(clipSlot.selectedClip).toBeDefined();
-    expect(clipSlot.selectedClip!.path).toBe(`t${emptyMidiTrack}/s0`);
+    expect(byId.selectedScene!.id).toBe(sceneId);
+  });
 
-    // Test 13: Select scene by ID (auto-detection)
-    const sceneId = scene.selectedScene!.id;
-    const selectSceneByIdResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: `id ${sceneId}` },
-    });
-    const sceneById = parseToolResult<SelectResult>(selectSceneByIdResult);
-
-    expect(sceneById.selectedScene).toBeDefined();
-    expect(sceneById.selectedScene!.id).toBe(sceneId);
-
-    // Test 14: Error for nonexistent ID
-    const badIdResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: "id 999999" },
-    });
-
-    expect(isToolError(badIdResult)).toBe(true);
-    expect(getToolErrorMessage(badIdResult)).toContain("does not exist");
-
-    // Test 15: View-only change returns only view
-    const viewOnlyResult = await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { view: "session" },
-    });
-    const viewOnly = parseToolResult<SelectResult>(viewOnlyResult);
-
-    expect(viewOnly.view).toBe("session");
-    expect(viewOnly.selectedTrack).toBeUndefined();
-    expect(viewOnly.selectedScene).toBeUndefined();
-
-    // Test 16: A target that isn't there is refused, not silently skipped, and
-    // in the same words whichever spelling named it.
-    const expectNoTarget = async (
-      args: Record<string, unknown>,
-      message: string,
-    ) => {
-      const result = await ctx.client!.callTool({
-        name: "ppal-select",
-        arguments: args,
-      });
-
-      expect(
-        isToolError(result),
-        `expected ${JSON.stringify(args)} to fail`,
-      ).toBe(true);
-      expect(getToolErrorMessage(result)).toContain(message);
-    };
-
-    await expectNoTarget({ path: "t99" }, 'no track at "t99"');
-    await expectNoTarget({ trackIndex: 99 }, 'no track at "t99"');
-    await expectNoTarget(
+  it("refuses a target that isn't there, in the same words either way", async () => {
+    await expectRefusal({ id: "id 999999" }, "does not exist");
+    await expectRefusal({ path: "t99" }, 'no track at "t99"');
+    await expectRefusal({ trackIndex: 99 }, 'no track at "t99"');
+    await expectRefusal(
       { trackIndex: 99, trackType: "return" },
       'no track at "rt99"',
     );
-    await expectNoTarget({ path: "s99" }, 'no scene at "s99"');
-    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
-    await expectNoTarget({ path: "t0/s99" }, 'no scene at "s99"');
-    await expectNoTarget({ path: "t0/d99" }, 'no device at "t0/d99"');
+    await expectRefusal({ path: "s99" }, 'no scene at "s99"');
+    await expectRefusal({ sceneIndex: 99 }, 'no scene at "s99"');
+    await expectRefusal({ path: "t0/s99" }, 'no scene at "s99"');
+    await expectRefusal({ path: "t0/d99" }, 'no device at "t0/d99"');
+  });
 
-    // Test 17: A refused select changes nothing — a scene selection would have
-    // switched to session view before it ever looked for the scene.
-    await ctx.client!.callTool({
+  it("changes nothing when the select is refused", async () => {
+    // A scene selection would have switched to session view before it ever
+    // looked for the scene.
+    await select({ view: "arrangement" });
+    await expectRefusal({ sceneIndex: 99 }, 'no scene at "s99"');
+
+    expect((await select({})).view).toBe("arrangement");
+  });
+
+  // The success path needs a VST/AU installed, which no machine is guaranteed
+  // to have, so only the two refusals are covered here.
+  it("warns when openPluginWindow names nothing to open", async () => {
+    const result = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { view: "arrangement" },
+      arguments: { openPluginWindow: true },
     });
-    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
 
-    const afterFailure = parseToolResult<SelectResult>(
-      await ctx.client!.callTool({ name: "ppal-select", arguments: {} }),
+    expect(getToolWarnings(result).join("\n")).toContain(
+      "openPluginWindow requires a plug-in device",
     );
+  });
 
-    expect(afterFailure.view).toBe("arrangement");
+  it("warns that openPluginWindow does nothing for a stock device", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { path: "t3/d0", openPluginWindow: true },
+    });
+    const warnings = getToolWarnings(result);
+
+    expect(warnings.join("\n")).toContain("not a plug-in");
   });
 });
 
@@ -264,19 +285,24 @@ interface SelectResult {
   view?: string;
   selectedTrack?: {
     id: string;
-    type: string;
-    trackIndex?: number;
+    path: string;
+    // Only a regular track reports its signal type; "rt0"/"mt" already say what
+    // a return or the main track carries. See trackTypeField.
+    type?: string;
   };
   selectedScene?: {
     id: string;
-    sceneIndex: number;
+    path: string;
   };
   selectedClip?: {
     id: string;
     path?: string;
-    arrangementStart?: string;
   };
   selectedDevice?: {
+    id: string;
+    path: string;
+  };
+  selectedDrumPad?: {
     id: string;
     path: string;
   };

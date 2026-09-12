@@ -33,7 +33,9 @@ export const paramEntrySchema = z.object({
  * @returns The value as a string, or the value itself when nullish
  */
 function coerceFieldToString(value: unknown): unknown {
-  if (value == null || typeof value === "string") return value;
+  if (value == null || typeof value === "string") {
+    return value;
+  }
 
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);

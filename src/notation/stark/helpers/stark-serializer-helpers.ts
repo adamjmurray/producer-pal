@@ -131,8 +131,13 @@ export function drumHeader(midi: number): string {
  * @returns The drum hit character
  */
 export function drumChar(velocity: number): string {
-  if (velocity >= VELOCITY_ACCENT_THRESHOLD) return "^";
-  if (velocity >= VELOCITY_SOFT_THRESHOLD) return "X";
+  if (velocity >= VELOCITY_ACCENT_THRESHOLD) {
+    return "^";
+  }
+
+  if (velocity >= VELOCITY_SOFT_THRESHOLD) {
+    return "X";
+  }
 
   return "x";
 }
@@ -167,8 +172,13 @@ export function pitchParts(
  * @returns The octave-mark string ("" when shift is 0)
  */
 export function octaveMarks(shift: number): string {
-  if (shift > 0) return "'".repeat(shift);
-  if (shift < 0) return ",".repeat(-shift);
+  if (shift > 0) {
+    return "'".repeat(shift);
+  }
+
+  if (shift < 0) {
+    return ",".repeat(-shift);
+  }
 
   return "";
 }
@@ -179,8 +189,13 @@ export function octaveMarks(shift: number): string {
  * @returns The dynamic suffix
  */
 export function dynamicSuffix(velocity: number): string {
-  if (velocity >= VELOCITY_ACCENT_THRESHOLD) return "!";
-  if (velocity >= VELOCITY_SOFT_THRESHOLD) return "";
+  if (velocity >= VELOCITY_ACCENT_THRESHOLD) {
+    return "!";
+  }
+
+  if (velocity >= VELOCITY_SOFT_THRESHOLD) {
+    return "";
+  }
 
   return "?";
 }
@@ -270,7 +285,9 @@ export function floorDuration(capBeats: number): DurationGridEntry {
   // DURATION_GRID is strictly descending, so the first entry within the cap is
   // the largest that fits.
   for (const entry of DURATION_GRID) {
-    if (entry.beats <= capBeats + SAME_TIME_EPSILON) return entry;
+    if (entry.beats <= capBeats + SAME_TIME_EPSILON) {
+      return entry;
+    }
   }
 
   // The grid's last (shortest) entry is the floor when nothing else fits.

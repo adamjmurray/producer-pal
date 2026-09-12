@@ -267,7 +267,9 @@ function processReturnChains(
 ): void {
   const returnChains = device.getChildren("return_chains");
 
-  if (returnChains.length === 0) return;
+  if (returnChains.length === 0) {
+    return;
+  }
 
   const deviceOptions = {
     includeChains,
@@ -367,12 +369,19 @@ export function readDeviceParameters(
   if (search) {
     const searchLower = search.toLowerCase().trim();
 
-    parameters = parameters.filter((p) => {
-      const name = p.getProperty("name") as string;
-
-      return name.toLowerCase().includes(searchLower);
-    });
+    parameters = parameters.filter((p) =>
+      p.getName().toLowerCase().includes(searchLower),
+    );
   }
 
-  return parameters.map(includeValues ? readParameter : readParameterBasic);
+  if (!includeValues) {
+    return parameters.map(readParameterBasic);
+  }
+
+  // Read once per device: it only names the device for the recorded-unit
+  // lookup. Not `.map(readParameter)` — map passes the index as the second
+  // argument, which readParameter would read as the device name.
+  const deviceName = device.getProperty("class_display_name") as string;
+
+  return parameters.map((param) => readParameter(param, deviceName));
 }

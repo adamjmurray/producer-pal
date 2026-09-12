@@ -55,8 +55,13 @@ export function markdownTable(
 function pad(text: string, size: number, align: ColumnAlign): string {
   const slack = Math.max(0, size - text.length);
 
-  if (align === "right") return " ".repeat(slack) + text;
-  if (align === "left") return text + " ".repeat(slack);
+  if (align === "right") {
+    return " ".repeat(slack) + text;
+  }
+
+  if (align === "left") {
+    return text + " ".repeat(slack);
+  }
 
   const left = Math.floor(slack / 2);
 
@@ -71,8 +76,13 @@ function pad(text: string, size: number, align: ColumnAlign): string {
  * @returns The separator cell
  */
 function separator(size: number, align: ColumnAlign): string {
-  if (align === "right") return "-".repeat(size - 1) + ":";
-  if (align === "center") return ":" + "-".repeat(size - 2) + ":";
+  if (align === "right") {
+    return "-".repeat(size - 1) + ":";
+  }
+
+  if (align === "center") {
+    return ":" + "-".repeat(size - 2) + ":";
+  }
 
   return "-".repeat(size);
 }

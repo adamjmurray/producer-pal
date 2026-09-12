@@ -43,7 +43,10 @@ export const createAndEditClip: EvalScenario = {
         const calls = getToolCalls(turns, 1);
         const createCall = calls.find((c) => c.name === "ppal-create-clip");
 
-        if (!createCall) throw new Error("ppal-create-clip not found");
+        if (!createCall) {
+          throw new Error("ppal-create-clip not found");
+        }
+
         const notes = createCall.args.notes;
 
         if (typeof notes !== "string") {
@@ -74,8 +77,9 @@ export const createAndEditClip: EvalScenario = {
         const calls = getToolCalls(turns, 3);
         const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
 
-        if (!updateCall)
+        if (!updateCall) {
           throw new Error("ppal-update-clip not found in turn 3");
+        }
 
         if (updateCall.args.quantize == null) {
           throw new Error("Missing quantize parameter");
@@ -110,8 +114,7 @@ export const createAndEditClip: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 100_000,
+      maxTokens: 4_500,
     },
   ],
 };

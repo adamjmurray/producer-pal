@@ -69,7 +69,9 @@ describe("App conversation management", () => {
       b.textContent.includes("New Conversation"),
     );
 
-    if (btn) fireEvent.click(btn);
+    if (btn) {
+      fireEvent.click(btn);
+    }
   };
 
   const clickSelectConversation = () => {
@@ -83,7 +85,9 @@ describe("App conversation management", () => {
       "button[class*='border-l-transparent']",
     );
 
-    if (btn) fireEvent.click(btn);
+    if (btn) {
+      fireEvent.click(btn);
+    }
   };
 
   it("keeps panel open on new conversation on desktop", () => {
@@ -198,6 +202,32 @@ describe("App conversation management", () => {
     rerender(<App />);
 
     expect(mockSave).toHaveBeenCalledWith(expect.any(Number));
+  });
+
+  it("auto-saves from the teardown when the user leaves mid-stream", () => {
+    const mockSave = vi.fn();
+    const clearConversation = vi.fn();
+
+    mockConversations({ saveCurrentConversation: mockSave });
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      clearConversation,
+      isAssistantResponding: true,
+    });
+    render(<App />);
+    mockSave.mockClear();
+
+    // The teardown useConversations was handed: New, Switch, and browser
+    // Back/Forward all reach the conversation through it.
+    const teardown = (useConversations as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0].clearConversation as () => void;
+
+    teardown();
+
+    expect(mockSave).toHaveBeenCalledWith(expect.any(Number));
+    expect(mockSave.mock.invocationCallOrder[0]).toBeLessThan(
+      clearConversation.mock.invocationCallOrder[0]!,
+    );
   });
 
   it("does not auto-save when streaming starts", () => {

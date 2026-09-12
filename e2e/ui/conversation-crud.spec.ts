@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   expectNoConsoleOutput,
   makeConversation,
@@ -14,6 +14,40 @@ import {
 } from "./ui-test-helpers";
 
 const captured = setupConsoleCapture();
+
+/**
+ * The conversation-list rows whose text matches.
+ * @param page - The page under test
+ * @param title - Text the row must contain
+ * @returns The matching rows
+ */
+function conversationRows(page: Page, title: string): Locator {
+  return page.getByTestId("conversation-item").filter({ hasText: title });
+}
+
+/**
+ * Load a single conversation holding one exchange, and open it.
+ * @param page - The page under test
+ * @param id - The conversation id to store it under
+ */
+async function openConversationWithMessages(
+  page: Page,
+  id: string,
+): Promise<void> {
+  await setupUiTest(page, [
+    makeConversation({
+      id,
+      title: "Has messages",
+      updatedAt: 100,
+      messages: [
+        { role: "user", content: "FIXTURE_USER_PROMPT" },
+        { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
+      ],
+    }),
+  ]);
+
+  await conversationRows(page, "Has messages").click();
+}
 
 test.describe("Conversation history CRUD (stubbed backend)", () => {
   test("loads the conversation list from IndexedDB, newest first", async ({
@@ -39,22 +73,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
   });
 
   test("loads a conversation's messages when selected", async ({ page }) => {
-    await setupUiTest(page, [
-      makeConversation({
-        id: "load",
-        title: "Has messages",
-        updatedAt: 100,
-        messages: [
-          { role: "user", content: "FIXTURE_USER_PROMPT" },
-          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
-        ],
-      }),
-    ]);
-
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Has messages" })
-      .click();
+    await openConversationWithMessages(page, "load");
 
     await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
     await expect(page.getByTestId("assistant-message-bubble")).toContainText(
@@ -72,22 +91,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
     // and the next send bootstrapped from that truncation and saved it over the
     // record. The stubs configure the provider with an empty key, so a plain
     // send is the whole repro.
-    await setupUiTest(page, [
-      makeConversation({
-        id: "nokey",
-        title: "Has messages",
-        updatedAt: 100,
-        messages: [
-          { role: "user", content: "FIXTURE_USER_PROMPT" },
-          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
-        ],
-      }),
-    ]);
-
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Has messages" })
-      .click();
+    await openConversationWithMessages(page, "nokey");
 
     await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
 
@@ -111,9 +115,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
       makeConversation({ id: "r", title: "Old title", updatedAt: 10 }),
     ]);
 
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Old title" })
+    await conversationRows(page, "Old title")
       .getByRole("button", { name: "Rename conversation" })
       .click();
 
@@ -124,11 +126,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
     await input.fill("New shiny title");
     await input.press("Enter");
 
-    await expect(
-      page
-        .getByTestId("conversation-item")
-        .filter({ hasText: "New shiny title" }),
-    ).toBeVisible();
+    await expect(conversationRows(page, "New shiny title")).toBeVisible();
     await expect(page.getByText("Old title")).toHaveCount(0);
 
     const records = await readConversationsFromDb(page);
@@ -149,9 +147,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
     ]);
 
     // Star it.
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Star me" })
+    await conversationRows(page, "Star me")
       .getByRole("button", { name: "Bookmark conversation" })
       .first()
       .click();
@@ -165,9 +161,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
 
     // Unstar it (use the first matching row — bookmarked items render in both
     // the Bookmarks and All Conversations sections).
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Star me" })
+    await conversationRows(page, "Star me")
       .first()
       .getByRole("button", { name: "Remove bookmark" })
       .click();
@@ -187,9 +181,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
       makeConversation({ id: "d2", title: "Delete me", updatedAt: 10 }),
     ]);
 
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Delete me" })
+    await conversationRows(page, "Delete me")
       .getByRole("button", { name: "Delete conversation" })
       .click();
 
@@ -214,9 +206,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
       makeConversation({ id: "u2", title: "Undo me", updatedAt: 10 }),
     ]);
 
-    await page
-      .getByTestId("conversation-item")
-      .filter({ hasText: "Undo me" })
+    await conversationRows(page, "Undo me")
       .getByRole("button", { name: "Delete conversation" })
       .click();
 

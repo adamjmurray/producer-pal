@@ -175,7 +175,9 @@ export async function transformAnthropicRequest(
         modified = true;
       }
 
-      if (addCacheControl(body)) modified = true;
+      if (addCacheControl(body)) {
+        modified = true;
+      }
 
       if (modified) {
         init = { ...init, body: JSON.stringify(body) };
@@ -293,13 +295,17 @@ function addOpenRouterCacheControl(body: OpenRouterRequestBody): boolean {
   // 1. Static head: the system message.
   const systemMessage = body.messages.find((m) => m.role === "system");
 
-  if (systemMessage && markMessageContent(systemMessage)) changed = true;
+  if (systemMessage && markMessageContent(systemMessage)) {
+    changed = true;
+  }
 
   // 2. Rolling tail: the last message (may also be the system message — marking
   // the same content twice is idempotent).
   const lastMessage = body.messages.at(-1);
 
-  if (lastMessage && markMessageContent(lastMessage)) changed = true;
+  if (lastMessage && markMessageContent(lastMessage)) {
+    changed = true;
+  }
 
   return changed;
 }

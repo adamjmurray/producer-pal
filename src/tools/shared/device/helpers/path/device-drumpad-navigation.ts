@@ -4,17 +4,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { fromLiveApiId } from "#src/tools/shared/utils.ts";
-import { buildDrumPadPath, extractDevicePath } from "./device-path-builders.ts";
+import {
+  type ChainSegmentFn,
+  buildDrumPadPath,
+  extractDevicePath,
+} from "./device-path-builders.ts";
+import { cachedDevicePath } from "./with-device-path-cache.ts";
 
 export type DrumPadTargetType = "chain" | "device";
 
 const DRUM_PADS_TAIL = / drum_pads \d+$/;
+const CHAINS_TAIL = / chains \d+$/;
 
 export interface DrumPadResolution {
   target: LiveAPI | null;
   targetType: DrumPadTargetType;
+  /** How many chains the pad already holds. Only a chain miss sets it, and only
+   * so a caller that has to create one doesn't count them a second time. */
+  chainCount?: number;
 }
 
 export interface DrumPadGroup {
@@ -37,7 +47,9 @@ function getChildAtIndex(
   childType: string,
   index: number,
 ): LiveAPI | null {
-  if (Number.isNaN(index) || index < 0) return null;
+  if (Number.isNaN(index) || index < 0) {
+    return null;
+  }
 
   return parent.getChildAt(childType, index);
 }
@@ -79,7 +91,10 @@ export function navigateRemainingSegments(
         Number.parseInt(seg.slice(isRc ? 2 : 1)),
       );
 
-      if (!c) return { target: null, targetType: "chain" };
+      if (!c) {
+        return { target: null, targetType: "chain" };
+      }
+
       current = c;
       currentType = "chain";
     } else if (seg.startsWith("d")) {
@@ -89,7 +104,10 @@ export function navigateRemainingSegments(
         Number.parseInt(seg.slice(1)),
       );
 
-      if (!c) return { target: null, targetType: "device" };
+      if (!c) {
+        return { target: null, targetType: "device" };
+      }
+
       current = c;
       currentType = "device";
     } else {
@@ -146,7 +164,9 @@ export function drumPadIdsByNote(rack: LiveAPI): Map<number, string> {
 export function findDrumPad(rackPath: string, note: string): LiveAPI | null {
   const rack = LiveAPI.from(rackPath);
 
-  if (!rack.exists()) return null;
+  if (!rack.exists()) {
+    return null;
+  }
 
   const midi = noteNameToMidi(note);
 
@@ -197,9 +217,101 @@ export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
  * @returns The pad's chains, in rack order
  */
 export function chainsOnDrumPad(pad: LiveAPI): LiveAPI[] {
-  const rack = LiveAPI.from(pad.path.replace(DRUM_PADS_TAIL, ""));
+  return chainsForInNote(drumRackOfPad(pad), pad.getProperty("note") as number);
+}
 
-  return chainsForInNote(rack, pad.getProperty("note") as number);
+/**
+ * The Drum Rack a pad belongs to.
+ * @param pad - The DrumPad
+ * @returns The rack device holding it
+ */
+export function drumRackOfPad(pad: LiveAPI): LiveAPI {
+  return LiveAPI.from(pad.path.replace(DRUM_PADS_TAIL, ""));
+}
+
+/**
+ * Name rack chains the way a pad does — `pC1/c0` rather than the rack-relative
+ * `c3` — so a write result hands back the spelling reads use. The pad-local
+ * index also holds still longer: it shifts only when that pad's own layers
+ * change, where a rack index shifts on any chain added or removed anywhere in
+ * the rack.
+ *
+ * Falls back to the rack-relative name for a plain (non-drum) rack chain, or
+ * anything Live can't answer for.
+ *
+ * Reads the rack once per drum chain, so this is for naming one result, not for
+ * a listing that already threads its paths down. `leaf` is the object being
+ * named, reused when the walk reaches it so the common case builds nothing new.
+ * @param leaf - The object whose path is being spelled
+ * @returns A namer for `extractDevicePath`
+ */
+export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
+  return (livePathThroughChain, index) => {
+    // cachedDevicePath, not LiveAPI.from: a caller resolving the same path
+    // (input resolution, then this for the result) shares the one build.
+    const chain =
+      livePathThroughChain === leaf.path
+        ? leaf
+        : cachedDevicePath(livePathThroughChain);
+
+    if (chain.type !== "DrumChain") {
+      return `c${index}`;
+    }
+
+    const inNote = chain.getProperty("in_note") as number;
+    const noteName = inNote < 0 ? "*" : midiToNoteName(inNote);
+
+    if (noteName == null) {
+      return `c${index}`;
+    }
+
+    const rack = cachedDevicePath(
+      livePathThroughChain.replace(CHAINS_TAIL, ""),
+    );
+    const layer = chainsForInNote(rack, inNote).findIndex(
+      (sibling) => sibling.id === chain.id,
+    );
+
+    return layer < 0 ? `c${index}` : `p${noteName}/c${layer}`;
+  };
+}
+
+/** This lesson stays true for the whole request; see alreadyWarnedOnce. */
+const RACK_RELATIVE_DRUM_CHAIN_WARNING_KEY = "drum-chain-rack-relative-input";
+
+/**
+ * Warn once per request when a path reached a drum chain by its rack-relative
+ * index (`cN`) rather than the pad-relative spelling results use. Both
+ * spellings resolve to the same chain today, so this never blocks anything —
+ * it teaches the address that stays correct once a pad holds more than one
+ * layer, before the two start naming different chains.
+ *
+ * Takes the resolved chain, not a path: a caller that has already built it
+ * must not pay a second build just to be told about the spelling.
+ * @param chain - The object the `cN` segment resolved to
+ */
+export function warnRackRelativeDrumChainSpelling(chain: LiveAPI): void {
+  if (chain.type !== "DrumChain") {
+    return;
+  }
+
+  const chainLiveApiPath = chain.path;
+
+  // chainLiveApiPath is always built from a parsed track root, so
+  // extractDevicePath never returns null here.
+  const padPath = extractDevicePath(
+    chainLiveApiPath,
+    drumChainSegmentNamer(chain),
+  ) as string;
+
+  console.warnOnce(
+    RACK_RELATIVE_DRUM_CHAIN_WARNING_KEY,
+    `${padPath} is the preferred spelling for this drum chain: the pad's ` +
+      "pitch is the note that plays it, so paths line up with the notes in " +
+      "a clip. A rack numbers its chains in creation order where a pad " +
+      "numbers its own layers, so a rack-relative index names a different " +
+      "chain as soon as a pad holds more than one.",
+  );
 }
 
 /**
@@ -217,12 +329,79 @@ export function drumPadPath(pad: LiveAPI): string {
   );
 }
 
+/** How deep to hunt for a nested kit. Matches the drum map's default read depth. */
+const NESTED_RACK_SEARCH_DEPTH = 4;
+
+/**
+ * The drum rack a rack device plays through, when it holds one.
+ *
+ * Same rule as the drum map's search (see findDrumRack): walk every chain and
+ * stop at the first drum rack, because a kit nested inside a pad sounds only
+ * on that pad. Used to correct a pad path aimed at the outer rack.
+ * @param device - The device to search under
+ * @param depth - Recursion depth, for the search cap
+ * @returns The nested drum rack, or null if there is none
+ */
+export function findNestedDrumRack(device: LiveAPI, depth = 0): LiveAPI | null {
+  if (depth >= NESTED_RACK_SEARCH_DEPTH) {
+    return null;
+  }
+
+  for (const chain of device.getChildren("chains")) {
+    for (const nested of chain.getChildren("devices")) {
+      if (nested.getProperty("can_have_drum_pads")) {
+        return nested;
+      }
+
+      const deeper = findNestedDrumRack(nested, depth + 1);
+
+      if (deeper != null) {
+        return deeper;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * A "did you mean" for a pad path aimed at a rack that holds the kit instead of
+ * being it — the miss models make on a drum rack nested in another rack.
+ * @param liveApiPath - Live API path of the device the path named
+ * @param note - The pad note segment, as written
+ * @param tail - Segments after the pad, so the suggestion keeps them
+ * @returns The hint, or "" when there is no nested kit to point at
+ */
+export function nestedDrumRackHint(
+  liveApiPath: string,
+  note: string,
+  tail: string[] = [],
+): string {
+  const device = LiveAPI.from(liveApiPath);
+
+  if (!device.exists()) {
+    return "";
+  }
+
+  const rack = findNestedDrumRack(device);
+
+  if (rack == null) {
+    return "";
+  }
+
+  const suggestion = [`${extractDevicePath(rack.path)}/p${note}`, ...tail].join(
+    "/",
+  );
+
+  return ` — the drum rack is nested; try "${suggestion}"`;
+}
+
 /**
  * Resolve a bare pad path to the whole pad: the DrumPad object plus every chain
  * on it. A layered pad has several chains; a virtual pad has no DrumPad.
  * @param liveApiPath - Live API path to the drum rack device
  * @param drumPadNote - Note name (e.g. "C1"), or "*" for the catch-all
- * @returns The pad and its chains, or null when the rack or the pad is empty
+ * @returns The pad and its chains, or null when the path names no pad at all
  */
 export function resolveDrumPadGroup(
   liveApiPath: string,
@@ -230,17 +409,26 @@ export function resolveDrumPadGroup(
 ): DrumPadGroup | null {
   const rack = LiveAPI.from(liveApiPath);
 
-  if (!rack.exists()) return null;
+  if (!rack.exists()) {
+    return null;
+  }
 
   const inNote = padNoteToInNote(drumPadNote);
 
-  if (inNote == null) return null;
+  if (inNote == null) {
+    return null;
+  }
 
   const chains = chainsForInNote(rack, inNote);
+  const pad = findDrumPadByNote(rack, inNote);
 
-  if (chains.length === 0) return null;
+  // A pad with no chains is a real, empty pad, and resolves so the caller can
+  // say why it can't be written. No chains *and* no pad object is nothing.
+  if (chains.length === 0 && pad == null) {
+    return null;
+  }
 
-  return { pad: findDrumPadByNote(rack, inNote), chains };
+  return { pad, chains };
 }
 
 /**
@@ -255,7 +443,7 @@ export function resolveDrumPadFromPath(
   drumPadNote: string,
   remainingSegments: string[],
 ): DrumPadResolution {
-  const device = LiveAPI.from(liveApiPath);
+  const device = cachedDevicePath(liveApiPath);
 
   if (!device.exists()) {
     return { target: null, targetType: "chain" };
@@ -292,7 +480,11 @@ export function resolveDrumPadFromPath(
     chainIndexWithinNote < 0 ||
     chainIndexWithinNote >= matchingChains.length
   ) {
-    return { target: null, targetType: "chain" };
+    return {
+      target: null,
+      targetType: "chain",
+      chainCount: matchingChains.length,
+    };
   }
 
   const chain = assertDefined(
@@ -315,19 +507,20 @@ export function resolveDrumPadFromPath(
   }
 
   const deviceIndex = Number.parseInt(deviceSegment.slice(1));
-  const devices = chain.getChildren("devices");
+  // By id: indexing into getChildren would build every device in the chain to
+  // name one.
+  const deviceIds = chain.getChildIds("devices");
 
   if (
     Number.isNaN(deviceIndex) ||
     deviceIndex < 0 ||
-    deviceIndex >= devices.length
+    deviceIndex >= deviceIds.length
   ) {
     return { target: null, targetType: "device" };
   }
 
-  const targetDevice = assertDefined(
-    devices[deviceIndex],
-    `device at index ${deviceIndex}`,
+  const targetDevice = LiveAPI.from(
+    assertDefined(deviceIds[deviceIndex], `device at index ${deviceIndex}`),
   );
 
   // Check if there are more segments after the device index

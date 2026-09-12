@@ -10,13 +10,15 @@ import { type RealtimeItem } from "@openai/agents/realtime";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildSessionOptions,
-  createPlaybackAudioElement,
   extractResponseFailure,
   parseRetrySeconds,
-  setAudioVolume,
-  teardownAudioElement,
   toSeedableHistory,
 } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import {
+  createPlaybackAudioElement,
+  setAudioVolume,
+  teardownAudioElement,
+} from "#webui/hooks/voice/helpers/voice-audio-element-helpers";
 import { DEFAULT_VOICE_LANGUAGE } from "#webui/lib/constants/voice-language";
 
 const doneEvent = (response: unknown) => ({ type: "response.done", response });

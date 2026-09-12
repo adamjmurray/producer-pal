@@ -6,9 +6,14 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   prepareSessionClipSlot,
+  requireCreatedClip,
   requireCreatedSessionClip,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 
 export interface AudioSessionClipResult {
   clip: LiveAPI;
@@ -41,7 +46,7 @@ export function createAudioSessionClip(
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
-    clip: requireCreatedSessionClip(clipSlot, "audio"),
+    clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
   };
 }
@@ -57,6 +62,7 @@ export interface AudioArrangementClipResult {
  * @param arrangementStartBeats - Start position in Ableton beats
  * @param sampleFile - Absolute path to audio file
  * @param takeLane - Take lane to create on, or null for the track's main lane
+ * @param track - The already-resolved destination track, or null to resolve it
  * @returns Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
@@ -64,6 +70,7 @@ export function createAudioArrangementClip(
   arrangementStartBeats: number | null,
   sampleFile: string,
   takeLane: LiveAPI | null = null,
+  track: LiveAPI | null = null,
 ): AudioArrangementClipResult {
   // Live API limit check
   if (
@@ -75,7 +82,7 @@ export function createAudioArrangementClip(
     );
   }
 
-  const target = takeLane ?? LiveAPI.from(livePath.track(trackIndex));
+  const target = takeLane ?? track ?? LiveAPI.from(livePath.track(trackIndex));
 
   // Create audio clip at position
   const newClipResult = target.call(
@@ -83,11 +90,10 @@ export function createAudioArrangementClip(
     sampleFile,
     arrangementStartBeats,
   ) as string;
-  const clip = LiveAPI.from(newClipResult);
-
-  if (!clip.exists()) {
-    throw new Error("failed to create audio Arrangement clip");
-  }
+  const clip = requireCreatedClip(
+    LiveAPI.from(newClipResult),
+    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  );
 
   return { clip, arrangementStartBeats };
 }

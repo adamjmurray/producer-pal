@@ -24,13 +24,22 @@ import packageJson from "../../../../package.json" with { type: "json" };
 // Debug flags are turned on by build:debug / dev:debug, so a development build
 // always has them. Opt-in flags are deliberately left off and set by hand for a
 // specific need (a LAN/remote browser origin, in the CORS case).
-const DEBUG_FLAGS = [
-  "ENABLE_LIVE_API",
-  "ENABLE_CODE_EXEC",
-  "ENABLE_WARP_MARKERS",
+const DEBUG_FLAGS = ["ENABLE_LIVE_API"];
+
+// Debug features that add PARAMS to a tool schema with no runtime gate. A model
+// sees them on every call, so a debug build would grade evals and e2e runs on a
+// feature no release build ships — a model reached for `code` instead of the
+// note-count transforms it was being tested on. ENABLE_LIVE_API is not in this
+// class: it only forces a runtime flag that `POST /config` still controls.
+// Set these by hand for the build you're testing that feature on.
+const UNGATED_SCHEMA_FLAGS = ["ENABLE_CODE_EXEC", "ENABLE_WARP_MARKERS"];
+
+const OPT_IN_FLAGS = [
+  "ENABLE_REMOTE_CORS",
+  "ENABLE_BUILD_STATS",
+  "ENABLE_OBJECT_PROBE",
 ];
-const OPT_IN_FLAGS = ["ENABLE_REMOTE_CORS", "ENABLE_BUILD_STATS"];
-const BUILD_FLAGS = [...DEBUG_FLAGS, ...OPT_IN_FLAGS];
+const BUILD_FLAGS = [...DEBUG_FLAGS, ...UNGATED_SCHEMA_FLAGS, ...OPT_IN_FLAGS];
 
 // A flag can gate code either way. Most pick a VALUE that rolldown substitutes
 // into a `process.env.X === "true"` test in src/. A substitution-only flag picks
@@ -113,6 +122,13 @@ describe("build flags", () => {
 
   it("never enables opt-in flags from an npm script", () => {
     for (const flag of OPT_IN_FLAGS) {
+      expect(Object.values(scripts).join("\n")).not.toContain(flag);
+    }
+  });
+
+  // Not an oversight to correct: see UNGATED_SCHEMA_FLAGS above.
+  it("keeps ungated schema flags out of every npm script", () => {
+    for (const flag of UNGATED_SCHEMA_FLAGS) {
       expect(Object.values(scripts).join("\n")).not.toContain(flag);
     }
   });

@@ -121,7 +121,9 @@ export function printCliDerivedStats(groups: GroupStats[]): void {
       ? (s) => styleText(["yellow", "bold"], s)
       : (s) => styleText("green", s);
 
-    if (isOverall) console.log(sep);
+    if (isOverall) {
+      console.log(sep);
+    }
 
     console.log(row(fmtRow(r), color));
   }

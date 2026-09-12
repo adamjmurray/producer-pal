@@ -11,6 +11,7 @@ import {
   resetSelectTestState,
   setupSongViewMock,
 } from "./select-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
   const { selectSharedUtilsMockBody } =
@@ -85,8 +86,7 @@ describe("select - plugin editor window", () => {
       expect.anything(),
     );
     expect(result.selectedDevice?.pluginWindowOpen).toBeUndefined();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("not a plug-in"),
     );
   });
@@ -97,8 +97,7 @@ describe("select - plugin editor window", () => {
     const result = select({ openPluginWindow: true });
 
     expect(result.selectedDevice).toBeUndefined();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("requires a plug-in device"),
     );
   });

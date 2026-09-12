@@ -12,16 +12,18 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   type CreatedClip,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 import { adjustClipPreRoll } from "./arrangement-tiling-holding.ts";
 import {
   clearArrangementRange,
   clearClipAtDuplicateTarget,
   sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
+import { targetLabelForId } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * How many tiles' worth of span one clear empties, ahead of the tiles that
@@ -58,10 +60,12 @@ export function outOfTime(
   reached: number,
   target: number,
 ): boolean {
-  if (!isDeadlineExceeded(context.deadline ?? null)) return false;
+  if (!isDeadlineExceeded(context.deadline ?? null)) {
+    return false;
+  }
 
   console.warn(
-    `Ran out of time while lengthening clip ${sourceClipId}: placed ${placed} of ${total} tiles, ` +
+    `Ran out of time while lengthening clip ${targetLabelForId(sourceClipId)}: placed ${placed} of ${total} tiles, ` +
       `reaching ${reached} beats instead of ${target}. Re-run to continue.`,
   );
 
@@ -208,7 +212,9 @@ export function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
         context,
       });
 
-      if (placed != null) createdClips.push(placed);
+      if (placed != null) {
+        createdClips.push(placed);
+      }
     }
 
     currentPosition += arrangementTileLength; // Space tiles at arrangement intervals
@@ -255,16 +261,15 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
     context,
   } = args;
 
-  const result = freshTrack.call(
-    "duplicate_clip_to_arrangement",
-    toLiveApiId(sourceClipId),
-    currentPosition,
-  ) as [string, string | number];
+  const tileClip = clipFromDuplicateResult(
+    freshTrack.call(
+      "duplicate_clip_to_arrangement",
+      toLiveApiId(sourceClipId),
+      currentPosition,
+    ),
+  );
 
-  const tileClip = LiveAPI.from(result);
-
-  // Skip silent failures (Ableton returning ["id", 0]) so we don't push
-  // a phantom clip ID into createdClips and confuse downstream callers.
+  // Skip a refused copy so no phantom clip id reaches createdClips.
   if (!tileClip.exists()) {
     console.warn(
       `Failed to duplicate source clip for tile at ${currentPosition}, skipping`,

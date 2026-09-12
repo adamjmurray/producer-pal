@@ -46,7 +46,9 @@ const C_MAJOR = [60, 64, 67];
  * @returns True when each bar downbeat carries the full triad
  */
 function chordPerBar(events: NoteEvent[]): boolean {
-  if (events.length !== BAR_DOWNBEATS.length * C_MAJOR.length) return false;
+  if (events.length !== BAR_DOWNBEATS.length * C_MAJOR.length) {
+    return false;
+  }
 
   return BAR_DOWNBEATS.every((downbeat) => {
     const pitches = events
@@ -70,7 +72,9 @@ function chordPerBar(events: NoteEvent[]): boolean {
  * @returns True when the four notes land on the four bar downbeats
  */
 function notePerBar(events: NoteEvent[]): boolean {
-  if (events.length !== BAR_DOWNBEATS.length) return false;
+  if (events.length !== BAR_DOWNBEATS.length) {
+    return false;
+  }
 
   const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
 
@@ -101,6 +105,6 @@ export const barBeatPerBarSpread: EvalScenario = createClipScenario({
     clipStateAssertion(LEAD_SLOT_1, "4/4", chordPerBar),
     { type: "tool_called", tool: "ppal-create-clip", turn: 2 },
     clipStateAssertion(LEAD_SLOT_2, "4/4", notePerBar),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 });

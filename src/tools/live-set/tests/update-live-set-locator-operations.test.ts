@@ -15,6 +15,7 @@ import {
   setupLocatorCreationMocks,
   setupLocatorMocks,
 } from "./update-live-set-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateLiveSet - locator operations", () => {
   let liveSet: RegisteredMockObject;
@@ -78,10 +79,21 @@ describe("updateLiveSet - locator operations", () => {
 
     it("should skip creation if locator already exists at position", async () => {
       liveSet.get.mockImplementation((prop: string) => {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("existing_cue");
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+
+        if (prop === "is_playing") {
+          return [0];
+        }
+
+        if (prop === "cue_points") {
+          return children("existing_cue");
+        }
 
         return [0];
       });
@@ -105,8 +117,7 @@ describe("updateLiveSet - locator operations", () => {
         time: "5|1",
         existingId: "locator-0",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Locator already exists at 5|1"),
       );
     });
@@ -120,8 +131,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_locatorTime",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "locatorTime is required for create operation",
       );
     });
@@ -167,10 +177,21 @@ describe("updateLiveSet - locator operations", () => {
 
     it("should delete all locators by name", async () => {
       liveSet.get.mockImplementation((prop: string) => {
-        if (prop === "signature_numerator") return [4];
-        if (prop === "signature_denominator") return [4];
-        if (prop === "is_playing") return [0];
-        if (prop === "cue_points") return children("cue1", "cue2", "cue3");
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+
+        if (prop === "is_playing") {
+          return [0];
+        }
+
+        if (prop === "cue_points") {
+          return children("cue1", "cue2", "cue3");
+        }
 
         return [0];
       });
@@ -205,6 +226,25 @@ describe("updateLiveSet - locator operations", () => {
         operation: "deleted",
         count: 2,
         name: "Verse",
+      });
+    });
+
+    it("deletes a locator by an all-digit name", async () => {
+      // The match must still find it by its string name.
+      setupLocatorMocks(liveSet, {
+        cuePoints: [{ id: "cue1", time: 0, name: 5678 }],
+      });
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "5678",
+      });
+
+      expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
+      expect(result.locator).toStrictEqual({
+        operation: "deleted",
+        count: 1,
+        name: "5678",
       });
     });
 
@@ -245,8 +285,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_identifier",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "delete requires locatorId, locatorTime, or locatorName",
       );
     });
@@ -263,8 +302,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         id: "locator-99",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Locator not found: locator-99"),
       );
     });
@@ -281,10 +319,33 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         time: "100|1",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("No locator found at position: 100|1"),
       );
+    });
+
+    it("does not delete every nameless locator when locatorName is empty", async () => {
+      // A nameless locator reads back "" — an empty locatorName must not
+      // match it (or any other nameless locator), or delete-by-name would
+      // wipe every unnamed locator in the Set.
+      setupLocatorMocks(liveSet, {
+        cuePoints: [
+          { id: "cue1", time: 0 },
+          { id: "cue2", time: 16 },
+        ],
+      });
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: "",
+      });
+
+      expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "no_locators_found",
+        name: "",
+      });
     });
 
     it("should skip if no locators match name", async () => {
@@ -299,8 +360,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "no_locators_found",
         name: "NonExistent",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("No locators found with name: NonExistent"),
       );
     });
@@ -358,8 +418,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_locatorName",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "locatorName is required for rename operation",
       );
     });
@@ -374,8 +433,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_identifier",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "rename requires locatorId or locatorTime",
       );
     });
@@ -392,8 +450,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         id: "locator-99",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("locator not found: locator-99"),
       );
     });
@@ -410,8 +467,7 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         time: "100|1",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("no locator found at position: 100|1"),
       );
     });
@@ -433,6 +489,39 @@ describe("updateLiveSet - locator operations", () => {
         time: "1|1",
         id: "locator-0",
       });
+    });
+  });
+  describe("locator args without an operation", () => {
+    it.each([
+      ["locatorTime", { locatorTime: "45|1" }],
+      ["locatorName", { locatorName: "Chorus" }],
+      ["locatorId", { locatorId: "locator-0" }],
+    ])("refuses a call sending only %s", async (param, args) => {
+      await expect(updateLiveSet(args)).rejects.toThrow(
+        `${param} require locatorOperation`,
+      );
+    });
+
+    it("names every locator arg it was sent", async () => {
+      await expect(
+        updateLiveSet({ locatorTime: "45|1", locatorName: "Chorus" }),
+      ).rejects.toThrow(
+        'locatorTime, locatorName require locatorOperation ("create", "delete", or "rename")',
+      );
+    });
+
+    it("refuses before writing anything else the call asked for", async () => {
+      await expect(
+        updateLiveSet({ tempo: 140, locatorTime: "45|1" }),
+      ).rejects.toThrow("locatorTime require locatorOperation");
+
+      expect(liveSet.set).not.toHaveBeenCalled();
+    });
+
+    it("leaves a call carrying no locator args alone", async () => {
+      const result = await updateLiveSet({ tempo: 140 });
+
+      expect(result.tempo).toBe(140);
     });
   });
 });

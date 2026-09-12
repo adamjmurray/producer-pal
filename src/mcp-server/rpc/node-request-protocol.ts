@@ -11,10 +11,7 @@
  */
 
 import Max from "max-api";
-import {
-  MAX_ERROR_DELIMITER,
-  planChunks,
-} from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-response-utils.ts";
 import * as console from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
@@ -154,7 +151,9 @@ async function runWithTimeout(
       timeoutPromise,
     ]);
   } finally {
-    if (timer != null) clearTimeout(timer);
+    if (timer != null) {
+      clearTimeout(timer);
+    }
   }
 }
 
@@ -179,12 +178,7 @@ async function sendNodeResponse(
       : [JSON.stringify({ success: false, error: plan.tooLargeError })];
 
   try {
-    await Max.outlet(
-      "node_response",
-      requestId,
-      ...chunks,
-      MAX_ERROR_DELIMITER,
-    );
+    await Max.outlet("node_response", requestId, ...chunks, END_OF_CHUNKS);
   } catch (error) {
     console.error(
       `Failed to send node_response: ${String(error)} [requestId=${requestId}]`,

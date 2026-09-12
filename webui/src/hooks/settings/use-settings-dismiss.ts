@@ -56,7 +56,9 @@ export function useSettingsDismiss({
   const clearShake = useCallback(() => setShake(false), []);
 
   const handleSettingsDismiss = useCallback(() => {
-    if (!settingsConfigured || settingsClosing) return;
+    if (!settingsConfigured || settingsClosing) {
+      return;
+    }
 
     if (hasUnsavedChanges || blockDismiss) {
       setShake(true);
@@ -78,8 +80,13 @@ export function useSettingsDismiss({
   // both overlays don't dismiss simultaneously when the user reloads with
   // contextOpen=true and !settingsConfigured.
   useEffect(() => {
-    if (!showSettings) return undefined;
-    if (blockEscape) return undefined;
+    if (!showSettings) {
+      return undefined;
+    }
+
+    if (blockEscape) {
+      return undefined;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { parseAssignments } from "./parse-test-helpers.ts";
 
-describe("Transform Parser - barDuration (Nbar)", () => {
+describe("Transform Parser - barDuration (<count>bar)", () => {
   it("parses 1bar as a barDuration node", () => {
     const result = parseAssignments("duration = 1bar");
 
@@ -25,7 +25,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
     });
   });
 
-  it("parses Nbar with the += operator", () => {
+  it("parses <count>bar with the += operator", () => {
     const result = parseAssignments("timing += 1bar");
 
     expect(result[0]!.operator).toBe("add");
@@ -35,7 +35,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
     });
   });
 
-  // The mixed `Nbar+n<frac>` form composes through ordinary addition rather than
+  // The mixed `<count>bar+n<frac>` form composes through ordinary addition rather than
   // a single token, matching the authoring grammar's value while reusing the
   // expression machinery.
   it("parses 1bar+n/4 as add(barDuration, nDuration)", () => {
@@ -92,7 +92,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
       );
     });
 
-    // The mixed `Nbar+n<frac>` token works as a bare shorthand too, matching the
+    // The mixed `<count>bar+n<frac>` token works as a bare shorthand too, matching the
     // bar|beat authoring grammar. It must desugar identically to the full form.
     it("desugars bare 1bar+n/4 identically to the full duration assignment", () => {
       expect(parseAssignments("1bar+n/4")).toStrictEqual(

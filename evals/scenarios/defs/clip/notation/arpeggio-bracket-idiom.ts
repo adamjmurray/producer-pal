@@ -121,7 +121,9 @@ function makeArpCheck(bars: ArpBar[]): (events: NoteEvent[]) => boolean {
   const total = bars.reduce((sum, b) => sum + b.count, 0);
 
   return (events) => {
-    if (events.length !== total) return false;
+    if (events.length !== total) {
+      return false;
+    }
 
     return bars.every((bar, barIndex) => {
       const barStart = barIndex * 4;
@@ -130,7 +132,9 @@ function makeArpCheck(bars: ArpBar[]): (events: NoteEvent[]) => boolean {
           e.start_time >= barStart - EPS && e.start_time < barStart + 4 - EPS,
       );
 
-      if (inBar.length !== bar.count) return false;
+      if (inBar.length !== bar.count) {
+        return false;
+      }
 
       const offsets = Array.from({ length: bar.count }, (_, k) => k * bar.step);
       const onGrid = inBar.every((e) =>
@@ -218,6 +222,6 @@ export const arpeggioBracketIdiom: EvalScenario = createClipScenario({
     usesBracketCycling(2),
     usesRepeatNotation(2),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 });

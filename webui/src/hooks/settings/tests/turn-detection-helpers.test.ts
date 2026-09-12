@@ -20,7 +20,7 @@ import {
   TURN_DETECTION_THRESHOLD_MAX,
   TURN_DETECTION_THRESHOLD_MIN,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 
 const KEY = "producer_pal_turn_detection";
 

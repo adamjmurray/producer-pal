@@ -11,7 +11,7 @@ import {
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Hybrid Reverb (HybridReverbDevice). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/audio-effects.md.
 // Convolution IR library: category + file selectors plus IR shaping controls.
 // Category names use underscores as word separators in the Live API (e.g.,
 // "Early_Reflections"); user-facing names use spaces. File names already
@@ -56,13 +56,9 @@ function readIrCategory(device: LiveAPI): string | undefined {
  * skips if not found.
  * @param device - LiveAPI device object
  * @param value - User-facing category name (spaces)
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the category was written, false when it was skipped
  */
-function writeIrCategory(
-  device: LiveAPI,
-  value: string | number,
-  toolName: string,
-): void {
+function writeIrCategory(device: LiveAPI, value: string | number): boolean {
   const list = readCategoryList(device);
   const raw = String(value).replaceAll(" ", "_");
   const index = list.indexOf(raw);
@@ -71,13 +67,15 @@ function writeIrCategory(
     const available = list.map((s) => s.replaceAll("_", " ")).join(", ");
 
     console.warn(
-      `${toolName}: "${value}" is not a valid irCategory. Available: ${available}`,
+      `"${value}" is not a valid irCategory. Available: ${available}`,
     );
 
-    return;
+    return false;
   }
 
   device.set("ir_category_index", index);
+
+  return true;
 }
 
 /**
@@ -103,35 +101,29 @@ function readIrFile(device: LiveAPI): string | undefined {
  * current category, or if the category has no files (sentinel only).
  * @param device - LiveAPI device object
  * @param value - File name to select
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the file was written, false when it was skipped
  */
-function writeIrFile(
-  device: LiveAPI,
-  value: string | number,
-  toolName: string,
-): void {
+function writeIrFile(device: LiveAPI, value: string | number): boolean {
   const list = readFileList(device);
 
   if (list.length === 1 && list[0] === EMPTY_FILE_SENTINEL) {
-    console.warn(
-      `${toolName}: irFile cannot be set — current category has no files`,
-    );
+    console.warn(`irFile cannot be set — current category has no files`);
 
-    return;
+    return false;
   }
 
   const fileName = String(value);
   const index = list.indexOf(fileName);
 
   if (index < 0) {
-    console.warn(
-      `${toolName}: "${fileName}" is not a valid irFile in the current category`,
-    );
+    console.warn(`"${fileName}" is not a valid irFile in the current category`);
 
-    return;
+    return false;
   }
 
   device.set("ir_file_index", index);
+
+  return true;
 }
 
 /**
@@ -141,24 +133,25 @@ function writeIrFile(
  * @param property - Live API property name
  * @param value - Incoming value
  * @param paramName - Pseudo-param name for warning text
- * @param toolName - Calling tool name for warning prefix
+ * @returns True when the value was written, false when it was skipped
  */
 function writeIrFloat(
   device: LiveAPI,
   property: string,
   value: string | number,
   paramName: string,
-  toolName: string,
-): void {
+): boolean {
   const n = Number(value);
 
   if (!Number.isFinite(n)) {
-    console.warn(`${toolName}: ${paramName} must be a number (got "${value}")`);
+    console.warn(`${paramName} must be a number (got "${value}")`);
 
-    return;
+    return false;
   }
 
   device.set(property, n);
+
+  return true;
 }
 
 export const hybridReverbSpec: SpecializedDeviceSpec = {
@@ -177,32 +170,26 @@ export const hybridReverbSpec: SpecializedDeviceSpec = {
     {
       name: "irAttackTime",
       read: (device) => device.getProperty("ir_attack_time"),
-      write: (device, value, toolName) =>
-        writeIrFloat(device, "ir_attack_time", value, "irAttackTime", toolName),
+      write: (device, value) =>
+        writeIrFloat(device, "ir_attack_time", value, "irAttackTime"),
     },
     {
       name: "irDecayTime",
       read: (device) => device.getProperty("ir_decay_time"),
-      write: (device, value, toolName) =>
-        writeIrFloat(device, "ir_decay_time", value, "irDecayTime", toolName),
+      write: (device, value) =>
+        writeIrFloat(device, "ir_decay_time", value, "irDecayTime"),
     },
     {
       name: "irSizeFactor",
       read: (device) => device.getProperty("ir_size_factor"),
-      write: (device, value, toolName) =>
-        writeIrFloat(device, "ir_size_factor", value, "irSizeFactor", toolName),
+      write: (device, value) =>
+        writeIrFloat(device, "ir_size_factor", value, "irSizeFactor"),
     },
     {
       name: "irTimeShapingOn",
       read: (device) => readBoolProp(device, "ir_time_shaping_on"),
-      write: (device, value, toolName) =>
-        writeBoolProp(
-          device,
-          "ir_time_shaping_on",
-          value,
-          toolName,
-          "irTimeShapingOn",
-        ),
+      write: (device, value) =>
+        writeBoolProp(device, "ir_time_shaping_on", value, "irTimeShapingOn"),
     },
   ],
   readOptions(device) {

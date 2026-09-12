@@ -48,7 +48,9 @@ export function ModelSelector({
 
   // Track whether custom input is shown (for non-custom providers)
   const [showCustomInput, setShowCustomInput] = useState(() => {
-    if (provider === "custom" || presetModels.length === 0) return false;
+    if (provider === "custom" || presetModels.length === 0) {
+      return false;
+    }
 
     // Check if current model matches any preset (excluding "OTHER")
     return !presetModels.some(

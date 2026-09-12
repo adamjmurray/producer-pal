@@ -221,9 +221,13 @@ function useSecondsUntil(targetMs: number): number {
  * @returns {string} Tailwind color classes
  */
 function statusColor(isError?: boolean, isRateLimited?: boolean): string {
-  if (isError) return "text-red-700 dark:text-red-400";
+  if (isError) {
+    return "text-red-700 dark:text-red-400";
+  }
 
-  if (isRateLimited) return "text-amber-700 dark:text-amber-400";
+  if (isRateLimited) {
+    return "text-amber-700 dark:text-amber-400";
+  }
 
   return "text-zinc-500";
 }
@@ -236,7 +240,9 @@ function statusColor(isError?: boolean, isRateLimited?: boolean): string {
  * @returns {string} The display text
  */
 function unwrapResult(result: string | null): string {
-  if (result == null) return "";
+  if (result == null) {
+    return "";
+  }
 
   return unwrapToolResultText(result).replace(SUBAGENT_LABEL_PATTERN, "");
 }

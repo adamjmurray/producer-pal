@@ -6,7 +6,7 @@
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "../transform-warning-label.ts";
 import {
   type ExpressionNode,
   type NoteOp,
@@ -400,7 +400,7 @@ export function evaluateExpression(
     );
   }
 
-  // Bar duration (Nbar) — N bars in musical beats (beats-per-bar = numerator),
+  // Bar duration (<count>bar) — N bars in musical beats (beats-per-bar = numerator),
   // identical to N * clip.barDuration
   if (node.type === "barDuration") {
     return node.bars * timeSigNumerator;

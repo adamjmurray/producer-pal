@@ -557,7 +557,7 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(-6);
     });
 
-    it("resolves Nbar using the clip's beats-per-bar", () => {
+    it("resolves <count>bar using the clip's beats-per-bar", () => {
       const result = applyAudioTransform(0, 0, "gain = 1bar", {
         clipDuration: 24,
         clipIndex: 0,
@@ -569,7 +569,7 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(6);
     });
 
-    it("resolves Nbar to a 4/4 bar when no clipContext is provided", () => {
+    it("resolves <count>bar to a 4/4 bar when no clipContext is provided", () => {
       const result = applyAudioTransform(0, 0, "gain = 1bar");
 
       // Falls back to 4 beats per bar (same assumption as the nDuration path)

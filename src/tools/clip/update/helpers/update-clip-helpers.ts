@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -14,6 +15,7 @@ import {
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
   forceWarpForLooping,
@@ -27,12 +29,17 @@ import {
   handleQuantization,
 } from "./update-clip-notes-helpers.ts";
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
+import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
 } from "./update-clip-timing-helpers.ts";
-import { buildClipContext } from "./update-clip-transform-helpers.ts";
+import {
+  buildClipContext,
+  hasNoteEdits,
+} from "./update-clip-transform-helpers.ts";
 
 interface ClipResult {
   id: string;
@@ -71,12 +78,15 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   duplicateLoop?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
-  toSlot?: { trackIndex: number; sceneIndex: number } | null;
+  /** Where this clip moves, from toPath (or the deprecated toSlot). */
+  destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
   nonSurvivorClipIds?: Set<string> | null;
+  /** Destination tracks the batch has already resolved, keyed by track index. */
+  destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
 }
 
 /**
@@ -109,16 +119,31 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.arrangementStartBeats - Arrangement start in beats
  * @param params.context - Context object
  * @param params.updatedClips - Array to collect updated clips
- * @param params.tracksWithMovedClips - Map of tracks with moved clips
+ * @param params.movedClipGroups - Tally of clips landing on each lane and position
  */
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
 ): void {
+  // The transform evaluators warn per clip but have no LiveAPI to name it with,
+  // so the label comes from here. Everything inside is synchronous, which is
+  // what makes a scope safe to use instead of a parameter.
+  withClipWarningLabel(`clip ${targetLabel(params.clip)}`, () =>
+    updateOneClip(params),
+  );
+}
+
+/**
+ * Apply one clip's update, with transform warnings already labelled.
+ * @param params - The full single-clip update params
+ */
+function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   const {
     clip,
     clipIndex,
     clipCount,
     notationString,
+    transformString,
+    preTransformString,
     timeSignature,
     firstStart,
     looping,
@@ -135,7 +160,7 @@ export function processSingleClipUpdate(
     quantizePitch,
     context,
     updatedClips,
-    tracksWithMovedClips,
+    movedClipGroups,
   } = params;
 
   const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
@@ -159,7 +184,10 @@ export function processSingleClipUpdate(
     });
     forceWarpForLooping(clip, looping, warping);
   } else {
-    warnIgnoredParams({ gainDb, pitchShift, warpMode, warping }, "MIDI clips");
+    warnIgnoredParams(
+      { gainDb, pitchShift, warpMode, warping },
+      `MIDI clip ${targetLabel(clip)}`,
+    );
   }
 
   // Determine looping state. Read `wasLooping` here, after the audio params:
@@ -169,7 +197,9 @@ export function processSingleClipUpdate(
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
-    console.warn("firstStart parameter ignored for non-looping clips");
+    console.warn(
+      `firstStart parameter ignored for non-looping clip ${targetLabel(clip)}`,
+    );
   }
 
   writeClipProperties(params, {
@@ -179,9 +209,13 @@ export function processSingleClipUpdate(
     wasLooping,
   });
 
-  // Build context for transform variables (clip.*, bar.*)
+  // Context for transform variables (clip.*, bar.*). Built only when the call
+  // edits notes, because building it reads the Live Set's scale and nothing
+  // else uses it — a batch of renames would otherwise read the scale per clip.
   // prettier-ignore
-  const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
+  const clipContext = hasNoteEdits(notationString, transformString, preTransformString)
+    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator)
+    : undefined;
 
   if (isAudioClip) {
     handleAudioClipUpdate(clip, clipContext, params);
@@ -190,7 +224,9 @@ export function processSingleClipUpdate(
     // note write throw (mirrors create-clip's guard) so a multi-clip batch
     // keeps going. Transforms are still applied above by handleAudioClipUpdate.
     if (notationString != null) {
-      console.warn("notes parameter ignored for audio clip");
+      console.warn(
+        `notes parameter ignored for audio clip ${targetLabel(clip)}`,
+      );
     }
   }
 
@@ -220,15 +256,16 @@ export function processSingleClipUpdate(
     );
   }
 
-  // Handle position operations (session toSlot or arrangement start/length)
+  // Handle position operations (a move from toPath, or arrangement start/length)
   handlePositionOperations({
     clip,
     isAudioClip,
-    toSlot: params.toSlot,
+    destination: params.destination,
     destinationParam: params.destinationParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
-    tracksWithMovedClips,
+    movedClipGroups,
+    destinationTracks: params.destinationTracks,
     context,
     updatedClips,
     noteResult,
@@ -239,8 +276,10 @@ export function processSingleClipUpdate(
 /**
  * Write the clip's name, color, meter, and loop region.
  *
- * Runs BEFORE duplicateLoop (see the caller), so the two compose: the region
- * selects a portion, then Live's native duplicate_loop doubles exactly that.
+ * Runs BEFORE duplicateLoop (see the caller). start/length can't reach here
+ * alongside it — they pick what gets doubled, so the combination is refused up
+ * front (ADR-0040) — but firstStart can, and it sets the playback marker
+ * without moving the region.
  *
  * @param params - The full single-clip update params
  * @param resolved - Derived per-clip values not present on params
@@ -329,7 +368,7 @@ function writeClipProperties(
  * @param params - The full single-clip update params
  * @param resolved - Derived per-clip values not present on params
  * @param resolved.isAudioClip - Whether the clip is an audio clip
- * @param resolved.clipContext - Clip-level context for transform variables
+ * @param resolved.clipContext - Clip-level context for transform variables, undefined when the call edits no notes
  * @param resolved.timeSigNumerator - Resolved time signature numerator
  * @param resolved.timeSigDenominator - Resolved time signature denominator
  * @param resolved.notation - Global notation setting the notes string is written in (or undefined)
@@ -345,7 +384,7 @@ function resolveNoteResult(
     notation,
   }: {
     isAudioClip: boolean;
-    clipContext: ClipContext;
+    clipContext: ClipContext | undefined;
     timeSigNumerator: number;
     timeSigDenominator: number;
     notation: Notation | undefined;
@@ -395,17 +434,19 @@ function resolveNoteResult(
  * audio parameters ran earlier, before the region write — see the call site.
  * Audio clips have no MIDI notes, so preTransforms is unconditionally ignored.
  * @param clip - The audio clip to update
- * @param clipContext - Clip-level context for transform variables
+ * @param clipContext - Clip-level context for transform variables, undefined when the call sends no transforms
  * @param params - The full update params (audio fields are consumed)
  */
 function handleAudioClipUpdate(
   clip: LiveAPI,
-  clipContext: ClipContext,
+  clipContext: ClipContext | undefined,
   params: ProcessSingleClipUpdateParams,
 ): void {
   applyAudioTransforms(clip, params.transformString, clipContext);
 
   if (params.preTransformString != null) {
-    console.warn("preTransforms parameter ignored for audio clips");
+    console.warn(
+      `preTransforms parameter ignored for audio clip ${targetLabel(clip)}`,
+    );
   }
 }

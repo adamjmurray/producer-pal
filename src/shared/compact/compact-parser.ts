@@ -56,10 +56,21 @@ function parseValue(s: ParseState): unknown {
 
   const ch = peek(s);
 
-  if (ch === "{") return parseObject(s);
-  if (ch === "[") return parseArray(s);
-  if (ch === '"') return parseString(s);
-  if (ch === "-" || /\d/.test(ch)) return parseNumber(s);
+  if (ch === "{") {
+    return parseObject(s);
+  }
+
+  if (ch === "[") {
+    return parseArray(s);
+  }
+
+  if (ch === '"') {
+    return parseString(s);
+  }
+
+  if (ch === "-" || /\d/.test(ch)) {
+    return parseNumber(s);
+  }
 
   return parseKeyword(s);
 }
@@ -90,7 +101,10 @@ function parseObject(s: ParseState): Record<string, unknown> {
 
     skipWs(s);
 
-    if (peek(s) !== ":") fail(s, "expected ':' after object key");
+    if (peek(s) !== ":") {
+      fail(s, "expected ':' after object key");
+    }
+
     s.pos++;
 
     assignKey(obj, key, parseValue(s));
@@ -193,20 +207,28 @@ function parseArray(s: ParseState): unknown[] {
 function parseKey(s: ParseState): string {
   const ch = peek(s);
 
-  if (ch === '"') return parseString(s);
+  if (ch === '"') {
+    return parseString(s);
+  }
 
   const start = s.pos;
 
   if (/[$A-Z_a-z]/.test(ch)) {
     s.pos++;
-    while (/[\w$]/.test(peek(s))) s.pos++;
+
+    while (/[\w$]/.test(peek(s))) {
+      s.pos++;
+    }
 
     return s.text.slice(start, s.pos);
   }
 
   if (/\d/.test(ch)) {
     s.pos++;
-    while (/\d/.test(peek(s))) s.pos++;
+
+    while (/\d/.test(peek(s))) {
+      s.pos++;
+    }
 
     return s.text.slice(start, s.pos);
   }
@@ -254,12 +276,16 @@ function parseString(s: ParseState): string {
 function parseNumber(s: ParseState): number {
   const start = s.pos;
 
-  while (/[\d+.Ee-]/.test(peek(s))) s.pos++;
+  while (/[\d+.Ee-]/.test(peek(s))) {
+    s.pos++;
+  }
 
   const slice = s.text.slice(start, s.pos);
   const value = Number(slice);
 
-  if (Number.isNaN(value)) fail(s, `invalid number "${slice}"`);
+  if (Number.isNaN(value)) {
+    fail(s, `invalid number "${slice}"`);
+  }
 
   return value;
 }
@@ -299,7 +325,9 @@ function parseKeyword(s: ParseState): boolean | null {
  * @param s - Parse state
  */
 function skipWs(s: ParseState): void {
-  while (/\s/.test(peek(s))) s.pos++;
+  while (/\s/.test(peek(s))) {
+    s.pos++;
+  }
 }
 
 /**

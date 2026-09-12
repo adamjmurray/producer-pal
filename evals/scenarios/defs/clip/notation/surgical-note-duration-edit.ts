@@ -147,7 +147,9 @@ function assertSurgicalNotRewrite(
         ...calls.map((c) => countPitchTokens(argText(c.args.notes))),
       );
 
-      if (scoped || (maxNotes > 0 && maxNotes < original.length)) return true;
+      if (scoped || (maxNotes > 0 && maxNotes < original.length)) {
+        return true;
+      }
 
       throw new Error(
         `expected a scoped duration transform or a small notes restate, got ` +
@@ -227,6 +229,6 @@ export const surgicalNoteDurationEdit: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     assertSurgicalNotRewrite(1, 2),
     assertShortenOutcome(1, 3),
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };

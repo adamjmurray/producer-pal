@@ -5,11 +5,9 @@
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ClipPropertiesToSet {
   [key: string]: unknown; // Required for setAll() compatibility with Record<string, unknown>
@@ -92,12 +90,9 @@ export function buildClipProperties(
 
 export interface ClipResultObject {
   id: string;
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
-   * arrangement. A clip slot pastes back into any path/toPath param; an
-   * arrangement one names a whole track, so only tools that take a track
-   * destination accept it — reach a specific arrangement clip by id. */
+  /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
+   * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
-  arrangementStart?: string | null;
   noteCount?: number;
   transformed?: number;
   length?: string;
@@ -111,7 +106,6 @@ export interface ClipResultObject {
  * @param trackIndex - Track index
  * @param view - View type (session or arrangement)
  * @param sceneIndex - Scene index for session clips
- * @param arrangementStart - Arrangement start in bar|beat format (explicit position)
  * @param notationString - Original notation string
  * @param length - Original length parameter
  * @param timeSigNumerator - Clip time signature numerator
@@ -125,7 +119,6 @@ export function buildClipResult(
   trackIndex: number,
   view: string,
   sceneIndex: number | undefined,
-  arrangementStart: string | null,
   notationString: string | null,
   length: string | null,
   timeSigNumerator: number,
@@ -137,13 +130,12 @@ export function buildClipResult(
     id: clip.id,
   };
 
-  // Add view-specific properties
-  if (view === "session") {
-    clipResult.path = slotPath(trackIndex, sceneIndex as number);
-  } else {
-    clipResult.path = arrangementPath(trackIndex, clip.takeLaneIndex);
-    clipResult.arrangementStart = arrangementStart;
-  }
+  // An arrangement path carries where the clip starts, so nothing else
+  // reports it.
+  clipResult.path =
+    view === "session"
+      ? slotPath(trackIndex, sceneIndex as number)
+      : objectPathForApi(clip);
 
   // For MIDI clips: report the count Live actually stored (read back), not the
   // interpreted-input count. Live can drop/merge overlapping same-pitch notes

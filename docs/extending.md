@@ -1,7 +1,7 @@
 ---
 title: Extending Producer Pal
 description:
-  Build on Producer Pal — script Ableton Live over the REST API with or without
+  Build on Producer Pal. Script Ableton Live over the REST API with or without
   AI, drive it from coding agents with an Agent Skill, customize the skills and
   context the AI receives.
 ---
@@ -9,11 +9,9 @@ description:
 # Extending Producer Pal
 
 Producer Pal is a stable core with open edges. The core does one thing: control
-Ableton Live, with the fewest tools and tokens it can manage.
-
-Everything else is up to you: how the AI is instructed, what you drive it from,
-and whether there's an AI involved at all. You don't need to fork the repo or
-change the core to do any of it.
+Ableton Live, with the fewest tools and tokens it can manage. How the AI is
+instructed, what you drive it from, and whether there's an AI involved at all is
+up to you, without forking the repo or changing the core.
 
 ## Script Live over the REST API
 
@@ -32,7 +30,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-update-live-set \
 
 You can:
 
-- **Build your own interface.** A local web page can drive Live — the whole REST
+- **Build your own interface.** A local web page can drive Live: the whole REST
   API, straight from browser JavaScript.
 - **Use it without AI at all.** Generative scripts, batch edits across many
   clips, project scaffolding, reproducible test Sets.
@@ -41,18 +39,18 @@ You can:
 
 The [`ppal-live-api`](/features/tools#ppal-live-api) tool goes lower, with
 direct access to the [Live Object Model](https://docs.cycling74.com/apiref/lom/)
-for reads and writes the specialized tools don't cover. It's off by default —
-see [Live API](/guide/rest-api#live-api).
+for reads and writes the specialized tools don't cover. It's off by default; see
+[Live API](/guide/rest-api#live-api).
 
 Zero-dependency [Node and Python sample scripts](/guide/rest-api#sample-scripts)
 are included to get you started.
 
 ## Drive it from a coding agent
 
-Producer Pal ships a portable [Agent Skill](/guide/skills) — the `SKILL.md`
-convention shared by Claude Code, Codex CLI, and Gemini CLI. Drop the folder
-into your agent's skills directory and it can control Live through the REST API,
-no MCP client needed.
+Producer Pal ships a portable [Agent Skill](/guide/skills), built on the
+`SKILL.md` convention shared by Claude Code, Codex CLI, and Gemini CLI. Drop the
+folder into your agent's skills directory and it can control Live through the
+REST API, no MCP client needed.
 
 A coding agent can write and run code against the API, iterate on a generative
 script while you listen, and change device settings mid-session:
@@ -63,12 +61,12 @@ those by changing settings on the device and starting a new conversation.
 
 Two [companion skills](/guide/skills#companion-skills) build on that connection.
 **`ableton-audio-generator`** synthesizes audio from scratch with plain Node.js
-DSP — drum kits, Simpler samples, wavetables, reverb impulse responses, drones —
+DSP (drum kits, Simpler samples, wavetables, reverb impulse responses, drones)
 and places it in Live. **`ableton-analyze-audio`** goes the other way, in two
 halves that also work on their own: render the mix, a single track, or one
-Session clip to a file (**macOS only** — Live exposes no render API, so this
-drives the Export dialog with AppleScript), then optionally hand that file to
-Google's Gemini for feedback on how it actually sounds (any platform, needs a
+Session clip to a file (**macOS only**, because Live exposes no render API, so
+this drives the Export dialog with AppleScript), then optionally hand that file
+to Google's Gemini for feedback on how it actually sounds (any platform, needs a
 `GEMINI_KEY`; it's one small script, so pointing it at a different audio-capable
 API is a short edit).
 
@@ -85,19 +83,19 @@ Shape how the AI uses the tools with text, not code. It all lives in
 `~/.producer-pal/` as plain Markdown you can edit, back up, and share, and you
 can edit it in the [context editor](/guide/context#the-context-editor).
 
-- **[Skills](/guide/customizing-skills)** — the instructions the AI gets when it
+- **[Skills](/guide/customizing-skills)**: the instructions the AI gets when it
   connects. Override any fragment with your own text, or delete the parts you
   don't use so you stop paying for them every conversation. A fragment can also
   `@include` your own Markdown files, to add guidance the built-ins don't cover.
-- **[Global context](/guide/context#global)** — what you want in every Live Set:
+- **[Global context](/guide/context#global)**: what you want in every Live Set,
   your genres, your habits, your rules.
-- **[Memory](/guide/context#memory)** — facts the AI records about you as you
+- **[Memory](/guide/context#memory)**: facts the AI records about you as you
   work, loaded on demand so a growing memory stays cheap.
-- **[Custom instructions](/guide/context#instructions)** — the system prompt for
+- **[Custom instructions](/guide/context#instructions)**: the system prompt for
   the built-in [Chat UI](/guide/chat-ui). (External clients bring their own.)
 
-**Who it's for:** anyone who can write clear instructions. If you can describe a
-workflow in plain language, you can change how the AI works.
+If you can describe a workflow in plain language, you can change how the AI
+works.
 
 ## Choosing the right extension point
 
@@ -117,15 +115,15 @@ workflow in plain language, you can change how the AI works.
 These aren't commitments, just what I'm thinking about after 2.1:
 
 - **Custom skills as first-class.** Today you extend the skills by overriding a
-  fragment and `@include`-ing your own files. Registering a standalone skill —
-  named, described, and loaded when it's relevant — is a natural next step.
+  fragment and `@include`-ing your own files. Registering a standalone skill
+  (named, described, and loaded when it's relevant) is a natural next step.
 - **Personas.** [Presets](/guide/chat-ui#presets) already bundle a provider,
   model, tool set, and notation. Carrying their own context and skills too would
   make them a full switch of the AI's setup for a focused task.
 - **Workflows.** Fixed tool-call sequences the AI runs but doesn't improvise.
   2.1 answered half the question with [subagents](/guide/chat-ui#subagents),
   which cover the delegation part; whether the fixed-sequence part is worth
-  building — or is just a command-oriented skill — is still undecided.
+  building, or is just a command-oriented skill, is still undecided.
 
 Have an opinion on any of these?
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or
@@ -138,35 +136,35 @@ don't break when the core doesn't move.
 
 Starting with 2.0, breaking changes need at least a minor version bump (2.1,
 3.0); patch releases stay backward-compatible. Core work continues on bug fixes,
-new Live API features as they land, and efficiency — cost matters whether you're
-on a local model, a subscription, or pay-as-you-go — but through small
+new Live API features as they land, and efficiency, since cost matters whether
+you're on a local model, a subscription, or pay-as-you-go. All through small
 improvements, not rewrites.
 
 ## Contributing back
 
 If you find tweaks to the default skills or tool and parameter descriptions that
-make the AI behave better, send a pull request — improvements to the built-ins
+make the AI behave better, send a pull request. Improvements to the built-ins
 reach everyone. A few areas I'm especially interested in:
 
-- **Skills and chat system instructions** — changes to the built-in Producer Pal
+- **Skills and chat system instructions**: changes to the built-in Producer Pal
   Skills or the Chat UI system instructions, especially ones backed by
   experiments that show better behavior.
-- **Coding-agent skills** — more [Agent Skill](/guide/skills) examples for other
+- **Coding-agent skills**: more [Agent Skill](/guide/skills) examples for other
   workflows and agents. I'm happy to feature good ones on this site.
-- **MIDI notation and transforms** — experiments with other notation systems,
-  and additions to the [transforms](/features/midi-notation#transforms) syntax.
-  Ask first so we can agree on the grammar direction.
+- **MIDI notation and transforms**: experiments with other notation systems, and
+  additions to the [transforms](/features/midi-notation#transforms) syntax. Ask
+  first so we can agree on the grammar direction.
 
 Changes like these land best with
 [evals](https://github.com/adamjmurray/producer-pal/blob/main/evals/README.md)
-that show they help — ideally on both large and small models, since a prompt
+that show they help, ideally on both large and small models, since a prompt
 tweak that helps a big model can hurt a small local one.
 
 The toolset itself has stabilized, so changing a tool or adding one takes some
 convincing. Ask first. The
 [contributing guide](https://github.com/adamjmurray/producer-pal/blob/main/CONTRIBUTING.md)
-covers the strict code-quality checks — they're there to fight AI slop, not to
-gatekeep — and how to work with them.
+covers the strict code-quality checks (they're there to fight AI slop, not to
+gatekeep) and how to work with them.
 
 Questions, or an extension to show off?
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or

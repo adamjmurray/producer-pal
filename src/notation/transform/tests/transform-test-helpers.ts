@@ -3,10 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { expect } from "vitest";
+import { expect, type MockInstance, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { createTestNotes } from "./evaluator/transform-evaluator-test-helpers.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  createTestNote,
+  createTestNotes,
+} from "./evaluator/transform-evaluator-test-helpers.ts";
 
 /**
  * Builds notes from the given overrides, runs a transforms string over them in
@@ -49,4 +53,35 @@ export function expectNotePieces(
       expect.objectContaining({ start_time, duration }),
     ),
   );
+}
+
+/**
+ * Silence console.warn and build the notes a warn-and-skip test runs against.
+ * Restore the spy when the test is done.
+ *
+ * @param noteOverrides - Per-note property overrides for the input notes
+ * @returns The warn spy and the notes
+ */
+export function warnSpyWithNotes(noteOverrides: Partial<NoteEvent>[]): {
+  warn: MockInstance;
+  notes: NoteEvent[];
+} {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  return { warn, notes: createTestNotes(noteOverrides) };
+}
+
+/**
+ * The single-note form of {@link warnSpyWithNotes}.
+ *
+ * @param overrides - Property overrides for the one input note
+ * @returns The warn spy and a one-note list
+ */
+export function warnSpyWithNote(overrides: Partial<NoteEvent> = {}): {
+  warn: MockInstance;
+  notes: NoteEvent[];
+} {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  return { warn, notes: createTestNote(overrides) };
 }

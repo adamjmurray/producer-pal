@@ -189,7 +189,9 @@ export function makeMarkdownCollectionStore<
   const resolveFile = (slug: string): string => {
     const canonical = filenameFor(slug);
 
-    if (readConfigMarkdown(canonical).trim() !== "") return canonical;
+    if (readConfigMarkdown(canonical).trim() !== "") {
+      return canonical;
+    }
 
     const match = listConfigMarkdownFiles(config.subdir).find(
       (file) =>
@@ -203,11 +205,15 @@ export function makeMarkdownCollectionStore<
   const read = (name: string): Entry | null => {
     const slug = slugifyCollectionName(name);
 
-    if (!slug || isReservedSlug(slug)) return null;
+    if (!slug || isReservedSlug(slug)) {
+      return null;
+    }
 
     const raw = readConfigMarkdown(resolveFile(slug));
 
-    if (!raw.trim()) return null;
+    if (!raw.trim()) {
+      return null;
+    }
 
     return config.toEntry(slug, raw);
   };
@@ -215,7 +221,9 @@ export function makeMarkdownCollectionStore<
   const exists = (name: string): boolean => {
     const slug = slugifyCollectionName(name);
 
-    if (!slug || isReservedSlug(slug)) return false;
+    if (!slug || isReservedSlug(slug)) {
+      return false;
+    }
 
     return readConfigMarkdown(resolveFile(slug)).trim() !== "";
   };
@@ -233,11 +241,16 @@ export function makeMarkdownCollectionStore<
     const entries: Entry[] = [];
 
     for (const file of listConfigMarkdownFiles(config.subdir)) {
-      if (file.toLowerCase() === config.indexFilename.toLowerCase()) continue;
+      if (file.toLowerCase() === config.indexFilename.toLowerCase()) {
+        continue;
+      }
 
       const slug = slugifyCollectionName(file.replace(/\.md$/, ""));
 
-      if (seen.has(slug)) continue;
+      if (seen.has(slug)) {
+        continue;
+      }
+
       seen.add(slug);
 
       entries.push(config.toEntry(slug, readConfigMarkdown(resolveFile(slug))));
@@ -272,7 +285,9 @@ export function makeMarkdownCollectionStore<
   const forget = (name: string): boolean => {
     const slug = slugifyCollectionName(name);
 
-    if (!slug || isReservedSlug(slug)) return false;
+    if (!slug || isReservedSlug(slug)) {
+      return false;
+    }
 
     const file = resolveFile(slug);
     const existed = readConfigMarkdown(file).trim() !== "";
@@ -360,7 +375,9 @@ function makeCollectionWriteOps<
   ): Entry => {
     const body = input.body.trim();
 
-    if (!body) throw new Error(`${config.noun} body must not be empty`);
+    if (!body) {
+      throw new Error(`${config.noun} body must not be empty`);
+    }
 
     const description = input.description.trim().replaceAll(/\s+/g, " ");
 
@@ -422,7 +439,9 @@ function makeCollectionWriteOps<
 
     const entry = validateAndWrite(newSlug, input, existing);
 
-    if (newSlug !== oldSlug) deleteConfigMarkdown(resolveFile(oldSlug));
+    if (newSlug !== oldSlug) {
+      deleteConfigMarkdown(resolveFile(oldSlug));
+    }
 
     regenerateIndex();
 

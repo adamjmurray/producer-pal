@@ -6,7 +6,8 @@
  * @vitest-environment happy-dom
  * @returns {any} - Hook return value
  */
-import { renderHook, act, waitFor } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTheme } from "./use-theme";
 
@@ -58,7 +59,7 @@ describe("useTheme", () => {
       result.current.setTheme("dark");
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(document.documentElement.classList.contains("dark")).toBe(true);
     });
   });
@@ -71,7 +72,7 @@ describe("useTheme", () => {
       result.current.setTheme("light");
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
   });
@@ -88,7 +89,7 @@ describe("useTheme", () => {
 
       await act(() => result.current.setTheme("system"));
 
-      await waitFor(() => {
+      await waitForHookState(() => {
         expect(document.documentElement.classList.contains("dark")).toBe(
           mode === "dark",
         );
@@ -100,10 +101,14 @@ describe("useTheme", () => {
     const { result } = renderHook(() => useTheme());
 
     await act(() => result.current.setTheme("dark"));
-    await waitFor(() => expect(localStorage.getItem("theme")).toBe("dark"));
+    await waitForHookState(() =>
+      expect(localStorage.getItem("theme")).toBe("dark"),
+    );
 
     await act(() => result.current.setTheme("light"));
-    await waitFor(() => expect(localStorage.getItem("theme")).toBe("light"));
+    await waitForHookState(() =>
+      expect(localStorage.getItem("theme")).toBe("light"),
+    );
   });
 
   it("adds event listener for system theme changes", () => {

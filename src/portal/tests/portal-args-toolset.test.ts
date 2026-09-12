@@ -11,8 +11,6 @@ vi.mock(import("../file-logger.ts"), () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-const GATE_ON = { ALLOW_CONFIGURATION_OVERRIDES: "true" };
-
 /**
  * Parse and return just the withheld tools.
  * @param args - CLI arguments
@@ -150,16 +148,8 @@ describe("--tools", () => {
 });
 
 describe("TOOLS / DISABLE_TOOLS env vars", () => {
-  it("ignores them when the override gate is off", () => {
-    expect(
-      disabledFor([], { TOOLS: "clip", DISABLE_TOOLS: "library" }),
-    ).toBeUndefined();
-  });
-
-  it("applies them when the gate is on", () => {
-    expect(
-      disabledFor([], { ...GATE_ON, DISABLE_TOOLS: "device" }),
-    ).toStrictEqual([
+  it("applies them", () => {
+    expect(disabledFor([], { DISABLE_TOOLS: "device" })).toStrictEqual([
       "ppal-read-device",
       "ppal-create-device",
       "ppal-update-device",
@@ -169,14 +159,13 @@ describe("TOOLS / DISABLE_TOOLS env vars", () => {
   it("prefers the flags over the env vars", () => {
     expect(
       disabledFor(["--disable-tools", "library"], {
-        ...GATE_ON,
         DISABLE_TOOLS: "device",
       }),
     ).toStrictEqual(["ppal-library"]);
   });
 
   it("treats a blank TOOLS as no override, like the extension's default", () => {
-    expect(disabledFor([], { ...GATE_ON, TOOLS: "" })).toBeUndefined();
+    expect(disabledFor([], { TOOLS: "" })).toBeUndefined();
   });
 });
 

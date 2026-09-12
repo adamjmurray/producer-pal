@@ -26,14 +26,19 @@ import {
   setupSessionMocks,
 } from "../create-clip-test-helpers.ts";
 
+/** The floor every case here needs: a 4/4 Live Set and an empty track 0. */
+function registerLiveSetAndTrack(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+  registerMockObject("track-0", { path: livePath.track(0) });
+}
+
 describe("createClip - audio clips", () => {
   describe("validation", () => {
     it("should throw error when both sampleFile and notes are provided", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerLiveSetAndTrack();
       registerMockObject("clip-slot-0-0", {
         path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
@@ -46,7 +51,7 @@ describe("createClip - audio clips", () => {
           notes: "C3 1|1",
         }),
       ).rejects.toThrow(
-        "createClip failed: cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
+        "cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
       );
     });
   });
@@ -157,7 +162,10 @@ describe("createClip - audio clips", () => {
         },
       });
 
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        properties: { has_midi_input: 0 },
+      });
 
       const clipSlot = registerMockObject("clip-slot-0-1", {
         path: livePath.track(0).clipSlot(1),
@@ -188,11 +196,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should emit warning and return empty array when scene index exceeds maximum", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerLiveSetAndTrack();
 
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
@@ -237,8 +241,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
-        path: "t0",
-        arrangementStart: "1|1",
+        path: "t0[1|1]",
         length: "2bar",
         warping: true,
       });
@@ -260,8 +263,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
-        path: "t0",
-        arrangementStart: "5|1",
+        path: "t0[5|1]",
         length: "4bar",
         warping: true,
       });
@@ -297,22 +299,19 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "arrangement_audio_clip_0",
-          path: "t0",
-          arrangementStart: "1|1",
+          path: "t0[1|1]",
           length: "1bar",
           warping: true,
         },
         {
           id: "arrangement_audio_clip_1",
-          path: "t0",
-          arrangementStart: "2|1",
+          path: "t0[2|1]",
           length: "1bar",
           warping: true,
         },
         {
           id: "arrangement_audio_clip_2",
-          path: "t0",
-          arrangementStart: "3|1",
+          path: "t0[3|1]",
           length: "1bar",
           warping: true,
         },
@@ -320,11 +319,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should emit warning and return empty array when arrangement position exceeds maximum", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
+      registerLiveSetAndTrack();
 
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
       // Runtime errors during clip creation are now warnings, not fatal errors
@@ -352,7 +347,7 @@ describe("createClip - audio clips", () => {
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).rejects.toThrow("createClip failed: track 99 does not exist");
+      ).rejects.toThrow("track 99 does not exist");
     });
 
     it("should emit warning and return empty array when audio clip creation fails", async () => {
@@ -515,16 +510,24 @@ describe("createAudioArrangementClip (unit)", () => {
     expect(result.arrangementStartBeats).toBe(MAX_ARRANGEMENT_POSITION_BEATS);
   });
 
-  it("throws when the created audio arrangement clip does not exist", () => {
+  it.each([
+    ["Live creates nothing", ["id", "0"]], // "no object" ref → exists() false
+    // A declined create on a MIDI track hands back another object — the Live
+    // Set (id 1) — which exists, so existence alone would report success.
+    [
+      "create_audio_clip answers with something that is not a clip",
+      ["id", "live-set"],
+    ],
+  ])("throws when %s", (_what, createResult) => {
+    registerMockObject("live-set", { path: livePath.liveSet });
     registerMockObject("track-0", {
       path: livePath.track(0),
-      methods: {
-        create_audio_clip: () => ["id", "0"], // "no object" ref → exists() false
-      },
+      properties: { has_midi_input: 0 },
+      methods: { create_audio_clip: () => createResult },
     });
 
     expect(() => createAudioArrangementClip(0, 0, "/samples/loop.wav")).toThrow(
-      "failed to create audio Arrangement clip",
+      "Live created no clip at t0",
     );
   });
 });

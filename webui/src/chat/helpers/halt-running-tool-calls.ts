@@ -22,7 +22,9 @@ import { type UIMessage, type UIPart } from "#webui/types/messages";
  * @returns The transcript with running tool calls marked as stopped
  */
 export function haltRunningToolCalls(messages: UIMessage[]): UIMessage[] {
-  if (!messages.some(hasRunningToolCall)) return messages;
+  if (!messages.some(hasRunningToolCall)) {
+    return messages;
+  }
 
   return messages.map((message) =>
     hasRunningToolCall(message)
@@ -50,7 +52,9 @@ function hasRunningToolCall(message: UIMessage): boolean {
  * @returns The part, halted if it was a running tool call
  */
 function haltPart(part: UIPart): UIPart {
-  if (part.type !== "tool" || part.result != null) return part;
+  if (part.type !== "tool" || part.result != null) {
+    return part;
+  }
 
   return { ...part, result: JSON.stringify(CANCELED_TOOL_RESULT_TEXT) };
 }

@@ -8,25 +8,17 @@
  */
 import { act, fireEvent, render } from "@testing-library/preact";
 import { SETTINGS_ANIMATION_MS } from "#webui/hooks/settings/use-settings-close";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import "./App-mocks-test-helpers";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { setStubLeaveGuard } from "./App-context-mocks";
-import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
-import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
+import { installAppTestSetup, mockSettingsHook } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
 describe("App", () => {
-  // SettingsScreen's useGlobalSettings GETs /settings on mount.
-  installJsonFetchMock({ autoUpdateCheck: true });
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setupDefaultMocks();
-    setStubLeaveGuard(null);
-  });
+  installAppTestSetup();
 
   describe("context overlay", () => {
     // contextOpen is local component state (intentionally not persisted), so
@@ -38,7 +30,9 @@ describe("App", () => {
     const openContext = (container: ParentNode) => {
       const btn = container.querySelector('button[aria-label="Context"]');
 
-      if (btn) fireEvent.click(btn);
+      if (btn) {
+        fireEvent.click(btn);
+      }
     };
 
     /**
@@ -130,7 +124,11 @@ describe("App", () => {
       );
 
       expect(editBtn).toBeDefined();
-      if (editBtn) fireEvent.click(editBtn);
+
+      if (editBtn) {
+        fireEvent.click(editBtn);
+      }
+
       // Settings runs its close animation first, then Context opens.
       await act(() => {
         vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
@@ -146,7 +144,9 @@ describe("App", () => {
           'button[aria-label="Close context editor"]',
         );
 
-        if (close) fireEvent.click(close);
+        if (close) {
+          fireEvent.click(close);
+        }
       });
 
       expect(contextStub()).toBe(null);
@@ -172,7 +172,9 @@ describe("App", () => {
       await openContextThen(() => {
         const inner = contextStub();
 
-        if (inner) fireEvent.click(inner);
+        if (inner) {
+          fireEvent.click(inner);
+        }
       });
 
       // Backdrop-only dismissal: a click on content shouldn't fire close.

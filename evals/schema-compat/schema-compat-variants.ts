@@ -197,6 +197,37 @@ export const VARIANTS: Variant[] = [
     check: (i) => isParamMap(i.params, ["Frequency", "Resonance", "Drive"]),
   },
   {
+    id: "unset-optionals",
+    toolName: "update_song",
+    tests: 'optional params left unset (do they arrive as "" or null?)',
+    schema: {
+      type: "object",
+      properties: {
+        tempo: { type: "number", description: "beats per minute" },
+        timeSignature: { type: "string", description: 'e.g. "4/4"' },
+        scaleRoot: {
+          type: "string",
+          enum: ["C", "D", "E", "F", "G", "A", "B"],
+          description: "root note of the song scale",
+        },
+        scaleEnabled: {
+          type: "boolean",
+          description: "whether the song scale is on",
+        },
+        loopStart: { type: "number", description: "bar the loop starts on" },
+      },
+    },
+    prompt: "Set the song tempo to 120 using update_song. Change nothing else.",
+    // ADR-0029 assumes clients fill a param they have no value for with null
+    // or a blank string; ADR-0035's rule 5 would turn the blank into an error.
+    // Pass only when nothing came through empty. The details dump shows which
+    // unasked-for params were filled and with what.
+    check: (i) =>
+      !Object.values(i).some(
+        (v) => v === null || (isStr(v) && v.trim() === ""),
+      ),
+  },
+  {
     id: "live-api-value-union",
     toolName: "set_value",
     tests: "anyOf[string,number,boolean,array<number>] (== live-api 'value')",

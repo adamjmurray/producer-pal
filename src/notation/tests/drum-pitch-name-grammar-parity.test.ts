@@ -9,10 +9,8 @@
 //   stark-grammar.peggy   DrumPitchName = $([A-Ga-g] [#b]? "-"? [0-9]+)
 //   stark-interpreter.ts  /^([A-Ga-g])([#b]?)(-?\d+)$/
 //
-// drumHeaderPitch() resolves the header arithmetically rather than through
-// pitch.ts's exact table, so enharmonic spellings (Cb/E#/Fb/B#) work — and it
-// asserts the match instead of null-checking it, because the grammar is what
-// guarantees the shape. Nothing mechanical ties the two patterns together, so
+// drumHeaderPitch() asserts the match instead of null-checking it, because the
+// grammar is what guarantees the shape. Nothing mechanical ties the two patterns together, so
 // widening one alone (a double accidental, a Unicode ♯) turns a header the
 // grammar now accepts into a thrown `Bug:` at interpret time. This test is the
 // tie: every header below must be rejected by the grammar or accepted by BOTH.
@@ -38,7 +36,9 @@ function resolveHeader(header: string): number[] | null {
   } catch (error) {
     const message = errorMessage(error);
 
-    if (message.startsWith("Stark notation parse error:")) return null;
+    if (message.startsWith("Stark notation parse error:")) {
+      return null;
+    }
 
     throw new Error(
       `The grammar accepted drum header "${header}" but drumHeaderPitch's regex did not (${message}). ` +

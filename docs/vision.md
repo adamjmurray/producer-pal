@@ -1,7 +1,7 @@
 ---
 title: Vision
 description:
-  Why Producer Pal exists — a creative assistant that helps people make music
+  Why Producer Pal exists, and how a creative assistant helps people make music
   instead of making it for them, built around accessibility, freedom of choice,
   and open source.
 ---
@@ -17,17 +17,15 @@ the driver's seat.
 
 ## Empowering musicians
 
-Music production software is powerful, but it can be hard to learn and slow or
-tedious to operate. Producer Pal makes that power more accessible by helping
-beginners express ideas before mastering the software, and giving experienced
-producers faster ways to work.
+Music production software can do a lot, and it's hard to learn and tedious to
+operate. Producer Pal helps beginners express ideas before they've mastered the
+software, and gives experienced producers faster ways to work.
 
 Accessibility also means physical accessibility.
 [Voice control](/guide/chat-ui#voice-mode) lets musicians operate Live and make
 detailed changes without depending entirely on a mouse/trackpad and keyboard.
 
-Accessibility doesn't mean removing depth or making decisions for you. It means
-helping more people engage with that depth on their own terms.
+None of that means removing depth or making decisions for you.
 
 ## Freedom of choice
 
@@ -49,13 +47,13 @@ your workflow, and [how the assistant behaves](/guide/customizing-skills).
 
 Producer Pal is open source. Its values:
 
-- **Openness** — free to use, study, modify, and build upon
-- **Transparency** — no hidden behavior or misleading claims
-- **Interoperability** — works across models, providers, and tools
-- **User control** — your data, workflow, and creative decisions stay yours
-- **Extensibility** — [adaptable](/extending) to workflows its creator never
+- **Openness**: free to use, study, modify, and build upon
+- **Transparency**: no hidden behavior or misleading claims
+- **Interoperability**: works across models, providers, and tools
+- **User control**: your data, workflow, and creative decisions stay yours
+- **Extensibility**: [adaptable](/extending) to workflows its creator never
   anticipated
-- **Practical benefit** — judged by whether it genuinely helps, not by novelty
+- **Practical benefit**: judged by whether it genuinely helps, not by novelty
 
 ## Still evolving
 

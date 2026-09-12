@@ -99,7 +99,9 @@ describe("useApplyPreset", () => {
   it("leaves the toolset and notation untouched for a legacy preset", async () => {
     const setters = {} as ProviderStateSetters;
 
-    for (const p of ALL_PROVIDERS) setters[p] = vi.fn();
+    for (const p of ALL_PROVIDERS) {
+      setters[p] = vi.fn();
+    }
 
     const setEnabledTools = vi.fn();
     const setNotation = vi.fn();

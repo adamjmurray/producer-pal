@@ -74,7 +74,9 @@ export function getSchemaTag(schema: ZodType, key: symbol): unknown {
 export function carrySchemaTags<T extends ZodType>(from: ZodType, to: T): T {
   const tags = resolveTags(from);
 
-  if (tags != null) TAGS.set(to, new Map(tags));
+  if (tags != null) {
+    TAGS.set(to, new Map(tags));
+  }
 
   return to;
 }
@@ -103,9 +105,13 @@ function resolveTags(schema: ZodType): Map<symbol, unknown> | undefined {
   const source = derivedFrom(schema);
   const inherited = source == null ? undefined : resolveTags(source);
 
-  if (inherited == null) return own;
+  if (inherited == null) {
+    return own;
+  }
 
-  if (own == null) return inherited;
+  if (own == null) {
+    return inherited;
+  }
 
   return new Map([...inherited, ...own]);
 }

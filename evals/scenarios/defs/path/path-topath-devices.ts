@@ -113,6 +113,6 @@ export const pathToPathDeviceAndPad: EvalScenario = {
     }),
     assertPadCreated(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 90_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };

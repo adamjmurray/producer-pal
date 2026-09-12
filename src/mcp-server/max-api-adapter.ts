@@ -10,7 +10,7 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
-  MAX_ERROR_DELIMITER,
+  reassembleChunks,
   WARNING_PREFIX,
   type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
@@ -38,6 +38,12 @@ export interface McpResponse {
    * an ordinary tool error without string-matching the message.
    */
   errorCode?: McpErrorCode;
+  /**
+   * Warnings V8 raised while handling the request. Consumed and deleted in
+   * handleLiveApiResult, where they become WARNING: content items, so it never
+   * reaches the SDK.
+   */
+  warnings?: string[];
 }
 
 interface PendingRequest {
@@ -154,7 +160,7 @@ function callLiveApi(
 /**
  * Handle Live API result from Max
  *
- * @param args - Request ID followed by response parameters (chunks and errors)
+ * @param args - Request ID followed by the payload chunks and END_OF_CHUNKS
  */
 function handleLiveApiResult(...args: unknown[]): void {
   const [requestId, ...params] = args as [string, ...unknown[]];
@@ -171,60 +177,22 @@ function handleLiveApiResult(...args: unknown[]): void {
 
   if (resolve) {
     try {
-      // Find the delimiter
-      const delimiterIndex = params.indexOf(MAX_ERROR_DELIMITER);
+      const result = JSON.parse(reassembleChunks(params)) as McpResponse;
+      const warnings = result.warnings ?? [];
 
-      if (delimiterIndex === -1) {
-        throw new Error("Missing MAX_ERROR_DELIMITER in response");
-      }
-
-      // Split chunks and errors
-      const chunks = params.slice(0, delimiterIndex);
-      const maxErrors = params.slice(delimiterIndex + 1);
-
-      // Reassemble chunks
-      const resultJSON = chunks.join("");
-      const result = JSON.parse(resultJSON) as McpResponse;
+      delete result.warnings;
 
       const resultLength = result.content.reduce(
         (sum: number, { text }: { text: string }) => sum + text.length,
         0,
       );
-      let errorMessageLength = 0;
-
-      // Add any Max errors as warnings, collapsing repeats. A tool that loops
-      // over N clips re-runs the same interpretation N times, so one bad note
-      // relays N identical warnings; the copies cost the model context without
-      // telling it anything the count doesn't.
-      const warningCounts = new Map<string, number>();
-
-      for (const err of maxErrors) {
-        let msg = String(err);
-
-        // Remove v8: prefix and trim whitespace
-        if (msg.startsWith("v8:")) {
-          msg = msg.slice(3).trim();
-        }
-
-        // Only add if there's actual content after cleaning
-        if (msg.length > 0) {
-          warningCounts.set(msg, (warningCounts.get(msg) ?? 0) + 1);
-        }
-      }
-
-      for (const [msg, count] of warningCounts) {
-        const repeats = count > 1 ? ` (x${count})` : "";
-        const errorText = `${WARNING_PREFIX}${msg}${repeats}`;
-
-        result.content.push({ type: "text", text: errorText });
-        errorMessageLength += errorText.length;
-      }
+      const warningTextLength = appendWarnings(result, warnings);
 
       console.info(
         `Tool call result metrics: ${JSON.stringify({
           resultLength,
-          errorCount: maxErrors.length,
-          errorMessageLength,
+          warningCount: warnings.length,
+          warningTextLength,
         })}`,
       );
 
@@ -239,6 +207,38 @@ function handleLiveApiResult(...args: unknown[]): void {
   } else {
     console.info(`Received response for unknown request ID: ${requestId}`);
   }
+}
+
+/**
+ * Push warnings onto the response as WARNING: content items, collapsing
+ * repeats. A tool that loops over N clips re-runs the same interpretation N
+ * times, so one bad note relays N identical warnings; the copies cost the model
+ * context without telling it anything the count doesn't.
+ *
+ * @param result - Response to append to, mutated in place
+ * @param warnings - Warning messages in the order V8 raised them
+ * @returns Total length of the appended text, for the metrics log
+ */
+function appendWarnings(result: McpResponse, warnings: string[]): number {
+  const counts = new Map<string, number>();
+
+  for (const warning of warnings) {
+    if (warning.length > 0) {
+      counts.set(warning, (counts.get(warning) ?? 0) + 1);
+    }
+  }
+
+  let textLength = 0;
+
+  for (const [msg, count] of counts) {
+    const repeats = count > 1 ? ` (x${count})` : "";
+    const text = `${WARNING_PREFIX}${msg}${repeats}`;
+
+    result.content.push({ type: "text", text });
+    textLength += text.length;
+  }
+
+  return textLength;
 }
 
 Max.addHandler("mcp_response", handleLiveApiResult);

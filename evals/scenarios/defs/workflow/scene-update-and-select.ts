@@ -12,11 +12,9 @@
  */
 
 import { argText } from "../arg-text.ts";
+import { colorReads } from "../color-reads.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import {
-  assertAddressedById,
-  assertNamesScene,
-} from "../path/path-scenario-helpers.ts";
+import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
 
 const TOOL_UPDATE_SCENE = "ppal-update-scene";
 const TOOL_SELECT = "ppal-select";
@@ -25,30 +23,6 @@ const TOOL_SELECT = "ppal-select";
 const SCENE_INDEX = 1;
 
 const SCENE_NAME = "Chorus";
-
-/**
- * Whether a "#RRGGBB" reads as red: the red channel dominates and is bright
- * enough to be a red rather than a dark neutral. Live's palette has several
- * reds, so an exact value would grade the swatch the model happened to pick.
- *
- * @param color - Scene color as "#RRGGBB", or null when unset
- * @returns True when the color is red-dominant
- */
-function isRed(color: unknown): boolean {
-  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(
-    argText(color),
-  );
-
-  if (!match) return false;
-
-  const [r, g, b] = match.slice(1).map((hex) => Number.parseInt(hex, 16)) as [
-    number,
-    number,
-    number,
-  ];
-
-  return r >= 0x80 && r > g * 1.5 && r > b * 1.5;
-}
 
 /**
  * The scene carries the new name and a red color.
@@ -62,7 +36,7 @@ function assertSceneUpdated(): EvalAssertion {
     expect: (result) => {
       const scene = result as { name?: unknown; color?: unknown };
 
-      return scene.name === SCENE_NAME && isRed(scene.color);
+      return scene.name === SCENE_NAME && colorReads(scene.color, "red");
     },
     explain: (result) => {
       const scene = result as { name?: unknown; color?: unknown };
@@ -83,8 +57,8 @@ function assertSceneSelected(): EvalAssertion {
     tool: TOOL_SELECT,
     args: {},
     expect: (result) =>
-      (result as { selectedScene?: { sceneIndex?: number } }).selectedScene
-        ?.sceneIndex === SCENE_INDEX,
+      (result as { selectedScene?: { path?: string } }).selectedScene?.path ===
+      `s${SCENE_INDEX}`,
     explain: (result) =>
       `expected scene ${SCENE_INDEX} selected, got ${JSON.stringify(
         (result as { selectedScene?: unknown }).selectedScene ?? null,
@@ -110,13 +84,13 @@ export const sceneUpdateAndSelect: EvalScenario = {
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     { type: "tool_called", tool: TOOL_UPDATE_SCENE, turn: 1 },
-    assertAddressedById({ turn: 1, tool: TOOL_UPDATE_SCENE }),
+    assertNamesTarget({ turn: 1, tool: TOOL_UPDATE_SCENE }),
     assertSceneUpdated(),
 
     { type: "tool_called", tool: TOOL_SELECT, turn: 2 },
-    assertNamesScene({ turn: 2, tool: TOOL_SELECT }),
+    assertNamesTarget({ turn: 2, tool: TOOL_SELECT }),
     assertSceneSelected(),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

@@ -13,9 +13,8 @@
  * catalogs — MCP and REST each build their own, and REST once served a param
  * MCP was hiding.
  *
- * The other half — that the hidden names still work — is covered where the
- * clips are: ppal-duplicate and ppal-update-clip each pin a toSlot call, and
- * ppal-create-clip pins the trackIndex/sceneIndex fallback.
+ * The other half — that the hidden names still work — is
+ * hidden-params-runtime.test.ts, which calls every one of them for real.
  *
  * Run with: npm run e2e:mcp -- deprecated-params
  */
@@ -93,15 +92,41 @@ describe("hidden params", () => {
     expect(select).toContain("path");
     expect(select).not.toContain("slot");
     expect(select).not.toContain("devicePath");
-    // select still names a track and a scene directly — those are real targets,
-    // not clip positions, so they stay published.
-    expect(select).toContain("trackIndex");
-    expect(select).toContain("sceneIndex");
+    expect(select).not.toContain("trackIndex");
+    expect(select).not.toContain("trackType");
+    expect(select).not.toContain("sceneIndex");
+
+    const readTrack = publishedParams("ppal-read-track");
+
+    expect(readTrack).toContain("path");
+    expect(readTrack).not.toContain("trackIndex");
+    expect(readTrack).not.toContain("trackType");
+
+    const readScene = publishedParams("ppal-read-scene");
+
+    expect(readScene).toContain("path");
+    expect(readScene).not.toContain("sceneIndex");
 
     const playback = publishedParams("ppal-playback");
 
     expect(playback).toContain("path");
     expect(playback).not.toContain("slots");
+  });
+
+  // A path's [song position] is the published spelling now, so arrangementStart
+  // is a second one for the same thing and no model should be shown it.
+  it("hides arrangementStart on the three tools that place clips", () => {
+    for (const tool of [
+      "ppal-create-clip",
+      "ppal-update-clip",
+      "ppal-duplicate",
+    ]) {
+      expect(publishedParams(tool)).not.toContain("arrangementStart");
+    }
+
+    expect(publishedParams("ppal-create-clip")).toContain("path");
+    expect(publishedParams("ppal-update-clip")).toContain("toPath");
+    expect(publishedParams("ppal-duplicate")).toContain("toPath");
   });
 
   // GET /api/tools builds its own catalog, and it is how a REST agent discovers

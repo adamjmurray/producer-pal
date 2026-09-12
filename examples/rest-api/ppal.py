@@ -16,7 +16,7 @@ Options:
 Examples:
   python ppal.py --list-tools --notation midi-json
   python ppal.py ppal-read-live-set
-  python ppal.py ppal-read-track '{"trackIndex": 0}'
+  python ppal.py ppal-read-track '{"path": "t0"}'
   python ppal.py --list-tools | jq -r '.tools[].name'
   python ppal.py ppal-read-live-set | jq .result.tempo
   python ppal.py ppal-connect --disable-tools ppal-library,ppal-create-device
@@ -29,8 +29,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-# The three per-request headers. Unlike POST /config these change nothing on the
-# device: each applies to the one request that carries it, so it can't move the
+# Three of the per-request headers. Unlike POST /config these change nothing on
+# the device: each applies to the one request that carries it, so it can't move the
 # chat UI or another client off its own notation or toolset. Absent ⇒ that client
 # keeps the device's global setting.
 DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools"
@@ -130,7 +130,7 @@ def main():
             "Examples:\n"
             "  python ppal.py --list-tools --notation midi-json\n"
             "  python ppal.py ppal-read-live-set\n"
-            '  python ppal.py ppal-read-track \'{"trackIndex": 0}\'\n'
+            '  python ppal.py ppal-read-track \'{"path": "t0"}\'\n'
             "\n"
             "--notation, --disable-tools, and --small-model-mode apply to the ONE\n"
             "request that carries them. Pass them every time, --list-tools included."

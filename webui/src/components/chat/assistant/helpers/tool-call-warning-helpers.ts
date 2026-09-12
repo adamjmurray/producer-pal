@@ -18,7 +18,9 @@ const WARNING_PREFIX = /^warning:\s*/i;
  * @returns Array of cleaned warning messages (prefix stripped), empty if none
  */
 export function extractWarnings(result: string): string[] {
-  if (!result.startsWith("[")) return [];
+  if (!result.startsWith("[")) {
+    return [];
+  }
 
   try {
     const arr = JSON.parse(result) as Array<{ type: string; text?: string }>;

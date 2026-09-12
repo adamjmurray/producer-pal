@@ -102,7 +102,9 @@ export function useInitializeChat<
   const applyPendingLock = useCallback(() => {
     const pending = pendingLockRef.current;
 
-    if (!pending) return;
+    if (!pending) {
+      return;
+    }
 
     pendingLockRef.current = null;
     lockSettings(pending);
@@ -146,7 +148,9 @@ export function useInitializeChat<
       // turn may already be streaming on the client below. Disposing it would
       // close that stream's MCP connection mid-flight, so a turn that is no
       // longer live bails instead.
-      if (stillLive && !stillLive()) return;
+      if (stillLive && !stillLive()) {
+        return;
+      }
 
       // Dispose any prior client before replacing it — initializeChat is the
       // fork/retry re-init path, so a live client (with an open MCP connection)
@@ -171,7 +175,9 @@ export function useInitializeChat<
       // Stopped or superseded while connecting: applying the lock now would
       // overwrite the live turn's with a snapshot of a turn that never streamed.
       // Leave it published instead — whoever streams on this client applies it.
-      if (stillLive && !stillLive()) return;
+      if (stillLive && !stillLive()) {
+        return;
+      }
 
       applyPendingLock();
     },

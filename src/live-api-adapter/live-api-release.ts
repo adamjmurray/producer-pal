@@ -55,6 +55,15 @@
  * to work as well, and closing that gap took the same read-track loop from 34.8
  * to 11.6 ms/call.
  *
+ * All of that is about latency. Memory is a separate story: Live's memory grows
+ * about 3.2 KB per object resolved and never saturates, however many times the
+ * same path is revisited, with the pool serving every call and nothing being
+ * constructed. Holding objects across requests instead cuts that to 0.149 MB
+ * per full read from 0.39 — and buys it back as armed listeners, the cost this
+ * file exists to remove. Taking the leak is the deliberate trade: it needs tens
+ * of thousands of requests to matter, where the listeners slow Live down while
+ * you work. See dev/LiveAPI-Performance.md.
+ *
  * Pooling does not make the cost vanish, and measuring it as though it should
  * will read as failure. Visiting a path registers something too, so latency
  * still rises while a session reaches new corners of the Live Set — that 54 to
@@ -141,9 +150,46 @@ export function memoizeObject(target: string, api: LiveAPI): void {
   memoizedObjects.set(target, api);
 }
 
-/** Forget every memoized object, so the next lookup of each resolves afresh. */
+/**
+ * Values a request read out of the Live Set once and may reuse, keyed by what
+ * they describe. A rack's return chain names are settled for one request and
+ * stale for the next, so this is emptied at every scope boundary — not only
+ * when the last one closes, the way the object memo above is.
+ */
+const memoizedValues = new Map<string, unknown>();
+
+/**
+ * Read a derived value once per request, computing it the first time.
+ *
+ * Only while one request is in flight. Unlike a memoized object, whose target
+ * never changes, these values describe things another request can change under
+ * them: rename a return chain and the names cached here are wrong. With
+ * requests overlapping there is no way to tell whose ask this is — LiveAPI has
+ * no request handle — so each one reads afresh instead.
+ * @param key - Names the value, including whatever it was derived from
+ * @param compute - Produces the value when this request hasn't asked yet
+ * @returns The value, computed now or on an earlier ask in this request
+ */
+export function requestMemo<T>(key: string, compute: () => T): T {
+  if (openScopes !== 1) {
+    return compute();
+  }
+
+  if (memoizedValues.has(key)) {
+    return memoizedValues.get(key) as T;
+  }
+
+  const value = compute();
+
+  memoizedValues.set(key, value);
+
+  return value;
+}
+
+/** Forget everything memoized, so the next lookup of each resolves afresh. */
 export function clearLiveApiMemo(): void {
   memoizedObjects.clear();
+  memoizedValues.clear();
 }
 
 /**
@@ -199,6 +245,10 @@ export function acquirePooledObject(): LiveAPI | undefined {
 /** Mark the start of a request that may build LiveAPI objects. */
 export function beginLiveApiScope(): void {
   openScopes++;
+  // The request starting here can change whatever an already-running one
+  // derived, and the values are not the earlier request's to keep once it is
+  // no longer alone. Objects stay: their targets don't move.
+  memoizedValues.clear();
 }
 
 /** Mark the end of a request, releasing every tracked object once none remain. */
@@ -206,9 +256,14 @@ export function endLiveApiScope(): void {
   // A stray end (an entry point that forgot its begin) closes nothing, so it
   // must not release either: with no scope open the objects it would free
   // belong to whatever request is actually running.
-  if (openScopes === 0) return;
+  if (openScopes === 0) {
+    return;
+  }
 
   openScopes--;
+  // Whatever the finishing request derived went with it, and a request left
+  // running must not pick it up.
+  memoizedValues.clear();
 
   if (openScopes === 0) {
     // Before the release, so a memo entry can never name an object whose path

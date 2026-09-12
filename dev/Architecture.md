@@ -111,11 +111,11 @@ Express routes on the MCP server mint/relay credentials server-side, both gated
 to local origins:
 
 - `POST /voice-token`
-  ([routes/voice-token-route.ts](../src/mcp-server/routes/voice-token-route.ts))
+  ([routes/voice/voice-token-route.ts](../src/mcp-server/routes/voice/voice-token-route.ts))
   forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
   server-to-server and returns only the short-lived `ek_...` ephemeral token.
 - `POST /gemini-voice-token`
-  ([routes/gemini-voice-token-route.ts](../src/mcp-server/routes/gemini-voice-token-route.ts))
+  ([routes/voice/gemini-voice-token-route.ts](../src/mcp-server/routes/voice/gemini-voice-token-route.ts))
   currently returns the Gemini key as-is (`ephemeral: false`) — Gemini Live
   accepts the API key directly from the browser — with a server-only upgrade
   path to v1alpha ephemeral tokens (the client already honors the `ephemeral`
@@ -395,18 +395,26 @@ See `dev/Chat-UI.md` for detailed architecture and development workflow.
 
 ## Message Protocol
 
-Communication between Node.js and V8:
+Communication between Node.js and V8. Max caps a single symbol at ~32,767
+characters, so the response JSON is split into chunks and terminated with
+`END_OF_CHUNKS` — the receiver joins everything before it, and a missing
+terminator is a loud wire-format error rather than a vague parse failure.
 
     ```js
     // Request from Node to V8
-    ["mcp_request", JSON.stringify({ requestId, tool, args })]
+    ["mcp_request", requestId, tool, argsJSON, contextJSON]
 
-    // Response from V8 to Node
-    ["mcp_response", JSON.stringify({ requestId, result })]
-
-    // Error from V8 to Node
-    ["mcp_response", JSON.stringify({ requestId, error })]
+    // Response from V8 to Node (errors are an isError result, same shape)
+    ["mcp_response", requestId, chunk1, ..., chunkN, END_OF_CHUNKS]
     ```
+
+The response object is an MCP `CallToolResult` plus two sidecars V8 sets and
+Node strips before the SDK sees them: `errorCode` (a structured error category)
+and `warnings` (the warnings that request raised, which `handleLiveApiResult`
+collapses and appends as `WARNING:` content items).
+
+`node_request` / `node_response`, the V8→Node RPC going the other way, uses the
+same chunking and terminator.
 
 ## Live API Interface
 

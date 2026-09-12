@@ -41,6 +41,8 @@ export interface TakeLaneTrackOptions {
   clipLength?: number;
   /** Make each lane's create_*_clip return a non-existent ref (id 0) */
   clipCreationFails?: boolean;
+  /** Live creates a real clip, then its add_new_notes throws — a post-creation failure. */
+  postCreateFails?: boolean;
   /** 0 makes it an audio track, which an audio source can be copied to */
   hasMidiInput?: number;
   /**
@@ -56,9 +58,9 @@ export interface TakeLaneTrackOptions {
  * `create_midi_clip` / `create_audio_clip` registers and returns a fresh
  * arrangement clip and grows the lane's `arrangement_clips` list.
  *
- * The track answers `create_midi_clip` too, landing on its MAIN lane the way
- * Live does even on a track that has take lanes — that's the call a promote
- * makes.
+ * The track answers `create_midi_clip` / `create_audio_clip` too, landing on its
+ * MAIN lane the way Live does even on a track that has take lanes — that's the
+ * call a promote makes.
  * @param options - Track index, initial lane count, and clip length
  * @returns The registered track mock object
  */
@@ -70,6 +72,7 @@ export function registerTakeLaneTrack(
     initialLanes = 0,
     clipLength = 4,
     clipCreationFails = false,
+    postCreateFails = false,
     hasMidiInput = 1,
     initialLaneClips = [],
   } = options;
@@ -100,6 +103,7 @@ export function registerTakeLaneTrack(
         livePath.track(trackIndex).takeLane(laneIndex).arrangementClip(index),
       clipLength,
       clipCreationFails,
+      postCreateFails,
     };
     const createClip = (
       kind: string,
@@ -139,6 +143,7 @@ export function registerTakeLaneTrack(
     pathFor: (index) => livePath.track(trackIndex).arrangementClip(index),
     clipLength,
     clipCreationFails,
+    postCreateFails,
   };
 
   return registerMockObject(`tl_track_${trackIndex}`, {
@@ -156,6 +161,8 @@ export function registerTakeLaneTrack(
       },
       create_midi_clip: (start, length) =>
         createOwnedClip(mainLane, "is_midi_clip", start, length),
+      create_audio_clip: (_file, start) =>
+        createOwnedClip(mainLane, "is_audio_clip", start),
     },
   });
 }
@@ -170,6 +177,7 @@ interface ClipOwner {
   pathFor: (index: number) => PathLike;
   clipLength: number;
   clipCreationFails: boolean;
+  postCreateFails: boolean;
 }
 
 /**
@@ -209,6 +217,13 @@ function createOwnedClip(
       start_time: start,
       end_time: start + length,
     },
+    ...(owner.postCreateFails && {
+      methods: {
+        add_new_notes: () => {
+          throw new Error("notes failed");
+        },
+      },
+    }),
   });
   owner.clips.push(clipId);
   owner.props.arrangement_clips = children(...owner.clips);
@@ -234,7 +249,9 @@ function seedLaneClips(
 ): void {
   const seeds = initialLaneClips[laneIndex];
 
-  if (seeds == null || seeds.length === 0) return;
+  if (seeds == null || seeds.length === 0) {
+    return;
+  }
 
   for (const { start, end } of seeds) {
     const clipId = `tl_seed_clip_${uid++}`;

@@ -12,7 +12,7 @@ import { TurnDetectionControls } from "#webui/components/settings/controls/TurnD
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 
 const serverVad: TurnDetectionSettings = {
   ...DEFAULT_TURN_DETECTION,

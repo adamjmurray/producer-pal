@@ -13,7 +13,11 @@
  */
 
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
-import { mcpResultText, mcpResultWarnings } from "../shared/mcp-result-text.ts";
+import {
+  mcpResultInjectedBlocks,
+  mcpResultText,
+  mcpResultWarnings,
+} from "../shared/mcp-result-text.ts";
 import { type ToolCall } from "../shared/types.ts";
 import { type ParsedAgentTurn } from "./agent-cli-transport.ts";
 
@@ -63,7 +67,9 @@ export function parseAgentCliStream(
   for (const line of stdout.split("\n")) {
     const event = parseJsonlLine(line);
 
-    if (event != null) options.handleEvent(event, state);
+    if (event != null) {
+      options.handleEvent(event, state);
+    }
   }
 
   if (state.error != null) {
@@ -89,7 +95,9 @@ export function parseJsonlLine(
 ): Record<string, unknown> | undefined {
   const trimmed = line.trim();
 
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
 
   try {
     return JSON.parse(trimmed) as Record<string, unknown>;
@@ -135,15 +143,33 @@ export function toToolArguments(value: unknown): Record<string, unknown> {
  * `WARNING:` blocks live in the content blocks after it, so they are collected
  * separately instead of being dropped along with them.
  *
+ * A whole `CallToolResult` also carries `isError`, which grading prefers over
+ * guessing from the result's shape. A bare content array (what Claude Code
+ * hands over) carries no flag, so none is recorded.
+ *
  * @param call - The call the result belongs to
  * @param value - Raw MCP result, its content array, or plain text
  */
 export function recordToolResult(call: ToolCall, value: unknown): void {
   call.result = stringifyToolResult(value);
 
+  const isError = (value as { isError?: unknown } | null | undefined)?.isError;
+
+  if (typeof isError === "boolean") {
+    call.isError = isError;
+  }
+
   const warnings = mcpResultWarnings(value);
 
-  if (warnings.length > 0) call.warnings = warnings;
+  if (warnings.length > 0) {
+    call.warnings = warnings;
+  }
+
+  const injected = mcpResultInjectedBlocks(value);
+
+  if (injected.length > 0) {
+    call.injectedBlocks = injected;
+  }
 }
 
 /**
@@ -156,7 +182,9 @@ export function recordToolResult(call: ToolCall, value: unknown): void {
  * @returns String result
  */
 export function stringifyToolResult(value: unknown): string {
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    return value;
+  }
 
   return mcpResultText(value) || JSON.stringify(value);
 }

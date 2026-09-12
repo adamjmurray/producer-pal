@@ -74,7 +74,9 @@ export function blockedAfterStream(
   error: unknown,
 ): { stream: AsyncIterable<Record<string, unknown>> } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
+    for (const p of parts) {
+      yield p;
+    }
 
     await gate;
 

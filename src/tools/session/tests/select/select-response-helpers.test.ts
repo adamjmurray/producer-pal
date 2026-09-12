@@ -55,8 +55,8 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "track_1",
+        path: "t0",
         type: "midi",
-        trackIndex: 0,
       });
     });
 
@@ -76,8 +76,8 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "track_2",
+        path: "t1",
         type: "audio",
-        trackIndex: 1,
       });
     });
 
@@ -97,8 +97,7 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "return_track_0",
-        type: "return",
-        trackIndex: 0,
+        path: "rt0",
       });
     });
 
@@ -116,9 +115,10 @@ describe("select-response-helpers", () => {
 
       const result = buildTrackResponseFromId("id master_track");
 
+      // No type: the path is what says this is the main track
       expect(result).toStrictEqual({
         id: "master_track",
-        type: "master",
+        path: "mt",
       });
     });
 
@@ -158,7 +158,7 @@ describe("select-response-helpers", () => {
 
       const result = buildSceneResponseFromId("id scene_0");
 
-      expect(result).toStrictEqual({ id: "scene_0", sceneIndex: 0 });
+      expect(result).toStrictEqual({ id: "scene_0", path: "s0" });
     });
 
     it("returns undefined for non-existent scene", () => {
@@ -212,8 +212,7 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "arr_clip_1",
-        path: "t0",
-        arrangementStart: "2|1",
+        path: "t0[2|1]",
       });
     });
 

@@ -100,7 +100,10 @@ export class GeminiMicCapture {
     this.node = new AudioWorkletNode(this.ctx, "pcm-recorder");
 
     this.node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
-      if (this.muted) return;
+      if (this.muted) {
+        return;
+      }
+
       options.onChunk(arrayBufferToBase64(event.data));
     };
 
@@ -129,7 +132,10 @@ export class GeminiMicCapture {
     }
 
     if (this.stream) {
-      for (const track of this.stream.getTracks()) track.stop();
+      for (const track of this.stream.getTracks()) {
+        track.stop();
+      }
+
       this.stream = null;
     }
 

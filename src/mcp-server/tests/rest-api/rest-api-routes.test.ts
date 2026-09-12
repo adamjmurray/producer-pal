@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
+import { MAX_TIMEOUT_MS, SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
+import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   lastMcpContext,
   mcpRequests,
@@ -13,6 +14,9 @@ import {
 } from "#src/test/mocks/mock-max.ts";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+
+// Sits under the OS temp dir, which differs per machine, so ask for it.
+const SILENCE_WAV_PATH = ensureSilenceWav();
 
 // Parsed body of a REST tool-call response. Every field is optional because
 // which ones appear depends on the route outcome and the ?format mode.
@@ -300,13 +304,92 @@ describe("REST API Routes", () => {
       });
       const body = (await response.json()) as ToolCallBody;
 
-      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toMatchObject({
+      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toStrictEqual({
+        count: 1,
+        id: "1",
+        type: "clip",
+        withoutClips: false,
+        withoutDevices: false,
         toSlot: "2/0",
       });
       expect(body.warnings?.join("\n")).toContain(
         'param "toSlot" is deprecated',
       );
+      // A hidden param is in the schema that validates, so it is expected here
+      // even though the catalog no longer lists it.
+      expect(body.warnings?.join("\n")).not.toContain("unexpected argument");
       expect(body.appended).toBeUndefined();
+    });
+
+    it("warns about an argument no param accepts", async () => {
+      // Zod strips it, so without this the call comes back as a clean success
+      // that changed nothing — indistinguishable from a real write. MCP has
+      // warned about this since it shipped; REST was silent.
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"3"}' }] });
+
+      const response = await callTool("ppal-update-track", {
+        path: "t1",
+        nmae: "Renamed",
+      });
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(response.status).toBe(200);
+      expect(body.warnings).toStrictEqual([
+        "ignored unexpected argument(s): nmae",
+      ]);
+    });
+
+    it("says nothing when every argument is known", async () => {
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"3"}' }] });
+
+      const response = await callTool("ppal-update-track", {
+        path: "t1",
+        name: "Renamed",
+      });
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(body.warnings).toBeUndefined();
+    });
+
+    it("does not call a small-model-filtered param unexpected", async () => {
+      // REST validates against the full schema on purpose, so a param that
+      // mode drops from the catalog is still accepted and still forwarded.
+      // Diffing against the filtered schema would call it unexpected.
+      setMcpResponse({ content: [{ type: "text", text: '{"id":"7"}' }] });
+
+      const smallModel = {
+        "Content-Type": "application/json",
+        [SMALL_MODEL_MODE_HEADER]: "true",
+      };
+      // Proves the mode is live for this request, so the assertion below is
+      // about the schema choice rather than a header that did nothing.
+      const catalog = await fetch(`${appState.baseUrl}/api/tools`, {
+        headers: smallModel,
+      });
+      const { tools } = await catalog.json();
+      const listed = tools.find(
+        (t: { name: string }) => t.name === "ppal-create-scene",
+      );
+
+      expect(listed.inputSchema.properties).not.toHaveProperty("tempo");
+
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/ppal-create-scene`,
+        {
+          method: "POST",
+          headers: smallModel,
+          body: JSON.stringify({ path: "s+", tempo: 100 }),
+        },
+      );
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toStrictEqual({
+        path: "s+",
+        tempo: 100,
+        capture: false,
+        count: 1,
+      });
+      expect(body.warnings).toBeUndefined();
     });
 
     it("says nothing about a deprecated param sent blank", async () => {
@@ -382,7 +465,12 @@ describe("REST API Routes", () => {
       await callTool("ppal-connect");
 
       expect(lastMcpContext()).not.toBeNull();
-      expect(lastMcpContext()).toMatchObject({ compactOutput: false });
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 45000,
+        compactOutput: false,
+      });
     });
 
     it("should parse the result as JSON when format is omitted (json default)", async () => {
@@ -408,7 +496,12 @@ describe("REST API Routes", () => {
       const response = await callToolWithFormat("ppal-connect", "json");
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ compactOutput: false });
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 45000,
+        compactOutput: false,
+      });
     });
 
     it("should return parsed object as result when format=json", async () => {
@@ -553,7 +646,12 @@ describe("REST API Routes", () => {
       const response = await callToolWithFormat("ppal-connect", "compact");
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ compactOutput: true });
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 45000,
+        compactOutput: true,
+      });
     });
 
     it("should return 400 for invalid format value", async () => {
@@ -579,7 +677,12 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ timeoutMs: 5000 });
+      expect(lastMcpContext()).toStrictEqual({
+        compactOutput: false,
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 5000,
+      });
     });
 
     it("should combine ?format and ?timeoutMs in the same call", async () => {
@@ -593,7 +696,9 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
         compactOutput: false,
         timeoutMs: 2500,
       });
@@ -622,7 +727,12 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ timeoutMs: MAX_TIMEOUT_MS });
+      expect(lastMcpContext()).toStrictEqual({
+        compactOutput: false,
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: MAX_TIMEOUT_MS,
+      });
     });
 
     it("should return 400 for timeoutMs one over the cap", async () => {

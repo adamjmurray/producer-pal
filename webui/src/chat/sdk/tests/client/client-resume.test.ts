@@ -23,6 +23,7 @@ import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   createConfig,
   mockStreamParts,
+  toolStepHistory,
 } from "#webui/chat/sdk/tests/client-test-helpers";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 
@@ -79,17 +80,7 @@ describe("resumeStream", () => {
     // The shape most rate limits here actually take: earlier tool steps
     // succeeded and a later step's request was refused. Ending on tool results
     // is already a valid continuation point.
-    const client = await resumeOver([
-      { role: "user", content: "add a bass" },
-      {
-        role: "assistant",
-        content: "Creating it.",
-        toolCalls: [{ id: "t1", name: "ppal-create-clip", args: {} }],
-        toolResults: [
-          { id: "t1", name: "ppal-create-clip", args: {}, result: "ok" },
-        ],
-      },
-    ]);
+    const client = await resumeOver(toolStepHistory("add a bass"));
 
     expect(client.chatHistory.map((m) => m.content)).toStrictEqual([
       "add a bass",

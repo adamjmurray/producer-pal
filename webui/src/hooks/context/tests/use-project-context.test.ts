@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, waitFor, act } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it, vi } from "vitest";
 import { useProjectContext } from "#webui/hooks/context/use-project-context";
 import {
@@ -53,8 +54,11 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
+    await waitForHookState(() => {
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
     });
 
     return result;
@@ -120,7 +124,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "# hi",
@@ -138,7 +142,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "error",
         message: "network down",
@@ -156,7 +160,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("error");
     });
   });
@@ -189,7 +193,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("ready");
     });
 
@@ -207,13 +211,23 @@ describe("useProjectContext", () => {
       await result.current.clear();
     });
 
-    expect(result.current.status).toMatchObject({ content: "" });
+    expect(result.current.status).toStrictEqual({ kind: "ready", content: "" });
     expect(fetchMock).toHaveBeenLastCalledWith(
       CONFIG_URL,
       expect.objectContaining({
         body: JSON.stringify({ projectContext: "" }),
       }),
     );
+  });
+
+  it("reads a save echo that omits projectContext as empty", async () => {
+    const result = await renderWithLoadedContent({});
+
+    await act(async () => {
+      await result.current.save("new");
+    });
+
+    expect(result.current.status).toStrictEqual({ kind: "ready", content: "" });
   });
 
   it("re-fetches on window focus so external writes surface", async () => {
@@ -225,8 +239,11 @@ describe("useProjectContext", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "new" });
+    await waitForHookState(() => {
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "new",
+      });
     });
   });
 
@@ -235,15 +252,21 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "v1" });
+    await waitForHookState(() => {
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "v1",
+      });
     });
 
     await act(async () => {
       await result.current.refresh();
     });
 
-    expect(result.current.status).toMatchObject({ content: "v2" });
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "v2",
+    });
   });
 
   it("keeps loaded content when a later refresh fails", async () => {
@@ -261,7 +284,7 @@ describe("useProjectContext", () => {
       await result.current.refresh();
     });
 
-    expect(result.current.status).toMatchObject({
+    expect(result.current.status).toStrictEqual({
       kind: "ready",
       content: "old",
     });
@@ -272,7 +295,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "",
@@ -285,7 +308,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "error",
         message: "plain string error",
@@ -341,8 +364,11 @@ describe("useProjectContext", () => {
 
     const { result, unmount } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
+    await waitForHookState(() => {
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
     });
 
     const lateGet = deferred<Response>();
@@ -360,7 +386,10 @@ describe("useProjectContext", () => {
     });
 
     // The last-rendered status stays "old"; the post-unmount GET was discarded.
-    expect(result.current.status).toMatchObject({ content: "old" });
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "old",
+    });
   });
 
   // While the editor is open AND the window is focused, poll so
@@ -383,13 +412,19 @@ describe("useProjectContext", () => {
       const { result } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(POLL_MS);
       });
 
-      expect(result.current.status).toMatchObject({ content: "external" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "external",
+      });
     });
 
     it("does not poll while the window is unfocused", async () => {
@@ -399,7 +434,10 @@ describe("useProjectContext", () => {
       const { result } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
 
       // The mount load (not focus-gated) already fired; nothing should fetch
       // again while blurred.
@@ -418,7 +456,10 @@ describe("useProjectContext", () => {
       const { result, unmount } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
 
       unmount();
       fetchMock.mockClear();

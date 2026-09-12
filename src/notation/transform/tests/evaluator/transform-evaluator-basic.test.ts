@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { createContext } from "./transform-evaluator-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("Transform Evaluator", () => {
   describe("basic structure", () => {
@@ -596,8 +597,7 @@ timing += 0.05`;
       // velocity should be skipped due to error, but timing should work
       expect(result).not.toHaveProperty("velocity");
       expect(result.timing!.value).toBe(0.05);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to evaluate transform"),
       );
     });
@@ -606,7 +606,7 @@ timing += 0.05`;
       const result = evaluateTransform("velocity += cos()", createContext());
 
       expect(result).toStrictEqual({});
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).not.toHaveLength(0);
     });
   });
 

@@ -57,8 +57,7 @@ export const audioSampleWorkflow: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 80_000,
+      maxTokens: 4_500,
     },
 
     {

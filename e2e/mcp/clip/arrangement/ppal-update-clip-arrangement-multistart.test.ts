@@ -21,28 +21,27 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 import { readClipsOnTrack } from "../helpers/arrangement-lengthening-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-const emptyMidiTrack = 8;
 
 /**
  * Create an arrangement clip and return its ID.
  * @param trackIndex - Track to create on
- * @param arrangementStart - Bar|beat position
+ * @param position - Bar|beat position
  * @param length - Clip length in absolute note-value format (e.g. "1bar", "n/2")
  * @returns Clip ID
  */
 async function createArrangementClip(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
   length: string,
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${trackIndex}`,
-      arrangementStart,
+      path: `t${trackIndex}[${position}]`,
       notes: "C3 1|1",
       length,
       looping: true,
@@ -59,11 +58,11 @@ async function createArrangementClip(
  * @returns Parsed clips and warnings
  */
 function parseUpdateResults(result: unknown): {
-  clips: Array<{ id: string }>;
+  clips: Array<{ id: string; deleted?: boolean }>;
   warnings: string[];
 } {
   const { data, warnings } = parseToolResultWithWarnings<
-    { id: string } | Array<{ id: string }>
+    { id: string; deleted?: boolean } | Array<{ id: string; deleted?: boolean }>
   >(result);
 
   return {
@@ -72,15 +71,54 @@ function parseUpdateResults(result: unknown): {
   };
 }
 
+/**
+ * Create clips on the empty MIDI track, move them all to one destination, and
+ * read the track back.
+ * @param sources - [position, length] for each clip to create, in call order
+ * @param toPath - Where the clips move to, e.g. "[170|1]"
+ * @returns The move's per-clip entries and the clips left on the track
+ */
+async function moveClipsTo(
+  sources: [position: string, length: string][],
+  toPath: string,
+): Promise<{
+  clips: { id: string; deleted?: boolean }[];
+  finalClips: ReadClipResult[];
+}> {
+  const ids: string[] = [];
+
+  for (const [position, length] of sources) {
+    ids.push(await createArrangementClip(EMPTY_MIDI_TRACK, position, length));
+  }
+
+  await sleep(200);
+
+  const { clips } = parseUpdateResults(
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: ids.join(","), toPath },
+    }),
+  );
+
+  await sleep(200);
+
+  const { clips: finalClips } = await readClipsOnTrack(
+    ctx.client!,
+    EMPTY_MIDI_TRACK,
+  );
+
+  return { clips, finalClips };
+}
+
 describe("ppal-update-clip arrangement multistart", () => {
   it("moves clip to position with existing clip without crashing", async () => {
     // Existing clip at target position
-    await createArrangementClip(emptyMidiTrack, "101|1", "1bar");
+    await createArrangementClip(EMPTY_MIDI_TRACK, "101|1", "1bar");
     await sleep(200);
 
     // Another clip to move there
     const movingId = await createArrangementClip(
-      emptyMidiTrack,
+      EMPTY_MIDI_TRACK,
       "105|1",
       "2bar",
     );
@@ -90,7 +128,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     // Should not crash (clearClipAtDuplicateTarget handles existing clip)
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: movingId, arrangementStart: "101|1" },
+      arguments: { id: movingId, toPath: "[101|1]" },
     });
     const movedClip = parseToolResult<{ id: string }>(result);
 
@@ -102,103 +140,97 @@ describe("ppal-update-clip arrangement multistart", () => {
     });
     const clip = parseToolResult<ReadClipResult>(readResult);
 
-    expect(clip.arrangementStart).toBe("101|1");
+    expect(arrangementStartOf(clip)).toBe("101|1");
   });
 
   it("deletes non-survivors and keeps survivors", async () => {
     // A(4 beats), B(8 beats), C(2 beats)
     // Backwards: C(2)>0 survives, B(8)>2 survives, A(4)<=8 non-survivor
-    const idA = await createArrangementClip(emptyMidiTrack, "151|1", "1bar");
-    const idB = await createArrangementClip(emptyMidiTrack, "155|1", "2bar");
-    const idC = await createArrangementClip(emptyMidiTrack, "159|1", "n/2");
-
-    await sleep(200);
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        id: `${idA},${idB},${idC}`,
-        arrangementStart: "170|1",
-      },
-    });
-    const { clips } = parseUpdateResults(result);
-
-    // A is non-survivor (deleted), B and C are survivors
-    expect(clips).toHaveLength(2);
-
-    await sleep(200);
-
-    // Verify final state: 2 clips on track
-    const { clips: finalClips } = await readClipsOnTrack(
-      ctx.client!,
-      emptyMidiTrack,
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["151|1", "1bar"],
+        ["155|1", "2bar"],
+        ["159|1", "n/2"],
+      ],
+      "[170|1]",
     );
 
+    // Every target gets an entry, in the order the call named them. A is the
+    // non-survivor, and says so rather than going unmentioned.
+    expect(clips).toHaveLength(3);
+    expect(clips[0]?.deleted).toBe(true);
+    expect(clips[1]?.deleted).toBeUndefined();
+    expect(clips[2]?.deleted).toBeUndefined();
+
+    // Verify final state: 2 clips on track
     expect(finalClips).toHaveLength(2);
-    expect(finalClips[0]!.arrangementStart).toBe("170|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("170|1");
+  });
+
+  // Survivors descend in length, but a non-survivor can outlast a later, shorter
+  // one. A(20) is buried by B(40); C(12) survives on top of B without being long
+  // enough to bury A on its own. The clearing gate has to compare lengths, not
+  // just ask whether some survivor landed.
+  it("buries a non-survivor only under a landing long enough to cover it", async () => {
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["301|1", "5bar"],
+        ["311|1", "10bar"],
+        ["325|1", "3bar"],
+      ],
+      "[340|1]",
+    );
+
+    // A is the only non-survivor, and B's landing is what buries it.
+    expect(clips).toHaveLength(3);
+    expect(clips[0]?.deleted).toBe(true);
+    expect(clips[1]?.deleted).toBeUndefined();
+    expect(clips[2]?.deleted).toBeUndefined();
+
+    // B underneath, C stacked on its front — A gone, nothing left at 301|1.
+    expect(finalClips).toHaveLength(2);
+    expect(arrangementStartOf(finalClips[0]!)).toBe("340|1");
   });
 
   it("only last clip survives when all have same length", async () => {
     // 3 clips of 4 beats (1 bar) each
-    const id1 = await createArrangementClip(emptyMidiTrack, "201|1", "1bar");
-    const id2 = await createArrangementClip(emptyMidiTrack, "205|1", "1bar");
-    const id3 = await createArrangementClip(emptyMidiTrack, "209|1", "1bar");
-
-    await sleep(200);
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        id: `${id1},${id2},${id3}`,
-        arrangementStart: "220|1",
-      },
-    });
-    const { clips } = parseUpdateResults(result);
-
-    // Same length: only last survives (4>0), first two <=4
-    expect(clips).toHaveLength(1);
-
-    await sleep(200);
-
-    const { clips: finalClips } = await readClipsOnTrack(
-      ctx.client!,
-      emptyMidiTrack,
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["201|1", "1bar"],
+        ["205|1", "1bar"],
+        ["209|1", "1bar"],
+      ],
+      "[220|1]",
     );
 
+    // Same length: only the last survives (4>0), the first two are buried by
+    // it — and each of them says so in its own entry.
+    expect(clips).toHaveLength(3);
+    expect(clips[0]?.deleted).toBe(true);
+    expect(clips[1]?.deleted).toBe(true);
+    expect(clips[2]?.deleted).toBeUndefined();
+
     expect(finalClips).toHaveLength(1);
-    expect(finalClips[0]!.arrangementStart).toBe("220|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("220|1");
     expect(finalClips[0]!.arrangementLength).toBe("1bar");
   });
 
   it("all clips survive when in descending length order", async () => {
     // A(8 beats), B(4 beats), C(2 beats) — descending order
-    const idA = await createArrangementClip(emptyMidiTrack, "251|1", "2bar");
-    const idB = await createArrangementClip(emptyMidiTrack, "255|1", "1bar");
-    const idC = await createArrangementClip(emptyMidiTrack, "259|1", "n/2");
-
-    await sleep(200);
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        id: `${idA},${idB},${idC}`,
-        arrangementStart: "270|1",
-      },
-    });
-    const { clips } = parseUpdateResults(result);
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["251|1", "2bar"],
+        ["255|1", "1bar"],
+        ["259|1", "n/2"],
+      ],
+      "[270|1]",
+    );
 
     // All survive: C(2)>0, B(4)>2, A(8)>4
     expect(clips).toHaveLength(3);
 
-    await sleep(200);
-
     // 3 clips on track, stacked at target position
-    const { clips: finalClips } = await readClipsOnTrack(
-      ctx.client!,
-      emptyMidiTrack,
-    );
-
     expect(finalClips).toHaveLength(3);
-    expect(finalClips[0]!.arrangementStart).toBe("270|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("270|1");
   });
 });

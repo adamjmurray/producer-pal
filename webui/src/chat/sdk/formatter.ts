@@ -16,7 +16,9 @@ import { type ChatMessage } from "./types";
  * @param parts - Parts array to add to
  */
 function addReasoning(reasoning: string | undefined, parts: UIPart[]): void {
-  if (!reasoning) return;
+  if (!reasoning) {
+    return;
+  }
 
   const lastPart = parts.at(-1);
 
@@ -47,7 +49,9 @@ function addUserParts(msg: ChatMessage, parts: UIPart[]): void {
  * @param parts - Parts array to add to
  */
 function addToolParts(msg: ChatMessage, parts: UIPart[]): void {
-  if (!msg.toolCalls) return;
+  if (!msg.toolCalls) {
+    return;
+  }
 
   for (const tc of msg.toolCalls) {
     // Find matching result
@@ -95,7 +99,9 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
   for (let rawIndex = 0; rawIndex < history.length; rawIndex++) {
     const msg = history[rawIndex];
 
-    if (!msg) continue;
+    if (!msg) {
+      continue;
+    }
 
     const lastMessage = messages.at(-1);
     let currentMessage: UIMessage;
@@ -153,8 +159,13 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
  * @param message - The UIMessage being merged into
  */
 function closeStepUsage(message: UIMessage): void {
-  if (!message.usage) return;
-  if (!message.parts.some((p) => p.type === "tool")) return;
+  if (!message.usage) {
+    return;
+  }
+
+  if (!message.parts.some((p) => p.type === "tool")) {
+    return;
+  }
 
   message.parts.push({ type: "step-usage", usage: message.usage });
   message.usage = undefined;

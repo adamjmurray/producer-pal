@@ -45,7 +45,9 @@ export function useBackdropClick(
       pressTargetRef.current = null;
       releaseTargetRef.current = null;
 
-      if (pressTarget !== e.target || releaseTarget !== e.target) return;
+      if (pressTarget !== e.target || releaseTarget !== e.target) {
+        return;
+      }
 
       onBackdropClick(e);
     },

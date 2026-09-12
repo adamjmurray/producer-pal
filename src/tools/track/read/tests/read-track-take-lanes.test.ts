@@ -99,6 +99,20 @@ describe("readTrack take lanes", () => {
     ]);
   });
 
+  it("reports an all-digit take lane name as a string", () => {
+    registerTrackWithTakeLanes();
+    registerMockObject("lane1", {
+      path: String(livePath.track(2).takeLane(0)),
+      type: "TakeLane",
+      properties: { name: 5678, arrangement_clips: children("clip_a") },
+    });
+
+    const result = readTrack({ trackIndex: 2, include: ["arrangement-clips"] });
+    const takeLanes = result.takeLanes as TakeLane[];
+
+    expect(takeLanes[0]!.name).toBe("5678");
+  });
+
   it("strips fields redundant with the parent track from take lane clips", () => {
     registerTrackWithTakeLanes();
 
@@ -109,6 +123,9 @@ describe("readTrack take lanes", () => {
     expect(clip).not.toHaveProperty("view");
     expect(clip).not.toHaveProperty("type");
     expect(clip).not.toHaveProperty("trackIndex");
+    // The path stays: it says where on the lane the clip starts, which the
+    // lane's own path doesn't. start_time 0 in 4/4 is bar 1 beat 1.
+    expect(clip.path).toBe("t2/l0[1|1]");
   });
 
   it("omits the field entirely when the track has no take lanes", () => {

@@ -8,24 +8,17 @@ import { NOTATIONS } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { standardDriver } from "#src/skills/drivers.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
+import { buildWithWarnings } from "./build-skills-test-helpers.ts";
 
 const HEADER = "# Producer Pal Skills";
 
-/**
- * Assemble a combination, collecting any warnings.
- *
- * @param smallModelMode - Whether to build the small-model variant
- * @returns The assembled blob and the warnings raised
- */
-function assemble(smallModelMode: boolean): {
-  skills: string;
-  warnings: string[];
-} {
-  const warnings: string[] = [];
-  const skills = buildSkills({ smallModelMode }, {}, (m) => warnings.push(m));
-
-  return { skills, warnings };
-}
+// Every transforms tier is written against transforms-core, so losing the core
+// orphans all three.
+const ORPHANED_TRANSFORM_TIERS = [
+  expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
+  expect.stringContaining(`"transforms-expressions" needs "transforms-core"`),
+  expect.stringContaining(`"transforms-generative" needs "transforms-core"`),
+];
 
 describe("buildSkills - composition", () => {
   it("assembles header + notation head + the task fragments at standard depth", () => {
@@ -176,9 +169,7 @@ describe("buildSkills - composition", () => {
     // as an unknown-fragment warning rather than a quietly shortened blob.
     for (const notation of NOTATIONS) {
       for (const smallModelMode of [false, true]) {
-        const warnings: string[] = [];
-
-        buildSkills({ notation, smallModelMode }, {}, (m) => warnings.push(m));
+        const { warnings } = buildWithWarnings({ notation, smallModelMode });
 
         expect(warnings).toStrictEqual([]);
       }
@@ -189,7 +180,9 @@ describe("buildSkills - composition", () => {
     // code-transforms is present-but-empty in a release build, so its manifest
     // line collapses rather than leaving a gap.
     for (const smallModelMode of [false, true]) {
-      expect(assemble(smallModelMode).skills).not.toContain("\n\n\n");
+      expect(buildWithWarnings({ smallModelMode }).result).not.toContain(
+        "\n\n\n",
+      );
     }
   });
 });
@@ -296,11 +289,9 @@ describe("buildSkills - overrides", () => {
   it("warns when a stale driver override names a fragment that no longer exists", () => {
     // The silent-break hazard of renaming fragments: the override still parses,
     // and every renamed include used to vanish without a word.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { fragments: { standard: `KEPT\n\n@include "./core-devices.md"` } },
-      (message) => warnings.push(message),
     );
 
     expect(result).toContain("KEPT");
@@ -312,11 +303,9 @@ describe("buildSkills - overrides", () => {
   it("warns about an override file keyed to a retired slot name", () => {
     // The other half of the silent-rename hazard: an orphaned override file is
     // never referenced by any include, so the resolver can't catch it.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { fragments: { "core-devices": "MY OLD DEVICES OVERRIDE" } },
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("MY OLD DEVICES OVERRIDE");
@@ -348,8 +337,7 @@ describe("buildSkills - overrides", () => {
   });
 
   it("warns and refuses when an override fragment includes another fragment", () => {
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       {
         fragments: {
@@ -357,7 +345,6 @@ describe("buildSkills - overrides", () => {
           "my-extra": "MY EXTRA SECTION",
         },
       },
-      (message) => warnings.push(message),
     );
 
     expect(result).toContain("MINE");
@@ -394,8 +381,7 @@ describe("buildSkills - overrides", () => {
     // (swing(), ratchet(), waveforms) and no GRAMMAR, which is worse than
     // dropping all three. Every include still resolves, so only the declared
     // requirement can catch it.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       {
         fragments: {
@@ -405,33 +391,21 @@ describe("buildSkills - overrides", () => {
           ),
         },
       },
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("## Transforms");
     expect(result).toContain("### Generative Transforms"); // kept, and orphaned
-    expect(warnings).toStrictEqual([
-      expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
-      expect.stringContaining(
-        `"transforms-expressions" needs "transforms-core"`,
-      ),
-      expect.stringContaining(
-        `"transforms-generative" needs "transforms-core"`,
-      ),
-    ]);
+    expect(warnings).toStrictEqual(ORPHANED_TRANSFORM_TIERS);
   });
 
   it("warns when the device siblings outlive the guide they sit under", () => {
-    const warnings: string[] = [];
-
-    buildSkills(
+    const { warnings } = buildWithWarnings(
       { notation: "barbeat" },
       {
         fragments: {
           standard: standardDriver.replace(`@include "./devices.md"\n\n`, ""),
         },
       },
-      (message) => warnings.push(message),
     );
 
     expect(warnings).toStrictEqual([
@@ -442,7 +416,6 @@ describe("buildSkills - overrides", () => {
 
   it("stays silent when a fragment is dropped together with its dependents", () => {
     // Dropping the whole transforms area is a legitimate trim, not a mistake.
-    const warnings: string[] = [];
     const forked = [
       "transforms-core",
       "transforms-editing",
@@ -453,10 +426,9 @@ describe("buildSkills - overrides", () => {
       standardDriver,
     );
 
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { fragments: { standard: forked } },
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("## Transforms");
@@ -505,12 +477,9 @@ describe("buildSkills - disabled fragments", () => {
 
   it("leaves the include line valid, so nothing is reported as unknown", () => {
     // Same contract as a tool-gated fragment: present-but-empty, not missing.
-    const warnings: string[] = [];
-
-    buildSkills(
+    const { warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { disabled: ["arrangement", "arrangement-write"] },
-      (m) => warnings.push(m),
     );
 
     expect(warnings).toStrictEqual([]);
@@ -520,31 +489,19 @@ describe("buildSkills - disabled fragments", () => {
     // Unlike tool gating (where a dependent's gate is a subset of its
     // prerequisite's, so both go together), a user can switch off exactly the
     // grammar the surviving tiers are written against.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { disabled: ["transforms-core"] },
-      (message) => warnings.push(message),
     );
 
     expect(result).toContain("### Generative Transforms"); // kept, and orphaned
-    expect(warnings).toStrictEqual([
-      expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
-      expect.stringContaining(
-        `"transforms-expressions" needs "transforms-core"`,
-      ),
-      expect.stringContaining(
-        `"transforms-generative" needs "transforms-core"`,
-      ),
-    ]);
+    expect(warnings).toStrictEqual(ORPHANED_TRANSFORM_TIERS);
   });
 
   it("stays silent when a fragment is switched off with its dependents", () => {
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { disabled: ["devices", "devices-write", "specialized-devices"] },
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("## Devices & Instruments");
@@ -565,10 +522,9 @@ describe("buildSkills - disabled fragments", () => {
 
   it("warns about a switched-off file keyed to a retired slot name", () => {
     // An orphaned file is inert whether it carries a body or only the flag.
-    const warnings: string[] = [];
-
-    buildSkills({ notation: "barbeat" }, { disabled: ["core-devices"] }, (m) =>
-      warnings.push(m),
+    const { warnings } = buildWithWarnings(
+      { notation: "barbeat" },
+      { disabled: ["core-devices"] },
     );
 
     expect(warnings).toStrictEqual([
@@ -581,11 +537,9 @@ describe("buildSkills - disabled fragments", () => {
   // instruction. The editor hides that toggle and the REST route refuses it,
   // but a hand-edited `enabled: false` arrives here having passed neither.
   it("ignores an off switch on the driver root, and says so", () => {
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { disabled: ["standard"] },
-      (message) => warnings.push(message),
     );
 
     expect(result).toContain(HEADER);
@@ -606,8 +560,7 @@ describe("buildSkills - disabled fragments", () => {
 
   it("keeps honoring the off switch for a name it doesn't know", () => {
     // A fork may include fragments of its own; only the two drivers are pinned.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       {},
       {
         fragments: {
@@ -616,7 +569,6 @@ describe("buildSkills - disabled fragments", () => {
         },
         disabled: ["mine"],
       },
-      (message) => warnings.push(message),
     );
 
     expect(result).toContain("MY INTRO");
@@ -625,12 +577,9 @@ describe("buildSkills - disabled fragments", () => {
   });
 
   it("warns once about a slot that is both overridden and switched off", () => {
-    const warnings: string[] = [];
-
-    buildSkills(
+    const { warnings } = buildWithWarnings(
       { notation: "barbeat" },
       { fragments: { "core-devices": "MINE" }, disabled: ["core-devices"] },
-      (message) => warnings.push(message),
     );
 
     expect(warnings).toStrictEqual([
@@ -653,9 +602,9 @@ describe("buildSkills - ENABLE_CODE_EXEC", () => {
   it("excludes code transforms skills when ENABLE_CODE_EXEC is not set", () => {
     vi.stubEnv("ENABLE_CODE_EXEC", "");
 
-    const { skills, warnings } = assemble(false);
+    const { result, warnings } = buildWithWarnings({ smallModelMode: false });
 
-    expect(skills).not.toContain("Code Transforms");
+    expect(result).not.toContain("Code Transforms");
     // Present-but-empty, not missing: the manifest line must stay silent.
     expect(warnings).toStrictEqual([]);
   });

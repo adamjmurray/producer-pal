@@ -10,7 +10,7 @@
  * Phase is normalized (0.0-1.0 represents one complete cycle).
  */
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "./transform-warning-label.ts";
 
 /**
  * Cosine wave generator

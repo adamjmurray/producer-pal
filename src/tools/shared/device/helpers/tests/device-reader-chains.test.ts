@@ -44,11 +44,17 @@ describe("processDeviceChains", () => {
     id: `chain-${name}`,
     type: "Chain",
     getProperty: (prop: string) => {
-      if (prop === "name") return name;
-      if (prop === "solo") return solo;
+      if (prop === "name") {
+        return name;
+      }
+
+      if (prop === "solo") {
+        return solo;
+      }
 
       return 0;
     },
+    getName: () => name,
     getColor: () => null,
     child: () => noMixer,
     getChildren: () => [],
@@ -62,17 +68,31 @@ describe("processDeviceChains", () => {
     id: `chain-${name}`,
     type: "Chain",
     getProperty: (prop: string) => {
-      if (prop === "name") return name;
-      if (prop === "mute") return 0;
-      if (prop === "solo") return 0;
-      if (prop === "muted_via_solo") return 0;
+      if (prop === "name") {
+        return name;
+      }
+
+      if (prop === "mute") {
+        return 0;
+      }
+
+      if (prop === "solo") {
+        return 0;
+      }
+
+      if (prop === "muted_via_solo") {
+        return 0;
+      }
 
       return 0;
     },
+    getName: () => name,
     getColor: () => null,
     child: () => noMixer,
     getChildren: (child: string) => {
-      if (child === "devices") return overrides.devices ?? [];
+      if (child === "devices") {
+        return overrides.devices ?? [];
+      }
 
       return [];
     },
@@ -86,14 +106,24 @@ describe("processDeviceChains", () => {
     returnChains: unknown[] = [],
   ) => ({
     getChildren: (child: string) => {
-      if (child === "chains") return chains;
-      if (child === "return_chains") return returnChains;
+      if (child === "chains") {
+        return chains;
+      }
+
+      if (child === "return_chains") {
+        return returnChains;
+      }
 
       return [];
     },
     getChildCount: (child: string) => {
-      if (child === "chains") return chains.length;
-      if (child === "return_chains") return returnChains.length;
+      if (child === "chains") {
+        return chains.length;
+      }
+
+      if (child === "return_chains") {
+        return returnChains.length;
+      }
 
       return 0;
     },
@@ -168,11 +198,17 @@ describe("processDeviceChains", () => {
 
     const chains = deviceInfo.returnChains as ReturnChain[];
 
-    expect(chains[0]).toMatchObject({
+    expect(chains[0]).toStrictEqual({
+      devices: [],
+      path: "t0/d0/rc0",
+      type: "Chain",
       id: "chain-Return A",
       name: "Return A",
     });
-    expect(chains[1]).toMatchObject({
+    expect(chains[1]).toStrictEqual({
+      devices: [],
+      path: "t0/d0/rc1",
+      type: "Chain",
       id: "chain-Return B",
       name: "Return B",
     });
@@ -194,14 +230,19 @@ describe("processDeviceChains", () => {
       id: `return-chain-${name}`,
       type: "Chain",
       getProperty: (prop: string) => {
-        if (prop === "name") return name;
+        if (prop === "name") {
+          return name;
+        }
 
         return 0;
       },
+      getName: () => name,
       getColor: () => null,
       child: () => noMixer,
       getChildren: (child: string) => {
-        if (child === "devices") return [mockNestedDevice];
+        if (child === "devices") {
+          return [mockNestedDevice];
+        }
 
         return [];
       },
@@ -234,7 +275,7 @@ describe("processDeviceChains", () => {
 
     expect(chains).toHaveLength(1);
     expect(chains[0]?.devices).toHaveLength(1);
-    expect(chains[0]?.devices?.[0]).toMatchObject({
+    expect(chains[0]?.devices?.[0]).toStrictEqual({
       id: "nested-dev-1",
       type: "effect",
     });
@@ -255,14 +296,19 @@ describe("processDeviceChains", () => {
       id: "chain-A",
       type: "Chain",
       getProperty: (prop: string) => {
-        if (prop === "name") return "Chain A";
+        if (prop === "name") {
+          return "Chain A";
+        }
 
         return 0;
       },
+      getName: () => "Chain A",
       getColor: () => null,
       child: () => noMixer,
       getChildren: (child: string) => {
-        if (child === "devices") return [mockDevice1, mockDevice2];
+        if (child === "devices") {
+          return [mockDevice1, mockDevice2];
+        }
 
         return [];
       },
@@ -292,7 +338,9 @@ describe("processDeviceChains", () => {
     const chains = deviceInfo.chains as Record<string, unknown>[];
 
     expect(chains).toHaveLength(1);
-    expect(chains[0]).toMatchObject({
+    expect(chains[0]).toStrictEqual({
+      path: "t0/d0/c0",
+      type: "Chain",
       id: "chain-A",
       name: "Chain A",
       deviceCount: 2,

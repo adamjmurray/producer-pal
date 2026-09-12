@@ -97,11 +97,15 @@ function previewTools(
   req: Request,
   getTools?: () => readonly string[],
 ): string[] | undefined {
-  if (req.query.allTools === "true") return undefined;
+  if (req.query.allTools === "true") {
+    return undefined;
+  }
 
   const configured = getTools?.();
 
-  if (configured == null) return undefined;
+  if (configured == null) {
+    return undefined;
+  }
 
   const disabled = req.query.disabledTools;
 

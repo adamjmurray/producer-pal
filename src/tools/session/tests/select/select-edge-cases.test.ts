@@ -143,12 +143,40 @@ describe("select edge cases", () => {
       });
 
       expect(() => select({ devicePath: "t0/d99" })).toThrow(
-        'select failed: no device at "t0/d99"',
+        'no device at "t0/d99"',
       );
       expect(songView.call).not.toHaveBeenCalledWith(
         "select_device",
         expect.anything(),
       );
+    });
+  });
+
+  describe("targets Live selects but the response cannot describe", () => {
+    beforeEach(() => {
+      setupSongViewMock();
+      setupAppViewMock();
+    });
+
+    // Live can report has_clip on a slot whose clip won't resolve. The
+    // selection still succeeds — there is just nothing to describe.
+    it("omits selectedClip when the slot says it has one that isn't there", () => {
+      mockNonExistentObjects();
+      registerMockObject("track_0", {
+        path: String(livePath.track(0)),
+        type: "Track",
+      });
+      registerMockObject("scene_0", {
+        path: livePath.scene(0),
+        type: "Scene",
+      });
+      registerMockObject("clipslot-0-0", {
+        path: String(livePath.track(0).clipSlot(0)),
+        type: "ClipSlot",
+        properties: { has_clip: 1 },
+      });
+
+      expect(select({ slot: "0/0" }).selectedClip).toBeUndefined();
     });
   });
 });

@@ -14,10 +14,15 @@ import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-prope
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
   prepareSessionClipSlot,
+  requireCreatedClip,
   requireCreatedSessionClip,
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
@@ -147,7 +152,7 @@ function createSessionClip(
   clipSlot.call("create_clip", clipLength);
 
   return {
-    clip: requireCreatedSessionClip(clipSlot, "MIDI"),
+    clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
   };
 }
@@ -163,6 +168,7 @@ interface ArrangementClipResult {
  * @param arrangementStartBeats - Starting position in beats
  * @param clipLength - Clip length in beats
  * @param takeLane - Take lane to create on, or null for the track's main lane
+ * @param track - The already-resolved destination track, or null to resolve it
  * @returns Object with clip and arrangementStartBeats
  */
 function createArrangementClip(
@@ -170,18 +176,18 @@ function createArrangementClip(
   arrangementStartBeats: number | null,
   clipLength: number,
   takeLane: LiveAPI | null = null,
+  track: LiveAPI | null = null,
 ): ArrangementClipResult {
-  const target = takeLane ?? LiveAPI.from(livePath.track(trackIndex));
+  const target = takeLane ?? track ?? LiveAPI.from(livePath.track(trackIndex));
   const newClipResult = target.call(
     "create_midi_clip",
     arrangementStartBeats,
     clipLength,
   ) as string;
-  const clip = LiveAPI.from(newClipResult);
-
-  if (!clip.exists()) {
-    throw new Error("failed to create Arrangement clip");
-  }
+  const clip = requireCreatedClip(
+    LiveAPI.from(newClipResult),
+    arrangementPath(trackIndex, takeLane?.takeLaneIndex),
+  );
 
   return { clip, arrangementStartBeats };
 }
@@ -197,13 +203,64 @@ export interface CreateClipAudioParams {
   warpMode?: string | null;
 }
 
+/** Name/color/meter to stamp on a freshly created audio clip. */
+interface CreatedAudioClipSettings {
+  clipName: string | undefined;
+  color: string | null;
+  timeSignature: string | null;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+}
+
+/**
+ * Stamp a new audio clip's settings. The sample defines the region, so there is
+ * no looping or timing to set — an explicit timeSignature still applies, since
+ * it sets the clip's grid and update-clip already honors that for audio.
+ * @param clip - The newly created audio clip
+ * @param audio - Audio clip properties; a null entry leaves that property alone
+ * @param settings - Name, color, and meter for the clip
+ */
+function applyCreatedAudioClipSettings(
+  clip: LiveAPI,
+  audio: CreateClipAudioParams,
+  settings: CreatedAudioClipSettings,
+): void {
+  const { clipName, color, timeSignature } = settings;
+  const propsToSet: Record<string, unknown> = {};
+
+  if (clipName) {
+    propsToSet.name = clipName;
+  }
+
+  if (color != null) {
+    propsToSet.color = color;
+  }
+
+  if (timeSignature != null) {
+    propsToSet.signature_numerator = settings.timeSigNumerator;
+    propsToSet.signature_denominator = settings.timeSigDenominator;
+  }
+
+  if (Object.keys(propsToSet).length > 0) {
+    clip.setAll(propsToSet);
+  }
+
+  // Same order as update-clip: properties first, then the warp toggle, which is
+  // the one with side effects on the clip region.
+  setAudioClipProperties(clip, {
+    gainDb: audio.gainDb ?? undefined,
+    pitchShift: audio.pitchShift ?? undefined,
+    warpMode: audio.warpMode ?? undefined,
+  });
+  applyAudioClipWarping(clip, audio.warping);
+}
+
 /**
  * Processes one clip creation at a specific position
  * @param view - View type (session or arrangement)
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index for session clips (explicit position)
  * @param arrangementStartBeats - Arrangement start in beats (explicit position)
- * @param arrangementStart - Arrangement start in bar|beat format (for result)
  * @param clipLength - Clip length in beats
  * @param liveSet - LiveAPI live_set object
  * @param startBeats - Loop start in beats
@@ -222,6 +279,7 @@ export interface CreateClipAudioParams {
  * @param takeLane - Take lane to create arrangement clips on, or null for main lane
  * @param audio - Audio clip properties; a null entry leaves that property alone
  * @param timeSignature - The raw timeSignature argument, or null for the song's
+ * @param track - The destination track, resolved once for the whole call
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -229,7 +287,6 @@ export function processClipIteration(
   trackIndex: number,
   sceneIndex: number | null,
   arrangementStartBeats: number | null,
-  arrangementStart: string | null,
   clipLength: number,
   liveSet: LiveAPI,
   startBeats: number | null,
@@ -248,6 +305,7 @@ export function processClipIteration(
   takeLane: LiveAPI | null = null,
   audio: CreateClipAudioParams = {},
   timeSignature: string | null = null,
+  track: LiveAPI | null = null,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -274,36 +332,19 @@ export function processClipIteration(
         arrangementStartBeats,
         sampleFile,
         takeLane,
+        track,
       );
 
       clip = result.clip;
     }
 
-    // For audio clips: the sample defines the region, so no looping, timing, or
-    // notes. An explicit timeSignature still applies — it sets the clip's grid,
-    // which update-clip already honors for audio.
-    const propsToSet: Record<string, unknown> = {};
-
-    if (clipName) propsToSet.name = clipName;
-    if (color != null) propsToSet.color = color;
-
-    if (timeSignature != null) {
-      propsToSet.signature_numerator = timeSigNumerator;
-      propsToSet.signature_denominator = timeSigDenominator;
-    }
-
-    if (Object.keys(propsToSet).length > 0) {
-      clip.setAll(propsToSet);
-    }
-
-    // Same order as update-clip: properties first, then the warp toggle, which
-    // is the one with side effects on the clip region.
-    setAudioClipProperties(clip, {
-      gainDb: audio.gainDb ?? undefined,
-      pitchShift: audio.pitchShift ?? undefined,
-      warpMode: audio.warpMode ?? undefined,
+    applyCreatedAudioClipSettings(clip, audio, {
+      clipName,
+      color,
+      timeSignature,
+      timeSigNumerator,
+      timeSigDenominator,
     });
-    applyAudioClipWarping(clip, audio.warping);
   } else {
     // MIDI clip creation
     if (view === "session") {
@@ -326,6 +367,7 @@ export function processClipIteration(
         arrangementStartBeats,
         clipLength,
         takeLane,
+        track,
       );
 
       clip = result.clip;
@@ -356,7 +398,6 @@ export function processClipIteration(
     trackIndex,
     view,
     currentSceneIndex,
-    arrangementStart,
     notationString,
     length,
     timeSigNumerator,

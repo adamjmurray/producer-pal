@@ -11,7 +11,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import {
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -21,6 +21,7 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Standard properties for a 4-bar arrangement MIDI clip (beats 0-16). */
 const FOUR_BAR_CLIP_PROPS = {
@@ -70,7 +71,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     // Should delete the temp clip
     expect(track.call).toHaveBeenCalledWith("delete_clip", expect.any(String));
 
-    expect(result).toStrictEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
   it("should shorten arrangement clip to single beat", async () => {
@@ -88,7 +89,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       15.0, // tempClipLength
     );
 
-    expect(result).toStrictEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
   it("should emit warning and ignore for session clips", async () => {
@@ -109,14 +110,13 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       arrangementLength: "2bar",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "arrangementLength parameter ignored for session clip (id 123)",
+    expect(capturedWarnings()).toContain(
+      "arrangementLength parameter ignored for session clip t0/s0 (id 123)",
     );
 
     expect(track.call).not.toHaveBeenCalled();
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should handle zero length with clear error", async () => {
@@ -147,7 +147,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       expect.anything(),
     );
 
-    expect(result).toStrictEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
   it("should allow both arrangementLength and arrangementStart (move then resize)", async () => {
@@ -215,7 +215,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       8.0, // tempClipLength = 48 - 40 = 8
     );
 
-    expect(result).toStrictEqual({ id: movedClipId });
+    // The move landed it at beat 32, which 4/4 spells as bar 9.
+    expect(result).toStrictEqual({ id: movedClipId, path: "t0[9|1]" });
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", async () => {

@@ -47,7 +47,9 @@ export function createInitialState(): SerializerState {
  * @returns True if all notes share velocity, duration, probability
  */
 function allNotesShareState(notes: NoteEvent[]): boolean {
-  if (notes.length <= 1) return true;
+  if (notes.length <= 1) {
+    return true;
+  }
 
   const first = notes[0] as NoteEvent;
   const firstVelocity = Math.round(first.velocity);

@@ -76,7 +76,9 @@ export function readGlobalSettings(): GlobalSettings {
 export function updateGlobalSettings(
   patch: Partial<GlobalSettings>,
 ): GlobalSettings {
-  if (isConfigDirInert()) return readGlobalSettings();
+  if (isConfigDirInert()) {
+    return readGlobalSettings();
+  }
 
   const merged = { ...readRaw(), ...patch };
 
@@ -97,7 +99,9 @@ export function updateGlobalSettings(
  * @returns The parsed file contents, or {} when absent or unusable
  */
 function readRaw(): Record<string, unknown> {
-  if (isConfigDirInert()) return {};
+  if (isConfigDirInert()) {
+    return {};
+  }
 
   const target = resolveConfigPath(FILENAME);
   let text: string;

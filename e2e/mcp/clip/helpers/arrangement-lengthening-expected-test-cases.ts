@@ -7,8 +7,8 @@
  * Expected clip data for arrangement lengthening e2e tests (tracks 0-23).
  * Snapshot from manually verified results after lengthening all clips to 4bar.
  *
- * `arrangementLength` uses the unified duration grammar (`Nbar`, `n<fraction>`,
- * `Nbar+n<fraction>`). `arrangementStart`/`start`/`end` stay bar|beat positions.
+ * `arrangementLength` uses the unified duration grammar (`<count>bar`, `n<fraction>`,
+ * `<count>bar+n<fraction>`). `arrangementStart`/`start`/`end` stay bar|beat positions.
  */
 
 export interface ExpectedClip {

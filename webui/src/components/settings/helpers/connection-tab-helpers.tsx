@@ -12,7 +12,7 @@ import { TurnDetectionControls } from "#webui/components/settings/controls/TurnD
 import { VoiceSelector } from "#webui/components/settings/controls/VoiceSelector";
 import { VoiceSpeedSlider } from "#webui/components/settings/controls/VoiceSpeedSlider";
 import { VoiceVolumeSlider } from "#webui/components/settings/controls/VoiceVolumeSlider";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import {
   GEMINI_REALTIME_VOICES,
   isRealtimeSelection,
@@ -38,7 +38,9 @@ interface ModelDocsLinkProps {
 export function ModelDocsLink({ provider, providerLabel }: ModelDocsLinkProps) {
   const url = MODEL_DOCS_URLS[provider];
 
-  if (!url) return null;
+  if (!url) {
+    return null;
+  }
 
   return (
     <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-300">
@@ -222,7 +224,10 @@ export function VoiceSettings({
   setTurnDetection,
   activeVoice,
 }: VoiceSettingsProps) {
-  if (!isRealtimeSelection(provider, model)) return null;
+  if (!isRealtimeSelection(provider, model)) {
+    return null;
+  }
+
   // Each provider gets its own turn-detection controls (the VAD configs don't
   // map 1:1). Speed has no Gemini equivalent (the Live API has no speaking-rate
   // field), so it stays OpenAI-only.

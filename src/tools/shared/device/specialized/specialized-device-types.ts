@@ -43,9 +43,30 @@ export interface PseudoParam {
   read: (device: LiveAPI) => unknown;
   /**
    * Apply a new value. Follow update-tool conventions: warn-and-skip on
-   * invalid input rather than throwing.
+   * invalid input rather than throwing. Return false for a value that was
+   * skipped — the `params` result reports a value only for a write that ran,
+   * so a refusal that returned true would report the unchanged value as if the
+   * write had landed.
    */
-  write?: (device: LiveAPI, value: string | number, toolName: string) => void;
+  write?: (device: LiveAPI, value: string | number) => boolean;
+  /**
+   * Why a write that ran did not land, or undefined when it did. Only for a
+   * param a device takes whole or ignores — Simpler's `sample`, where a path
+   * naming no loadable file leaves the old sample in place, so the read-back
+   * would report it as the value the call wrote. Everything else is left off:
+   * a value that reads back the way it already was is a write that landed.
+   */
+  writeFailed?: (write: PseudoParamWrite) => string | undefined;
+}
+
+/** What a pseudo-param write asked for, and what the param read before/after. */
+export interface PseudoParamWrite {
+  /** The value the param read before the write. */
+  before: unknown;
+  /** The value it reads at the end of the call. */
+  after: unknown;
+  /** The value the call asked for. */
+  requested: string | number;
 }
 
 /** A parsed `actions` entry: a name plus positional literal args. */
@@ -58,7 +79,6 @@ export interface ParsedAction {
 export type ActionHandler = (
   device: LiveAPI,
   args: Array<string | number>,
-  toolName: string,
 ) => void;
 
 /**

@@ -39,8 +39,8 @@ describe("config", () => {
   });
 
   describe("getModelName", () => {
-    it("returns display name for gemini-3.7-flash", () => {
-      expect(getModelName("gemini-3.7-flash")).toBe("Gemini 3.7 Flash");
+    it("returns display name for gemini-3.8-flash", () => {
+      expect(getModelName("gemini-3.8-flash")).toBe("Gemini 3.8 Flash");
     });
 
     it("returns display name for gemini-3.5-flash-lite", () => {
@@ -57,8 +57,8 @@ describe("config", () => {
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemini-3.7-flash")).toBe(
-        "Google Gemini 3.7 Flash",
+      expect(getModelName("google/gemini-3.8-flash")).toBe(
+        "Google Gemini 3.8 Flash",
       );
     });
 

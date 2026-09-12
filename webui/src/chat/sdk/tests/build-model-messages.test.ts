@@ -8,6 +8,7 @@ import {
   buildModelMessages,
   endsOnAssistantTurn,
 } from "#webui/chat/sdk/build-model-messages";
+import { toolStepHistory } from "#webui/chat/sdk/tests/client-test-helpers";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 
 describe("buildModelMessages", () => {
@@ -329,17 +330,7 @@ describe("endsOnAssistantTurn", () => {
     // a later step's request was rate-limited. History ends on an assistant
     // turn, but it emits assistant + tool, and ending on tool results is exactly
     // what continuing a tool loop looks like.
-    const history: ChatMessage[] = [
-      { role: "user", content: "add a bassline" },
-      {
-        role: "assistant",
-        content: "Creating it.",
-        toolCalls: [{ id: "t1", name: "ppal-create-clip", args: {} }],
-        toolResults: [
-          { id: "t1", name: "ppal-create-clip", args: {}, result: "ok" },
-        ],
-      },
-    ];
+    const history = toolStepHistory("add a bassline");
 
     expect(buildModelMessages(history).at(-1)?.role).toBe("tool");
     expect(endsOnAssistantTurn(history)).toBe(false);

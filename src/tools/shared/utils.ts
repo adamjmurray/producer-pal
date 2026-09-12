@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { MAX_TEMPO, MIN_TEMPO, TEMPO_REFUSAL } from "#src/tools/constants.ts";
 
 /**
  * Sets properties on a target object, but only for non-null values
@@ -57,9 +58,13 @@ const COERCED_NULLISH = new Set(["null", "undefined"]);
  * @returns True when the value names something
  */
 export function paramNamesSomething(value: unknown): boolean {
-  if (value == null) return false;
+  if (value == null) {
+    return false;
+  }
 
-  if (typeof value !== "string") return true;
+  if (typeof value !== "string") {
+    return true;
+  }
 
   return value.trim() !== "" && !isCoercedNullish(value);
 }
@@ -89,9 +94,13 @@ export function namedParam(
 ): string | undefined {
   const trimmed = value?.trim();
 
-  if (trimmed == null || trimmed === "") return undefined;
+  if (trimmed == null || trimmed === "") {
+    return undefined;
+  }
 
-  if (!isCoercedNullish(trimmed)) return trimmed;
+  if (!isCoercedNullish(trimmed)) {
+    return trimmed;
+  }
 
   console.warn(`${label} "${trimmed}" names nothing`);
 
@@ -148,7 +157,9 @@ function namedAliasedParam(
   const named = namedParam(value, canonical);
   const namedAlias = namedParam(alias, aliasLabel);
 
-  if (named == null) return namedAlias;
+  if (named == null) {
+    return namedAlias;
+  }
 
   if (namedAlias != null && namedAlias !== named) {
     console.warn(
@@ -165,7 +176,9 @@ function namedAliasedParam(
  * @returns Array of trimmed ID strings
  */
 export function parseCommaSeparatedIds(ids?: string | null): string[] {
-  if (ids == null) return [];
+  if (ids == null) {
+    return [];
+  }
 
   return ids
     .split(",")
@@ -174,41 +187,68 @@ export function parseCommaSeparatedIds(ids?: string | null): string[] {
 }
 
 /**
- * Parses a comma-separated string of indices into an array of integers
- * @param indices - Comma-separated string of indices (e.g., "0, 1, 2")
- * @returns Array of integer indices
- * @throws If any index is not a valid integer
+ * Splits a target list — a param naming objects or places (`id`, `path`,
+ * `toPath`, `arrangementStart`, `locator`) — into its entries, refusing a list
+ * it can't read cleanly.
+ *
+ * One trailing comma is not an entry, the way most languages read a list
+ * literal. Any other empty entry is a hole, and a hole is refused rather than
+ * guessed at: dropping it shifts every later pairing, keeping it names nothing,
+ * and which of the two bites depends on params the caller isn't looking at. A
+ * list whose entries are all empty (`","`) names nothing, and is the same error.
+ *
+ * Refusing is safe here because nothing has run yet — the model retries with a
+ * corrected call and loses no work. Value lists refuse a hole too, in
+ * `splitList`.
+ * @param raw - The param's value, or nullish when it was omitted
+ * @param label - Param name, for the error message
+ * @returns One trimmed entry per target, in order; empty only when omitted
+ * @throws Error when the list has a hole or names nothing
  */
-export function parseCommaSeparatedIndices(indices?: string | null): number[] {
-  if (indices == null) return [];
-
-  return indices
-    .split(",")
-    .map((index) => index.trim())
-    .filter((index) => index.length > 0)
-    .map((index) => {
-      const parsed = Number.parseInt(index);
-
-      if (Number.isNaN(parsed)) {
-        throw new Error(`Invalid index "${index}" - must be a valid integer`);
-      }
-
-      return parsed;
-    });
+export function targetEntries(
+  raw: string | null | undefined,
+  label: string,
+): string[] {
+  return entriesFrom(raw, (value) => value.split(","), label);
 }
 
 /**
- * Parses a comma-separated string of values into an array of floats, filtering invalid values
- * @param values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
- * @returns Array of valid float values (NaN values are filtered out)
+ * {@link targetEntries} over a caller-supplied split, so a param whose entries
+ * can contain a comma splits its own way and still gets one hole rule.
+ * @param raw - The param as the caller sent it
+ * @param split - How to cut the value into entries
+ * @param label - Param name for error messages
+ * @returns One trimmed entry per target, in order
  */
-export function parseCommaSeparatedFloats(values?: string | null): number[] {
-  if (values == null) return [];
+export function entriesFrom(
+  raw: string | null | undefined,
+  split: (value: string) => string[],
+  label: string,
+): string[] {
+  // A blank value is an unsent param (ADR-0029), not a list that names nothing.
+  // A lone comma is something the caller typed, and that is the error below.
+  if (raw == null || raw.trim() === "") {
+    return [];
+  }
 
-  return values
-    .split(",")
-    .map((v) => Number.parseFloat(v.trim()))
-    .filter((v) => !Number.isNaN(v));
+  const entries = split(raw).map((entry) => entry.trim());
+
+  if (entries.at(-1) === "") {
+    entries.pop();
+  }
+
+  if (entries.every((entry) => entry === "")) {
+    throw new Error(`invalid ${label} "${raw}" - it names nothing`);
+  }
+
+  if (entries.includes("")) {
+    throw new Error(
+      `invalid ${label} "${raw}" - it has an empty entry. ` +
+        `Drop the extra comma, or name every target.`,
+    );
+  }
+
+  return entries;
 }
 
 /**
@@ -320,7 +360,9 @@ export function stripFields(
   items: unknown[] | undefined,
   ...fields: string[]
 ): void {
-  if (!items) return;
+  if (!items) {
+    return;
+  }
 
   for (const item of items) {
     for (const field of fields) {
@@ -337,6 +379,16 @@ export function stripFields(
  */
 export function roundPan(pan: number): number {
   return Math.round(pan * 100) / 100;
+}
+
+/**
+ * Round a gain to Live's 0.01 dB display resolution; the raw float32 carries
+ * noise like -6.333000183105469.
+ * @param gainDb - Raw gain in dB
+ * @returns Gain rounded to two decimals
+ */
+export function roundGainDb(gainDb: number): number {
+  return Math.round(gainDb * 100) / 100;
 }
 
 /**
@@ -391,4 +443,51 @@ export function findReturnIndex(
 
     return lower.startsWith(wanted) && (next === "-" || next === " ");
   });
+}
+
+/**
+ * Refuse a call that names only half of the sendGainDb/sendReturn pair.
+ *
+ * Half a pair names no send at all, so there is nothing to write — and it is
+ * the same value for every target, so a per-target skip would repeat one
+ * warning down the whole list. Refusing up front costs nothing: no target has
+ * been touched yet.
+ * @param sendGainDb - Send level in dB, if given
+ * @param sendReturn - The return the level applies to, if given
+ */
+export function validateSendPair(
+  sendGainDb: number | undefined,
+  sendReturn: string | undefined,
+): void {
+  if ((sendGainDb != null) !== (sendReturn != null)) {
+    throw new Error("sendGainDb and sendReturn must both be specified");
+  }
+}
+
+/** Live's tempo range, shared by the live set and per-scene tempos. */
+
+/**
+ * Refuse a tempo Live can't hold, before anything is written.
+ *
+ * One value for the whole call, so checking it per scene fired the same
+ * message once per scene and still let the names and colors land. Mirrors the
+ * up-front parseTimeSignature call beside it.
+ * @param tempo - Tempo in BPM, if given
+ * @param disableValue - Value meaning "turn tempo off", exempt from the range
+ *   check. Scenes have one; the live set does not.
+ */
+export function validateTempo(
+  tempo: number | null | undefined,
+  disableValue?: number,
+): void {
+  if (tempo == null || tempo === disableValue) {
+    return;
+  }
+
+  if (tempo < MIN_TEMPO || tempo > MAX_TEMPO) {
+    const disableHint =
+      disableValue == null ? "" : ` Pass ${disableValue} to disable it.`;
+
+    throw new Error(`${TEMPO_REFUSAL}${disableHint}`);
+  }
 }

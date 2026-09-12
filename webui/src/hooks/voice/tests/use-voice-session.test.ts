@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import {
   afterAll,
   afterEach,
@@ -43,7 +44,9 @@ const mocks = vi.hoisted(() => {
     }
 
     emit(event: string, payload: unknown) {
-      for (const h of this.listeners.get(event) ?? []) h(payload);
+      for (const h of this.listeners.get(event) ?? []) {
+        h(payload);
+      }
     }
 
     connect(args: unknown) {
@@ -662,7 +665,7 @@ describe("useVoiceSession.disconnect", () => {
     });
 
     expect(() => unmount()).not.toThrow();
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(mocks.FakeSession.instances[0]!.close).toHaveBeenCalled();
     });
   });

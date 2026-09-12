@@ -78,7 +78,9 @@ export function AssistantToolGroup({
       </summary>
       <div className="mt-2 flex flex-col gap-2">
         {parts.map((part, i) => {
-          if (part.type !== "tool") return null;
+          if (part.type !== "tool") {
+            return null;
+          }
 
           const originalIndex = indices[i] as number;
 

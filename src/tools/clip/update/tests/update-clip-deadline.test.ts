@@ -10,6 +10,7 @@ import {
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock the loop-deadline module to control deadline behavior
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
@@ -80,8 +81,7 @@ describe("updateClip - deadline exceeded", () => {
 
     // No clips should be updated
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
     );
   });
@@ -96,9 +96,10 @@ describe("updateClip - deadline exceeded", () => {
     await updateClip({ id: "123, 456", name: "Updated" }, { timeoutMs: 100 });
 
     // A bare count doesn't say which id to re-run.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Not updated: 456. Re-run for those ids."),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "Not updated: t1/s1 (id 456). Re-run for those clips.",
+      ),
     );
   });
 
@@ -116,9 +117,8 @@ describe("updateClip - deadline exceeded", () => {
     );
 
     // Only first clip should be updated (unwrapSingleResult returns single object)
-    expect(result).toStrictEqual({ id: "123" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
     );
   });

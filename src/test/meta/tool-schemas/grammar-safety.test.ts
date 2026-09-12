@@ -41,7 +41,9 @@ describe("tool schema grammar safety", () => {
 });
 
 function oversizedConstraints(node: unknown, path: string): string[] {
-  if (node == null || typeof node !== "object") return [];
+  if (node == null || typeof node !== "object") {
+    return [];
+  }
 
   if (Array.isArray(node)) {
     return node.flatMap((item, i) =>

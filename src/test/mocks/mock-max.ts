@@ -8,7 +8,7 @@
 // setMcpResponder() instead of building its own Max.outlet.
 
 import { vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
 
 /** One `mcp_request` the mock saw, as V8 would have received it. */
 export interface McpRequest {
@@ -80,7 +80,9 @@ const defaultOutlet = vi.fn(
 
     // Defer the reply: the code inside the Promise callLiveApi() returns has
     // not run yet, so pendingRequests isn't in the state the handler needs.
-    if (params != null) setTimeout(() => handler(requestId, ...params), 1);
+    if (params != null) {
+      setTimeout(() => handler(requestId, ...params), 1);
+    }
 
     return Promise.resolve();
   },
@@ -118,12 +120,12 @@ export class Max {
 
 /**
  * The params a `mcp_response` carries after the request id: result chunks, then
- * MAX_ERROR_DELIMITER, then any Max console errors (none, here).
+ * END_OF_CHUNKS.
  * @param payload - The MCP response body V8 would send
  * @returns Params to pass after the request id
  */
 function responseParams(payload: unknown): string[] {
-  return [JSON.stringify(payload), MAX_ERROR_DELIMITER];
+  return [JSON.stringify(payload), END_OF_CHUNKS];
 }
 
 /** Puts the mock back to a bare-success default and clears recorded requests. */

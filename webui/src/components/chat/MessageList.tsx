@@ -101,7 +101,11 @@ export function MessageList({
   useEffect(() => {
     setShowStillThinking(false);
     setEditingIndex(null);
-    if (!isAssistantResponding) return undefined;
+
+    if (!isAssistantResponding) {
+      return undefined;
+    }
+
     const timer = setTimeout(
       () => setShowStillThinking(true),
       STILL_THINKING_DELAY_MS,
@@ -214,7 +218,9 @@ function MessageListRow({
     />
   );
 
-  if (!hasContent(message)) return branchNav ?? null;
+  if (!hasContent(message)) {
+    return branchNav ?? null;
+  }
 
   const compactionPart = message.parts.find((p) => p.type === "compaction");
 
@@ -370,9 +376,13 @@ function useScrollOnUserMessage(
     prevCountRef.current = messages.length;
 
     // A branch switch replaces the transcript; let scroll-to-fork handle it.
-    if (pendingBranchScrollRef.current != null) return;
+    if (pendingBranchScrollRef.current != null) {
+      return;
+    }
 
-    if (messages.length <= prevCount) return;
+    if (messages.length <= prevCount) {
+      return;
+    }
 
     const hasNewUserMessage = messages
       .slice(prevCount)
@@ -405,7 +415,9 @@ function useScrollToForkPoint(
   useEffect(() => {
     const target = pendingRef.current;
 
-    if (target == null) return;
+    if (target == null) {
+      return;
+    }
 
     pendingRef.current = null;
 
@@ -446,7 +458,9 @@ function StreamingFooter({
   isCompacting: boolean;
   showStillThinking: boolean;
 }) {
-  if (!isResponding) return null;
+  if (!isResponding) {
+    return null;
+  }
 
   const status = isCompacting
     ? "Compacting..."

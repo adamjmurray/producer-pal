@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
@@ -9,15 +10,18 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
+  parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { resolveCreateTrackTarget } from "./create-track-target-helpers.ts";
 
 interface CreateTrackArgs {
+  path?: string;
   trackIndex?: number;
   count?: number;
   name?: string;
@@ -30,8 +34,7 @@ interface CreateTrackArgs {
 
 interface CreatedTrackResult {
   id: string;
-  trackIndex?: number;
-  returnTrackIndex?: number;
+  path: string;
 }
 
 /**
@@ -79,7 +82,7 @@ function validateTrackCreation(
   effectiveTrackIndex: number,
 ): void {
   if (count < 1) {
-    throw new Error("createTrack failed: count must be at least 1");
+    throw new Error("count must be at least 1");
   }
 
   // The count alone must not exceed the cap, in ANY mode. The index-reach check
@@ -88,13 +91,13 @@ function validateTrackCreation(
   // number of tracks (e.g. count: 9999).
   if (count > MAX_AUTO_CREATED_TRACKS) {
     throw new Error(
-      `createTrack failed: creating ${count} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
+      `creating ${count} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
     );
   }
 
   if (type === "return" && trackIndex != null) {
     console.warn(
-      "createTrack: trackIndex is ignored for return tracks (always added at end)",
+      "trackIndex is ignored for return tracks (always added at end)",
     );
   }
 
@@ -104,7 +107,7 @@ function validateTrackCreation(
     effectiveTrackIndex + count > MAX_AUTO_CREATED_TRACKS
   ) {
     throw new Error(
-      `createTrack failed: creating ${count} tracks at index ${effectiveTrackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
+      `creating ${count} tracks at index ${effectiveTrackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
     );
   }
 }
@@ -156,7 +159,8 @@ function getBaseTrackCount(
 /**
  * Creates new tracks at the specified index
  * @param args - The track parameters
- * @param args.trackIndex - Track index (0-based, -1 or omit to append)
+ * @param args.path - Where the track goes: "t+", "t<index>", or "rt+"
+ * @param args.trackIndex - Deprecated index (0-based, -1 or omit to append)
  * @param args.count - Number of tracks to create
  * @param args.name - Base name for the tracks
  * @param args.color - Color for the tracks (CSS format: hex)
@@ -168,31 +172,28 @@ function getBaseTrackCount(
  * @returns Single track object when count=1, array when count>1
  */
 export function createTrack(
-  {
-    trackIndex,
-    count = 1,
-    name,
-    color,
-    type = "midi",
-    mute,
-    solo,
-    arm,
-  }: CreateTrackArgs = {},
+  args: CreateTrackArgs = {},
   _context: Partial<ToolContext> = {},
 ): CreatedTrackResult | CreatedTrackResult[] {
-  const effectiveTrackIndex = trackIndex ?? -1;
+  const { count = 1, name, color, mute, solo, arm } = args;
+  const { type, trackIndex: effectiveTrackIndex } =
+    resolveCreateTrackTarget(args);
 
-  validateTrackCreation(count, type, trackIndex, effectiveTrackIndex);
+  validateTrackCreation(count, type, args.trackIndex, effectiveTrackIndex);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const baseTrackCount = getBaseTrackCount(liveSet, type, effectiveTrackIndex);
   const createdTracks: CreatedTrackResult[] = [];
   let currentIndex = effectiveTrackIndex;
 
-  const parsedNames = parseCommaSeparatedNames(name, count);
-  const parsedColors = parseCommaSeparatedColors(color, count);
+  validateListLengths([
+    { param: "count", count, noun: "track" },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
 
-  warnExtraNames(parsedNames, count, "createTrack");
+  const parsedNames = parseNames(name, count, "track");
+  const parsedColors = parseColors(color, count, "track");
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
@@ -213,11 +214,14 @@ export function createTrack(
       i,
     );
 
-    createdTracks.push(
-      type === "return"
-        ? { id: trackId, returnTrackIndex: resultIndex }
-        : { id: trackId, trackIndex: resultIndex },
-    );
+    createdTracks.push({
+      id: trackId,
+      path: formatObjectPath(
+        type === "return"
+          ? { kind: "return-track", returnIndex: resultIndex }
+          : { kind: "track", trackIndex: resultIndex },
+      ),
+    });
 
     // For subsequent midi/audio tracks with explicit index, increment since tracks shift right
     if (type !== "return" && effectiveTrackIndex !== -1) {

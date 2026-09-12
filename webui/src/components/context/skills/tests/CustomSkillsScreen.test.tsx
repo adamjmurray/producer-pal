@@ -67,6 +67,23 @@ function renderWith(collection: UseCustomSkillsCollectionReturn): void {
   );
 }
 
+/**
+ * Render the ready screen with a save spy and open `wip-idea` (the disabled
+ * entry) for editing.
+ * @returns The saveEntry spy the screen will call
+ */
+function openWipIdeaForEdit(): ReturnType<typeof vi.fn> {
+  const saveEntry = vi.fn().mockResolvedValue(ENTRIES[1]);
+
+  renderWith(
+    fakeCollection({ kind: "ready", entries: ENTRIES }, { saveEntry }),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: /wip-idea/ }));
+
+  return saveEntry;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -113,13 +130,8 @@ describe("CustomSkillsScreen", () => {
   });
 
   it("saves typed edits, preserving the entry's enabled flag in the payload", async () => {
-    const saveEntry = vi.fn().mockResolvedValue(ENTRIES[1]);
+    const saveEntry = openWipIdeaForEdit();
 
-    renderWith(
-      fakeCollection({ kind: "ready", entries: ENTRIES }, { saveEntry }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /wip-idea/ }));
     fireEvent.input(screen.getByRole("textbox", { name: /Description/ }), {
       target: { value: "now solid" },
     });
@@ -138,13 +150,8 @@ describe("CustomSkillsScreen", () => {
   });
 
   it("toggles enabled on and sends it in the saved payload", async () => {
-    const saveEntry = vi.fn().mockResolvedValue(ENTRIES[1]);
+    const saveEntry = openWipIdeaForEdit();
 
-    renderWith(
-      fakeCollection({ kind: "ready", entries: ENTRIES }, { saveEntry }),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /wip-idea/ }));
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 

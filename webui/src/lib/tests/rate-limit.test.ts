@@ -223,6 +223,20 @@ describe("detectRateLimit", () => {
     expect(result.retryAfterMs).toBe(30000);
   });
 
+  it("extracts retryAfter from the AI SDK's responseHeaders", () => {
+    const error = {
+      statusCode: 429,
+      message: "Rate limited",
+      responseHeaders: {
+        "retry-after": "15",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(15000);
+  });
+
   it("returns null for an invalid HTTP retry-after header", () => {
     const error = {
       status: 429,

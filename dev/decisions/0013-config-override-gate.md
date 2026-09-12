@@ -1,6 +1,6 @@
 # ADR-0013: Config-override env vars are opt-in, not opt-out
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0033](0033-portal-settings-are-per-client.md)
 - **Date logged:** 2026-07-11
 
 ## Context

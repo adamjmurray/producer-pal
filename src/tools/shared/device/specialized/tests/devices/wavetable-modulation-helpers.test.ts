@@ -15,6 +15,7 @@ import {
   buildModMethods,
   registerWavetable,
 } from "./wavetable-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Edge cases of the Wavetable mod-matrix helpers: the index-0 boundaries (source
 // "Amp" and target slot 0 are both real values, not "not found"), the ±1 amount
@@ -28,11 +29,7 @@ describe("modulation source resolution", () => {
     // to the numeric branch, making the source unusable.
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      ["setModulation('Osc 1 Pos', 'Amp', 0.5)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["setModulation('Osc 1 Pos', 'Amp', 0.5)"]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 0, 0.5);
   });
@@ -40,14 +37,10 @@ describe("modulation source resolution", () => {
   it("accepts a bare source index and trims whitespace off a source name", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      [
-        "setModulation('Osc 1 Pos', 4, 0.25)",
-        "setModulation('Osc 1 Pos', '  LFO 1  ', 0.75)",
-      ],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "setModulation('Osc 1 Pos', 4, 0.25)",
+      "setModulation('Osc 1 Pos', '  LFO 1  ', 0.75)",
+    ]);
 
     expect(device.call).toHaveBeenCalledWith(
       "set_modulation_value",
@@ -66,11 +59,9 @@ describe("modulation source resolution", () => {
   it.each([-1, 13, 99])("rejects out-of-range source index %s", (index) => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      [`setModulation('Osc 1 Pos', ${index}, 0.5)`],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      `setModulation('Osc 1 Pos', ${index}, 0.5)`,
+    ]);
 
     expect(device.call).not.toHaveBeenCalledWith(
       "set_modulation_value",
@@ -83,23 +74,17 @@ describe("modulation source resolution", () => {
   it("names every valid source when the source is invalid", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      [
-        "setModulation('Osc 1 Pos', 'Nope', 0.5)",
-        "clearModulation('Osc 1 Pos', 'Nope')",
-      ],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "setModulation('Osc 1 Pos', 'Nope', 0.5)",
+      "clearModulation('Osc 1 Pos', 'Nope')",
+    ]);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `setModulation source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
       ),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `clearModulation source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
       ),
@@ -111,11 +96,9 @@ describe("modulation target resolution", () => {
   it("trims whitespace off a target name", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      ["setModulation('  Osc 1 Pos  ', 'LFO 1', 0.5)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "setModulation('  Osc 1 Pos  ', 'LFO 1', 0.5)",
+    ]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
   });
@@ -125,11 +108,7 @@ describe("modulation target resolution", () => {
     // matrix, so the empty-matrix mock is what exercises its trim.
     const device = registerWavetable({}, buildModMethods([]));
 
-    applySpecializedActions(
-      device,
-      ["addModulationTarget('  Osc 1 Pos  ')"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, ["addModulationTarget('  Osc 1 Pos  ')"]);
 
     expect(device.call).toHaveBeenCalledWith(
       "add_parameter_to_modulation_matrix",
@@ -142,11 +121,9 @@ describe("modulation target resolution", () => {
     // missing and re-add it to the matrix.
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      ["setModulation('Osc 1 Pos', 'LFO 1', 0.5)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "setModulation('Osc 1 Pos', 'LFO 1', 0.5)",
+    ]);
 
     expect(device.call).not.toHaveBeenCalledWith(
       "add_parameter_to_modulation_matrix",
@@ -171,15 +148,12 @@ describe("modulation target resolution", () => {
       },
     );
 
-    applySpecializedActions(
-      device,
-      ["setModulation('Osc 1 Pos', 'LFO 1', 0.5)"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "setModulation('Osc 1 Pos', 'LFO 1', 0.5)",
+    ]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("could not add to matrix"),
     );
   });
@@ -189,14 +163,11 @@ describe("modulation target resolution", () => {
     // real target and still report "not in the modulation matrix".
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      ["clearModulation('Filter Freq', 'LFO 1')"],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      "clearModulation('Filter Freq', 'LFO 1')",
+    ]);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'clearModulation target "Filter Freq" is not in the modulation matrix',
       ),
@@ -208,11 +179,9 @@ describe("setModulation amount contract", () => {
   it.each([1, -1])("accepts the boundary amount %s", (amount) => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      [`setModulation('Osc 1 Pos', 'LFO 1', ${amount})`],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      `setModulation('Osc 1 Pos', 'LFO 1', ${amount})`,
+    ]);
 
     expect(device.call).toHaveBeenCalledWith(
       "set_modulation_value",
@@ -225,14 +194,11 @@ describe("setModulation amount contract", () => {
   it.each([1.5, -1.5])("rejects the out-of-range amount %s", (amount) => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(
-      device,
-      [`setModulation('Osc 1 Pos', 'LFO 1', ${amount})`],
-      "updateDevice",
-    );
+    applySpecializedActions(device, [
+      `setModulation('Osc 1 Pos', 'LFO 1', ${amount})`,
+    ]);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(`amount must be in -1..1 (got ${amount})`),
     );
   });

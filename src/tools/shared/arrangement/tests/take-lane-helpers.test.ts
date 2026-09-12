@@ -15,7 +15,7 @@ import {
   takeLaneTargetsThatFit,
   warnUnusedTakeLane,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
@@ -99,7 +99,6 @@ describe("warnUnusedTakeLane", () => {
     const warn = vi.fn();
 
     warnUnusedTakeLane("clip", "arrangement", 2, warn);
-    warnUnusedTakeLane("clip", "arrangement", "new", warn);
 
     expect(warn).not.toHaveBeenCalled();
   });
@@ -123,7 +122,6 @@ describe("isTakeLaneRequested", () => {
 
   it("is true for any non-main value (including invalid ones)", () => {
     expect(isTakeLaneRequested(1)).toBe(true);
-    expect(isTakeLaneRequested("new")).toBe(true);
     expect(isTakeLaneRequested(-1)).toBe(true);
     expect(isTakeLaneRequested("abc")).toBe(true);
   });
@@ -143,8 +141,12 @@ describe("normalizeTakeLaneTarget", () => {
     expect(normalizeTakeLaneTarget("undefined")).toBeNull();
   });
 
-  it('passes "new" through', () => {
-    expect(normalizeTakeLaneTarget("new")).toBe("new");
+  // "new" once appended a lane; a lane is now named by its index.
+  it('refuses the retired "new"', () => {
+    expect(() => normalizeTakeLaneTarget("new")).toThrow(
+      'takeLane must be 0 or a positive integer (got "new"); ' +
+        'name the lane by index, e.g. path "t0/l0"',
+    );
   });
 
   // The param is 1-based, the target is the Live API index.
@@ -162,11 +164,11 @@ describe("normalizeTakeLaneTarget", () => {
 });
 
 describe("resolveTakeLane", () => {
-  it('appends a fresh lane for "new"', () => {
+  it("appends the lanes a past-the-end index needs", () => {
     const track = registerTakeLaneTrack({ initialLanes: 1 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneIndex } = resolveTakeLane(trackApi, "new");
+    const { lane, laneIndex } = resolveTakeLane(trackApi, 1);
 
     expect(laneIndex).toBe(1);
     expect(lane.path).toBe("live_set tracks 0 take_lanes 1");
@@ -199,13 +201,13 @@ describe("resolveTakeLane", () => {
     registerTakeLaneTrack({ initialLanes: 1 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const created = resolveTakeLane(trackApi, "new", "Variation A");
+    const created = resolveTakeLane(trackApi, 1, "Variation A");
 
     expect(created.lane.set).toHaveBeenCalledWith("name", "Variation A");
 
     const existing = resolveTakeLane(
       LiveAPI.from(livePath.track(0)),
-      1,
+      0,
       "Should Not Rename",
     );
 
@@ -222,16 +224,10 @@ describe("resolveTakeLane", () => {
     );
   });
 
-  // The two ways past the cap need different advice: an "l+" on a full track is
-  // out of room, while "l9" is a bad number on any track — telling that caller
-  // to delete lanes sends them the wrong way.
   it("enforces the take lane cap", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    expect(() => resolveTakeLane(trackApi, "new")).toThrow(
-      /reached the 8 take lane limit/,
-    );
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
       /take lane "l9" is out of range: a track has "l0" through "l7"/,
     );
@@ -263,7 +259,7 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane } = resolveTakeLane(trackApi, "new", "");
+    const { lane } = resolveTakeLane(trackApi, 0, "");
 
     expect(lane.set).not.toHaveBeenCalledWith("name", expect.anything());
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
@@ -271,15 +267,6 @@ describe("resolveTakeLane", () => {
 });
 
 describe("takeLaneLabel", () => {
-  // The ordinal that takeLaneKey appends keeps two written l+ apart internally.
-  // It is not something the caller wrote, so it stays out of messages.
-  it("spells an l+ without its ordinal", () => {
-    expect(takeLaneLabel({ trackIndex: 0, takeLane: "new" })).toBe("t0/l+");
-    expect(
-      takeLaneLabel({ trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 }),
-    ).toBe("t3/l+");
-  });
-
   it("spells a numbered lane and the main lane", () => {
     expect(takeLaneLabel({ trackIndex: 2, takeLane: 5 })).toBe("t2/l5");
     expect(takeLaneLabel({ trackIndex: 2, takeLane: null })).toBe("t2");
@@ -287,100 +274,54 @@ describe("takeLaneLabel", () => {
 });
 
 describe("takeLaneTargetsThatFit", () => {
-  it("counts the lanes earlier destinations will create", () => {
-    // l7 auto-creates 8 lanes, leaving no room for l+. Checking each
-    // destination against the pre-call count misses this and fails mid-resolve,
-    // after those 8 permanent lanes already exist.
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: 7 },
-        { trackIndex: 0, takeLane: "new" },
-      ],
-      "duplicate",
-    );
-
-    expect(fitting).toStrictEqual([{ trackIndex: 0, takeLane: 7 }]);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('skipping "t0/l+"'),
-    );
-  });
-
   it("keeps the destinations alongside one that does not fit", () => {
-    registerTakeLaneTrack({ trackIndex: 0, initialLanes: MAX_TAKE_LANES });
-    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+      { trackIndex: 1, takeLane: 0 },
+    ]);
 
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: "new" },
-        { trackIndex: 1, takeLane: "new" },
-      ],
-      "duplicate",
+    expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: 0 }]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('skipping "t0/l8"'),
     );
-
-    expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: "new" }]);
   });
 
   it("warns once for a repeated destination that does not fit", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
-        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
-      ],
-      "createClip",
-    );
+    const fitting = takeLaneTargetsThatFit([
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+    ]);
 
     expect(fitting).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledTimes(1);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      'createClip: skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
+      'skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
     );
   });
 
+  // Lane 7 is the last one MAX_TAKE_LANES allows, so it fits.
   it("keeps a call whose lanes all fit", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    // l+ takes lane 0, then l7 fills up to lane 7: 8 lanes, exactly the cap.
     const targets: ArrangementTrack[] = [
-      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 0, takeLane: 0 },
+      { trackIndex: 0, takeLane: MAX_TAKE_LANES - 1 },
+    ];
+
+    expect(takeLaneTargetsThatFit(targets)).toStrictEqual(targets);
+    expect(consoleMock.warn).not.toHaveBeenCalled();
+  });
+
+  it("keeps a repeated lane and drops main-lane destinations", () => {
+    const fitting = takeLaneTargetsThatFit([
       { trackIndex: 0, takeLane: 7 },
-    ];
-
-    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
-  });
-
-  it("counts repeated l+ on one track as the single lane it resolves to", () => {
-    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
-
-    const targets: ArrangementTrack[] = [
-      { trackIndex: 0, takeLane: "new" },
-      { trackIndex: 0, takeLane: "new" },
-    ];
-
-    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
-  });
-
-  it("counts each track separately and drops main-lane destinations", () => {
-    registerTakeLaneTrack({ trackIndex: 0, initialLanes: 4 });
-    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 4 });
-
-    const fitting = takeLaneTargetsThatFit(
-      [
-        { trackIndex: 0, takeLane: 7 },
-        { trackIndex: 1, takeLane: "new" },
-        { trackIndex: 0, takeLane: null },
-      ],
-      "duplicate",
-    );
+      { trackIndex: 1, takeLane: 7 },
+      { trackIndex: 0, takeLane: 7 },
+      { trackIndex: 0, takeLane: null },
+    ]);
 
     expect(fitting).toStrictEqual([
       { trackIndex: 0, takeLane: 7 },
-      { trackIndex: 1, takeLane: "new" },
+      { trackIndex: 1, takeLane: 7 },
+      { trackIndex: 0, takeLane: 7 },
     ]);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });

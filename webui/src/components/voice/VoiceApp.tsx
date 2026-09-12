@@ -8,6 +8,9 @@ import {
   type ConversationPanelState,
 } from "#webui/components/AppShell";
 import { type ModeAppProps } from "#webui/components/mode-context";
+import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { resolvePanelNotification } from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
 import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
@@ -39,6 +42,7 @@ export function VoiceApp(props: VoiceAppProps) {
     onOpenConnectionSettings,
     onOpenContext,
     clearViewingMode,
+    undoDelete,
   } = props;
 
   const {
@@ -75,6 +79,7 @@ export function VoiceApp(props: VoiceAppProps) {
     resetVoiceHistory: voice.resetHistory,
     clearViewingMode,
     search,
+    undoDelete,
   });
 
   return (
@@ -140,6 +145,7 @@ interface BuildConversationPanelParams {
   resetVoiceHistory: () => void;
   clearViewingMode: () => void;
   search: UseConversationSearchReturn;
+  undoDelete: UndoDeleteReturn;
 }
 
 /**
@@ -159,12 +165,15 @@ function buildConversationPanel(
     transfer,
     isSessionActive,
     search,
+    undoDelete,
   } = params;
 
   // On phones the panel overlays the screen, so collapse it after picking or
   // creating a conversation (matches chat's useConversationPanelState).
   const closeOnMobile = () => {
-    if (isMobile()) setHistoryPanelOpen(() => false);
+    if (isMobile()) {
+      setHistoryPanelOpen(() => false);
+    }
   };
 
   return {
@@ -176,14 +185,20 @@ function buildConversationPanel(
     matchedIds: search.matchedIds,
     onToggle: () => setHistoryPanelOpen((open) => !open),
     onNew: () => {
-      if (isSessionActive) void params.disconnect();
+      if (isSessionActive) {
+        void params.disconnect();
+      }
+
       params.resetVoiceHistory();
       persistence.startNewConversation();
       params.clearViewingMode();
       closeOnMobile();
     },
     onSelect: (id) => {
-      if (isSessionActive) void params.disconnect();
+      if (isSessionActive) {
+        void params.disconnect();
+      }
+
       params.resetVoiceHistory();
       void persistence.switchConversation(id);
       closeOnMobile();
@@ -207,7 +222,32 @@ function buildConversationPanel(
     onToggleBookmark: (id) => void persistence.toggleBookmark(id),
     onExport: () => void transfer.handleExport(),
     onImport: () => void transfer.handleImport(),
-    notification: transfer.notification,
-    onDismissNotification: transfer.dismissNotification,
+    // An in-flight import/export report outranks everything (it is the thing
+    // the user just asked for); below that, chat's own ranking decides between
+    // the undo banner and a save that was refused or failed.
+    ...(transfer.notification
+      ? {
+          notification: transfer.notification,
+          onDismissNotification: transfer.dismissNotification,
+        }
+      : toPanelNotification(resolvePanelNotification(undoDelete, persistence))),
+  };
+}
+
+/**
+ * Rename resolvePanelNotification's keys to the ones the panel props use.
+ * @param resolved - The winning notification and its dismiss handler
+ * @returns The same pair under the panel's prop names
+ */
+function toPanelNotification(resolved: {
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
+}): {
+  notification: TransferNotificationData | null;
+  onDismissNotification: () => void;
+} {
+  return {
+    notification: resolved.notification,
+    onDismissNotification: resolved.dismissNotification,
   };
 }

@@ -1,7 +1,8 @@
 {
-  "threshold": 0.3,
+  "threshold": 0.25,
   "reporters": ["console"],
   "ignore": [
+    "**/*.md",
     "**/tsconfig.json",
     "**/*.test.ts",
     "**/*.test.tsx",

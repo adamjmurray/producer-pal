@@ -11,6 +11,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a device with one continuous param, enabled or macro-mapped
@@ -34,7 +35,8 @@ function registerParam(isEnabled: number): RegisteredMockObject {
       min: 0,
       max: 1,
     },
-    methods: { str_for_value: (value: unknown) => String(value) },
+    // Two decimals, like a real display — see registerParamMock.
+    methods: { str_for_value: (value: unknown) => Number(value).toFixed(2) },
   });
 }
 
@@ -48,9 +50,10 @@ describe("updateDevice - disabled params", () => {
     updateDevice({ id: "dev1", params: [{ name: "Volume", value: "0.8" }] });
 
     expect(param.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining('updateDevice: param "Volume" is disabled'),
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        't0/d0 (id dev1) param "Volume" (id vol) is disabled',
+      ),
     );
   });
 
@@ -60,6 +63,6 @@ describe("updateDevice - disabled params", () => {
     updateDevice({ id: "dev1", params: [{ name: "Volume", value: "0.8" }] });
 
     expect(param.set).toHaveBeenCalledWith("value", 0.8);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

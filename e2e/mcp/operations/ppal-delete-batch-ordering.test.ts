@@ -32,9 +32,10 @@ import {
   type DrumPadInfo,
   readDrumPad,
 } from "../device/drum/drum-pad-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-const emptyMidiTrack = 8;
 
 interface DeleteResult {
   id: string;
@@ -43,7 +44,7 @@ interface DeleteResult {
 }
 
 interface ArrangementClipsResult {
-  arrangementClips?: Array<{ id: string; arrangementStart?: string }>;
+  arrangementClips?: Array<{ id: string; path?: string }>;
 }
 
 describe("ppal-delete batch ordering", () => {
@@ -52,13 +53,12 @@ describe("ppal-delete batch ordering", () => {
     const starts = ["1|1", "5|1", "9|1", "13|1"];
     const ids: string[] = [];
 
-    for (const arrangementStart of starts) {
+    for (const start of starts) {
       const created = parseToolResult<CreateClipResult>(
         await ctx.client!.callTool({
           name: "ppal-create-clip",
           arguments: {
-            path: `t${emptyMidiTrack}`,
-            arrangementStart,
+            path: `t${EMPTY_MIDI_TRACK}[${start}]`,
             notes: "C3 1|1",
             length: "4bar",
           },
@@ -91,7 +91,7 @@ describe("ppal-delete batch ordering", () => {
     const remaining = await readArrangementClips();
 
     expect(remaining.map((c) => c.id)).toStrictEqual([ids[3]]);
-    expect(remaining[0]?.arrangementStart).toBe("13|1");
+    expect(arrangementStartOf(remaining[0])).toBe("13|1");
   });
 
   it("deletes the chains it was given, and leaves the survivor on its own pad", async () => {
@@ -167,13 +167,13 @@ async function padChainCount(rackPath: string, pitch: string): Promise<number> {
 
 /** Read t8's arrangement clips, in Live's own order. */
 async function readArrangementClips(): Promise<
-  Array<{ id: string; arrangementStart?: string }>
+  Array<{ id: string; path?: string }>
 > {
   const track = parseToolResult<ArrangementClipsResult>(
     await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: {
-        trackIndex: emptyMidiTrack,
+        path: `t${EMPTY_MIDI_TRACK}`,
         include: ["arrangement-clips"],
       },
     }),

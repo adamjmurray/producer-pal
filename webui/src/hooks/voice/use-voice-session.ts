@@ -5,36 +5,26 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
-  RealtimeAgent,
-  RealtimeSession,
   type RealtimeItem,
+  type RealtimeSession,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
 import {
-  applyLiveVolume,
   bailIfStale,
-  buildSessionOptions,
   extractErrorMessage,
   fetchEphemeralToken,
   seedInitialHistory,
-  teardownAudioElement,
 } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
-import {
-  buildTransport,
-  wireSessionEvents,
-} from "#webui/hooks/voice/helpers/voice-session-wiring";
+import { applyLiveVolume } from "#webui/hooks/voice/helpers/voice-audio-element-helpers";
+import { releaseVoiceSessionResources } from "#webui/hooks/voice/helpers/voice-session-teardown-helpers";
+import { createWiredSession } from "#webui/hooks/voice/helpers/voice-session-wiring";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import { useVoiceRetry } from "#webui/hooks/voice/use-voice-retry";
 import {
   createVoiceAudioGraph,
-  teardownVoiceAudioGraph,
   type VoiceAudioGraph,
 } from "#webui/hooks/voice/voice-audio-graph";
-import {
-  buildOpenAIVoiceInstructions,
-  getVoiceLanguage,
-} from "#webui/lib/constants/voice-language";
 
 export type VoiceStatus =
   | "idle"
@@ -208,35 +198,17 @@ export function useVoiceSession(
 
   const cleanup = useCallback(async () => {
     // Mark this as an expected close so the transport's "disconnected" event
-    // (triggered by session.close() below) isn't mistaken for a network drop.
+    // (which our own session close fires too) isn't mistaken for a network drop.
     intentionalCloseRef.current = true;
-    // Capture and null refs synchronously so any subsequent await can't race
-    // a concurrent caller into double-closing.
-    const session = sessionRef.current;
-    const mcpClient = mcpClientRef.current;
-
-    sessionRef.current = null;
-    mcpClientRef.current = null;
-    connectingRef.current = false;
-    // Tear the Web Audio graph down before the element so no AudioContext or
-    // audio routing lingers after Stop / a reconnect.
-    teardownVoiceAudioGraph(audioGraphRef.current);
-    audioGraphRef.current = null;
-    teardownAudioElement(audioElementRef.current);
-    audioElementRef.current = null;
-    // Invalidate any connect() still suspended on an await: when it resumes it
-    // will see a changed generation and abort.
-    connectGenRef.current++;
-
-    if (session) closeRealtimeSession(session, activeResponseRef.current);
-
-    if (mcpClient) {
-      try {
-        await mcpClient.close();
-      } catch {
-        // swallow
-      }
-    }
+    await releaseVoiceSessionResources({
+      sessionRef,
+      mcpClientRef,
+      connectingRef,
+      connectGenRef,
+      audioGraphRef,
+      audioElementRef,
+      activeResponseRef,
+    });
 
     setAssistantSpeaking(false);
     setAssistantThinking(false);
@@ -257,7 +229,9 @@ export function useVoiceSession(
 
   const connect = useCallback(
     async (initialHistory?: RealtimeItem[]) => {
-      if (sessionRef.current || connectingRef.current) return;
+      if (sessionRef.current || connectingRef.current) {
+        return;
+      }
 
       if (!openAiKey) {
         setStatus("error");
@@ -288,53 +262,35 @@ export function useVoiceSession(
 
         // Torn down during MCP setup (e.g. unmounted while "Connecting…")? Bail
         // before building the session so we never open a peer connection + mic.
-        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) return;
+        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) {
+          return;
+        }
 
-        const voiceLanguage = getVoiceLanguage(language);
-        const agent = new RealtimeAgent({
-          name: "Producer Pal Voice",
-          instructions: buildOpenAIVoiceInstructions(voiceLanguage),
-          tools,
-          voice,
-        });
-
-        const transport = buildTransport(volume, audioElementRef, () => {
-          if (intentionalCloseRef.current) return;
-
-          void cleanup().then(() => {
-            setStatus("error");
-            setError("Connection lost. Press Talk to reconnect.");
-          });
-        });
-
-        const session = new RealtimeSession(
-          agent,
-          buildSessionOptions(transport, {
-            turnDetection,
-            speed,
-            thinking,
-            model,
-            transcriptionLanguage: voiceLanguage.code,
-          }),
+        const session = createWiredSession(
+          { model, voice, speed, volume, thinking, turnDetection, language },
+          {
+            tools,
+            audioElementRef,
+            setHistory,
+            intentionalCloseRef,
+            cleanup,
+            onConnectionLost: () => {
+              setStatus("error");
+              setError("Connection lost. Press Talk to reconnect.");
+            },
+            eventDeps: {
+              autoMutedRef,
+              isMutedRef,
+              responseActiveRef: activeResponseRef,
+              audioPlayingRef,
+              setAssistantThinking,
+              setAssistantSpeaking,
+              setError,
+              setRateLimitedUntil,
+              autoRetryAttemptsRef,
+            },
+          },
         );
-
-        wireSessionEvents(session, setHistory, {
-          // Barge-in disabled (interrupt_response off, the default) → run
-          // half-duplex: handleTransportEvent mutes the mic for each assistant
-          // turn. When turnDetection is undefined, OpenAI's default (barge-in
-          // on) applies, so we stay full-duplex. turnDetection is fixed for the
-          // session (changes apply on the next Stop → Talk).
-          halfDuplex: turnDetection?.interruptResponse === false,
-          autoMutedRef,
-          isMutedRef,
-          responseActiveRef: activeResponseRef,
-          audioPlayingRef,
-          setAssistantThinking,
-          setAssistantSpeaking,
-          setError,
-          setRateLimitedUntil,
-          autoRetryAttemptsRef,
-        });
 
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
         sessionRef.current = session;
@@ -347,7 +303,9 @@ export function useVoiceSession(
 
         // Torn down during the token fetch? Bail before session.connect() opens
         // the mic (cleanup() already closed the stored session).
-        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) return;
+        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) {
+          return;
+        }
 
         await session.connect({ apiKey: token });
 
@@ -360,8 +318,9 @@ export function useVoiceSession(
         // run before the peer connection exists.
         if (
           await bailIfStale(connectGenRef.current !== myGen, cleanup, session)
-        )
+        ) {
           return;
+        }
 
         // The WebRTC transport has attached the remote stream to our element by
         // now; route it through a GainNode so volume can boost above unity. Null
@@ -408,7 +367,10 @@ export function useVoiceSession(
   const toggleMute = useCallback(async () => {
     const session = sessionRef.current;
 
-    if (!session) return;
+    if (!session) {
+      return;
+    }
+
     const next = !isMuted;
 
     try {
@@ -428,7 +390,9 @@ export function useVoiceSession(
   const interrupt = useCallback(() => {
     const session = sessionRef.current;
 
-    if (!session) return;
+    if (!session) {
+      return;
+    }
 
     try {
       session.interrupt();
@@ -477,33 +441,4 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
-}
-
-/**
- * Tear a realtime session down: cancel a still-running response first (so the
- * server isn't left holding/billing an orphaned response and a stop→restart
- * can't race a lingering one), then close. Both steps are best-effort — a throw
- * from either must not abort teardown.
- *
- * @param session - The session to close
- * @param cancelInFlight - Whether a response is active and should be cancelled
- *   (via interrupt) before closing
- */
-function closeRealtimeSession(
-  session: RealtimeSession,
-  cancelInFlight: boolean,
-): void {
-  if (cancelInFlight) {
-    try {
-      session.interrupt();
-    } catch {
-      // swallow — best-effort cancel
-    }
-  }
-
-  try {
-    session.close();
-  } catch {
-    // swallow — best-effort teardown
-  }
 }

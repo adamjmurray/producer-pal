@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it } from "vitest";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import {
@@ -41,7 +42,7 @@ describe("useSystemPrompt drift", () => {
 
     const { result } = renderHook(useSystemPrompt);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("ready");
     });
 
@@ -62,7 +63,7 @@ describe("useSystemPrompt drift", () => {
 
     const { result } = renderHook(useSystemPrompt);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.drift?.drifted).toBe(true);
     });
 

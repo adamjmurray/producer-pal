@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
-  MAX_ERROR_DELIMITER,
+  END_OF_CHUNKS,
 } from "#src/shared/mcp-response-utils.ts";
 import {
   clearNodeRoutes,
@@ -39,7 +39,7 @@ function parseSentResponse(): ParsedNodeResponse {
 
   expect(name).toBe("node_response");
 
-  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
+  const delimiterIndex = rest.indexOf(END_OF_CHUNKS);
 
   expect(delimiterIndex).toBeGreaterThanOrEqual(0);
 
@@ -72,7 +72,7 @@ describe("node-request-protocol", () => {
       "node_response",
       "req-1",
       expect.any(String),
-      MAX_ERROR_DELIMITER,
+      END_OF_CHUNKS,
     );
 
     const response = parseSentResponse();
@@ -191,7 +191,7 @@ describe("node-request-protocol", () => {
     expect(call[1]).toBe("req-big");
 
     const args = call.slice(2);
-    const delimiterIndex = args.indexOf(MAX_ERROR_DELIMITER);
+    const delimiterIndex = args.indexOf(END_OF_CHUNKS);
 
     expect(delimiterIndex).toBeGreaterThan(1);
 

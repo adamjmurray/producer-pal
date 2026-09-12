@@ -47,16 +47,17 @@ nothing), and say so, so the user knows what to play.
 
 ## Landing it in Live
 
-One call builds the rack and every pad. The `pNOTE/d0/sample` param name
-addresses the device at slot `d0` inside pad `NOTE`, auto-creating that pad's
-Simpler:
+One call builds the rack and every pad. The `pNOTE/sample` param name addresses
+pad `NOTE`, auto-creating that pad's chain and Simpler. Don't write a device
+index — the pad's instrument is found wherever it sits, so the name keeps
+working on a pad with a MIDI effect in front of it:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-device \
   '{"deviceName":"Drum Rack","path":"t0","params":[
-     {"name":"pC1/d0/sample","value":"/abs/path/kick.wav"},
-     {"name":"pD1/d0/sample","value":"/abs/path/snare.wav"},
-     {"name":"pF#1/d0/sample","value":"/abs/path/hat-closed.wav"}]}'
+     {"name":"pC1/sample","value":"/abs/path/kick.wav"},
+     {"name":"pD1/sample","value":"/abs/path/snare.wav"},
+     {"name":"pF#1/sample","value":"/abs/path/hat-closed.wav"}]}'
 ```
 
 `path` must be a **MIDI** track. A generator script that prints exactly this
@@ -78,7 +79,7 @@ getting them early saves re-rendering everything.
 ## Gotchas
 
 - **MIDI track required** — a Drum Rack is an instrument.
-- **`#` in pad names is fine** in the param name (`pF#1/d0/sample`), but keep it
+- **`#` in pad names is fine** in the param name (`pF#1/sample`), but keep it
   out of filenames.
 - **Re-running overwrites** the `.wav` files in the output directory. Use a new
   kit folder per variation, or you will silently replace samples the user

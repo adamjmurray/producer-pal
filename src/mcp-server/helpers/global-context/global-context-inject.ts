@@ -70,7 +70,9 @@ export function withProjectContext(
 export function globalContextBlock(): string | null {
   const globalContext = readGlobalContext().trim();
 
-  if (!globalContext) return null;
+  if (!globalContext) {
+    return null;
+  }
 
   return `Global context (all projects):\n\n${globalContext}`;
 }
@@ -85,7 +87,9 @@ export function globalContextBlock(): string | null {
 export function projectContextBlock(projectContext: string): string | null {
   const trimmed = projectContext.trim();
 
-  if (!trimmed) return null;
+  if (!trimmed) {
+    return null;
+  }
 
   return `Project context (this Live Set):\n\n${trimmed}`;
 }

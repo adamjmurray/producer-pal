@@ -41,6 +41,10 @@ export function usePresetDraft(
   // would spin the parent's state.
   const notify = useRef(onOpenChange);
 
+  // Written in render so the effect below sees the current callback on the same
+  // pass that `open` flips. Its own effect would work only if declared first,
+  // making correctness depend on effect order.
+  // eslint-disable-next-line react/immutability -- latest-callback ref, see above
   notify.current = onOpenChange;
 
   useEffect(() => {

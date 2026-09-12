@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -14,7 +15,7 @@ import {
 import {
   exactMatch,
   formatExpectedCount,
-  getTargetTurns,
+  getToolCalls,
   normalizeCount,
   stringifyArgs,
 } from "./helpers.ts";
@@ -30,12 +31,11 @@ export function assertToolCalled(
   assertion: ToolCallAssertion,
   turns: EvalTurnResult[],
 ): EvalAssertionResult {
-  const targetTurns = getTargetTurns(turns, assertion.turn);
-
-  // First filter by name only (for correctness scoring)
-  const nameMatchingCalls = targetTurns
-    .flatMap((t) => t.toolCalls)
-    .filter((tc) => tc.name === assertion.tool);
+  // Successful calls only: a failed attempt the model then corrected is a
+  // discarded draft, and counting it breaks every `count` bound.
+  const nameMatchingCalls = getToolCalls(turns, assertion.turn).filter(
+    (tc) => tc.name === assertion.tool,
+  );
 
   // Then filter by args
   const matchingCalls = nameMatchingCalls.filter(

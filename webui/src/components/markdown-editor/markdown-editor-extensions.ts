@@ -177,7 +177,10 @@ function buildBulletMarkers(view: EditorView): DecorationSet {
       from,
       to,
       enter: (node) => {
-        if (node.name !== "ListMark") return;
+        if (node.name !== "ListMark") {
+          return;
+        }
+
         const marker = view.state.doc.sliceString(node.from, node.to);
 
         if (marker === "-" || marker === "*" || marker === "+") {

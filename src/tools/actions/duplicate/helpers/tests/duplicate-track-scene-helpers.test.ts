@@ -20,6 +20,7 @@ import {
   duplicateSceneToArrangement,
   duplicateTrack,
 } from "../duplicate-track-scene-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock updateClip to avoid complex internal logic
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -126,16 +127,16 @@ describe("duplicate-track-scene-helpers", () => {
 
       const result = duplicateTrack(0);
 
-      expect(result).toMatchObject({
-        trackIndex: 1,
+      expect(result).toStrictEqual({
+        path: "t1",
+        id: "live_set/tracks/1",
         clips: [],
       });
 
       expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
       // No name/color/routeToSource → none of those side effects fire.
       expect(newTrack.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("routing options"),
       );
     });
@@ -188,20 +189,21 @@ describe("duplicate-track-scene-helpers", () => {
       const spy = vi
         .spyOn(LiveAPI, "from")
         .mockImplementation((idOrPath: Parameters<typeof realFrom>[0]) => {
-          if (idOrPath === "this_device") throw new Error("Live API not ready");
+          if (idOrPath === "this_device") {
+            throw new Error("Live API not ready");
+          }
 
           return realFrom(idOrPath);
         });
 
       try {
-        expect(duplicateTrack(0).trackIndex).toBe(1);
+        expect(duplicateTrack(0).path).toBe("t1");
         expect(newTrack.call).not.toHaveBeenCalledWith(
           "delete_device",
           expect.anything(),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
-          "Could not check for Producer Pal device in duplicated track",
+        expect(capturedWarnings()).toContain(
+          "could not check the new track t1 (id live_set/tracks/1) for the Producer Pal device",
         );
       } finally {
         spy.mockRestore();
@@ -306,8 +308,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("Armed the source track"),
       );
     });
@@ -320,10 +321,9 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          'Could not find track "Source Track" in routing options',
+          'Could not find track "Source Track" t0 (id live_set/tracks/0) in routing options',
         ),
       );
     });
@@ -339,10 +339,9 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          'Could not route to "Source Track" due to duplicate track names',
+          'Could not route to "Source Track" t0 (id live_set/tracks/0) due to duplicate track names',
         ),
       );
     });
@@ -355,7 +354,7 @@ describe("duplicate-track-scene-helpers", () => {
           { display_name: "Audio In", identifier: "audio_in_id" },
         ],
         expectedMessage:
-          'Changed track "Source Track" input routing from "Audio In" to "No Input"',
+          'Changed track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input"',
       },
       {
         desc: "should warn when No Input routing option is not available",
@@ -363,7 +362,7 @@ describe("duplicate-track-scene-helpers", () => {
           { display_name: "Audio In", identifier: "audio_in_id" },
         ],
         expectedMessage:
-          'Tried to change track "Source Track" input routing from "Audio In" to "No Input" but could not find "No Input"',
+          'Tried to change track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input" but could not find "No Input"',
       },
     ])("$desc", ({ availableInputRouting, expectedMessage }) => {
       setupRoutingMocks(
@@ -377,8 +376,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(expectedMessage),
       );
     });
@@ -461,10 +459,10 @@ describe("duplicate-track-scene-helpers", () => {
       // Should collect arrangement clips
       expect(result.clips.length).toBeGreaterThan(0);
       expect(result.clips[0]!.id).toBe(arrClipId);
-      // Arrangement clips on a duplicated track omit trackIndex (they all share
-      // the new track) but keep arrangementStart.
+      // No index fields: the path is the whole address, and start_time 8 in
+      // 4/4 is bar 3 beat 1 on the new track.
       expect(result.clips[0]).not.toHaveProperty("trackIndex");
-      expect(result.clips[0]).toHaveProperty("arrangementStart");
+      expect(result.clips[0]).toHaveProperty("path", "t1[3|1]");
     });
   });
 
@@ -495,8 +493,9 @@ describe("duplicate-track-scene-helpers", () => {
 
       const result = duplicateScene(0);
 
-      expect(result).toMatchObject({
-        sceneIndex: 1,
+      expect(result).toStrictEqual({
+        path: "s1",
+        id: "live_set/scenes/1",
         clips: [],
       });
 
@@ -579,6 +578,38 @@ describe("duplicate-track-scene-helpers", () => {
     });
   }
 
+  /**
+   * Register the scene, liveSet, track and arrangement-clip mocks one
+   * scene-to-arrangement duplicate needs.
+   * @param clipLength - Length of the scene's single source clip, in beats
+   * @param extraLiveSetProps - Additional properties for the liveSet mock
+   */
+  function setupSceneToArrangementClipMocks(
+    clipLength: number,
+    extraLiveSetProps: Record<string, unknown> = {},
+  ): void {
+    setupSceneToArrangementBaseMocks(extraLiveSetProps);
+    registerClipSlot(0, 0, true, {
+      length: clipLength,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 1,
+    });
+    registerMockObject("live_set/tracks/0", {
+      path: livePath.track(0),
+      methods: {
+        duplicate_clip_to_arrangement: () => [
+          "id",
+          livePath.track(0).arrangementClip(0),
+        ],
+      },
+    });
+    registerMockObject(livePath.track(0).arrangementClip(0), {
+      path: livePath.track(0).arrangementClip(0),
+      properties: { is_arrangement_clip: 1, start_time: 16 },
+    });
+  }
+
   describe("duplicateSceneToArrangement", () => {
     it("should throw error when scene does not exist", async () => {
       mockNonExistentObjects();
@@ -593,9 +624,7 @@ describe("duplicate-track-scene-helpers", () => {
           4,
           4,
         ),
-      ).rejects.toThrow(
-        'duplicate failed: scene with id "scene123" does not exist',
-      );
+      ).rejects.toThrow('scene with id "scene123" does not exist');
     });
 
     it("should throw error when scene has no sceneIndex", async () => {
@@ -611,7 +640,7 @@ describe("duplicate-track-scene-helpers", () => {
           4,
           4,
         ),
-      ).rejects.toThrow('duplicate failed: no scene index for id "scene123"');
+      ).rejects.toThrow('no scene index for id "scene123"');
     });
 
     it("should return empty clips when withoutClips is true", async () => {
@@ -631,10 +660,7 @@ describe("duplicate-track-scene-helpers", () => {
         4,
       );
 
-      expect(result).toMatchObject({
-        arrangementStart: "5|1",
-        clips: [],
-      });
+      expect(result).toStrictEqual({ clips: [] });
     });
 
     it.each([
@@ -644,7 +670,9 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra: {},
         sceneName: undefined as string | undefined,
         arrangementLength: "2bar" as string | undefined,
-        expectedStart: expect.any(String) as string,
+        // Lengthening runs through updateClip, which these mocks stop short of,
+        // so the batch collects no clip.
+        expectedClipPath: undefined as string | undefined,
       },
       {
         desc: "should use calculateSceneLength when arrangementLength is not provided",
@@ -652,7 +680,8 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra: { signature_numerator: 4, signature_denominator: 4 },
         sceneName: "Scene Name",
         arrangementLength: undefined,
-        expectedStart: "5|1",
+        // start_time 16 in 4/4 is bar 5 beat 1.
+        expectedClipPath: "t0[5|1]",
       },
     ])(
       "$desc",
@@ -661,28 +690,9 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra,
         sceneName,
         arrangementLength,
-        expectedStart,
+        expectedClipPath,
       }) => {
-        setupSceneToArrangementBaseMocks(liveSetExtra);
-        registerClipSlot(0, 0, true, {
-          length: clipLength,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          is_midi_clip: 1,
-        });
-        registerMockObject("live_set/tracks/0", {
-          path: livePath.track(0),
-          methods: {
-            duplicate_clip_to_arrangement: () => [
-              "id",
-              livePath.track(0).arrangementClip(0),
-            ],
-          },
-        });
-        registerMockObject(livePath.track(0).arrangementClip(0), {
-          path: livePath.track(0).arrangementClip(0),
-          properties: { is_arrangement_clip: 1, start_time: 16 },
-        });
+        setupSceneToArrangementClipMocks(clipLength, liveSetExtra);
 
         const result = await duplicateSceneToArrangement(
           "scene1",
@@ -694,9 +704,34 @@ describe("duplicate-track-scene-helpers", () => {
           4,
         );
 
+        // The clip's own path is the only place the copy's position is
+        // reported; the batch carries none of its own.
         expect(result).toHaveProperty("clips");
-        expect(result).toHaveProperty("arrangementStart", expectedStart);
+        expect(result.clips[0]?.path).toBe(expectedClipPath);
       },
     );
+
+    it("reports each clip as id and path, never the requested name", async () => {
+      // The name lands on the clip itself, so reporting it back would echo an
+      // arg that took effect as intended.
+      setupSceneToArrangementClipMocks(8, {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      });
+
+      const result = await duplicateSceneToArrangement(
+        "scene1",
+        16,
+        "Scene Name",
+        false,
+        undefined,
+        4,
+        4,
+      );
+
+      expect(result.clips).toStrictEqual([
+        { id: expect.any(String), path: "t0[5|1]" },
+      ]);
+    });
   });
 });

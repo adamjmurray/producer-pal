@@ -175,7 +175,10 @@ export async function typeDraft(
 export async function flushDebounceWindow(microtaskTurns = 1): Promise<void> {
   await act(async () => {
     vi.advanceTimersByTime(800);
-    for (let i = 0; i < microtaskTurns; i++) await Promise.resolve();
+
+    for (let i = 0; i < microtaskTurns; i++) {
+      await Promise.resolve();
+    }
   });
 }
 
@@ -186,7 +189,9 @@ export async function flushDebounceWindow(microtaskTurns = 1): Promise<void> {
  */
 export async function drainMicrotasks(turns = 3): Promise<void> {
   await act(async () => {
-    for (let i = 0; i < turns; i++) await Promise.resolve();
+    for (let i = 0; i < turns; i++) {
+      await Promise.resolve();
+    }
   });
 }
 

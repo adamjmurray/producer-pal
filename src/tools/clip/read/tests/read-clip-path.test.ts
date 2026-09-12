@@ -6,7 +6,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
@@ -23,16 +28,21 @@ describe("readClip location params through the tool schema", () => {
     {},
   ).validating;
 
-  it.each([
-    ["null", null],
-    ["blank", ""],
-  ])("refuses a %s trackIndex/sceneIndex instead of reading t0/s0", (_l, v) => {
-    const raw = { id: null, trackIndex: v, sceneIndex: v };
+  it("refuses a null trackIndex/sceneIndex instead of reading t0/s0", () => {
+    const raw = { id: null, trackIndex: null, sceneIndex: null };
     const args = z.object(params).parse(unsetEmptyParams(raw, params));
 
     expect(args.trackIndex).toBeUndefined();
     expect(args.sceneIndex).toBeUndefined();
     expect(() => readClip(args)).toThrow("id or path is required");
+  });
+
+  // A blank is refused where the null is dropped: a number has no empty value,
+  // so a caller sending one meant something and the call can't guess what.
+  it("refuses a blank trackIndex outright", () => {
+    expect(() =>
+      unsetEmptyParams({ trackIndex: "", sceneIndex: "" }, params),
+    ).toThrow("trackIndex: a blank string is not a value for this param.");
   });
 });
 
@@ -65,14 +75,54 @@ describe("readClip path param", () => {
     expect(() => readClip({ path: "t99/s0" })).toThrow('no track at "t99"');
   });
 
-  // read-clip REPORTS "t3/l0" for a take-lane clip but won't take it back —
-  // this reader only walks the session grid, and a take lane holds arrangement
-  // clips. Pinned because it's the one place a result path doesn't paste back,
-  // so the error has to name the spelling that does.
+  // A take lane holds many clips, so the lane alone still names none in
+  // particular — but the lane plus a position does, and that is what a result
+  // reports. The error names the session spelling because that is what a bare
+  // lane most often means here.
   it("rejects a take lane path and names what to send instead", () => {
     expect(() => readClip({ path: "t1/l0" })).toThrow(
       'invalid path "t1/l0" - take lanes hold arrangement clips; ' +
         'name a clip slot as "t<track>/s<scene>" (e.g., "t1/s0")',
+    );
+  });
+
+  // The round trip a result relies on: read-clip reports "t1[5|1]" for an
+  // arrangement clip, and that same string reads it back.
+  it("reads an arrangement clip by where it starts", () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    setupMidiClipMock({
+      path: livePath.track(1).arrangementClip(0),
+      clipId: "arr_clip",
+      clipProps: { name: "Verse", start_time: 16, is_arrangement_clip: 1 },
+    });
+    registerMockObject("track_1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { arrangement_clips: children("arr_clip") },
+    });
+
+    const result = readClip({ path: "t1[5|1]" });
+
+    expect(result.name).toBe("Verse");
+    expect(result.path).toBe("t1[5|1]");
+  });
+
+  it("throws when no clip starts at the position named", () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerMockObject("track_1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { arrangement_clips: children() },
+    });
+
+    expect(() => readClip({ path: "t1[9|1]" })).toThrow(
+      'no clip at path "t1[9|1]"',
     );
   });
 
@@ -147,7 +197,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ path: "t1/s1", slot: "2/3" })).toThrow(
-      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+      "path and slot both name a clip; use path alone (slot is deprecated)",
     );
   });
 
@@ -169,7 +219,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ path: "t1/s1", id: "stale" })).toThrow(
-      "readClip failed: path and id name different clips; use one",
+      "path and id name different clips; use one",
     );
   });
 
@@ -204,7 +254,7 @@ describe("readClip path param", () => {
     });
 
     expect(() => readClip({ ...location, id: "stale" })).toThrow(
-      `readClip failed: ${param} and id name different clips; use one`,
+      `${param} and id name different clips; use one`,
     );
   });
 
@@ -273,7 +323,7 @@ describe("readClip path param", () => {
       "From path",
     );
     expect(warn).toHaveBeenCalledWith(
-      'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+      'trackIndex/sceneIndex ignored — "path" already names the clip',
     );
   });
 });

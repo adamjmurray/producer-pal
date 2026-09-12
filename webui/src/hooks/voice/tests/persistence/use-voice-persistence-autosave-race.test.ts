@@ -6,6 +6,7 @@
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
+import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Gate a one-shot callback that runs *after* the real write commits but
@@ -15,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // persistence suite keeps the real saveConversation) and pass everything else
 // through.
 const gate = vi.hoisted(() => ({
+  beforeSave: null as null | (() => Promise<void>),
   afterSave: null as null | (() => Promise<void>),
 }));
 
@@ -25,6 +27,13 @@ vi.mock(import("#webui/lib/conversation-db"), async (importOriginal) => {
     ...actual,
     saveConversation: vi.fn(
       async (record: Parameters<typeof actual.saveConversation>[0]) => {
+        if (gate.beforeSave) {
+          const before = gate.beforeSave;
+
+          gate.beforeSave = null;
+          await before();
+        }
+
         const result = await actual.saveConversation(record);
 
         if (gate.afterSave) {
@@ -52,6 +61,7 @@ import {
 } from "./voice-persistence-test-helpers";
 
 beforeEach(async () => {
+  gate.beforeSave = null;
   gate.afterSave = null;
   window.location.hash = "";
   await resetConversationsDb();
@@ -71,20 +81,55 @@ describe("useVoicePersistence autosave delete-during-write race", () => {
     await waitForEffects();
     expect(result.current.activeConversationId).toBe(record.id);
 
-    // The next save (the autosave below) commits, then a delete lands before
-    // the .then() runs — the exact window the guard covers.
-    gate.afterSave = async () => {
-      await result.current.deleteConversation(record.id);
+    // Start the delete once the autosave's write has committed but before it
+    // has finished — the exact window the store's drain covers. Started, not
+    // awaited: the delete waits on this very save, so awaiting it here would
+    // deadlock the two.
+    let deletion: Promise<void> | null = null;
+
+    gate.afterSave = () => {
+      deletion = result.current.deleteConversation(record.id);
+
+      return Promise.resolve();
     };
 
     rerender([userTextItem("a new turn")]);
     await waitForAutosave();
+    await act(async () => {
+      await deletion;
+    });
 
-    // .then() must re-check canceledIds and bail: no stale re-adoption of the
-    // deleted id, and the on-disk delete stands.
+    // The delete drains the save, then removes the row it just wrote: no stale
+    // re-adoption of the deleted id, and the on-disk delete stands.
     expect(result.current.activeConversationId).toBeNull();
     expect(result.current.conversations).toHaveLength(0);
     expect(await loadConversation(record.id)).toBeUndefined();
+  });
+
+  it("does not resurrect a wiped conversation whose first write had not landed", async () => {
+    // The conversation has no row yet, so the write transaction has nothing to
+    // notice a delete by. Only the drain covers this: the wipe has to wait for
+    // the save it can already see.
+    const { result, rerender } = renderVoicePersistenceWithHistory();
+
+    await waitForEffects();
+
+    let wipe: Promise<void> | null = null;
+
+    gate.beforeSave = () => {
+      wipe = result.current.deleteAllConversations();
+
+      return Promise.resolve();
+    };
+
+    rerender([userTextItem("a brand new turn")]);
+    await waitForAutosave();
+    await act(async () => {
+      await wipe;
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.activeConversationId).toBeNull();
   });
 });
 

@@ -3,15 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+// Reading a device parameter back as a tool result. The label lexer this leans
+// on is covered in device-display-helpers-labels.test.ts.
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AUTOMATION_STATE_MAP,
   PARAM_STATE_MAP,
-  extractMaxPanValue,
-  isDivisionLabel,
-  isPanLabel,
-  normalizePan,
-  parseLabel,
   readParameter,
   readParameterBasic,
 } from "../device-display-helpers.ts";
@@ -19,317 +17,6 @@ import {
 describe("device-display-helpers", () => {
   const mockGet = vi.fn();
   const mockCall = vi.fn();
-
-  describe("parseLabel", () => {
-    describe("frequency (Hz)", () => {
-      it("parses kHz and converts to Hz", () => {
-        expect(parseLabel("1.00 kHz")).toStrictEqual({
-          value: 1000,
-          unit: "Hz",
-        });
-        expect(parseLabel("12.5 kHz")).toStrictEqual({
-          value: 12500,
-          unit: "Hz",
-        });
-        expect(parseLabel("0.5 kHz")).toStrictEqual({ value: 500, unit: "Hz" });
-      });
-
-      it("parses Hz directly", () => {
-        expect(parseLabel("440 Hz")).toStrictEqual({ value: 440, unit: "Hz" });
-        expect(parseLabel("20 Hz")).toStrictEqual({ value: 20, unit: "Hz" });
-      });
-    });
-
-    describe("time (ms)", () => {
-      it("parses seconds and converts to ms", () => {
-        expect(parseLabel("1.00 s")).toStrictEqual({ value: 1000, unit: "ms" });
-        expect(parseLabel("0.5 s")).toStrictEqual({ value: 500, unit: "ms" });
-        expect(parseLabel("2.5 s")).toStrictEqual({ value: 2500, unit: "ms" });
-      });
-
-      it("parses ms directly", () => {
-        expect(parseLabel("100 ms")).toStrictEqual({ value: 100, unit: "ms" });
-        expect(parseLabel("500 ms")).toStrictEqual({ value: 500, unit: "ms" });
-      });
-    });
-
-    describe("decibels (dB)", () => {
-      it("parses positive and negative dB values", () => {
-        expect(parseLabel("0 dB")).toStrictEqual({ value: 0, unit: "dB" });
-        expect(parseLabel("-6 dB")).toStrictEqual({ value: -6, unit: "dB" });
-        expect(parseLabel("-18.5 dB")).toStrictEqual({
-          value: -18.5,
-          unit: "dB",
-        });
-        expect(parseLabel("3 dB")).toStrictEqual({ value: 3, unit: "dB" });
-      });
-
-      it("converts -inf dB to -70", () => {
-        expect(parseLabel("-inf dB")).toStrictEqual({ value: -70, unit: "dB" });
-      });
-    });
-
-    describe("percentage (%)", () => {
-      it("parses percentage values", () => {
-        expect(parseLabel("0 %")).toStrictEqual({ value: 0, unit: "%" });
-        expect(parseLabel("50 %")).toStrictEqual({ value: 50, unit: "%" });
-        expect(parseLabel("100 %")).toStrictEqual({ value: 100, unit: "%" });
-        expect(parseLabel("-50 %")).toStrictEqual({ value: -50, unit: "%" });
-      });
-
-      it("parses 'percent' word as %", () => {
-        expect(parseLabel("50 percent")).toStrictEqual({
-          value: 50,
-          unit: "%",
-        });
-        expect(parseLabel("100percent")).toStrictEqual({
-          value: 100,
-          unit: "%",
-        });
-        expect(parseLabel("25 PERCENT")).toStrictEqual({
-          value: 25,
-          unit: "%",
-        });
-      });
-    });
-
-    describe("semitones (st)", () => {
-      it("parses semitone values", () => {
-        expect(parseLabel("0 st")).toStrictEqual({
-          value: 0,
-          unit: "semitones",
-        });
-        expect(parseLabel("+12 st")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-        expect(parseLabel("-24 st")).toStrictEqual({
-          value: -24,
-          unit: "semitones",
-        });
-        expect(parseLabel("7 st")).toStrictEqual({
-          value: 7,
-          unit: "semitones",
-        });
-      });
-
-      it("parses 'semitones', 'semitone', 'semi', 'semis' as st", () => {
-        expect(parseLabel("12 semitones")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-        expect(parseLabel("1 semitone")).toStrictEqual({
-          value: 1,
-          unit: "semitones",
-        });
-        expect(parseLabel("+5 semi")).toStrictEqual({
-          value: 5,
-          unit: "semitones",
-        });
-        expect(parseLabel("-7 semis")).toStrictEqual({
-          value: -7,
-          unit: "semitones",
-        });
-        expect(parseLabel("12SEMITONES")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-      });
-    });
-
-    describe("degrees (°)", () => {
-      it("parses degree values", () => {
-        expect(parseLabel("300°")).toStrictEqual({
-          value: 300,
-          unit: "degrees",
-        });
-        expect(parseLabel("0°")).toStrictEqual({ value: 0, unit: "degrees" });
-        expect(parseLabel("180 °")).toStrictEqual({
-          value: 180,
-          unit: "degrees",
-        });
-        expect(parseLabel("-90°")).toStrictEqual({
-          value: -90,
-          unit: "degrees",
-        });
-      });
-
-      it("parses 'degrees', 'degree', and 'deg' as °", () => {
-        expect(parseLabel("180 degrees")).toStrictEqual({
-          value: 180,
-          unit: "degrees",
-        });
-        expect(parseLabel("1 degree")).toStrictEqual({
-          value: 1,
-          unit: "degrees",
-        });
-        expect(parseLabel("90 deg")).toStrictEqual({
-          value: 90,
-          unit: "degrees",
-        });
-        expect(parseLabel("180DEGREES")).toStrictEqual({
-          value: 180,
-          unit: "degrees",
-        });
-        expect(parseLabel("-45deg")).toStrictEqual({
-          value: -45,
-          unit: "degrees",
-        });
-      });
-    });
-
-    describe("note names", () => {
-      it("parses note names and keeps as string", () => {
-        expect(parseLabel("C4")).toStrictEqual({ value: "C4", unit: "note" });
-        expect(parseLabel("F#-1")).toStrictEqual({
-          value: "F#-1",
-          unit: "note",
-        });
-        expect(parseLabel("Bb3")).toStrictEqual({ value: "Bb3", unit: "note" });
-        expect(parseLabel("G#8")).toStrictEqual({ value: "G#8", unit: "note" });
-      });
-    });
-
-    describe("pan", () => {
-      it("parses pan labels with direction", () => {
-        expect(parseLabel("50L")).toStrictEqual({
-          value: 50,
-          unit: "pan",
-          direction: "L",
-        });
-        expect(parseLabel("50R")).toStrictEqual({
-          value: 50,
-          unit: "pan",
-          direction: "R",
-        });
-        expect(parseLabel("25L")).toStrictEqual({
-          value: 25,
-          unit: "pan",
-          direction: "L",
-        });
-      });
-
-      it("parses center pan as fixed value", () => {
-        expect(parseLabel("C")).toStrictEqual({ value: 0, unit: "pan" });
-      });
-    });
-
-    describe("unitless numbers", () => {
-      it("extracts numbers without units", () => {
-        expect(parseLabel("76")).toStrictEqual({ value: 76, unit: null });
-        expect(parseLabel("0.5")).toStrictEqual({ value: 0.5, unit: null });
-        expect(parseLabel("-3.5")).toStrictEqual({ value: -3.5, unit: null });
-      });
-    });
-
-    describe("edge cases", () => {
-      it("returns null for non-parseable strings", () => {
-        expect(parseLabel("Repitch")).toStrictEqual({
-          value: null,
-          unit: null,
-        });
-        expect(parseLabel("Off")).toStrictEqual({ value: null, unit: null });
-      });
-
-      it("trims whitespace from VST-style right-padded labels", () => {
-        expect(parseLabel("    8 Hz")).toStrictEqual({ value: 8, unit: "Hz" });
-        expect(parseLabel("  425 Hz")).toStrictEqual({
-          value: 425,
-          unit: "Hz",
-        });
-        expect(parseLabel("22050 Hz ")).toStrictEqual({
-          value: 22050,
-          unit: "Hz",
-        });
-        expect(parseLabel("  -6 dB")).toStrictEqual({ value: -6, unit: "dB" });
-      });
-
-      it("handles null/undefined/non-string input", () => {
-        expect(parseLabel(null as unknown as string)).toStrictEqual({
-          value: null,
-          unit: null,
-        });
-        expect(parseLabel(undefined as unknown as string)).toStrictEqual({
-          value: null,
-          unit: null,
-        });
-        expect(parseLabel(123 as unknown as string)).toStrictEqual({
-          value: null,
-          unit: null,
-        });
-      });
-    });
-  });
-
-  describe("isPanLabel", () => {
-    it("returns true for pan labels", () => {
-      expect(isPanLabel("50L")).toBe(true);
-      expect(isPanLabel("50R")).toBe(true);
-      expect(isPanLabel("C")).toBe(true);
-      expect(isPanLabel("25L")).toBe(true);
-    });
-
-    it("returns false for non-pan labels", () => {
-      expect(isPanLabel("50 Hz")).toBe(false);
-      expect(isPanLabel("Center")).toBe(false);
-      expect(isPanLabel(null as unknown as string)).toBe(false);
-      expect(isPanLabel(undefined as unknown as string)).toBe(false);
-    });
-  });
-
-  describe("isDivisionLabel", () => {
-    it("returns true for division fraction labels", () => {
-      expect(isDivisionLabel("1/8")).toBe(true);
-      expect(isDivisionLabel("1/16")).toBe(true);
-      expect(isDivisionLabel("1/64")).toBe(true);
-      expect(isDivisionLabel("1/4")).toBe(true);
-      expect(isDivisionLabel("1/2")).toBe(true);
-    });
-
-    it("returns false for non-division labels", () => {
-      expect(isDivisionLabel("2/4")).toBe(false); // must start with 1/
-      expect(isDivisionLabel("1")).toBe(false);
-      expect(isDivisionLabel("1/")).toBe(false);
-      expect(isDivisionLabel("50 Hz")).toBe(false);
-      expect(isDivisionLabel(null as unknown as string)).toBe(false);
-      expect(isDivisionLabel(undefined as unknown as string)).toBe(false);
-      expect(isDivisionLabel(123 as unknown as string)).toBe(false);
-    });
-  });
-
-  describe("normalizePan", () => {
-    it("normalizes pan values to -1 to 1", () => {
-      expect(normalizePan("50L", 50)).toBe(-1);
-      expect(normalizePan("50R", 50)).toBe(1);
-      expect(normalizePan("25L", 50)).toBe(-0.5);
-      expect(normalizePan("25R", 50)).toBe(0.5);
-      expect(normalizePan("C", 50)).toBe(0);
-    });
-
-    it("handles different max pan values", () => {
-      expect(normalizePan("64L", 64)).toBe(-1);
-      expect(normalizePan("64R", 64)).toBe(1);
-      expect(normalizePan("32L", 64)).toBe(-0.5);
-    });
-
-    it("returns 0 for non-matching label", () => {
-      expect(normalizePan("invalid", 50)).toBe(0);
-      expect(normalizePan("", 50)).toBe(0);
-    });
-  });
-
-  describe("extractMaxPanValue", () => {
-    it("extracts max pan value from label", () => {
-      expect(extractMaxPanValue("50L")).toBe(50);
-      expect(extractMaxPanValue("50R")).toBe(50);
-      expect(extractMaxPanValue("64L")).toBe(64);
-    });
-
-    it("returns default 50 for non-matching labels", () => {
-      expect(extractMaxPanValue("C")).toBe(50);
-      expect(extractMaxPanValue("invalid")).toBe(50);
-    });
-  });
 
   describe("state maps", () => {
     it("PARAM_STATE_MAP maps state codes to labels", () => {
@@ -352,8 +39,13 @@ describe("device-display-helpers", () => {
 
     it("returns id and name for a parameter", () => {
       mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") return ["Volume"];
-        if (prop === "original_name") return ["Volume"];
+        if (prop === "name") {
+          return ["Volume"];
+        }
+
+        if (prop === "original_name") {
+          return ["Volume"];
+        }
 
         return [0];
       });
@@ -362,6 +54,7 @@ describe("device-display-helpers", () => {
         id: "param_1",
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
       };
 
       const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
@@ -372,10 +65,45 @@ describe("device-display-helpers", () => {
       });
     });
 
+    it("reports an all-digit parameter name as a string", () => {
+      // A rack macro name equal to its original_name too — the else-branch
+      // return used to pass that raw number straight through.
+      mockGet.mockImplementation((prop: string) => {
+        if (prop === "name") {
+          return [5678];
+        }
+
+        if (prop === "original_name") {
+          return [5678];
+        }
+
+        return [0];
+      });
+
+      const mockParamApi = {
+        id: "param_1b",
+        get: mockGet,
+        getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
+      };
+
+      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
+
+      expect(result).toStrictEqual({
+        id: "param_1b",
+        name: "5678",
+      });
+    });
+
     it("formats name with original_name for rack macros", () => {
       mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") return ["Reverb"];
-        if (prop === "original_name") return ["Macro 1"];
+        if (prop === "name") {
+          return ["Reverb"];
+        }
+
+        if (prop === "original_name") {
+          return ["Macro 1"];
+        }
 
         return [0];
       });
@@ -384,6 +112,7 @@ describe("device-display-helpers", () => {
         id: "param_2",
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
       };
 
       const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
@@ -405,6 +134,7 @@ describe("device-display-helpers", () => {
         id,
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getName: () => String(mockGet("name")?.[0] ?? ""),
         getPropertyList: (prop: string) => {
           const result: unknown = mockGet(prop);
 
@@ -429,7 +159,9 @@ describe("device-display-helpers", () => {
     // Helper to setup mockCall with a value-to-label map for str_for_value
     const setupValueLabels = (labels: Record<number, string>) => {
       mockCall.mockImplementation((method: string, value: number) => {
-        if (method === "str_for_value") return labels[value] ?? "";
+        if (method === "str_for_value") {
+          return labels[value] ?? "";
+        }
 
         return "";
       });
@@ -462,16 +194,45 @@ describe("device-display-helpers", () => {
       } = props;
 
       mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") return [name];
-        if (prop === "original_name") return [name];
-        if (prop === "state") return [state];
-        if (prop === "automation_state") return [automationState];
-        if (prop === "is_quantized") return [isQuantized];
-        if (prop === "value") return [value];
-        if (prop === "min") return [min];
-        if (prop === "max") return [max];
-        if (prop === "is_enabled") return [isEnabled];
-        if (prop === "value_items" && valueItems) return valueItems;
+        if (prop === "name") {
+          return [name];
+        }
+
+        if (prop === "original_name") {
+          return [name];
+        }
+
+        if (prop === "state") {
+          return [state];
+        }
+
+        if (prop === "automation_state") {
+          return [automationState];
+        }
+
+        if (prop === "is_quantized") {
+          return [isQuantized];
+        }
+
+        if (prop === "value") {
+          return [value];
+        }
+
+        if (prop === "min") {
+          return [min];
+        }
+
+        if (prop === "max") {
+          return [max];
+        }
+
+        if (prop === "is_enabled") {
+          return [isEnabled];
+        }
+
+        if (prop === "value_items" && valueItems) {
+          return valueItems;
+        }
 
         return [0];
       });
@@ -481,14 +242,37 @@ describe("device-display-helpers", () => {
       const valueItems = ["Off", "On", "Auto"];
 
       mockGet.mockImplementation((prop) => {
-        if (prop === "name") return ["Mode"];
-        if (prop === "original_name") return ["Mode"];
-        if (prop === "state") return [0]; // active
-        if (prop === "automation_state") return [0]; // none
-        if (prop === "is_quantized") return [1];
-        if (prop === "value") return [1]; // "On"
-        if (prop === "value_items") return valueItems;
-        if (prop === "is_enabled") return [1];
+        if (prop === "name") {
+          return ["Mode"];
+        }
+
+        if (prop === "original_name") {
+          return ["Mode"];
+        }
+
+        if (prop === "state") {
+          return [0];
+        } // active
+
+        if (prop === "automation_state") {
+          return [0];
+        } // none
+
+        if (prop === "is_quantized") {
+          return [1];
+        }
+
+        if (prop === "value") {
+          return [1];
+        } // "On"
+
+        if (prop === "value_items") {
+          return valueItems;
+        }
+
+        if (prop === "is_enabled") {
+          return [1];
+        }
 
         return [0];
       });
@@ -667,16 +451,45 @@ describe("device-display-helpers", () => {
       setupParamMock({ name: "Mode" });
 
       mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") return ["Mode"];
-        if (prop === "original_name") return ["Mode"];
-        if (prop === "state") return [0];
-        if (prop === "automation_state") return [0];
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0.5];
-        if (prop === "min") return [0];
-        if (prop === "max") return [1];
-        if (prop === "is_enabled") return [1];
-        if (prop === "display_value") return ["Repitch"];
+        if (prop === "name") {
+          return ["Mode"];
+        }
+
+        if (prop === "original_name") {
+          return ["Mode"];
+        }
+
+        if (prop === "state") {
+          return [0];
+        }
+
+        if (prop === "automation_state") {
+          return [0];
+        }
+
+        if (prop === "is_quantized") {
+          return [0];
+        }
+
+        if (prop === "value") {
+          return [0.5];
+        }
+
+        if (prop === "min") {
+          return [0];
+        }
+
+        if (prop === "max") {
+          return [1];
+        }
+
+        if (prop === "is_enabled") {
+          return [1];
+        }
+
+        if (prop === "display_value") {
+          return ["Repitch"];
+        }
 
         return [0];
       });

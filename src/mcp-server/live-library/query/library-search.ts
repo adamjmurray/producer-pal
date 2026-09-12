@@ -153,7 +153,9 @@ async function verifyItemPaths(items: LibraryItem[]): Promise<void> {
   for (const [i, item] of items.entries()) {
     const result = exists[i];
 
-    if (result != null) item.pathExists = result;
+    if (result != null) {
+      item.pathExists = result;
+    }
   }
 }
 

@@ -11,7 +11,7 @@ import { type DocStatus } from "#webui/hooks/context/use-doc";
 import {
   type DocCollectionEntry,
   type UseDocCollectionReturn,
-} from "#webui/hooks/context/use-doc-collection";
+} from "#webui/hooks/context/helpers/use-doc-collection";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
@@ -217,8 +217,9 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             selectedName: activeEntry?.name ?? null,
             creating: activeEntry == null,
             onSelect: (name) => {
-              if (leaveGuard.confirmLeave())
+              if (leaveGuard.confirmLeave()) {
                 selectDraft({ mode: "edit", name });
+              }
             },
             // New always means a BLANK form — including when the create form is
             // already open holding a half-filled draft, which used to be kept
@@ -228,7 +229,10 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             // losing it. An editor that registers nothing just gets the fresh
             // form.
             onNew: () => {
-              if (!leaveGuard.confirmLeave()) return;
+              if (!leaveGuard.confirmLeave()) {
+                return;
+              }
+
               selectDraft({ mode: "new" });
             },
             onDelete: (name) => void handleDeleteEntry(name),

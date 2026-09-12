@@ -6,8 +6,12 @@ End-to-end tests that verify Producer Pal tools via the MCP protocol.
 
 1. **Build the project**: `npm run build:debug`
 2. **Ableton Live installed** (the tests will open it automatically)
-3. **Terminal accessibility permissions** (System Settings → Privacy & Security
-   → Accessibility → Terminal)
+3. **Accessibility permission** (System Settings → Privacy & Security →
+   Accessibility) for the app responsible for the process — the terminal or
+   editor you run the tests from, plus AEServer when macOS cannot pin one down.
+   An entry already switched on can go stale; toggle it off and back on to
+   re-record it. Without the grant the harness cannot click the dialogs that
+   block a Set swap, and every open fails.
 
 ## Running Tests
 
@@ -22,14 +26,17 @@ npm run e2e:mcp:watch
 ### Code execution tests
 
 The `clip/ppal-code-exec.test.ts` suite exercises the sandboxed `code`
-parameter, which only works against a build made with `ENABLE_CODE_EXEC=true`
-(e.g. `npm run build:debug`). To avoid spurious failures on plain builds, that
-suite is skipped unless `ENABLE_CODE_EXEC=true` is also present in the test
-environment. Run it explicitly with:
+parameter, which only works against a build made with `ENABLE_CODE_EXEC=true`.
+Plain `build:debug` does NOT set it — the param has no runtime gate, so leaving
+it on would put a param no release build ships in front of every model in every
+eval and e2e run. Build and test with it explicitly:
 
 ```bash
+ENABLE_CODE_EXEC=true npm run build:debug
 ENABLE_CODE_EXEC=true npm run e2e:mcp
 ```
+
+The suite skips itself when the variable is absent from the test environment.
 
 ### The direct Live API tool is off during e2e
 

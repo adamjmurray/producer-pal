@@ -27,7 +27,9 @@ export function SkillGateNote(
 ): preact.JSX.Element | null {
   const { gate } = props;
 
-  if (gate == null) return null;
+  if (gate == null) {
+    return null;
+  }
 
   if (gate === "always") {
     return <Note>Never dropped — no tool setting leaves this out.</Note>;

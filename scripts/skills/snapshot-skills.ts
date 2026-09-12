@@ -45,7 +45,9 @@ async function main(): Promise<void> {
   console.log(readmeOf(corpus));
   console.log(`Wrote ${corpus.length} files to ${label(args.outDir)}/\n`);
 
-  if (args.diffDir != null) await diff(args.diffDir, args.outDir);
+  if (args.diffDir != null) {
+    await diff(args.diffDir, args.outDir);
+  }
 }
 
 // --- Helpers below main export ---
@@ -120,11 +122,15 @@ async function write(corpus: SnapshotFile[], outDir: string): Promise<void> {
 async function assertSafeTarget(outDir: string): Promise<void> {
   const entries = await readDirNames(outDir);
 
-  if (entries == null || entries.length === 0) return;
+  if (entries == null || entries.length === 0) {
+    return;
+  }
 
   const readme = await readFileOrNull(path.join(outDir, "README.md"));
 
-  if (readme?.startsWith(CORPUS_MARKER)) return;
+  if (readme?.startsWith(CORPUS_MARKER)) {
+    return;
+  }
 
   console.error(
     `skills:snapshot: refusing to erase ${outDir} — it is not empty and holds no snapshot corpus. Pick an empty or nonexistent directory.`,
@@ -170,7 +176,9 @@ function printUnifiedDiff(oldDir: string, newDir: string): void {
     maxBuffer: 256 * 1024 * 1024,
   });
 
-  if (result.stdout) console.log(`\n${result.stdout}`);
+  if (result.stdout) {
+    console.log(`\n${result.stdout}`);
+  }
 
   if (result.error != null) {
     console.error(
@@ -194,12 +202,16 @@ async function readCorpus(dir: string): Promise<Map<string, string>> {
   const found = new Map<string, string>();
 
   for (const entry of entries) {
-    if (!entry.isFile()) continue;
+    if (!entry.isFile()) {
+      continue;
+    }
 
     const full = path.join(entry.parentPath, entry.name);
     const relative = path.relative(dir, full);
 
-    if (relative === "README.md") continue;
+    if (relative === "README.md") {
+      continue;
+    }
 
     found.set(relative, await fs.readFile(full, "utf-8"));
   }

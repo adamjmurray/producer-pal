@@ -31,7 +31,8 @@
  *     the clip that was already sitting there. Handing back the first object
  *     turns every copy into "no clip landed".
  *
- * Invalidating on mutation instead was considered and rejected: there is no
+ * Invalidating on mutation instead was considered and rejected, even though it
+ * catches about four times as many repeats as the list below. There is no
  * complete list of mutations to hook. Method calls could be caught, but writing
  * selected_track, selected_scene, detail_clip or highlighted_clip_slot moves
  * what a *path* names without a method call, and the user editing the Set while
@@ -42,15 +43,22 @@
  * There is exactly one Song, one Application and one master track, and no tool,
  * user, or concurrent request can repoint any of them.
  *
- * "One object for the life of the Set" is not enough on its own, and
- * this_device is the trap. There is exactly one Producer Pal device, but the
- * target resolves to an indexed path — live_set tracks 3 devices 0 — and
- * deleting an earlier track moves the device without moving the path. A
- * remembered object then reports the old trackIndex, and the guard that stops
- * delete from removing Producer Pal's own track is reading exactly that.
+ * this_device is on the list for a different reason: it names one device, and
+ * Live keeps the held object pointed at it. Measured on 12.4.3, holding the
+ * object built from this_device while shifting everything around it — a track
+ * inserted or deleted ahead of the host, a device moved in front of it on the
+ * host track, the same with Producer Pal wrapped in a rack — the object rewrote
+ * its own path each time, kept its id, and read the same trackIndex a fresh
+ * lookup did. That last one is the case that had to pass: delete's "don't
+ * remove Producer Pal's own track" guard compares against exactly that number.
+ * See dev/LiveAPI-Object-Reuse.md.
  *
  * Repeats of anything else are fixed where they happen, by resolving once and
  * passing the object down.
+ *
+ * Memoizing read *values* rather than objects was rejected too: resolving the
+ * target is the expensive half and this already removes it, so a value memo
+ * would need its own invalidation for very little.
  */
 
 import {
@@ -66,10 +74,10 @@ import {
 } from "./live-api-release.ts";
 
 /**
- * The only targets that may be memoized. Each names one LOM object at a path
- * nothing can move. Do not add a path with an index in it or one that resolves
- * to an index (this_device does), and do not add a view pointer like
- * `live_set view selected_track` — those name whatever is selected right now.
+ * The only targets that may be memoized. Each names one LOM object for the life
+ * of the Set. Do not add a literal path with an index in it, and do not add a
+ * view pointer like `live_set view selected_track` — those name whatever is
+ * selected right now.
  */
 const STABLE_TARGETS = new Set([
   "live_app",
@@ -77,6 +85,7 @@ const STABLE_TARGETS = new Set([
   "live_set",
   "live_set master_track",
   "live_set view",
+  "this_device",
 ]);
 
 /**

@@ -145,11 +145,17 @@ function groupByHash(rows: DuplicateRow[]): DuplicateRow[][] {
   const byHash = new Map<string, DuplicateRow[]>();
 
   for (const row of rows) {
-    if (decodeFeatureVector(row.data) == null) continue;
+    if (decodeFeatureVector(row.data) == null) {
+      continue;
+    }
+
     const group = byHash.get(row.hash);
 
-    if (group) group.push(row);
-    else byHash.set(row.hash, [row]);
+    if (group) {
+      group.push(row);
+    } else {
+      byHash.set(row.hash, [row]);
+    }
   }
 
   return [...byHash.values()]

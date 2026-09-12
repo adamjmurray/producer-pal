@@ -6,67 +6,63 @@
 // Addressing clips by where they are instead of by id, so a caller that knows
 // the location doesn't have to read the clip first just to learn its id.
 //
-// Clip slots only: a slot holds one clip, while a track's arrangement
-// holds many, so a bare track names no particular clip to act on.
+// The location has to name one clip: a slot, or a song position on one
+// arrangement lane. A bare track or lane holds many clips and is refused.
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
 import {
-  pathEntries,
-  requireSessionSlot,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+  requireClipSourcePath,
+  type ClipSourcePath,
+} from "#src/tools/shared/validation/helpers/clip-source-path.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
- * Resolves clip slot path(s) to the ids of the clips sitting there.
- * A malformed entry or an empty slot warns and contributes nothing, matching
- * how these tools skip an id that doesn't resolve — one bad entry costs its own
- * clip, not the whole batch.
- * @param paths - Comma-separated clip slots (e.g. "t0/s1,t2/s3")
- * @param tool - Tool name, for warnings
+ * Resolves clip path(s) to the ids of the clips sitting there.
+ * A malformed entry or a location with no clip warns and contributes nothing,
+ * matching how these tools skip an id that doesn't resolve — one bad entry
+ * costs its own clip, not the whole batch. A hole in the list itself throws.
+ * @param paths - Comma-separated clip locations (e.g. "t0/s1,t2[5|1]")
  * @param label - Param name the paths came from, for warnings
  * @returns The clip ids, in path order
  */
-export function clipIdsAtPaths(
-  paths: string,
-  tool: string,
-  label = "path",
-): string[] {
-  return clipIdPerPath(paths, tool, label).filter((id) => id != null);
+export function clipIdsAtPaths(paths: string, label = "path"): string[] {
+  return clipIdPerPath(paths, label).filter((id) => id != null);
 }
 
 /**
  * The same lookup, keeping one entry per path with null where a path named no
  * clip. Callers that line paths up against another list — move destinations —
  * need the positions to hold even when an entry resolves to nothing.
- * @param paths - Comma-separated clip slots (e.g. "t0/s1,t2/s3")
- * @param tool - Tool name, for warnings
+ * @param paths - Comma-separated clip locations (e.g. "t0/s1,t2[5|1]")
  * @param label - Param name the paths came from, for warnings
  * @returns One clip id per path entry, in path order
  */
 export function clipIdPerPath(
   paths: string,
-  tool: string,
   label = "path",
 ): Array<string | null> {
   const ids: Array<string | null> = [];
 
-  for (const entry of entriesOrNone(paths, tool, label)) {
+  for (const entry of pathEntries(paths, label)) {
     try {
-      const slot = requireSessionSlot(parseObjectPath(entry, label), label);
-      const clip = LiveAPI.from(
-        livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex).clip(),
+      const source = requireClipSourcePath(
+        parseObjectPath(entry, label),
+        label,
       );
+      const clip = clipAtSource(source, label);
 
-      if (clip.exists()) {
+      if (clip != null && clip.exists()) {
         ids.push(clip.id);
         continue;
       }
 
-      console.warn(`${tool}: no clip at ${label} "${entry}"`);
+      console.warn(`no clip at ${label} "${entry}"`);
     } catch (error) {
-      console.warn(`${tool}: ${errorMessage(error)}`);
+      console.warn(errorMessage(error));
     }
 
     ids.push(null);
@@ -75,21 +71,20 @@ export function clipIdPerPath(
   return ids;
 }
 
-/**
- * Splits the param into entries, treating a param that names nothing as naming
- * nothing rather than as an error: the same batch may also have named ids, and
- * those clips are still there to update.
- * @param paths - The raw path param
- * @param tool - Tool name, for warnings
- * @param label - Param name the paths came from, for warnings
- * @returns One trimmed entry per path, or none when the param is unusable
- */
-function entriesOrNone(paths: string, tool: string, label: string): string[] {
-  try {
-    return pathEntries(paths, label);
-  } catch (error) {
-    console.warn(`${tool}: ${errorMessage(error)}`);
+// --- Helpers below main exports ---
 
-    return [];
+/**
+ * The clip at one location, whichever kind of location it is.
+ * @param source - A parsed slot or arrangement position
+ * @param label - Param name the path came from
+ * @returns The clip, or null when nothing is there
+ */
+function clipAtSource(source: ClipSourcePath, label: string): LiveAPI | null {
+  if (source.kind === "slot") {
+    return LiveAPI.from(
+      livePath.track(source.trackIndex).clipSlot(source.sceneIndex).clip(),
+    );
   }
+
+  return arrangementClipAtPosition(source, label);
 }

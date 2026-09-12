@@ -410,10 +410,10 @@ describe("Transform Evaluator - nDuration", () => {
   });
 });
 
-describe("Transform Evaluator - barDuration (Nbar)", () => {
-  // A bar is beats-per-bar (= numerator) musical beats, so Nbar is meter-aware:
+describe("Transform Evaluator - barDuration (<count>bar)", () => {
+  // A bar is beats-per-bar (= numerator) musical beats, so <count>bar is meter-aware:
   // it tracks the numerator and is independent of the denominator.
-  describe("Nbar = N * numerator musical beats across meters", () => {
+  describe("<count>bar = N * numerator musical beats across meters", () => {
     it.each([
       ["1bar", CTX, 4, "4/4 → 4"],
       ["1bar", CTX_6_8, 6, "6/8 → 6"],

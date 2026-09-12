@@ -4,11 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type LiveServerMessage, type Session } from "@google/genai";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 import { type MutableMic } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
 import { type GeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
+
+/** A history item's id is a fresh uuid each snapshot; only the prefix is stable. */
+export const GEM_ITEM_ID = expect.stringMatching(
+  /^gem-[\da-f-]{36}$/,
+) as unknown as string;
 
 /**
  * Build message-handler deps with spy-able fakes (a real history builder, a
@@ -39,8 +44,11 @@ export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
     enqueueBase64: vi.fn(),
     hasQueued,
     onDrained: vi.fn((callback: () => void) => {
-      if (hasQueued()) pendingDrain = callback;
-      else callback();
+      if (hasQueued()) {
+        pendingDrain = callback;
+      } else {
+        callback();
+      }
     }),
     hasPendingDrain: vi.fn(() => pendingDrain != null),
   } as unknown as GeminiPcmPlayer;

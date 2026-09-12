@@ -53,19 +53,21 @@ surviving option are never suppressed. The per-tool lists live in each
 
 ### Include propagation
 
-`ppal-read-track` and `ppal-read-scene` pass their full `include` array through
-to `readClip()`. Only clip-recognized includes affect clip output.
-`ppal-read-live-set` propagates only track-level includes (`routings`, `mixer`,
-`color`) to its nested track/scene reads.
+`ppal-read-track` and `ppal-read-scene` expand `"*"` against their OWN option
+list and pass the expanded array to `readClip()`; only clip-recognized includes
+affect clip output. Forwarding a bare `"*"` would let the nested read expand it
+against the clip options instead, turning on options the outer tool never
+published. `ppal-read-live-set` propagates only track-level includes
+(`routings`, `mixer`, `color`) to its nested track/scene reads.
 
 ### Redundant field stripping
 
 Nested clip results have context-redundant fields removed to save tokens:
 
 - **In `ppal-read-track`**: `view` and `type` are stripped from clips in
-  `sessionClips`/`arrangementClips` (redundant with the parent track's
-  properties and the array name). Clips in `takeLanes` also lose `path`, which
-  the lane entry already carries.
+  `sessionClips`/`arrangementClips`/`takeLanes` (redundant with the parent
+  track's properties and the array name). A take lane clip keeps its `path` — it
+  says where on the lane the clip starts, which the lane's own path doesn't.
 - **In `ppal-read-scene`**: `view` is stripped from clips in the `clips` array
   (scenes are always session view)
 
@@ -78,7 +80,11 @@ All include parsing is centralized in
 
 - `parseIncludeArray(include, defaults)` — returns an `IncludeFlags` object with
   boolean flags
-- `expandWildcardIncludes()` — expands `"*"` to all options for the tool type
+- `expandWildcardIncludes(include, defaults)` — expands `"*"` to all options for
+  the tool type; call it before forwarding an include array to a nested read
+- `ALL_INCLUDE_OPTIONS` — the options per tool type. A meta test holds each
+  `.def.ts` enum equal to its list plus `"*"`, so an option can't be reachable
+  by wildcard and rejected by name
 - `READ_CLIP_DEFAULTS`, `READ_TRACK_DEFAULTS`, etc. — default flag values per
   tool type
 - `IncludeFlags` interface — all possible boolean flags
@@ -111,7 +117,7 @@ Returns the Live Set overview. Use includes to expand track/scene detail.
 ### Includes
 
 - `tracks` — replaces `regularTrackCount`/`returnTrackCount` with full track
-  arrays (`tracks`, `returnTracks`, `masterTrack`). Each track uses read-track
+  arrays (`tracks`, `returnTracks`, `mainTrack`). Each track uses read-track
   default format: id, name, type, instrument name, clip/device counts
 - `scenes` — replaces `sceneCount` with scene list (read-scene default format)
 - `routings` — propagated: adds routing info to tracks
@@ -134,10 +140,9 @@ Returns track overview by default. Use `include` to add detail.
 | Field                  | Type     | Description                                                   |
 | ---------------------- | -------- | ------------------------------------------------------------- |
 | `id`                   | `string` | Track ID                                                      |
+| `path`                 | `string` | Where the track is: `"t0"`, `"rt1"`, `"mt"`                   |
 | `name`                 | `string` | Track name                                                    |
-| `type`                 | `string` | `"midi"`, `"audio"`, `"return"`, or `"master"`                |
-| `trackIndex`           | `number` | 0-based index (regular tracks only)                           |
-| `returnTrackIndex`     | `number` | 0-based index (return tracks only)                            |
+| `type`                 | `string` | `"midi"` or `"audio"`; omitted on a return or the main track  |
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
 | `groupId`              | `string` | Parent group track ID (only when grouped)                     |
 | `isArmed`              | `true`   | Only present when armed                                       |
@@ -164,9 +169,10 @@ per lane, each with its `path` (e.g. `"t2/l0"`), `name`, and `clips`.
 ### Other includes
 
 - `devices` — flat device list in track signal-chain order
-- `drum-map` — pitch-to-name mappings for drum racks
+- `drum-map` — pitch-to-name mappings for drum racks, plus the owning rack's
+  path
 - `routings`, `available-routings` — routing info
-- `notes`, `sample`, `timing`, `color` — propagated to nested clip reads
+- `notes`, `sample`, `timing`, `warp`, `color` — propagated to nested clip reads
 
 ### Include: `"mixer"`
 
@@ -195,8 +201,8 @@ Returns scene overview by default. Use `include` to add detail.
 | Field           | Type     | Description                                          |
 | --------------- | -------- | ---------------------------------------------------- |
 | `id`            | `string` | Scene ID                                             |
+| `path`          | `string` | Where the scene is: `"s0"`                           |
 | `name`          | `string` | Scene name with 1-based number (e.g., `"Intro (1)"`) |
-| `sceneIndex`    | `number` | 0-based scene index                                  |
 | `clipCount`     | `number` | Number of non-empty clips in the scene               |
 | `tempo`         | `number` | Only present when scene tempo is enabled             |
 | `timeSignature` | `string` | Only present when scene time sig is enabled          |
@@ -212,7 +218,7 @@ scene. Each clip is read via `readClip()`. Nested clips have `view` stripped
 | ------- | -------- | ----------------------------------------- |
 | `clips` | `Clip[]` | Non-empty clips across all regular tracks |
 
-### Include: `"notes"`, `"sample"`, `"timing"`, `"color"`
+### Include: `"notes"`, `"sample"`, `"timing"`, `"warp"`, `"color"`
 
 Propagated to `readClip()` for each clip in the scene. See ppal-read-clip
 section for details on these includes.
@@ -223,19 +229,18 @@ section for details on these includes.
 
 Always returned for any clip:
 
-| Field              | Type                         | Description                                                                         |
-| ------------------ | ---------------------------- | ----------------------------------------------------------------------------------- |
-| `id`               | `string`                     | Clip ID                                                                             |
-| `type`             | `"midi" \| "audio"`          | Clip type                                                                           |
-| `name`             | `string`                     | Clip name (omitted if empty)                                                        |
-| `view`             | `"session" \| "arrangement"` | Which view the clip is in                                                           |
-| `path`             | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0"` or `"t0/l1"` in the arrangement |
-| `arrangementStart` | `string` (bar\|beat)         | Arrangement only: start position                                                    |
-| `playing`          | `true`                       | Only present when true                                                              |
-| `triggered`        | `true`                       | Only present when true                                                              |
-| `recording`        | `true`                       | Only present when true                                                              |
-| `overdubbing`      | `true`                       | Only present when true                                                              |
-| `muted`            | `true`                       | Only present when true                                                              |
+| Field         | Type                         | Description                                                                                     |
+| ------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `id`          | `string`                     | Clip ID                                                                                         |
+| `type`        | `"midi" \| "audio"`          | Clip type                                                                                       |
+| `name`        | `string`                     | Clip name (omitted if empty)                                                                    |
+| `view`        | `"session" \| "arrangement"` | Which view the clip is in                                                                       |
+| `path`        | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
+| `playing`     | `true`                       | Only present when true                                                                          |
+| `triggered`   | `true`                       | Only present when true                                                                          |
+| `recording`   | `true`                       | Only present when true                                                                          |
+| `overdubbing` | `true`                       | Only present when true                                                                          |
+| `muted`       | `true`                       | Only present when true                                                                          |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
 `muted`) are omitted when `false` to reduce response size.
@@ -476,9 +481,9 @@ Same as `chains` but for rack return chains. Same depth behavior.
 
 Adds drum pad list for drum rack devices. Same depth behavior as `chains`.
 
-| Field      | Type        | Description                              |
-| ---------- | ----------- | ---------------------------------------- |
-| `drumPads` | `DrumPad[]` | Drum pads with note, pitch, name, chains |
+| Field      | Type        | Description                                    |
+| ---------- | ----------- | ---------------------------------------------- |
+| `drumPads` | `DrumPad[]` | Drum pads with path, note, pitch, name, chains |
 
 ### Include: `"drum-map"`
 
@@ -486,9 +491,14 @@ Adds flat pitch-to-name mapping for drum rack devices. Internally forces chain
 processing at `maxDepth >= 1` to detect instruments, then strips the chain data
 from the output.
 
-| Field     | Type                    | Description                         |
-| --------- | ----------------------- | ----------------------------------- |
-| `drumMap` | `Record<string,string>` | Pitch name to drum pad name mapping |
+| Field          | Type                    | Description                           |
+| -------------- | ----------------------- | ------------------------------------- |
+| `drumMap`      | `Record<string,string>` | Pitch name to drum pad name mapping   |
+| `drumRackPath` | `string`                | Path of the rack those pads belong to |
+
+`drumRackPath` is what pad paths are built from. A kit nested inside another
+rack is common, and then it is neither the device the caller read nor anything
+in the track's device list.
 
 ### Include: `"params"`
 
@@ -505,6 +515,11 @@ Adds parameter names, macro variation info, and A/B Compare state.
 
 Superset of `params` — includes full parameter details (value, min, max, state,
 display value, value items for quantized params).
+
+`min`/`max` are the range the parameter can actually display. When one end of
+that range is a word rather than a number — Glue Compressor's `Release` reads
+`"A"` for Auto, Compressor's `Ratio` reads `"inf : 1"` — the word is trimmed off
+the range and reported as `alsoAccepts`, which update-device takes as a value.
 
 ### Include: `"sample"`
 
@@ -536,7 +551,7 @@ Adds dynamic per-state/per-install catalogs for specialized devices (IR files,
 sidechain sources, current-category wavetables, `modulatableParameters`) plus
 Wavetable's current mod-matrix routes (`modulations`). Opt-in because the scan
 can be expensive. Only devices that contribute add anything; others omit the
-field. See `dev/Specialized-Devices.md` for per-device contents.
+field. See `dev/specialized-devices/` for per-device contents.
 
 | Field         | Type       | Description                                  |
 | ------------- | ---------- | -------------------------------------------- |

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { VERSION } from "#src/shared/config.ts";
@@ -50,7 +51,7 @@ export function connect(_params: object = {}): ConnectResult {
   const abletonLiveVersion = String(liveApp.call("get_version_string"));
 
   // Build liveSet overview matching readLiveSet default response
-  const liveSetName = liveSet.getProperty("name");
+  const liveSetName = liveSet.getName();
 
   const liveSetInfo: LiveSetInfo = {
     ...(liveSetName ? { name: liveSetName } : {}),

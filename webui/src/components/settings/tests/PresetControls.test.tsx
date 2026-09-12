@@ -9,6 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { useState } from "preact/hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UUID } from "#webui/test-utils/matcher-test-helpers";
 import {
   PresetControls,
   type PresetControlsProps,
@@ -155,6 +156,21 @@ describe("PresetControls", () => {
     expect(applyPreset).toHaveBeenCalledTimes(1);
   });
 
+  it("clears the selection without applying anything when picking the blank option", () => {
+    savePresets([seeded]);
+
+    const applyPreset = vi.fn();
+
+    render(<Controls settings={makePresetSettings({ applyPreset })} />);
+
+    selectPreset("seed");
+    applyPreset.mockClear();
+    selectPreset("");
+
+    expect(applyPreset).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("preset-update")).toBeNull();
+  });
+
   it("shows New… and hides Update/Delete when nothing is selected", () => {
     render(<Controls settings={makePresetSettings()} />);
 
@@ -175,7 +191,10 @@ describe("PresetControls", () => {
     const stored = loadPresets();
 
     expect(stored).toHaveLength(1);
-    expect(stored[0]).toMatchObject({
+    expect(stored[0]).toStrictEqual({
+      enabledTools: {},
+      id: UUID,
+      thinking: "Default",
       name: "My Preset",
       provider: "anthropic",
       model: "claude",
@@ -331,7 +350,12 @@ describe("PresetControls", () => {
     });
     fireEvent.click(screen.getByTestId("preset-create-confirm"));
 
-    expect(loadPresets()[0]).toMatchObject({
+    expect(loadPresets()[0]).toStrictEqual({
+      id: UUID,
+      model: "claude",
+      provider: "anthropic",
+      smallModelMode: false,
+      thinking: "Default",
       name: "Worker",
       description: "cheap bulk editor",
       enabledTools: { "ppal-delete": false },
@@ -354,7 +378,12 @@ describe("PresetControls", () => {
     // No blur: Esc can close the dialog straight from the focused field.
     fireEvent.input(editor, { target: { value: "updated note" } });
 
-    expect(loadPresets()[0]).toMatchObject({
+    expect(loadPresets()[0]).toStrictEqual({
+      id: "seed",
+      name: "Seeded",
+      provider: "ollama",
+      smallModelMode: true,
+      thinking: "Off",
       description: "updated note",
       model: "llama3",
     });

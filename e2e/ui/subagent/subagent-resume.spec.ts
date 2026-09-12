@@ -39,9 +39,13 @@ function spawnThenResume(call: LlmCall): LlmReply {
     return { text: call.n === 1 ? FIRST_REPLY : SECOND_REPLY };
   }
 
-  if (call.n === 1) return { spawn: { task: TASK } };
+  if (call.n === 1) {
+    return { spawn: { task: TASK } };
+  }
 
-  if (call.n === 3) return { spawn: { task: FOLLOW_UP, resumeFrom: 1 } };
+  if (call.n === 3) {
+    return { spawn: { task: FOLLOW_UP, resumeFrom: 1 } };
+  }
 
   return { text: "Done." };
 }

@@ -50,7 +50,10 @@ export type ForegroundFormat =
  * @returns styleText foreground format
  */
 export function scoreColor(earned: number, max: number): ForegroundFormat {
-  if (max === 0) return "gray";
+  if (max === 0) {
+    return "gray";
+  }
+
   const pct = (earned / max) * 100;
 
   return pctColor(pct);
@@ -63,9 +66,17 @@ export function scoreColor(earned: number, max: number): ForegroundFormat {
  * @returns styleText foreground format
  */
 export function pctColor(pct: number): ForegroundFormat {
-  if (pct >= 100) return "green";
-  if (pct >= 90) return "cyan";
-  if (pct >= 50) return "yellow";
+  if (pct >= 100) {
+    return "green";
+  }
+
+  if (pct >= 90) {
+    return "cyan";
+  }
+
+  if (pct >= 50) {
+    return "yellow";
+  }
 
   return "red";
 }
@@ -78,9 +89,17 @@ export function pctColor(pct: number): ForegroundFormat {
  * @returns styleText foreground format
  */
 export function efficiencyColor(pct: number): ForegroundFormat {
-  if (pct < 50) return "blueBright";
-  if (pct <= 100) return "green";
-  if (pct < 200) return "yellow";
+  if (pct < 50) {
+    return "blueBright";
+  }
+
+  if (pct <= 100) {
+    return "green";
+  }
+
+  if (pct < 200) {
+    return "yellow";
+  }
 
   return "red";
 }
@@ -98,7 +117,9 @@ export function efficiencyColor(pct: number): ForegroundFormat {
  * @returns A single-line description of the error
  */
 export function describeStreamError(error: unknown): string {
-  if (error == null || typeof error !== "object") return String(error);
+  if (error == null || typeof error !== "object") {
+    return String(error);
+  }
 
   const err = error as {
     message?: unknown;
@@ -113,8 +134,13 @@ export function describeStreamError(error: unknown): string {
       : "unknown error";
   const details: string[] = [];
 
-  if (err.statusCode != null) details.push(`HTTP ${String(err.statusCode)}`);
-  if (typeof err.url === "string") details.push(err.url);
+  if (err.statusCode != null) {
+    details.push(`HTTP ${String(err.statusCode)}`);
+  }
+
+  if (typeof err.url === "string") {
+    details.push(err.url);
+  }
 
   return details.length > 0 ? `${base} (${details.join(" ")})` : base;
 }
@@ -289,8 +315,13 @@ const VERBOSE_FIELDS = new Set(["tools", "input"]);
  * @returns Object with verbose fields abbreviated
  */
 function stripVerboseFields(obj: unknown): unknown {
-  if (obj == null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(stripVerboseFields);
+  if (obj == null || typeof obj !== "object") {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(stripVerboseFields);
+  }
 
   const result: Record<string, unknown> = {};
 
@@ -343,7 +374,10 @@ export function truncate(
   maxLength: number,
   suffix = "…",
 ): string {
-  if (!str || str.length <= maxLength) return str ?? "";
+  if (!str || str.length <= maxLength) {
+    return str ?? "";
+  }
+
   const cutoff = Math.max(0, maxLength - suffix.length);
 
   return str.slice(0, cutoff) + suffix;

@@ -35,6 +35,7 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { callNamesArrangementPosition } from "../../arrangement-helpers.ts";
 import {
   getTransforms,
   MSG_CONNECT,
@@ -164,12 +165,13 @@ export const syncedLfoMeterInvariance: EvalScenario = {
           (c) => c.name === "ppal-create-clip",
         );
 
-        if (!createCall)
+        if (!createCall) {
           throw new Error("ppal-create-clip not found in turn 1");
+        }
 
-        if (!createCall.args.arrangementStart) {
+        if (!callNamesArrangementPosition(createCall.args, "path")) {
           throw new Error(
-            "clip must be created in the arrangement (arrangementStart) — sync is skipped on session clips",
+            'clip must be created in the arrangement (e.g. path "t0[5|1]") — sync is skipped on session clips',
           );
         }
 
@@ -180,6 +182,6 @@ export const syncedLfoMeterInvariance: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     recordLfoReach(2),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", maxTokens: 7_000 },
   ],
 };

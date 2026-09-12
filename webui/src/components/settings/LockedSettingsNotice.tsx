@@ -68,7 +68,9 @@ export function LockedSettingsNotice({
     activeMaxToolSteps,
   } = conversationLock;
 
-  if (activeModel == null) return null;
+  if (activeModel == null) {
+    return null;
+  }
 
   const modelDiverges = activeModel !== model || activeProvider !== provider;
   const smallModelDiverges = activeSmallModelMode !== smallModelMode;

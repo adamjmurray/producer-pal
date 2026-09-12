@@ -55,7 +55,9 @@ export function findMockImportRefViolations(): MockImportRefViolation[] {
 function scanFile(file: string): MockImportRefViolation[] {
   const text = fs.readFileSync(file, "utf8");
 
-  if (!text.includes("vi.mock(")) return [];
+  if (!text.includes("vi.mock(")) {
+    return [];
+  }
 
   const source = ts.createSourceFile(
     file,
@@ -66,14 +68,18 @@ function scanFile(file: string): MockImportRefViolation[] {
   );
   const unsafe = collectUnsafeImports(source);
 
-  if (unsafe.size === 0) return [];
+  if (unsafe.size === 0) {
+    return [];
+  }
 
   const out: MockImportRefViolation[] = [];
 
   const visit = (node: ts.Node): void => {
     const factory = mockFactory(node);
 
-    if (factory) out.push(...factoryViolations(factory, unsafe, source, file));
+    if (factory) {
+      out.push(...factoryViolations(factory, unsafe, source, file));
+    }
 
     node.forEachChild(visit);
   };
@@ -96,21 +102,31 @@ function collectUnsafeImports(source: ts.SourceFile): Set<string> {
   const names = new Set<string>();
 
   source.forEachChild((node) => {
-    if (!ts.isImportDeclaration(node)) return;
+    if (!ts.isImportDeclaration(node)) {
+      return;
+    }
 
     const spec = node.moduleSpecifier;
 
-    if (ts.isStringLiteral(spec) && spec.text === "vitest") return;
+    if (ts.isStringLiteral(spec) && spec.text === "vitest") {
+      return;
+    }
 
     const clause = node.importClause;
 
-    if (!clause) return;
+    if (!clause) {
+      return;
+    }
 
-    if (clause.name) names.add(clause.name.text); // default import
+    if (clause.name) {
+      names.add(clause.name.text);
+    } // default import
 
     const bindings = clause.namedBindings;
 
-    if (bindings == null) return;
+    if (bindings == null) {
+      return;
+    }
 
     if (ts.isNamespaceImport(bindings)) {
       names.add(bindings.name.text);
@@ -134,7 +150,9 @@ function collectUnsafeImports(source: ts.SourceFile): Set<string> {
 function mockFactory(
   node: ts.Node,
 ): ts.FunctionExpression | ts.ArrowFunction | null {
-  if (!ts.isCallExpression(node)) return null;
+  if (!ts.isCallExpression(node)) {
+    return null;
+  }
 
   const callee = node.expression;
 
@@ -215,20 +233,25 @@ function collectLocalNames(factory: ts.Node): Set<string> {
   const locals = new Set<string>();
 
   const add = (name: ts.BindingName | undefined): void => {
-    if (name == null) return;
+    if (name == null) {
+      return;
+    }
 
     if (ts.isIdentifier(name)) {
       locals.add(name.text);
     } else {
       for (const el of name.elements) {
-        if (ts.isBindingElement(el)) add(el.name);
+        if (ts.isBindingElement(el)) {
+          add(el.name);
+        }
       }
     }
   };
 
   const visit = (node: ts.Node): void => {
-    if (ts.isParameter(node) || ts.isVariableDeclaration(node)) add(node.name);
-    else if (
+    if (ts.isParameter(node) || ts.isVariableDeclaration(node)) {
+      add(node.name);
+    } else if (
       (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) &&
       node.name
     ) {
@@ -252,13 +275,27 @@ function collectLocalNames(factory: ts.Node): Set<string> {
 function isValueReference(node: ts.Identifier): boolean {
   const p = node.parent;
 
-  if (ts.isPropertyAccessExpression(p) && p.name === node) return false;
-  if (ts.isQualifiedName(p) && p.right === node) return false; // typeof a.b type pos
-  if (ts.isPropertyAssignment(p) && p.name === node) return false;
-  if (ts.isTypeReferenceNode(p) || ts.isTypeQueryNode(p)) return false;
+  if (ts.isPropertyAccessExpression(p) && p.name === node) {
+    return false;
+  }
+
+  if (ts.isQualifiedName(p) && p.right === node) {
+    return false;
+  } // typeof a.b type pos
+
+  if (ts.isPropertyAssignment(p) && p.name === node) {
+    return false;
+  }
+
+  if (ts.isTypeReferenceNode(p) || ts.isTypeQueryNode(p)) {
+    return false;
+  }
+
   // The source key of a renaming destructure — the `fs` of `const { fs: x } = o`
   // — reads as a bare identifier but only names a property of the initializer.
-  if (ts.isBindingElement(p) && p.propertyName === node) return false;
+  if (ts.isBindingElement(p) && p.propertyName === node) {
+    return false;
+  }
 
   if (
     (ts.isMethodDeclaration(p) ||

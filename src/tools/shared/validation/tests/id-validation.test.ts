@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { validateIdType, validateIdTypes } from "../id-validation.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("validateIdType", () => {
   beforeEach(() => {
@@ -24,7 +26,7 @@ describe("validateIdType", () => {
       type: "Track",
     });
 
-    const result = validateIdType(id, "track", "testTool");
+    const result = validateIdType(id, "track");
 
     expect(result).toBeDefined();
     expect(result.id).toBe(id);
@@ -40,11 +42,11 @@ describe("validateIdType", () => {
     });
 
     // Tool-level types must be exact lowercase
-    expect(() => validateIdType(id, "track", "testTool")).not.toThrow();
-    expect(() => validateIdType(id, "Track", "testTool")).toThrow(
+    expect(() => validateIdType(id, "track")).not.toThrow();
+    expect(() => validateIdType(id, "Track")).toThrow(
       "is not a Track (found Track)",
     );
-    expect(() => validateIdType(id, "TRACK", "testTool")).toThrow(
+    expect(() => validateIdType(id, "TRACK")).toThrow(
       "is not a TRACK (found Track)",
     );
   });
@@ -54,8 +56,8 @@ describe("validateIdType", () => {
 
     mockNonExistentObjects();
 
-    expect(() => validateIdType(id, "track", "testTool")).toThrow(
-      'testTool failed: id "nonexistent_id" does not exist',
+    expect(() => validateIdType(id, "track")).toThrow(
+      'id "nonexistent_id" does not exist',
     );
   });
 
@@ -67,18 +69,8 @@ describe("validateIdType", () => {
       type: "Scene",
     });
 
-    expect(() => validateIdType(id, "track", "testTool")).toThrow(
-      'testTool failed: id "scene_1" is not a track (found Scene)',
-    );
-  });
-
-  it("should include tool name in error messages", () => {
-    const id = "scene_1";
-
-    mockNonExistentObjects();
-
-    expect(() => validateIdType(id, "track", "updateTrack")).toThrow(
-      "updateTrack failed:",
+    expect(() => validateIdType(id, "track")).toThrow(
+      "s0 (id scene_1) is not a track (found Scene)",
     );
   });
 
@@ -106,7 +98,7 @@ describe("validateIdType", () => {
         type: subclass,
       });
 
-      expect(() => validateIdType(id, "device", "testTool")).not.toThrow();
+      expect(() => validateIdType(id, "device")).not.toThrow();
     }
   });
 
@@ -118,7 +110,7 @@ describe("validateIdType", () => {
       type: "DrumPad",
     });
 
-    expect(() => validateIdType(id, "drum-pad", "testTool")).not.toThrow();
+    expect(() => validateIdType(id, "drum-pad")).not.toThrow();
   });
 
   it("should reject a Track against every non-track expected type", () => {
@@ -137,8 +129,8 @@ describe("validateIdType", () => {
       "drum-pad",
       "mystery-type",
     ]) {
-      expect(() => validateIdType("track_1", expectedType, "testTool")).toThrow(
-        `testTool failed: id "track_1" is not a ${expectedType} (found Track)`,
+      expect(() => validateIdType("track_1", expectedType)).toThrow(
+        `t0 (id track_1) is not a ${expectedType} (found Track)`,
       );
     }
   });
@@ -167,7 +159,7 @@ describe("validateIdTypes", () => {
         type: "Track",
       });
 
-      const result = validateIdTypes(ids, "track", "testTool");
+      const result = validateIdTypes(ids, "track");
 
       expect(result).toHaveLength(3);
       expect(result[0]!.id).toBe("track_1");
@@ -189,16 +181,16 @@ describe("validateIdTypes", () => {
 
       mockNonExistentObjects();
 
-      expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
-        'testTool failed: id "nonexistent" does not exist',
+      expect(() => validateIdTypes(ids, "track")).toThrow(
+        'id "nonexistent" does not exist',
       );
     });
 
     it("should throw on first invalid ID (wrong type)", () => {
       const ids = registerMixedTrackAndSceneMocks();
 
-      expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
-        'testTool failed: id "scene_1" is not a track (found Scene)',
+      expect(() => validateIdTypes(ids, "track")).toThrow(
+        "s0 (id scene_1) is not a track (found Scene)",
       );
     });
   });
@@ -207,16 +199,15 @@ describe("validateIdTypes", () => {
     it("should return only valid IDs and log warnings for invalid", () => {
       const ids = registerMixedTrackAndSceneMocks();
 
-      const result = validateIdTypes(ids, "track", "testTool", {
+      const result = validateIdTypes(ids, "track", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(2);
       expect(result[0]!.id).toBe("track_1");
       expect(result[1]!.id).toBe("track_3");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'testTool: id "scene_1" is not a track (found Scene)',
+      expect(capturedWarnings()).toContain(
+        "s0 (id scene_1) is not a track (found Scene)",
       );
     });
 
@@ -225,19 +216,13 @@ describe("validateIdTypes", () => {
 
       mockNonExistentObjects();
 
-      const result = validateIdTypes(ids, "track", "testTool", {
+      const result = validateIdTypes(ids, "track", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(0);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'testTool: id "nonexistent_1" does not exist',
-      );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'testTool: id "nonexistent_2" does not exist',
-      );
+      expect(capturedWarnings()).toContain('id "nonexistent_1" does not exist');
+      expect(capturedWarnings()).toContain('id "nonexistent_2" does not exist');
     });
 
     it("should return empty array when all IDs are wrong type", () => {
@@ -252,16 +237,12 @@ describe("validateIdTypes", () => {
         type: "Scene",
       });
 
-      const result = validateIdTypes(ids, "track", "testTool", {
+      const result = validateIdTypes(ids, "track", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(0);
-      // Two warnings should have been emitted
-      const outletCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls;
-      const warnCalls = outletCalls.filter((call) => call[0] === 1);
-
-      expect(warnCalls).toHaveLength(2);
+      expect(capturedWarnings()).toHaveLength(2);
     });
 
     it("should handle mix of non-existent and wrong type IDs", () => {
@@ -278,19 +259,15 @@ describe("validateIdTypes", () => {
 
       mockNonExistentObjects();
 
-      const result = validateIdTypes(ids, "track", "testTool", {
+      const result = validateIdTypes(ids, "track", {
         skipInvalid: true,
       });
 
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe("track_1");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'testTool: id "nonexistent" does not exist',
-      );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        'testTool: id "scene_1" is not a track (found Scene)',
+      expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+      expect(capturedWarnings()).toContain(
+        "s0 (id scene_1) is not a track (found Scene)",
       );
     });
 
@@ -310,7 +287,7 @@ describe("validateIdTypes", () => {
         type: "SimplerDevice",
       });
 
-      const result = validateIdTypes(ids, "device", "testTool", {
+      const result = validateIdTypes(ids, "device", {
         skipInvalid: true,
       });
 

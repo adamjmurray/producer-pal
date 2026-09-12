@@ -6,12 +6,13 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import { targetEntries } from "#src/tools/shared/utils.ts";
 
 export interface LocatorInfo {
   id: string;
   name: string;
   time: string;
+  position: string;
 }
 
 export interface LocatorMatch {
@@ -60,26 +61,30 @@ export function readLocators(
   timeSigDenominator: number,
 ): LocatorInfo[] {
   const locatorIds = liveSet.getChildIds("cue_points");
-  const locators: LocatorInfo[] = [];
+  const entries: { name: string; timeInBeats: number }[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
-    const name = locator.getProperty("name") as string;
-    const timeInBeats = locator.getProperty("time") as number;
-    const timeFormatted = abletonBeatsToBarBeat(
-      timeInBeats,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
 
-    locators.push({
-      id: getLocatorId(i),
-      name,
-      time: timeFormatted,
+    entries.push({
+      name: locator.getName(),
+      timeInBeats: locator.getProperty("time") as number,
     });
   }
 
-  return locators;
+  // Every name up front: a repeat can't be spotted until they are all read.
+  const names = entries.map((entry) => entry.name);
+
+  return entries.map(({ name, timeInBeats }, i) => ({
+    id: getLocatorId(i),
+    name,
+    time: abletonBeatsToBarBeat(
+      timeInBeats,
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+    position: locatorPosition(name, i, names),
+  }));
 }
 
 /**
@@ -125,12 +130,18 @@ export function findLocatorsByName(
   liveSet: LiveAPI,
   locatorName: string,
 ): LocatorMatchWithTime[] {
+  // Every nameless locator reads back "", so without this guard an empty
+  // locatorName would match (and could delete) every one of them.
+  if (locatorName === "") {
+    return [];
+  }
+
   const locatorIds = liveSet.getChildIds("cue_points");
   const matches: LocatorMatchWithTime[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
-    const name = locator.getProperty("name");
+    const name = locator.getName();
 
     if (name === locatorName) {
       const time = locator.getProperty("time") as number;
@@ -148,7 +159,6 @@ export function findLocatorsByName(
  * @param options - Locator identifier options
  * @param options.locatorId - Locator ID to find
  * @param options.locatorName - Locator name to find
- * @param toolName - Name of the tool for error messages
  * @param context - Optional context for error messages (e.g., "for start")
  * @returns Time in beats
  * @throws If locator is not found
@@ -156,7 +166,6 @@ export function findLocatorsByName(
 export function resolveLocatorToBeats(
   liveSet: LiveAPI,
   { locatorId, locatorName }: ResolveLocatorOptions,
-  toolName: string,
   context?: string,
 ): number {
   const contextSuffix = context ? ` ${context}` : "";
@@ -165,7 +174,7 @@ export function resolveLocatorToBeats(
     const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(`${toolName} failed: locator not found: ${locatorId}`);
+      throw new Error(`locator not found: ${locatorId}`);
     }
 
     return found.locator.getProperty("time") as number;
@@ -176,7 +185,7 @@ export function resolveLocatorToBeats(
 
     if (matches.length === 0) {
       throw new Error(
-        `${toolName} failed: no locator found with name "${locatorName}"${contextSuffix}`,
+        `no locator found with name "${locatorName}"${contextSuffix}`,
       );
     }
 
@@ -184,7 +193,7 @@ export function resolveLocatorToBeats(
     return assertDefined(matches[0], "first matching locator").time;
   }
 
-  throw new Error(`${toolName} failed: locatorId or locatorName is required`);
+  throw new Error("locatorId or locatorName is required");
 }
 
 /**
@@ -194,23 +203,21 @@ export function resolveLocatorToBeats(
  * @param options - Locator identifier options
  * @param options.locatorId - Comma-separated locator ID(s) to find
  * @param options.locatorName - Comma-separated locator name(s) to find
- * @param toolName - Name of the tool for error messages
  * @returns Array of times in beats
  * @throws If any locator is not found
  */
 export function resolveLocatorListToBeats(
   liveSet: LiveAPI,
   { locatorId, locatorName }: ResolveLocatorOptions,
-  toolName: string,
 ): number[] {
   if (locatorId != null) {
-    const ids = parseCommaSeparatedIds(locatorId);
+    const ids = targetEntries(locatorId, "locatorId");
 
     return ids.map((id) => {
       const found = findLocator(liveSet, { locatorId: id });
 
       if (!found) {
-        throw new Error(`${toolName} failed: locator not found: ${id}`);
+        throw new Error(`locator not found: ${id}`);
       }
 
       return found.locator.getProperty("time") as number;
@@ -218,22 +225,20 @@ export function resolveLocatorListToBeats(
   }
 
   if (locatorName != null) {
-    const names = parseCommaSeparatedIds(locatorName);
+    const names = targetEntries(locatorName, "locatorName");
 
     return names.map((name) => {
       const matches = findLocatorsByName(liveSet, name);
 
       if (matches.length === 0) {
-        throw new Error(
-          `${toolName} failed: no locator found with name "${name}"`,
-        );
+        throw new Error(`no locator found with name "${name}"`);
       }
 
       return assertDefined(matches[0], "first matching locator").time;
     });
   }
 
-  throw new Error(`${toolName} failed: locatorId or locatorName is required`);
+  throw new Error("locatorId or locatorName is required");
 }
 
 const LOCATOR_ID_PATTERN = /^locator-\d+$/;
@@ -252,47 +257,42 @@ export function isLocatorId(value: string): boolean {
  * Auto-detects whether the value is a locator ID (locator-N) or a name.
  * @param liveSet - The live_set LiveAPI object
  * @param locatorRef - Locator ID or name
- * @param toolName - Name of the tool for error messages
  * @param context - Optional context for error messages
  * @returns Time in beats
  */
 export function resolveLocatorRefToBeats(
   liveSet: LiveAPI,
   locatorRef: string,
-  toolName: string,
   context?: string,
 ): number {
   return isLocatorId(locatorRef)
-    ? resolveLocatorToBeats(
-        liveSet,
-        { locatorId: locatorRef },
-        toolName,
-        context,
-      )
-    : resolveLocatorToBeats(
-        liveSet,
-        { locatorName: locatorRef },
-        toolName,
-        context,
-      );
+    ? resolveLocatorToBeats(liveSet, { locatorId: locatorRef }, context)
+    : resolveLocatorToBeats(liveSet, { locatorName: locatorRef }, context);
 }
 
 /**
- * Resolve one or more locator references (IDs or names, comma-separated) to times in beats.
- * Each value is individually auto-detected as ID or name, allowing mixed lists.
- * @param liveSet - The live_set LiveAPI object
- * @param locatorRef - Comma-separated locator ID(s) or name(s)
- * @param toolName - Name of the tool for error messages
- * @returns Array of times in beats
+ * The `loc:` token to send back for a locator — what every song position takes,
+ * including inside a path coordinate. Without it a model copies the bar out of
+ * `time` and the section name never reaches a call.
+ *
+ * Falls back to the positional id whenever the name wouldn't resolve to this
+ * exact locator: a blank or repeated name matches the wrong one, a bracket or
+ * comma is read by the path grammar before the name is, and an id-shaped name
+ * is read as some other locator's positional id.
+ * @param name - This locator's name
+ * @param index - Its index in cue_points
+ * @param names - Every locator's name, to spot a repeat
+ * @returns The token, e.g. "loc:Bridge" or "loc:locator-3"
  */
-export function resolveLocatorRefListToBeats(
-  liveSet: LiveAPI,
-  locatorRef: string,
-  toolName: string,
-): number[] {
-  const refs = parseCommaSeparatedIds(locatorRef);
+function locatorPosition(name: string, index: number, names: string[]): string {
+  const usable =
+    name !== "" &&
+    name === name.trim() &&
+    !/[[\],]/.test(name) &&
+    !isLocatorId(name) &&
+    names.indexOf(name) === names.lastIndexOf(name);
 
-  return refs.map((ref) => resolveLocatorRefToBeats(liveSet, ref, toolName));
+  return `loc:${usable ? name : getLocatorId(index)}`;
 }
 
 /**

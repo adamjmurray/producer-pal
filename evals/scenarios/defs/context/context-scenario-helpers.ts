@@ -30,7 +30,7 @@ import {
   type EvalTurnResult,
   type ScenarioRequirements,
 } from "../../types.ts";
-import { clearSessionSlots } from "../clip/helpers/clip-scenario-helpers.ts";
+import { clearClipSlots } from "../clip/helpers/clip-scenario-helpers.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
 export const TOOL_CONNECT = "ppal-connect";
@@ -74,15 +74,16 @@ export interface SeedMemory {
  *    not we seeded it. The write-layer scenarios exist precisely to make the
  *    MODEL write the global document; without an unconditional restore, a
  *    passing eval would overwrite the developer's own context.md.
- *  - **Memory** is restored by DIFF, not by name: setup records the index up
- *    front, and teardown deletes every entry that wasn't there before. That
- *    covers seeded fixtures and — the case a name list can't — entries the model
- *    invents under names we cannot predict.
+ *  - **Memory** is snapshotted whole and put back: setup reads every entry,
+ *    empties the store, then seeds; teardown clears whatever is there and
+ *    rewrites the snapshot. Leaving the developer's real entries in place is
+ *    not neutral — ANY stored memory makes connect treat the user as known, so
+ *    the onboarding next step never fires and the scenarios that grade it fail
+ *    on a populated machine and pass on an empty one.
  *
- * Seeding a memory over a name that already holds something else throws rather
- * than clobbering it (see `assertMemoryNameFree`). Since the diff only ever
- * deletes entries that appeared during the run, a pre-existing real memory is
- * never deleted either.
+ * Restoring by snapshot rather than by diff also deletes what the MODEL wrote
+ * under a name we could not have predicted, since the run ends with the store
+ * reset to exactly what setup saw.
  *
  * Also clears any `clearSlots`, which is what lets these scenarios set
  * `reuseLiveSet` — they start from a clean slate without a fresh Live Set open.
@@ -102,12 +103,12 @@ export function seedContext(seed: {
   // State held between setup and teardown. A Map rather than `let` bindings:
   // writing an awaited value back into a closure variable is a lost-update
   // hazard (and ESLint's require-atomic-updates rejects it).
-  const saved = new Map<"global" | "memoryNames", string>();
+  const saved = new Map<"global" | "memories", string>();
 
   return {
     setup: async (mcpClient) => {
       if (seed.clearSlots?.length) {
-        await clearSessionSlots(mcpClient, seed.clearSlots);
+        await clearClipSlots(mcpClient, seed.clearSlots);
       }
 
       // Snapshot BOTH layers before touching either, so teardown can restore
@@ -117,13 +118,14 @@ export function seedContext(seed: {
         await callContext(mcpClient, { action: "read", scope: "global" }),
       );
 
-      const memoryNames = await readMemoryNames(mcpClient);
+      const storedMemories = await readMemories(mcpClient);
 
       // null ⇒ the memory scope isn't reachable (small-model mode strips it from
       // the enum). Nothing can write memory in that run, so there's nothing to
-      // clean up — record no snapshot and teardown will skip the diff.
-      if (memoryNames != null) {
-        saved.set("memoryNames", JSON.stringify(memoryNames));
+      // clean up — record no snapshot and teardown will skip the restore.
+      if (storedMemories != null) {
+        saved.set("memories", JSON.stringify(storedMemories));
+        await clearMemories(mcpClient);
       }
 
       // Always install a KNOWN global document — defaulting to empty, not to
@@ -142,7 +144,6 @@ export function seedContext(seed: {
       });
 
       for (const memory of memories) {
-        await assertMemoryNameFree(mcpClient, memory);
         await callContext(mcpClient, {
           action: "write",
           scope: "memory",
@@ -154,20 +155,20 @@ export function seedContext(seed: {
     },
 
     teardown: async (mcpClient) => {
-      const snapshot = saved.get("memoryNames");
+      const snapshot = saved.get("memories");
 
-      // Absent ⇒ memory was unreachable this run (see setup); skip the diff.
+      // Absent ⇒ memory was unreachable this run (see setup); nothing to undo.
       if (snapshot != null) {
-        const before = new Set<string>(JSON.parse(snapshot) as string[]);
+        await clearMemories(mcpClient);
 
-        for (const name of (await readMemoryNames(mcpClient)) ?? []) {
-          if (!before.has(name)) {
-            await callContext(mcpClient, {
-              action: "delete",
-              scope: "memory",
-              name,
-            });
-          }
+        for (const memory of JSON.parse(snapshot) as SeedMemory[]) {
+          await callContext(mcpClient, {
+            action: "write",
+            scope: "memory",
+            name: memory.name,
+            description: memory.description,
+            content: memory.content,
+          });
         }
       }
 
@@ -188,9 +189,11 @@ export function seedContext(seed: {
 }
 
 /**
- * The names currently in the memory index. The index renders one
- * `` - `name` — description `` line per entry, so the backtick-quoted name is
- * the stable thing to parse.
+ * Every stored memory, whole, so teardown can put the store back exactly.
+ *
+ * The index renders one `` - `name` — description `` line per entry, which is
+ * where the name and description come from; the body needs a read per entry,
+ * since a read returns only the content.
  *
  * Returns null when the memory scope isn't reachable at all: small-model mode
  * strips "memory" from the `scope` enum, so the call comes back as an error
@@ -200,9 +203,9 @@ export function seedContext(seed: {
  * answer, not a failure.
  *
  * @param mcpClient - The scenario's MCP client
- * @returns Every stored memory name, or null when the memory scope is unavailable
+ * @returns Every stored memory, or null when the memory scope is unavailable
  */
-async function readMemoryNames(mcpClient: Client): Promise<string[] | null> {
+async function readMemories(mcpClient: Client): Promise<SeedMemory[] | null> {
   let index: string;
 
   try {
@@ -211,7 +214,39 @@ async function readMemoryNames(mcpClient: Client): Promise<string[] | null> {
     return null;
   }
 
-  return [...index.matchAll(/^-\s+`([^`]+)`/gm)].map((m) => m[1] as string);
+  const listed = [...index.matchAll(/^-\s+`([^`]+)`\s+—\s+(.*)$/gm)].map(
+    (match) => ({ name: match[1] as string, description: match[2] as string }),
+  );
+  const stored: SeedMemory[] = [];
+
+  for (const entry of listed) {
+    stored.push({
+      ...entry,
+      content: await callContext(mcpClient, {
+        action: "read",
+        scope: "memory",
+        name: entry.name,
+      }),
+    });
+  }
+
+  return stored;
+}
+
+/**
+ * Empty the memory store. Called in setup so the run starts from a KNOWN store
+ * rather than the developer's, and in teardown before the snapshot goes back.
+ *
+ * @param mcpClient - The scenario's MCP client
+ */
+async function clearMemories(mcpClient: Client): Promise<void> {
+  for (const memory of (await readMemories(mcpClient)) ?? []) {
+    await callContext(mcpClient, {
+      action: "delete",
+      scope: "memory",
+      name: memory.name,
+    });
+  }
 }
 
 /**
@@ -234,37 +269,6 @@ async function callContext(
   };
 
   return parsed.content ?? "";
-}
-
-/**
- * Refuse to seed over a memory name that already holds something else. The
- * Node route answers a missing entry with a fixed not-found sentence rather
- * than an error, which is what makes "is this name free?" checkable at all.
- *
- * @param mcpClient - The scenario's MCP client
- * @param memory - The entry about to be seeded
- * @throws If the name is taken by content we did not write
- */
-async function assertMemoryNameFree(
-  mcpClient: Client,
-  memory: SeedMemory,
-): Promise<void> {
-  const existing = await callContext(mcpClient, {
-    action: "read",
-    scope: "memory",
-    name: memory.name,
-  });
-
-  const absent = existing.trim() === `No memory found for "${memory.name}".`;
-  const ours = existing.trim() === memory.content.trim();
-
-  if (!absent && !ours) {
-    throw new Error(
-      `Refusing to seed eval memory "${memory.name}": a different memory ` +
-        `already exists under that name in ~/.producer-pal/memory/. Rename the ` +
-        `eval fixture so a real memory isn't overwritten.`,
-    );
-  }
 }
 
 /**

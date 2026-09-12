@@ -1,18 +1,18 @@
 ---
 layout: home
-title: Producer Pal — Ableton MCP for AI music production
+title: "Producer Pal: Ableton MCP for AI music production"
 titleTemplate: false
 description:
-  The open Ableton MCP server and REST API. Bring any AI to Ableton Live —
-  Claude, Gemini, ChatGPT, Ollama — or script Live with no AI at all. Free and
+  The open Ableton MCP server and REST API. Bring any AI to Ableton Live
+  (Claude, Gemini, ChatGPT, Ollama), or script Live with no AI at all. Free and
   open-source.
 
 hero:
   name: Producer Pal™
   text: Control Ableton Live with words
   tagline:
-    The open Ableton MCP server and REST API. Bring any AI — Claude, Gemini,
-    ChatGPT, Ollama — or script Live with no AI at all. Free and open-source.
+    The open Ableton MCP server and REST API. Bring any AI (Claude, Gemini,
+    ChatGPT, Ollama), or script Live with no AI at all. Free and open-source.
   image:
     src: /producer-pal-logo-animated.svg
     alt: Producer Pal
@@ -36,7 +36,7 @@ features:
     link: /features
     linkText: See all features
 
-  - title: Bring Your Own AI — or None
+  - title: Bring Your Own AI, or None
     details: >
       Use cloud AI (Claude, Gemini, ChatGPT), run free and private with local
       models (Ollama, Bionic), or skip AI entirely and script Live through the
@@ -55,7 +55,7 @@ features:
 
 <div class="download-band">
   <h2 class="download-title">Get Producer Pal</h2>
-  <p class="download-subtitle">The Max for Live device is all you need to start — drop it onto a track in Ableton Live and it links you to the docs and the chat UI.</p>
+  <p class="download-subtitle">The Max for Live device is all you need to start. Drop it onto a track in Ableton Live and it links you to the docs and the chat UI.</p>
   <div class="download-actions">
     <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
       <span class="download-btn-label">Download Max for Live Device</span>
@@ -67,7 +67,7 @@ features:
     </a>
     <a class="download-btn" href="https://www.npmjs.com/package/producer-pal" target="_blank" rel="noreferrer">
       <span class="download-btn-label">npx producer-pal</span>
-      <span class="download-btn-sub">npm — for any MCP client</span>
+      <span class="download-btn-sub">npm · for any MCP client</span>
     </a>
   </div>
   <p class="download-next">Then choose how you want to use it below, or follow the <a href="/installation">full Installation Guide</a>.</p>
@@ -203,30 +203,28 @@ features:
 **More helpful videos:**
 
 - [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  ([written guide](/installation/gemini)) — _Note: free tier now has strict
-  limits_
+  ([written guide](/installation/gemini)). _Note: free tier now has strict
+  limits._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (for command line users) — _Note: free tier now has strict limits_
+  (for command line users). _Note: free tier now has strict limits._
 
 ## About Producer Pal
 
 Producer Pal is an **Ableton MCP** (Model Context Protocol) server packaged as a
-Max for Live device. It's the most flexible way to use **AI for Ableton Live** —
-connect your favorite AI assistant, describe what you want in plain language,
-and Producer Pal translates that into real edits in your Live Set: creating
-tracks, writing MIDI and audio clips, tweaking instruments and effects, and
-building arrangements.
+Max for Live device, and a way to use **AI for Ableton Live** without leaving
+Live. Connect an AI assistant, say what you want in plain language, and it makes
+real edits in your Live Set: creating tracks, writing MIDI and audio clips,
+tweaking instruments and effects, building arrangements.
 
-It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
-and local models via Ollama or LM Studio Bionic. And the AI is optional: the
-same device exposes an open [REST API](/guide/rest-api), so anything that can
-make an HTTP request — scripts, coding agents, your own tools — can read and
-edit a Live Set with no AI in the loop. A portable [Agent Skill](/guide/skills)
-that drops into Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible
-runtime rounds out three integration paths from one Max for Live device.
+It works with any MCP-compatible AI: Claude, Gemini, ChatGPT, Mistral, and local
+models via Ollama or LM Studio Bionic. The AI is optional. The same device
+exposes an open [REST API](/guide/rest-api), so anything that can make an HTTP
+request (scripts, coding agents, your own tools) can read and edit a Live Set
+with no AI involved. There's also a portable [Agent Skill](/guide/skills) for
+Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime.
 
-Producer Pal is free, open-source (GPL-3.0), and actively developed in the open
-with regular updates for the latest Ableton Live features.
+Producer Pal is free, open-source (GPL-3.0), and developed in the open, with
+updates for new Ableton Live features.
 
 ## Support
 

@@ -17,10 +17,13 @@ import {
   writeBoolProp,
   writeIntFromSet,
 } from "../specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
+import {
+  type PseudoParamWrite,
+  type SpecializedDeviceSpec,
+} from "../specialized-device-types.ts";
 
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/instruments.md.
 //
 // `sample` (file path) and `gainDb` are normal writable pseudo-params: set them
 // via `params` {name, value} entries, read them back in `parameters` for
@@ -96,20 +99,37 @@ function sampleAction(method: string) {
   };
 }
 
+/**
+ * Why a `sample` write left the sample that was already loaded. Live takes
+ * `replace_sample` for a path naming no loadable file, loads nothing and
+ * reports success, so a read-back that never moved is the only sign it failed.
+ * A path that reads back as itself landed, even where it was already loaded.
+ * @param write - The requested path, and the path before and after the write
+ * @returns The reason the sample never loaded, or undefined when it did
+ */
+function sampleWriteFailed(write: PseudoParamWrite): string | undefined {
+  const { before, after } = write;
+
+  if (after === write.requested || after !== before) {
+    return undefined;
+  }
+
+  return `not loaded — check the path; "${String(before)}" is still there`;
+}
+
 export const simplerSpec: SpecializedDeviceSpec = {
   displayNames: [DEVICE_CLASS.SIMPLER],
   params: [
     {
       name: "sample",
       read: readSamplePath,
-      write: (device, value, toolName) =>
-        setSimplerSample(device, String(value), toolName),
+      write: (device, value) => setSimplerSample(device, String(value)),
+      writeFailed: sampleWriteFailed,
     },
     {
       name: "gainDb",
       read: readSimplerGain,
-      write: (device, value, toolName) =>
-        setSimplerGain(device, Number(value), toolName),
+      write: (device, value) => setSimplerGain(device, Number(value)),
     },
     enumParam("playbackMode", "playback_mode", PLAYBACK_MODES),
     enumParam(
@@ -120,15 +140,15 @@ export const simplerSpec: SpecializedDeviceSpec = {
     {
       name: "retrigger",
       read: (device) => readBoolProp(device, "retrigger"),
-      write: (device, value, toolName) =>
-        writeBoolProp(device, "retrigger", value, toolName, "retrigger"),
+      write: (device, value) =>
+        writeBoolProp(device, "retrigger", value, "retrigger"),
     },
     {
       name: "voices",
       options: VOICES,
       read: readVoices,
-      write: (device, value, toolName) =>
-        writeIntFromSet(device, "voices", value, VOICES, toolName, "voices"),
+      write: (device, value) =>
+        writeIntFromSet(device, "voices", value, VOICES, "voices"),
     },
     // Read-only state.
     {
@@ -164,11 +184,11 @@ export const simplerSpec: SpecializedDeviceSpec = {
       description: "Halve the warp tempo (Sample tab ÷2)",
     },
     warpAs: {
-      handler: (device, args, toolName) => {
+      handler: (device, args) => {
         const beats = Number(args[0]);
 
         if (!Number.isFinite(beats)) {
-          console.warn(`${toolName}: warpAs requires a numeric beats argument`);
+          console.warn(`warpAs requires a numeric beats argument`);
 
           return;
         }

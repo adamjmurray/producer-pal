@@ -56,8 +56,13 @@ export function getBaseUrl(
   provider: string,
   baseUrl: string | undefined,
 ): string | undefined {
-  if (provider === "custom") return baseUrl;
-  if (provider === "gemini") return undefined;
+  if (provider === "custom") {
+    return baseUrl;
+  }
+
+  if (provider === "gemini") {
+    return undefined;
+  }
 
   if (provider === "lmstudio") {
     return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:1234");

@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
 import { getSettingsUrl } from "#webui/utils/mcp-url";
@@ -18,7 +19,7 @@ import { getSettingsUrl } from "#webui/utils/mcp-url";
 async function expectDefaultKept(): Promise<void> {
   const { result } = renderHook(() => useGlobalSettings());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(globalThis.fetch).toHaveBeenCalled();
   });
 
@@ -33,7 +34,7 @@ async function expectDefaultKept(): Promise<void> {
 async function mountAndToggleOff(fetchSpy: ReturnType<typeof vi.spyOn>) {
   const { result } = renderHook(() => useGlobalSettings());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -61,7 +62,7 @@ describe("useGlobalSettings", () => {
 
     const { result } = renderHook(() => useGlobalSettings());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.autoUpdateCheck).toBe(false);
     });
 
@@ -107,7 +108,7 @@ describe("useGlobalSettings", () => {
 
     const result = await mountAndToggleOff(fetchSpy);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.autoUpdateCheck).toBe(true);
     });
   });
@@ -129,7 +130,7 @@ describe("useGlobalSettings", () => {
     );
 
     // The optimistic flip must not stick when the server refused it.
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.autoUpdateCheck).toBe(true);
     });
   });

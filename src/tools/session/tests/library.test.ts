@@ -99,7 +99,10 @@ async function expectFolderScanSkipped(
 
   const result = await library(filter, { sampleFolder: "/samples/" });
 
-  if (!("items" in result)) throw new Error("expected items");
+  if (!("items" in result)) {
+    throw new Error("expected items");
+  }
+
   expect(result.items.find((i) => i.source === "sampleFolder")).toBeUndefined();
   expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
 }
@@ -158,7 +161,10 @@ describe("library tool — action dispatch", () => {
 
     const result = await library({ query: "kick" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
   });
 
@@ -244,7 +250,10 @@ describe("library tool — folder scan integration", () => {
     const result = await library({ query: "" }, { sampleFolder: "/samples/" });
 
     expect("items" in result).toBe(true);
-    if (!("items" in result)) return;
+
+    if (!("items" in result)) {
+      return;
+    }
 
     const names = result.items.map((i) => i.name);
 
@@ -269,7 +278,10 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     const kick = result.items.find((i) => i.source === "sampleFolder");
 
     // Folder-scan items came from a live filesystem enumeration, so they're
@@ -292,7 +304,9 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
 
     const kicks = result.items.filter((i) => i.name === "kick.wav");
 
@@ -310,7 +324,10 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(
       result.items.find((i) => i.source === "sampleFolder"),
     ).toBeUndefined();
@@ -325,7 +342,11 @@ describe("library tool — folder scan integration", () => {
     );
 
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
-    if (!("items" in result)) throw new Error("expected items");
+
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
     // Folder-only requests bypass the DB; dbAvailable should be absent
     // rather than fabricated.
@@ -341,7 +362,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.dbAvailable).toBe(true);
     // Neither the folder scan nor the DB supplied a reason, so the merged
     // result must omit the key rather than carry reason: undefined.
@@ -400,7 +424,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, {});
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items).toHaveLength(1);
   });
 
@@ -419,7 +446,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({ limit: 2 }, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items).toHaveLength(2);
   });
 
@@ -446,7 +476,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     // Folder partition first (alphabetical tiebreaker at useCount=0),
     // then DB partition (useCount desc).
     expect(result.items.map((i) => i.name)).toStrictEqual([
@@ -466,7 +499,10 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
 
@@ -476,7 +512,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({ limit: 0 }, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items).toHaveLength(2);
   });
 
@@ -506,7 +545,10 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     // Folder partition first, each partition sorted alphabetically.
     expect(result.items.map((i) => i.name)).toStrictEqual([
       "m_snare.wav",
@@ -542,7 +584,10 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     // Folder partition sorted by name (no mod_date metadata), then DB
     // partition in upstream mod_date order.
     expect(result.items.map((i) => i.name)).toStrictEqual([
@@ -562,7 +607,10 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
 
@@ -572,7 +620,10 @@ describe("library tool — folder scan integration", () => {
     // "you need to configure a sample folder".
     const result = await library({ source: "sampleFolder" }, {});
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items).toHaveLength(0);
     expect(result.reason).toMatch(/sample folder not configured/i);
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
@@ -591,7 +642,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.dbAvailable).toBe(false);
     expect(result.reason).toBe("Live database not found");
     // Folder items should still come through alongside the diagnostic.
@@ -606,7 +660,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.reason).toMatch(/sample folder scan failed.*EACCES/);
     // DB results should still flow through.
     expect(result.dbAvailable).toBe(true);
@@ -623,7 +680,9 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
 
     const item = result.items.find((i) => i.path.endsWith("snare.wav"));
 
@@ -639,7 +698,10 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     // A top-level sample has no folder segment of its own, so its parent is
     // the configured sample folder itself ("/samples/" → "samples").
     expect(result.items.find((i) => i.name === "kick.wav")?.folder).toBe(
@@ -658,7 +720,10 @@ describe("library tool — sort ordering (DB partition)", () => {
 
     const result = await library({}, {});
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items.map((i) => i.name)).toStrictEqual([
       "a.wav", // useCount 3
       "c.wav", // useCount 2
@@ -671,7 +736,10 @@ describe("library tool — sort ordering (DB partition)", () => {
 
     const result = await library({ sort: "name" }, {});
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     expect(result.items.map((i) => i.name)).toStrictEqual([
       "a.wav",
       "b.wav",
@@ -684,7 +752,10 @@ describe("library tool — sort ordering (DB partition)", () => {
 
     const result = await library({ sort: "mod_date" }, {});
 
-    if (!("items" in result)) throw new Error("expected items");
+    if (!("items" in result)) {
+      throw new Error("expected items");
+    }
+
     // The DB partition is not all-sampleFolder, so mod_date keeps the upstream
     // (SQL-provided) order rather than re-sorting by name or use_count.
     expect(result.items.map((i) => i.name)).toStrictEqual([

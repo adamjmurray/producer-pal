@@ -1,7 +1,5 @@
 # Troubleshooting
 
-Common issues and solutions for Producer Pal.
-
 ## AI Won't Use Producer Pal
 
 ### Verify Your Setup
@@ -45,8 +43,8 @@ support tools.
 
 ## `npx` Is Running an Old Version
 
-If you connect with `npx producer-pal` — used by Codex, Claude Code, and most
-other CLI/MCP setups — your coding agent may fail with a **misleading error**,
+If you connect with `npx producer-pal` (used by Codex, Claude Code, and most
+other CLI/MCP setups), your coding agent may fail with a **misleading error**,
 often something like "cannot connect to MCP server", even though Ableton Live
 and the Producer Pal device are running fine. When the device has been upgraded
 but the bridge is still an older version, the two may be incompatible, and the
@@ -55,13 +53,14 @@ problem.
 
 The cause is usually **an old copy of `producer-pal` already on your machine**.
 Before `npx` fetches anything, it looks for a `producer-pal` command that is
-already installed, and runs that instead — no version check. It finds one if:
+already installed, and runs that instead, with no version check. It finds one
+if:
 
 - you ever ran `npm install -g producer-pal`, or
 - you launch your agent from a project folder with its own `producer-pal` in
   `node_modules`.
 
-**Fix — pin `@latest` in your MCP config:**
+**Fix: pin `@latest` in your MCP config.**
 
 ```json
 {
@@ -82,9 +81,9 @@ npm uninstall -g producer-pal
 
 ::: tip Don't fix this with `npm install -g producer-pal@latest`
 
-It works today and breaks at the next release — you're back to an old global
-copy shadowing `npx`, which is the problem in the first place. Pin `@latest` in
-the config instead.
+It works today and breaks at the next release. You're back to an old global copy
+shadowing `npx`, which is the problem in the first place. Pin `@latest` in the
+config instead.
 
 :::
 
@@ -116,8 +115,8 @@ What to do:
   can also turn off the "Use Max Application" option in Live's preferences so
   Live uses its own bundled Max.
 
-On current versions of Producer Pal, only library/plugin browsing is affected —
-connecting to Ableton and the other tools keep working.
+On current versions of Producer Pal, only library/plugin browsing is affected.
+Connecting to Ableton and the other tools keep working.
 
 ## After Upgrading
 

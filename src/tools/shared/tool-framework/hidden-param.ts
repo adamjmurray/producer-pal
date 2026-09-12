@@ -28,11 +28,36 @@ import {
   tagSchema,
 } from "#src/tools/shared/tool-framework/schema-tags.ts";
 
-export interface DeprecatedParamInfo {
-  kind: "deprecated";
-  /** Param name to use instead, named in the warning. */
-  replacedBy: string;
+interface DeprecatedParamBase {
+  /**
+   * How the replacement reads the value differently, for a param whose
+   * replacement is not a rename. Without it the warning reads as one, and a
+   * caller who follows it literally writes a call that quietly does something
+   * else.
+   */
+  note?: string;
 }
+
+/**
+ * A deprecation either names the param that replaces it, or says what to do
+ * instead when nothing does.
+ */
+export type DeprecationInfo =
+  | (DeprecatedParamBase & {
+      /** Param name to use instead, named in the warning. */
+      replacedBy: string;
+      /** Example value for the replacement, shown in the warning. */
+      example?: string;
+      guidance?: undefined;
+    })
+  | (DeprecatedParamBase & {
+      replacedBy?: undefined;
+      example?: undefined;
+      /** What to do instead, ending the warning sentence. */
+      guidance: string;
+    });
+
+export type DeprecatedParamInfo = { kind: "deprecated" } & DeprecationInfo;
 
 export interface AliasParamInfo {
   kind: "alias";
@@ -40,6 +65,13 @@ export interface AliasParamInfo {
   canonical: string;
   /** Example value for the canonical param, shown in the warning. */
   example?: string;
+  /**
+   * Each alias is a target of its own, so several of them cannot be collapsed
+   * into one canonical value — ppal-select's trackId/sceneId/clipId/deviceId
+   * select all of the objects they name. Without this the warning tells the
+   * model to fold a working combination into a single `id`, which breaks it.
+   */
+  independent?: boolean;
 }
 
 export type HiddenParamInfo = DeprecatedParamInfo | AliasParamInfo;
@@ -52,15 +84,15 @@ const HIDDEN_TAG = Symbol("hiddenParam");
  * Marks a param as deprecated: still accepted and validated, no longer
  * published to the model. Composes with {@link param} in either order.
  * @param schema - The param's Zod schema
- * @param info - What to use instead
+ * @param info - What to use instead, or what to do without it
  * @returns The schema, tagged as deprecated
  */
 export function deprecatedParam<T extends ZodType>(
   schema: T,
-  info: Omit<DeprecatedParamInfo, "kind">,
+  info: DeprecationInfo,
 ): T {
   return tagSchema(
-    describeWithTags(schema, `deprecated: use ${info.replacedBy}`),
+    describeWithTags(schema, deprecationDescription(info)),
     HIDDEN_TAG,
     { kind: "deprecated", ...info } satisfies DeprecatedParamInfo,
   );
@@ -109,7 +141,9 @@ export function collectHiddenParams(
   for (const [key, schema] of Object.entries(inputSchema)) {
     const info = getHiddenParam(schema);
 
-    if (info != null) hidden[key] = info;
+    if (info != null) {
+      hidden[key] = info;
+    }
   }
 
   return hidden;
@@ -119,27 +153,35 @@ export function collectHiddenParams(
  * Builds the warnings shown when a caller sends hidden params. Deprecations get
  * a line each; aliases are grouped by the param they fold into, so a model that
  * sent two halves of one destination reads one correction rather than two.
- * @param toolName - Tool the params belong to
+ *
+ * No warning names the tool: it rides in the tool_result for one tool_use, so
+ * the conversation already says which call it belongs to.
  * @param usedKeys - Hidden params the caller actually sent, in schema order
  * @param hidden - Hidden-param info keyed by param name
  * @returns Warning texts, empty when nothing hidden was sent
  */
 export function hiddenParamWarnings(
-  toolName: string,
   usedKeys: string[],
   hidden: Record<string, HiddenParamInfo>,
 ): string[] {
   const warnings: string[] = [];
-  const aliasGroups = new Map<string, { keys: string[]; example?: string }>();
+  const aliasGroups = new Map<
+    string,
+    { keys: string[]; example?: string; independent?: boolean }
+  >();
 
   for (const key of usedKeys) {
     const info = hidden[key];
 
-    if (info == null) continue;
+    if (info == null) {
+      continue;
+    }
 
     if (info.kind === "deprecated") {
       warnings.push(
-        `${WARNING_PREFIX}${toolName} param "${key}" is deprecated and will be removed; use "${info.replacedBy}" instead`,
+        `${WARNING_PREFIX}param "${key}" is deprecated and will be removed; ` +
+          deprecationAdvice(info) +
+          (info.note == null ? "" : `. ${info.note}`),
       );
       continue;
     }
@@ -147,20 +189,64 @@ export function hiddenParamWarnings(
     const group = aliasGroups.get(info.canonical) ?? {
       keys: [],
       example: info.example,
+      independent: info.independent,
     };
 
     group.keys.push(key);
     aliasGroups.set(info.canonical, group);
   }
 
-  for (const [canonical, { keys, example }] of aliasGroups) {
+  for (const [canonical, { keys, example, independent }] of aliasGroups) {
     const names = keys.map((key) => `"${key}"`).join(", ");
-    const hint = example == null ? "" : ` (e.g. ${canonical}: "${example}")`;
+    const hint = exampleHint(canonical, example);
+
+    // Several independent aliases each name their own object, so telling the
+    // model to send them as one canonical value would break the call.
+    if (independent && keys.length > 1) {
+      warnings.push(
+        `${WARNING_PREFIX}${names} accepted as fallbacks; "${canonical}" names one object, so keep them as they are for several`,
+      );
+      continue;
+    }
 
     warnings.push(
-      `${WARNING_PREFIX}${toolName} accepts ${names} as a fallback; the parameter is "${canonical}"${hint}`,
+      `${WARNING_PREFIX}${names} accepted as a fallback; the parameter is "${canonical}"${hint}`,
     );
   }
 
   return warnings;
+}
+
+/**
+ * The advice half of a deprecation warning: the replacement param, or the
+ * guidance for a param that has none.
+ * @param info - The deprecation
+ * @returns Text following "will be removed; "
+ */
+function deprecationAdvice(info: DeprecatedParamInfo): string {
+  return info.replacedBy == null
+    ? info.guidance
+    : `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, info.example)}`;
+}
+
+/**
+ * The schema description a deprecated param carries internally.
+ * @param info - The deprecation
+ * @returns The description text
+ */
+function deprecationDescription(info: DeprecationInfo): string {
+  return info.replacedBy == null
+    ? `deprecated: ${info.guidance}`
+    : `deprecated: use ${info.replacedBy}`;
+}
+
+/**
+ * Shows what the surviving param looks like with a real value, when the hidden
+ * param has an example to give.
+ * @param paramName - The param the caller should send instead
+ * @param example - Example value for it, if any
+ * @returns The parenthesized hint, or "" when there is no example
+ */
+function exampleHint(paramName: string, example: string | undefined): string {
+  return example == null ? "" : ` (e.g. ${paramName}: "${example}")`;
 }

@@ -55,7 +55,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId });
+    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 
   it("should handle start_marker offset correctly", async () => {
@@ -87,7 +87,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId });
+    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 
   it("should not shrink end_marker when clip has more content than target", async () => {
@@ -119,6 +119,6 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId });
+    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 });

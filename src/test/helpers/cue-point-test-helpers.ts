@@ -10,7 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
-interface CuePoint {
+export interface CuePoint {
   id: string;
   time: number;
   name?: string;

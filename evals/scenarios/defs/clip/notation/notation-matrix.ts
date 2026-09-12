@@ -33,7 +33,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   diffNotes,
   type ExpectedNote,
   getCreatedClip,
@@ -106,13 +106,13 @@ export function notationNeutralScenarios(
     liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
     config: { notation },
     messages: [MSG_CONNECT, spec.prompt],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
+    setup: (mcpClient) => clearClipSlots(mcpClient, candidateSlots),
     assertions: [
       { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
       { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
       midiJsonNotesAssertion(spec.meter, spec.expected),
       correctPathAssertion(correctSlot),
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+      { type: "token_usage", maxTokens: 1_500 },
     ],
   }));
 }
@@ -162,8 +162,9 @@ function midiJsonNotesAssertion(
 
       const events = parseMidiJsonClip(result, meter);
 
-      if (events == null)
+      if (events == null) {
         return "clip notes missing or not parseable as midi-json";
+      }
 
       return diffNotes(events, expected);
     },

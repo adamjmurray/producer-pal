@@ -10,7 +10,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   createMockClip,
@@ -42,7 +42,7 @@ describe("arrangement-operations-helpers", () => {
           currentEndTime: 8,
           context: {},
         }),
-      ).toThrow("updateClip failed: could not determine trackIndex for clip");
+      ).toThrow("could not determine trackIndex for clip");
     });
 
     it("should tile clip when currentArrangementLength > totalContentLength for looped clips", () => {
@@ -338,7 +338,7 @@ describe("arrangement-operations-helpers", () => {
           currentEndTime: 8,
           context: { silenceWavPath: "/test.wav" },
         }),
-      ).toThrow("updateClip failed: could not determine trackIndex for clip");
+      ).toThrow("could not determine trackIndex for clip");
     });
 
     it("should shorten audio clip using createAudioClipInSession", () => {

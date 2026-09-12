@@ -89,9 +89,13 @@ function setupLiveSet(
   return liveSet;
 }
 
-function setupTrack(trackIndex: number): RegisteredMockObject {
+function setupTrack(
+  trackIndex: number,
+  properties: Record<string, unknown> = {},
+): RegisteredMockObject {
   return registerMockObject(`track-${trackIndex}`, {
     path: livePath.track(trackIndex),
+    properties,
   });
 }
 
@@ -117,6 +121,24 @@ function setupSessionClip(
   return { clipSlot, clip };
 }
 
+// Sets up the live set, track 0, and one 4/4 length-4 session clip at 0/0.
+function setupDefaultSessionClip(): {
+  clipSlot: RegisteredMockObject;
+  clip: RegisteredMockObject;
+} {
+  setupLiveSet();
+  setupTrack(0);
+
+  return setupSessionClip(0, 0, {
+    clipId: "clip_0_0",
+    clipProperties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      length: 4,
+    },
+  });
+}
+
 // Sets up the live set, track 0, and `count` length-4 session clips starting at
 // scene 1 (clip ids clip_0_1, clip_0_2, ...). Returns the clip handles in order.
 function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
@@ -134,24 +156,21 @@ function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
 }
 
 describe("createClip - session view", () => {
-  // Regression: Live declines a create it can't do — a MIDI clip on an audio
-  // track, say — without raising, and the clip that isn't there reads back as
-  // id "0". Reported as created, that id poisoned every follow-up call.
+  // Regression: Live declines a create without raising, and the clip that isn't
+  // there reads back as id "0". Reported as created, that id poisoned every
+  // follow-up call. The track holds the clip's own kind here, so the pre-flight
+  // below passes and this is the backstop firing on its own.
   it.each([
-    ["a MIDI clip", {}, "a MIDI clip needs a MIDI track"],
-    [
-      "an audio clip",
-      { sampleFile: "/tmp/kick.wav" },
-      "an audio clip needs an audio track",
-    ],
+    ["a MIDI clip", {}, {}],
+    ["an audio clip", { sampleFile: "/tmp/kick.wav" }, { has_midi_input: 0 }],
   ])(
     "warns and skips %s Live declined to create",
-    async (_what, extra, reason) => {
+    async (_what, extra, trackProps) => {
       const warn = vi.spyOn(console, "warn");
 
       mockNonExistentObjects();
       setupLiveSet();
-      setupTrack(0);
+      setupTrack(0, trackProps);
       registerMockObject("clip-slot-0-0", {
         path: livePath.track(0).clipSlot(0),
         properties: { has_clip: 0 },
@@ -161,22 +180,49 @@ describe("createClip - session view", () => {
 
       expect(result).toStrictEqual([]);
       expect(warn).toHaveBeenCalledWith(
-        `Failed to create clip at t0/s0: Live created no clip - ${reason}`,
+        "Failed to create clip at t0/s0: Live created no clip at t0/s0",
       );
     },
   );
 
+  // Live refuses these without reporting anything, so create-clip checks the
+  // destination track first and words the refusal itself.
+  it.each([
+    [
+      "a frozen track",
+      {},
+      { is_frozen: 1 },
+      "track t0 (id track-0) is frozen; unfreeze it first",
+    ],
+    [
+      "a track of the wrong kind",
+      { sampleFile: "/tmp/kick.wav" },
+      {},
+      "track t0 (id track-0) is MIDI; an audio clip needs an audio track",
+    ],
+  ])(
+    "warns and skips a clip aimed at %s",
+    async (_what, extra, trackProps, reason) => {
+      const warn = vi.spyOn(console, "warn");
+
+      setupLiveSet();
+      setupTrack(0, trackProps);
+      const { clipSlot } = setupSessionClip(0, 0, {
+        clipProperties: { length: 4 },
+      });
+
+      const result = await createClip({ path: "t0/s0", ...extra });
+
+      expect(result).toStrictEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        `Failed to create clip at t0/s0: ${reason}`,
+      );
+      expect(clipSlot.call).not.toHaveBeenCalled();
+    },
+  );
+
   it("should create a single clip with notes", async () => {
-    setupLiveSet();
-    setupTrack(0);
-    const { clipSlot, clip } = setupSessionClip(0, 0, {
-      clipId: "clip_0_0",
-      clipProperties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    const { clipSlot, clip } = setupDefaultSessionClip();
 
     const result = await createClip({
       slot: "0/0",
@@ -209,16 +255,7 @@ describe("createClip - session view", () => {
   });
 
   it("should create a clip from midi-json notation", async () => {
-    setupLiveSet();
-    setupTrack(0);
-    const { clip } = setupSessionClip(0, 0, {
-      clipId: "clip_0_0",
-      clipProperties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    const { clip } = setupDefaultSessionClip();
 
     await createClip(
       {
@@ -235,16 +272,7 @@ describe("createClip - session view", () => {
   });
 
   it("resolves a midi-json v:0 before writing (nothing to delete on create)", async () => {
-    setupLiveSet();
-    setupTrack(0);
-    const { clip } = setupSessionClip(0, 0, {
-      clipId: "clip_0_0",
-      clipProperties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
+    const { clip } = setupDefaultSessionClip();
 
     // The v:0 deletes the C3 written earlier in the same array (last wins) and
     // never reaches Live, which rejects velocity 0.
@@ -291,7 +319,7 @@ describe("createClip - session view", () => {
     setupLiveSet();
 
     await expect(createClip({ slot: "99/0", notes: "C3 1|1" })).rejects.toThrow(
-      "createClip failed: track 99 does not exist",
+      "track 99 does not exist",
     );
   });
 
@@ -309,7 +337,7 @@ describe("createClip - session view", () => {
         notes: "C3 1|1",
         auto: "play-scene",
       }),
-    ).rejects.toThrow('createClip auto="play-scene" failed: no scene at "s0"');
+    ).rejects.toThrow('auto="play-scene" failed: no scene at "s0"');
   });
 
   it("should throw error for invalid auto value", async () => {
@@ -324,7 +352,7 @@ describe("createClip - session view", () => {
         slot: "0/0",
         auto: "invalid-value",
       }),
-    ).rejects.toThrow('createClip failed: unknown auto value "invalid-value"');
+    ).rejects.toThrow('unknown auto value "invalid-value"');
   });
 
   it("should create multiple clips at specified scene indices", async () => {

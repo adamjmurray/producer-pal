@@ -219,24 +219,22 @@ The portal is a Node-side stdio→HTTP bridge to `localhost:3350/mcp`, so it
 sidesteps CORS entirely (server-to-server fetch, no browser involved). Use an
 absolute path — `npx` resolves relative paths against its own cwd.
 
-The portal also accepts config-override flags it pushes to the device via
-`POST /config` on connect: `-s`/`--small-model-mode`, `-n`/`--notation <value>`,
-`-f`/`--format <json|compact>`, and `-l`/`--live-api` (enables the opt-in
-`ppal-live-api` tool). Explicit flags always apply. The same settings also have
-env vars (`SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`/`JSON_OUTPUT`, `LIVE_API`),
-but those are gated behind `ALLOW_CONFIGURATION_OVERRIDES=true` — and, unlike
-the enable-only flags, a boolean env can send `false` to force a setting off.
-This env path is what the Claude Desktop extension's toggles use. Handy for
-exercising a specific config against a release build through the inspector.
+The portal also accepts config flags: `-s`/`--small-model-mode`,
+`-n`/`--notation <value>`, `-f`/`--format <json|compact>`, `-l`/`--live-api`
+(enables the opt-in `ppal-live-api` tool), and `--tools <list>` /
+`--disable-tools <list>`. Every one rides as a request header, so it reaches
+this client only — never the device globals, the chat UI, or another client.
+Each has an env var too (`SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`/`JSON_OUTPUT`,
+`LIVE_API`, `TOOLS`, `DISABLE_TOOLS`); unlike the enable-only flags, a boolean
+env can send `false` to force a setting off, which is what the Claude Desktop
+extension's toggles use. Handy for exercising a specific config against a
+release build through the inspector.
 
-`--tools <list>` / `--disable-tools <list>` (env: `TOOLS`, `DISABLE_TOOLS`) are
-the exception: they are per client, sent as the disabled-tools header rather
-than pushed via `POST /config`, since `config.tools` is device-global. Both
-accept tool names and the group aliases in `src/shared/tool-groups.ts`;
-`--tools` becomes a local complement over the full catalog so both feed one
-header. `--list-tools` prints the group aliases plus a live `tools/list` from
-the device (falling back to the portal's own catalog when it's unreachable, like
-the bridge does), then exits.
+`--tools` / `--disable-tools` accept tool names and the group aliases in
+`src/shared/tool-groups.ts`; `--tools` becomes a local complement over the full
+catalog so both feed one header. `--list-tools` prints the group aliases plus a
+live `tools/list` from the device (falling back to the portal's own catalog when
+it's unreachable, like the bridge does), then exits.
 
 ## Build Warnings
 
@@ -407,6 +405,14 @@ silently overwrites it**, and nothing else says so.
 
 Run one call at a time. The counters reset once per request, so overlapping
 calls mix their counts.
+
+## Object staleness probe
+
+`ENABLE_OBJECT_PROBE=true` adds an optional `path` to each `ppal-live-api`
+operation, so one call can mutate through one object while still holding another
+— the question of whether a held object goes stale after a mutation. The field
+is absent from every other build. See `dev/LiveAPI-Object-Reuse.md` for what is
+open and how to drive it.
 
 Do this whenever a budget test's fixture changes. A test that counts against the
 mock is measuring the mock: a fixture missing a property the tools read makes a

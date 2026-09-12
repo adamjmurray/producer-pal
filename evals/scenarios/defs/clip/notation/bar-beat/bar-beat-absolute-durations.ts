@@ -18,7 +18,7 @@
 import { CONNECT_MESSAGE } from "../../../../helpers/seed-connect/seed-connect.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   clipStateAssertion,
 } from "../../helpers/clip-scenario-helpers.ts";
 
@@ -29,8 +29,18 @@ const MSG_CONNECT = CONNECT_MESSAGE;
 /** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
 const DRUMS_TRACK = 0;
 const KICK_PITCH = 36;
-/** Float tolerance for note start_time / duration comparisons (in beats). */
-const EPS = 1e-6;
+/**
+ * Tolerance for note start_time / duration comparisons, in Ableton beats.
+ *
+ * Not a float epsilon. A model may spell a triplet position as a rounded
+ * decimal (`1|1.33` for 1/3), which lands 0.0033 beats out — under 2 ms at
+ * 120 BPM, and on the triplet grid as far as any listener is concerned. The
+ * traps these assertions exist to catch are much coarser: the straight-16th
+ * grid sits 0.083 beats off the triplet grid, and a compound-meter miss is half
+ * a beat. A hundredth of a beat clears the rounding and still misses both traps
+ * by 8x or more.
+ */
+const BEAT_TOLERANCE = 0.01;
 /** 12 eighth-note triplets filling a 4/4 bar — a kick every 1/3 beat. */
 const EIGHTH_TRIPLET_STARTS = Array.from({ length: 12 }, (_, i) => i / 3);
 /** 6 quarter-note triplets filling a 4/4 bar — a kick every 2/3 beat. */
@@ -43,8 +53,8 @@ const COMPOUND_FOUR_FEEL_STARTS = [0, 1.5, 3, 4.5];
 /**
  * Build a `state` assertion that reads the clip in `slot` back from Live and
  * verifies its kicks (C1) land on `expectedStarts` — and, when
- * `expectedDuration` is given, that each kick lasts exactly that many quarter
- * beats. Positions are the signal that counts alone cannot see: only they
+ * `expectedDuration` is given, that each kick lasts that many quarter beats
+ * (both within `BEAT_TOLERANCE`). Positions are the signal counts cannot see: only they
  * distinguish correct compound-meter spacing (6/8 quarters at Ableton beats
  * [0,1,2]) from the eighths trap ([0,0.5,1]), and correct triplet spacing
  * (every 1/3 beat) from notes bunched onto the straight grid.
@@ -69,10 +79,12 @@ function assertClipNotes(
   return clipStateAssertion(slot, meter, (events) => {
     const starts = events.map((e) => e.start_time).toSorted((a, b) => a - b);
 
-    if (starts.length !== expectedStarts.length) return false;
+    if (starts.length !== expectedStarts.length) {
+      return false;
+    }
 
     const positionsMatch = starts.every(
-      (s, i) => Math.abs(s - (expectedStarts[i] as number)) < EPS,
+      (s, i) => Math.abs(s - (expectedStarts[i] as number)) < BEAT_TOLERANCE,
     );
     // Every note must be the kick (C1). When a duration is given, pin each
     // note's length too — that's the absolute-duration invariant `n/4` tests.
@@ -81,7 +93,7 @@ function assertClipNotes(
       (e) =>
         e.pitch === KICK_PITCH &&
         (expectedDuration == null ||
-          Math.abs(e.duration - expectedDuration) < EPS),
+          Math.abs(e.duration - expectedDuration) < BEAT_TOLERANCE),
     );
 
     return positionsMatch && notesValid;
@@ -115,7 +127,7 @@ export const barBeatTriplets: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -124,7 +136,7 @@ export const barBeatTriplets: EvalScenario = {
   ],
 
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+    clearClipSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     ...createClipAssertionHead(),
@@ -132,12 +144,12 @@ export const barBeatTriplets: EvalScenario = {
     // Read each clip back and assert the kicks land on the triplet grid.
     // Counts alone can't see spacing: 12 notes bunched onto straight 16ths
     // (3 beats, beat 4 empty) would still count 12. Triplet spacing IS the
-    // signal here, so positions are asserted strictly; duration is omitted
-    // (a triplet drum hit's length is not what's under test).
+    // signal here, so positions carry the grade; duration is omitted (a triplet
+    // drum hit's length is not what's under test).
     assertClipNotes(`${DRUMS_TRACK}/0`, "4/4", EIGHTH_TRIPLET_STARTS),
     assertClipNotes(`${DRUMS_TRACK}/1`, "4/4", QUARTER_TRIPLET_STARTS),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_000 },
   ],
 };
 
@@ -155,7 +167,7 @@ export const barBeatMeterFill: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -164,7 +176,7 @@ export const barBeatMeterFill: EvalScenario = {
   ],
 
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+    clearClipSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     ...createClipAssertionHead(),
@@ -177,7 +189,7 @@ export const barBeatMeterFill: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "5/4", [0], 5),
     assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0], 3),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };
 
@@ -200,7 +212,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -209,7 +221,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
   ],
 
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+    clearClipSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     ...createClipAssertionHead(),
@@ -224,7 +236,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "6/8", COMPOUND_TWO_FEEL_STARTS),
     assertClipNotes(`${DRUMS_TRACK}/1`, "12/8", COMPOUND_FOUR_FEEL_STARTS),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 2_500 },
   ],
 };
 
@@ -241,7 +253,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
   liveSet: LIVE_SET,
   // The state assertions re-read the clip and pin exact note positions +
   // durations — that is the whole grade. No LLM judge: they miscount bar|beat
-  // notation and mis-flag the correct meter-aware `Nbar` token.
+  // notation and mis-flag the correct meter-aware `<count>bar` token.
 
   messages: [
     MSG_CONNECT,
@@ -252,7 +264,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
   // doesn't inherit clips from a previous one (which would otherwise trigger a
   // delete/recreate dance and mask the real behavior).
   setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, [
+    clearClipSlots(mcpClient, [
       `${DRUMS_TRACK}/0`,
       `${DRUMS_TRACK}/1`,
       `${DRUMS_TRACK}/2`,
@@ -269,6 +281,6 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0, 1, 2], 1),
     assertClipNotes(`${DRUMS_TRACK}/2`, "5/4", [0, 1, 2, 3, 4], 1),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 };

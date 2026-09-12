@@ -31,10 +31,8 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers.ts";
-import {
-  createClipInSlot,
-  emptyMidiTrack,
-} from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -48,7 +46,7 @@ interface ExpectedNote {
 describe("ppal-create-clip pattern brackets (streams)", () => {
   it("expands a pitch stream into a melodic line", async () => {
     const { notation, events } = await createAndReadback(
-      `t${emptyMidiTrack}/s0`,
+      `t${EMPTY_MIDI_TRACK}/s0`,
       "n/4 [C3 E3 G3] 1|1x3@n/4",
     );
 
@@ -62,7 +60,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("zips a velocity stream against a pitch stream", async () => {
     const { notation, events } = await createAndReadback(
-      `t${emptyMidiTrack}/s1`,
+      `t${EMPTY_MIDI_TRACK}/s1`,
       "n/8 [v80 v100] [C3 E3 G3] 1|1x6@n/8",
     );
 
@@ -79,7 +77,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("folds a no-@step duration stream into the gallop spacing", async () => {
     const { notation, events } = await createAndReadback(
-      `t${emptyMidiTrack}/s2`,
+      `t${EMPTY_MIDI_TRACK}/s2`,
       "[n/4 n/8] C3 1|1x8",
     );
 
@@ -98,7 +96,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("layers a held pitch under a moving bracket line", async () => {
     const { notation, events } = await createAndReadback(
-      `t${emptyMidiTrack}/s3`,
+      `t${EMPTY_MIDI_TRACK}/s3`,
       "n/4 C4 [E4 G4 C5] 1|1,2,3,4",
     );
 
@@ -118,7 +116,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("layers two pitch voices that phase into chords", async () => {
     const { notation, events } = await createAndReadback(
-      `t${emptyMidiTrack}/s5`,
+      `t${EMPTY_MIDI_TRACK}/s5`,
       "n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4",
     );
 

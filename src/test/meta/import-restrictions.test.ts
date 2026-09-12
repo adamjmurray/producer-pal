@@ -109,18 +109,27 @@ describe("import restrictions", () => {
       const lines = fs.readFileSync(file, "utf8").split("\n");
 
       for (const { value, line } of specifiersIn(file)) {
-        if (!value.startsWith("..")) continue;
+        if (!value.startsWith("..")) {
+          continue;
+        }
 
         const within = pathWithinSrc(value, rel);
 
         // Leaves src/ altogether — the repo-root package.json, which has no
         // alias to prefer. Not a module crossing, so not this rule's business.
-        if (within == null) continue;
+        if (within == null) {
+          continue;
+        }
 
         const to = moduleOf(within);
 
-        if (to === from) continue;
-        if (isSuppressed(lines, line - 1, "no-restricted-syntax")) continue;
+        if (to === from) {
+          continue;
+        }
+
+        if (isSuppressed(lines, line - 1, "no-restricted-syntax")) {
+          continue;
+        }
 
         violations.push({
           file: `${rel}:${line}`,
@@ -173,14 +182,21 @@ describe("import restrictions", () => {
     for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
       const rel = path.relative(projectRoot, file);
 
-      if (exempt.has(rel)) continue;
+      if (exempt.has(rel)) {
+        continue;
+      }
 
       const source = fs.readFileSync(file, "utf8");
       const lines = source.split("\n");
 
       for (const [i, line] of lines.entries()) {
-        if (!pattern.test(line)) continue;
-        if (isSuppressed(lines, i, "no-restricted-syntax")) continue;
+        if (!pattern.test(line)) {
+          continue;
+        }
+
+        if (isSuppressed(lines, i, "no-restricted-syntax")) {
+          continue;
+        }
 
         violations.push({
           file: `${rel}:${i + 1}`,
@@ -244,12 +260,19 @@ describe("import restrictions", () => {
         for (const { value, line } of specifiersIn(file)) {
           const within = pathWithinSrc(value, rel);
 
-          if (within == null) continue;
+          if (within == null) {
+            continue;
+          }
 
           const layer = within.split("/")[0] ?? "";
 
-          if (!forbidden.includes(layer)) continue;
-          if (except.includes(within)) continue;
+          if (!forbidden.includes(layer)) {
+            continue;
+          }
+
+          if (except.includes(within)) {
+            continue;
+          }
 
           if (isSuppressed(lines, line - 1, "import-x/no-restricted-paths")) {
             continue;
@@ -301,7 +324,9 @@ function isSuppressed(lines: string[], index: number, rule: string): boolean {
   const name = ruleToken(rule);
   const whole = new RegExp(`${names}-disable(?:\\s|$)[^\\n]*${name}`);
 
-  if (lines.some((l) => whole.test(l))) return true;
+  if (lines.some((l) => whole.test(l))) {
+    return true;
+  }
 
   const line = new RegExp(`${names}-disable-line[^\\n]*${name}`);
   const next = new RegExp(`${names}-disable-next-line[^\\n]*${name}`);
@@ -341,7 +366,9 @@ function pathWithinSrc(spec: string, fromRel: string): string | null {
     : null;
   const within = aliased ?? relative;
 
-  if (within == null || within.startsWith("..")) return null;
+  if (within == null || within.startsWith("..")) {
+    return null;
+  }
 
   return within;
 }
@@ -373,15 +400,22 @@ function scanSpecifiers(
   for (const file of findSourceFiles(path.join(projectRoot, tree))) {
     const rel = path.relative(projectRoot, file);
 
-    if (rel === SELF) continue;
+    if (rel === SELF) {
+      continue;
+    }
 
     const lines = fs.readFileSync(file, "utf8").split("\n");
 
     for (const { value, line, dynamic } of specifiersIn(file)) {
       const reason = reject(value, dynamic);
 
-      if (reason == null) continue;
-      if (isSuppressed(lines, line - 1, rule)) continue;
+      if (reason == null) {
+        continue;
+      }
+
+      if (isSuppressed(lines, line - 1, rule)) {
+        continue;
+      }
 
       violations.push({ file: `${rel}:${line}`, reason });
     }

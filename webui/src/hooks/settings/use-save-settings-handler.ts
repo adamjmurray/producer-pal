@@ -78,7 +78,10 @@ export function useSaveSettingsHandler(
     // POST) only fire on durable success — running them against an unpersisted
     // state would route the app off settings that aren't actually saved.
     void settings.saveSettings().then((ok) => {
-      if (!ok) return;
+      if (!ok) {
+        return;
+      }
+
       closeSettings(() => {
         if (modeWillChange && viewingMode == null) {
           history.replaceState(

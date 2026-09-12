@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
+import { fetchWithDeadline } from "#webui/utils/fetch-with-deadline";
 
 /** How often to re-read the document while the editor is open and focused. */
 const POLL_INTERVAL_MS = 5000;
@@ -106,7 +107,9 @@ export function useDoc(
       try {
         const stored = await write(content);
 
-        if (discardSave()) return true;
+        if (discardSave()) {
+          return true;
+        }
 
         setStatus({ kind: "ready", content: stored.content });
         setDrift(stored.drift);
@@ -114,7 +117,9 @@ export function useDoc(
 
         return true;
       } catch (error: unknown) {
-        if (discardSave()) return false;
+        if (discardSave()) {
+          return false;
+        }
 
         setSaveError(errorMessage(error));
         setSaveStatus("error");
@@ -249,7 +254,9 @@ export function useWriteOrdering(): WriteOrdering {
   const claim = useCallback((...names: string[]): (() => boolean) => {
     const sequence = ++sequenceRef.current;
 
-    for (const name of names) latestRef.current.set(name, sequence);
+    for (const name of names) {
+      latestRef.current.set(name, sequence);
+    }
 
     return (): boolean =>
       names.some((name) => latestRef.current.get(name) !== sequence);
@@ -331,8 +338,13 @@ export function useCollectionMutator(): CollectionMutator {
       try {
         const result = await op();
 
-        if (isUnmounted()) return result;
-        if (!superseded()) commit(result);
+        if (isUnmounted()) {
+          return result;
+        }
+
+        if (!superseded()) {
+          commit(result);
+        }
 
         // A superseded write is discarded, so it must not paint "Saved" either:
         // the newer write for this entry is still on the wire, and the indicator
@@ -344,7 +356,9 @@ export function useCollectionMutator(): CollectionMutator {
 
         return result;
       } catch (error: unknown) {
-        if (isUnmounted()) return null;
+        if (isUnmounted()) {
+          return null;
+        }
 
         // Same superseded check as the success path, for the same reason: a
         // newer write for this entry owns the file, so a stale failure must not
@@ -395,11 +409,15 @@ export async function runGuardedRefresh<T>(
   try {
     const data = await load();
 
-    if (discardRefresh()) return;
+    if (discardRefresh()) {
+      return;
+    }
 
     onReady(data);
   } catch (error: unknown) {
-    if (discardRefresh()) return;
+    if (discardRefresh()) {
+      return;
+    }
 
     onError(errorMessage(error));
   }
@@ -443,7 +461,9 @@ export function useRefreshOnFocusAndPoll(
     void refresh();
     window.addEventListener("focus", handleFocus);
     const id = setInterval(() => {
-      if (document.hasFocus()) void refresh();
+      if (document.hasFocus()) {
+        void refresh();
+      }
     }, POLL_INTERVAL_MS);
 
     return () => {
@@ -487,39 +507,50 @@ export function makeContentTransport(
   url: string,
   label: string,
 ): ContentTransport {
-  const read = async (): Promise<DocRead> => {
-    const response = await fetch(url, { cache: "no-store" });
+  const read = async (): Promise<DocRead> =>
+    await fetchWithDeadline(
+      url,
+      { cache: "no-store" },
+      `${label} request timed out`,
+      async (response) => {
+        if (!response.ok) {
+          throw new Error(
+            `${label} request failed (${response.status} ${response.statusText})`,
+          );
+        }
 
-    if (!response.ok) {
-      throw new Error(
-        `${label} request failed (${response.status} ${response.statusText})`,
-      );
-    }
+        return toDocRead((await response.json()) as ContentResponse);
+      },
+    );
 
-    return toDocRead((await response.json()) as ContentResponse);
-  };
+  // Deliberately NOT `keepalive: true` (unlike the collection transport's
+  // small-entry writes): a context / custom-system-prompt body can be imported
+  // up to ~1MB, and a keepalive fetch whose body exceeds the browser's ~64KB
+  // quota rejects outright — that would regress ordinary large-doc saves to fix
+  // only the rare beforeunload drop. On localhost the flush completes in a few
+  // ms, so that drop window is negligible; the size safety is the better trade.
+  // The deadline below is orthogonal and applies either way: a write that never
+  // settles holds autosave off and makes every later refresh discard its result
+  // for the rest of the editor's mount.
+  const write = async (content: string): Promise<DocRead> =>
+    await fetchWithDeadline(
+      url,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      },
+      `${label} update timed out`,
+      async (response) => {
+        if (!response.ok) {
+          throw new Error(
+            `${label} update failed (${response.status} ${response.statusText})`,
+          );
+        }
 
-  const write = async (content: string): Promise<DocRead> => {
-    // Deliberately NOT `keepalive: true` (unlike the collection transport's
-    // small-entry writes): a context / custom-system-prompt body can be imported
-    // up to ~1MB, and a keepalive fetch whose body exceeds the browser's ~64KB
-    // quota rejects outright — that would regress ordinary large-doc saves to fix
-    // only the rare beforeunload drop. On localhost the flush completes in a few
-    // ms, so that drop window is negligible; the size safety is the better trade.
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `${label} update failed (${response.status} ${response.statusText})`,
-      );
-    }
-
-    return toDocRead((await response.json()) as ContentResponse);
-  };
+        return toDocRead((await response.json()) as ContentResponse);
+      },
+    );
 
   return { read, write };
 }

@@ -72,12 +72,16 @@ export function resolveConfigPath(filename: string): string {
  * @returns File contents verbatim, or "" when the file is absent
  */
 export function readConfigMarkdown(filename: string): string {
-  if (isConfigDirInert()) return "";
+  if (isConfigDirInert()) {
+    return "";
+  }
 
   try {
     return readFileSync(resolveConfigPath(filename), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return "";
+    }
 
     throw error;
   }
@@ -92,7 +96,9 @@ export function readConfigMarkdown(filename: string): string {
  * @param content - New markdown content
  */
 export function writeConfigMarkdown(filename: string, content: string): void {
-  if (isConfigDirInert()) return;
+  if (isConfigDirInert()) {
+    return;
+  }
 
   writeConfigFileAtomic(resolveConfigPath(filename), content);
 }
@@ -169,7 +175,9 @@ export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
  * @param filename - Slot filename (e.g. "skills/barbeat-standard.md")
  */
 export function deleteConfigMarkdown(filename: string): void {
-  if (isConfigDirInert()) return;
+  if (isConfigDirInert()) {
+    return;
+  }
 
   const target = resolveConfigPath(filename);
 
@@ -208,12 +216,16 @@ export function isConfigDirInert(): boolean {
  * @returns The listing, or [] when inert or the directory is absent
  */
 function safeReaddir(read: () => string[]): string[] {
-  if (isConfigDirInert()) return [];
+  if (isConfigDirInert()) {
+    return [];
+  }
 
   try {
     return read();
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
 
     throw error;
   }

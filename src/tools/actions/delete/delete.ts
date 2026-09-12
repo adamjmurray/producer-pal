@@ -3,39 +3,79 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
-import { resolvePathsToIds } from "./helpers/delete-path-helpers.ts";
+import { sortForPositionalDelete } from "./helpers/delete-sort-helpers.ts";
+import { deleteObjectByType } from "./helpers/delete-by-type-helpers.ts";
+import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import {
+  objectPathForApi,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   namedIdParam,
   namedPathParam,
-  parseCommaSeparatedIds,
-  toLiveApiId,
+  targetEntries,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  type IdentifiedObject,
+  validateObjectTypes,
+} from "#src/tools/shared/validation/id-validation.ts";
 
-const PATH_SUPPORTED_TYPES = new Set(["clip", "device", "drum-pad", "chain"]);
+/** A target to delete, and the path the caller named it by, if they did. */
+interface DeleteTarget {
+  id: string;
+  /** The caller's own spelling, when the target came from `path`. */
+  requestPath?: string;
+  /** Position among all named targets, so the result can restore this order. */
+  requestIndex: number;
+}
 
-const DELETABLE_TYPES = [
-  "track",
-  "scene",
-  "clip",
-  "device",
-  "drum-pad",
-  "chain",
-];
+/** A resolved target, keeping the spelling through validation and the sort. */
+interface ResolvedTarget extends IdentifiedObject {
+  requestPath?: string;
+  requestIndex: number;
+}
+
+/** A path entry that named nothing deletable, and its position among targets. */
+interface UnresolvedPath {
+  path: string;
+  requestIndex: number;
+}
+
+/** What a batch of paths resolved to, and which of them named nothing. */
+interface ResolvedPaths {
+  /** The objects the paths named, in path order. */
+  targets: DeleteTarget[];
+  /** Paths that named nothing deletable. The warning says why. */
+  unresolved: UnresolvedPath[];
+}
+
+/** A result entry tagged with its target's position in the request. */
+interface IndexedDeleteResult extends DeleteResult {
+  requestIndex: number;
+}
 
 const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
   ", ",
 );
 
 interface DeleteResult {
-  id: string;
+  /** The object's id, when the target resolved to one. */
+  id?: string;
+  /**
+   * The address of an object this call removed. It is an address from before
+   * the call: a positional delete shifts later siblings, so afterwards this
+   * path names whatever slid into the slot.
+   */
+  deletedPath?: string;
+  /**
+   * The target's address when it is still there — it named nothing, the delete
+   * failed, or the target was a drum pad, which is cleared rather than removed.
+   */
+  path?: string;
   type: string;
   deleted: boolean;
 }
@@ -55,7 +95,7 @@ interface DeleteArgs {
  * @param args - The parameters
  * @param args.id - Comma-separated list of object IDs
  * @param args.ids - Hidden alias for id
- * @param args.path - Comma-separated paths for clip/device/drum-pad/chain
+ * @param args.path - Comma-separated paths naming what to delete
  * @param args.paths - Hidden alias for path
  * @param args.type - Type of objects to delete
  * @param _context - Internal context object (unused, for consistent tool interface)
@@ -70,119 +110,223 @@ export function deleteObject(
   const targets = namedIdParam(args.id, args.ids, "ids");
 
   if (!type) {
-    throw new Error("delete failed: type is required");
+    throw new Error("type is required");
   }
 
-  if (!DELETABLE_TYPES.includes(type)) {
-    throw new Error(
-      `delete failed: type must be one of ${DELETABLE_TYPE_LIST}`,
+  if (!(DELETABLE_TYPES as readonly string[]).includes(type)) {
+    throw new Error(`type must be one of ${DELETABLE_TYPE_LIST}`);
+  }
+
+  // Collect IDs from both sources. targets is already confirmed non-blank, so
+  // an id that parses to nothing (e.g. ",  ,") is worth a warning of its own
+  // rather than reading the same as an omitted id.
+  const namedTargets: DeleteTarget[] = targets
+    ? targetEntries(targets, "id").map((id, requestIndex) => ({
+        id,
+        requestIndex,
+      }))
+    : [];
+
+  // Resolve paths to IDs for the types that can be addressed by location.
+  // A path that names nothing is reported, not dropped: an empty result reads
+  // as "nothing to do", and a model that skims past the warning calls the
+  // delete done.
+  const unresolvedPaths: UnresolvedPath[] = [];
+
+  // Every deletable type can be addressed by location, so a path is always
+  // usable by the time the type check above has passed. Paths are named after
+  // any ids, so their positions continue where the id list left off.
+  if (path) {
+    const resolvedPaths = resolvePerPath(
+      path,
+      idPerPathForType(type),
+      namedTargets.length,
     );
+
+    namedTargets.push(...resolvedPaths.targets);
+    unresolvedPaths.push(...resolvedPaths.unresolved);
   }
 
-  // Handle path parameter - only valid for devices and drum-pads
-  if (path && !PATH_SUPPORTED_TYPES.has(type)) {
-    console.warn(
-      `delete: path parameter is only valid for types "clip", "device", "drum-pad", or "chain", ignoring paths`,
-    );
-  }
+  const skipped: IndexedDeleteResult[] = unresolvedPaths.map(
+    ({ path: unresolved, requestIndex }) => ({
+      path: unresolved,
+      type,
+      deleted: false,
+      requestIndex,
+    }),
+  );
 
-  // Collect IDs from both sources
-  const objectIds = targets ? parseCommaSeparatedIds(targets) : [];
-
-  // Resolve paths to IDs for the types that can be addressed by location
-  if (path && PATH_SUPPORTED_TYPES.has(type)) {
-    objectIds.push(
-      ...(type === "clip"
-        ? clipIdsAtPaths(path, "delete")
-        : resolvePathsToIds(parseCommaSeparatedIds(path), type)),
-    );
-  }
-
-  if (objectIds.length === 0) {
+  if (namedTargets.length === 0) {
     if (!targets && !path) {
-      throw new Error("delete failed: id or path is required");
+      throw new Error("id or path is required");
     }
 
-    return [];
+    return unwrapSingleResult(orderedResults(skipped));
   }
 
-  const deletedObjects: DeleteResult[] = [];
+  const deletedObjects: IndexedDeleteResult[] = [];
 
   // Validate all objects exist and are the correct type before deleting any.
   // De-dup by resolved id: a repeated id (or an id and a path pointing at the
   // same object) must be deleted once. A second positional delete would shift
   // onto and remove a different object.
   const seenIds = new Set<string>();
-  const objectsToDelete = validateIdTypes(
-    type === "chain" ? objectIds : objectIds.filter((id) => !isRackChain(id)),
+  // Resolve each id once and run both checks off that object: the rack-chain
+  // check used to build its own, so every target cost two objects before the
+  // delete itself.
+  const resolved: ResolvedTarget[] = namedTargets.map(
+    ({ id, requestPath, requestIndex }) => ({
+      id,
+      requestPath,
+      requestIndex,
+      object: LiveAPI.from(id),
+    }),
+  );
+  // The caller's own spelling and position, keyed by what each target
+  // resolved to, so the result can echo both back after the sort has
+  // reordered the targets for deletion. Keyed on the resolved id: only
+  // objects that exist reach the delete loop, so two targets can't collide
+  // here on a dead object's shared id.
+  const requestById = new Map(
+    resolved.map((target) => [
+      target.object.id,
+      { requestPath: target.requestPath, requestIndex: target.requestIndex },
+    ]),
+  );
+  const objectsToDelete = validateObjectTypes(
+    type === "chain"
+      ? resolved
+      : resolved.filter((target) => !isRackChain(target.object)),
     type,
-    "delete",
     { skipInvalid: true },
   )
     .map((object) => ({ id: object.id, object }))
     .filter(({ id }) => {
-      if (seenIds.has(id)) return false;
+      if (seenIds.has(id)) {
+        return false;
+      }
 
       seenIds.add(id);
 
       return true;
     });
 
-  // Tracks, scenes, and devices delete by position, so an earlier delete shifts
-  // later siblings. Sort highest-index-first so each delete targets the right
-  // object.
-  //
-  // Clips and chains are deliberately NOT sorted: they delete by id
-  // (`delete_clip <id>`, and a chain by parking it on a free pad), so a sibling
-  // shift never reaches them. Measured on 12.4.3 by
-  // e2e/mcp/operations/ppal-delete-batch-ordering.test.ts, which deletes three
-  // of four ascending — the worst case — and checks which one survived.
-  if (type === "track" || type === "scene") {
-    // Sort by index in descending order to delete from highest to lowest index
-    objectsToDelete.sort((a, b) => {
-      // For tracks, handle both regular and return tracks
-      const pathRegex =
-        type === "track"
-          ? /live_set (?:return_)?tracks (\d+)/
-          : /live_set scenes (\d+)/;
-      const indexA = Number(a.object.path.match(pathRegex)?.[1]);
-      const indexB = Number(b.object.path.match(pathRegex)?.[1]);
+  sortForPositionalDelete(objectsToDelete, type);
 
-      return indexB - indexA; // Descending order
+  // One object per track for the whole call, not per clip. Deleting a clip
+  // never moves a track, so the one resolved first stays the right one.
+  const tracks = new Map<number, LiveAPI>();
+
+  for (const { id, object } of objectsToDelete) {
+    // Every resolved target carries a requestPath/requestIndex pair;
+    // objectsToDelete draws only from resolved, so the lookup always hits.
+    const { requestPath, requestIndex } = requestById.get(object.id) as {
+      requestPath?: string;
+      requestIndex: number;
+    };
+    // Take the address before the delete: afterwards the path names whatever
+    // slid into the slot. The caller's own spelling wins when they gave one.
+    const address = requestPath ?? objectPathForApi(object);
+    const deleted = deleteObjectByType(type, id, object, tracks);
+
+    // A drum pad is cleared, not removed, so it is still at its path.
+    deletedObjects.push({
+      id,
+      ...addressField(address, deleted && type !== "drum-pad"),
+      type,
+      deleted,
+      requestIndex,
     });
-  } else if (type === "device") {
-    objectsToDelete.sort((a, b) =>
-      compareDevicesForDeletion(a.object, b.object),
+  }
+
+  // Same reasoning as unresolved paths: an id validateObjectTypes rejected —
+  // gone, or the wrong kind of object — is reported rather than dropped.
+  const kept = new Set(objectsToDelete.map(({ object }) => object.id));
+  const seenRejected = new Set<string>();
+
+  for (const { id, object, requestPath, requestIndex } of resolved) {
+    if (kept.has(object.id) || seenRejected.has(id)) {
+      continue;
+    }
+
+    seenRejected.add(id);
+    // No address to take when it was named by id: the object isn't there.
+    deletedObjects.push(
+      requestPath == null
+        ? { id, type, deleted: false, requestIndex }
+        : { id, path: requestPath, type, deleted: false, requestIndex },
     );
   }
 
-  for (const { id, object } of objectsToDelete) {
-    const deleted = deleteObjectByType(type, id, object);
-
-    deletedObjects.push({ id, type, deleted });
-  }
-
-  return unwrapSingleResult(deletedObjects);
+  return unwrapSingleResult(orderedResults([...deletedObjects, ...skipped]));
 }
 
 /**
- * Reports whether an id names a rack chain, warning when it does. A DrumChain
+ * Restores the order the caller named their targets in, undoing the
+ * highest-index-first sort used for safe positional deletion. Drops the
+ * internal requestIndex before the result goes out.
+ * @param results - Result entries tagged with each target's named position
+ * @returns The entries in the order the caller named their targets
+ */
+function orderedResults(results: IndexedDeleteResult[]): DeleteResult[] {
+  return results
+    .toSorted((a, b) => a.requestIndex - b.requestIndex)
+    .map(({ requestIndex: _requestIndex, ...result }) => result);
+}
+
+/**
+ * Splits the lookup's per-entry answer into the targets it found and the paths
+ * it didn't, so a miss can be reported as a target rather than dropped. Each
+ * target keeps the caller's spelling and named position for the result to
+ * echo back.
+ * @param path - Comma-separated paths
+ * @param lookup - The type's path-to-id lookup
+ * @param startIndex - This path list's offset into the overall named order
+ * @returns The targets found, plus the paths that named nothing
+ */
+function resolvePerPath(
+  path: string,
+  lookup: IdPerPath,
+  startIndex: number,
+): ResolvedPaths {
+  const entries = targetEntries(path, "path");
+  const targets: DeleteTarget[] = [];
+  const unresolved: UnresolvedPath[] = [];
+
+  for (const [index, id] of lookup(path).entries()) {
+    const requestPath = entries[index] ?? path;
+    const requestIndex = startIndex + index;
+
+    if (id == null) {
+      unresolved.push({ path: requestPath, requestIndex });
+    } else {
+      targets.push({ id, requestPath, requestIndex });
+    }
+  }
+
+  return { targets, unresolved };
+}
+
+/**
+ * Reports whether an object is a rack chain, warning when it is. A DrumChain
  * would otherwise slip past the drum-pad type check and take a
  * `delete_all_chains` that silently does nothing. Only reached for the other
  * types — `type="chain"` is how a caller means a chain.
- * @param id - The object ID
- * @returns True when the id names a chain, which this type must skip
+ * @param object - The resolved object
+ * @returns True when it is a chain, which this type must skip
  */
-function isRackChain(id: string): boolean {
-  const object = LiveAPI.from(id);
+function isRackChain(object: LiveAPI): boolean {
+  // Leave a nonexistent object to validateObjectTypes, which already warns.
+  if (!object.exists()) {
+    return false;
+  }
 
-  // Leave a nonexistent id to validateIdTypes, which already warns about it.
-  if (!object.exists()) return false;
-
-  if (object.type !== "Chain" && object.type !== "DrumChain") return false;
+  if (object.type !== "Chain" && object.type !== "DrumChain") {
+    return false;
+  }
 
   console.warn(
-    `delete: id "${id}" is a ${object.type}. ` +
+    `${targetLabel(object)} is a ${object.type}. ` +
       (object.type === "DrumChain"
         ? `Use type="chain" for this chain, or type="drum-pad" for the whole pad.`
         : "Deleting rack chains is not supported."),
@@ -192,283 +336,19 @@ function isRackChain(id: string): boolean {
 }
 
 /**
- * Confirms a delete landed. Live refuses some of them without saying so — the
- * call returns the same thing either way — so whether the object is still there
- * is the only signal.
- *
- * Look the id up again rather than asking the object the delete ran through:
- * measured on 12.4.3, that one still reports its old id and path afterward. A
- * fresh lookup of a dead id lands nowhere and reads id "0".
- *
- * @param type - The tool-level type, for the warning
- * @param id - The object ID
- * @returns true if the object is gone, false if it survived
+ * The address as a spreadable field, under the key that says whether the object
+ * is still there. Omitted entirely for an object the grammar can't spell.
+ * @param address - The address the target had, or undefined
+ * @param removed - Whether the call removed the object
+ * @returns `{ deletedPath }`, `{ path }`, or `{}`
  */
-function confirmDeleted(type: string, id: string): boolean {
-  if (LiveAPI.from(id).exists()) {
-    console.warn(
-      `delete: ${type} "${id}" still exists, so Live did not delete it`,
-    );
-
-    return false;
+function addressField(
+  address: string | undefined,
+  removed: boolean,
+): { deletedPath?: string; path?: string } {
+  if (address == null) {
+    return {};
   }
 
-  return true;
-}
-
-/**
- * Deletes a track by its index
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if the track is gone, false if skipped or Live refused
- */
-function deleteTrackObject(id: string, object: LiveAPI): boolean {
-  // Check for return track first
-  const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
-
-  if (returnMatch) {
-    const returnTrackIndex = Number(returnMatch[1]);
-    const liveSet = LiveAPI.from(livePath.liveSet);
-
-    liveSet.call("delete_return_track", returnTrackIndex);
-
-    return confirmDeleted("track", id);
-  }
-
-  // Regular track
-  const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
-
-  if (Number.isNaN(trackIndex)) {
-    console.warn(
-      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
-    );
-
-    return false;
-  }
-
-  const hostTrackIndex = getHostTrackIndex();
-
-  if (trackIndex === hostTrackIndex) {
-    console.warn(
-      "delete: cannot delete track hosting the Producer Pal device, skipping",
-    );
-
-    return false;
-  }
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  liveSet.call("delete_track", trackIndex);
-
-  return confirmDeleted("track", id);
-}
-
-/**
- * Deletes a scene by its index
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if the scene is gone, false if skipped or Live refused
- */
-function deleteSceneObject(id: string, object: LiveAPI): boolean {
-  const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
-
-  if (Number.isNaN(sceneIndex)) {
-    console.warn(
-      `delete: no scene index for id "${id}" (path="${object.path}"), skipping`,
-    );
-
-    return false;
-  }
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  liveSet.call("delete_scene", sceneIndex);
-
-  return confirmDeleted("scene", id);
-}
-
-/**
- * Deletes a clip by its track and clip ID
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if the clip is gone, false if skipped or Live refused
- */
-function deleteClipObject(id: string, object: LiveAPI): boolean {
-  // Take-lane clips cannot be removed via the API (delete_clip is a no-op for
-  // them and there is no delete_take_lane) — the user must delete in Live's UI.
-  if (isTakeLaneClip(object)) {
-    console.warn(
-      `delete: cannot delete take-lane clip "${id}" via the API; remove it in Live's UI`,
-    );
-
-    return false;
-  }
-
-  const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
-
-  if (!trackIndex) {
-    console.warn(
-      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
-    );
-
-    return false;
-  }
-
-  const track = LiveAPI.from(livePath.track(Number(trackIndex)));
-
-  track.call("delete_clip", toLiveApiId(object.id));
-
-  return confirmDeleted("clip", id);
-}
-
-interface PathSegment {
-  collection: string;
-  index: number;
-}
-
-/**
- * Orders devices for safe positional deletion. `delete_device N` removes by
- * index within a parent, so an earlier delete shifts every later sibling down.
- * Comparing the full `(collection, index)` segment lists gives one consistent
- * total order satisfying both safety rules:
- *
- * - **Siblings** (same parent) sort highest-index-first, so an earlier delete
- *   never shifts a later sibling onto the wrong index.
- * - **Descendants before ancestors**: when one path is a prefix of the other,
- *   the longer (nested) device deletes first, before the rack whose deletion
- *   would invalidate its path.
- *
- * Comparing segments — rather than the old parent-path *string length* — avoids
- * a non-transitive comparator: two devices in sibling chains of the same rack
- * have equal-length parent paths, which the length heuristic treated as
- * sort-equal, letting one interpose between two true siblings and flip their
- * delete order (deleting the lower index first, shifting the higher target).
- * @param a - First device
- * @param b - Second device
- * @returns Negative if a deletes first, positive if b deletes first
- */
-function compareDevicesForDeletion(a: LiveAPI, b: LiveAPI): number {
-  const segsA = parsePathSegments(a.path);
-  const segsB = parsePathSegments(b.path);
-  const sharedDepth = Math.min(segsA.length, segsB.length);
-
-  for (let i = 0; i < sharedDepth; i++) {
-    const segA = segsA[i] as PathSegment;
-    const segB = segsB[i] as PathSegment;
-
-    if (segA.collection !== segB.collection) {
-      // Different sub-collections of a shared parent (e.g. chains vs
-      // return_chains) — independent deletes, so order is irrelevant to
-      // correctness; a stable name comparison just keeps the sort consistent.
-      return segA.collection < segB.collection ? -1 : 1;
-    }
-
-    if (segA.index !== segB.index) {
-      return segB.index - segA.index; // Siblings: highest index first
-    }
-  }
-
-  // One path is a prefix of the other: the longer one is nested inside the
-  // shorter (its ancestor). Delete the descendant first.
-  return segsB.length - segsA.length;
-}
-
-/**
- * Splits a Live API path into its ordered `(collection, index)` segments, e.g.
- * `live_set tracks 0 devices 1 chains 0 devices 2` →
- * `[(tracks,0), (devices,1), (chains,0), (devices,2)]`. The leading `live_set`
- * token has no index and is skipped.
- * @param path - The Live API path
- * @returns Ordered path segments
- */
-function parsePathSegments(path: string): PathSegment[] {
-  return [...path.matchAll(/(\w+) (\d+)/g)].map((match) => ({
-    collection: match[1] as string,
-    index: Number(match[2]),
-  }));
-}
-
-/**
- * Deletes a device by its ID via the parent (track or chain)
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if the device is gone, false if skipped or Live refused
- */
-function deleteDeviceObject(id: string, object: LiveAPI): boolean {
-  // Find the LAST "devices X" in the path to handle nested devices
-  // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
-  const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
-
-  if (deviceMatches.length === 0) {
-    console.warn(
-      `delete: could not find device index in path "${object.path}", skipping`,
-    );
-
-    return false;
-  }
-
-  // We know deviceMatches has at least one element from the check above
-  const lastMatch = deviceMatches.at(-1) as RegExpExecArray;
-  const deviceIndex = Number(lastMatch[1]);
-
-  // Parent path is everything before the last "devices X"
-  const parentPath = object.path.substring(0, lastMatch.index).trim();
-
-  if (!parentPath) {
-    console.warn(
-      `delete: could not extract parent path from device "${id}" (path="${object.path}"), skipping`,
-    );
-
-    return false;
-  }
-
-  const parent = LiveAPI.from(parentPath);
-
-  parent.call("delete_device", deviceIndex);
-
-  return confirmDeleted("device", id);
-}
-
-/**
- * Deletes (clears) a drum pad by removing all its chains
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if the pad's chains are gone, false if any survived
- */
-function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
-  object.call("delete_all_chains");
-
-  // The pad outlives its own delete, so there is no dead object to test for.
-  // Read the chains back instead: a refused clear is otherwise indistinguishable
-  // from a successful one.
-  if (object.getChildCount("chains") > 0) {
-    console.warn(
-      `delete: drum pad "${id}" still has chains, so Live did not clear it`,
-    );
-
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Deletes an object based on its type
- * @param type - The type of object ("track", "scene", "clip", "device", "drum-pad", or "chain")
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if deleted, false if skipped with a warning
- */
-function deleteObjectByType(
-  type: string,
-  id: string,
-  object: LiveAPI,
-): boolean {
-  if (type === "track") return deleteTrackObject(id, object);
-  if (type === "scene") return deleteSceneObject(id, object);
-  if (type === "clip") return deleteClipObject(id, object);
-  if (type === "device") return deleteDeviceObject(id, object);
-  if (type === "drum-pad") return deleteDrumPadObject(id, object);
-
-  return deleteDrumChain(id, object);
+  return removed ? { deletedPath: address } : { path: address };
 }

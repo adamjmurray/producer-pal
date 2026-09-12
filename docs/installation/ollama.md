@@ -44,8 +44,7 @@ Mode**.
 
 <img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
 
-This provides a smaller, simpler interface optimized for small/local language
-models.
+A smaller, simpler interface built for local models.
 
 ## 5. Open the Chat UI
 

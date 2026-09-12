@@ -59,8 +59,13 @@ function makeArrangementClipMock(trackPath: string, startBeats: number) {
     set: vi.fn(),
     setAll: vi.fn(),
     getProperty: vi.fn((prop: string) => {
-      if (prop === "is_arrangement_clip") return 1;
-      if (prop === "start_time") return startBeats;
+      if (prop === "is_arrangement_clip") {
+        return 1;
+      }
+
+      if (prop === "start_time") {
+        return startBeats;
+      }
 
       return null;
     }),

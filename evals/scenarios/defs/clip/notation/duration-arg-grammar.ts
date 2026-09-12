@@ -8,12 +8,12 @@
  *
  * Requires Ableton (agentic — drives a live model against Live).
  *
- * The grammar itself (`Nbar`, `n<fraction>`, `Nbar+n<fraction>`; rejection of
+ * The grammar itself (`<count>bar`, `n<fraction>`, `<count>bar+n<fraction>`; rejection of
  * bare numbers / bare fractions / the retired `2:0` glyph) is fully covered at
  * the parse level in `src/notation/barbeat/time/tests/barbeat-time-durations.test.ts`.
  * This scenario measures the *reach-for* signal instead: does the model EMIT
  * the new grammar in the `length` arg, and — critically — does it keep the
- * `Nbar+n<fraction>` combiner as bar-plus-note-value rather than collapsing it
+ * `<count>bar+n<fraction>` combiner as bar-plus-note-value rather than collapsing it
  * into a single absolute fraction.
  *
  * Headline metric: the `length` arg string the model sends. Assertions inspect
@@ -157,6 +157,6 @@ export const durationArgGrammar: EvalScenario = {
       "length arg is `n/4` (note value), not bare 1/4",
     ),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 200_000 },
+    { type: "token_usage", maxTokens: 3_000 },
   ],
 };

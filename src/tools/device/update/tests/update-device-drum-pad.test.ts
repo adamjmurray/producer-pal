@@ -6,14 +6,16 @@
 // A bare pad path names the whole pad. These cover what that means once a pad
 // holds more than one chain, and on a nested rack that has no DrumPad objects.
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  keepsParamValue,
   livePath,
   registerMockObject,
   updateDevice,
 } from "./update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface RackMocks {
   pad: RegisteredMockObject | null;
@@ -46,13 +48,23 @@ function registerDrumRack(chainCount: number, withPads = true): RackMocks {
       })
     : null;
 
-  const chains = chainIds.map((id, index) =>
-    registerMockObject(id, {
-      path: livePath.track(0).device(0).chain(index),
+  const chains = chainIds.map((id, index) => {
+    const chainPath = livePath.track(0).device(0).chain(index);
+    const volume = registerMockObject(`volume-${index}`, {
+      path: `${chainPath} mixer_device volume`,
+      type: "DeviceParameter",
+      properties: { display_value: 0 },
+    });
+
+    // Live snaps a gain write, so a result that echoed it gets caught.
+    keepsParamValue(volume, -6.02);
+
+    return registerMockObject(id, {
+      path: chainPath,
       type: "DrumChain",
       properties: { in_note: 36, name: `Layer ${index}` },
-    }),
-  );
+    });
+  });
 
   return { pad, chains };
 }
@@ -109,9 +121,8 @@ describe("updateDevice - bare drum pad paths", () => {
 
     updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateDevice: "t0/d0/pC1" has 2 layers, so per-layer settings ' +
+    expect(capturedWarnings()).toContain(
+      "t0/d0/pC1 (id pad-36) has 2 layers, so per-layer settings " +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
         "t0/d0/pC1/c1.",
     );
@@ -131,7 +142,13 @@ describe("updateDevice - bare drum pad paths", () => {
     });
 
     expect(chains[0]?.set).toHaveBeenCalledWith("name", "Kick");
-    expect(result).toStrictEqual({ id: "pad-36", chainIds: ["chain-0"] });
+    // The chain's mixer read-back rides along, so a single-layer pad reports
+    // the level that landed the same way a chain path does.
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      chainIds: ["chain-0"],
+      gainDb: -6.02,
+    });
   });
 
   it("omits the id for a virtual pad and writes mute to the chains", () => {
@@ -148,19 +165,32 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ chainIds: ["chain-0", "chain-1"] });
   });
 
+  it("warns and skips a pad with no chains, by path as well as by id", () => {
+    const { pad } = registerDrumRack(0);
+
+    const result = updateDevice({ path: "t0/d0/pC1", mute: true });
+
+    // Live drops the write — set returns 1 and the read-back stays 0 — so a
+    // result here would say a mute happened that didn't.
+    expect(capturedWarnings()).toContain(
+      "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
+        "to update — Live ignores writes to an empty pad",
+    );
+    expect(pad?.set).not.toHaveBeenCalled();
+    expect(result).toStrictEqual([]);
+  });
+
   it("warns once, not once per layer, for a device-only property", () => {
     registerDrumRack(2);
 
     updateDevice({ path: "t0/d0/pC1", macroCount: 4 });
 
     expect(
-      vi
-        .mocked(outlet)
-        .mock.calls.filter(
-          (call) =>
-            call[1] ===
-            "updateDevice: 'macroCount' not applicable to DrumChain",
+      capturedWarnings().filter((warning) =>
+        warning.startsWith(
+          "'macroCount' not applicable to DrumChain t0/d0/pC1/c0 (id ",
         ),
+      ),
     ).toHaveLength(1);
   });
 });

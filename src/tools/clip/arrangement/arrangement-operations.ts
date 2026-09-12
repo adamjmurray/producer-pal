@@ -1,15 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-operations-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
@@ -39,7 +41,7 @@ export function handleArrangementLengthOperation({
 
   if (!isArrangementClip) {
     console.warn(
-      `arrangementLength parameter ignored for session clip (id ${clip.id})`,
+      `arrangementLength parameter ignored for session clip ${targetLabel(clip)}`,
     );
 
     return updatedClips;
@@ -50,7 +52,7 @@ export function handleArrangementLengthOperation({
   // so neither works on take-lane clips. Warn and skip.
   if (isTakeLaneClip(clip)) {
     console.warn(
-      `arrangementLength parameter ignored for take-lane clip (id ${clip.id}); adjust it in Live's UI`,
+      `arrangementLength parameter ignored for take-lane clip ${targetLabel(clip)}; adjust it in Live's UI`,
     );
 
     return updatedClips;

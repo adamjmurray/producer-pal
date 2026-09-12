@@ -21,6 +21,7 @@ import {
   setupMcpTestContext,
   sleep,
   supportsSampleLoading,
+  trackIndexFromPath,
 } from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -35,11 +36,11 @@ beforeAll(async () => {
 
 interface CreateTrackResult {
   id: string;
-  trackIndex: number;
+  path: string;
 }
 
 interface CreateDeviceResult {
-  deviceIndex: number;
+  path: string;
 }
 
 interface ReadDeviceResult {
@@ -61,7 +62,7 @@ async function createMidiTrack(): Promise<number> {
 
   await sleep(100);
 
-  return track.trackIndex;
+  return trackIndexFromPath(track.path);
 }
 
 /**
@@ -131,14 +132,14 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
             deviceName: "Drum Rack",
             path: `t${t}`,
             params: [
-              { name: "pC1/d0/sample", value: KICK_FILE },
+              { name: "pC1/sample", value: KICK_FILE },
               { name: "pC#1/d0/sample", value: SAMPLE_FILE },
               { name: "pC1/d0/gainDb", value: "-6" },
             ],
           },
         }),
       );
-    const rack = `t${t}/d${created.deviceIndex}`;
+    const rack = created.path;
 
     await sleep(150);
 
@@ -185,6 +186,13 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     } else {
       expect(gainEntry?.value).toBeUndefined();
     }
+
+    // "pC1/d0/gainDb" is the general path-prefixed form, not the `sample`
+    // shortcut — it still works, but is deprecated in favor of addressing the
+    // Simpler by its own path.
+    expect(warnings.join("\n")).toContain(
+      `params name "pC1/d0/gainDb" is deprecated and will be removed; use path "${rack}/pC1/d0" with name "gainDb"`,
+    );
   });
 
   it("update-device path-prefixed params set a sample on an existing rack", async () => {
@@ -311,7 +319,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
         name: "ppal-update-device",
         arguments: {
           path: rack,
-          params: [{ name: "pC1/d0/sample", value: KICK_FILE }],
+          params: [{ name: "pC1/sample", value: KICK_FILE }],
         },
       }),
     );

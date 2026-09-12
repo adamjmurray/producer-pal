@@ -42,7 +42,10 @@ export function submitKeymap(onSubmit: () => void): Extension {
     // composing before any handler runs.
     EditorView.domEventHandlers({
       keydown(event) {
-        if (event.key !== "Enter" || event.shiftKey) return false;
+        if (event.key !== "Enter" || event.shiftKey) {
+          return false;
+        }
+
         onSubmit();
 
         return true;

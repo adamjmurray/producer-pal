@@ -24,7 +24,7 @@
 // the promise the skills make to the AI, in
 // skills/fragments/transforms/transforms-generative.ts: "Same `n` fraction
 // grammar as everywhere". It also pins the deliberate, documented rules:
-//   - `Nbar` is a note value on every surface (closed by allowing it in the
+//   - `<count>bar` is a note value on every surface (closed by allowing it in the
 //     transform grammar);
 //   - a bare number / bare fraction is never a note-value duration;
 //   - the decimal-numerator off-grid escape (`n1.9638/4`) is a lingua franca —
@@ -186,9 +186,31 @@ const OFFSET_SITES = [
 const REJECTION =
   /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|beat (offsets|positions)|use note names|positions use a pipe)/;
 
+// Registers one test per token: no duration site accepts it.
+function itRejectsDurations(tokens: string[]): void {
+  for (const token of tokens) {
+    it(`duration "${token}" is rejected by every duration site`, () => {
+      for (const site of DURATION_SITES) {
+        expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
+      }
+    });
+  }
+}
+
+// Registers one test per beat: no offset site accepts it.
+function itRejectsOffsets(beats: string[]): void {
+  for (const beat of beats) {
+    it(`offset "1|${beat}" is rejected by every offset site`, () => {
+      for (const site of OFFSET_SITES) {
+        expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
+      }
+    });
+  }
+}
+
 describe("note-value grammar parity across all parse sites", () => {
   describe("canonical note-value durations agree across all duration sites", () => {
-    // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar±n<frac> form
+    // n<frac> (numerator omitted → 1), <count>bar, and the mixed <count>bar±n<frac> form
     // (the minus tail subtracts a sub-bar note value: `1bar-n/16` = almost a
     // full bar). Tokens stay positive in every meter so the `ref > 0` guard holds.
     const TOKENS = [
@@ -231,8 +253,8 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
-  describe("Nbar is a note value on every duration surface", () => {
-    // Regression lock: the transform grammar once lacked Nbar entirely. The
+  describe("<count>bar is a note value on every duration surface", () => {
+    // Regression lock: the transform grammar once lacked <count>bar entirely. The
     // minus tail (`1bar-n/16`) composes as barDuration - nDuration in the
     // transform grammar, so it must still register as a note value, not bare
     // arithmetic.
@@ -246,7 +268,7 @@ describe("note-value grammar parity across all parse sites", () => {
 
   describe("the plural `bars` tolerance alias agrees with singular everywhere", () => {
     // Models may pluralize a bar duration (`2bars`). It is an accepted alias of
-    // `Nbar` on every duration site, computing the identical value (output stays
+    // `<count>bar` on every duration site, computing the identical value (output stays
     // singular `bar` — this is input tolerance only).
     for (const [num, den] of METERS) {
       for (const [plural, singular] of [
@@ -269,11 +291,11 @@ describe("note-value grammar parity across all parse sites", () => {
   describe("an n-prefixed bar duration is rejected with a helpful error", () => {
     // Convergent hallucination: models reach for `n1bar` to fill a bar because
     // every other note value wears the `n` sigil. It's a category error (the `n`
-    // marks a denominator-bearing fraction; bars are the bare `Nbar` form) — every
+    // marks a denominator-bearing fraction; bars are the bare `<count>bar` form) — every
     // duration site rejects it with the same targeted "don't use the n prefix"
     // steer rather than a generic format error.
     for (const token of ["n1bar", "n/1bar", "n3/4bar"]) {
-      it(`"${token}" throws the Nbar steer on every duration site`, () => {
+      it(`"${token}" throws the <count>bar steer on every duration site`, () => {
         for (const site of DURATION_SITES) {
           expect(() => site.fn(token, 4, 4)).toThrow(
             /bar durations don't use the "n" prefix/,
@@ -330,21 +352,9 @@ describe("note-value grammar parity across all parse sites", () => {
     // The grammars' denominator is `[1-9][0-9]*`; the regexes match it with
     // `0|[1-9]\d*`. A leading-zero denominator (`n/08`) parses on no site. (A lone
     // `n/0` is a division-by-zero — rejected too, see barbeat-time-basic tests.)
-    for (const token of ["n/08", "n/016", "n1/08"]) {
-      it(`duration "${token}" is rejected by every duration site`, () => {
-        for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsDurations(["n/08", "n/016", "n1/08"]);
 
-    for (const beat of ["1+n/08", "1-n/016", "1+n1/08"]) {
-      it(`offset "1|${beat}" is rejected by every offset site`, () => {
-        for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsOffsets(["1+n/08", "1-n/016", "1+n1/08"]);
   });
 
   describe("leading-zero bar counts are rejected as note values (L2)", () => {
@@ -352,13 +362,7 @@ describe("note-value grammar parity across all parse sites", () => {
     // matches it with `0|[1-9]\d*`. A leading-zero count (`01bar`, `007bar`)
     // parses on no duration site — previously the regex accepted `01bar` → 4
     // while both grammars rejected it (the unguarded half of the parity gap).
-    for (const token of ["01bar", "007bar", "01bar+n/4"]) {
-      it(`duration "${token}" is rejected by every duration site`, () => {
-        for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsDurations(["01bar", "007bar", "01bar+n/4"]);
 
     it("`0bar` → 0 on the regex site only (documented intentional divergence)", () => {
       // A lone `0bar` is the one bar-count value where the sites legitimately
@@ -425,20 +429,8 @@ describe("note-value grammar parity across all parse sites", () => {
     // `("d"/"t")?` matches at most one. A doubled or mixed suffix leaves a stray
     // letter that no site can consume, so it is a parse error everywhere (the
     // "no stacking / mutually exclusive" contract from the note-value grammar).
-    for (const token of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
-      it(`duration "${token}" is rejected by every duration site`, () => {
-        for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsDurations(["n/4dt", "n/4dd", "n/4td", "n/4tt"]);
 
-    for (const beat of ["1+n/4dt", "1+n/8tt", "1-n/8td"]) {
-      it(`offset "1|${beat}" is rejected by every offset site`, () => {
-        for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
-        }
-      });
-    }
+    itRejectsOffsets(["1+n/4dt", "1+n/8tt", "1-n/8td"]);
   });
 });

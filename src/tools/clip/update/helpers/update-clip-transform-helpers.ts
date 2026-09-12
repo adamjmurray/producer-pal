@@ -16,7 +16,8 @@ import {
   rawNotesToNoteEvents,
   readAllClipNotes,
   removeAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
+} from "#src/tools/shared/clip/clip-notes.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Apply transforms to existing notes without merging new notes.
@@ -48,7 +49,9 @@ export function applyTransformsToExistingNotes(
   const rawNotes = readAllClipNotes(clip);
 
   if (rawNotes.length === 0) {
-    console.warn("transforms ignored: clip has no notes to transform");
+    console.warn(
+      `transforms ignored: clip ${targetLabel(clip)} has no notes to transform`,
+    );
 
     return { noteCount: 0 };
   }
@@ -125,4 +128,26 @@ export function buildClipContext(
     timeSigDenominator,
     scalePitchClassMask: readLiveSetScaleMask(),
   };
+}
+
+/**
+ * Whether the update edits the clip's notes: any of notes, transforms, or
+ * preTransforms. These are also the only reason to build the clip context, and
+ * building it reads the Live Set's scale — so a batch that only renames clips
+ * skips that read instead of paying it once per clip.
+ * @param notationString - New notes to merge, or undefined
+ * @param transformString - Transforms applied after the merge, or undefined
+ * @param preTransformString - Transforms applied before the merge, or undefined
+ * @returns True when any of the three names something
+ */
+export function hasNoteEdits(
+  notationString: string | undefined,
+  transformString: string | undefined,
+  preTransformString: string | undefined,
+): boolean {
+  return (
+    notationString != null ||
+    transformString != null ||
+    preTransformString != null
+  );
 }

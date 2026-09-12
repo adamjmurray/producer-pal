@@ -48,14 +48,20 @@ const PATH_PATTERNS: [RegExp, LiveObjectType][] = [
 export function detectTypeFromPath(path: string, id?: string): LiveObjectType {
   const exactMatch = EXACT_PATH_TYPES.get(path);
 
-  if (exactMatch) return exactMatch;
+  if (exactMatch) {
+    return exactMatch;
+  }
 
   for (const [pattern, type] of PATH_PATTERNS) {
-    if (pattern.test(path)) return type;
+    if (pattern.test(path)) {
+      return type;
+    }
   }
 
   // Chain detection (broad match - after more specific terminal patterns)
-  if (path.includes("chain") || id?.includes("chain")) return "Chain";
+  if (path.includes("chain") || id?.includes("chain")) {
+    return "Chain";
+  }
 
   return "Device";
 }
@@ -84,6 +90,10 @@ export function getLiveSetProperty(prop: string): unknown[] | null {
       return [4];
     case "signature_denominator":
       return [4];
+    // Every real Live Set answers this, and a mock that doesn't reports the
+    // arrangement start position as "NaN|NaN".
+    case "start_time":
+      return [0];
     default:
       return null;
   }
@@ -182,6 +192,10 @@ export function getClipProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "name":
       return ["Test Clip"];
+    // Every real clip answers this, and a mock that doesn't spells its
+    // arrangement path as "t0[NaN|NaN]".
+    case "start_time":
+      return [0];
     case "is_audio_clip":
       return [0];
     case "is_midi_clip":
@@ -221,11 +235,25 @@ export function getClipProperty(prop: string): unknown[] | null {
  * @returns Mock property value
  */
 function getMixerDeviceProperty(prop: string): unknown[] | null {
-  if (prop === "volume") return children("volume_param_1");
-  if (prop === "panning") return children("panning_param_1");
-  if (prop === "panning_mode") return [0]; // Default to stereo mode
-  if (prop === "left_split_stereo") return children("left_split_param_1");
-  if (prop === "right_split_stereo") return children("right_split_param_1");
+  if (prop === "volume") {
+    return children("volume_param_1");
+  }
+
+  if (prop === "panning") {
+    return children("panning_param_1");
+  }
+
+  if (prop === "panning_mode") {
+    return [0];
+  } // Default to stereo mode
+
+  if (prop === "left_split_stereo") {
+    return children("left_split_param_1");
+  }
+
+  if (prop === "right_split_stereo") {
+    return children("right_split_param_1");
+  }
 
   return null;
 }
@@ -236,8 +264,13 @@ function getMixerDeviceProperty(prop: string): unknown[] | null {
  * @returns Mock property value
  */
 function getDeviceParameterProperty(prop: string): unknown[] | null {
-  if (prop === "display_value") return [0]; // Default 0 dB for volume
-  if (prop === "value") return [0]; // Default center pan
+  if (prop === "display_value") {
+    return [0];
+  } // Default 0 dB for volume
+
+  if (prop === "value") {
+    return [0];
+  } // Default center pan
 
   return null;
 }

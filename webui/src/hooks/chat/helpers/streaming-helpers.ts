@@ -84,7 +84,9 @@ export async function connectClient<TMessage>(
   try {
     await connecting;
   } finally {
-    if (pendingInitRef.current === connecting) pendingInitRef.current = null;
+    if (pendingInitRef.current === connecting) {
+      pendingInitRef.current = null;
+    }
   }
 }
 
@@ -103,7 +105,9 @@ export function filterOverrides(
   overrides: MessageOverrides | undefined,
   defaults: ConversationDefaults,
 ): MessageOverrides | undefined {
-  if (!overrides) return undefined;
+  if (!overrides) {
+    return undefined;
+  }
 
   if (overrides.thinking != null && overrides.thinking !== defaults.thinking) {
     return { thinking: overrides.thinking };
@@ -149,7 +153,9 @@ export function showMissingApiKeyError<
   // Only when no client exists: a client owns the history once it has one, so
   // the stash would be a stale duplicate. The error rides along, as in
   // recoverFromChatError — it is skipped when building model messages.
-  if (!clientRef.current) pendingHistoryRef.current = history;
+  if (!clientRef.current) {
+    pendingHistoryRef.current = history;
+  }
 
   setMessages(
     adapter.createErrorMessage(
@@ -333,7 +339,9 @@ export async function runChatTurn<
     // user stopped and re-sent. recoverFromChatError renders the error, can
     // reassign the shared client's chatHistory, and autosaves, so a stale one
     // would corrupt the turn now streaming.
-    if (!stillCurrent()) return undefined;
+    if (!stillCurrent()) {
+      return undefined;
+    }
 
     // The user switched conversations while this turn's setup was in flight.
     // Recovery reads the shared refs, which now hold the conversation they
@@ -341,7 +349,9 @@ export async function runChatTurn<
     // — and the autosave that follows would persist them under it. A switch
     // sends nothing, so it never bumps the ticket above; this check is what
     // stops it.
-    if (conversationGen !== conversationGenRef.current) return undefined;
+    if (conversationGen !== conversationGenRef.current) {
+      return undefined;
+    }
 
     recoverFromChatError({
       ...deps,
@@ -549,7 +559,9 @@ export function resolveLockedNotation(
 ): Notation | null {
   const locked = extraParams.lockedNotation;
 
-  if (isNotation(locked)) return locked;
+  if (isNotation(locked)) {
+    return locked;
+  }
 
   return isNotation(extraParams.notation) ? extraParams.notation : null;
 }
@@ -568,7 +580,9 @@ export function resolveLockedSmallModelMode(
 ): boolean {
   const locked = extraParams.lockedSmallModelMode;
 
-  if (typeof locked === "boolean") return locked;
+  if (typeof locked === "boolean") {
+    return locked;
+  }
 
   return Boolean(extraParams.smallModelMode);
 }

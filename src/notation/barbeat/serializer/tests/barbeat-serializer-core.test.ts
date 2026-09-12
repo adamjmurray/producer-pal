@@ -10,6 +10,7 @@ import { drumPatternNotes } from "../../barbeat-test-helpers.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 import { pitchName } from "../helpers/barbeat-serializer-state.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("formatNotation() core", () => {
   it("returns empty string for empty input", () => {
@@ -214,8 +215,7 @@ describe("formatNotation() core", () => {
 
   it("skips out-of-range MIDI pitch and warns instead of throwing", () => {
     expect(formatNotation([createNote({ pitch: -1 })] as NoteEvent[])).toBe("");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("MIDI pitch outside valid range 0-127"),
     );
   });
@@ -240,8 +240,7 @@ describe("formatNotation() core", () => {
     expect(formatNotation([createNote({ duration: 0 })] as NoteEvent[])).toBe(
       "",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("duration must be greater than 0"),
     );
   });
@@ -252,8 +251,7 @@ describe("formatNotation() core", () => {
     expect(formatNotation([createNote({ duration: -1 })] as NoteEvent[])).toBe(
       "",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("duration must be greater than 0"),
     );
   });

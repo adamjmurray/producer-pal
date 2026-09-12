@@ -7,11 +7,11 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, act, waitFor } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import { lockedSettings } from "#webui/hooks/chat/tests/helpers/use-chat-test-helpers";
 import {
@@ -22,6 +22,7 @@ import {
   saveWithMessage,
   saveAndRename,
   resetConversationsTestState,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -107,7 +108,7 @@ describe("useConversations", () => {
 
     const { props, state } = createProps();
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -128,7 +129,7 @@ describe("useConversations", () => {
     props.activeMeta.activeModel = "gemini-2.5-pro";
     props.activeMeta.activeProvider = "gemini";
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -199,16 +200,10 @@ describe("useConversations", () => {
       }),
     );
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
-
-    // Create a current conversation first
-    state.chatHistory = [{ role: "user", content: "current" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
+    await saveWithMessage(state, result, "current");
 
     // Switch to existing
     await act(async () => {
@@ -243,7 +238,7 @@ describe("useConversations", () => {
 
     props.activeMeta.activeSmallModelMode = true;
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -291,7 +286,7 @@ describe("useConversations", () => {
     window.location.hash = existingId;
 
     const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -309,7 +304,7 @@ describe("useConversations", () => {
     window.location.hash = "nonexistent-id";
 
     const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -431,17 +426,9 @@ describe("useConversations", () => {
       messages: [{ role: "user", content: "other" }],
     });
 
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
+    const { props, state, result } = await setupHook();
 
-    await waitForEffects();
-
-    // Save a current conversation
-    state.chatHistory = [{ role: "user", content: "current" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
+    await saveWithMessage(state, result, "current");
 
     expect(result.current.conversations).toHaveLength(2);
 
@@ -474,7 +461,9 @@ describe("useConversations", () => {
     // restore does two IndexedDB round-trips (save, then list refresh), which
     // can outrun a single tick on a loaded CI runner.
     await act(() => result.current.notification!.action!.onClick());
-    await waitFor(() => expect(result.current.conversations).toHaveLength(1));
+    await waitForHookState(() =>
+      expect(result.current.conversations).toHaveLength(1),
+    );
 
     expect(result.current.conversations[0]?.id).toBe(savedId);
     expect(result.current.notification).toBeNull();
@@ -520,7 +509,7 @@ describe("useConversations", () => {
       const { props } = createProps();
 
       props.onForeignRecord = onForeignRecord;
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -546,7 +535,7 @@ describe("useConversations", () => {
       const { props } = createProps();
 
       props.onForeignRecord = onForeignRecord;
-      renderHook(() => useConversations(props));
+      renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -564,7 +553,7 @@ describe("useConversations", () => {
       const { props } = createProps();
 
       expect(props.onForeignRecord).toBeUndefined();
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -622,6 +611,54 @@ describe("useConversations", () => {
 
       expect(result.current.activeConversationId).toBeNull();
       expect(props.clearConversation).toHaveBeenCalled();
+    });
+
+    // Back/Forward tears the conversation down the same way the sidebar does,
+    // and the teardown stops the stream — so it has to ask the same question.
+    it("asks before back/forward cuts a streaming turn off, and stays put on no", async () => {
+      const existingId = await saveTestConversation({
+        messages: [{ role: "user", content: "from hash" }],
+      });
+      const { props, state } = createProps();
+      const { result } = renderHook(() =>
+        useConversationsWithUndo({ ...props, isAssistantResponding: true }),
+      );
+
+      await waitForEffects();
+      await saveWithMessage(state, result);
+
+      const activeId = result.current.activeConversationId;
+      const confirmSpy = vi.fn().mockReturnValue(false);
+
+      vi.stubGlobal("confirm", confirmSpy);
+      window.location.hash = existingId;
+      await fireHashChange();
+
+      expect(confirmSpy).toHaveBeenCalled();
+      expect(result.current.activeConversationId).toBe(activeId);
+      expect(props.restoreChatHistory).not.toHaveBeenCalled();
+      // The hash is put back, so the URL still names the conversation on screen.
+      expect(window.location.hash.slice(1)).toBe(activeId);
+      vi.unstubAllGlobals();
+    });
+
+    it("goes through on yes", async () => {
+      const existingId = await saveTestConversation({
+        messages: [{ role: "user", content: "from hash" }],
+      });
+      const { props } = createProps();
+      const { result } = renderHook(() =>
+        useConversationsWithUndo({ ...props, isAssistantResponding: true }),
+      );
+
+      await waitForEffects();
+
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      window.location.hash = existingId;
+      await fireHashChange();
+
+      expect(result.current.activeConversationId).toBe(existingId);
+      vi.unstubAllGlobals();
     });
 
     it("does not stall programmatic guard when hash already matches", async () => {

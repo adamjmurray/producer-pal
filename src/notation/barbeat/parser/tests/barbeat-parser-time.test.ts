@@ -142,7 +142,7 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
-  it("parses bar-based steps (@Nbar, meter-aware)", () => {
+  it("parses bar-based steps (@<count>bar, meter-aware)", () => {
     expect(parser.parse("1|1x4@1bar")).toStrictEqual([
       { bar: 1, beat: { start: 1, times: 4, step: 0, stepBars: 1 } },
     ]);
@@ -151,13 +151,13 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
-  it("parses mixed bar+note-value steps (@Nbar+nA/B)", () => {
+  it("parses mixed bar+note-value steps (@<count>bar+nA/B)", () => {
     expect(parser.parse("1|1x2@1bar+n/4")).toStrictEqual([
       { bar: 1, beat: { start: 1, times: 2, step: 1 / 4, stepBars: 1 } },
     ]);
   });
 
-  it("parses minus-tail bar steps (@Nbar-nA/B)", () => {
+  it("parses minus-tail bar steps (@<count>bar-nA/B)", () => {
     // The tail sign rides the shared duration grammar: `@1bar-n/4` stores a
     // negative note-value fraction; the interpreter resolves it to a near-bar
     // advance (one bar minus a quarter = 3 beats in 4/4).
@@ -175,19 +175,19 @@ describe("BarBeatScript Parser - time declarations", () => {
     );
   });
 
-  it("rejects n-prefixed bar steps with the targeted Nbar error (@n1bar)", () => {
-    // Same category error as the duration sites: bars are the bare `Nbar` form,
+  it("rejects n-prefixed bar steps with the targeted <count>bar error (@n1bar)", () => {
+    // Same category error as the duration sites: bars are the bare `<count>bar` form,
     // never `n`-prefixed. The step interval is a duration site too (it already
     // honors the plural `@2bars` alias), so it gets the steered error, not the
     // generic "note-value form" one.
     expect(() => parser.parse("1|1x3@n1bar")).toThrow(
-      /bar steps don't use the "n" prefix — write @Nbar \(e\.g\. @1bar\)/,
+      /bar steps don't use the "n" prefix — write @<count>bar \(e\.g\. @1bar\)/,
     );
     expect(() => parser.parse("1|1x3@n/1bar")).toThrow(
-      /bar steps don't use the "n" prefix — write @Nbar \(e\.g\. @1bar\)/,
+      /bar steps don't use the "n" prefix — write @<count>bar \(e\.g\. @1bar\)/,
     );
     expect(() => parser.parse("1|1x3@n3/4bar")).toThrow(
-      /bar steps don't use the "n" prefix — write @Nbar \(e\.g\. @4bar\)/,
+      /bar steps don't use the "n" prefix — write @<count>bar \(e\.g\. @4bar\)/,
     );
   });
 

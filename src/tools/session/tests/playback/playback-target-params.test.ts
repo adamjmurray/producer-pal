@@ -11,7 +11,10 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
-import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
+import {
+  registerClipSlot,
+  setupPlaybackLiveSet,
+} from "./playback-test-helpers.ts";
 
 describe("playback target params on actions that have no target", () => {
   let liveSet: RegisteredMockObject;
@@ -73,9 +76,7 @@ describe("playback paths alias", () => {
 
   beforeEach(() => {
     setupPlaybackLiveSet();
-    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    clipSlot = registerClipSlot(0, 1);
   });
 
   it("fires the clip paths names when path is unset", () => {
@@ -111,9 +112,7 @@ describe("playback ids that names no clip", () => {
 
   beforeEach(() => {
     setupPlaybackLiveSet();
-    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    clipSlot = registerClipSlot(0, 1);
   });
 
   // z.coerce.string() renders a JSON null as "null", so a caller that sent no
@@ -141,21 +140,39 @@ describe("playback ids that names no clip", () => {
   it("refuses the action when a coerced-null ids is all there is", () => {
     expect(() =>
       playback({ action: "play-session-clips", id: "null" }),
-    ).toThrow("playback failed: id or path is required for action");
+    ).toThrow("id or path is required for action");
   });
 
-  it("still refuses ids and path together when both name clips", () => {
-    expect(() =>
-      playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" }),
-    ).toThrow("playback failed: id and path are mutually exclusive");
-  });
-
-  // A scene path is still a path. Firing the ids and dropping it silently is
-  // the wrong-target bug these params exist to prevent.
-  it("refuses ids alongside a scene path too", () => {
+  // A scene path is still refused, but for its shape rather than for sitting
+  // beside an id: this action fires clips one at a time.
+  it("refuses a scene path alongside ids", () => {
     expect(() =>
       playback({ action: "play-session-clips", path: "s3", id: "clip1" }),
-    ).toThrow("playback failed: id and path are mutually exclusive");
+    ).toThrow('names a scene; action "play-session-clips" takes clip slots');
+  });
+
+  it("fires the clips named by id and by path together", () => {
+    registerMockObject("clip1", {
+      path: livePath.track(2).clipSlot(0).clip(),
+    });
+    const byId = registerClipSlot(2, 0);
+
+    playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" });
+
+    expect(byId.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+
+  // Naming one clip both ways is not a conflict, but firing it twice is a
+  // different Live call than firing it once.
+  it("fires a clip named by both id and path only once", () => {
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
+
+    playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" });
+
+    expect(clipSlot.call).toHaveBeenCalledExactlyOnceWith("fire");
   });
 
   // Bad ids are warned and skipped, which is right until every one is skipped:
@@ -168,11 +185,9 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "play-session-clips", id: "scene3" }),
-    ).toThrow(
-      'playback failed: id "scene3" named no clip for action "play-session-clips"',
-    );
+    ).toThrow('id "scene3" named no clip for action "play-session-clips"');
     expect(warn).toHaveBeenCalledWith(
-      'playback: id "scene3" is not a clip (found Scene)',
+      "s3 (id scene3) is not a clip (found Scene)",
     );
   });
 
@@ -181,16 +196,15 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "stop-session-clips", id: "scene3" }),
-    ).toThrow(
-      'playback failed: id "scene3" named no clip for action "stop-session-clips"',
-    );
+    ).toThrow('id "scene3" named no clip for action "stop-session-clips"');
   });
 
   // Nothing warned on this one at all: the entries were dropped before any id
   // was looked at, so the call reported a launch with no message of any kind.
-  it("refuses an ids that names no id", () => {
+  // Now the list itself is refused, before any clip is looked up.
+  it("refuses an id that names no id", () => {
     expect(() => playback({ action: "play-session-clips", id: "," })).toThrow(
-      'playback failed: id "," named no clip for action "play-session-clips"',
+      'invalid id "," - it names nothing',
     );
   });
 
@@ -217,26 +231,24 @@ describe("playback slots that names no position", () => {
 
   it("refuses play-scene rather than crashing on the empty list", () => {
     expect(() => playback({ action: "play-scene", slots: "," })).toThrow(
-      'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
+      'path "s<scene>" or a scene id is required',
     );
   });
 
   it("refuses play-session-clips rather than reporting a launch", () => {
     expect(() =>
       playback({ action: "play-session-clips", slots: "," }),
-    ).toThrow("playback failed: id or path is required");
+    ).toThrow("id or path is required");
   });
 
   it("refuses stop-session-clips the same way", () => {
     expect(() =>
       playback({ action: "stop-session-clips", slots: "," }),
-    ).toThrow("playback failed: id or path is required");
+    ).toThrow("id or path is required");
   });
 
   it("lets ids carry the call when slots names nothing", () => {
-    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
-      path: livePath.track(0).clipSlot(1),
-    });
+    const clipSlot = registerClipSlot(0, 1);
 
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(1).clip(),

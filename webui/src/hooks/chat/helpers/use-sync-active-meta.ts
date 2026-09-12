@@ -5,10 +5,7 @@
 
 import { type MutableRef, useEffect } from "preact/hooks";
 import { type Notation } from "#src/shared/notation";
-import {
-  type ActiveMeta,
-  DEFAULT_META,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+import { type ActiveMeta, DEFAULT_META } from "#webui/lib/conversation-store";
 import { type Provider } from "#webui/types/settings";
 
 export interface SyncActiveMetaParams {
@@ -48,15 +45,33 @@ export function useSyncActiveMeta(
     activeMetaRef.current ??= { ...DEFAULT_META };
     const meta = activeMetaRef.current;
 
-    if (activeModel != null) meta.model = activeModel;
-    if (activeProvider != null) meta.provider = activeProvider;
-    if (activeThinking != null) meta.thinking = activeThinking;
-    if (activeSmallModelMode != null)
+    if (activeModel != null) {
+      meta.model = activeModel;
+    }
+
+    if (activeProvider != null) {
+      meta.provider = activeProvider;
+    }
+
+    if (activeThinking != null) {
+      meta.thinking = activeThinking;
+    }
+
+    if (activeSmallModelMode != null) {
       meta.smallModelMode = activeSmallModelMode;
-    if (activeSystemInstruction != null)
+    }
+
+    if (activeSystemInstruction != null) {
       meta.systemInstruction = activeSystemInstruction;
-    if (activeNotation != null) meta.notation = activeNotation;
-    if (activeEnabledTools != null) meta.enabledTools = activeEnabledTools;
+    }
+
+    if (activeNotation != null) {
+      meta.notation = activeNotation;
+    }
+
+    if (activeEnabledTools != null) {
+      meta.enabledTools = activeEnabledTools;
+    }
   }, [
     activeMetaRef,
     activeModel,

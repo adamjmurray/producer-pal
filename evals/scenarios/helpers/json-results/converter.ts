@@ -7,6 +7,7 @@
  * Converts internal EvalScenarioResult to JSON-serializable JsonEvalResult
  */
 
+import { isSignalAssertion } from "../../assertions/index.ts";
 import {
   type EvalAssertionResult,
   type EvalScenarioResult,
@@ -14,7 +15,9 @@ import {
 } from "../../types.ts";
 import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
 import { assertionLabel } from "./assertion-label.ts";
+import { collectToolErrors } from "./tool-errors.ts";
 import {
+  type JsonCheckResult,
   type JsonChecks,
   type JsonEfficiency,
   type JsonEvalResult,
@@ -47,6 +50,8 @@ export function toJsonResult(
   trialInfo?: TrialInfo,
 ): JsonEvalResult {
   const checks = buildChecks(result.assertions);
+  const signals = buildSignals(result.assertions);
+  const toolErrors = collectToolErrors(result.turns);
   const efficiency = buildEfficiency(result.assertions);
   const advisory = result.scenario.judgeAdvisory ?? false;
   const judge = buildJudge(result.assertions, advisory);
@@ -65,9 +70,11 @@ export function toJsonResult(
     model,
     configProfileId,
     ...(result.instructions && { instructions: result.instructions }),
-    result: derivePassFail(checks, judge),
+    result: deriveOutcome(result, checks, judge),
     turns: result.turns.map(convertTurn),
     checks,
+    ...(signals.length > 0 && { signals }),
+    ...(toolErrors && { toolErrors }),
     ...(efficiency && { efficiency }),
     ...(judge && { judge }),
     totalDurationMs: result.totalDurationMs,
@@ -77,30 +84,13 @@ export function toJsonResult(
 }
 
 /**
- * Build checks object from non-judge, non-token_usage assertions
+ * Build the gating checks object from the deterministic assertions
  *
  * @param assertions - All assertion results
  * @returns Checks object with pass flag and individual results
  */
 function buildChecks(assertions: EvalAssertionResult[]): JsonChecks {
-  const results = assertions
-    .filter(
-      (a) =>
-        a.assertion.type !== "llm_judge" && a.assertion.type !== "token_usage",
-    )
-    .map((a) => {
-      const details = a.details as Record<string, unknown> | undefined;
-      const reflection = details?.reflection as string | undefined;
-
-      return {
-        type: a.assertion.type,
-        label: assertionLabel(a.assertion),
-        pass: a.earned === a.maxScore,
-        message: a.message,
-        ...(details != null && { details: stripToolResults(details) }),
-        ...(reflection != null && { reflection }),
-      };
-    });
+  const results = assertions.filter(isGatingCheck).map(toCheckResult);
 
   return {
     pass: results.length > 0 && results.every((c) => c.pass),
@@ -109,7 +99,56 @@ function buildChecks(assertions: EvalAssertionResult[]): JsonChecks {
 }
 
 /**
- * Build efficiency object from token_usage assertion
+ * Build the non-gating signal results (prose `response_contains`)
+ *
+ * @param assertions - All assertion results
+ * @returns Signal results, empty when the scenario has none
+ */
+function buildSignals(assertions: EvalAssertionResult[]): JsonCheckResult[] {
+  return assertions
+    .filter((a) => isSignalAssertion(a.assertion))
+    .map(toCheckResult);
+}
+
+/**
+ * Whether an assertion result belongs in the gating checks. The judge and
+ * token_usage have their own sections; signals report without gating.
+ *
+ * @param result - An assertion result
+ * @returns True when the result gates pass/fail
+ */
+function isGatingCheck(result: EvalAssertionResult): boolean {
+  const { type } = result.assertion;
+
+  return (
+    type !== "llm_judge" &&
+    type !== "token_usage" &&
+    !isSignalAssertion(result.assertion)
+  );
+}
+
+/**
+ * Convert one assertion result to its JSON check record
+ *
+ * @param a - The assertion result
+ * @returns JSON check result
+ */
+function toCheckResult(a: EvalAssertionResult): JsonCheckResult {
+  const details = a.details as Record<string, unknown> | undefined;
+  const reflection = details?.reflection as string | undefined;
+
+  return {
+    type: a.assertion.type,
+    label: assertionLabel(a.assertion),
+    pass: a.earned === a.maxScore,
+    message: a.message,
+    ...(details != null && { details: stripToolResults(details) }),
+    ...(reflection != null && { reflection }),
+  };
+}
+
+/**
+ * Build output-token efficiency from the token_usage assertion
  *
  * @param assertions - All assertion results
  * @returns Efficiency object, or undefined if no token_usage assertion
@@ -121,14 +160,16 @@ function buildEfficiency(
     (a) => a.assertion.type === "token_usage",
   );
 
-  if (!tokenResult) return undefined;
+  if (!tokenResult) {
+    return undefined;
+  }
 
   const details = tokenResult.details as
     | { total: number; target: number; percentage: number }
     | undefined;
 
   return {
-    inputTokens: details?.total ?? 0,
+    outputTokens: details?.total ?? 0,
     targetTokens: details?.target ?? 0,
     percentage: details?.percentage ?? 0,
   };
@@ -147,7 +188,9 @@ function buildJudge(
 ): JsonJudge | undefined {
   const judgeResult = assertions.find((a) => a.assertion.type === "llm_judge");
 
-  if (!judgeResult) return undefined;
+  if (!judgeResult) {
+    return undefined;
+  }
 
   const advisoryFlag = advisory ? { advisory: true } : {};
   const details = judgeResult.details as SimpleJudgeResult | undefined;
@@ -157,6 +200,29 @@ function buildJudge(
   }
 
   return { pass: details.pass, issues: details.issues, ...advisoryFlag };
+}
+
+/**
+ * Classify a run's outcome. A run that errored before the model took a single
+ * turn never tested anything: the Live Set would not open, or the config would
+ * not apply. That is infrastructure, not a model failure, and calling it one
+ * turns an outage into a wall of convincing-looking zeros.
+ *
+ * @param result - Internal scenario result
+ * @param checks - Checks result
+ * @param judge - Judge result (if any)
+ * @returns The run's outcome
+ */
+function deriveOutcome(
+  result: EvalScenarioResult,
+  checks: JsonChecks,
+  judge: JsonJudge | undefined,
+): "pass" | "fail" | "error" {
+  if (result.error != null && result.turns.length === 0) {
+    return "error";
+  }
+
+  return derivePassFail(checks, judge);
 }
 
 /**
@@ -183,13 +249,20 @@ function derivePassFail(
 
   // Need at least one gating signal; otherwise the scenario asserts nothing (an
   // empty scenario, or a judge-only one whose judge was skipped) — not a pass.
-  if (!hasChecks && !judgeGates) return "fail";
+  if (!hasChecks && !judgeGates) {
+    return "fail";
+  }
 
   // Every gating signal that is present must pass: the checks when there are any
   // (checks.pass is false when there are none, so guard on hasChecks), and a
   // non-advisory judge.
-  if (hasChecks && !checks.pass) return "fail";
-  if (judgeFails) return "fail";
+  if (hasChecks && !checks.pass) {
+    return "fail";
+  }
+
+  if (judgeFails) {
+    return "fail";
+  }
 
   return "pass";
 }
@@ -211,6 +284,9 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
       ...(tc.result != null && { result: tc.result }),
       ...(tc.warnings != null &&
         tc.warnings.length > 0 && { warnings: tc.warnings }),
+      ...(tc.injectedBlocks != null &&
+        tc.injectedBlocks.length > 0 && { injectedBlocks: tc.injectedBlocks }),
+      ...(tc.isError === true && { isError: true }),
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
@@ -254,7 +330,9 @@ function stripToolResults(
 ): Record<string, unknown> {
   const calls = details.matchingCalls;
 
-  if (!Array.isArray(calls)) return details;
+  if (!Array.isArray(calls)) {
+    return details;
+  }
 
   return {
     ...details,

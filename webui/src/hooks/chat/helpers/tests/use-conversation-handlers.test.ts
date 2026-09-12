@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { renderHook, act } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
 
@@ -40,20 +40,44 @@ function createMockManager(
 /**
  * Render the handlers over a fresh mock manager and its two callback spies.
  * @param overrides - Manager method overrides
+ * @param isAssistantResponding - Whether a response is streaming
  * @returns The manager, both spies, and the hook result handle
  */
-function renderHandlers(overrides: Partial<UseConversationsReturn> = {}) {
+function renderHandlers(
+  overrides: Partial<UseConversationsReturn> = {},
+  isAssistantResponding = false,
+) {
   const manager = createMockManager(overrides);
   const stop = vi.fn();
   const clearViewingMode = vi.fn();
   const { result } = renderHook(() =>
-    useConversationHandlers(manager, stop, clearViewingMode),
+    useConversationHandlers(
+      manager,
+      stop,
+      clearViewingMode,
+      isAssistantResponding,
+    ),
   );
 
   return { manager, stop, clearViewingMode, result };
 }
 
+/**
+ * Install a window.confirm answering the given way (happy-dom defines none).
+ * @param answer - What the user clicks
+ * @returns The stubbed confirm
+ */
+function stubConfirm(answer: boolean) {
+  const confirmed = vi.fn(() => answer);
+
+  vi.stubGlobal("confirm", confirmed);
+
+  return confirmed;
+}
+
 describe("useConversationHandlers", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("logs rejected promises to console.error", async () => {
     const error = new Error("IndexedDB failure");
     const { result } = renderHandlers({
@@ -123,6 +147,69 @@ describe("useConversationHandlers", () => {
     result.current.handleNew();
 
     expect(clearViewingMode).toHaveBeenCalledOnce();
+  });
+
+  it("asks before a switch cuts a streaming response off", async () => {
+    const confirmed = stubConfirm(true);
+    const { manager, stop, result } = renderHandlers({}, true);
+
+    await act(() => result.current.handleSelect("conv-1"));
+
+    expect(confirmed).toHaveBeenCalledWith(
+      "This will stop the response in progress. Continue?",
+    );
+    expect(stop).toHaveBeenCalled();
+    expect(manager.switchConversation).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("leaves the response alone when the switch is declined", async () => {
+    stubConfirm(false);
+    const { manager, stop, result } = renderHandlers({}, true);
+
+    await act(() => result.current.handleSelect("conv-1"));
+
+    expect(stop).not.toHaveBeenCalled();
+    expect(manager.switchConversation).not.toHaveBeenCalled();
+  });
+
+  it("leaves the response alone when a new conversation is declined", async () => {
+    stubConfirm(false);
+    const { manager, stop, clearViewingMode, result } = renderHandlers(
+      {},
+      true,
+    );
+
+    await act(() => result.current.handleNew());
+
+    expect(stop).not.toHaveBeenCalled();
+    expect(manager.startNewConversation).not.toHaveBeenCalled();
+    expect(clearViewingMode).not.toHaveBeenCalled();
+  });
+
+  it("does not ask when nothing is streaming", async () => {
+    const confirmed = stubConfirm(true);
+    const { manager, result } = renderHandlers();
+
+    await act(() => result.current.handleNew());
+    await act(() => result.current.handleSelect("conv-1"));
+
+    expect(confirmed).not.toHaveBeenCalled();
+    expect(manager.startNewConversation).toHaveBeenCalled();
+    expect(manager.switchConversation).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("does not ask before a delete, which undo already covers", async () => {
+    const confirmed = stubConfirm(true);
+    const { manager, stop, result } = renderHandlers(
+      { activeConversationId: "conv-1" },
+      true,
+    );
+
+    await act(() => result.current.handleDelete("conv-1"));
+
+    expect(confirmed).not.toHaveBeenCalled();
+    expect(stop).toHaveBeenCalled();
+    expect(manager.deleteConversation).toHaveBeenCalledWith("conv-1");
   });
 
   it("stops response and delegates to deleteAllConversations", () => {

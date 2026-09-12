@@ -57,6 +57,21 @@ function pcmBase64(count: number): string {
   return btoa(String.fromCharCode(...new Uint8Array(count * 2)));
 }
 
+/**
+ * Build a player and resume it, so its output context exists.
+ * @returns The resumed player and the context it created
+ */
+async function startedPlayer(): Promise<{
+  player: GeminiPcmPlayer;
+  ctx: FakeAudioContext;
+}> {
+  const player = new GeminiPcmPlayer();
+
+  await player.resume();
+
+  return { player, ctx: FakeAudioContext.instances[0]! };
+}
+
 beforeEach(() => {
   FakeAudioContext.instances = [];
   vi.stubGlobal("AudioContext", FakeAudioContext);
@@ -68,20 +83,14 @@ afterEach(() => {
 
 describe("GeminiPcmPlayer", () => {
   it("creates and resumes a suspended output context", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { ctx } = await startedPlayer();
 
     expect(ctx.resume).toHaveBeenCalled();
     expect(ctx.gain.connect).toHaveBeenCalledWith(ctx.destination);
   });
 
   it("schedules chunks gaplessly against a running cursor", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     player.enqueueBase64(pcmBase64(2400)); // 0.1s at 24k
     player.enqueueBase64(pcmBase64(2400));
@@ -123,10 +132,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("flush stops scheduled sources and resets the cursor", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     player.enqueueBase64(pcmBase64(2400));
     const source = ctx.sources[0]!;
@@ -142,10 +148,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("tolerates a source that throws on stop during flush", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     player.enqueueBase64(pcmBase64(10));
     ctx.sources[0]!.stop = vi.fn(() => {
@@ -156,10 +159,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("drops a scheduled source from the set when it ends", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     player.enqueueBase64(pcmBase64(10));
     // Fire onended; flush afterward should find nothing to stop.
@@ -169,10 +169,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("hasQueued reflects scheduled sources, draining on end and flush", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     expect(player.hasQueued()).toBe(false);
 
@@ -202,10 +199,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("onDrained waits for the last scheduled source to end", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     player.enqueueBase64(pcmBase64(10));
     player.enqueueBase64(pcmBase64(10));
@@ -268,10 +262,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("close flushes and closes the context (idempotent)", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
 
     await player.close();
     expect(ctx.close).toHaveBeenCalled();
@@ -292,10 +283,7 @@ describe("GeminiPcmPlayer", () => {
   });
 
   it("drops a trailing odd byte when decoding base64 PCM", async () => {
-    const player = new GeminiPcmPlayer();
-
-    await player.resume();
-    const ctx = FakeAudioContext.instances[0]!;
+    const { player, ctx } = await startedPlayer();
     // 3 bytes → 1 whole Int16 sample (trailing byte dropped).
     const threeBytes = btoa(String.fromCharCode(1, 2, 3));
 

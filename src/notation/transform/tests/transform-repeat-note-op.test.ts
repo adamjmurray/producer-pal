@@ -3,24 +3,24 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
   createTestNotes,
+  testNote,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
+import { warnSpyWithNote, warnSpyWithNotes } from "./transform-test-helpers.ts";
 
 // Asserts a repeat is rejected: the lone note passes through unchanged and a
 // warning containing `message` is emitted.
 function expectRepeatWarnsAndSkips(transform: string, message: string): void {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const notes = createTestNote({ start_time: 0, duration: 1 });
+  const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 1 });
 
   applyTransforms(notes, transform, 4, 4);
 
   expect(notes).toHaveLength(1);
-  expect(notes[0]).toMatchObject({ start_time: 0, duration: 1 });
+  expect(notes[0]).toStrictEqual(testNote({ start_time: 0, duration: 1 }));
   expect(warn).toHaveBeenCalledWith(expect.stringContaining(message));
   warn.mockRestore();
 }
@@ -33,8 +33,8 @@ describe("note-count operation: repeat", () => {
     applyTransforms(notes, "repeat(1bar)", 4, 4);
 
     expect(notes).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 1, pitch: 60 }),
-      expect.objectContaining({ start_time: 4, duration: 1, pitch: 60 }),
+      testNote({ start_time: 0, duration: 1 }),
+      testNote({ start_time: 4, duration: 1 }),
     ]);
   });
 
@@ -61,12 +61,15 @@ describe("note-count operation: repeat", () => {
     applyTransforms(notes, "repeat(n/4)", 4, 4);
 
     expect(notes).toHaveLength(2);
-    expect(notes[1]).toMatchObject({
-      start_time: 1,
-      velocity: 90,
-      probability: 0.7,
-      velocity_deviation: 12,
-    });
+    expect(notes[1]).toStrictEqual(
+      testNote({
+        start_time: 1,
+        duration: 1,
+        velocity: 90,
+        probability: 0.7,
+        velocity_deviation: 12,
+      }),
+    );
   });
 
   it("echoes every matched note", () => {
@@ -153,9 +156,10 @@ describe("note-count operation: repeat", () => {
       applyTransforms(notes, "repeat(1bar)\nmerge()", 4, 4);
 
       expect(notes).toHaveLength(1);
-      expect(notes[0]).toMatchObject({ start_time: 0, pitch: 60 });
       // Spans from first onset (0) to the last echo's offset (6 + 1).
-      expect(notes[0]!.duration).toBeCloseTo(7);
+      expect(notes[0]).toStrictEqual(
+        testNote({ start_time: 0, duration: expect.closeTo(7) }),
+      );
     });
 
     it("merge then repeat echoes the merged note (non-commuting)", () => {
@@ -168,10 +172,10 @@ describe("note-count operation: repeat", () => {
 
       // One long note (0..3), echoed one bar later -> two long notes.
       expect(notes).toHaveLength(2);
-      expect(notes[0]).toMatchObject({ start_time: 0 });
-      expect(notes[0]!.duration).toBeCloseTo(3);
-      expect(notes[1]).toMatchObject({ start_time: 4 });
-      expect(notes[1]!.duration).toBeCloseTo(3);
+      expect(notes).toStrictEqual([
+        testNote({ start_time: 0, duration: expect.closeTo(3) }),
+        testNote({ start_time: 4, duration: expect.closeTo(3) }),
+      ]);
     });
   });
 
@@ -188,8 +192,7 @@ describe("note-count operation: repeat", () => {
 
   describe("onset-collision warning", () => {
     it("warns when a copy lands on an existing same-pitch onset", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNotes([
+      const { warn, notes } = warnSpyWithNotes([
         { pitch: 60, start_time: 0, duration: 1 },
         { pitch: 60, start_time: 1, duration: 1 },
       ]);
@@ -207,8 +210,7 @@ describe("note-count operation: repeat", () => {
     });
 
     it("does not warn when copies land on distinct onsets", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNotes([
+      const { warn, notes } = warnSpyWithNotes([
         { pitch: 60, start_time: 0, duration: 1 },
         { pitch: 60, start_time: 2, duration: 1 },
       ]);
@@ -220,8 +222,7 @@ describe("note-count operation: repeat", () => {
     });
 
     it("does not warn when a same-onset copy is a different pitch", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNotes([
+      const { warn, notes } = warnSpyWithNotes([
         { pitch: 60, start_time: 0, duration: 1 },
         { pitch: 64, start_time: 1, duration: 1 }, // different pitch at beat 1
       ]);
@@ -233,8 +234,7 @@ describe("note-count operation: repeat", () => {
     });
 
     it("pluralizes the count when multiple collisions collapse", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNotes([
+      const { warn, notes } = warnSpyWithNotes([
         { pitch: 60, start_time: 0, duration: 1 },
         { pitch: 60, start_time: 1, duration: 1 },
         { pitch: 60, start_time: 2, duration: 1 },
@@ -313,8 +313,7 @@ describe("note-count operation: repeat", () => {
     });
 
     it("clamps a copy count above the cap and still echoes", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ start_time: 0, duration: 0.1 });
+      const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 0.1 });
 
       applyTransforms(notes, "repeat(n/16, 100)", 4, 4);
 
@@ -327,8 +326,7 @@ describe("note-count operation: repeat", () => {
     });
 
     it("uses the first two args and warns on extras", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ start_time: 0, duration: 1 });
+      const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 1 });
 
       applyTransforms(notes, "repeat(n/4, 2, n/8)", 4, 4);
 

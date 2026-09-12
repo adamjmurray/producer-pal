@@ -12,10 +12,7 @@ import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,
 } from "#webui/hooks/chat/helpers/use-sync-active-meta";
-import {
-  type ActiveMeta,
-  DEFAULT_META,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+import { type ActiveMeta, DEFAULT_META } from "#webui/lib/conversation-store";
 
 const ALL_NULL: SyncActiveMetaParams = {
   activeModel: null,

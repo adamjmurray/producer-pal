@@ -75,10 +75,6 @@ const TEACHES_NO_FRAGMENT: Record<string, string> = {
   "ppal-connect": "delivers the skills, and none of them teach it",
   "ppal-read-live-set": "its schema is the whole guide",
   "ppal-update-live-set": "its schema is the whole guide",
-  "ppal-create-track": "its schema is the whole guide",
-  "ppal-update-track": "its schema is the whole guide",
-  "ppal-create-scene": "its schema is the whole guide",
-  "ppal-update-scene": "its schema is the whole guide",
   "ppal-playback": "its schema is the whole guide",
   "ppal-live-api": "the dev-only escape hatch, deliberately unguided",
 };
@@ -98,7 +94,9 @@ describe("FRAGMENT_GATES", () => {
 
   it("names only real tools", () => {
     for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-      if (typeof gate === "string") continue;
+      if (typeof gate === "string") {
+        continue;
+      }
 
       expect(gate.length, `${name} gates on nothing`).toBeGreaterThan(0);
 
@@ -132,7 +130,9 @@ describe("FRAGMENT_GATES", () => {
       expect(ALL_TOOLS, `${tool} is not a tool`).toContain(tool);
 
       for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-        if (typeof gate === "string") continue;
+        if (typeof gate === "string") {
+          continue;
+        }
 
         expect(
           gate,
@@ -154,7 +154,9 @@ describe("FRAGMENT_GATES", () => {
         const requiredGate = FRAGMENT_GATES[required];
 
         // "always" ships to every toolset and audience, so it satisfies anyone.
-        if (requiredGate === "always") continue;
+        if (requiredGate === "always") {
+          continue;
+        }
 
         // "conversation-only" survives a subagent audience only for another
         // "conversation-only" — a tool-gated dependent would outlive it there.

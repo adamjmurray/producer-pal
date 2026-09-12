@@ -51,7 +51,9 @@ export function createStepBudgetWatcher(
       for (const line of lines) {
         const event = parseJsonlLine(line);
 
-        if (event != null) steps += transport.countSteps(event);
+        if (event != null) {
+          steps += transport.countSteps(event);
+        }
       }
 
       // Strictly greater: a turn that spends its budget exactly and stops is

@@ -12,7 +12,7 @@ import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
   formatErrorResponse,
   formatSuccessResponse,
-  MAX_ERROR_DELIMITER,
+  END_OF_CHUNKS,
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
@@ -25,6 +25,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
+  detachWarningCapture,
   endWarningCapture,
   resumeWarningCapture,
 } from "#src/shared/max/v8-warning-capture.ts";
@@ -65,10 +66,9 @@ import {
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
-// Configure 2 outlets: MCP responses (0) and warnings (1)
-outlets = 2;
+// One outlet: MCP responses. Warnings ride inside the response JSON (ADR-0032).
+outlets = 1;
 setoutletassist(0, "tool call results");
-setoutletassist(1, "tool call warnings");
 
 /**
  * Persistent session-scoped state set by the Max patch via setter messages.
@@ -238,7 +238,7 @@ export function notation(value: unknown): void {
  *     changes nothing is never an edit (see the guard in projectContext()).
  *
  * Without this, opening an older Set in a Live Project backs its stale blob up
- * over the folder's newer shared sidecar. See dev/Memory-System.md.
+ * over the folder's newer shared sidecar. See dev/memory-system/ppal-context-tool.md.
  */
 let expectLoadEcho = true;
 
@@ -266,13 +266,18 @@ export function projectContext(content: unknown): void {
 
     sessionState.projectContext.content = value;
 
-    if (isLoadEcho) noteProjectContextLoaded(value);
+    if (isLoadEcho) {
+      noteProjectContextLoaded(value);
+    }
 
     // Device-UI and webui edits reach us only through this setter (never an MCP
     // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
     // forget: the write is Node-side and must not block the param update, and
-    // requestNode never rejects so this can't throw.
-    if (isEdit) void backupProjectContextOnEdit(value);
+    // requestNode never rejects so this can't throw. Detached because a void-ed
+    // async call is a suspension point — see v8-warning-capture.ts rule 3.
+    if (isEdit) {
+      detachWarningCapture(() => backupProjectContextOnEdit(value));
+    }
   } finally {
     endLiveApiScope();
   }
@@ -297,11 +302,15 @@ function applyRestoredProjectContext(
   restored: string | null,
   snapshot: string,
 ): void {
-  if (restored == null) return;
+  if (restored == null) {
+    return;
+  }
 
   // Two session starts applying the SAME restore is not a divergence, even
   // though the second one's snapshot no longer matches. Nothing left to do.
-  if (sessionState.projectContext.content === restored) return;
+  if (sessionState.projectContext.content === restored) {
+    return;
+  }
 
   if (sessionState.projectContext.content !== snapshot) {
     console.warn(
@@ -347,43 +356,72 @@ export function liveApiEnabled(): void {}
 export function tools(): void {}
 
 /**
- * Send a response back to the MCP server
+ * Chunk one payload for the Max IPC boundary and send it, as:
+ * ["mcp_response", requestId, chunk1, ..., chunkN, END_OF_CHUNKS].
+ *
+ * @param requestId - Request identifier
+ * @param payload - Object to stringify, chunk, and send
+ * @returns null once sent, or planChunks' overflow message if it didn't fit
+ */
+function sendChunked(requestId: string, payload: object): string | null {
+  const { chunks, tooLargeError } = planChunks(JSON.stringify(payload));
+
+  if (tooLargeError != null) {
+    return tooLargeError;
+  }
+
+  outlet(0, "mcp_response", requestId, ...chunks, END_OF_CHUNKS);
+
+  return null;
+}
+
+/**
+ * Send a response back to the MCP server. Warnings ride inside the JSON as a
+ * `warnings` sidecar; Node strips it and turns it into WARNING: content items.
+ * Nothing follows END_OF_CHUNKS.
  *
  * @param requestId - Request identifier
  * @param result - Result object to send
- * @param warnings - Warnings this request raised, appended after the delimiter
+ * @param warnings - Warnings this request raised
  */
 function sendResponse(
   requestId: string,
   result: object,
   warnings: string[],
 ): void {
-  const jsonString = JSON.stringify(result);
-  const { chunks, tooLargeError } = planChunks(jsonString);
+  const withWarnings = (payload: object): object =>
+    warnings.length > 0 ? { ...payload, warnings } : payload;
 
-  if (tooLargeError != null) {
-    const errorResult = formatErrorResponse(tooLargeError);
+  const tooLargeError = sendChunked(requestId, withWarnings(result));
 
-    outlet(
-      0,
-      "mcp_response",
-      requestId,
-      JSON.stringify(errorResult),
-      MAX_ERROR_DELIMITER,
-      ...warnings,
-    );
-
+  if (tooLargeError == null) {
     return;
   }
 
-  // Send as: ["mcp_response", requestId, chunk1, ..., delimiter, warning1, ...]
+  // The result alone overflowed. Chunk the fallback too, rather than send it
+  // as one atom: a multi-target call that overflows is exactly the case that
+  // also warns per item (up to MAX_CAPTURED_WARNINGS), so the error-plus-
+  // warnings payload can itself need several chunks. Dropping the warnings
+  // here would destroy the only copy of what they carried (see Principles.md
+  // on warnings).
+  const fallbackTooLargeError = sendChunked(
+    requestId,
+    withWarnings(formatErrorResponse(tooLargeError)),
+  );
+
+  if (fallbackTooLargeError == null) {
+    return;
+  }
+
+  // The warnings alone overflowed the chunk ceiling — MAX_CAPTURED_WARNINGS
+  // bounds their count, not their length. formatErrorResponse's own message is
+  // short and fixed-size, so this last resort always fits a single atom.
   outlet(
     0,
     "mcp_response",
     requestId,
-    ...chunks,
-    MAX_ERROR_DELIMITER,
-    ...warnings,
+    JSON.stringify(formatErrorResponse(fallbackTooLargeError)),
+    END_OF_CHUNKS,
   );
 }
 
@@ -400,10 +438,10 @@ export function code_exec_result(requestId: string, resultJson: string): void {
 /**
  * Handle node_response message from Node after a node_request route ran.
  * Payload is chunked across the Max IPC boundary the same way mcp_response
- * is — args are: requestId, chunk1, ..., chunkN, MAX_ERROR_DELIMITER.
+ * is — args are: requestId, chunk1, ..., chunkN, END_OF_CHUNKS.
  *
  * @param requestId - Request identifier
- * @param rest - Payload chunks followed by MAX_ERROR_DELIMITER
+ * @param rest - Payload chunks followed by END_OF_CHUNKS
  */
 export function node_response(requestId: string, ...rest: unknown[]): void {
   let json: string;
@@ -528,19 +566,25 @@ async function handleRequest(
         useCompact ? toCompactJSLiteral(output) : output,
       );
     } catch (toolError) {
+      // A throw is a path back out of an awaited section too: the tool may have
+      // failed after a round trip, leaving a later request's capture active.
+      resumeWarningCapture(warnings);
+
       const message =
         toolError instanceof Error ? toolError.message : String(toolError);
 
-      result = formatErrorResponse(
-        `Error executing tool '${tool}': ${message}`,
-      );
+      result = formatErrorResponse(`Error: ${message}`);
     } finally {
-      // Before the response is assembled: the patch appends whatever is on
-      // outlet 1 at that moment, so reporting later files the numbers under
-      // some other call. A failed call still built objects, hence the finally.
+      // Must run before endWarningCapture(), or the numbers land on the next
+      // request's warnings. A failed call still built objects, hence the
+      // finally.
       reportLiveApiBuildStats();
     }
   } catch (error) {
+    // Same reason as the tool-error catch: the project-context sync above can
+    // throw after its await.
+    resumeWarningCapture(warnings);
+
     const message = error instanceof Error ? error.message : String(error);
 
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);

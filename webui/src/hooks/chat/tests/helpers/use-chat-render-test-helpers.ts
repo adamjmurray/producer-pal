@@ -205,20 +205,28 @@ export function firstPartContent(
 /**
  * Kick off a send that will hit a rate limit, wait for the retry delay to
  * begin, then stop the response mid-delay and let the send unwind.
+ *
+ * The send runs inside a still-pending act(), which batches renders — so the
+ * hook's own state can't be the barrier here. The caller supplies one that sees
+ * the backoff start directly, and holds the delay open long enough that the
+ * stop can't race it.
  * @param result - The rendered useChat result handle
+ * @param retryDelayStarted - Barrier, armed before the send and awaited after
  * @param message - The message text to send
  */
 export async function sendThenStopDuringRetryDelay(
   result: ChatResult,
+  retryDelayStarted: () => Promise<void>,
   message = "Hello",
 ): Promise<void> {
+  const started = retryDelayStarted();
+
   // Start send but don't await — it will enter the retry delay.
   const sendPromise = act(async () => {
     await result.current.handleSend(message);
   });
 
-  // Give time for the rate limit to be detected and retry delay to start.
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  await started;
 
   await act(async () => {
     result.current.stopResponse();

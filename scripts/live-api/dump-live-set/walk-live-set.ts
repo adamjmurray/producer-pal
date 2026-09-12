@@ -98,7 +98,9 @@ export async function walkLiveSet(
       truncated = true;
     }
 
-    if (frontier.length === 0) break;
+    if (frontier.length === 0) {
+      break;
+    }
 
     level++;
 
@@ -216,7 +218,9 @@ function claimFresh(state: WalkState, found: Found[]): Identified[] {
 
   for (const entry of found) {
     // "0" is Live's answer for a path that resolves to nothing.
-    if (entry.id === "0" || entry.type === "") continue;
+    if (entry.id === "0" || entry.type === "") {
+      continue;
+    }
 
     const path = entry.livePath === "" ? entry.asked : entry.livePath;
     const recorded = state.idToPath.get(entry.id);
@@ -224,7 +228,9 @@ function claimFresh(state: WalkState, found: Found[]): Identified[] {
     if (recorded != null) {
       // Both spellings can be queued before either is identified, and the one
       // Live prefers may be the second to arrive. It is not an alias of itself.
-      if (entry.asked !== recorded) state.aliases[entry.asked] = recorded;
+      if (entry.asked !== recorded) {
+        state.aliases[entry.asked] = recorded;
+      }
 
       continue;
     }
@@ -232,7 +238,9 @@ function claimFresh(state: WalkState, found: Found[]): Identified[] {
     state.idToPath.set(entry.id, path);
     state.queued.add(path);
 
-    if (entry.asked !== path) state.aliases[entry.asked] = path;
+    if (entry.asked !== path) {
+      state.aliases[entry.asked] = path;
+    }
 
     fresh.push({
       path,
@@ -311,7 +319,9 @@ async function readObjects(
       properties[name] = values[at] ?? null;
     }
 
-    if (options.redactPaths) state.redacted += redactFilePaths(properties);
+    if (options.redactPaths) {
+      state.redacted += redactFilePaths(properties);
+    }
 
     state.objects[entry.path] = {
       id: entry.id,
@@ -344,14 +354,18 @@ function queueChildren(
   const next: string[] = [];
 
   for (const [name, child] of Object.entries(children)) {
-    if (NEVER_TRAVERSED.has(name) || options.skipChildren.has(name)) continue;
+    if (NEVER_TRAVERSED.has(name) || options.skipChildren.has(name)) {
+      continue;
+    }
 
     for (const ref of childRefs(entry.path, name, child, properties[name])) {
       // A path that already resolved to a recorded object becomes an alias
       // rather than a second walk of the same subtree — see claimFresh. Tools
       // do build those paths (`live_set view selected_track`), so the fixture
       // has to answer them.
-      if (state.queued.has(ref.path)) continue;
+      if (state.queued.has(ref.path)) {
+        continue;
+      }
 
       state.queued.add(ref.path);
       next.push(ref.path);

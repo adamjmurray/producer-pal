@@ -39,7 +39,6 @@ describe("ppal-read-device", () => {
     });
     const byId = parseAliasedToolResult<ReadDeviceResult>(
       byIdResult,
-      "ppal-read-device",
       "deviceId",
       "id",
     );

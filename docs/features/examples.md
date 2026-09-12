@@ -1,7 +1,7 @@
 ---
 title: Usage Examples
 description:
-  What to say to Producer Pal — setting up project context, reading and
+  What to say to Producer Pal. Setting up project context, reading and
   reorganizing your Live Set, building tracks and devices, editing MIDI you
   already have, arranging, and working with samples.
 ---
@@ -9,12 +9,11 @@ description:
 # Usage Examples
 
 Producer Pal is an assistant for the Live Set you're already working on. It can
-write MIDI from scratch, but that's the smallest part of what it does — it also
+write MIDI from scratch, but that's the smallest part of what it does. It also
 reads your Set, sets up tracks and devices, edits what's already there, arranges
 clips, and finds samples.
 
-These are examples of what to say, once you have
-[installed Producer Pal](/installation).
+Things to say, once you've [installed Producer Pal](/installation):
 
 ## Start here
 
@@ -35,7 +34,7 @@ Let the AI tell you itself:
 
 ### Look around your Set
 
-Nothing is generated here — this is just Producer Pal reading:
+Nothing is generated here. This is just Producer Pal reading:
 
 > what's in my Live Set?
 
@@ -61,7 +60,7 @@ You can write them by hand in the
 > add to the project context: the arrangement is intro (1-16), drop (17-48),
 > breakdown (49-64)
 
-Project context travels with the Live Set — it's stored in the device, so it's
+Project context travels with the Live Set. It's stored in the device, so it's
 there when you reopen the project tomorrow.
 
 For things that are true of everything you make, use global context instead:
@@ -116,7 +115,7 @@ Browse and use audio from your library:
 
 ## Edit what you already have
 
-Most work isn't generating a part — it's fixing the one that's there. These all
+Most work isn't generating a part. It's fixing the one that's there. These all
 operate on existing MIDI, using
 [transforms](/features/midi-notation#transforms):
 
@@ -142,7 +141,7 @@ operate on existing MIDI, using
 
 > apply legato to the melody
 
-These work on any MIDI clip — drums, melodies, chords — and can target notes by
+These work on any MIDI clip (drums, melodies, chords) and can target notes by
 pitch or time range.
 
 ## Arrange
@@ -159,13 +158,13 @@ Build song structure in the Arrangement view:
 > add a locator called "drop" at bar 17
 
 Producer Pal works in both Session and Arrangement views. Use Session for
-jamming and ideas, then move to Arrangement for song structure — or start
+jamming and ideas, then move to Arrangement for song structure, or start
 directly in Arrangement if you prefer.
 
 ## Generate parts
 
-When you do want the AI to write MIDI, be specific — the better you describe
-what you want, the better the result:
+When you do want the AI to write MIDI, be specific. The better you describe what
+you want, the better the result:
 
 > in the chords track, generate a 4-chord progression of whole notes
 
@@ -176,7 +175,7 @@ what you want, the better the result:
 > it's pretty repetitive, can you add some drum fills on the last few beats?
 
 Set a scale and key on your Live Set and Producer Pal respects it when
-generating chords, bass, and melodies — or just tell it what scale to use.
+generating chords, bass, and melodies, or just tell it what scale to use.
 
 ### Melodic development
 
@@ -189,7 +188,7 @@ Build variations from a simple idea using scale-aware transposition:
 > 6th, raise by three scale steps, and raise the final repetition by four scale
 > steps
 
-This builds a melody that climbs through the scale across repetitions — a common
+This builds a melody that climbs through the scale across repetitions, a common
 way to create tension and arc in a phrase.
 
 ### Layering multiple patterns on one instrument
@@ -197,10 +196,10 @@ way to create tension and arc in a phrase.
 You can route multiple MIDI tracks to the same instrument, for complex or
 polyrhythmic patterns:
 
-- **Layered drums** — create a kick pattern, say "layer another track onto the
+- **Layered drums**: create a kick pattern, say "layer another track onto the
   drums", add snares there, then another layer for hats. Launch different clip
   combinations for dynamic arrangements.
-- **Polyrhythms** — make a 3-bar pattern, layer another track onto it, and ask
+- **Polyrhythms**: make a 3-bar pattern, layer another track onto it, and ask
   for a 4-bar clip in the new track. The two phase against each other every 12
   bars.
 
@@ -211,7 +210,7 @@ care about unless you've saved a backup copy. Producer Pal can overwrite and
 delete things. If you make good progress, save it before you lose it.
 
 **Keep the context window small.** Start fresh conversations when a chat gets
-long (just say "connect to ableton" again) — and put anything worth keeping into
+long (just say "connect to ableton" again), and put anything worth keeping into
 [project context or memory](/guide/context) so a new conversation starts
 informed instead of re-explaining.
 

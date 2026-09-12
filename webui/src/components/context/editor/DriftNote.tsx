@@ -18,7 +18,9 @@ interface DriftNoteProps {
  * @returns The badge, or null when the override is not drifted
  */
 export function DriftNote(props: DriftNoteProps): preact.JSX.Element | null {
-  if (!props.drifted) return null;
+  if (!props.drifted) {
+    return null;
+  }
 
   return (
     <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">

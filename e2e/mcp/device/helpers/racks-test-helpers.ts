@@ -23,7 +23,7 @@ export interface ChainInfo {
   name?: string;
   gainDb?: number;
   pan?: number;
-  sends?: { return: string; gainDb: number }[];
+  sends?: { return: string; returnId?: string; gainDb: number }[];
   devices?: DeviceInfo[];
   deviceCount?: number;
 }
@@ -37,13 +37,25 @@ export interface DeviceInfo {
   chains?: ChainInfo[];
   returnChains?: ChainInfo[];
   drumMap?: Record<string, string>;
+  drumRackPath?: string;
   parameters?: { name: string; value?: unknown; enabled?: boolean }[];
 }
 
+/** One entry of the `params` a create-device or update-device result reports. */
+export interface ParamEntryResult {
+  name: string;
+  value?: unknown;
+  /** Why the write landed nowhere, when it didn't */
+  reason?: string;
+}
+
 export interface DrumPadInfo {
+  id?: string;
+  path?: string;
   note: number;
   pitch: string;
   name: string;
+  chainCount?: number;
   hasInstrument?: boolean;
   chains?: ChainInfo[];
 }
@@ -113,12 +125,17 @@ export async function readReturnChains(client: Client): Promise<ChainInfo[]> {
 
 /**
  * Assert a warning names a parameter as disabled.
+ *
+ * Takes the label in pieces rather than whole, so a label that grows a chain
+ * path between the name and the parameter still matches.
  * @param warnings - Warnings from the tool result
- * @param label - How the warning names the parameter, e.g. `chain "Kick" pan`
+ * @param parts - How the warning names it, e.g. `chain "Kick"` and `pan`
  * @returns True when a matching warning is present
  */
-export function warnsDisabled(warnings: string[], label: string): boolean {
+export function warnsDisabled(warnings: string[], ...parts: string[]): boolean {
   return warnings.some(
-    (w) => w.includes(label) && w.includes("is disabled and was not changed"),
+    (w) =>
+      parts.every((part) => w.includes(part)) &&
+      w.includes("is disabled and was not changed"),
   );
 }

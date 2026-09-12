@@ -16,7 +16,7 @@ import {
 } from "../../../types.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   clipStateAssertion,
   MSG_CONNECT,
   TOOL_CONNECT,
@@ -65,7 +65,7 @@ export function createClipScenario(config: {
     ...(config.requires && { requires: config.requires }),
     liveSet: config.liveSet ?? LEAD_LIVE_SET,
     messages: [MSG_CONNECT, ...config.messages],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, config.clearSlots),
+    setup: (mcpClient) => clearClipSlots(mcpClient, config.clearSlots),
     assertions: [
       { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
       { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
@@ -108,7 +108,7 @@ export function leadClipNotationScenario(config: {
     clearSlots: [LEAD_SLOT_1],
     assertions: [
       clipStateAssertion(LEAD_SLOT_1, "4/4", config.check),
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+      { type: "token_usage", maxTokens: 1_500 },
     ],
   });
 }

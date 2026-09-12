@@ -56,7 +56,9 @@ function eightNoteCheck(
   perNote: (event: NoteEvent, index: number) => boolean,
 ): (events: NoteEvent[]) => boolean {
   return (events) => {
-    if (events.length !== 8) return false;
+    if (events.length !== 8) {
+      return false;
+    }
 
     const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
 
@@ -140,7 +142,9 @@ const ZIP_MESSAGE =
  * @returns true when the run is the exact duration×pitch zip
  */
 function checkZip(events: NoteEvent[]): boolean {
-  if (events.length !== ZIP_NOTE_COUNT) return false;
+  if (events.length !== ZIP_NOTE_COUNT) {
+    return false;
+  }
 
   const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
   let onset = 0;
@@ -221,6 +225,6 @@ export const barBeatZipStreams: EvalScenario = createClipScenario({
     clipStateAssertion(LEAD_SLOT_1, "4/4", checkZip),
     usesStreamZip,
     zipUsesRepeatNotation,
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    { type: "token_usage", maxTokens: 1_500 },
   ],
 });

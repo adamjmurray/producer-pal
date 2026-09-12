@@ -17,6 +17,7 @@ import {
   setupTrack,
   setupTrackWithQueuedMethods,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock the loop-deadline module to control deadline behavior
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
@@ -60,7 +61,9 @@ function setupTiling(tileCount: number) {
     ]),
   });
 
-  for (let i = 0; i < tileCount; i++) setupTileClip(String(200 + i));
+  for (let i = 0; i < tileCount; i++) {
+    setupTileClip(String(200 + i));
+  }
 
   return { sourceClip, track };
 }
@@ -143,8 +146,7 @@ describe("tileClipToRange deadline", () => {
 
     // A bare "timed out" tells the caller nothing about what landed; the beat
     // position is what makes the partial result actionable.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("placed 8 of 16 tiles, reaching 132 beats"),
     );
   });
@@ -231,7 +233,9 @@ function setupTilingOverExistingClip(tileCount: number, obstacleStart: number) {
     1,
   );
 
-  for (let i = 0; i < tileCount; i++) setupTileClip(String(200 + i));
+  for (let i = 0; i < tileCount; i++) {
+    setupTileClip(String(200 + i));
+  }
 
   return { sourceClip, track: LiveAPI.from(livePath.track(0)) };
 }

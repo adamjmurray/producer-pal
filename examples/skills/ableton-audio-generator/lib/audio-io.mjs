@@ -132,16 +132,22 @@ export function normalize(input, peak = 0.98) {
     for (const v of ch) {
       const a = Math.abs(v);
 
-      if (a > max) max = a;
+      if (a > max) {
+        max = a;
+      }
     }
   }
 
-  if (max === 0) return input; // silence stays silence rather than becoming NaN
+  if (max === 0) {
+    return input;
+  } // silence stays silence rather than becoming NaN
 
   const gain = peak / max;
 
   for (const ch of channels) {
-    for (let i = 0; i < ch.length; i++) ch[i] *= gain;
+    for (let i = 0; i < ch.length; i++) {
+      ch[i] *= gain;
+    }
   }
 
   return input;
@@ -174,8 +180,12 @@ export function declick(
   const nOut = Math.min(half, Math.round(fadeOut * sampleRate));
 
   for (const ch of channels) {
-    for (let i = 0; i < nIn; i++) ch[i] *= i / nIn;
-    for (let i = 0; i < nOut; i++) ch[frames - 1 - i] *= i / nOut;
+    for (let i = 0; i < nIn; i++) {
+      ch[i] *= i / nIn;
+    }
+    for (let i = 0; i < nOut; i++) {
+      ch[frames - 1 - i] *= i / nOut;
+    }
   }
 
   return input;
@@ -190,13 +200,17 @@ const clamp = (x) => (x < -1 ? -1 : x > 1 ? 1 : x);
  * @returns {Array<Float32Array|number[]>} channel list
  */
 function toChannels(input) {
-  if (ArrayBuffer.isView(input)) return [input];
+  if (ArrayBuffer.isView(input)) {
+    return [input];
+  }
   if (!Array.isArray(input) || input.length === 0) {
     throw new TypeError(
       "expected a channel buffer or a non-empty array of them",
     );
   }
-  if (typeof input[0] === "number") return [input];
+  if (typeof input[0] === "number") {
+    return [input];
+  }
 
   return input;
 }
@@ -229,8 +243,12 @@ function parseWav(b) {
       sampleRate = b.readUInt32LE(o + 12);
       bits = b.readUInt16LE(o + 22);
     }
-    if (id === "fact") factFrames = b.readUInt32LE(o + 8);
-    if (id === "data") dataBytes = size;
+    if (id === "fact") {
+      factFrames = b.readUInt32LE(o + 8);
+    }
+    if (id === "data") {
+      dataBytes = size;
+    }
 
     o += 8 + size + (size % 2);
   }
@@ -314,13 +332,18 @@ function selfTest() {
 
   const failures = checks.filter((c) => !c.ok);
 
-  for (const c of checks)
+  for (const c of checks) {
     process.stdout.write(`${c.ok ? "ok  " : "FAIL"} ${c.label}\n`);
+  }
   process.stdout.write(
     `\n${checks.length - failures.length}/${checks.length} passed\n`,
   );
 
-  if (failures.length > 0) process.exit(1);
+  if (failures.length > 0) {
+    process.exit(1);
+  }
 }
 
-if (process.argv.includes("--selftest")) selfTest();
+if (process.argv.includes("--selftest")) {
+  selfTest();
+}

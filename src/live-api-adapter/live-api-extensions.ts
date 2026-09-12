@@ -238,7 +238,9 @@ if (typeof LiveAPI !== "undefined") {
     predicate: (child: LiveAPI) => boolean,
   ): boolean {
     for (const id of this.getChildIds(name)) {
-      if (predicate(buildOrReuse(id))) return true;
+      if (predicate(buildOrReuse(id))) {
+        return true;
+      }
     }
 
     return false;
@@ -286,6 +288,19 @@ if (typeof LiveAPI !== "undefined") {
 
     // Set in Live's color format (0x00RRGGBB)
     this.set("color", (r << 16) | (g << 8) | b);
+  };
+
+  /**
+   * Get the object's name as a string. Live hands back an all-digit name
+   * (e.g. a locator, chain, or track named "5678") as a number, not a
+   * string — this normalizes that, and reports "" instead of "undefined"
+   * for an object with no name property.
+   * @returns The name, always a string
+   */
+  LiveAPI.prototype.getName = function (this: LiveAPI): string {
+    const raw = this.getProperty("name") as string | number | undefined;
+
+    return String(raw ?? "");
   };
 
   /**
@@ -395,7 +410,9 @@ if (typeof LiveAPI !== "undefined") {
     Object.defineProperty(LiveAPI.prototype, "deviceIndex", {
       get: function (this: LiveAPI) {
         const matches = this.path.match(/devices (\d+)/g);
-        if (!matches || matches.length === 0) return null;
+        if (!matches || matches.length === 0) {
+          return null;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length check above guarantees element exists
         const lastMatch = matches.at(-1)!.match(/devices (\d+)/);
         return lastMatch ? Number(lastMatch[1]) : null;

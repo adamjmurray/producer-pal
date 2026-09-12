@@ -72,11 +72,17 @@ export function setupAppViewMock(
       is_view_visible: (...args: unknown[]) => {
         const view = args[0] as string;
 
-        if (view === DETAIL_CLIP_VIEW_NAME && isDetailClipVisible) return 1;
+        if (view === DETAIL_CLIP_VIEW_NAME && isDetailClipVisible) {
+          return 1;
+        }
 
-        if (view === DETAIL_DEVICE_VIEW_NAME && isDetailDeviceVisible) return 1;
+        if (view === DETAIL_DEVICE_VIEW_NAME && isDetailDeviceVisible) {
+          return 1;
+        }
 
-        if (view === BROWSER_VIEW_NAME && showBrowser) return 1;
+        if (view === BROWSER_VIEW_NAME && showBrowser) {
+          return 1;
+        }
 
         return 0;
       },
@@ -146,6 +152,29 @@ export function setupSelectedTrackMock(options?: {
       returnTrackIndex: exists ? returnTrackIndex : null,
       has_midi_input: hasMidiInput ? 1 : 0,
     },
+  });
+}
+
+/**
+ * Register the selected-scene mock behind `live_set view selected_scene`.
+ * @param options - Which scene is selected, if any
+ * @returns The registered scene mock
+ */
+export function setupSelectedSceneMock(options?: {
+  exists: boolean;
+  sceneIndex?: number;
+  id?: string;
+}): RegisteredMockObject {
+  const exists = options?.exists ?? false;
+  const sceneIndex = options?.sceneIndex ?? 0;
+
+  return registerMockObject(options?.id ?? (exists ? "selected-scene" : "0"), {
+    path: livePath.view.selectedScene,
+    type: "Scene",
+    // Live resolves the view path to the scene's own, which is where the
+    // scene's index — and so its path — is read from.
+    returnPath: exists ? livePath.scene(sceneIndex) : undefined,
+    properties: { sceneIndex: exists ? sceneIndex : null },
   });
 }
 
@@ -261,19 +290,8 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
   const songView = setupSongViewMock();
   const selectedTrack = setupSelectedTrackMock(state.selectedTrack);
 
-  const sceneExists = state.selectedScene?.exists ?? false;
   const clipExists = state.selectedClip?.exists ?? false;
-
-  const selectedScene = registerMockObject(
-    state.selectedScene?.id ?? (sceneExists ? "selected-scene" : "0"),
-    {
-      path: livePath.view.selectedScene,
-      type: "Scene",
-      properties: {
-        sceneIndex: sceneExists ? state.selectedScene?.sceneIndex : null,
-      },
-    },
-  );
+  const selectedScene = setupSelectedSceneMock(state.selectedScene);
 
   const selectedClip = registerMockObject(
     state.selectedClip?.id ?? (clipExists ? "selected-clip" : "0"),

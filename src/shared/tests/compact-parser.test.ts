@@ -227,7 +227,8 @@ describe("parseCompactJSLiteral - prototype pollution guard", () => {
     // property — exactly what JSON.parse produces (and what obj[key]= cannot).
     const descriptor = Object.getOwnPropertyDescriptor(result, "__proto__");
 
-    expect(descriptor).toMatchObject({
+    expect(descriptor).toStrictEqual({
+      value: { polluted: 1 },
       writable: true,
       enumerable: true,
       configurable: true,

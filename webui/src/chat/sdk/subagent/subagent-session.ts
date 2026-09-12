@@ -68,7 +68,9 @@ export function attachStashedTranscripts(
   for (let i = fromIndex; i < history.length; i++) {
     const msg = history[i] as ChatMessage;
 
-    if (msg.role !== "assistant") continue;
+    if (msg.role !== "assistant") {
+      continue;
+    }
 
     for (const entry of msg.toolResults ?? []) {
       if (
@@ -80,7 +82,9 @@ export function attachStashedTranscripts(
 
       const run = stash.get(entry.id);
 
-      if (!run) continue;
+      if (!run) {
+        continue;
+      }
 
       entry.subagentTranscript = run.transcript;
       entry.subagentIndex = run.index;

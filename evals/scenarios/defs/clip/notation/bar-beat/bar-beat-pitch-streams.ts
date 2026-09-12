@@ -90,10 +90,7 @@ function meterSteppingScenario(opts: {
     requires: { brackets: true },
     messages: opts.prompts,
     clearSlots: opts.slots,
-    assertions: [
-      ...opts.melodies,
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-    ],
+    assertions: [...opts.melodies, { type: "token_usage", maxTokens: 2_500 }],
   });
 }
 

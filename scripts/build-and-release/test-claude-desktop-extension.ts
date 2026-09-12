@@ -194,7 +194,10 @@ function logResponse(
 ): void {
   if (response.error) {
     console.log("❌ Error:", response.error);
-    if (response.raw) console.log("Raw data:", response.raw);
+
+    if (response.raw) {
+      console.log("Raw data:", response.raw);
+    }
 
     return;
   }

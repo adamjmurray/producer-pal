@@ -30,6 +30,25 @@
   // Maps a multiplicative operator character to its AST node type.
   const MULTIPLICATIVE_OP_TYPES = { "*": "multiply", "/": "divide", "%": "modulo" };
 
+  // Every function name the expression grammar accepts, for the unknownFunction
+  // error. Kept in step with the cyclicalFunctionName / otherFunctionName rules
+  // and `swing` by a parity test — a name here that the grammar rejects, or a
+  // rule name missing here, fails that test.
+  // A minimal correct call for each note-count op, for the two "you wrote it
+  // wrong" errors below.
+  function noteOpExample(name) {
+    if (name === "ratchet") return "ratchet(2)";
+    if (name === "repeat") return "repeat(1bar)";
+    if (name === "split") return "split(2|1)";
+    return "merge()";
+  }
+
+  const FUNCTION_NAMES = [
+    "abs", "ceil", "choose", "clamp", "clipseq", "cos", "curve", "floor",
+    "legato", "max", "min", "pow", "quant", "ramp", "rand", "reflect", "round",
+    "saw", "seq", "sin", "snap", "square", "step", "swing", "tri", "wrap",
+  ];
+
   // Borrow across bar lines so a `-n` range-bound offset can pull a position
   // earlier than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4).
   // The offset already produced a sub-1 `beat`; wrap it up into the previous
@@ -193,7 +212,7 @@ start
 // note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
 statement "statement"
-  = prefix:selectorPrefix? body:(noteOp / assignmentBody) {
+  = prefix:selectorPrefix? body:(noteOp / assignmentBody / badNoteOpWithoutParens) {
     const pitchRange = prefix?.pitchRange ?? null;
     const timeRange = prefix?.timeRange ?? null;
     const predicate = prefix?.predicate ?? null;
@@ -390,7 +409,7 @@ shorthand "shorthand assignment"
       return { parameter: "probability", operator: "set", expression: value };
     }
   / left:barDuration sign:("+" / "-") right:nDuration {
-      // Mixed `Nbar±n<frac>` shorthand (e.g. `1bar+n/4`, or `1bar-n/16` = almost
+      // Mixed `<count>bar±n<frac>` shorthand (e.g. `1bar+n/4`, or `1bar-n/16` = almost
       // a full bar), matching the bar|beat authoring token. Must precede the
       // bare `barDuration` branch so the ±n tail is consumed here, not stranded.
       // Desugars to the same add/subtract(barDuration, nDuration) node the full
@@ -681,6 +700,8 @@ primary
   / badPeriod
   / badNoteOpInExpression
   / badDeleteInExpression
+  / badVelocityShorthandInExpression
+  / unknownFunction
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
@@ -690,9 +711,34 @@ primary
 // noteOp rule first, so this never fires on correct usage.
 badNoteOpInExpression
   = name:("ratchet" / "repeat" / "merge" / "split") _ "(" {
-    const example = name === "ratchet" ? "ratchet(2)" : name === "repeat" ? "repeat(1bar)" : name === "split" ? "split(2|1)" : "merge()";
-    throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
+    throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${noteOpExample(name)}", not inside an expression.`);
   }
+
+// A name used as a function that no rule defines — reached only after every real
+// function, note-count op, and shorthand has been tried. Without it the parse
+// fails at column 1 with peggy's generic "Expected statement", which tells a
+// model nothing: `duration *= random(0.9, 0.98)` reported a bad `d`, and models
+// gave up on the DSL and hand-wrote the result instead of trying `rand`.
+unknownFunction
+  = name:$([A-Za-z][A-Za-z0-9_]*) &{ return !FUNCTION_NAMES.includes(name); } "(" {
+    throw new Error(`unknown function ${name}() — available: ${FUNCTION_NAMES.join(", ")}. Note-count operations (ratchet/repeat/split/merge) go on their own line, not in an expression.`);
+  }
+
+// A note-count op written without its parentheses (`C1: merge`). Tried after the
+// real noteOp rule and every assignment form, so the name can only be this
+// mistake. Without it the line fails with peggy's generic "Expected statement",
+// which a model reads as "merge isn't supported" — it then clears the clip and
+// rewrites the notes by hand, the exact thing the op exists to avoid.
+badNoteOpWithoutParens
+  = name:noteOpLikeName !"(" {
+    throw new Error(`${name} is a note-count operation and needs parentheses — write "${noteOpExample(name)}".`);
+  }
+
+noteOpLikeName
+  = "ratchet" { return "ratchet"; }
+  / "repeat" { return "repeat"; }
+  / "merge" { return "merge"; }
+  / "split" { return "split"; }
 
 // `delete` is the shorthand delete action (alias for `v0`), not a value. Matched
 // here only to raise a targeted error when used in an expression (e.g.
@@ -701,6 +747,24 @@ badNoteOpInExpression
 badDeleteInExpression
   = "delete" {
     throw new Error(`delete is a shorthand action, not a value — write it on its own line (optionally with a selector), e.g. "where(note.velocity < 40): delete", not "velocity = delete".`);
+  }
+
+// `vA-B` and `vN` are shorthand tokens, not values. Matched here only to raise a
+// targeted error when one is used in an expression (`velocity = v80-120`). A
+// valid bare shorthand reaches the shorthand rule first, so this never fires on
+// correct usage. Nothing else in expression position starts with `v` + a digit —
+// variables are all namespaced (`note.`, `clip.`, ...).
+//
+// Without it the line fails at column 1 with peggy's generic "Expected
+// statement", which names the selector's first letter and not the real mistake.
+// Models then abandon transforms and rewrite the clip's notes by hand rather
+// than move the token — the same giving-up unknownFunction was added to stop.
+badVelocityShorthandInExpression
+  = "v" min:unsignedInt "-" max:unsignedInt {
+    throw new Error(`v${min}-${max} is a shorthand, not a value — write it on its own line with the selector, e.g. "C1: v${min}-${max}", not "velocity = v${min}-${max}". It sets velocity and velocity_deviation together.`);
+  }
+  / "v" value:unsignedInt {
+    throw new Error(`v${value} is a shorthand, not a value — write the bare number ("velocity = ${value}") or the shorthand on its own line ("C1: v${value}").`);
   }
 
 nDuration "absolute duration value"
@@ -714,16 +778,16 @@ nDuration "absolute duration value"
 
 // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
 // the `n` sigil marks a note-value fraction (denominator required); bars are the
-// bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
+// bare `<count>bar` form. Matched only to raise a targeted "did you mean <count>bar" error.
 badBarDuration
   = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
-    throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
+    throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write <count>bar (e.g. ${last}bar).`);
   }
 
-// Meter-aware bar duration (`Nbar`): N bars = N * beats-per-bar musical beats
+// Meter-aware bar duration (`<count>bar`): N bars = N * beats-per-bar musical beats
 // (the same value as `N * clip.barDuration`). Matches the authoring/length-field
-// `Nbar` token so the duration vocabulary is uniform across grammars. The mixed
-// form `Nbar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
+// `<count>bar` token so the duration vocabulary is uniform across grammars. The mixed
+// form `<count>bar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
 // as `barDuration(1) + nDuration(1/4)`), so this rule matches only the bar token.
 barDuration "bar duration value"
   = bars:oneOrMoreInt "bar" "s"? {
@@ -817,6 +881,12 @@ otherFunctionName
   / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }
+  // Alias, deliberately absent from FUNCTION_NAMES: the unknown-function error
+  // should keep teaching the one canonical name. Must precede the rand
+  // alternative, or that one matches the prefix and the call fails on the
+  // leftover om. Keep quotes out of this comment: the parity test reads the
+  // rule body for quoted names.
+  / "random" { return "rand"; }
   / "rand" { return "rand"; }
   / "clipseq" { return "clipseq"; }
   / "seq" { return "seq"; }

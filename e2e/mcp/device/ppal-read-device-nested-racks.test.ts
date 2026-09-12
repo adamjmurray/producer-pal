@@ -78,6 +78,22 @@ describe("read-device on nested racks", () => {
     expect(hatChain.name).toBe("Hat");
   });
 
+  // The drumPads list is where a model finds out what pads exist. A nested
+  // rack's pads have no id, so the path is the only handle on them.
+  it("names a path on every pad it lists, including the id-less ones", async () => {
+    const kit = await readKitPads(ctx.client!);
+
+    for (const pad of kit.drumPads ?? []) {
+      expect(pad.path).toBe(`${KIT}/p${pad.pitch}`);
+    }
+
+    const subKit = await read(SUB_KIT, { include: ["drum-pads"] });
+    const hat = subKit.drumPads?.find((p) => p.pitch === "C3");
+
+    expect(hat?.id).toBeUndefined();
+    expect(hat?.path).toBe(`${SUB_KIT}/pC3`);
+  });
+
   // A path can pass through two drum pads. The segments after the first pad's
   // device used to be dropped, answering with the rack instead of what was
   // asked for — under the requested path, so it looked correct.
@@ -117,6 +133,9 @@ describe("read-device on nested racks", () => {
       const outer = await read("t0/d0", { include: ["drum-map"] });
 
       expect(Object.values(outer.drumMap ?? {})).toStrictEqual(EXPECTED_PADS);
+      // Without this the pads look like they hang off t0/d0, and a pad path
+      // built from the device that was read names nothing.
+      expect(outer.drumRackPath).toBe(KIT);
     });
 
     it("lists a pad holding a nested Drum Rack", async () => {
@@ -125,10 +144,34 @@ describe("read-device on nested racks", () => {
       expect(kit.drumMap?.F1).toBe("Sub Kit");
     });
 
+    // drum-map forces chains on to build the map, then strips them off the
+    // pads. Without putting the count back, those pads would report neither
+    // the array nor a count of it.
+    it("counts a pad's chains when the map strips the array away", async () => {
+      const kit = await read(KIT, { include: ["drum-map", "drum-pads"] });
+      const pads = kit.drumPads ?? [];
+
+      expect(pads.length).toBeGreaterThan(0);
+
+      for (const pad of pads) {
+        expect(pad.chains).toBeUndefined();
+        expect(pad.chainCount).toBeGreaterThan(0);
+      }
+
+      // With the array right there, the count is not sent twice.
+      const withChains = await readKitPads(ctx.client!);
+
+      for (const pad of withChains.drumPads ?? []) {
+        expect(pad.chainCount).toBeUndefined();
+        expect(pad.chains?.length).toBeGreaterThan(0);
+      }
+    });
+
     it("maps the nested rack's own pads", async () => {
       const subKit = await read(SUB_KIT, { include: ["drum-map"] });
 
       expect(subKit.drumMap).toStrictEqual({ C3: "Hat" });
+      expect(subKit.drumRackPath).toBe(SUB_KIT);
     });
 
     // Live types a rack as an instrument whether or not it holds anything, so

@@ -91,7 +91,10 @@ export async function runTrials(
       trialInfo,
     );
 
-    if (options.save !== false) await writeJsonResult(jsonResult);
+    if (options.save !== false) {
+      await writeJsonResult(jsonResult);
+    }
+
     printResultBlock(jsonResult);
     results.push(jsonResult);
   }
@@ -129,7 +132,10 @@ export async function emitSkipped(
     reason,
   );
 
-  if (ctx.options.save !== false) await writeJsonResult(skipped);
+  if (ctx.options.save !== false) {
+    await writeJsonResult(skipped);
+  }
+
   printResultBlock(skipped);
 
   return [skipped];

@@ -72,7 +72,9 @@ interface CallResult {
 function parseStats(text: string): CallStats | null {
   const match = STATS_PATTERN.exec(text);
 
-  if (match?.[1] == null || match[2] == null || match[3] == null) return null;
+  if (match?.[1] == null || match[2] == null || match[3] == null) {
+    return null;
+  }
 
   return {
     resolved: Number(match[1]),
@@ -116,7 +118,9 @@ function report(results: CallResult[]): void {
   const first = results[0];
   const last = results.at(-1);
 
-  if (first == null || last == null) return;
+  if (first == null || last == null) {
+    return;
+  }
 
   console.log(
     `\nfirst→last: ${first.ms.toFixed(0)} → ${last.ms.toFixed(0)} ms ` +
@@ -125,7 +129,9 @@ function report(results: CallResult[]): void {
 
   const repeats = results.slice(1);
 
-  if (repeats.length === 0) return;
+  if (repeats.length === 0) {
+    return;
+  }
 
   if (repeats.some(({ stats }) => stats == null)) {
     console.log(
@@ -154,7 +160,9 @@ function report(results: CallResult[]): void {
  * @returns The call count to use
  */
 function callCount(value: string | undefined, fallback: number): number {
-  if (value == null) return fallback;
+  if (value == null) {
+    return fallback;
+  }
 
   const parsed = Number(value);
 
@@ -173,7 +181,9 @@ function callCount(value: string | undefined, fallback: number): number {
  * @returns The parsed arguments
  */
 function toolArgs(value: string | undefined): Record<string, unknown> {
-  if (value == null) return {};
+  if (value == null) {
+    return {};
+  }
 
   let parsed: Record<string, unknown> | null = null;
 

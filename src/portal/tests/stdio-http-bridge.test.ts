@@ -15,13 +15,17 @@ import {
 import {
   CLIENT_TOOL_TIMEOUT_MS,
   DISABLED_TOOLS_HEADER,
+  FORMAT_HEADER,
+  LIVE_API_HEADER,
+  SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config.ts";
+import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import {
   callToolRequest,
   callToolSuccessfully,
   callToolWithMcpError,
   expectBrandedErrorText,
-  expectPushedConfig,
+  expectRequestHeaders,
   getHandler,
   mockClient,
   mockLiveApiTool,
@@ -371,64 +375,83 @@ describe("StdioHttpBridge", () => {
       expect(bridge.isConnected).toBe(true);
     });
 
-    it("pushes small model mode config after connection when enabled", async () => {
-      await expectPushedConfig(
+    it("sends small model mode as a header when enabled", async () => {
+      await expectRequestHeaders(
         { smallModelMode: true },
-        { smallModelMode: true },
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        'Pushed config overrides to server: {"smallModelMode":true}',
+        { [SMALL_MODEL_MODE_HEADER]: "true" },
       );
     });
 
-    it("pushes smallModelMode: false to force the setting off", async () => {
-      await expectPushedConfig(
+    it("sends smallModelMode: false to force the setting off", async () => {
+      await expectRequestHeaders(
         { smallModelMode: false },
-        { smallModelMode: false },
+        { [SMALL_MODEL_MODE_HEADER]: "false" },
       );
     });
 
-    it("pushes notation config after connection when set", async () => {
-      await expectPushedConfig(
+    it("sends notation as a header when set", async () => {
+      await expectRequestHeaders(
         { notation: "midi-json" },
-        { notation: "midi-json" },
+        { [NOTATION_HEADER]: "midi-json" },
       );
     });
 
-    it("pushes both small model mode and notation in one request", async () => {
-      await expectPushedConfig(
-        { smallModelMode: true, notation: "stark" },
-        { smallModelMode: true, notation: "stark" },
+    it("sends every set option in one header block", async () => {
+      await expectRequestHeaders(
+        {
+          smallModelMode: true,
+          notation: "stark",
+          jsonOutput: true,
+          liveApiEnabled: true,
+          disabledTools: ["ppal-create-clip"],
+        },
+        {
+          [SMALL_MODEL_MODE_HEADER]: "true",
+          [NOTATION_HEADER]: "stark",
+          [FORMAT_HEADER]: "json",
+          [LIVE_API_HEADER]: "true",
+          [DISABLED_TOOLS_HEADER]: "ppal-create-clip",
+        },
       );
     });
 
-    it("pushes liveApiEnabled config after connection when enabled", async () => {
-      await expectPushedConfig(
+    it("sends liveApiEnabled as a header when enabled", async () => {
+      // Per-client, not device-global: an agent being evaluated against the same
+      // device must not inherit the Direct Live API tool from another portal.
+      await expectRequestHeaders(
         { liveApiEnabled: true },
-        { liveApiEnabled: true },
+        { [LIVE_API_HEADER]: "true" },
       );
     });
 
-    it("pushes liveApiEnabled: false to force the tool off", async () => {
-      await expectPushedConfig(
+    it("sends liveApiEnabled: false to force the tool off", async () => {
+      await expectRequestHeaders(
         { liveApiEnabled: false },
-        { liveApiEnabled: false },
+        { [LIVE_API_HEADER]: "false" },
       );
     });
 
-    it("pushes JSON output config after connection when requested", async () => {
-      await expectPushedConfig({ jsonOutput: true }, { jsonOutput: true });
+    it("sends JSON output as the format header when requested", async () => {
+      await expectRequestHeaders(
+        { jsonOutput: true },
+        { [FORMAT_HEADER]: "json" },
+      );
     });
 
-    it("pushes compact output config when explicitly requested", async () => {
-      await expectPushedConfig({ jsonOutput: false }, { jsonOutput: false });
+    it("sends compact output when explicitly requested", async () => {
+      await expectRequestHeaders(
+        { jsonOutput: false },
+        { [FORMAT_HEADER]: "compact" },
+      );
     });
 
-    it("does not push config when no overrides are set", async () => {
-      await expectPushedConfig({}, null);
+    it("sends no headers when no options are set", async () => {
+      await expectRequestHeaders({}, null);
     });
 
-    it("re-pushes config on a later request when already connected", async () => {
+    it("does not re-contact the device on a later request when connected", async () => {
+      // The settings ride on every request, so there is no device-side state to
+      // re-assert — the old POST /config push ran before every single call.
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
         .mockResolvedValue(new Response("{}"));
@@ -438,33 +461,11 @@ describe("StdioHttpBridge", () => {
 
       mockClient.connect.mockResolvedValue(undefined);
 
-      await smBridge._ensureHttpConnection(); // connects + pushes
-      await smBridge._ensureHttpConnection(); // already connected → re-pushes
-
-      const configPosts = fetchSpy.mock.calls.filter(
-        (call) => call[0] === "http://localhost:3350/config",
-      );
-
-      expect(configPosts).toHaveLength(2);
-      fetchSpy.mockRestore();
-    });
-
-    it("handles config push failure gracefully", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockRejectedValue(new Error("Network error"));
-      const smBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        smallModelMode: true,
-      }) as unknown as TestBridge;
-
-      mockClient.connect.mockResolvedValue(undefined);
-
+      await smBridge._ensureHttpConnection();
       await smBridge._ensureHttpConnection();
 
-      expect(smBridge.isConnected).toBe(true);
-      expect(logger.error).toHaveBeenCalledWith(
-        "Failed to push config overrides: Network error",
-      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(mockClient.connect).toHaveBeenCalledTimes(1);
       fetchSpy.mockRestore();
     });
 

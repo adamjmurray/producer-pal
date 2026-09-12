@@ -19,11 +19,8 @@ use Producer Pal.
   </div>
 </div>
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/). Live 12.4 or later
-  is recommended — some features don't work on older versions of Live. Use the
-  version of Max bundled with Live, or make sure your standalone Max is up to
-  date.
+<!--@include: ../_partials/live-version.md-->
+
 - [Claude Desktop](https://claude.ai/download) (requires Anthropic account)
 
 ## Installation Steps
@@ -89,15 +86,11 @@ defaults are recommended.
 - **Ableton device URL** — where to reach the Max for Live device (default
   `http://localhost:3350`). Change only if you moved the device's port or are
   connecting over the network.
-- **Allow configuration overrides** — off by default. While off, the settings
-  below are ignored and Producer Pal uses whatever is set on the device and in
-  the [chat UI](/guide/chat-ui). Turn it on to let these settings override the
-  device — including forcing a setting _off_.
-- **MIDI notation** — overrides how Producer Pal reads and writes clip notes.
-  Three valid values: `barbeat` (recommended for Claude Sonnet, Opus, and
-  Fable), `stark` (pairs well with **Small model mode**), or `midi-json` (pairs
-  well with **JSON output**). Leave blank, or enter anything else, to keep the
-  device's current setting (`barbeat` by default).
+- **MIDI notation** — how Producer Pal reads and writes clip notes. Three valid
+  values: `barbeat` (recommended for Claude Sonnet, Opus, and Fable), `stark`
+  (pairs well with **Small model mode**), or `midi-json` (pairs well with **JSON
+  output**). Leave blank, or enter anything else, to follow the device's current
+  setting (`barbeat` by default).
 - **Small model mode** — simplifies the tools and instructions for smaller
   models. May improve results with **Claude Haiku**; not recommended otherwise,
   since Claude Sonnet, Opus, and Fable handle the full toolset.
@@ -116,16 +109,16 @@ defaults are recommended.
   [skills](/features#skills) that teach it, so every conversation gets smaller.
   `ppal-connect` is always kept.
 
-::: info Device stays authoritative by default
+::: info These settings are the extension's own
 
-The settings below **Allow configuration overrides** take effect only when that
-toggle is on. When they do, MIDI notation, Small model mode, Direct Live API,
-and JSON output are pushed to the device as global settings — they also change
-in the [chat UI](/guide/chat-ui) and for any other connected MCP client. While
-the toggle is off, the extension leaves every device setting untouched.
+They apply to Claude Desktop and nothing else — the [chat UI](/guide/chat-ui)
+and any other connected MCP client keep their own settings.
 
-**Tools** and **Disable tools** are the exception: they apply to this extension
-only, and never change what the chat UI or another client can reach.
+That cuts both ways for the three checkboxes: **Small model mode**, **Direct
+Live API**, and **JSON output** are off here unless you turn them on here.
+Switching them on in the device's Setup tab won't change what Claude Desktop
+sees. **MIDI notation**, **Tools**, and **Disable tools** are different — leave
+one blank and the extension follows the device.
 
 :::
 

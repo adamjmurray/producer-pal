@@ -16,7 +16,10 @@ import { type UIMessage, type UIPart } from "#webui/types/messages";
 export function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastMessage = messages.at(-1);
 
-  if (!lastMessage) return;
+  if (!lastMessage) {
+    return;
+  }
+
   const lastPart = lastMessage.parts.at(-1);
 
   if (lastPart?.type === "thought") {
@@ -46,7 +49,9 @@ export function isErrorResult(result: string): boolean {
 export function safeParseToolArgs(
   argsString: string | undefined | null,
 ): Record<string, unknown> {
-  if (!argsString) return {};
+  if (!argsString) {
+    return {};
+  }
 
   try {
     return JSON.parse(argsString) as Record<string, unknown>;
@@ -61,7 +66,10 @@ export function safeParseToolArgs(
  * @param content - Text content to add
  */
 export function addTextContent(parts: UIPart[], content: string): void {
-  if (!content) return;
+  if (!content) {
+    return;
+  }
+
   const lastPart = parts.at(-1);
 
   if (lastPart?.type === "text") {
@@ -69,4 +77,15 @@ export function addTextContent(parts: UIPart[], content: string): void {
   } else {
     parts.push({ type: "text", content });
   }
+}
+
+/**
+ * Concatenate a user message's text as shown on screen.
+ * @param message - User message to format
+ * @returns Concatenated text content
+ */
+export function formatUserContent(message: UIMessage): string {
+  return message.parts
+    .map((part) => ("content" in part ? part.content : ""))
+    .join("");
 }

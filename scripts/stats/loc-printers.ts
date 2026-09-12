@@ -88,8 +88,13 @@ export function printCliTitle(title: string): void {
  * @returns Styler for the row
  */
 function groupRowColor(group: string, category: string): Styler {
-  if (category === "test") return (s) => styleText("magenta", s);
-  if (CODE_GROUPS.has(group as never)) return (s) => styleText("green", s);
+  if (category === "test") {
+    return (s) => styleText("magenta", s);
+  }
+
+  if (CODE_GROUPS.has(group as never)) {
+    return (s) => styleText("green", s);
+  }
 
   return (s) => styleText("cyan", s);
 }
@@ -194,8 +199,13 @@ const WEB_LANGUAGES = new Set(["HTML", "CSS"]);
  * @returns Styler function for the language category
  */
 function langColor(language: string): Styler {
-  if (CODE_LANGUAGES.has(language)) return (s) => styleText("green", s);
-  if (WEB_LANGUAGES.has(language)) return (s) => styleText("cyan", s);
+  if (CODE_LANGUAGES.has(language)) {
+    return (s) => styleText("green", s);
+  }
+
+  if (WEB_LANGUAGES.has(language)) {
+    return (s) => styleText("cyan", s);
+  }
 
   return (s) => s;
 }

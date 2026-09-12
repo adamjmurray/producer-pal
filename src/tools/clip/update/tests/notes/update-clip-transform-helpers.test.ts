@@ -11,13 +11,22 @@ import {
   buildClipContext,
 } from "../../helpers/update-clip-transform-helpers.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 function createSessionClipMock(length = 8) {
   return {
     getProperty: vi.fn((prop: string) => {
-      if (prop === "length") return length;
-      if (prop === "is_midi_clip") return 1;
-      if (prop === "is_arrangement_clip") return 0;
+      if (prop === "length") {
+        return length;
+      }
+
+      if (prop === "is_midi_clip") {
+        return 1;
+      }
+
+      if (prop === "is_arrangement_clip") {
+        return 0;
+      }
 
       return 0;
     }),
@@ -62,9 +71,17 @@ describe("update-clip-transform-helpers", () => {
       // = 12 musical beats. A `/` mutation would give 6 / 2 = 3.
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
-          if (prop === "length") return 6;
-          if (prop === "is_midi_clip") return 1;
-          if (prop === "is_arrangement_clip") return 0;
+          if (prop === "length") {
+            return 6;
+          }
+
+          if (prop === "is_midi_clip") {
+            return 1;
+          }
+
+          if (prop === "is_arrangement_clip") {
+            return 0;
+          }
 
           return 0;
         }),
@@ -112,10 +129,21 @@ describe("update-clip-transform-helpers", () => {
       // clipDuration = (end_time 10 - start_time 4) * 2 = 12 (a `/` gives 3).
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
-          if (prop === "is_arrangement_clip") return 1;
-          if (prop === "start_time") return 4;
-          if (prop === "end_time") return 10;
-          if (prop === "length") return 8;
+          if (prop === "is_arrangement_clip") {
+            return 1;
+          }
+
+          if (prop === "start_time") {
+            return 4;
+          }
+
+          if (prop === "end_time") {
+            return 10;
+          }
+
+          if (prop === "length") {
+            return 8;
+          }
 
           return 0;
         }),
@@ -130,10 +158,21 @@ describe("update-clip-transform-helpers", () => {
     it("uses arrangement length (end_time - start_time) for arrangement clips", () => {
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
-          if (prop === "is_arrangement_clip") return 1;
-          if (prop === "start_time") return 4; // starts at beat 4
-          if (prop === "end_time") return 20; // ends at beat 20
-          if (prop === "length") return 8; // content length (shorter)
+          if (prop === "is_arrangement_clip") {
+            return 1;
+          }
+
+          if (prop === "start_time") {
+            return 4;
+          } // starts at beat 4
+
+          if (prop === "end_time") {
+            return 20;
+          } // ends at beat 20
+
+          if (prop === "length") {
+            return 8;
+          } // content length (shorter)
 
           return 0;
         }),
@@ -309,9 +348,10 @@ describe("update-clip-transform-helpers", () => {
       );
 
       expect(result.noteCount).toBe(0);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("transforms ignored: clip has no notes"),
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(
+          "transforms ignored: clip id undefined has no notes to transform",
+        ),
       );
       // Should NOT call remove_notes_extended or add_new_notes
       expect(mockClip.call).not.toHaveBeenCalledWith(

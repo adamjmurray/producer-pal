@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Token usage assertion - informational tracking of token consumption
+ * Token usage assertion - informational tracking of what the model produced,
  * relative to a target budget. Does not contribute to pass/fail scoring.
  */
 
@@ -16,7 +16,8 @@ import {
 } from "../types.ts";
 
 /**
- * Track token usage relative to a target budget.
+ * Track output-token usage relative to a target budget. See
+ * `TokenUsageAssertion` for why input tokens are not graded.
  * Returns earned=0, maxScore=0 so it doesn't affect correctness scoring.
  *
  * @param assertion - The token usage assertion to evaluate
@@ -34,7 +35,7 @@ export function assertTokenUsage(
 
   const total = targetTurns
     .flatMap((t) => t.stepUsages ?? [])
-    .reduce((sum, s) => sum + (s[assertion.metric] ?? 0), 0);
+    .reduce((sum, s) => sum + (s.outputTokens ?? 0), 0);
 
   const percentage = Math.round((total / assertion.maxTokens) * 100);
 
@@ -42,7 +43,7 @@ export function assertTokenUsage(
     assertion,
     earned: 0,
     maxScore: 0,
-    message: `${assertion.metric} ${formatTokenLabel(total)} / ${formatTokenLabel(assertion.maxTokens)} target (${percentage}%)`,
+    message: `outputTokens ${formatTokenLabel(total)} / ${formatTokenLabel(assertion.maxTokens)} target (${percentage}%)`,
     details: { total, target: assertion.maxTokens, percentage },
   };
 }

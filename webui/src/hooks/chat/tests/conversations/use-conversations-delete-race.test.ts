@@ -7,10 +7,12 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act } from "@testing-library/preact";
+import {
+  waitForHookState,
+  openGate,
+} from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
   listAllConversationSummaries,
@@ -18,20 +20,20 @@ import {
 } from "#webui/lib/conversation-db";
 import { importConversations } from "#webui/lib/conversation-transfer";
 import {
-  createConversationsProps,
+  type ConversationsResult,
+  type ConversationsState,
   resetConversationsTestState,
   saveWithMessage,
   setupConversationsHook as setupHook,
-  waitForEffects,
+  setupForkHook,
 } from "./use-conversations-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
 
 /**
  * Spy on saveConversation so its next call blocks until released, then calls
  * through to the real implementation. Lets a test force a late autosave's DB
- * write to land *after* a delete completes — the resurrection window guarded by
- * canceledIdsRef. With the fix in place the guarded save never calls
- * saveConversation, so the gate simply goes unused.
+ * write to land *after* a delete completes — the resurrection window the store's
+ * markDeleted()/drain() pair guards. With the fix in place the guarded save
+ * never calls saveConversation, so the gate simply goes unused.
  * @returns release (let the gated write proceed) and restore (undo the spy)
  */
 function gateNextSave(): { release: () => void; restore: () => void } {
@@ -39,10 +41,10 @@ function gateNextSave(): { release: () => void; restore: () => void } {
   const [gate, release] = openGate();
   const spy = vi
     .spyOn(conversationDb, "saveConversation")
-    .mockImplementationOnce(async (record, protectedIds) => {
+    .mockImplementationOnce(async (record, options) => {
       await gate;
 
-      return await original(record, protectedIds);
+      return await original(record, options);
     });
 
   return { release, restore: () => spy.mockRestore() };
@@ -143,21 +145,16 @@ async function expectBulkDeleteDropsNeverSavedLateAutosave(
  *
  * Stop deliberately keeps that signal, so the teardown autosave the delete
  * triggers still arrives wanting to branch. Branching mints a fresh id the
- * canceled set can't cover, so the save wrote a sibling of the row being deleted
- * — and moved the active id onto it, which skipped the delete's own clear. The
- * conversation was gone but the view still showed it.
+ * delete's own marking can't cover, so the save wrote a sibling of the row being
+ * deleted — and moved the active id onto it, which skipped the delete's own
+ * clear. The conversation was gone but the view still showed it.
  * @param deleteOp - the delete under test, given the hook result and the saved id
  */
 async function expectForkDroppedOnDelete(
   deleteOp: (result: HookHandle["result"], savedId: string) => Promise<void>,
 ): Promise<void> {
-  const { props, state } = createConversationsProps();
-  const pendingForkRef = { current: null as PendingFork | null };
-  const { result } = renderHook(() =>
-    useConversations({ ...props, pendingForkRef }),
-  );
+  const { props, state, result, pendingForkRef } = await setupForkHook();
 
-  await waitForEffects();
   await saveWithMessage(state, result, "original");
 
   const savedId = result.current.activeConversationId!;
@@ -175,6 +172,46 @@ async function expectForkDroppedOnDelete(
     // No sibling branched off the row that just went away.
     async () => expect(await listAllConversationSummaries()).toHaveLength(0),
   );
+}
+
+/**
+ * Hold the next row removal open until the returned release is called.
+ * @param method - The conversation-db delete the sweep under test runs
+ * @returns release (let the removal finish) and restore (undo the spy)
+ */
+function gateNextDelete(
+  method: "deleteConversation" | "deleteUnbookmarkedConversations",
+): { release: () => void; restore: () => void } {
+  const original = conversationDb[method] as (id?: string) => Promise<void>;
+  const [gate, release] = openGate();
+  const spy = vi
+    .spyOn(conversationDb, method)
+    .mockImplementationOnce(async (id?: string) => {
+      await gate;
+
+      await original(id);
+    });
+
+  return { release, restore: () => spy.mockRestore() };
+}
+
+/**
+ * Save one conversation, start another and save that too.
+ * @param state - Mock chat-history state
+ * @param result - Hook result ref
+ * @returns The two conversation ids, in the order they were saved
+ */
+async function saveTwo(
+  state: ConversationsState,
+  result: ConversationsResult,
+): Promise<[string, string]> {
+  await saveWithMessage(state, result, "first");
+  const first = result.current.activeConversationId!;
+
+  await act(() => Promise.resolve(result.current.startNewConversation()));
+  await saveWithMessage(state, result, "second");
+
+  return [first, result.current.activeConversationId!];
 }
 
 describe("useConversations delete/save races", () => {
@@ -319,11 +356,11 @@ describe("useConversations delete/save races", () => {
   });
 
   it("re-enables autosave after a deleted conversation is undone", async () => {
-    // F5: deleteConversation marks the id canceled to block a resurrecting late
-    // save, but the flag was add-only. Undo restores the row under the same id
-    // (raw saveConversation, bypassing the guard); without un-canceling, every
-    // later autosave for it bailed at the guard, silently dropping post-undo
-    // messages. Undo must clear the flag so saving works again.
+    // F5: deleteConversation marks the slot deleted to block a resurrecting
+    // late save, and that marking used to be one-way. Undo restores the row
+    // under the same id (raw saveConversation, bypassing the guard); without
+    // clearing the mark, every later autosave for it bailed, silently dropping
+    // post-undo messages. Undo has to make the slot saveable again.
     const { state, result } = await setupHook();
 
     await saveWithMessage(state, result, "original");
@@ -340,7 +377,7 @@ describe("useConversations delete/save races", () => {
     await act(async () => {
       result.current.notification!.action!.onClick();
     });
-    await waitFor(async () =>
+    await waitForHookState(async () =>
       expect(await loadConversation(savedId)).toBeDefined(),
     );
 
@@ -362,9 +399,9 @@ describe("useConversations delete/save races", () => {
     expect(reloaded?.messages).toHaveLength(2);
   });
   it("re-enables autosave after a deleted conversation is re-imported", async () => {
-    // The canceled-id tombstone is add-only, and export/import keeps ids: a
-    // deleted conversation that comes back through import was silently
-    // unsaveable for the rest of the session. Opening it lifts the tombstone.
+    // The deleted marking used to be one-way, and export/import keeps ids: a
+    // deleted conversation that came back through import was silently
+    // unsaveable for the rest of the session. Opening it clears the marking.
     const { state, result } = await setupHook();
 
     await saveWithMessage(state, result, "original");
@@ -484,8 +521,116 @@ describe("useConversations delete/save races", () => {
     await act(async () => {
       result.current.notification!.action!.onClick();
     });
-    await waitFor(async () =>
+    await waitForHookState(async () =>
       expect(await loadConversation(keptId)).toBeDefined(),
     );
+  });
+});
+
+// A delete decides whether to tear the view down after its awaits, so the
+// answer has to come from the conversation that is live by then: the user can
+// open another one while the delete runs, and clearing the view then throws
+// away what they just opened.
+describe("useConversations delete vs. switch", () => {
+  beforeEach(resetConversationsTestState);
+
+  it("keeps the conversation opened while the delete was running", async () => {
+    const { state, result } = await setupHook();
+    const [doomed, opened] = await saveTwo(state, result);
+
+    await act(() => result.current.switchConversation(doomed));
+
+    const { release, restore } = gateNextDelete("deleteConversation");
+    let deleting!: Promise<void>;
+
+    await act(async () => {
+      deleting = result.current.deleteConversation(doomed);
+      await result.current.switchConversation(opened);
+      release();
+      await deleting;
+    });
+
+    expect(result.current.activeConversationId).toBe(opened);
+    expect(await conversationDb.loadConversation(doomed)).toBeUndefined();
+    restore();
+  });
+
+  it("keeps a bookmarked conversation opened while a sweep was running", async () => {
+    const { state, result } = await setupHook();
+    const [doomed, opened] = await saveTwo(state, result);
+
+    await act(() => result.current.toggleBookmark(opened));
+    await act(() => result.current.switchConversation(doomed));
+
+    const { release, restore } = gateNextDelete(
+      "deleteUnbookmarkedConversations",
+    );
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      await result.current.switchConversation(opened);
+      release();
+      await sweeping;
+    });
+
+    expect(result.current.activeConversationId).toBe(opened);
+    restore();
+  });
+});
+
+// A sweep's mark blocks patchActiveMeta, so a bookmark toggled while the sweep
+// is in flight lands in the DB but can't reach metaRef — the sweep's own
+// re-derived "did it clear the live conversation" question would get that
+// wrong. It has to check the DB instead.
+describe("useConversations delete vs. bookmark", () => {
+  beforeEach(resetConversationsTestState);
+
+  it("does not tear down or wipe a live conversation bookmarked mid-sweep", async () => {
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "keep me now");
+    const liveId = result.current.activeConversationId!;
+
+    const { release, restore } = gateNextDelete(
+      "deleteUnbookmarkedConversations",
+    );
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      await result.current.toggleBookmark(liveId);
+      release();
+      await sweeping;
+    });
+
+    expect(result.current.activeConversationId).toBe(liveId);
+
+    const reloaded = await loadConversation(liveId);
+
+    expect(reloaded?.bookmarked).toBe(true);
+    restore();
+  });
+
+  it("leaves the live conversation alone when the survival check fails", async () => {
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "keep me");
+    const liveId = result.current.activeConversationId!;
+
+    // Only the sweep's own survival check sees this: it's the next call to
+    // loadConversation once the conversation above has already saved.
+    const spy = vi
+      .spyOn(conversationDb, "loadConversation")
+      .mockRejectedValueOnce(new Error("simulated DB failure"));
+
+    // The row really is unbookmarked, so the sweep genuinely removes it —
+    // only confirming that failed. A failed check must not be treated as
+    // proof the live conversation was swept.
+    await act(() => result.current.deleteUnbookmarkedConversations());
+
+    expect(result.current.activeConversationId).toBe(liveId);
+    expect(result.current.conversations).toStrictEqual([]);
+    spy.mockRestore();
   });
 });

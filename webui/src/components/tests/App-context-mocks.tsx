@@ -71,7 +71,10 @@ export function ContextTabsStub(
   // Publish the test-set guard upward while mounted, as the real ContextTabs
   // does in an effect (setting a ref during render is disallowed).
   useEffect(() => {
-    if (confirmLeaveRef == null) return undefined;
+    if (confirmLeaveRef == null) {
+      return undefined;
+    }
+
     confirmLeaveRef.current = stubLeaveGuard;
 
     return () => {

@@ -376,7 +376,7 @@ describe("walkLiveSet", () => {
   it("summarizes what it collected", async () => {
     const dump = await runWalk(fakeLiveSet());
 
-    expect(dump.meta).toMatchObject({
+    expect(dump.meta).toStrictEqual({
       generator: "scripts/live-api/dump-live-set",
       liveVersion: "12.4.3",
       roots: ["live_set"],
@@ -385,6 +385,10 @@ describe("walkLiveSet", () => {
       types: 7,
       failedReads: 0,
       truncated: false,
+      redactedValues: 1,
+      skippedChildren: ["canonical_parent"],
+      // Request count tracks the walker's internals, not the dump's contract.
+      requests: expect.any(Number),
     });
     expect(dump.meta.requests).toBeGreaterThan(0);
   });

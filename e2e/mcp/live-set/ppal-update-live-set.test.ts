@@ -11,6 +11,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -154,6 +156,37 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  it("reports a sharp scale root by the flat name Live stores", async () => {
+    // Live keeps only a pitch class number, so it has no sharp spelling to give
+    // back. The write result has to say what every later read will say.
+    const update = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { scale: "F# Dorian" },
+    });
+
+    const updated = parseToolResult<UpdateResult>(update);
+
+    expect(updated.scale).toBe("Gb Dorian");
+    // Without this note a model reads the changed spelling as a failed write.
+    expect(updated.$meta).toContain(
+      "Scale roots are spelled with flats, so F# comes back as Gb — " +
+        "same scale, set correctly.",
+    );
+
+    await sleep(100);
+    const after = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+
+    expect(parseToolResult<ReadResult>(after).scale).toBe("Gb Dorian");
+
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { scale: "" },
+    });
+  });
+
   it("creates, renames, and deletes locators", async () => {
     // Locator IDs are positional and assignment only sticks against real Live,
     // so this exercises the full create/rename/delete cycle end-to-end. The set
@@ -253,6 +286,72 @@ describe("ppal-update-live-set", () => {
 
     expect(locators.length).toBe(initialLocators.length);
   });
+
+  it("takes a numeric locator name", async () => {
+    // Models send numbers where the schema says string, and the MCP SDK
+    // validates before our handler runs, so only a real call proves the
+    // coercion is in the schema the server registered.
+    const created = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "4|1",
+          locatorName: 4321,
+        },
+      }),
+    );
+
+    expect(created.locator?.name).toBe("4321");
+
+    await sleep(100);
+
+    // Read back the name: the read path has to report it like every other name.
+    const locators = await readLocatorList();
+    const found = locators.find((l) => l.name === "4321");
+
+    expect(found).toBeDefined();
+
+    // Delete by that same name — proves the match casts it too, not just read.
+    const deleted = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorName: "4321" },
+      }),
+    );
+
+    expect(deleted.locator?.operation).toBe("deleted");
+  });
+
+  it("refuses locator args sent with no locatorOperation", async () => {
+    // These used to be dropped in silence: the call returned a bare id and
+    // created nothing, so a model that knew the locator params but not the
+    // operation param had no way to tell.
+    const before = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const locatorsBefore = parseToolResult<ReadResult>(before).locators ?? [];
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { locatorTime: "45|1", locatorName: "Chorus" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "locatorTime, locatorName require locatorOperation",
+    );
+
+    const after = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+
+    expect(parseToolResult<ReadResult>(after).locators ?? []).toStrictEqual(
+      locatorsBefore,
+    );
+  });
 });
 
 async function readLocatorList(): Promise<LocatorInfo[]> {
@@ -286,6 +385,7 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string[];
+  $meta?: string[];
   locator?: {
     operation: string;
     id?: string;

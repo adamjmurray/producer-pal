@@ -13,13 +13,24 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolWarnings,
   parseBatchResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
+
+/**
+ * Call ppal-update-track.
+ * @param args - The tool's arguments
+ * @returns The raw tool result
+ */
+function updateTrack(args: Record<string, unknown>): Promise<unknown> {
+  return ctx.client!.callTool({ name: "ppal-update-track", arguments: args });
+}
 
 async function readTracks(): Promise<LiveSetResult> {
   const result = await ctx.client!.callTool({
@@ -30,16 +41,25 @@ async function readTracks(): Promise<LiveSetResult> {
   return parseToolResult<LiveSetResult>(result);
 }
 
+/** Read a track's mixer after giving Live a moment to settle. */
+async function readTrackMixer(trackId: string): Promise<ReadTrackResult> {
+  await sleep(100);
+
+  return parseToolResult<ReadTrackResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { id: trackId, include: ["mixer"] },
+    }),
+  );
+}
+
 describe("ppal-update-track", () => {
   it("updates track name, color, and gain", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update track name
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, name: "Renamed Track" },
-    });
+    await updateTrack({ id: trackId, name: "Renamed Track" });
 
     await sleep(100);
     const afterName = await ctx.client!.callTool({
@@ -51,10 +71,7 @@ describe("ppal-update-track", () => {
     expect(namedTrack.name).toBe("Renamed Track");
 
     // Test 2: Update track color
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, color: "#0000FF" },
-    });
+    await updateTrack({ id: trackId, color: "#0000FF" });
 
     await sleep(100);
     const afterColor = await ctx.client!.callTool({
@@ -67,17 +84,9 @@ describe("ppal-update-track", () => {
     expect(coloredTrack.color).toBeDefined();
 
     // Test 3: Update gainDb
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, gainDb: -6 },
-    });
+    await updateTrack({ id: trackId, gainDb: -6 });
 
-    await sleep(100);
-    const afterGain = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const gainTrack = parseToolResult<ReadTrackResult>(afterGain);
+    const gainTrack = await readTrackMixer(trackId);
 
     expect(gainTrack.gainDb).toBeCloseTo(-6, 1);
   });
@@ -87,18 +96,12 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Unsolo t5 which is soloed by default in e2e-test-set
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: liveSet.tracks![5]!.id, solo: false },
-    });
+    await updateTrack({ id: liveSet.tracks![5]!.id, solo: false });
 
     await sleep(100);
 
     // Test 1: Update mute state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, mute: true },
-    });
+    await updateTrack({ id: trackId, mute: true });
 
     await sleep(100);
     const afterMute = await ctx.client!.callTool({
@@ -110,16 +113,10 @@ describe("ppal-update-track", () => {
     expect(mutedTrack.state).toBe("muted");
 
     // Unmute for further tests
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, mute: false },
-    });
+    await updateTrack({ id: trackId, mute: false });
 
     // Test 2: Update solo state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, solo: true },
-    });
+    await updateTrack({ id: trackId, solo: true });
 
     await sleep(100);
     const afterSolo = await ctx.client!.callTool({
@@ -131,16 +128,10 @@ describe("ppal-update-track", () => {
     expect(soloedTrack.state).toBe("soloed");
 
     // Unsolo
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, solo: false },
-    });
+    await updateTrack({ id: trackId, solo: false });
 
     // Test 3: Update arm state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, arm: true },
-    });
+    await updateTrack({ id: trackId, arm: true });
 
     await sleep(100);
     const afterArm = await ctx.client!.callTool({
@@ -152,10 +143,7 @@ describe("ppal-update-track", () => {
     expect(armedTrack.isArmed).toBe(true);
 
     // Disarm
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, arm: false },
-    });
+    await updateTrack({ id: trackId, arm: false });
   });
 
   it("updates track pan and panning mode", async () => {
@@ -163,47 +151,28 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update pan (stereo mode)
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, pan: 0.5 },
-    });
+    await updateTrack({ id: trackId, pan: 0.5 });
 
-    await sleep(100);
-    const afterPan = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const panTrack = parseToolResult<ReadTrackResult>(afterPan);
+    const panTrack = await readTrackMixer(trackId);
 
     expect(panTrack.pan).toBeCloseTo(0.5, 1);
 
     // Test 2: Update panning mode to split
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: {
-        id: trackId,
-        panningMode: "split",
-        leftPan: -0.5,
-        rightPan: 0.5,
-      },
+    await updateTrack({
+      id: trackId,
+      panningMode: "split",
+      leftPan: -0.5,
+      rightPan: 0.5,
     });
 
-    await sleep(100);
-    const afterSplit = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const splitTrack = parseToolResult<ReadTrackResult>(afterSplit);
+    const splitTrack = await readTrackMixer(trackId);
 
     expect(splitTrack.panningMode).toBe("split");
     expect(splitTrack.leftPan).toBeCloseTo(-0.5, 1);
     expect(splitTrack.rightPan).toBeCloseTo(0.5, 1);
 
     // Return to stereo mode
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, panningMode: "stereo", pan: 0 },
-    });
+    await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
   });
 
   it("updates multiple tracks in batch", async () => {
@@ -212,17 +181,14 @@ describe("ppal-update-track", () => {
     const secondTrackId = liveSet.tracks![1]!.id;
 
     // Unsolo t5 which is soloed by default
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: liveSet.tracks![5]!.id, solo: false },
-    });
+    await updateTrack({ id: liveSet.tracks![5]!.id, solo: false });
 
     await sleep(100);
 
     // Test: Batch update multiple tracks
-    const batchResult = await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: `${trackId}, ${secondTrackId}`, mute: true },
+    const batchResult = await updateTrack({
+      id: `${trackId}, ${secondTrackId}`,
+      mute: true,
     });
 
     parseBatchResult<UpdateTrackResult>(batchResult, 2);
@@ -243,10 +209,7 @@ describe("ppal-update-track", () => {
     expect(secondTrack.state).toBe("muted");
 
     // Unmute both
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: `${trackId}, ${secondTrackId}`, mute: false },
-    });
+    await updateTrack({ id: `${trackId}, ${secondTrackId}`, mute: false });
   });
 
   it("updates send levels and monitoring", async () => {
@@ -254,10 +217,7 @@ describe("ppal-update-track", () => {
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update monitoring state
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, monitoringState: "in" },
-    });
+    await updateTrack({ id: trackId, monitoringState: "in" });
 
     await sleep(100);
     const afterMonitor = await ctx.client!.callTool({
@@ -269,15 +229,12 @@ describe("ppal-update-track", () => {
     expect(monitorTrack.monitoringState).toBe("in");
 
     // Return to auto
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, monitoringState: "auto" },
-    });
+    await updateTrack({ id: trackId, monitoringState: "auto" });
 
     // Test 2: Send operations - first create a return track
     const returnResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { type: "return", name: "A-TestReturn" },
+      arguments: { path: "rt+", name: "A-TestReturn" },
     });
     const returnTrack = parseToolResult<CreateTrackResult>(returnResult);
 
@@ -286,17 +243,9 @@ describe("ppal-update-track", () => {
     await sleep(100);
 
     // Now update send level to the return track
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, sendGainDb: -12, sendReturn: "A" },
-    });
+    await updateTrack({ id: trackId, sendGainDb: -12, sendReturn: "A" });
 
-    await sleep(100);
-    const afterSend = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: trackId, include: ["mixer"] },
-    });
-    const sendTrack = parseToolResult<ReadTrackResult>(afterSend);
+    const sendTrack = await readTrackMixer(trackId);
 
     // Verify sends array contains the return
     expect(sendTrack.sends).toBeDefined();
@@ -311,19 +260,13 @@ describe("ppal-update-track", () => {
     // gets here reliably: "A" matches A-Delay first, and Live renames the
     // return it was asked to call "A-TestReturn". Only real Live proves the id
     // the read tools report is the one the send lookup matches on.
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, sendGainDb: -24, sendReturn: returnTrack.id },
+    await updateTrack({
+      id: trackId,
+      sendGainDb: -24,
+      sendReturn: returnTrack.id,
     });
 
-    await sleep(100);
-
-    const byId = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["mixer"] },
-      }),
-    );
+    const byId = await readTrackMixer(trackId);
 
     // Sends are index-aligned with the return tracks, so the new one is last.
     expect(byId.sends!.at(-1)!.gainDb).toBeCloseTo(-24, 1);
@@ -331,69 +274,232 @@ describe("ppal-update-track", () => {
     expect(byId.sends![0]!.gainDb).toBeCloseTo(-12, 1);
   });
 
-  it("assigns output routing", async () => {
+  it("sets several sends in one call, matched by return rather than position", async () => {
     const liveSet = await readTracks();
-    const trackId = liveSet.tracks![0]!.id;
+    // Not tracks[0] — the send tests above leave levels on it.
+    const trackId = liveSet.tracks![1]!.id;
+    const [first, second] = liveSet.returnTracks!;
 
-    // Routing IDs are dynamic per Live instance, so read the available options
-    // and current routing from real Live before assigning. Only real Live can
-    // confirm the assignment sticks. Every track exposes Master + Sends Only.
-    const before = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["routings", "available-routings"] },
-      }),
+    // Listed in the opposite order to the sends themselves, and spelled two
+    // different ways, so a list that landed by position or only matched names
+    // would fail. Only real Live proves the id the read reports is the one the
+    // send lookup matches on.
+    await updateTrack({
+      id: trackId,
+      sends: [
+        { return: second!.name, gainDb: -21 },
+        { return: first!.id, gainDb: -9 },
+      ],
+    });
+
+    const track = await readTrackMixer(trackId);
+
+    expect(track.sends![0]!.return).toBe(first!.name);
+    expect(track.sends![0]!.gainDb).toBeCloseTo(-9, 1);
+    expect(track.sends![1]!.return).toBe(second!.name);
+    expect(track.sends![1]!.gainDb).toBeCloseTo(-21, 1);
+  });
+
+  it("reports track and send gain at Live's display resolution", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![2]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    // Live hands back a 32-bit float, so an unrounded read reports -6.333000183105469.
+    await updateTrack({
+      id: trackId,
+      gainDb: -6.333333,
+      sends: [{ return: returnTrack.id, gainDb: -9.55 }],
+    });
+
+    const track = await readTrackMixer(trackId);
+
+    expect(track.gainDb).toBe(-6.33);
+    expect(track.sends![0]!.gainDb).toBe(-9.55);
+  });
+
+  // The write result says what landed. Asserted against a read of
+  // the same track rather than a hardcoded number, so no fader position has to
+  // be guessed. The values carry the discrimination: Live keeps a float32 of
+  // the 6-significant-digit value, so a result that echoed the argument would
+  // report -6.333333 where a read reports -6.33. A value like -6 or -0.3
+  // round-trips to itself and would pass either way.
+  it("reports the gain and pan it wrote, read back off the track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    const result = await updateTrack({
+      id: trackId,
+      gainDb: -6.333333,
+      pan: -0.333333,
+    });
+
+    const data = parseToolResult<UpdateTrackResult>(result);
+    const track = await readTrackMixer(trackId);
+
+    expect(data.gainDb).toBe(track.gainDb);
+    expect(data.pan).toBe(track.pan);
+  });
+
+  it("reports the split pans it wrote, read back off the track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    try {
+      // Split mode writes two params and refuses `pan`, so a result carrying
+      // only the gain would read as "the pans did not land".
+      const result = await updateTrack({
+        id: trackId,
+        panningMode: "split",
+        gainDb: -12.333333,
+        leftPan: -0.333333,
+        rightPan: 0.666667,
+      });
+
+      const data = parseToolResult<UpdateTrackResult>(result);
+      const track = await readTrackMixer(trackId);
+
+      expect(data.gainDb).toBe(track.gainDb);
+      expect(data.leftPan).toBe(track.leftPan);
+      expect(data.rightPan).toBe(track.rightPan);
+      // `pan` doesn't apply in split mode, so nothing may report as landed.
+      expect(data.pan).toBeUndefined();
+    } finally {
+      // In a finally so a failed assertion can't strand the track in split
+      // mode for the rest of the file.
+      await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
+    }
+  });
+
+  it("reports the sends it wrote, read back at Live's display resolution", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    const result = await updateTrack({
+      id: trackId,
+      sends: [{ return: returnTrack.id, gainDb: -6.333333 }],
+    });
+
+    // Live hands back a 32-bit float, so an unrounded read reports
+    // -6.333000183105469. The id is the one a read reports, so the result
+    // round-trips straight back into `sends`.
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
+      {
+        return: returnTrack.name,
+        returnId: returnTrack.id,
+        gainDb: -6.33,
+      },
+    ]);
+  });
+
+  it("reports the sendGainDb/sendReturn pair under sends too", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+    const returnTrack = liveSet.returnTracks![1]!;
+
+    // One send has one shape in the result, whichever param spelled it.
+    const result = await updateTrack({
+      id: trackId,
+      sendGainDb: -18,
+      sendReturn: returnTrack.id,
+    });
+
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
+      { return: returnTrack.name, returnId: returnTrack.id, gainDb: -18 },
+    ]);
+  });
+
+  it("reports no send for a return name that matches none", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    const result = await updateTrack({
+      id: trackId,
+      sends: [{ return: "ZZZ", gainDb: -6 }],
+    });
+
+    const { data, warnings } =
+      parseToolResultWithWarnings<UpdateTrackResult>(result);
+
+    expect(warnings).toContainEqual(
+      expect.stringContaining('sends entry "ZZZ" names no return track'),
+    );
+    // Nothing was written, so nothing is reported as though it had been.
+    expect(data.sends).toBeUndefined();
+  });
+
+  it("lets a sends entry override the scalar pair naming the same return", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![2]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    // The pair and the list name one return by two different spellings, so the
+    // collision is only seen if both resolve to the same index.
+    const result = await updateTrack({
+      id: trackId,
+      sendGainDb: -30,
+      sendReturn: returnTrack.id,
+      sends: [{ return: returnTrack.name, gainDb: -15 }],
+    });
+
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining("sends overrides sendGainDb/sendReturn"),
     );
 
-    const availableOut = before.availableOutputRoutingTypes ?? [];
-    const currentOutId = before.outputRoutingType?.outputId;
-    // Prefer the side-effect-free "Sends Only", else any different option
-    const targetOut =
-      availableOut.find((t) => t.name === "Sends Only") ??
-      availableOut.find((t) => t.outputId !== currentOutId);
+    const track = await readTrackMixer(trackId);
 
-    expect(targetOut).toBeDefined();
+    // The list is the later word, so the pair's -30 must not be what stuck.
+    expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);
+  });
 
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, outputRoutingTypeId: targetOut!.outputId },
-    });
+  it("can never give a return track an all-digit name", async () => {
+    // Checked here, rather than adding an all-digit-return-name send test:
+    // Live prepends a return's own send letter to its name (see
+    // stripReturnTrackLetter) and re-asserts it even over an explicit rename,
+    // so a return track's name can never read back as pure digits — the
+    // numeric-name risk that hits locators, chains, and regular tracks
+    // doesn't reach return-track sends at all.
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", name: "1" },
+      }),
+    );
 
     await sleep(100);
-    const afterOut = parseToolResult<ReadTrackResult>(
+
+    await updateTrack({ id: created.id, name: "1" });
+
+    await sleep(100);
+
+    const probe = parseToolResult<ReadTrackResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { id: trackId, include: ["routings"] },
+        arguments: { id: created.id },
       }),
     );
 
-    expect(afterOut.outputRoutingType?.outputId).toBe(targetOut!.outputId);
-    expect(afterOut.outputRoutingType?.name).toBe(targetOut!.name);
-
-    // Restore original output routing
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, outputRoutingTypeId: currentOutId },
-    });
+    expect(probe.name).toMatch(/^[A-Z]-1$/);
   });
 });
 
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
+  returnTracks?: Array<{ id: string; name: string }>;
 }
 
 interface CreateTrackResult {
   id: string;
-  returnTrackIndex?: number;
 }
 
 interface UpdateTrackResult {
   id: string;
-}
-
-interface RoutingOption {
-  name: string;
-  outputId: string;
+  gainDb?: number;
+  pan?: number;
+  leftPan?: number;
+  rightPan?: number;
+  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
 }
 
 interface ReadTrackResult {
@@ -408,7 +514,5 @@ interface ReadTrackResult {
   state?: string;
   isArmed?: boolean;
   monitoringState?: string;
-  sends?: Array<{ name: string; gainDb: number }>;
-  outputRoutingType?: { name: string; outputId: string } | null;
-  availableOutputRoutingTypes?: RoutingOption[];
+  sends?: Array<{ return: string; gainDb: number }>;
 }

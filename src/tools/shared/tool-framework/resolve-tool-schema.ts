@@ -14,7 +14,10 @@ import {
   collectHiddenParams,
   type HiddenParamInfo,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  filterSchemaForSmallModel,
+  unpublishEnumValues,
+} from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
   type ModeContext,
   resolveParamModes,
@@ -54,7 +57,7 @@ export function resolveToolSchema(
   );
   const hidden = collectHiddenParams(validating);
   const hiddenKeys = Object.keys(hidden);
-  const published =
+  const visible =
     hiddenKeys.length === 0
       ? validating
       : Object.fromEntries(
@@ -62,6 +65,14 @@ export function resolveToolSchema(
             ([key]) => !hiddenKeys.includes(key),
           ),
         );
+  // The last trim happens here and nowhere else: an enum value `default` hides
+  // is one the model is never offered but the handler still accepts, so it must
+  // not reach `validating` above — and it must stay acceptable here too, since
+  // the MCP SDK gates every call on this schema.
+  const published = unpublishEnumValues(
+    visible,
+    resolved.unpublishedEnumValues,
+  );
 
   return {
     validating,

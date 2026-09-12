@@ -29,6 +29,7 @@ export const GUARDED_BUILD_FLAGS: string[] = [
   "ENABLE_WARP_MARKERS",
   "ENABLE_REMOTE_CORS",
   "ENABLE_BUILD_STATS",
+  "ENABLE_OBJECT_PROBE",
 ];
 
 /** Set to "true" alongside the flags to build with them on purpose. */
@@ -44,20 +45,24 @@ export function buildFlagGuard(
 ): string | null {
   // "true" exactly, like every flag the build reads — a shell that means to
   // opt in can spell it the one way the refusal below prints.
-  if (env[DEV_BUILD_OVERRIDE] === "true") return null;
+  if (env[DEV_BUILD_OVERRIDE] === "true") {
+    return null;
+  }
 
   const set = GUARDED_BUILD_FLAGS.filter(
     (flag) => env[flag] != null && env[flag] !== "",
   );
 
-  if (set.length === 0) return null;
+  if (set.length === 0) {
+    return null;
+  }
 
   return [
     "\n❌ Refusing to build: dev-only build flags are set in this environment.\n",
     ...set.map((flag) => `     ${flag}=${env[flag]}`),
     "\n   The build bakes them into the bundles, and they enable Live API access,",
-    "   arbitrary code execution, wildcard CORS, unfinished features, and the",
-    "   LiveAPI object counter. None of that may ship.\n",
+    "   arbitrary code execution, wildcard CORS, unfinished features, the",
+    "   LiveAPI object counter, and the object-staleness probe. None of that\n   may ship.\n",
     "   • For a development build:  npm run build:debug",
     `   • On purpose, this once:    ${DEV_BUILD_OVERRIDE}=true npm run build\n`,
   ].join("\n");

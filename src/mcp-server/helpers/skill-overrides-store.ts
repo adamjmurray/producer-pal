@@ -160,8 +160,13 @@ export function readSkillOverrides(): SkillOverrides {
     const { data, body } = readSlotFile(`skills/${file}`);
     const override = body.trim();
 
-    if (override) fragments[name] = override;
-    if (!isEnabled(data)) disabled.push(name);
+    if (override) {
+      fragments[name] = override;
+    }
+
+    if (!isEnabled(data)) {
+      disabled.push(name);
+    }
   }
 
   return { fragments, disabled };
@@ -280,11 +285,15 @@ function splitStaleness(
 ): SplitStaleness | null {
   const sibling = SPLIT_SKILL_SLOTS[name];
 
-  if (!override || sibling == null) return null;
+  if (!override || sibling == null) {
+    return null;
+  }
 
   const { data, body } = readSlotFile(filenameFor(sibling));
 
-  if (body.trim() || !isEnabled(data)) return null;
+  if (body.trim() || !isEnabled(data)) {
+    return null;
+  }
 
   const shared = staleSplitLines(override, SKILL_SLOTS[sibling].builtIn);
 
@@ -344,8 +353,13 @@ function slotFrontmatter(
 ): Record<string, string> {
   const data: Record<string, string> = {};
 
-  if (body && provenance) Object.assign(data, provenance);
-  if (!enabled) data.enabled = "false";
+  if (body && provenance) {
+    Object.assign(data, provenance);
+  }
+
+  if (!enabled) {
+    data.enabled = "false";
+  }
 
   return data;
 }

@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_CHUNK_SIZE,
-  MAX_ERROR_DELIMITER,
+  END_OF_CHUNKS,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
 import {
@@ -157,7 +157,7 @@ describe("node-request-v8-protocol", () => {
 
     expect(chunks.length).toBeGreaterThan(1);
 
-    const reassembled = reassembleChunks([...chunks, MAX_ERROR_DELIMITER]);
+    const reassembled = reassembleChunks([...chunks, END_OF_CHUNKS]);
 
     handleNodeResponse(requestId, reassembled);
 
@@ -202,6 +202,27 @@ describe("node-request-v8-protocol", () => {
         "node-req-orphan",
         JSON.stringify({ success: true, result: "late" }),
       );
+    } finally {
+      restoreTask();
+    }
+  });
+
+  it("reports a non-Error thrown by outlet() as its string form", async () => {
+    const scheduleCalls: number[] = [];
+    const restoreTask = installTrackingTask(scheduleCalls);
+
+    // Max's IPC layer is not obliged to throw an Error.
+    const thrown: unknown = "outlet string failure";
+
+    vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+      throw thrown;
+    });
+
+    try {
+      const response = await requestNode("test.outlet-throws-string");
+
+      expect(response.success).toBe(false);
+      expect(response.error).toMatch(/outlet string failure/);
     } finally {
       restoreTask();
     }

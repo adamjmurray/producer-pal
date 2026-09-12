@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 import {
@@ -14,10 +14,14 @@ import {
   createContext,
   createTestNotes,
 } from "./transform-evaluator-test-helpers.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("Transform - seq function", () => {
   beforeEach(() => {
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
   });
 
   describe("parser", () => {
@@ -118,8 +122,7 @@ describe("Transform - seq function", () => {
       );
 
       expect(result.velocity!.value).toBe(60);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("seq() needs note.index"),
       );
     });
@@ -137,7 +140,7 @@ describe("Transform - seq function", () => {
       );
 
       expect(result.velocity!.value).toBe(30);
-      expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("prefers note.index over clip.index when both axes are in scope", () => {
@@ -318,7 +321,7 @@ describe("Transform - seq function", () => {
 
 describe("Transform - clipseq function", () => {
   beforeEach(() => {
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
   });
 
   describe("parser", () => {
@@ -385,8 +388,7 @@ describe("Transform - clipseq function", () => {
       );
 
       expect(result.velocity!.value).toBe(60);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("clipseq() needs clip.index"),
       );
     });
@@ -399,7 +401,9 @@ describe("Transform - clipseq function", () => {
       );
 
       expect(result.velocity!.value).toBe(10);
-      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("seq()"));
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("seq()"),
+      );
     });
 
     it("warns when called with no arguments (via applyTransforms catch)", () => {
@@ -412,8 +416,7 @@ describe("Transform - clipseq function", () => {
         barDuration: 4,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("clipseq() requires at least 1 argument"),
       );
     });

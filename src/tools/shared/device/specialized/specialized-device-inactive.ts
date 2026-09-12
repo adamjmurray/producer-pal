@@ -60,11 +60,15 @@ export function applyInactiveStates(
   for (const rule of rules) {
     const controller = byName.get(rule.controller);
 
-    if (controller == null) continue;
+    if (controller == null) {
+      continue;
+    }
 
     const inactiveNames = rule.cases[String(controller.value)];
 
-    if (inactiveNames == null) continue;
+    if (inactiveNames == null) {
+      continue;
+    }
 
     for (const name of inactiveNames) {
       const target = byName.get(name);

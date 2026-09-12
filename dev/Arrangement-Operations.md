@@ -53,6 +53,17 @@ Only edge trims work reliably:
 This is why the splitting algorithm uses a holding-area approach with individual
 segment extraction rather than splitting in place.
 
+### Warp Markers Can't Be Written
+
+`Clip.add_warp_marker` and `Clip.move_warp_marker` both report success and
+change nothing (verified against Live 12.4.3, on a warped session clip).
+`warp_markers` reads fine, so markers can be inspected but not restored.
+
+The practical consequence: an audio clip re-created from its `file_path` gets
+the sample's own markers, which match the source exactly unless someone
+hand-edited them in Live. Anything re-creating an audio clip has to warn about
+that rather than fix it.
+
 ### `end_marker` Accepts Any Value
 
 `end_marker` is **not clamped** to the audio file boundary. You can set it to
@@ -81,8 +92,9 @@ lengthening (MIDI, warped audio, and unwarped audio).
 
 ### Audio Clip Creation in Arrangement
 
-`create_audio_clip` in arrangement doesn't support length control. To create an
-audio clip with a specific arrangement length:
+`Track.create_audio_clip(file, position)` and
+`TakeLane.create_audio_clip(file, start)` both exist, but neither takes a
+length. To create an audio clip with a specific arrangement length:
 
 1. Create it in session view with
    `createAudioClipInSession(track, length, filePath)`
@@ -129,14 +141,14 @@ loop-length**. It inserts — it does not overwrite what already sits after the
 loop.
 
 This matters when you select a sub-region smaller than the clip's content and
-then double it. `update-clip` applies `start`/`length`/`firstStart` to the loop
-region _before_ calling `duplicate_loop` (in `processSingleClipUpdate`,
-`clip.setAll` runs before `resolveNoteResult`), so the flow is "select the
-portion, then Live doubles exactly that."
+then double it. That takes **two calls**: `update-clip` refuses `start`/`length`
+alongside `duplicateLoop`, because they set the region being doubled and the
+combined call reads two ways (ADR-0040). `firstStart` still composes — it moves
+the playback marker, not the loop region.
 
 Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
-`C3` at bar 1 and `E3` at bar 2, updated with
-`{ duplicateLoop: true, length: "1bar" }`:
+`C3` at bar 1 and `E3` at bar 2, then `{ length: "1bar" }` followed by
+`{ duplicateLoop: true }`:
 
 1. `length: "1bar"` sets the loop region to bar 1 only — the bar-2 `E3` is now
    outside the loop.
@@ -382,6 +394,18 @@ Optimized algorithm using 2(N-1) duplications for N segments (not 2N):
 4. Left-trim holding source → last segment, move to final position
 5. Re-scan track after modifications to get fresh clip objects
    (`rescanSplitClips()` refreshes stale LiveAPI objects)
+
+A split can't be combined with `toPath`, `toSlot`, `arrangementStart` or
+`arrangementLength`, whatever they name. `refuseSplitWithMove()` throws before
+anything is cut. Live keeps only the first piece on the id that was named, so a
+list reaches that piece and no other; a single value reaches every piece, which
+is worse. One `arrangementStart` stacks them all on one bar and
+`computeOverwritePlan` deletes all but the last — an optimizer doing as it is
+told, not a guard. One `arrangementLength` longer than a piece tiles copies in
+from that piece's end, which is where the next piece starts, so each piece
+buries the one after it. Telling a safe length from a destructive one needs each
+piece's own length, and that needs a Live read this has to answer before, so the
+whole param is refused.
 
 ---
 

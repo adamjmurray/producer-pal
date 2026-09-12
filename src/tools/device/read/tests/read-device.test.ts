@@ -145,6 +145,17 @@ describe("readDevice", () => {
     });
   });
 
+  it("reports an all-digit device name as a string", () => {
+    setupBasicDeviceMock({
+      name: 5678,
+      class_display_name: "Operator",
+      type: 1,
+    });
+    const result = readDevice({ id: "device-123" });
+
+    expect(result.name).toBe("5678");
+  });
+
   it("should identify midi effect rack", () => {
     setupBasicDeviceMock({
       class_display_name: "MIDI Effect Rack",
@@ -383,11 +394,12 @@ describe("readDevice", () => {
       const drumPads = result.drumPads as Record<string, unknown>[];
 
       expect(drumPads).toHaveLength(1);
-      expect(drumPads[0]).toMatchObject({
+      expect(drumPads[0]).toStrictEqual({
         id: "pad-36",
         note: 36,
         pitch: "C1",
         name: "Kick",
+        chainCount: 1,
       });
     });
   });

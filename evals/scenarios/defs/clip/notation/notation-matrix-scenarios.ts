@@ -48,6 +48,9 @@ const HIHAT = [42, 44];
  * every-eighth-hats + 1&3-kick backbeat shown in the stark skill
  * examples — the model must derive BOTH the kick and hi-hat patterns rather than
  * copy the taught one, so this measures notation generalization, not recall.
+ * The stark variant fails on purpose: models copy that example line for line,
+ * deriving only the hi-hat. Don't "fix" it by changing the skill's example —
+ * that moves the anchor instead of removing it and defeats the measurement.
  * Duration is NOT asserted — drum hits are one-shots and their length is
  * notation-dependent, so grading pitch + start keeps the comparison fair.
  * Ableton beats: kick 0,1,2,3 — snare 1,3 — hats 0,0.25,…,3.75.

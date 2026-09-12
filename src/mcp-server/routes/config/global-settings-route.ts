@@ -84,8 +84,10 @@ function parsePatch(
 
   for (const [key, value] of Object.entries(body)) {
     if (key === "autoUpdateCheck") {
-      if (typeof value !== "boolean")
+      if (typeof value !== "boolean") {
         return "autoUpdateCheck must be a boolean";
+      }
+
       patch.autoUpdateCheck = value;
     } else if (key === "dismissedUpdateVersion") {
       if (value !== null && typeof value !== "string") {

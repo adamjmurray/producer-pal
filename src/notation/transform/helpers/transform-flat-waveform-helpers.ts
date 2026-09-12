@@ -1,0 +1,112 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * Catch an LFO that came out flat.
+ *
+ * A waveform's first argument is a PERIOD in beats, and models routinely pass a
+ * phase expression instead. Both mistakes land on one phase for every note, so
+ * every note gets the same value: `sin(1)` on quarter notes samples phase 0
+ * each beat, and `sin(note.start * k)` is constant by construction, since
+ * `start / (start * k)` is `1/k` whatever the note. A flat LFO is never what
+ * the caller asked for — with `=` it flattens the dynamics it was meant to
+ * shape, with `+=` it adds a constant offset nobody asked for — so the
+ * assignment is warned about and skipped rather than written.
+ */
+
+import * as console from "../transform-warning-label.ts";
+import { type ExpressionNode } from "../parser/transform-parser.ts";
+
+/**
+ * The periodic functions, i.e. the ones that can come out flat. Paired with the
+ * `switch` in transform-functions.ts `evaluateWaveform`; a new waveform belongs
+ * in both, and `transform-flat-waveform.test.ts` fails if it is missing here.
+ */
+const WAVEFORM_NAMES = new Set(["cos", "sin", "tri", "saw", "square"]);
+
+/**
+ * Find the first call to one of `names` anywhere in an expression. Shared with
+ * the ramp-reach check, which walks the same tree for a different name set.
+ * @param expr - Expression to walk
+ * @param names - Function names to look for
+ * @returns The name found, or null when the expression has none of them
+ */
+export function findFunctionName(
+  expr: ExpressionNode,
+  names: ReadonlySet<string>,
+): string | null {
+  if (typeof expr === "number" || !("type" in expr)) {
+    return null;
+  }
+
+  if (expr.type === "function") {
+    if (names.has(expr.name)) {
+      return expr.name;
+    }
+
+    for (const arg of expr.args) {
+      const nested = findFunctionName(arg, names);
+
+      if (nested != null) {
+        return nested;
+      }
+    }
+
+    return null;
+  }
+
+  // Binary nodes carry the OPERATOR as their type ("add", "multiply", ...),
+  // so match on shape rather than listing every operator.
+  if ("left" in expr && "right" in expr) {
+    return (
+      findFunctionName(expr.left, names) ?? findFunctionName(expr.right, names)
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Find the first waveform call in an expression.
+ * @param expr - Expression to walk
+ * @returns The waveform's name, or null when the expression has none
+ */
+export function findWaveformName(expr: ExpressionNode): string | null {
+  return findFunctionName(expr, WAVEFORM_NAMES);
+}
+
+/**
+ * Report whether a waveform gave every note it touched the same value, warning
+ * when it did. The caller skips the assignment on true.
+ *
+ * Detection is on the OUTCOME, never the syntax: a constant period is the
+ * normal idiom (`cos(1bar)`), so only the values it produced can tell. Exact
+ * equality on purpose — a real LFO that happens to land near one value still
+ * varies, so only a genuinely degenerate period trips this.
+ *
+ * @param name - Waveform function name, for the message
+ * @param values - Values the assignment would have written, one per note
+ * @returns True when every value is identical, i.e. the LFO came out flat
+ */
+export function isFlatWaveform(name: string, values: number[]): boolean {
+  if (values.length < 2) {
+    return false;
+  }
+
+  const first = values[0] as number;
+
+  if (values.some((value) => value !== first)) {
+    return false;
+  }
+
+  console.warn(
+    `${name}() gave all ${values.length} notes the same value — a flat LFO, ` +
+      `so nothing was written. Its first argument is a period in beats, and a ` +
+      `period that divides the note spacing samples one phase. Try a longer ` +
+      `period, e.g. ${name}(2bar).`,
+  );
+
+  return true;
+}

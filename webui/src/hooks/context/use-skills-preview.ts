@@ -108,7 +108,9 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
     void (async () => {
       const mode = await fetchCurrentMode(controller.signal);
 
-      if (mode == null || controller.signal.aborted) return;
+      if (mode == null || controller.signal.aborted) {
+        return;
+      }
 
       setCurrentMode(mode);
 
@@ -143,11 +145,15 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
         );
 
         // A newer selection aborted this request; don't clobber its result.
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          return;
+        }
 
         setStatus({ kind: "ready", preview });
       } catch (error: unknown) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          return;
+        }
 
         setStatus({ kind: "error", message: errorMessage(error) });
       }
@@ -254,7 +260,9 @@ async function fetchCurrentMode(
   try {
     const response = await fetch(getConfigUrl(), { signal, cache: "no-store" });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
 
     const config = (await response.json()) as {
       notation?: unknown;

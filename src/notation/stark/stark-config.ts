@@ -49,8 +49,13 @@ export function randomVelocity(min: number, max: number): number {
 export function durationBeats(duration: StarkDuration): number {
   const base = 4 / duration.n;
 
-  if (duration.dotted) return base * 1.5;
-  if (duration.triplet) return base * (2 / 3);
+  if (duration.dotted) {
+    return base * 1.5;
+  }
+
+  if (duration.triplet) {
+    return base * (2 / 3);
+  }
 
   return base;
 }

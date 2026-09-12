@@ -13,6 +13,7 @@ import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
 } from "./barbeat-interpreter-copy-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 type BarCopyElement = Parameters<typeof handleBarCopySingleDestination>[0];
 type CopyHandler = typeof handleBarCopySingleDestination;
@@ -55,8 +56,7 @@ function testCopyFailureWithHandler(
   const result = handler(element, 4, 4, notesByBar, [], bufferState);
 
   expect(result).toStrictEqual(nullCopyResult);
-  expect(outlet).toHaveBeenCalledWith(
-    1,
+  expect(capturedWarnings()).toContainEqual(
     expect.stringContaining(errorContains),
   );
 

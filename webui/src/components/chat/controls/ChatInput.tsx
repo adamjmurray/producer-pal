@@ -61,7 +61,9 @@ export function ChatInput({
   const canStop = isAssistantResponding && isCompacting !== true;
 
   const submitMessage = () => {
-    if (!input.trim() || disabled) return;
+    if (!input.trim() || disabled) {
+      return;
+    }
 
     const overrides: MessageOverrides = { thinking };
 

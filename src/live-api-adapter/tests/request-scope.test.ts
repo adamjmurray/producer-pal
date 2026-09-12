@@ -112,9 +112,7 @@ describe("request scope", () => {
     );
 
     expect(lastResponseJson()).toContain('"isError":true');
-    expect(lastResponseJson()).toContain(
-      "Error executing tool 'ppal-live-api'",
-    );
+    expect(lastResponseJson()).toContain("requires property");
     expectAllReleased(created);
   });
 });

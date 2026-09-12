@@ -10,7 +10,6 @@ import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadConversation } from "#webui/lib/conversation-db";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   createConversationsProps as createProps,
   waitForEffects,
@@ -18,6 +17,7 @@ import {
   saveWithMessage,
   saveAndRename,
   resetConversationsTestState,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 describe("useConversations", () => {
@@ -135,7 +135,7 @@ describe("useConversations", () => {
 
       props.activeMeta.activeThinking = "enabled";
 
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
       await saveWithMessage(state, result, "ref sync");
@@ -143,9 +143,11 @@ describe("useConversations", () => {
         result.current.activeConversationId!,
       );
 
-      expect(record).toMatchObject({
-        thinking: "enabled",
-      });
+      expect(record).toStrictEqual(
+        expect.objectContaining({
+          thinking: "enabled",
+        }),
+      );
 
       // Change props, wait for effect to sync refs, then save and verify
       props.activeMeta.activeThinking = "disabled";
@@ -158,9 +160,45 @@ describe("useConversations", () => {
         result.current.activeConversationId!,
       );
 
-      expect(updated).toMatchObject({
-        thinking: "disabled",
+      expect(updated).toStrictEqual(
+        expect.objectContaining({
+          thinking: "disabled",
+        }),
+      );
+    });
+  });
+
+  describe("settings captured at save time", () => {
+    it("keeps the model a save started with when a new chat replaces it", async () => {
+      const { props, state } = createProps();
+
+      props.activeMeta.activeModel = "claude-opus-5";
+      props.activeMeta.activeProvider = "anthropic";
+
+      const { result } = renderHook(() => useConversationsWithUndo(props));
+
+      await waitForEffects();
+      await saveWithMessage(state, result, "first turn");
+
+      const id = result.current.activeConversationId!;
+
+      // Starting a new chat clears the settings ref synchronously, before the
+      // queued write runs. The write still belongs to the conversation it was
+      // started for, so it has to carry that conversation's model.
+      state.chatHistory = [{ role: "user", content: "second turn" }];
+      await act(async () => {
+        const saving = result.current.saveCurrentConversation();
+
+        result.current.startNewConversation();
+        await saving;
       });
+
+      expect(await loadConversation(id)).toStrictEqual(
+        expect.objectContaining({
+          model: "claude-opus-5",
+          provider: "anthropic",
+        }),
+      );
     });
   });
 
@@ -200,7 +238,7 @@ describe("useConversations", () => {
   describe("bulk deletion", () => {
     it("deleteAllConversations clears all and resets active", async () => {
       const { state, props } = createProps();
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -222,7 +260,7 @@ describe("useConversations", () => {
 
     it("deleteUnbookmarkedConversations keeps bookmarked and clears unbookmarked active", async () => {
       const { state, props } = createProps();
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 

@@ -157,23 +157,25 @@ Full reference: https://producer-pal.org/guide/npx-cli
 - `--list-tools` - Print the group names and the tools available right now, then
   exit. Combine with the flags above to see what a session would really get.
 - `-s` / `--small-model-mode` - Enable
-  [small model mode](https://producer-pal.org/installation/lm-studio)
-  (simplifies tool interface for smaller LLMs and automatically enables it on
-  the device)
+  [small model mode](https://producer-pal.org/installation/lm-studio), which
+  simplifies the tool interface for smaller LLMs.
 - `-n` / `--notation <barbeat|midi-json|stark>` - Set the MIDI note notation the
   tools use (default: `barbeat`). When using a coding agent to **script or
   build** against Producer Pal (generating/parsing MIDI programmatically), pair
   `--notation midi-json` (notes as a JSON array) with `--format json`. For a
-  normal music-making conversation, keep the default. This is a global device
-  setting, so it also affects the chat UI and any other connected clients.
+  normal music-making conversation, keep the default.
 - `-f` / `--format <json|compact>` - Set the tool response format (default:
   `compact`, a token-optimized literal). `--format json` returns standard JSON
   that coding agents can parse with JSON tooling; keep the default `compact` for
-  normal conversations to save tokens. Also a global device setting.
-- `-l` / `--live-api` - Enable the opt-in Direct Live API tool (`ppal-live-api`)
-  on the device, a low-level escape hatch for scripting and debugging directly
-  against the Live Object Model. Not recommended as a default — the specialized
-  tools are tuned for reliable results. The flag only ever _enables_ the tool.
+  normal conversations to save tokens.
+- `-l` / `--live-api` - Enable the opt-in Direct Live API tool
+  (`ppal-live-api`), a low-level escape hatch for scripting and debugging
+  directly against the Live Object Model. Not recommended as a default — the
+  specialized tools are tuned for reliable results. The flag only ever _enables_
+  the tool.
+
+Every setting rides along as a request header, so it applies to this bridge
+alone: the chat UI and your other MCP clients keep their own settings.
 
 ### Environment Variables
 
@@ -181,24 +183,23 @@ Optional environment variables can be configured through your MCP client:
 
 - `MCP_SERVER_ORIGIN` - URL for the Max for Live device (default:
   `http://localhost:3350`)
-- `ALLOW_CONFIGURATION_OVERRIDES` - Gate for the setting env vars below
-  (default: `false`). `TOOLS`, `DISABLE_TOOLS`, `SMALL_MODEL_MODE`, `NOTATION`,
-  `FORMAT`, `JSON_OUTPUT`, and `LIVE_API` are honored only when this is `true`;
-  otherwise the device's own settings stay authoritative. The equivalent CLI
-  flags above are always applied — this gate covers env vars only, which are
-  ambient and easily inherited.
 - `TOOLS` / `DISABLE_TOOLS` - Env forms of the `--tools` / `--disable-tools`
-  flags; require the gate above.
-- `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Env form of
-  the `--small-model-mode` flag; requires the gate above.
-- `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`; default:
-  `barbeat`). Env form of the `--notation` flag; requires the gate above.
-- `FORMAT` - Tool response format (`json` or `compact`; default: `compact`). Env
-  form of the `--format` flag; requires the gate above.
-- `JSON_OUTPUT` - Boolean alias for `FORMAT` (`true` = json; default: `false`);
-  requires the gate above.
-- `LIVE_API` - Enable the Direct Live API tool (default: `false`). Env form of
-  the `--live-api` flag; requires the gate above.
+  flags.
+- `SMALL_MODEL_MODE` - Enable small model mode. Env form of the
+  `--small-model-mode` flag.
+- `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`). Env form
+  of the `--notation` flag.
+- `FORMAT` - Tool response format (`json` or `compact`). Env form of the
+  `--format` flag.
+- `JSON_OUTPUT` - Boolean alias for `FORMAT` (`true` = json).
+- `LIVE_API` - Enable the Direct Live API tool. Env form of the `--live-api`
+  flag.
+
+Unlike the flags, the boolean variables are three-state:
+`SMALL_MODEL_MODE=false` actively turns the setting _off_ for this bridge, where
+the flag can only turn it on. Leave one unset (or blank) to follow the device's
+setting.
+
 - `ENABLE_LOGGING` - Enable file logging (default: `false`)
 - `VERBOSE_LOGGING` - Detailed debug logs (default: `false`)
 

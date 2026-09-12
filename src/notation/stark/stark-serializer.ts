@@ -103,7 +103,9 @@ export function formatNotation(
   notes: NoteEvent[],
   options: StarkFormatOptions = {},
 ): string {
-  if (notes.length === 0) return "";
+  if (notes.length === 0) {
+    return "";
+  }
 
   const stats: SerializeStats = { ceilingClipped: 0 };
   const result = options.drumMode
@@ -136,7 +138,9 @@ function isCeilingClipped(naturalBeats: number, capBeats: number): boolean {
 // tail), so warn — the WARNING block is relayed to the LLM so the lossy read-back
 // isn't silent. Onsets are unaffected.
 function warnOnCeilingClippedNotes(count: number): void {
-  if (count === 0) return;
+  if (count === 0) {
+    return;
+  }
 
   const noun = count === 1 ? "note" : "notes";
   const verb = count === 1 ? "is" : "are";
@@ -187,7 +191,9 @@ function walkLine(
     const cap = next != null ? next.start_time - note.start_time : Infinity;
     const duration = legatoDuration(note.duration, cap);
 
-    if (isCeilingClipped(note.duration, cap)) stats.ceilingClipped++;
+    if (isCeilingClipped(note.duration, cap)) {
+      stats.ceilingClipped++;
+    }
 
     tokens.push({ core, dynamic, duration });
     time += duration.beats;
@@ -209,7 +215,9 @@ function legatoDuration(
 ): DurationGridEntry {
   const snapped = snapDuration(naturalBeats);
 
-  if (snapped.beats <= capBeats + SAME_TIME_EPSILON) return snapped;
+  if (snapped.beats <= capBeats + SAME_TIME_EPSILON) {
+    return snapped;
+  }
 
   return floorDuration(capBeats);
 }
@@ -268,12 +276,16 @@ function collapseRepeats(rendered: string[]): string[] {
     const token = rendered[i] as string;
     let run = 1;
 
-    while (rendered[i + run] === token) run++;
+    while (rendered[i + run] === token) {
+      run++;
+    }
 
     if (run >= REPEAT_EMIT_THRESHOLD) {
       out.push(`${token}*${run}`);
     } else {
-      for (let k = 0; k < run; k++) out.push(token);
+      for (let k = 0; k < run; k++) {
+        out.push(token);
+      }
     }
 
     i += run;
@@ -322,9 +334,17 @@ function isBetterDefault(
   bestCount: number,
   lineTypeDefault: DurationGridEntry,
 ): boolean {
-  if (count !== bestCount) return count > bestCount;
-  if (entry.token === lineTypeDefault.token) return true;
-  if (best.token === lineTypeDefault.token) return false;
+  if (count !== bestCount) {
+    return count > bestCount;
+  }
+
+  if (entry.token === lineTypeDefault.token) {
+    return true;
+  }
+
+  if (best.token === lineTypeDefault.token) {
+    return false;
+  }
 
   return entry.beats > best.beats;
 }
@@ -366,7 +386,9 @@ function serializeStarkPitched(
         : Infinity;
     const duration = legatoDuration(rep.duration, cap);
 
-    if (isCeilingClipped(rep.duration, cap)) stats.ceilingClipped++;
+    if (isCeilingClipped(rep.duration, cap)) {
+      stats.ceilingClipped++;
+    }
 
     tokens.push({
       core: groupCore(group, registerDefault),

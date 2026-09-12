@@ -13,6 +13,7 @@ import {
   MAX_TOOL_STEPS_LIMIT,
   MIN_TOOL_STEPS,
 } from "#webui/chat/sdk/step-budget";
+import { DEFAULT_REALTIME_VOICE } from "#webui/lib/constants/models";
 import { encryptApiKey, isEncrypted } from "#webui/lib/api-key-crypto";
 import {
   checkHasApiKey,
@@ -23,12 +24,14 @@ import {
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
+  loadRealtimeVoice,
   loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
   saveMaxToolSteps,
   saveSubagentPresetId,
   saveProviderSettings,
+  saveRealtimeVoice,
   saveVoiceLanguage,
   saveVoiceSpeed,
   saveVoiceVolume,
@@ -385,6 +388,29 @@ describe("settings-helpers", () => {
     it("falls back to default on unparseable values", () => {
       localStorage.setItem("producer_pal_voice_volume", "not-a-number");
       expect(loadVoiceVolume()).toBe(VOICE_VOLUME_DEFAULT);
+    });
+  });
+
+  // The two providers share one stored field, so a Gemini voice has to survive
+  // a reload even though it is not an OpenAI voice id.
+  describe("realtime voice persistence", () => {
+    it("returns the default when nothing is stored", () => {
+      expect(loadRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
+    });
+
+    it("round-trips an OpenAI voice", () => {
+      saveRealtimeVoice("marin");
+      expect(loadRealtimeVoice()).toBe("marin");
+    });
+
+    it("round-trips a Gemini voice", () => {
+      saveRealtimeVoice("Puck");
+      expect(loadRealtimeVoice()).toBe("Puck");
+    });
+
+    it("falls back to the default for an unknown stored voice", () => {
+      saveRealtimeVoice("not-a-voice");
+      expect(loadRealtimeVoice()).toBe(DEFAULT_REALTIME_VOICE);
     });
   });
 

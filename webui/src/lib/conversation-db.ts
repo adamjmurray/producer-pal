@@ -6,7 +6,10 @@
 import { type IDBPDatabase } from "idb";
 import { type Notation } from "#src/shared/notation";
 import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
-import { collapseBranchFamilies } from "#webui/lib/conversation-branch-helpers";
+import {
+  branchFamilyIds,
+  collapseBranchFamilies,
+} from "#webui/lib/conversation-branch-helpers";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
@@ -76,6 +79,35 @@ export interface EnforceLimitResult {
   limitReached: boolean;
 }
 
+/** Options for {@link saveConversation}. */
+export interface SaveConversationOptions {
+  /** Extra ids the limit must NOT trim (e.g. the whole batch during an import,
+   * so saving one imported record can't delete another just-imported record
+   * that happens to carry an older timestamp). The saved record's own branch
+   * family is always protected — this is for ids beyond it. */
+  protectedIds?: ReadonlySet<string>;
+  /**
+   * True when this record has been written before, which makes a missing row
+   * proof that it was deleted — so the write is refused instead of resurrecting
+   * it. This is the anti-resurrection guard, and it lives here rather than in
+   * the caller for two reasons: it reads the store inside the write transaction,
+   * so it also holds against a delete from another tab; and it heals itself when
+   * the record legitimately comes back (undo, import), unlike a tombstone
+   * somebody has to remember to lift.
+   *
+   * False for a first save — there is nothing on disk to resurrect. Losing a
+   * brand-new conversation the user just deleted is the caller's problem (see
+   * the conversation store's generation check).
+   */
+  expectPersisted?: boolean;
+}
+
+/** Outcome of a {@link saveConversation} call. */
+export interface SaveConversationResult extends EnforceLimitResult {
+  /** False when the record was deleted before the write, so nothing was written. */
+  saved: boolean;
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 /**
@@ -90,22 +122,43 @@ export function getConversationDb(): Promise<IDBPDatabase> {
 
 /**
  * Save or update a conversation record, enforcing the conversation limit.
+ *
+ * The existence check, the limit trim, and the write share one transaction, so
+ * a delete can't land between them. See {@link SaveConversationOptions.expectPersisted}.
  * @param record - The conversation to save
- * @param protectedIds - Ids that must NOT be trimmed by the limit (e.g. the
- *   whole batch during an import, so saving one imported record can't delete
- *   another just-imported record that happens to carry an older timestamp)
- * @returns Result indicating whether old conversations were deleted
+ * @param options - Limit protection and the anti-resurrection check
+ * @returns Whether the record was written, and what the limit evicted
  */
 export async function saveConversation(
   record: ConversationRecord,
-  protectedIds?: ReadonlySet<string>,
-): Promise<EnforceLimitResult> {
-  const result = await enforceConversationLimit(record.id, protectedIds);
+  options: SaveConversationOptions = {},
+): Promise<SaveConversationResult> {
+  const { protectedIds, expectPersisted = false } = options;
   const db = await getConversationDb();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const all = (await tx.store.getAll()) as ConversationRecord[];
+  const exists = all.some((r) => r.id === record.id);
 
-  await db.put(STORE_NAME, record);
+  if (expectPersisted && !exists) {
+    await tx.done;
 
-  return result;
+    return { deletedCount: 0, limitReached: false, saved: false };
+  }
+
+  const trim = selectLimitTrim(all, record, exists, protectedIds);
+
+  for (const id of trim.ids) {
+    void tx.store.delete(id);
+  }
+
+  void tx.store.put(record);
+  await tx.done;
+
+  return {
+    deletedCount: trim.ids.length,
+    limitReached: trim.limitReached,
+    saved: true,
+  };
 }
 
 /**
@@ -121,7 +174,9 @@ export async function loadConversation(
     | Partial<ConversationRecord>
     | undefined;
 
-  if (!raw) return undefined;
+  if (!raw) {
+    return undefined;
+  }
 
   return normalizeLegacyRecord(raw);
 }
@@ -154,7 +209,9 @@ export async function deleteUnbookmarkedConversations(): Promise<void> {
   const tx = db.transaction(STORE_NAME, "readwrite");
 
   for (const record of all) {
-    if (!record.bookmarked) void tx.store.delete(record.id);
+    if (!record.bookmarked) {
+      void tx.store.delete(record.id);
+    }
   }
 
   await tx.done;
@@ -174,7 +231,9 @@ export async function renameConversation(
     | ConversationRecord
     | undefined;
 
-  if (!record) return;
+  if (!record) {
+    return;
+  }
 
   record.title = title;
   await db.put(STORE_NAME, record);
@@ -194,7 +253,9 @@ export async function setBookmark(
     | ConversationRecord
     | undefined;
 
-  if (!record) return;
+  if (!record) {
+    return;
+  }
 
   record.bookmarked = bookmarked;
   await db.put(STORE_NAME, record);
@@ -282,7 +343,9 @@ export async function searchConversations(query: string): Promise<Set<string>> {
   const needle = query.trim().toLowerCase();
   const matches = new Set<string>();
 
-  if (!needle) return matches;
+  if (!needle) {
+    return matches;
+  }
 
   const db = await getConversationDb();
   const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
@@ -309,7 +372,9 @@ export async function searchConversations(query: string): Promise<Set<string>> {
       .toLowerCase()
       .includes(needle);
 
-    if (inTitle || inMessages || inVoice) matches.add(record.id);
+    if (inTitle || inMessages || inVoice) {
+      matches.add(record.id);
+    }
   }
 
   return matches;
@@ -368,23 +433,38 @@ function normalizeLegacyRecord(
  * @returns All transcript text joined by spaces (empty string if none)
  */
 function extractVoiceTranscriptText(voiceHistory: unknown[] | null): string {
-  if (voiceHistory == null) return "";
+  if (voiceHistory == null) {
+    return "";
+  }
 
   const parts: string[] = [];
 
   for (const item of voiceHistory) {
-    if (!isRecord(item) || item.type !== "message") continue;
+    if (!isRecord(item) || item.type !== "message") {
+      continue;
+    }
+
     // Only search what the transcript renders: `realtimeItemsToUIMessages`
     // skips system messages, so search must too (don't match hidden text).
-    if (item.role !== "user" && item.role !== "assistant") continue;
-    if (!Array.isArray(item.content)) continue;
+    if (item.role !== "user" && item.role !== "assistant") {
+      continue;
+    }
+
+    if (!Array.isArray(item.content)) {
+      continue;
+    }
 
     for (const part of item.content) {
-      if (!isRecord(part)) continue;
+      if (!isRecord(part)) {
+        continue;
+      }
+
       // input_text/output_text carry `.text`; audio items carry `.transcript`.
       const text = part.text ?? part.transcript;
 
-      if (typeof text === "string" && text) parts.push(text);
+      if (typeof text === "string" && text) {
+        parts.push(text);
+      }
     }
   }
 
@@ -401,42 +481,59 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Enforce the conversation limit by deleting oldest non-bookmarked conversations.
- * @param excludeId - ID of the conversation being saved (excluded from deletion)
- * @param protectedIds - Additional ids excluded from deletion (e.g. an import
- *   batch), so trimming for one save can't delete another protected record
- * @returns Result with deletion count and whether the limit is fully consumed by bookmarks
+ * Pick the conversations the limit must evict to make room for a save: the
+ * oldest unbookmarked, unprotected ones.
+ * @param all - Every record currently in the store
+ * @param record - The conversation being saved (never evicted, nor its family)
+ * @param exists - Whether that conversation is already among `all`
+ * @param protectedIds - Additional ids excluded from eviction (e.g. an import batch)
+ * @returns Ids to delete, and whether protection consumed the slots we needed
  */
-async function enforceConversationLimit(
-  excludeId: string,
+function selectLimitTrim(
+  all: ConversationRecord[],
+  record: ConversationRecord,
+  exists: boolean,
   protectedIds?: ReadonlySet<string>,
-): Promise<EnforceLimitResult> {
-  const db = await getConversationDb();
-  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
-
-  // The excludeId conversation will be saved after this, so count it
-  const existingExcluded = all.some((r) => r.id === excludeId);
-  const totalAfterSave = existingExcluded ? all.length : all.length + 1;
+): { ids: string[]; limitReached: boolean } {
+  // The record is about to be written, so count it whether or not it's there yet.
+  const totalAfterSave = exists ? all.length : all.length + 1;
 
   if (totalAfterSave <= MAX_CONVERSATIONS) {
-    return { deletedCount: 0, limitReached: false };
+    return { ids: [], limitReached: false };
   }
 
   const excess = totalAfterSave - MAX_CONVERSATIONS;
-  const deletable = all
+  // Never evict a member of the branch family this record belongs to: losing
+  // the trunk or a sibling orphans the family's ‹ n/m › navigation. Derived
+  // from the record itself so every write path is covered, rather than each
+  // caller having to remember to pass the family in.
+  const family = branchFamilyIds([record.id], withSavedRecord(all, record));
+  const ids = all
     .filter(
-      (r) => !r.bookmarked && r.id !== excludeId && !protectedIds?.has(r.id),
+      (r) =>
+        !r.bookmarked &&
+        r.id !== record.id &&
+        !family.has(r.id) &&
+        !protectedIds?.has(r.id),
     )
-    .toSorted((a, b) => a.updatedAt - b.updatedAt);
+    .toSorted((a, b) => a.updatedAt - b.updatedAt)
+    .slice(0, excess)
+    .map((r) => r.id);
 
-  const toDelete = deletable.slice(0, excess);
+  return { ids, limitReached: ids.length < excess };
+}
 
-  for (const record of toDelete) {
-    await db.delete(STORE_NAME, record.id);
-  }
-
-  return {
-    deletedCount: toDelete.length,
-    limitReached: toDelete.length < excess,
-  };
+/**
+ * The stored records with the incoming version of the one being saved swapped
+ * in (appended when it is a first save), so the family walk follows the fork
+ * links this write carries rather than a stale or missing row.
+ * @param all - Every record currently in the store
+ * @param record - The conversation being saved
+ * @returns Records to walk for branch relationships
+ */
+function withSavedRecord(
+  all: ConversationRecord[],
+  record: ConversationRecord,
+): ConversationRecord[] {
+  return [...all.filter((r) => r.id !== record.id), record];
 }

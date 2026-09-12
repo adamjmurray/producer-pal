@@ -230,6 +230,31 @@ describe("assertState", () => {
       expect(details.error).toContain("Connection refused");
     });
 
+    it("fails on the tool's error instead of grading it", async () => {
+      // A refused call returns its message as content, so `expect` would run
+      // against a string and report the scenario's own domain wording for state
+      // that was never read. The protocol error has to win.
+      const client = {
+        callTool: vi.fn().mockResolvedValue({
+          content: [{ text: "Invalid arguments for tool ppal-read-device" }],
+          isError: true,
+        }),
+      } as unknown as Client;
+      const expectFn = vi.fn().mockReturnValue(false);
+
+      const result = await runState(
+        { tool: "ppal-read-device", args: {}, expect: expectFn },
+        client,
+      );
+
+      expect(result.earned).toBe(0);
+      expect(expectFn).not.toHaveBeenCalled();
+      expect(result.message).toContain("Invalid arguments");
+      const details = result.details as StateDetails;
+
+      expect(details.error).toContain("Invalid arguments");
+    });
+
     it("handles non-Error exceptions", async () => {
       const result = await runState(
         { tool: "read-track", args: { trackId: "1" }, expect: {} },

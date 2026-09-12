@@ -16,10 +16,9 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   clipRegionBeats,
   isDrumRackTrack,
@@ -80,12 +79,9 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
-   * arrangement. A clip slot pastes back into any path/toPath param; an
-   * arrangement one names a whole track, so only tools that take a track
-   * destination accept it — reach a specific arrangement clip by id. */
+  /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
+   * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
-  arrangementStart?: string;
   arrangementLength?: string;
 
   // MIDI clip properties
@@ -126,7 +122,7 @@ export function readClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error("readClip failed: id or path is required");
+    throw new Error("id or path is required");
   }
 
   // Resolve clip from ID or location
@@ -152,7 +148,7 @@ export function readClip(
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
   const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
-  const clipName = clip.getProperty("name") as string;
+  const clipName = clip.getName();
 
   const result: ReadClipResult = {
     id: clip.id,
@@ -281,7 +277,7 @@ function addTimingProperties(
  * @param includeClipNotes - Whether to include formatted notes
  * @param notation - Notation for the returned notes (default barbeat)
  * @param precomputedDrumMode - Drum mode supplied by a batch reader; falls back
- *   to a per-clip device-tree walk when omitted (standalone reads)
+ *   to a device-tree walk when omitted (standalone reads)
  */
 function processMidiClip(
   result: ReadClipResult,
@@ -290,7 +286,9 @@ function processMidiClip(
   notation: Notation,
   precomputedDrumMode?: boolean,
 ): void {
-  if (!includeClipNotes) return;
+  if (!includeClipNotes) {
+    return;
+  }
 
   const timeSigNumerator = clip.getProperty("signature_numerator") as number;
   const timeSigDenominator = clip.getProperty(
@@ -315,11 +313,17 @@ function processMidiClip(
     -lengthBeats,
     lengthBeats * 3,
   ) as string;
-  const notes = JSON.parse(notesDictionary).notes;
+  // `?? []` because everything below is total on a missing key, the way
+  // formatNotation is: nothing to spell is not an error.
+  const notes = JSON.parse(notesDictionary).notes ?? [];
 
+  // Nothing to spell means the answer is never used, so an empty clip must not
+  // pay for the device-tree walk that produces it.
   const drumMode =
     precomputedDrumMode ??
-    (clip.trackIndex != null && isDrumRackTrack(clip.trackIndex));
+    (notes.length > 0 &&
+      clip.trackIndex != null &&
+      isDrumRackTrack(clip.trackIndex));
 
   const formatted = formatNotation(notes, {
     notation,
@@ -328,7 +332,9 @@ function processMidiClip(
     drumMode,
   });
 
-  if (formatted) result.notes = formatted;
+  if (formatted) {
+    result.notes = formatted;
+  }
 }
 
 /**
@@ -402,34 +408,18 @@ function addClipLocationProperties(
   includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    result.path = arrangementPath(
-      clip.trackIndex as number,
-      clip.takeLaneIndex,
-    );
-
-    const startTimeBeats = clip.getProperty("start_time") as number;
-
-    const liveSet = LiveAPI.from("live_set");
-    const songTimeSigNumerator = liveSet.getProperty(
-      "signature_numerator",
-    ) as number;
-    const songTimeSigDenominator = liveSet.getProperty(
-      "signature_denominator",
-    ) as number;
-
-    result.arrangementStart = abletonBeatsToBarBeat(
-      startTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+    // The path carries where the clip starts, so nothing else reports it.
+    result.path = objectPathForApi(clip);
 
     if (includeTiming) {
+      const startTimeBeats = clip.getProperty("start_time") as number;
       const endTimeBeats = clip.getProperty("end_time") as number;
+      const { numerator, denominator } = songMeter();
 
       result.arrangementLength = abletonBeatsToDuration(
         endTimeBeats - startTimeBeats,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
+        numerator,
+        denominator,
       );
     }
   } else {

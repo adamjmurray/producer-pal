@@ -34,7 +34,9 @@ export async function exportConversation(
 ): Promise<{ json: string; title: string | null }> {
   const record = await loadConversation(id);
 
-  if (!record) throw new Error(`Conversation ${id} not found`);
+  if (!record) {
+    throw new Error(`Conversation ${id} not found`);
+  }
 
   const data: ExportData = {
     version: 1,
@@ -128,8 +130,13 @@ export async function importConversations(json: string): Promise<ImportResult> {
   // family across roots and breaks the ‹ n/m › arrows, so drop those pointers.
   const parentOf = new Map<string, string | undefined>();
 
-  for (const r of existingSummaries) parentOf.set(r.id, r.forkParentId);
-  for (const r of importedBranchRecords) parentOf.set(r.id, r.forkParentId);
+  for (const r of existingSummaries) {
+    parentOf.set(r.id, r.forkParentId);
+  }
+
+  for (const r of importedBranchRecords) {
+    parentOf.set(r.id, r.forkParentId);
+  }
 
   const cyclicForkIds = new Set(
     importedBranchRecords
@@ -166,7 +173,7 @@ export async function importConversations(json: string): Promise<ImportResult> {
         continue;
       }
 
-      await saveConversation(normalized, protectedIds);
+      await saveConversation(normalized, { protectedIds });
 
       if (existing) {
         updatedCount++;
@@ -343,7 +350,9 @@ function sanitizeToolField(
 ): unknown {
   const value = (message as Record<string, unknown>)[field];
 
-  if (value == null) return message;
+  if (value == null) {
+    return message;
+  }
 
   if (!Array.isArray(value)) {
     const { [field]: _dropped, ...rest } = message as Record<string, unknown>;
@@ -363,7 +372,9 @@ function sanitizeToolField(
  * @returns The entry, with `args` an object
  */
 function sanitizeToolCall(entry: unknown): unknown {
-  if (typeof entry !== "object" || entry == null) return entry;
+  if (typeof entry !== "object" || entry == null) {
+    return entry;
+  }
 
   const { args } = entry as { args?: unknown };
 
@@ -388,7 +399,9 @@ function sanitizeToolCall(entry: unknown): unknown {
  * @returns The entry with unusable subagent fields removed
  */
 function sanitizeToolResult(entry: unknown): unknown {
-  if (typeof entry !== "object" || entry == null) return entry;
+  if (typeof entry !== "object" || entry == null) {
+    return entry;
+  }
 
   const { subagentTranscript, subagentIndex, ...rest } = entry as {
     subagentTranscript?: unknown;

@@ -10,6 +10,7 @@ import {
   getClipLocationInfo,
   getClipNoteCount,
 } from "#src/tools/clip/code-exec/code-exec-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Execute code on a single clip and apply the resulting notes.
@@ -41,13 +42,14 @@ export async function applyCodeToSingleClip(
     clipIndex,
     clipCount,
     location.sceneIndex,
-    location.arrangementStartBeats,
   );
 
   if (result.success) {
     applyNotesToClip(clip, result.notes);
   } else {
-    console.warn(`Code execution failed for clip ${clipId}: ${result.error}`);
+    console.warn(
+      `Code execution failed for clip ${targetLabel(clip)}: ${result.error}`,
+    );
   }
 
   return getClipNoteCount(clip);

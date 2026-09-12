@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "../transform-warning-label.ts";
 import {
   type BarBeatPointNode,
   type NoteOp,

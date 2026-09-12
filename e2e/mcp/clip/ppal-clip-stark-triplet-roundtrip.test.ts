@@ -27,11 +27,11 @@ import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
 import { setupMcpTestContext } from "../mcp-test-helpers.ts";
 import {
   createAndReadback,
-  emptyMidiTrack,
   expectEvenlySpaced,
   restoreNotationAfterAll,
   THIRD,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -41,7 +41,7 @@ describe("ppal-create-clip Stark triplet round-trip", () => {
   it("round-trips eighth-note triplets (/8t) as thirds-of-a-beat", async () => {
     const { notation, events } = await createAndReadback(
       ctx,
-      `t${emptyMidiTrack}/s0`,
+      `t${EMPTY_MIDI_TRACK}/s0`,
       "melody /8t: C E G C E G",
       "stark",
       interpretNotation,
@@ -55,7 +55,7 @@ describe("ppal-create-clip Stark triplet round-trip", () => {
   it("round-trips quarter-note triplets (/4t) as two-thirds-of-a-beat", async () => {
     const { notation, events } = await createAndReadback(
       ctx,
-      `t${emptyMidiTrack}/s1`,
+      `t${EMPTY_MIDI_TRACK}/s1`,
       "melody /4t: C E G",
       "stark",
       interpretNotation,

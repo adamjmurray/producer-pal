@@ -91,7 +91,9 @@ function renderToolGroup(
       <AssistantToolGroup parts={item.parts} indices={item.indices} />
       {showTokenUsage &&
         item.parts.map((part, j) => {
-          if (!isStepUsagePart(part)) return null;
+          if (!isStepUsagePart(part)) {
+            return null;
+          }
 
           const idx = item.indices[j] as number;
 
@@ -163,7 +165,9 @@ function renderSinglePart(
       />
     );
   } else if (isStepUsagePart(part)) {
-    if (!showTokenUsage) return null;
+    if (!showTokenUsage) {
+      return null;
+    }
 
     return (
       <StepUsageLabel
@@ -191,7 +195,9 @@ function renderSinglePart(
 function renderSubagentTranscript(
   messages: UIMessage[] | undefined,
 ): ComponentChildren {
-  if (!messages || messages.length === 0) return undefined;
+  if (!messages || messages.length === 0) {
+    return undefined;
+  }
 
   return messages.map((m, idx) =>
     m.role === "user" ? (
@@ -246,7 +252,10 @@ function buildStepPrevUsages(
     const part = parts[i];
 
     if (part && isStepUsagePart(part)) {
-      if (prev) map.set(i, prev);
+      if (prev) {
+        map.set(i, prev);
+      }
+
       prev = part.usage;
     }
   }

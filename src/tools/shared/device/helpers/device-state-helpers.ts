@@ -39,7 +39,7 @@ export function buildChainInfo(
 
   // chain.type returns "Chain" or "DrumChain" from Live API
   chainInfo.type = chain.type;
-  chainInfo.name = chain.getProperty("name");
+  chainInfo.name = chain.getName();
 
   const color = chain.getColor();
 

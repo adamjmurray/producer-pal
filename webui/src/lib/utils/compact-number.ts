@@ -31,7 +31,9 @@ export function calcNewContentTokens(
   prevInput: number | undefined,
   prevOutput: number | undefined,
 ): number | null {
-  if (prevInput == null || prevOutput == null) return null;
+  if (prevInput == null || prevOutput == null) {
+    return null;
+  }
 
   const delta = currentInput - prevInput - prevOutput;
 

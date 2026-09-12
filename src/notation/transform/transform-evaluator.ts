@@ -6,7 +6,7 @@
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
 import {
   type ClipContext,
@@ -15,15 +15,24 @@ import {
   isNoteOp,
   type NoteContext,
   type NoteProperties,
-  operatorDisplay,
   type TimeRange,
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
+import {
+  type DeferredWrite,
+  applyTransformResult,
+  commitWaveformWrites,
+} from "./helpers/transform-apply-helpers.ts";
+import { findWaveformName } from "./helpers/transform-flat-waveform-helpers.ts";
 import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
 import {
   buildNoteContext,
   selectAssignmentNotes,
 } from "./helpers/transform-evaluator-selection-helpers.ts";
+import {
+  rejectsPitchLiteralValue,
+  warnShortRamp,
+} from "./helpers/transform-assignment-warning-helpers.ts";
 import { timeRangeBoundsInMusicalBeats } from "./helpers/transform-time-range-helpers.ts";
 import {
   type PitchRange,
@@ -196,21 +205,7 @@ function applyAssignmentToNotes(
   clipContext: ClipContext | undefined,
   transformedIndices: Set<number>,
 ): void {
-  // A bare pitch literal (`b2`, `C3`) is only a meaningful VALUE for the `pitch`
-  // parameter (or as a selector / function argument). Assigned directly to any
-  // other parameter it is almost certainly a typo that would silently coerce to a
-  // MIDI number (`velocity = b2` → 59). Warn and skip rather than corrupt.
-  const expr = assignment.expression;
-
-  if (
-    assignment.parameter !== "pitch" &&
-    typeof expr === "object" &&
-    expr.type === "pitchLiteral"
-  ) {
-    console.warn(
-      `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
-    );
-
+  if (rejectsPitchLiteralValue(assignment)) {
     return;
   }
 
@@ -256,6 +251,16 @@ function applyAssignmentToNotes(
   // single malformed line doesn't relay N copies of the same WARNING.
   const warnedFailures = new Set<string>();
 
+  // A waveform that lands on one phase for every note is a mistake whatever it
+  // was aiming at, so its writes are held back until the whole selection has
+  // been evaluated and the flat case can be ruled out. Only waveforms defer;
+  // everything else applies as it goes, which is what lets transforms stack.
+  const waveformName = findWaveformName(assignment.expression);
+  const deferred: DeferredWrite[] = [];
+  // transformedIndices is cumulative across the whole transform, so it can't
+  // tell whether THIS assignment applied anything. Count what this one wrote.
+  let appliedCount = 0;
+
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
     const note = notes[i] as NoteEvent;
@@ -298,6 +303,11 @@ function applyAssignmentToNotes(
         noteProperties,
       );
 
+      if (waveformName != null) {
+        deferred.push({ note, index: i, value });
+        continue;
+      }
+
       // Apply transform immediately (enables stacked transforms)
       applyTransformResult(
         note,
@@ -308,6 +318,7 @@ function applyAssignmentToNotes(
       );
 
       transformedIndices.add(i);
+      appliedCount++;
     } catch (error) {
       const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
 
@@ -317,72 +328,26 @@ function applyAssignmentToNotes(
       }
     }
   }
-}
 
-/**
- * Apply a single transform result to a note in-place.
- * Handles clamping and conversion between musical and Ableton beats.
- * @param note - Note to modify
- * @param parameter - Transform parameter name
- * @param operator - Transform operator ("set" or "add")
- * @param value - Evaluated expression value (in musical beats for timing/duration)
- * @param timeSigDenominator - Time signature denominator for beat conversion
- */
-function applyTransformResult(
-  note: NoteEvent,
-  parameter: string,
-  operator: "add" | "set",
-  value: number,
-  timeSigDenominator: number,
-): void {
-  switch (parameter) {
-    case "velocity":
-      note.velocity =
-        operator === "set"
-          ? Math.min(127, value)
-          : Math.min(127, note.velocity + value);
-      break;
+  if (waveformName != null) {
+    appliedCount = commitWaveformWrites(
+      waveformName,
+      deferred,
+      assignment,
+      timeSigDenominator,
+      transformedIndices,
+    );
+  }
 
-    case "timing": {
-      const tv = value * (4 / timeSigDenominator);
-
-      note.start_time = operator === "set" ? tv : note.start_time + tv;
-      break;
-    }
-
-    case "duration": {
-      const dv = value * (4 / timeSigDenominator);
-
-      note.duration = operator === "set" ? dv : note.duration + dv;
-      break;
-    }
-
-    case "probability":
-      note.probability = Math.max(
-        0,
-        Math.min(
-          1,
-          operator === "set" ? value : (note.probability ?? 1) + value,
-        ),
-      );
-      break;
-
-    case "deviation":
-      note.velocity_deviation = Math.max(
-        -127,
-        Math.min(
-          127,
-          operator === "set" ? value : (note.velocity_deviation ?? 0) + value,
-        ),
-      );
-      break;
-
-    case "pitch": {
-      const raw = operator === "set" ? value : note.pitch + value;
-
-      note.pitch = Math.max(0, Math.min(127, Math.round(raw)));
-      break;
-    }
+  if (appliedCount > 0) {
+    warnShortRamp(
+      assignment.expression,
+      assignment.timeRange != null,
+      selectedStarts,
+      evalTimeRange,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
   }
 }
 

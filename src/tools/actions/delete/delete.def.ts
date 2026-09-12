@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -12,7 +13,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete",
   description:
     "Delete objects. Supports tracks, scenes, clips, devices, drum pads, and drum rack chains. " +
-    "Use id for most types; path for clips, devices, drum pads, and chains.",
+    "Every type takes an id or a path.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -29,14 +30,14 @@ export const toolDefDelete = defineTool("ppal-delete", {
     }),
     path: param(z.coerce.string().optional(), {
       default:
-        "path(s) to delete, comma-separated for multiple: session clips ('t0/s1'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1')",
+        "path(s) to delete, comma-separated for multiple: tracks ('t0', 'rt1'), scenes ('s0'), session clips ('t0/s1'), arrangement clips by where they start ('t0[5|1]'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1'). Deleting shifts every later sibling down, so a path in the result is the address from before the call.",
       smallModel: "path to delete (e.g., 't0/s1' or 't0/d1')",
     }),
 
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
-      .enum(["track", "scene", "clip", "device", "drum-pad", "chain"])
+      .enum(DELETABLE_TYPES)
       .describe(
         "type of objects to delete; 'chain' removes one chain from a Drum Rack pad",
       ),

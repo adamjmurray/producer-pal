@@ -21,7 +21,9 @@ import { isQuietMode } from "./output-config.ts";
  * @param message - The user's message
  */
 export function logTurnStart(turnNumber: number, message: string): void {
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   console.log(`\n${formatTurnHeader(turnNumber)}`);
   console.log(`\n${formatUserLabel()}${GRAY_PROMPT}${message}\n`);

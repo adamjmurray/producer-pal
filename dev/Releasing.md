@@ -2,36 +2,31 @@
 
 ## Preparation
 
-Do this early in the development cycle, ideally soon after the previous release.
-This way, whenever going back to a previous release (e.g. to confirm a behavior
-is a regression), it's always clear which build is running.
+Do this right after the previous release lands on `main`. Every build then says
+which cycle it belongs to, so going back to a build to check whether something
+is a regression is unambiguous.
 
-1. Open the next release cycle:
-
-   ```sh
-   npm run version:bump        # patch: 0.9.0 → 0.9.1-rc1
-   npm run version:bump:minor  # minor: 0.9.1 → 0.10.0-rc1
-   npm run version:bump:major  # major: 0.9.1 → 1.0.0-rc1
-   ```
-
-   If unsure, start with patch. Any of these can be re-run during the cycle to
-   retarget: from `0.9.1-rc3`, `version:bump:minor` gives `0.10.0-rc1`. They
-   ignore the suffix that's already there and restart the candidate count,
-   because they name where the release is going, not where it's been.
-
-2. Commit and push:
+1. Point `dev` at the next minor:
 
    ```sh
+   git switch dev
+   git rebase main
+   npm run version:bump:minor   # 2.2.0 → 2.3.0-rc1
    npm run check
    git add .
-   git commit -m "bump version to X.Y.Z-rc1"
+   git commit -m "bump version to X.Y.0-rc1"
    git push origin dev
    ```
 
-3. Create a pull request via GitHub UI: `dev → main`
+2. Open a draft PR `dev → main` titled with the version. This is the release PR:
+   it lives all cycle, makes CI status and the accumulating scope easy to see,
+   and its body is the changelog.
 
-The PR can be long-lived during development. It makes it easy to check CI status
-and see how much is accumulating for the release.
+`dev` always goes straight to the next **minor**, never a patch, even when the
+cycle looks like it'll be small. Patch releases exist for urgent fixes on top of
+a shipped release, and they get their own branch off `main` — cut only when a
+bug actually calls for one. See
+[Urgent Fixes After a Release](#urgent-fixes-after-a-release).
 
 ### About the Versioning System
 
@@ -48,6 +43,20 @@ accumulate a cycle's worth of changes.
 Batch generously into one minor rather than splitting across two closely spaced
 releases. Step 3 is cross-platform and largely manual, so a release costs about
 the same to test whatever it contains.
+
+**Retargeting mid-cycle is free.** The three opening bumps name where the
+release is going, not where it's been — they ignore the suffix already there and
+restart the candidate count, so `version:bump:major` on `2.3.0-rc3` gives
+`3.0.0-rc1`:
+
+```sh
+npm run version:bump        # patch: 0.9.0 → 0.9.1-rc1
+npm run version:bump:minor  # minor: 0.9.1 → 0.10.0-rc1
+npm run version:bump:major  # major: 0.9.1 → 1.0.0-rc1
+```
+
+The release PR lives on `dev`, so retargeting is that bump plus editing the PR
+title.
 
 The rest of the cycle moves within that version:
 
@@ -79,10 +88,11 @@ Desktop shows — but the bump script does not write it. It's generated from the
 template during the build, so it picks the version up on its own.
 
 Nothing reconciles any of this at runtime — whichever copy an artifact happens
-to read is what it claims to be — so `src/test/meta/version-agreement.test.ts`
-asserts they're identical, and `npm run tag` re-checks the config.ts one. That
-test's file lists are the authoritative inventory; this section deliberately
-doesn't restate a total, because a count in prose goes stale silently.
+to read is what it claims to be — so
+`src/test/meta/versions/version-agreement.test.ts` asserts they're identical,
+and `npm run tag` re-checks the config.ts one. That test's file lists are the
+authoritative inventory; this section deliberately doesn't restate a total,
+because a count in prose goes stale silently.
 
 ## Step 0: Checklist before releasing
 
@@ -325,8 +335,8 @@ After testing succeeds:
 2. Review and merge the PR in the GitHub UI
    - A squash merge prefills the body with every commit message on `dev`. One
      grandfathered commit still carries an `AJM-NNN` reference (allowlisted in
-     `src/test/meta/no-linear-refs.test.ts`) — delete that line before merging
-     so the private ticket number stays out of `main`.
+     `src/test/meta/content-guards/no-linear-refs.test.ts`) — delete that line
+     before merging so the private ticket number stays out of `main`.
 
 3. Build, tag, and release the GA version. It's a rebuild, not a re-labelling —
    the artifacts have to carry `X.Y.Z`, not `X.Y.Z-rc4`:
@@ -394,9 +404,32 @@ Any number of candidates can burn this way at no cost: they're never published
 to npm, and the version people upgrade to is still the plain `X.Y.Z` at the end
 of the cycle.
 
-If a problem is discovered **after** Step 5's npm publish, that version is spent
-— npm never lets a published version be replaced. Open a new cycle
-(`npm run version:bump` → `X.Y.Z+1-rc1`) and run the process again.
+## Urgent Fixes After a Release
+
+Once Step 5 publishes to npm, that version is spent — npm never lets a published
+version be replaced. A fix means a new patch release, on its own branch cut from
+`main` and named for the next unused patch:
+
+```sh
+git switch main && git pull
+git switch -c X.Y.Z+1     # after 2.3.0 that's 2.3.1; after 2.3.1, 2.3.2
+npm run version:bump      # → X.Y.Z+1-rc1
+npm run check
+git add .
+git commit -m "bump version to X.Y.Z+1-rc1"
+git push -u origin X.Y.Z+1
+```
+
+Open a PR `X.Y.Z+1 → main`, land the fix there, and run the release process from
+Step 0 against that branch instead of `dev`.
+
+Don't cut the branch or open its PR before a bug calls for one. Which patch
+number it should carry depends on what has shipped by then, and an empty
+placeholder can't be handed to a different branch later — **a PR's head branch
+is fixed once the PR exists**.
+
+Afterwards `main` has moved, so rebase `dev` onto it (never merge). `dev` keeps
+its own minor version, so resolve the version-file conflict in `dev`'s favor.
 
 ## Publishing to npm
 

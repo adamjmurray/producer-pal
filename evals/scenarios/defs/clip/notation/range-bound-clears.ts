@@ -25,7 +25,7 @@ import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
   assertNotesRead,
-  clearSessionSlots,
+  clearClipSlots,
   MSG_CONNECT,
   readClipNotesFromTurn,
   TOOL_CONNECT,
@@ -48,7 +48,7 @@ const EPS = 1e-6;
  * @param mcpClient - MCP client for tool calls
  */
 async function setupRangeClip(mcpClient: Client): Promise<void> {
-  await clearSessionSlots(mcpClient, [SLOT]);
+  await clearClipSlots(mcpClient, [SLOT]);
   await mcpClient.callTool({
     name: "ppal-create-clip",
     arguments: {
@@ -114,7 +114,9 @@ function assertRegionCleared(
       }
 
       for (const n of before.notes) {
-        if (inWindow(n.start_time, winStart, winEnd)) continue;
+        if (inWindow(n.start_time, winStart, winEnd)) {
+          continue;
+        }
 
         const survived = after.notes.some(
           (m) =>
@@ -171,13 +173,15 @@ function recordClearSyntax(turn: number): EvalAssertion {
 
       let syntax = "other";
 
-      if (/\|\s*\*/.test(sel))
+      if (/\|\s*\*/.test(sel)) {
         syntax = "wildcard"; // N|*
-      else if (/-\s*</.test(sel))
+      } else if (/-\s*</.test(sel)) {
         syntax = "exclusive"; // 3|1-<...
-      else if (/\d\|\d+\.\d+/.test(sel))
+      } else if (/\d\|\d+\.\d+/.test(sel)) {
         syntax = "decimal-stop-short"; // 3|2.99
-      else if (/\d\|\d+\s*-\s*\d\|\d+/.test(sel)) syntax = "inclusive-range"; // 3|1-4|1
+      } else if (/\d\|\d+\s*-\s*\d\|\d+/.test(sel)) {
+        syntax = "inclusive-range"; // 3|1-4|1
+      }
 
       console.log(
         `    [clear-syntax@turn${turn}] ${syntax} — ${sel.slice(0, 80)}`,
@@ -237,6 +241,6 @@ export const rangeClearBoundaries: EvalScenario = {
       "first half of bar 1 cleared, midpoint note (and all else) intact",
     ),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 200_000 },
+    { type: "token_usage", maxTokens: 4_500 },
   ],
 };

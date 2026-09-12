@@ -197,9 +197,7 @@ describe("AssistantToolCall", () => {
 
   describe("error summary in summary line", () => {
     it("shows clean error in summary for tool error prefix", () => {
-      const result = JSON.stringify(
-        "Error executing tool 'test-tool': something broke",
-      );
+      const result = JSON.stringify("Error: something broke");
 
       render(
         <AssistantToolCall {...defaultProps} result={result} isError={true} />,
@@ -232,9 +230,7 @@ describe("AssistantToolCall", () => {
 
   describe("error expanded view", () => {
     it("shows raw result in disclosure like success results", () => {
-      const result = JSON.stringify(
-        "Error executing tool 'test-tool': something broke",
-      );
+      const result = JSON.stringify("Error: something broke");
 
       render(
         <AssistantToolCall {...defaultProps} result={result} isError={true} />,

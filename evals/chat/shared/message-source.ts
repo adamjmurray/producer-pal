@@ -17,7 +17,10 @@ import { type ChatOptions, type MessageSource } from "./types.ts";
  * @param turnCount - Current turn number
  */
 function printTurnHeader(turnCount: number): void {
-  if (turnCount > 1) process.stdout.write("\n");
+  if (turnCount > 1) {
+    process.stdout.write("\n");
+  }
+
   console.log(formatTurnHeader(turnCount));
   process.stdout.write(formatUserLabel());
 }

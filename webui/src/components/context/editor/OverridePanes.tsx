@@ -118,7 +118,9 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
                     // Collapse the reveal only when the reset actually happened —
                     // cancelling its confirm must leave the comparison open.
                     void onReset().then((ok) => {
-                      if (ok) onToggleBuiltIn(false);
+                      if (ok) {
+                        onToggleBuiltIn(false);
+                      }
                     })
                   }
                   aria-label="Reset to default"
@@ -146,7 +148,10 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
           readOnly={false}
           onChange={(next) => {
             // The first edit to an un-forked pane IS the fork.
-            if (!hasOverride) onBeginOverride();
+            if (!hasOverride) {
+              onBeginOverride();
+            }
+
             onChange(next);
           }}
           onBlur={onBlur}
@@ -210,7 +215,10 @@ function useBuiltInSeedKey(builtIn: string, hasOverride: boolean): string {
   const [seed, setSeed] = useState(builtIn);
 
   useEffect(() => {
-    if (hasOverride) return;
+    if (hasOverride) {
+      return;
+    }
+
     setSeed(builtIn);
   }, [builtIn, hasOverride]);
 

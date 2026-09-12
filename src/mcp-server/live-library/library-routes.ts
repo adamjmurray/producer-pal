@@ -33,7 +33,7 @@ import { librarySearch } from "./query/library-search.ts";
  * the underlying registry throws on duplicate registration.
  *
  * Each route opens and closes its own DB handle, including inside a
- * `searchBatch` that runs up to 20 searches in one MCP request. Measured
+ * `searches` fan-out that runs up to 20 searches in one MCP request. Measured
  * rather than assumed, on a 47MB Live-files DB: reopening per query costs
  * ~3.5ms across a 20-query batch (~20% of the DB time — mostly the page
  * cache being thrown away, not the open itself, which is 0.02ms under

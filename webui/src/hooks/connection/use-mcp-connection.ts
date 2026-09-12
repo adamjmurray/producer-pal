@@ -76,7 +76,9 @@ export function useMcpConnection(): UseMcpConnectionReturn {
   // when already connected so initial mount isn't double-fetched.
   useEffect(() => {
     const handleFocus = (): void => {
-      if (mcpStatusRef.current !== "connected") return;
+      if (mcpStatusRef.current !== "connected") {
+        return;
+      }
 
       void (async (): Promise<void> => {
         // Monotonic seq guards against slow-then-fast resolution: if the
@@ -85,7 +87,9 @@ export function useMcpConnection(): UseMcpConnectionReturn {
         const mySeq = ++fetchSeqRef.current;
         const result = await fetchToolsFromServer();
 
-        if (mySeq !== fetchSeqRef.current) return;
+        if (mySeq !== fetchSeqRef.current) {
+          return;
+        }
 
         if (result.ok) {
           setMcpTools(result.tools);

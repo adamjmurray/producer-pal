@@ -79,3 +79,52 @@ export function registerSessionClipForArrangementDup(
 
   return track0;
 }
+
+/**
+ * Register a track whose arrangement duplicate behaves like Live's: the copy
+ * lands at the beat it was handed and clears every copy already overlapping the
+ * span it fills. A cleared clip keeps its id and loses its path, which is what
+ * a fresh lookup of a dead clip reads (dev/LiveAPI-Object-Reuse.md) — so a test
+ * built on this catches code that trusts the id or `exists()`.
+ *
+ * Registers each copy itself, unlike `registerTrackWithArrangementDup`, because
+ * where a copy landed is the whole point here. Every copy is `copyBeats` long,
+ * which is true whenever the sources are the same length.
+ * @param trackIndex - Track index
+ * @param properties - Optional additional track properties
+ * @param copyBeats - How far each copy reaches from its start
+ * @returns The registered track mock
+ */
+export function registerTrackThatClearsOnDup(
+  trackIndex: number,
+  properties?: Record<string, unknown>,
+  copyBeats = 4,
+): RegisteredMockObject {
+  const placed: { start: number; mock: RegisteredMockObject }[] = [];
+  let clipCounter = 0;
+
+  return registerMockObject(`live_set/tracks/${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    properties,
+    methods: {
+      duplicate_clip_to_arrangement: (_sourceId: unknown, beats: unknown) => {
+        const start = Number(beats);
+
+        for (const earlier of placed) {
+          if (
+            earlier.start < start + copyBeats &&
+            earlier.start + copyBeats > start
+          ) {
+            registerMockObject(earlier.mock.id, { path: "" });
+          }
+        }
+
+        const clip = registerArrangementClip(trackIndex, clipCounter++, start);
+
+        placed.push({ start, mock: clip });
+
+        return ["id", clip.id];
+      },
+    },
+  });
+}

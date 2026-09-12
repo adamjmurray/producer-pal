@@ -6,14 +6,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_DEVICE_INCLUDE_OPTIONS,
-  createDeviceMockProperties,
   setupDrumRackMocks,
   setupEmptyRackMocks,
+  setupTrackWithDevices,
 } from "./helpers/read-track-device-test-helpers.ts";
-import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
 import { readTrack } from "../read-track.ts";
 
@@ -61,32 +57,20 @@ describe("readTrack", () => {
       });
     });
     it("combines device name and preset name", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("device1", "device2"),
-        },
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
+      setupTrackWithDevices([
+        {
           name: "Reverb",
           className: "Reverb",
           classDisplayName: "Reverb",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
-      registerMockObject("device2", {
-        path: livePath.track(0).device(1),
-        type: "Device",
-        properties: createDeviceMockProperties({
+        },
+        {
           name: "My Custom Reverb",
           className: "Reverb",
           classDisplayName: "Reverb",
           type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
+        },
+      ]);
 
       const result = readTrack({
         trackIndex: 0,

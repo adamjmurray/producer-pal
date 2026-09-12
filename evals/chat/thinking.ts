@@ -57,7 +57,9 @@ export function buildProviderOptions(
   provider: EvalProvider,
   thinking: ThinkingLevel | undefined,
 ): ProviderOptions | undefined {
-  if (thinking == null) return undefined;
+  if (thinking == null) {
+    return undefined;
+  }
 
   const level = String(thinking);
 
@@ -94,7 +96,9 @@ export function buildProviderOptions(
 function buildAnthropicThinking(level: string): ProviderOptions | undefined {
   const effort = ANTHROPIC_EFFORT_MAP[level];
 
-  if (!effort || effort === "none") return undefined;
+  if (!effort || effort === "none") {
+    return undefined;
+  }
 
   return {
     anthropic: {
@@ -113,7 +117,9 @@ function buildAnthropicThinking(level: string): ProviderOptions | undefined {
 function buildGeminiThinking(level: string): ProviderOptions | undefined {
   const thinkingBudget = resolveBudget(level, GEMINI_THINKING_MAP);
 
-  if (thinkingBudget == null || thinkingBudget === 0) return undefined;
+  if (thinkingBudget == null || thinkingBudget === 0) {
+    return undefined;
+  }
 
   return {
     google: {
@@ -131,7 +137,9 @@ function buildGeminiThinking(level: string): ProviderOptions | undefined {
 function buildOpenAIThinking(level: string): ProviderOptions | undefined {
   const effort = OPENAI_EFFORT_MAP[level];
 
-  if (!effort || effort === "none") return undefined;
+  if (!effort || effort === "none") {
+    return undefined;
+  }
 
   return { openai: { reasoningEffort: effort } };
 }
@@ -145,7 +153,9 @@ function buildOpenAIThinking(level: string): ProviderOptions | undefined {
 function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
   const effort = OPENROUTER_EFFORT_MAP[level];
 
-  if (!effort || effort === "none") return undefined;
+  if (!effort || effort === "none") {
+    return undefined;
+  }
 
   return { openrouter: { reasoning: { effort } } };
 }
@@ -161,7 +171,9 @@ function resolveBudget(
   level: string,
   map: Record<string, number>,
 ): number | undefined {
-  if (level in map) return map[level];
+  if (level in map) {
+    return map[level];
+  }
 
   // Support numeric strings (e.g., "4096")
   const parsed = Number.parseInt(level, 10);

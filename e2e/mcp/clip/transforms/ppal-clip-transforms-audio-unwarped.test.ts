@@ -29,15 +29,15 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 import {
-  AUDIO_WARP_TRACK,
   createUnwarpedDrumLoop,
   DRUM_LOOP_BEATS,
   halveDrumLoopRegion,
 } from "../helpers/audio-warp-test-helpers.ts";
+import { AUDIO_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
-const SLOT = `t${AUDIO_WARP_TRACK}/s1`;
+const SLOT = `t${AUDIO_TRACK}/s1`;
 
 /**
  * Apply a transform to a clip and read its gain back.

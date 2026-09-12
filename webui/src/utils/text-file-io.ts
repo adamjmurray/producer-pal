@@ -128,9 +128,17 @@ export function classifyDroppedFile(
 ): DroppedFileResult {
   const file = dt?.files[0];
 
-  if (file == null) return { kind: "none" };
-  if (!isImportableTextFile(file)) return { kind: "not-markdown" };
-  if (file.size > MAX_IMPORT_BYTES) return { kind: "too-large" };
+  if (file == null) {
+    return { kind: "none" };
+  }
+
+  if (!isImportableTextFile(file)) {
+    return { kind: "not-markdown" };
+  }
+
+  if (file.size > MAX_IMPORT_BYTES) {
+    return { kind: "too-large" };
+  }
 
   return { kind: "file", file };
 }
@@ -168,7 +176,9 @@ const IMPORTABLE_EXTENSION_RE = new RegExp(
  * @returns True when the file should be imported as text
  */
 function isImportableTextFile(file: File): boolean {
-  if (IMPORTABLE_EXTENSION_RE.test(file.name)) return true;
+  if (IMPORTABLE_EXTENSION_RE.test(file.name)) {
+    return true;
+  }
 
   return file.type.startsWith("text/");
 }

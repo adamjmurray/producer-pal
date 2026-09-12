@@ -130,7 +130,10 @@ export function createMcpServer(
   });
 
   for (const toolDef of STANDARD_TOOL_DEFS) {
-    if (includedSet && !includedSet.has(toolDef.toolName)) continue;
+    if (includedSet && !includedSet.has(toolDef.toolName)) {
+      continue;
+    }
+
     toolDef(server, callLiveApi, { smallModelMode, notation });
   }
 
@@ -197,7 +200,9 @@ export function validateTools(
  * @returns The valid tool names
  */
 function getValidToolNames(liveApiEnabled: boolean): string[] {
-  if (!liveApiEnabled) return [...TOOL_NAMES];
+  if (!liveApiEnabled) {
+    return [...TOOL_NAMES];
+  }
 
   return [...TOOL_NAMES, toolDefLiveApi.toolName];
 }

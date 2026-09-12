@@ -14,7 +14,7 @@ import {
   setupTrackWithQueuedMethods,
   setupScene,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
-import { createAudioClipInSession } from "../arrangement-tiling-helpers.ts";
+import { createAudioClipInSession } from "../helpers/arrangement-tiling-helpers.ts";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,

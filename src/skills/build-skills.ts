@@ -170,7 +170,9 @@ export function assembleSkills(
     lookup: (name) => {
       const key = resolveFragmentAlias(name);
 
-      if (suppressed.has(key)) return "";
+      if (suppressed.has(key)) {
+        return "";
+      }
 
       return fragments[key] ?? builtIns[key] ?? null;
     },
@@ -199,7 +201,9 @@ export function assembleSkills(
 
       // Same reason, in the other direction: a fragment that resolved to nothing
       // neither needs its prerequisites nor satisfies anyone else's.
-      if (body.trim() !== "") included.add(key);
+      if (body.trim() !== "") {
+        included.add(key);
+      }
     },
   });
 
@@ -230,7 +234,9 @@ function switchableOff(
   onWarn?: (message: string) => void,
 ): string[] {
   return disabled.filter((name) => {
-    if (!isSkillSlotName(name) || isDisableableSkillSlot(name)) return true;
+    if (!isSkillSlotName(name) || isDisableableSkillSlot(name)) {
+      return true;
+    }
 
     onWarn?.(
       `skills override "${name}.md" says enabled: false, which is ignored — that fragment is the whole document, not a section of it. Delete @include lines from it to drop sections.`,
@@ -311,7 +317,9 @@ function warnRetiredOverrides(
   ]);
 
   for (const name of customized) {
-    if (!Object.hasOwn(RETIRED_SKILL_SLOTS, name)) continue;
+    if (!Object.hasOwn(RETIRED_SKILL_SLOTS, name)) {
+      continue;
+    }
 
     // hasOwn doesn't narrow an index signature; the key is present by the check.
     const replacedBy = RETIRED_SKILL_SLOTS[name] as readonly string[];
@@ -362,7 +370,9 @@ function warnSplitOverrides(
 
     const shared = staleSplitLines(body, builtIns[write] ?? "");
 
-    if (shared.length === 0) continue;
+    if (shared.length === 0) {
+      continue;
+    }
 
     onWarn?.(
       `skills override "${head}.md" predates the writing-notes split: ${shared.length} of its lines are still the built-in's, e.g. ${shared.slice(0, EXAMPLE_LINES).map(snippet).map(quoted).join(", ")} — that text is now the separate fragment "${write}", so it ships twice whenever this override is in use. Delete it from your override, or switch "${write}" off.`,

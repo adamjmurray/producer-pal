@@ -147,7 +147,9 @@ test.describe("Conversation branching (stubbed backend)", () => {
     // index 1 — an edit fork would anchor it under the prompt at index 0).
     const replyHandle = await reply.elementHandle();
 
-    if (replyHandle == null) throw new Error("assistant bubble not found");
+    if (replyHandle == null) {
+      throw new Error("assistant bubble not found");
+    }
 
     const navFollowsReply = await branchNav.evaluate(
       (nav, bubble) =>

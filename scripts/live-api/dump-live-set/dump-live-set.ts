@@ -79,7 +79,9 @@ function parseArgs(): Args {
     applyArg(args, arg);
   }
 
-  if (args.roots.length === 0) args.roots.push("live_set");
+  if (args.roots.length === 0) {
+    args.roots.push("live_set");
+  }
 
   if (args.gzip && !args.outputPath.endsWith(".gz")) {
     args.outputPath += ".gz";
@@ -108,7 +110,9 @@ function applyArg(args: Args, arg: string): void {
     args.roots.push(arg.slice("--root=".length));
   } else if (arg.startsWith("--skip=")) {
     for (const name of arg.slice("--skip=".length).split(",")) {
-      if (name !== "") args.skipChildren.add(name);
+      if (name !== "") {
+        args.skipChildren.add(name);
+      }
     }
   } else if (arg.startsWith("--max-objects=")) {
     args.maxObjects = Number(arg.slice("--max-objects=".length));

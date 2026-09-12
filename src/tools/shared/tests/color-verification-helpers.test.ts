@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -60,7 +61,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#FF0000");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested track id undefined color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
     });
 
@@ -73,7 +74,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#00FF00");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Requested scene color #00FF00 was mapped to nearest palette color #1AFF2F. Live uses a fixed color palette.",
+        "Requested scene id undefined color #00FF00 was mapped to nearest palette color #1AFF2F. Live uses a fixed color palette.",
       );
     });
 
@@ -86,7 +87,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#0000FF");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Requested clip color #0000FF was mapped to nearest palette color #1A2F96. Live uses a fixed color palette.",
+        "Requested clip id undefined color #0000FF was mapped to nearest palette color #1A2F96. Live uses a fixed color palette.",
       );
     });
 
@@ -99,7 +100,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#ff0000");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Requested track color #ff0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested track id undefined color #ff0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
     });
   });
@@ -116,7 +117,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#FF0000");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Could not verify color quantization: Failed to read color",
+        "Could not verify color quantization for id undefined: Failed to read color",
       );
     });
 
@@ -129,7 +130,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#FF0000");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Requested track color #FF0000 was mapped to nearest palette color null. Live uses a fixed color palette.",
+        "Requested track id undefined color #FF0000 was mapped to nearest palette color null. Live uses a fixed color palette.",
       );
     });
 
@@ -142,7 +143,7 @@ describe("verifyColorQuantization", () => {
       verifyColorQuantization(mockObject, "#00FF00");
 
       expect(console.warn).toHaveBeenCalledWith(
-        "Requested scene color #00FF00 was mapped to nearest palette color undefined. Live uses a fixed color palette.",
+        "Requested scene id undefined color #00FF00 was mapped to nearest palette color undefined. Live uses a fixed color palette.",
       );
     });
   });

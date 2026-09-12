@@ -114,7 +114,9 @@ export function clipStateAssertion(
     expect: (result: unknown): boolean => {
       const clip = result as { notes?: string; timeSignature?: string };
 
-      if (clip.timeSignature !== meter || !clip.notes) return false;
+      if (clip.timeSignature !== meter || !clip.notes) {
+        return false;
+      }
 
       let events: NoteEvent[];
 
@@ -196,7 +198,9 @@ export function notesMatch(
   events: NoteEvent[],
   expected: ExpectedNote[],
 ): boolean {
-  if (events.length !== expected.length) return false;
+  if (events.length !== expected.length) {
+    return false;
+  }
 
   // A greedy sort-then-pair-by-index check can wrongly fail when expected notes
   // carry OVERLAPPING any-of pitch sets at the same start (e.g. [40,50] and [45]
@@ -303,20 +307,31 @@ function diffNoteRow(
   want: ExpectedNote | undefined,
   got: NoteEvent | undefined,
 ): string {
-  if (want == null) return `  + extra   ${fmtActual(got as NoteEvent)}`;
-  if (got == null) return `  - missing ${fmtExpected(want)}`;
+  if (want == null) {
+    return `  + extra   ${fmtActual(got as NoteEvent)}`;
+  }
+
+  if (got == null) {
+    return `  - missing ${fmtExpected(want)}`;
+  }
 
   const reasons: string[] = [];
 
-  if (!pitchMatches(got.pitch, want.pitch)) reasons.push("pitch");
+  if (!pitchMatches(got.pitch, want.pitch)) {
+    reasons.push("pitch");
+  }
 
-  if (Math.abs(got.start_time - want.start) >= EPS) reasons.push("start");
+  if (Math.abs(got.start_time - want.start) >= EPS) {
+    reasons.push("start");
+  }
 
   if (want.duration != null && Math.abs(got.duration - want.duration) >= EPS) {
     reasons.push("duration");
   }
 
-  if (reasons.length === 0) return `  ✓ ${fmtExpected(want)}`;
+  if (reasons.length === 0) {
+    return `  ✓ ${fmtExpected(want)}`;
+  }
 
   const detail = `expected ${fmtExpected(want)} — actual ${fmtActual(got)}`;
 
@@ -342,7 +357,9 @@ export function getTransforms(
 ): string {
   const updateCall = lastSuccessfulToolCall(turns, turn, toolName);
 
-  if (!updateCall) throw new Error(`${toolName} not found in turn ${turn}`);
+  if (!updateCall) {
+    throw new Error(`${toolName} not found in turn ${turn}`);
+  }
 
   const raw = updateCall.args.transforms;
   const transforms = Array.isArray(raw) ? raw.join("\n") : argText(raw);
@@ -368,7 +385,9 @@ export function getTransforms(
 export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
   const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
 
-  if (!call) throw new Error(`ppal-create-clip not found in turn ${turn}`);
+  if (!call) {
+    throw new Error(`ppal-create-clip not found in turn ${turn}`);
+  }
 
   const notes = call.args.notes;
 
@@ -406,7 +425,9 @@ export function getCreatedClip(
 ): { id?: string; path?: string } {
   const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
 
-  if (!call) return {};
+  if (!call) {
+    return {};
+  }
 
   const parsed = parsedToolResult(call);
 
@@ -452,7 +473,9 @@ export function readClipNotesFromTurn(
     }
 
     for (const clip of clipObjectsFrom(parsed)) {
-      if (clip.notes == null) continue;
+      if (clip.notes == null) {
+        continue;
+      }
 
       // When a clipId is requested, require an exact id match — skip candidates
       // with a different id AND candidates with no id, so a malformed/idless
@@ -501,7 +524,9 @@ interface ClipShape {
  * @returns Candidate clip objects (the result itself plus any nested clips)
  */
 function clipObjectsFrom(parsed: unknown): ClipShape[] {
-  if (parsed == null || typeof parsed !== "object") return [];
+  if (parsed == null || typeof parsed !== "object") {
+    return [];
+  }
 
   const obj = parsed as Record<string, unknown>;
   const out: ClipShape[] = [obj];
@@ -542,7 +567,7 @@ export function slotToPath(slot: string): string {
  * @param mcpClient - MCP client for tool calls
  * @param slots - Session clip slots to clear (e.g. ["0/0", "0/1", "0/2"])
  */
-export async function clearSessionSlots(
+export async function clearClipSlots(
   mcpClient: Client,
   slots: string[],
 ): Promise<void> {
@@ -563,7 +588,9 @@ export async function clearSessionSlots(
       id = null; // empty/unparseable slot read — nothing to delete
     }
 
-    if (id != null) ids.push(argText(id));
+    if (id != null) {
+      ids.push(argText(id));
+    }
   }
 
   if (ids.length > 0) {

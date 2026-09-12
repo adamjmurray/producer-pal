@@ -16,7 +16,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
-import { type RenameOutcome } from "#webui/hooks/context/use-doc-collection";
+import { type RenameOutcome } from "#webui/hooks/context/helpers/use-doc-collection";
 import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   type MemoryEntryInput,

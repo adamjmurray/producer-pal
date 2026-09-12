@@ -93,7 +93,10 @@ export function PresetControls({
     setError(null);
     const preset = presets.find((p) => p.id === id);
 
-    if (preset) settings.applyPreset(preset);
+    if (preset) {
+      settings.applyPreset(preset);
+    }
+
     setEditDescription(preset?.description ?? "");
   };
 
@@ -134,8 +137,14 @@ export function PresetControls({
           // Keep the selection when the write failed — the preset is still in
           // the list, and clearing here would drop the user out of Update/Delete
           // with only the error notice to say why.
-          if (selected && deletePreset(selected.id) != null) return;
-          if (selected) settings.forgetDeletedPreset(selected.id);
+          if (selected && deletePreset(selected.id) != null) {
+            return;
+          }
+
+          if (selected) {
+            settings.forgetDeletedPreset(selected.id);
+          }
+
           setSelectedId("");
           setEditDescription("");
         }}
@@ -213,12 +222,16 @@ function presetsMissingApiKey(
   settings: UseSettingsReturn,
   presets: ChatPreset[],
 ): Set<string> {
-  if (!settings.settingsLoaded) return new Set();
+  if (!settings.settingsLoaded) {
+    return new Set();
+  }
 
   return new Set(
     presets
       .filter((p) => {
-        if (p.provider === "lmstudio" || p.provider === "ollama") return false;
+        if (p.provider === "lmstudio" || p.provider === "ollama") {
+          return false;
+        }
 
         return !settings.getProviderConnection(p.provider).apiKey;
       })

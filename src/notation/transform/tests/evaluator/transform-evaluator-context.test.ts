@@ -13,6 +13,7 @@ import {
   createContext,
   createTestNotes,
 } from "./transform-evaluator-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("Context Variables", () => {
   describe("note.index", () => {
@@ -211,8 +212,7 @@ describe("Context Variables", () => {
       );
 
       expect(result.velocity).toStrictEqual({ operator: "set", value: 0 });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "clip.position is not available for session clips",
         ),

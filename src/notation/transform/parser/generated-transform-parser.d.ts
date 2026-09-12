@@ -126,8 +126,8 @@ export interface TransformAssignment {
   parameter: string;
   operator: "add" | "set";
   expression: ExpressionNode;
-  pitchRange?: PitchRange;
-  timeRange?: TimeRange;
+  pitchRange?: PitchRange | null;
+  timeRange?: TimeRange | null;
   /** Optional where() predicate filter. AND-combined with pitchRange/timeRange:
    * a note must satisfy the predicate AND the positional selector. Null/absent
    * when the line has no where() clause. */
@@ -154,8 +154,8 @@ export interface NoteOp {
   name: "ratchet" | "repeat" | "merge" | "split";
   args: (ExpressionNode | BarBeatPointNode)[];
   sync?: boolean;
-  pitchRange?: PitchRange;
-  timeRange?: TimeRange;
+  pitchRange?: PitchRange | null;
+  timeRange?: TimeRange | null;
   /** Set when the selector prefix had a duplicate segment kind. The evaluator
    * relays it as a WARNING and skips the line. Absent on well-formed lines. */
   selectorWarning?: string | null;

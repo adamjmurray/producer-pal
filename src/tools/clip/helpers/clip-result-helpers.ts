@@ -3,14 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  barBeatToAbletonBeats,
-  durationToAbletonBeats,
-  validateBarBeatPosition,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 
 export interface MidiNote {
   pitch: number;
@@ -19,16 +14,11 @@ export interface MidiNote {
   velocity: number;
 }
 
-export interface ArrangementParams {
-  songTimeSigNumerator: number | null;
-  songTimeSigDenominator: number | null;
-  arrangementStartBeats: number | null;
-  arrangementLengthBeats: number | null;
-}
-
 export interface NoteUpdateResult {
   noteCount: number;
   transformed?: number;
+  /** Set only when the call changed the length itself (see duplicateLoop). */
+  length?: string;
 }
 
 export interface ClipResult {
@@ -37,78 +27,31 @@ export interface ClipResult {
   transformed?: number;
   /** Where the clip is, as a path. Pastes back into any path/toPath param. */
   path?: string;
+  /** The length the clip ended up at, when the call moved it off the arg. */
+  length?: string;
+  /**
+   * Only when another clip in the same call was set to land on this one: true
+   * when this clip is gone (`path` is its address from before the call), false
+   * when it is still there. A placement that failed can destroy it anyway — it
+   * clears the target range before the copy it never makes — so this reports
+   * what became of the clip, not whether the overwrite went to plan.
+   */
+  deleted?: boolean;
 }
 
 /**
- * Validate and parse arrangement parameters
- * @param arrangementStart - Bar|beat position for arrangement clip start
- * @param arrangementLength - Duration (`Nbar`, `n<fraction>`, or `Nbar+n<fraction>`) for arrangement span
- * @returns Parsed parameters
- */
-export function validateAndParseArrangementParams(
-  arrangementStart?: string,
-  arrangementLength?: string,
-): ArrangementParams {
-  const result: ArrangementParams = {
-    songTimeSigNumerator: null,
-    songTimeSigDenominator: null,
-    arrangementStartBeats: null,
-    arrangementLengthBeats: null,
-  };
-
-  if (arrangementStart == null && arrangementLength == null) {
-    return result;
-  }
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const numerator = liveSet.getProperty("signature_numerator") as number;
-  const denominator = liveSet.getProperty("signature_denominator") as number;
-
-  result.songTimeSigNumerator = numerator;
-  result.songTimeSigDenominator = denominator;
-
-  if (arrangementStart != null) {
-    // Validate the standalone position first so a 0-indexed/zero-bar
-    // arrangement start gets the 1-indexing steer (matching create-clip), not a
-    // silent pre-origin beat.
-    validateBarBeatPosition(arrangementStart);
-    result.arrangementStartBeats = barBeatToAbletonBeats(
-      arrangementStart,
-      numerator,
-      denominator,
-    );
-  }
-
-  if (arrangementLength != null) {
-    const lengthBeats = durationToAbletonBeats(
-      arrangementLength,
-      numerator,
-      denominator,
-    );
-
-    if (lengthBeats <= 0) {
-      throw new Error("arrangementLength must be greater than 0");
-    }
-
-    result.arrangementLengthBeats = lengthBeats;
-  }
-
-  return result;
-}
-
-/**
- * Build clip result object with optional note stats
+ * Build clip result object with optional note stats. The caller passes the
+ * path, read off a clip it already holds — resolving the id here would cost a
+ * LiveAPI build per clip returned.
  * @param clipId - The clip ID
  * @param noteResult - Optional note update result with count and transformed
- * @param slot - Optional slot position to include in result
- * @param slot.trackIndex - Track index
- * @param slot.sceneIndex - Scene index
- * @returns Result object with id and optionally noteCount/transformed
+ * @param path - Where the clip is, from objectPathForApi
+ * @returns Result object with id, path, and optionally noteCount/transformed/length
  */
 export function buildClipResultObject(
   clipId: string,
   noteResult: NoteUpdateResult | null,
-  slot?: { trackIndex: number; sceneIndex: number },
+  path?: string,
 ): ClipResult {
   const result: ClipResult = { id: clipId };
 
@@ -118,35 +61,33 @@ export function buildClipResultObject(
     if (noteResult.transformed != null) {
       result.transformed = noteResult.transformed;
     }
+
+    if (noteResult.length != null) {
+      result.length = noteResult.length;
+    }
   }
 
-  if (slot != null) {
-    result.path = slotPath(slot.trackIndex, slot.sceneIndex);
+  if (path != null) {
+    result.path = path;
   }
 
   return result;
 }
 
 /**
- * Emit warnings for clips moved to same track position
- * @param arrangementStartBeats - Whether arrangement start was set
- * @param tracksWithMovedClips - Map of trackIndex to clip count
+ * Report a clip at its current position, for an update that didn't move it.
+ * @param clip - The clip that stayed put
+ * @param updatedClips - Array to collect results
+ * @param noteResult - Note update result for result
  */
-export function emitArrangementWarnings(
-  arrangementStartBeats: number | null,
-  tracksWithMovedClips: Map<number, number>,
+export function keepClip(
+  clip: LiveAPI,
+  updatedClips: ClipResult[],
+  noteResult: NoteUpdateResult | null,
 ): void {
-  if (arrangementStartBeats == null) {
-    return;
-  }
-
-  for (const [trackIndex, count] of tracksWithMovedClips.entries()) {
-    if (count > 1) {
-      console.warn(
-        `${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
-      );
-    }
-  }
+  updatedClips.push(
+    buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+  );
 }
 
 /**
@@ -194,29 +135,38 @@ export function prepareSessionClipSlot(
 
 /**
  * The clip Live just put in the slot.
- *
- * Live declines a create it can't do — a MIDI clip on an audio track, say —
- * without raising, and a LiveAPI pointing at nothing reads back as id "0". Left
- * unchecked that ships as a successful create and poisons every follow-up call
- * that uses the id.
  * @param clipSlot - The slot the clip was created in
- * @param kind - Which clip was asked for
+ * @param position - Where the clip was asked for, as a path
  * @returns The new clip
- * @throws When Live created nothing
+ * @throws When Live created no clip
  */
 export function requireCreatedSessionClip(
   clipSlot: LiveAPI,
-  kind: "MIDI" | "audio",
+  position: string,
 ): LiveAPI {
-  const clip = clipSlot.child("clip");
+  return requireCreatedClip(clipSlot.child("clip"), position);
+}
 
-  if (!clip.exists()) {
-    const needs =
-      kind === "MIDI"
-        ? "a MIDI clip needs a MIDI track"
-        : "an audio clip needs an audio track";
-
-    throw new Error(`Live created no clip - ${needs}`);
+/**
+ * The clip a create call produced, or an error saying it made none.
+ *
+ * Live declines a create it can't do without raising. Sometimes nothing comes
+ * back (id "0"); the arrangement create calls instead answer with another
+ * object entirely, and id 1 is the Live Set. So existing is not enough: it has
+ * to be a Clip. Left unchecked that ships as a successful create and poisons
+ * every follow-up call that uses the id.
+ *
+ * The message names the position and nothing else. Callers pre-flight the
+ * refusals that can be explained (clipCopyBlocker), so anything reaching here
+ * is a refusal no guess would get right.
+ * @param clip - What the create call produced
+ * @param position - Where the clip was asked for, as a path
+ * @returns The new clip
+ * @throws When Live created no clip
+ */
+export function requireCreatedClip(clip: LiveAPI, position: string): LiveAPI {
+  if (!clip.exists() || clip.type !== "Clip") {
+    throw new Error(`Live created no clip at ${position}`);
   }
 
   return clip;

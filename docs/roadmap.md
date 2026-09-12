@@ -2,14 +2,20 @@
 
 ## Next
 
-### 2.3
+### 2.4
+
+The params deprecated in 2.2 and 2.3 are removed. If you drive Producer Pal from
+a script, the [migration guide](/guide/migration) covers what to change, plus
+the response changes that already shipped in 2.3.
 
 In consideration:
 
-- Improved Drum Rack support
-- Continue to improve performance
-- Continues standardizing tool interfaces on path-based locators for Live
-  objects
+- Read tools take a list so several clips or devices can be read in one call
+- Address a device by what it is instead of where it sits: `t0/inst` for a
+  track's instrument, `t0/afx1` for its second audio effect
+- One consistent way for every tool to report a target it couldn't do, and why
+- Attach an image in the built-in chat, so a sketch of a song can become MIDI
+  clips
 - Fetch model options from Ollama and LM Studio/Bionic servers instead of
   hard-coding
 
@@ -18,15 +24,48 @@ In consideration:
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
 
+### 2.3 - Consistency (September 2026)
+
+The tools were built one at a time, each with its own idea of how to name a
+thing, what to return, and what to refuse, so Producer Pal would sometimes
+refuse something reasonable or say it had done something it hadn't. This release
+set down ten principles for how a tool should behave and brought every tool to
+them.
+
+- Writes report what actually landed, read back off the object. A value Live
+  ignored or snapped no longer comes back as a complete success
+- Device parameters read and write in the units Live shows: `12 ms`, `0.4 s`,
+  `1/16`, `-1.68 st`. A value in the wrong unit or out of range is refused
+  instead of quietly written wrong. Dozens of parameters across Live's devices
+  were being read in the wrong units, or not at all
+- An arrangement clip is named by where it starts: `t0[5|1]`, or
+  `t0[loc:Chorus]`. A locator name works anywhere a bar|beat position does
+- Arrangement clips move and copy across tracks and onto take lanes, audio
+  included, even where Live's API has no way to do it directly
+- Drum pads and rack chains go deeper: a pad stacking several chains reads,
+  writes, splits and copies one layer at a time, pads are spelled by pitch
+  everywhere, and any rack chain can be copied with its devices and mixer
+- A track's or a rack chain's sends can be set together in one call, and report
+  the level each one landed on
+- Every result says where its object is, and every warning names its object by
+  both path and id, in the spelling you used
+- Batch operations do the shared work once instead of once per item. Splitting
+  40 arrangement clips at 32 points went from 13.4s to 4.6s
+- Built-in chat: leaving a conversation mid-response asks first, deleting a
+  voice conversation is undoable, and several other ways a conversation could be
+  lost are fixed
+- Command-line flags and the Claude Desktop extension's settings apply to that
+  client alone instead of changing what everyone connected sees
+
 ### 2.2 - Performance and paths (August 2026)
 
 - Producer Pal no longer leaks Live API objects, so Ableton stays fast over a
   long session instead of slowing down and filling its log file
 - Drum kit, Live Set, and arrangement operations do a fraction of the work they
-  did — heavy arrangement edits could freeze Live
+  did; heavy arrangement edits could freeze Live
 - One shorthand syntax locates anything in a Live Set: `t2/s3` is a clip slot,
   `t2/l0` a take lane, `t1/d0/pC1` a drum pad. `path` replaces `slot`, and clip
-  results report it — **breaking** for anything reading `slot` or `trackIndex`
+  results report it. **Breaking** for anything reading `slot` or `trackIndex`
 - Every id param is just `id`, and a param sent as `null` reads as unset
 - Drum Racks: copy a pad, delete a single chain, read and write chain mixers,
   and nested racks work
@@ -40,7 +79,7 @@ for more detailed information.
 
 - Subagents: the built-in chat can delegate self-contained tasks to nested
   assistants that run in parallel, and be resumed for follow-up work
-- Presets: named bundles of provider, model, tool set, and notation — including
+- Presets: named bundles of provider, model, tool set, and notation, including
   what subagents run as
 - Skills fragments can be switched off individually, and are dropped
   automatically for tools you've turned off
@@ -92,8 +131,8 @@ Other improvements:
 
 - Split arrangement clips at specified positions
 - Multi-object create / update / duplicate operations. `transforms` on
-  update-clip and duplicate is a single string broadcast across every clip/copy
-  — use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
+  update-clip and duplicate is a single string broadcast across every clip/copy.
+  Use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
   variation, or make separate calls for structurally-distinct edits.
 - Per-project notes: improved UI, now always enabled by default (disable the
   `ppal-context` tool to prevent AI edits)

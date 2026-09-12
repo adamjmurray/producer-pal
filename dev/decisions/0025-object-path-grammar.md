@@ -1,6 +1,9 @@
 # ADR-0025: One object-path grammar, scoped to clips and devices
 
-- **Status:** Accepted
+- **Status:** Superseded in part by
+  [ADR-0036](0036-paths-address-tracks-and-scenes.md) — the scoping to clips and
+  devices only — and by [ADR-0037](0037-arrangement-time-is-part-of-the-path.md)
+  — arrangement clips and locators. The grammar itself stands.
 - **Date logged:** 2026-08-16
 
 ## Context
@@ -46,13 +49,21 @@ Paths address **clips and devices**. Tracks and scenes keep `trackIndex` /
   serving only the two tools that already worked. It is not: without `l`, a
   take-lane clip has no correct result path, so result round-tripping ships with
   a hole, and `update-clip` still cannot move a take-lane clip.
-- **`lnew` for appending a lane.** `l+` reads as "one more" and is shorter; `+`
-  already means that in duration syntax (`1bar+n/4`).
+- **A segment that appends a take lane (`l+`, `lnew`, `l=`).** All dropped
+  before release. A `+` is a root — `t+`, `rt+`, `s+` — and only the tool that
+  creates that kind of object accepts one; every other path names something that
+  exists. `l<n>` creates the lanes up to its index, so it says everything an
+  appending segment could, and it names the same lane on a re-run.
 - **An `a<n>` segment for arrangement clips.** The index into a track's
   arrangement clip list is unstable and means nothing to a user. Arrangement
-  clips are addressed by id, or found through `read-track`.
+  clips are addressed by id, or found through `read-track`. _(The `a<n>`
+  rejection stands; addressing by id alone was reversed by
+  [ADR-0037](0037-arrangement-time-is-part-of-the-path.md), which spells the
+  coordinate as time rather than an index.)_
 - **A locator segment.** Locators are song-timeline objects, not points in the
   track/scene coordinate space. The `locator` param takes an id or a name.
+  _(Reversed by [ADR-0037](0037-arrangement-time-is-part-of-the-path.md): once
+  the grammar carries song time, a locator is one spelling of a point on it.)_
 - **Reverse segment order (`s3/t0`).** One canonical spelling; the "did you
   mean" steer is cheap.
 - **Keeping `slot` alongside `path` in results for a release.** Spends context

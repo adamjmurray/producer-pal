@@ -20,7 +20,9 @@ export function readLiveSetScaleMask(): number | undefined {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const scaleMode = liveSet.getProperty("scale_mode") as number;
 
-  if (scaleMode === 0) return undefined;
+  if (scaleMode === 0) {
+    return undefined;
+  }
 
   const rootNote = liveSet.getProperty("root_note") as number;
   const intervals = liveSet.getProperty("scale_intervals") as number[];

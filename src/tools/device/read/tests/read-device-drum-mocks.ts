@@ -12,7 +12,8 @@ import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface PadProps {
   note?: number;
-  name?: string;
+  // number simulates Live returning an all-digit name as a number
+  name?: string | number;
   mute?: number;
   solo?: number;
   chainIds?: string[];

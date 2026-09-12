@@ -93,7 +93,7 @@ function expandRepeatPattern(
   // where each note's length and the spacing to the next note track together.
   // The cursor base is `state.durationStreamCursor` (advanced only after
   // emission), so this position computation and the length emission read the
-  // same values. See "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
+  // same values. See dev/specs/barbeat/pattern-brackets.md.
   let absoluteBeats = startBeats;
 
   for (let i = 0; i < times; i++) {
@@ -194,7 +194,7 @@ function emitPitchAtPosition(
  * voice, so every position re-emits the same chord (the existing broadcast).
  * `startCursor` lets the voices continue cycling across multiple position tokens
  * (cross-event cursor; see "Pattern Brackets (Streams)" in
- * dev/specs/BarBeat-Spec.md).
+ * dev/specs/barbeat/pattern-brackets.md).
  * Any active velocity/duration/probability value stream OVERRIDES the captured
  * per-pitch value at each emission, cycled by its own carried cursor (the zip);
  * it applies to the whole layered chord.

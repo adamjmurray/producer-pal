@@ -201,49 +201,22 @@ describe("buildCodeExecutionContext", () => {
     expect(result.location).toStrictEqual({ view: "session" });
   });
 
-  it("omits arrangementStart for an arrangement clip without a start", () => {
-    // Kills the `&&`→`||` and forced-true mutants on the arrangement guard:
-    // view is "arrangement" but arrangementStartBeats is undefined.
+  it("names an arrangement clip by the lane it is on and where it starts", () => {
     registerLiveSet();
     registerTrack(0);
     const clip = makeClip(livePath.track(0).arrangementClip(0), {
       trackIndex: 0,
+      props: { start_time: 16 },
     });
 
-    const result = buildCodeExecutionContext(
-      clip,
-      "arrangement",
-      0,
-      1,
-      undefined,
-      undefined,
-    );
+    const result = buildCodeExecutionContext(clip, "arrangement", 0, 1);
 
+    // 16 Ableton beats in 4/4 is bar 5 beat 1
     expect(result.location).toStrictEqual({
       view: "arrangement",
-      path: "t0",
+      path: "t0[5|1]",
+      arrangementStartBeats: 16,
     });
-  });
-
-  it("scales arrangementStart by the song denominator/4", () => {
-    // Song is 4/8, start 16 Ableton beats → 16 * (8/4) = 32 musical beats.
-    // A `/` mutant → 8.
-    registerLiveSet({ signature_denominator: 8 });
-    registerTrack(0);
-    const clip = makeClip(livePath.track(0).arrangementClip(0), {
-      trackIndex: 0,
-    });
-
-    const result = buildCodeExecutionContext(
-      clip,
-      "arrangement",
-      0,
-      1,
-      undefined,
-      16,
-    );
-
-    expect(result.location.arrangementStartBeats).toBe(32);
   });
 });
 

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -18,14 +19,21 @@ import {
 } from "#src/tools/constants.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
+import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
+import { type ArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 import {
   namedHiddenPath,
-  requireSessionSlot,
+  requireClipSlotPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -54,7 +62,7 @@ export function resolveClip(
   slotValidated = false,
 ): ResolveClipResult {
   if (clipId != null) {
-    return { found: true, clip: validateIdType(clipId, "clip", "readClip") };
+    return { found: true, clip: validateIdType(clipId, "clip") };
   }
 
   // Go straight for the clip. A clip that answers proves its track and scene
@@ -199,7 +207,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.warn(
-      `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
+      `Failed to read warp markers for clip ${targetLabel(clip)}: ${errorMessage(error)}`,
     );
 
     return undefined;
@@ -210,22 +218,43 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
  * Check if a track contains a Drum Rack anywhere in its device tree.
  * A Drum Rack nested inside instrument rack chains (at any depth, in any chain)
  * still puts the track in drum mode, so the whole tree is searched recursively.
+ *
+ * Memoized per track for the request, so a request reading many clips of one
+ * track walks the tree once. Only read paths ask for the answer and none of
+ * them mutate; a tool that changed a device tree or the track order and then
+ * spelled notes would have to walk afresh.
  * @param trackIndex - Track index (0-based)
  * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackTrack(trackIndex: number): boolean {
-  return isDrumRackForTrack(LiveAPI.from(livePath.track(trackIndex)));
+  const trackPath = String(livePath.track(trackIndex));
+
+  // The track is built inside the memo, so a repeat resolves nothing at all.
+  return requestMemo(drumModeMemoKey(trackPath), () =>
+    containerHasDrumRack(LiveAPI.from(trackPath)),
+  );
 }
 
 /**
  * Drum-mode check for a track object already in hand. Batch readers that walk N
  * clips of one track call this once instead of paying a full device-tree walk
- * per clip via {@link isDrumRackTrack}.
+ * per clip via {@link isDrumRackTrack}, whose per-request memo it shares.
  * @param track - LiveAPI track object
  * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackForTrack(track: LiveAPI): boolean {
-  return containerHasDrumRack(track);
+  return requestMemo(drumModeMemoKey(track.path), () =>
+    containerHasDrumRack(track),
+  );
+}
+
+/**
+ * Name the answer after the track, so two tracks never share one.
+ * @param trackPath - The track's Live API path
+ * @returns The memo key
+ */
+function drumModeMemoKey(trackPath: string): string {
+  return `drumMode ${trackPath}`;
 }
 
 /**
@@ -294,7 +323,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   // takes.
   if (path != null && slot != null) {
     throw new Error(
-      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+      "path and slot both name a clip; use path alone (slot is deprecated)",
     );
   }
 
@@ -302,11 +331,23 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
     // The aliases are a fallback for a caller that did not use path.
     if (args.trackIndex != null || args.sceneIndex != null) {
       console.warn(
-        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+        'trackIndex/sceneIndex ignored — "path" already names the clip',
       );
     }
 
-    const position = requireSessionSlot(parseObjectPath(path, "path"));
+    const parsed = parseObjectPath(path, "path");
+
+    // An arrangement clip has no slot to report — the path names it outright,
+    // so it resolves to an id and read-clip goes on as if one was given.
+    if (parsed.kind === "arrangement-position") {
+      return {
+        clipId: arrangementClipIdAt(parsed, clipId),
+        trackIndex: null,
+        sceneIndex: null,
+      };
+    }
+
+    const position = requireClipSlotPath(parsed);
 
     assertClipIdAtSlot(clipId, position, "path");
 
@@ -350,18 +391,48 @@ function assertClipIdAtSlot(
   { trackIndex, sceneIndex }: { trackIndex: number; sceneIndex: number },
   param: string,
 ): void {
-  if (clipId == null) return;
+  if (clipId == null) {
+    return;
+  }
 
   const named = LiveAPI.from(clipId);
 
   // An id naming nothing is validateIdType's error to report, not this one's.
-  if (!named.exists()) return;
+  if (!named.exists()) {
+    return;
+  }
 
   const atPath = livePath.track(trackIndex).clipSlot(sceneIndex).clip();
 
   if (named.path !== atPath) {
+    throw new Error(`${param} and id name different clips; use one`);
+  }
+}
+
+/**
+ * The id of the arrangement clip a path names, for a read that has nothing to
+ * return when the path names none and so throws rather than warning.
+ * @param parsed - A parsed `[...]` coordinate
+ * @param clipId - The id the caller also sent, if any
+ * @returns The clip's id
+ */
+function arrangementClipIdAt(
+  parsed: ArrangementPosition,
+  clipId: string | null,
+): string {
+  const source = requireCompletePosition(parsed, "path");
+  const clip = arrangementClipAtPosition(source, "path");
+
+  if (clip == null) {
+    throw new Error(`no clip at path "${formatObjectPath(parsed)}"`);
+  }
+
+  // Naming the same clip twice over is not a conflict; naming two is.
+  if (clipId != null && clipId !== clip.id) {
     throw new Error(
-      `readClip failed: ${param} and id name different clips; use one`,
+      `id "${clipId}" and path "${formatObjectPath(parsed)}" name different clips`,
     );
   }
+
+  return clip.id;
 }

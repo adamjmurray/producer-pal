@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("bar|beat interpretNotation() - advanced bar copy", () => {
   describe("bar copy", () => {
@@ -176,24 +177,20 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     describe("multi-bar source range tiling: warnings and errors", () => {
       it("warns when destination range is invalid (start > end)", () => {
         interpretNotation("C3 1|1 @10-3=1-2");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Invalid destination range"),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("start > end"),
         );
       });
 
       it("warns when source range is invalid (start > end)", () => {
         interpretNotation("C3 1|1 @3-10=5-2");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Invalid source range"),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("start > end"),
         );
       });
@@ -202,8 +199,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         interpretNotation("C3 1|1 D3 3|1 @5-8=1-4");
         // Bars 2 and 4 are empty but bars 1 and 3 have content — a sparse source
         // (e.g. held multi-bar chords) is normal, so no empty warning fires.
-        expect(outlet).not.toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).not.toContainEqual(
           expect.stringContaining("is empty, nothing to copy"),
         );
       });
@@ -211,20 +207,17 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("warns once when the entire tiled source range is empty", () => {
         interpretNotation("C3 9|1 @5-8=1-4");
         // Source bars 1-4 are all empty (only bar 9 has a note).
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Bars 1-4 are empty, nothing to copy"),
         );
       });
 
       it("warns when skipping self-copy during tiling", () => {
         interpretNotation("C3 5|1 D3 6|1 @3-10=5-6");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Skipping copy of bar 5 to itself"),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Skipping copy of bar 6 to itself"),
         );
       });
@@ -233,12 +226,10 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // Copy bars 3-4 to range 3-4 (all are self-copies, should skip all)
         const result = interpretNotation("C3 3|1 D3 4|1 @3-4=3-4");
 
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Skipping copy of bar 3 to itself"),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Skipping copy of bar 4 to itself"),
         );
         // Should only have the original 2 notes, no copies
@@ -249,16 +240,14 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     describe("warnings and errors", () => {
       it("warns when copying from empty bar", () => {
         interpretNotation("C3 1|1 @3=2");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
       });
 
       it("warns when copying previous bar at bar 1", () => {
         interpretNotation("@1=");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "Cannot copy from previous bar when at bar 1",
           ),
@@ -267,8 +256,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when pitches are buffered before copy", () => {
         interpretNotation("C3 1|1 D3 @2=1");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "1 pitch(es) buffered but not emitted before bar copy",
           ),
@@ -277,8 +265,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when state changed before copy", () => {
         interpretNotation("C3 1|1 v90 @2=1");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "state change won't affect anything before bar copy",
           ),
@@ -287,8 +274,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when range copy has invalid source bar (bar 0)", () => {
         interpretNotation("@1-4=");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "Cannot copy from previous bar when destination starts at bar 1",
           ),
@@ -297,8 +283,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when range copy has invalid range (start > end)", () => {
         interpretNotation("C3 1|1 @5-3=");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "Invalid destination range @5-3= (start > end)",
           ),
@@ -307,24 +292,21 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
 
       it("warns when range copy from empty bar", () => {
         interpretNotation("C3 1|1 @3-5=2");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Bar 2 is empty, nothing to copy"),
         );
       });
 
       it("warns when source range has reversed order", () => {
         interpretNotation("C3 1|1 @3=5-2");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Invalid source range 5-2 (start > end)"),
         );
       });
 
       it("warns when multi-bar source range has reversed order", () => {
         interpretNotation("C3 1|1 @3-5=4-2");
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "Invalid source range @3-5=4-2 (start > end)",
           ),
@@ -336,8 +318,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("rejects copying a bar to itself (prevents infinite loop)", () => {
         const result = interpretNotation("C3 1|1 @1=1");
 
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Cannot copy bar 1 to itself"),
         );
         // Should only have the original note, not a copy
@@ -347,8 +328,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("does not warn on partial empty bars in a range copy (sparse source)", () => {
         interpretNotation("C3 1|1 @5=1-3");
         // Bar 1 has content; bars 2-3 are empty. Partial gaps copy silently.
-        expect(outlet).not.toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).not.toContainEqual(
           expect.stringContaining("is empty, nothing to copy"),
         );
       });
@@ -356,8 +336,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("warns once when a range copy's entire source is empty", () => {
         interpretNotation("C3 9|1 @5=1-3");
         // Source bars 1-3 are all empty (only bar 9 has a note).
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Bars 1-3 are empty, nothing to copy"),
         );
       });
@@ -365,8 +344,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("skips copying a bar to itself in range copy", () => {
         const result = interpretNotation("C3 1|1 D3 2|1 @1-5=2");
 
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Skipping copy of bar 2 to itself"),
         );
         // Should have 6 notes: C3 in bar 1, D3 in bar 2, and D3 copied to bars 1,3,4,5
@@ -413,8 +391,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const result = interpretNotation("C3 1|1 @clear E3 2|1 @3=1");
 
         // Should warn that bar 1 is empty (cleared by @clear)
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("Bar 1 is empty, nothing to copy"),
         );
 

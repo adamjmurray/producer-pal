@@ -106,9 +106,13 @@ export async function runSubagentWithRetry(
       } catch (error) {
         const rateLimitInfo = detectRateLimit(error);
 
-        if (abortSignal?.aborted || !rateLimitInfo.isRateLimited) throw error;
+        if (abortSignal?.aborted || !rateLimitInfo.isRateLimited) {
+          throw error;
+        }
 
-        if (!shouldRetry(attempt + 1)) throw exhaustedError(error, attempt + 1);
+        if (!shouldRetry(attempt + 1)) {
+          throw exhaustedError(error, attempt + 1);
+        }
 
         gate.penalize(calculateRetryDelay(attempt, rateLimitInfo.retryAfterMs));
         waitingFor = attempt;
@@ -213,14 +217,20 @@ export function setSubagentRateLimit(
   status: SubagentRateLimitStatus | null,
 ): void {
   if (status == null) {
-    if (!statuses.delete(toolCallId)) return;
+    if (!statuses.delete(toolCallId)) {
+      return;
+    }
   } else {
-    if (isSameStatus(statuses.get(toolCallId), status)) return;
+    if (isSameStatus(statuses.get(toolCallId), status)) {
+      return;
+    }
 
     statuses.set(toolCallId, status);
   }
 
-  for (const listener of listeners) listener();
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
 /**
@@ -267,7 +277,9 @@ function isSameStatus(
   previous: SubagentRateLimitStatus | undefined,
   next: SubagentRateLimitStatus,
 ): boolean {
-  if (previous == null) return false;
+  if (previous == null) {
+    return false;
+  }
 
   return (
     previous.attempt === next.attempt &&

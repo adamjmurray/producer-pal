@@ -240,7 +240,7 @@ function computeStatusVisuals(state: StatusBadgeProps): {
 
   if (state.assistantSpeaking) {
     return {
-      label: "Assistant speaking — wait",
+      label: "Assistant speaking, wait",
       color: "bg-amber-500",
       pulse: true,
     };
@@ -248,14 +248,14 @@ function computeStatusVisuals(state: StatusBadgeProps): {
 
   if (state.assistantThinking) {
     return {
-      label: "Thinking — wait",
+      label: "Thinking, wait",
       color: "bg-yellow-500",
       pulse: true,
     };
   }
 
   return {
-    label: "Listening — go ahead",
+    label: "Listening, go ahead",
     color: "bg-green-500",
     pulse: true,
   };

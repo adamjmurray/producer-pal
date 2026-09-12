@@ -20,7 +20,11 @@ import {
   formatWarning,
   startThought,
 } from "./shared/formatting.ts";
-import { mcpResultText, mcpResultWarnings } from "./shared/mcp-result-text.ts";
+import {
+  mcpResultInjectedBlocks,
+  mcpResultText,
+  mcpResultWarnings,
+} from "./shared/mcp-result-text.ts";
 import { type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */
@@ -34,6 +38,8 @@ interface StreamState {
   /** True once any reasoning-delta arrived — distinguishes a reasoning-only
    * turn (normal thinking-model finish) from a truly empty one. */
   sawReasoning: boolean;
+  /** Errored tool-call ids from the MCP bridge — see {@link processCliStream}. */
+  erroredToolCallIds?: Set<string>;
   error?: string;
 }
 
@@ -44,11 +50,14 @@ interface StreamState {
  * @param result - The streamText result to process
  * @param options - Processing options
  * @param options.showUsage - Whether usage is shown after steps (affects spacing)
+ * @param options.erroredToolCallIds - Ids of calls whose MCP result carried
+ *   `isError: true` (from `createMcpTools`). The flag can't ride on the result
+ *   itself — that string is the model's context — so it arrives on the side.
  * @returns TurnResult with text and tool calls
  */
 export async function processCliStream(
   result: ReturnType<typeof streamText>,
-  options?: { showUsage?: boolean },
+  options?: { showUsage?: boolean; erroredToolCallIds?: Set<string> },
 ): Promise<TurnResult> {
   const state: StreamState = {
     text: "",
@@ -58,6 +67,9 @@ export async function processCliStream(
     showUsage: options?.showUsage ?? false,
     stepCount: 0,
     sawReasoning: false,
+    ...(options?.erroredToolCallIds != null && {
+      erroredToolCallIds: options.erroredToolCallIds,
+    }),
   };
 
   for await (const part of result.stream) {
@@ -137,9 +149,14 @@ function handleError(error: unknown, state: StreamState): void {
  * @param state - Mutable stream state
  */
 function closeThought(state: StreamState): void {
-  if (!state.inThought) return;
+  if (!state.inThought) {
+    return;
+  }
 
-  if (!isQuietMode()) process.stdout.write(endThought());
+  if (!isQuietMode()) {
+    process.stdout.write(endThought());
+  }
+
   state.inThought = false;
 }
 
@@ -154,7 +171,9 @@ function handleTextDelta(text: string, state: StreamState): void {
 
   state.text += text;
 
-  if (!isQuietMode()) process.stdout.write(text);
+  if (!isQuietMode()) {
+    process.stdout.write(text);
+  }
 }
 
 /**
@@ -168,7 +187,9 @@ function handleReasoningDelta(text: string, state: StreamState): void {
   // tell a reasoning-only turn apart even when thoughts aren't printed.
   state.sawReasoning = true;
 
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   process.stdout.write(
     state.inThought ? continueThought(text) : startThought(text),
@@ -212,7 +233,7 @@ function handleToolResult(
   output: unknown,
   state: StreamState,
 ): void {
-  attachToolResult(state.toolCalls, toolName, toolCallId, output);
+  attachToolResult(state, toolName, toolCallId, output);
 
   if (!isQuietMode()) {
     process.stdout.write(
@@ -246,12 +267,16 @@ function handleStartStep(state: StreamState): void {
 function finishStream(state: StreamState): void {
   maybeWarnEmptyTurn(state);
 
-  if (isQuietMode()) return;
+  if (isQuietMode()) {
+    return;
+  }
 
   closeThought(state);
 
   // Skip trailing newline when usage is shown — onStepEnd adds its own
-  if (!state.showUsage) process.stdout.write("\n");
+  if (!state.showUsage) {
+    process.stdout.write("\n");
+  }
 }
 
 /**
@@ -271,7 +296,9 @@ function maybeWarnEmptyTurn(state: StreamState): void {
     state.text.length === 0 &&
     state.toolCalls.length === 0;
 
-  if (!empty) return;
+  if (!empty) {
+    return;
+  }
 
   if (state.sawReasoning) {
     if (!isQuietMode()) {
@@ -297,17 +324,18 @@ function maybeWarnEmptyTurn(state: StreamState): void {
 /**
  * Attach a tool result to the matching tool call
  *
- * @param toolCalls - Array of tool calls to search
+ * @param state - Mutable stream state (tool calls + errored-id set)
  * @param toolName - Name of the tool that produced the result
  * @param toolCallId - Id of the originating tool call
  * @param output - Tool output to attach
  */
 function attachToolResult(
-  toolCalls: TurnResult["toolCalls"],
+  state: StreamState,
   toolName: string,
   toolCallId: string,
   output: unknown,
 ): void {
+  const toolCalls = state.toolCalls;
   // Match on the id first, but only a non-empty id: two same-name calls in one
   // step (the SDK emits both tool-call parts before either result) would
   // otherwise get their results swapped by name-only matching, silently
@@ -321,6 +349,13 @@ function attachToolResult(
 
   if (byId != null) {
     recordOutput(byId, output);
+
+    // The id matched, so the MCP flag is authoritative: record false as well as
+    // true. The name-based fallback below has no reliable id, so it leaves
+    // isError unset and grading falls back to reading the result's shape.
+    if (state.erroredToolCallIds != null) {
+      byId.isError = state.erroredToolCallIds.has(toolCallId);
+    }
 
     return;
   }
@@ -353,7 +388,15 @@ function recordOutput(
 
   const warnings = mcpResultWarnings(output);
 
-  if (warnings.length > 0) toolCall.warnings = warnings;
+  if (warnings.length > 0) {
+    toolCall.warnings = warnings;
+  }
+
+  const injected = mcpResultInjectedBlocks(output);
+
+  if (injected.length > 0) {
+    toolCall.injectedBlocks = injected;
+  }
 }
 
 /**
@@ -363,8 +406,13 @@ function recordOutput(
  * @returns Formatted string
  */
 function formatOutput(output: unknown): string {
-  if (typeof output === "string") return output;
-  if (output == null) return "";
+  if (typeof output === "string") {
+    return output;
+  }
+
+  if (output == null) {
+    return "";
+  }
 
   // MCP content array format: [{ type: "text", text: "..." }]
   return mcpResultText(output) || JSON.stringify(output);

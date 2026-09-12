@@ -23,13 +23,25 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
   },
 
   inputSchema: {
-    path: z
+    path: z.coerce
       .string()
       .optional()
       .describe("Optional LiveAPI path (e.g., 'live_set tracks 0')"),
     operations: z
       .array(
         z.object({
+          // Probe builds only: the field is absent everywhere else, so the
+          // shipped schema is unchanged. See objectForOperation in live-api.ts.
+          ...(process.env.ENABLE_OBJECT_PROBE === "true"
+            ? {
+                path: z.coerce
+                  .string()
+                  .optional()
+                  .describe(
+                    "Run just this operation against its own object at this path, leaving the object built from the top-level path where it is. Omit to use that object. Each operation with a path gets a separate object.",
+                  ),
+              }
+            : {}),
           type: z
             .enum(LIVE_API_OPERATION_TYPES)
             .describe(

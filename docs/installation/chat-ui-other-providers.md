@@ -3,14 +3,7 @@
 The built-in chat UI supports the Anthropic API, OpenAI API, Mistral,
 OpenRouter, and custom OpenAI-compatible providers.
 
-<div class="download-band download-band-compact">
-  <div class="download-actions">
-    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
-      <span class="download-btn-label">Download Max for Live Device</span>
-      <span class="download-btn-sub">Producer_Pal.amxd — add it to a MIDI track in Ableton Live</span>
-    </a>
-  </div>
-</div>
+<!--@include: ../_partials/download-device.md-->
 
 ::: warning Pay-as-you-go Pricing
 

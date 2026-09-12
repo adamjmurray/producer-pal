@@ -93,12 +93,15 @@ function parseArgs(argv) {
       // No value — last token, or another flag right after — is a malformed
       // invocation, not a request for the default. Falling back silently ran
       // `--api-key` against GEMINI_API_KEY with nothing to say it had.
-      if (value == null || value.startsWith("--"))
+      if (value == null || value.startsWith("--")) {
         throw new Error(`Missing value for ${arg}`);
+      }
       opts[arg] = value;
-    } else if (arg.startsWith("--"))
+    } else if (arg.startsWith("--")) {
       opts[arg] = "true"; // bare boolean flag
-    else positionals.push(arg);
+    } else {
+      positionals.push(arg);
+    }
   }
   return { positionals, opts };
 }
@@ -122,7 +125,9 @@ async function main() {
 
   const file = positionals[0];
   const reuse = opts["--file-uri"];
-  if (!file && !reuse) throw new Error(USAGE);
+  if (!file && !reuse) {
+    throw new Error(USAGE);
+  }
 
   const model = opts["--model"] ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
   const prompt = opts["--prompt"] ?? opts["-p"] ?? DEFAULT_PROMPT;
@@ -149,10 +154,11 @@ async function localPart(file, apiKey, upload) {
   // API, where the message is worse.
   const ext = extname(file).toLowerCase();
   const mimeType = AUDIO_MIME[ext];
-  if (!mimeType)
+  if (!mimeType) {
     throw new Error(
       `Unsupported audio type "${ext || file}". Gemini takes: ${Object.keys(AUDIO_MIME).join(", ")}`,
     );
+  }
 
   const { size } = await stat(file);
   process.stderr.write(
@@ -182,13 +188,15 @@ async function localPart(file, apiKey, upload) {
  */
 async function uploadedPart(name, apiKey) {
   const res = await fetch(`${API_ROOT}/v1beta/${name}?key=${apiKey}`);
-  if (!res.ok)
+  if (!res.ok) {
     throw new Error(
       `Could not read ${name} (uploads expire after 48h): ${await res.text()}`,
     );
+  }
   const info = await res.json();
-  if (info.state !== "ACTIVE")
+  if (info.state !== "ACTIVE") {
     throw new Error(`Uploaded file ${name} is not ACTIVE (${info.state})`);
+  }
   return { file_data: { mime_type: info.mimeType, file_uri: info.uri } };
 }
 
@@ -199,8 +207,9 @@ async function uploadedPart(name, apiKey) {
  */
 function fileRef(value) {
   const match = /files\/[A-Za-z0-9_-]+/.exec(value);
-  if (!match)
+  if (!match) {
     throw new Error(`Not an uploaded-file reference: "${value}" (files/<id>)`);
+  }
   return match[0];
 }
 
@@ -231,10 +240,13 @@ async function uploadFile(file, mimeType, apiKey) {
       body: JSON.stringify({ file: { display_name: basename(file) } }),
     },
   );
-  if (!startRes.ok)
+  if (!startRes.ok) {
     throw new Error(`Files API start failed: ${await startRes.text()}`);
+  }
   const uploadUrl = startRes.headers.get("x-goog-upload-url");
-  if (!uploadUrl) throw new Error("Files API did not return an upload URL");
+  if (!uploadUrl) {
+    throw new Error("Files API did not return an upload URL");
+  }
 
   const upRes = await fetch(uploadUrl, {
     method: "POST",
@@ -245,8 +257,9 @@ async function uploadFile(file, mimeType, apiKey) {
     },
     body: bytes,
   });
-  if (!upRes.ok)
+  if (!upRes.ok) {
     throw new Error(`Files API upload failed: ${await upRes.text()}`);
+  }
   const uploaded = await upRes.json();
   let fileInfo = uploaded.file;
 
@@ -257,8 +270,9 @@ async function uploadFile(file, mimeType, apiKey) {
     const poll = await fetch(
       `${API_ROOT}/v1beta/${fileInfo.name}?key=${apiKey}`,
     );
-    if (!poll.ok)
+    if (!poll.ok) {
       throw new Error(`Files API poll failed: ${await poll.text()}`);
+    }
     fileInfo = await poll.json();
   }
   if (fileInfo.state !== "ACTIVE") {
@@ -277,7 +291,9 @@ async function deleteFile(name, apiKey) {
   const res = await fetch(`${API_ROOT}/v1beta/${name}?key=${apiKey}`, {
     method: "DELETE",
   });
-  if (!res.ok) throw new Error(`Could not delete ${name}: ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`Could not delete ${name}: ${await res.text()}`);
+  }
 }
 
 /**
@@ -300,14 +316,18 @@ async function generate({ apiKey, model, prompt, audioPart }) {
       }),
     },
   );
-  if (!res.ok) throw new Error(`generateContent failed: ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`generateContent failed: ${await res.text()}`);
+  }
   const data = await res.json();
   const parts = data.candidates?.[0]?.content?.parts ?? [];
   const text = parts
     .map((p) => p.text ?? "")
     .join("")
     .trim();
-  if (!text) throw new Error(`No text in response: ${JSON.stringify(data)}`);
+  if (!text) {
+    throw new Error(`No text in response: ${JSON.stringify(data)}`);
+  }
   return text;
 }
 

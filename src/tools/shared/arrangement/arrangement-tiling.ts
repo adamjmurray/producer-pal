@@ -14,7 +14,7 @@ import {
   type CreatedClip,
   EPSILON,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,
@@ -218,7 +218,9 @@ export function tileClipToRange(
     adjustPreRoll,
   });
 
-  if (stoppedEarly) return createdClips;
+  if (stoppedEarly) {
+    return createdClips;
+  }
 
   // Handle partial final tile if remainder exists
   if (remainder > EPSILON) {

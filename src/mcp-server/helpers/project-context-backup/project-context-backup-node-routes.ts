@@ -8,7 +8,7 @@
 // notified) and calls this route when something might have changed. The route
 // owns the filesystem side of the on-disk backup: restore the sidecar into an
 // empty param after a device upgrade, or back the param up when it changed or
-// the sidecar is missing. See dev/Memory-System.md for the design.
+// the sidecar is missing. See dev/memory-system/ppal-context-tool.md for the design.
 
 import { registerNodeRoute } from "../../rpc/node-request-protocol.ts";
 import {

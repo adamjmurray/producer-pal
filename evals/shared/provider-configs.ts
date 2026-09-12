@@ -84,7 +84,10 @@ export function validateApiKey(config: ProviderConfig): string {
   const apiKey = process.env[config.apiKeyEnvVar];
 
   if (!apiKey) {
-    if (config.apiKeyOptional) return "local";
+    if (config.apiKeyOptional) {
+      return "local";
+    }
+
     throw new Error(`API key for ${config.providerName} is not set`);
   }
 

@@ -64,16 +64,22 @@ function memoryBlock({
   smallModelMode,
   tools,
 }: MemoryInjectConfig): string | null {
-  if (smallModelMode) return null;
+  if (smallModelMode) {
+    return null;
+  }
 
-  if (tools != null && !tools.includes(CONTEXT_TOOL_ID)) return null;
+  if (tools != null && !tools.includes(CONTEXT_TOOL_ID)) {
+    return null;
+  }
 
   const entries = listMemoryEntries();
 
-  if (entries.length === 0) return null;
+  if (entries.length === 0) {
+    return null;
+  }
 
   return (
-    'Memory index — load a body with ppal-context (action:"read", ' +
+    'Memory index. Load a body with ppal-context (action:"read", ' +
     'scope:"memory", name:"<name>"):\n\n' +
     renderMemoryIndex(entries)
   );

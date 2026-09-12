@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -97,7 +98,8 @@ export function setupDeviceParamMocks(config: DeviceParamConfig = {}): {
 interface BasicDeviceConfig {
   id?: string;
   path?: string;
-  name?: string;
+  // number simulates Live returning an all-digit name as a number
+  name?: string | number;
   class_display_name?: string;
   type?: number;
   can_have_chains?: number;
@@ -163,7 +165,9 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): {
                 return chainIds.flatMap((c) => ["id", c]);
               }
 
-              if (childType === "drum_pads") return [];
+              if (childType === "drum_pads") {
+                return [];
+              }
 
               return [];
             },

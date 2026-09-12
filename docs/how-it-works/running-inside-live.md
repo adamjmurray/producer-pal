@@ -8,18 +8,15 @@ description:
 
 # How Producer Pal Runs Inside Ableton Live
 
-It's easy to assume Ableton's new **Extensions SDK** is the only modern way to
-run JavaScript inside Live. Producer Pal already runs a full, modern JavaScript
-server inside Live, with deep, real-time control of your Live Set, through a
-path most people don't realize is there — this page opens the hood and explains
-it, and it's also why Producer Pal can do
-[things an extension can't do yet](/how-it-works/why-not-an-extension).
+Ableton's new **Extensions SDK** is not the only modern way to run JavaScript
+inside Live. Producer Pal has been running a full JavaScript server inside Live,
+with real-time control of your Live Set, via Max for Live. That's also why it
+can do [things an extension can't do yet](/how-it-works/why-not-an-extension).
 
-## Two superpowers that usually live apart
+## Two engines, two halves of the job
 
-For over a decade, Ableton Live has shipped with **Max for Live**, a way to run
-custom devices and code right inside Live. Within Max for Live there are two
-very different engines, and each has a superpower the other lacks:
+Max for Live has shipped with Live for over a decade. Inside it are two very
+different JavaScript engines, and each has something the other lacks:
 
 - **The Live API engine.** This is the part that can actually _touch_ your Live
   Set: start and stop playback, launch clips and scenes, read and write nearly
@@ -36,11 +33,9 @@ very different engines, and each has a superpower the other lacks:
   offer. What it _can't_ do, on its own, is reach into your Live Set; it has no
   direct access to the Live API.
 
-One can control Live but not reach the modern world. The other lives in the
-modern world but can't control Live. Apart, neither is enough to power an AI
-music assistant.
+Neither is enough on its own.
 
-## The bridge is the trick
+## The bridge
 
 Producer Pal's core is a **bridge that makes these two engines work as one**,
 inside a single Max for Live device:
@@ -78,23 +73,17 @@ inside a single Max for Live device:
 
 The AI connects to the Node.js server. When it asks to, say, _"add a four-bar
 bassline and play it back,"_ the server hands that work across the bridge to the
-Live API engine, which carries it out in your actual Live Set in real time, then
-reports back. You get the modern, connected, npm-powered world **and** full
-real-time control of Live, fused into one tool.
+Live API engine, which carries it out in your Live Set in real time, then
+reports back.
 
-Getting these two engines to talk to each other reliably is the fiddly part, and
-it's why you don't see this approach often. It took a lot of time in Max, Max
-for Live, and the Live API to get right. But once it's there, the payoff is
-exactly the combination an AI assistant needs. If you'd like to see how the
-bridge actually moves data between the two engines — JSON sent over Max patch
-cables, with a chunking scheme for big messages — see
+Getting the two engines to talk to each other reliably is the fiddly part, and
+it's why you don't see this approach often. For how the bridge actually moves
+data (JSON sent over Max patch cables, chunked to survive a length limit), see
 [The Bridge: JSON Over Patch Cables](/how-it-works/the-bridge).
 
-## One device, nothing extra to wire up
+## One device, nothing to wire up
 
-Because everything lives in a single Max for Live device, there's nothing for
-you to assemble. You drop **one** device onto a track and the whole bridge comes
-up with it: server, Live API access, and all. No separate processes to launch,
-no second component to install and connect, no juggling an extension and a
-helper device. That simplicity is a direct result of solving the bridge once,
-properly.
+Everything lives in a single Max for Live device. Drop it onto a track and the
+whole bridge comes up with it: server, Live API access, and all. No separate
+processes to launch, no second component to install and connect, no juggling an
+extension and a helper device.

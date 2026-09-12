@@ -461,6 +461,54 @@ describe("VoiceApp", () => {
       expect(transfer.handleImport).toHaveBeenCalled();
     });
 
+    it("shows the shared undo banner and wires its dismiss", () => {
+      // The stack lives in App so a delete made in chat is still undoable here.
+      const dismissUndoNotification = vi.fn();
+
+      mocks.useVoicePersistence.mockReturnValue(basePersistence());
+      renderWithPanelOpen({
+        undoDelete: {
+          undoNotification: {
+            message: "Deleted \u201cJam\u201d",
+            type: "warning",
+          },
+          dismissUndoNotification,
+        },
+      });
+
+      expect(screen.getByText("Deleted \u201cJam\u201d")).toBeTruthy();
+      fireEvent.click(screen.getByLabelText(/dismiss/i));
+      expect(dismissUndoNotification).toHaveBeenCalled();
+    });
+
+    it("lets an import/export report outrank the undo banner", () => {
+      const transfer = {
+        notification: { message: "Imported 2 conversations", type: "success" },
+        dismissNotification: vi.fn(),
+        handleExport: vi.fn(),
+        handleExportOne: vi.fn(),
+        handleImport: vi.fn(),
+      };
+      const dismissUndoNotification = vi.fn();
+
+      mocks.useVoicePersistence.mockReturnValue(basePersistence());
+      mocks.useConversationTransfer.mockReturnValue(transfer);
+      renderWithPanelOpen({
+        undoDelete: {
+          undoNotification: {
+            message: "Deleted \u201cJam\u201d",
+            type: "warning",
+          },
+          dismissUndoNotification,
+        },
+      });
+
+      expect(screen.getByText("Imported 2 conversations")).toBeTruthy();
+      fireEvent.click(screen.getByLabelText(/dismiss/i));
+      expect(transfer.dismissNotification).toHaveBeenCalled();
+      expect(dismissUndoNotification).not.toHaveBeenCalled();
+    });
+
     it("disconnects an active session and clears state when New Conversation is clicked", () => {
       const persistence = basePersistence();
       const session = baseSession({ status: "connected" });

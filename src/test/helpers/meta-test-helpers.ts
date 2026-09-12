@@ -111,7 +111,9 @@ export function assertFolderSizeLimit(
   maxItems: number,
   expect: ExpectStatic,
 ): void {
-  if (!fs.existsSync(dirPath)) return;
+  if (!fs.existsSync(dirPath)) {
+    return;
+  }
 
   const oversized = findOversizedFolders(
     dirPath,
@@ -155,7 +157,9 @@ export function findTestHeavyFolders(
 ): TestHeavyFolder[] {
   const results: TestHeavyFolder[] = [];
 
-  if (!fs.existsSync(dirPath)) return results;
+  if (!fs.existsSync(dirPath)) {
+    return results;
+  }
 
   const items = fs.readdirSync(dirPath);
   let testCount = 0;
@@ -202,7 +206,9 @@ export function assertTestFileRatio(
   dirPath: string,
   expect: ExpectStatic,
 ): void {
-  if (!fs.existsSync(dirPath)) return;
+  if (!fs.existsSync(dirPath)) {
+    return;
+  }
 
   const violations = findTestHeavyFolders(dirPath);
 
@@ -291,8 +297,13 @@ export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
   const items = fs.readdirSync(rootDir);
 
   for (const item of items) {
-    if (item === "node_modules" || item === ".git") continue;
-    if (isGitIgnored(rootDir, item)) continue;
+    if (item === "node_modules" || item === ".git") {
+      continue;
+    }
+
+    if (isGitIgnored(rootDir, item)) {
+      continue;
+    }
 
     const fullPath = path.join(rootDir, item);
 
@@ -318,12 +329,16 @@ function findFilesRecursive(
 ): string[] {
   const results: string[] = [];
 
-  if (!fs.existsSync(dirPath)) return results;
+  if (!fs.existsSync(dirPath)) {
+    return results;
+  }
 
   const items = fs.readdirSync(dirPath);
 
   for (const item of items) {
-    if (item === "node_modules") continue;
+    if (item === "node_modules") {
+      continue;
+    }
 
     const fullPath = path.join(dirPath, item);
     const stat = fs.statSync(fullPath);
@@ -349,7 +364,9 @@ export function findSourceFiles(
   excludeTests: boolean = false,
 ): string[] {
   return findFilesRecursive(dirPath, (relPath) => {
-    if (!SOURCE_EXTENSIONS.has(path.extname(relPath))) return false;
+    if (!SOURCE_EXTENSIONS.has(path.extname(relPath))) {
+      return false;
+    }
 
     return !excludeTests || !isTestFile(relPath);
   });

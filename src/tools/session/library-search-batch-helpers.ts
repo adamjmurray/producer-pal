@@ -14,7 +14,7 @@ import {
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
-/** Hard cap on queries per searchBatch call. Internal — not a user param.
+/** Hard cap on queries per `searches` fan-out. Internal — not a user param.
  * Extra queries beyond this are dropped (warn-and-truncate) so a runaway
  * batch can't fan out into a flood of DB queries. */
 export const MAX_BATCH_QUERIES = 20;
@@ -48,7 +48,7 @@ export async function runSearchBatch(
 
   if (queries.length > MAX_BATCH_QUERIES) {
     console.warn(
-      `searchBatch: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
+      `searches: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
     );
   }
 

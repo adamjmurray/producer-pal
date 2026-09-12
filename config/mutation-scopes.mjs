@@ -145,22 +145,22 @@ const TOOL_DOMAINS = [
 // notation's ratchet. Raise a floor as the score climbs; never lower one
 // without triaging why.
 const TOOL_DOMAIN_BREAKS = {
-  track: 85, // triaged 2026-07-14 at 86.15% (see dev/Mutation-Testing.md)
-  session: 89, // triaged 2026-07-14 at 90.46% (see dev/Mutation-Testing.md)
-  actions: 90, // triaged 2026-07-15 at 91.79% (see dev/Mutation-Testing.md)
-  device: 90, // triaged 2026-07-15 at 91.18% (see dev/Mutation-Testing.md)
-  clip: 96, // triaged 2026-07-15 at 97.48% (see dev/Mutation-Testing.md)
-  advanced: 97, // triaged 2026-07-15 at 98.60% (see dev/Mutation-Testing.md)
-  core: 99, // triaged 2026-07-15 at 100.00% (see dev/Mutation-Testing.md)
-  scene: 96, // triaged 2026-07-15 at 97.66% (see dev/Mutation-Testing.md)
-  "live-set": 98, // triaged 2026-07-15 at 99.07% (see dev/Mutation-Testing.md)
-  shared: 94, // triaged 2026-07-16 at 95.25% (see dev/Mutation-Testing.md)
+  track: 85, // triaged 2026-07-14 at 86.15% (see dev/mutation-baselines/track.md)
+  session: 89, // triaged 2026-07-14 at 90.46% (see dev/mutation-baselines/session.md)
+  actions: 90, // triaged 2026-07-15 at 91.79% (see dev/mutation-baselines/actions.md)
+  device: 90, // triaged 2026-07-15 at 91.18% (see dev/mutation-baselines/device.md)
+  clip: 96, // triaged 2026-07-15 at 97.48% (see dev/mutation-baselines/clip.md)
+  advanced: 97, // triaged 2026-07-15 at 98.60% (see dev/mutation-baselines/read-op-tier.md)
+  core: 99, // triaged 2026-07-15 at 100.00% (see dev/mutation-baselines/read-op-tier.md)
+  scene: 96, // triaged 2026-07-15 at 97.66% (see dev/mutation-baselines/read-op-tier.md)
+  "live-set": 98, // triaged 2026-07-15 at 99.07% (see dev/mutation-baselines/read-op-tier.md)
+  shared: 94, // triaged 2026-07-16 at 95.25% (see dev/mutation-baselines/shared.md)
 };
 
 // The sharedRuntime (src/shared) break gate. Triaged 2026-07-15 at 94.94%; the
 // floor sits ~1 point below for run-to-run timeout-classification variance
 // (matching notation's ratchet). Remaining survivors are all equivalent /
-// defensive / static-init mutants (see dev/Mutation-Testing.md).
+// defensive / static-init mutants (see dev/mutation-baselines/shared-runtime.md).
 const SHARED_RUNTIME_BREAK = 94;
 
 // The mcpServer (src/mcp-server) break gate. Triaged 2026-07-15 at 88.51% (the
@@ -170,7 +170,7 @@ const SHARED_RUNTIME_BREAK = 94;
 // carries a slightly wider buffer than the pure-logic scopes. Remaining
 // survivors are overwhelmingly bucket 2/3: device-notification side-effects,
 // dynamic SQL builders, log/header strings, readdir-order-equivalent sorts, and
-// the perTest guard-attribution quirk (see dev/Mutation-Testing.md).
+// the perTest guard-attribution quirk (see dev/mutation-baselines/mcp-server.md).
 const MCP_SERVER_BREAK = 87;
 
 // The v8Adapter (src/live-api-adapter) break gate. Triaged 2026-07-16 at 97.97%
@@ -183,7 +183,7 @@ const MCP_SERVER_BREAK = 87;
 // killed) rather than Killed. Which mutants tip over varies per run: two
 // observed runs scored 98.22% and 97.97%, so the floor is set from the lower.
 // Remaining survivors are all equivalent / log-string / thin-orchestration
-// mutants (see dev/Mutation-Testing.md).
+// mutants (see dev/mutation-baselines/v8-adapter.md).
 const V8_ADAPTER_BREAK = 97;
 
 export const SCOPES = {

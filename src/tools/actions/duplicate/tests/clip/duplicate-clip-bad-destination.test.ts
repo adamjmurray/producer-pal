@@ -16,6 +16,16 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/** Register the MIDI source clip and the live_set. */
+function registerMidiSource(): void {
+  registerMockObject("clip1", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: { is_midi_clip: 1 },
+  });
+  registerMockObject("live_set", { path: livePath.liveSet });
+}
 
 // A toPath entry that names nowhere must cost only its own copy. Before this,
 // the first entry's copy was made and then thrown away with the whole call, so
@@ -49,8 +59,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       id: "live_set/tracks/0/clip_slots/1/clip",
       path: "t0/s1",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("was not duplicated: no clip slot at t0/s9"),
     );
   });
@@ -58,11 +67,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
   it("keeps the arrangement copy that landed when a later track is missing", async () => {
     mockNonExistentObjects();
 
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMidiSource();
 
     const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
 
@@ -82,23 +87,15 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
     );
     expect(result).toStrictEqual({
       id: livePath.track(2).arrangementClip(0),
-      path: "t2",
-      arrangementStart: "3|1",
+      path: "t2[3|1]",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'duplicate: no track at toPath "t99"',
-    );
+    expect(capturedWarnings()).toContain('no track at toPath "t99"');
   });
 
   it("copies nowhere, without failing, when every track is missing", async () => {
     mockNonExistentObjects();
 
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMidiSource();
 
     const result = await duplicate({
       type: "clip",
@@ -111,20 +108,71 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
   });
 });
 
+// Live returns a bare 1 when it refuses a copy, which reads as its Song object
+// unless the result is checked for an id pair. The Song then flowed on as the
+// new clip and aborted the whole call, losing the copies that had landed.
+describe("duplicate clip - a copy Live refuses", () => {
+  /**
+   * Register a destination track whose arrangement duplicate is refused.
+   * @param trackIndex - Track index
+   */
+  function registerRefusingTrack(trackIndex: number): void {
+    registerMockObject(`live_set/tracks/${trackIndex}`, {
+      path: livePath.track(trackIndex),
+      properties: { has_midi_input: 1 },
+      methods: { duplicate_clip_to_arrangement: () => 1 },
+    });
+  }
+
+  it("warns and reports no copy", async () => {
+    registerMidiSource();
+    registerRefusingTrack(2);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t2",
+    });
+
+    expect(result).toStrictEqual({ path: "t2", clips: [] });
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("Failed to duplicate clip"),
+    );
+  });
+
+  it("still reports the copy that landed", async () => {
+    registerMidiSource();
+
+    const track1 = registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+
+    registerArrangementClip(1, 0, 8);
+    registerRefusingTrack(2);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t1,t2",
+    });
+
+    expect(track1.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id clip1",
+      8,
+    );
+    expect(result).toStrictEqual([
+      { id: livePath.track(1).arrangementClip(0), path: "t1[3|1]" },
+      { path: "t2", clips: [] },
+    ]);
+  });
+});
+
 // A destination the clip can't be copied to still takes its turn in a
 // comma-separated name/color list. Renumbering around it named the surviving
 // copies wrong, and shrinking the count could stop a color list from splitting
 // at all.
 describe("duplicate clip - a toPath entry the clip can't go to", () => {
-  /** Register the MIDI source clip and the live_set. */
-  function registerMidiSource(): void {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
-  }
-
   /**
    * Register a destination track and the clip a copy to it would land on.
    * @param trackIndex - Track index

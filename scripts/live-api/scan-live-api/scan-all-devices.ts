@@ -111,7 +111,9 @@ async function scanAllDevices(
       const devicePath = `${trackPath} devices ${deviceIdx}`;
       const info = await getInfo(baseUrl, devicePath);
 
-      if (!info || !/^type \w+/m.test(info)) break;
+      if (!info || !/^type \w+/m.test(info)) {
+        break;
+      }
 
       const classDisplayName =
         (await getPropertyValue(baseUrl, devicePath, "class_display_name")) ??
@@ -175,11 +177,15 @@ function appendSection(
   entries: InfoEntry[],
   render: (e: InfoEntry) => string,
 ): void {
-  if (entries.length === 0) return;
+  if (entries.length === 0) {
+    return;
+  }
 
   lines.push(`  ${heading}:`);
 
-  for (const e of entries) lines.push(`    ${render(e)}`);
+  for (const e of entries) {
+    lines.push(`    ${render(e)}`);
+  }
 }
 
 /**
@@ -263,7 +269,9 @@ function formatOutput(
     const aGeneric = a.startsWith("Device:");
     const bGeneric = b.startsWith("Device:");
 
-    if (aGeneric !== bGeneric) return aGeneric ? 1 : -1;
+    if (aGeneric !== bGeneric) {
+      return aGeneric ? 1 : -1;
+    }
 
     return a.localeCompare(b);
   });

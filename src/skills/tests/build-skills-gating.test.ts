@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { assembleSkills, buildSkills } from "#src/skills/build-skills.ts";
+import { buildWithWarnings } from "./build-skills-test-helpers.ts";
 
 const HEADER = "# Producer Pal Skills";
 
@@ -26,14 +27,12 @@ describe("buildSkills - tool gating", () => {
 
   it("drops a section whose every tool is off, and says nothing about it", () => {
     // Disabling a tool is a setting, not a broken document — no warning.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       {
         notation: "barbeat",
         tools: ALL_TOOLS.filter((name) => name !== "ppal-library"),
       },
       {},
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("## Finding Library Content");
@@ -59,8 +58,7 @@ describe("buildSkills - tool gating", () => {
     // Dropping `devices` takes the device tools AND the three that only address
     // a device by path — the gate is any-of, so one survivor keeps the grammar.
     const pathOnly = new Set(["ppal-select", "ppal-delete", "ppal-duplicate"]);
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       {
         notation: "barbeat",
         tools: ALL_TOOLS.filter(
@@ -68,7 +66,6 @@ describe("buildSkills - tool gating", () => {
         ),
       },
       {},
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("## Devices & Instruments");
@@ -96,14 +93,12 @@ describe("buildSkills - tool gating", () => {
     // The case the notation-head split exists for: a worker that reads clips
     // needs the grammar to PARSE what read-clip returns, and none of the sugar a
     // serializer never emits. Silent, like any gating — nothing is broken.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       {
         notation: "barbeat",
         tools: ["ppal-read-clip", "ppal-read-track", "ppal-read-scene"],
       },
       {},
-      (message) => warnings.push(message),
     );
 
     expect(result).toContain("## Positions & Meter");
@@ -199,11 +194,9 @@ describe("buildSkills - tool gating", () => {
     // drivers' notation-templated refs resolve. That must read as one clean
     // section break, not a stack of blank lines, and must never warn.
     for (const smallModelMode of [false, true]) {
-      const warnings: string[] = [];
-      const result = buildSkills(
+      const { result, warnings } = buildWithWarnings(
         { notation: "midi-json", smallModelMode, tools: ALL_TOOLS },
         {},
-        (message) => warnings.push(message),
       );
 
       expect(result, `${smallModelMode} lost its head`).toContain(
@@ -222,12 +215,11 @@ describe("buildSkills - tool gating", () => {
     // authoring half is a third of bar|beat's document — so the read/write gate
     // has to hold here, not just at standard depth.
     const readOnly = ["ppal-read-clip", "ppal-read-track", "ppal-read-scene"];
-    const warnings: string[] = [];
-    const barbeat = buildSkills(
-      { notation: "barbeat", smallModelMode: true, tools: readOnly },
-      {},
-      (message) => warnings.push(message),
-    );
+    const { result: barbeat, warnings } = buildWithWarnings({
+      notation: "barbeat",
+      smallModelMode: true,
+      tools: readOnly,
+    });
     const stark = buildSkills({
       notation: "stark",
       smallModelMode: true,
@@ -365,11 +357,9 @@ describe("buildSkills - audience gating", () => {
   it("drops the conversation-only guidance for a subagent worker", () => {
     // A worker has no user to explain a limitation to, and no toolset could
     // ever have said so — Getting Help maps to no tool at all.
-    const warnings: string[] = [];
-    const result = buildSkills(
+    const { result, warnings } = buildWithWarnings(
       { notation: "barbeat", tools: ALL_TOOLS, audience: "subagent" },
       {},
-      (message) => warnings.push(message),
     );
 
     expect(result).not.toContain("## Getting Help");

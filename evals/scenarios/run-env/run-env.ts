@@ -84,7 +84,9 @@ export function resolveTools(
 
   const set = new Set(names);
 
-  if (liveApi) set.add(LIVE_API_TOOL_NAME);
+  if (liveApi) {
+    set.add(LIVE_API_TOOL_NAME);
+  }
 
   return [...set];
 }
@@ -101,15 +103,25 @@ export function resolveTools(
 export function envLabel(env: RunEnv): string {
   const parts: string[] = [];
 
-  if (env.smallModelMode) parts.push("small-model");
-  if (env.jsonOutput) parts.push("json");
-  if (env.liveApiEnabled) parts.push("live-api");
+  if (env.smallModelMode) {
+    parts.push("small-model");
+  }
+
+  if (env.jsonOutput) {
+    parts.push("json");
+  }
+
+  if (env.liveApiEnabled) {
+    parts.push("live-api");
+  }
 
   const standardCount = env.tools.filter(
     (t) => t !== LIVE_API_TOOL_NAME,
   ).length;
 
-  if (standardCount < TOOL_NAMES.length) parts.push(`tools-${standardCount}`);
+  if (standardCount < TOOL_NAMES.length) {
+    parts.push(`tools-${standardCount}`);
+  }
 
   return parts.length === 0 ? "default" : parts.join("-");
 }

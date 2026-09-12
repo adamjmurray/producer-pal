@@ -42,9 +42,13 @@ export interface CodeClipContext {
  */
 export interface CodeLocationContext {
   view: "session" | "arrangement";
-  path?: string; // where the clip is: "t0/s3", "t0", or "t0/l0" — pastes into a tool's path
-  // Arrangement only, in song musical beats. Not named arrangementStart because
-  // the tool param of that name is bar|beat, and these don't interchange.
+  // Where the clip is: "t0/s3", or "t0[5|1]" / "t0/l0[5|1]" in the arrangement,
+  // where the coordinate is where it starts. Pastes into a tool's path.
+  path?: string;
+  // Arrangement only, in song musical beats — the same position the path's
+  // coordinate spells, as a number user code can do arithmetic with. Kept
+  // alongside the path, not replaced by it: bar|beat and musical beats don't
+  // interchange, which is why this isn't named arrangementStart.
   arrangementStartBeats?: number;
 }
 

@@ -46,9 +46,9 @@ export const LIBRARY_SOURCE_VALUES = [
 export const LIBRARY_SORT_VALUES = ["use_count", "mod_date", "name"] as const;
 
 /**
- * One query in a `searchBatch` call. Fields mirror the single-search scalars
+ * One query in a `searches` fan-out. Fields mirror the single-search scalars
  * (all optional) plus an optional `label` used to group that query's results
- * in the response. Reuses the same enums as the top-level params so a batch
+ * in the response. Reuses the same enums as the top-level params so a fanned-out
  * query is filtered identically to a single search.
  */
 export const batchQuerySchema = z.object(
@@ -106,16 +106,16 @@ export const batchQuerySchema = z.object(
 );
 
 /**
- * `queries` input schema for the searchBatch action.
+ * `searches` input schema: the fan-out form of the search action.
  *
- * Advertised as a clean array of query objects (no anyOf union — unions are
- * the one shape small models mis-fill). The `preprocess` step also accepts a
- * JSON-stringified array, absorbing the small-model habit of stringifying
- * structured args without exposing that fragility in the schema. searchBatch
- * is excluded from small-model mode anyway, but the tolerance is cheap and
- * keeps the path safe.
+ * Advertised as a clean array of query objects — never a `string | array`
+ * union alongside `query`, which is the one shape models fill wrong (Claude
+ * collapses it to the scalar and drops the rest; see dev/Tool-Schemas.md).
+ * The `preprocess` step also accepts a JSON-stringified array, absorbing the
+ * habit of stringifying structured args without exposing that fragility in
+ * the schema.
  */
-export const queriesInputSchema = z
+export const searchesInputSchema = z
   .preprocess((value) => {
     if (typeof value === "string") {
       try {

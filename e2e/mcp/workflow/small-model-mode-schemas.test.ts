@@ -67,11 +67,13 @@ describe("small model mode schema filtering", () => {
   // Both routing values go, not just available-routings: small mode hides every
   // routing write param, so reading the state it cannot change is dead weight.
   // See ADR-0026.
-  it("read-track excludes both routing values from include", () => {
+  it("read-track excludes both routing values and warp from include", () => {
     const includeValues = getIncludeEnum("ppal-read-track");
 
     expect(includeValues).not.toContain("available-routings");
     expect(includeValues).not.toContain("routings");
+    // Dropped for the same reason read-clip drops it, below
+    expect(includeValues).not.toContain("warp");
     expect(includeValues).toContain("session-clips");
     expect(includeValues).toContain("arrangement-clips");
     expect(includeValues).toContain("devices");

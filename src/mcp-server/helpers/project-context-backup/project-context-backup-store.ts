@@ -22,7 +22,7 @@
 //
 // Keying on the .als basename would also break the two things this must survive:
 // renaming a Set inside the folder, and moving the folder. That is the same
-// reason dev/Memory-System.md rejects a central ~/.producer-pal store keyed by
+// reason dev/memory-system/ppal-context-tool.md rejects a central ~/.producer-pal store keyed by
 // set path. Deriving the sidecar name from a path re-introduces exactly the
 // fragility the design avoids; deriving it from the folder does not.
 //
@@ -93,7 +93,9 @@ export type SidecarRead =
 export function readProjectContextSidecar(liveSetPath: string): SidecarRead {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return { status: "absent" };
+  if (!existsSync(path)) {
+    return { status: "absent" };
+  }
 
   try {
     return { status: "found", content: readFileSync(path, "utf8") };
@@ -167,7 +169,9 @@ export function deleteProjectContextSidecar(
 ): SidecarDelete {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return "absent";
+  if (!existsSync(path)) {
+    return "absent";
+  }
 
   try {
     rmSync(path, { force: true });

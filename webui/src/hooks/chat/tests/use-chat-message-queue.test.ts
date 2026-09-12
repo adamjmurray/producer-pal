@@ -65,8 +65,9 @@ function createRecordingAdapter(
 
         if (
           onMidSend?.({ message, overrides, shouldInterrupt }) === "interrupt"
-        )
+        ) {
           return;
+        }
 
         client.chatHistory.push({
           role: "assistant",
@@ -232,7 +233,9 @@ describe("useChat message queuing", () => {
   it("stops the drain loop and surfaces an error when a drained send fails", async () => {
     const sent: string[] = [];
     const adapter = createRecordingAdapter(sent, ({ message }) => {
-      if (message === "Q") throw new Error("drained send failed");
+      if (message === "Q") {
+        throw new Error("drained send failed");
+      }
     });
 
     const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
@@ -336,7 +339,9 @@ describe("useChat message queuing", () => {
           sendCount += 1;
           yield echoUserTurn(client, message);
 
-          if (isForkClient && sendCount === 1) return; // content-less fork turn
+          if (isForkClient && sendCount === 1) {
+            return;
+          } // content-less fork turn
 
           client.chatHistory.push({
             role: "assistant",
@@ -399,7 +404,9 @@ describe("useChat message queuing", () => {
     const adapter = createRecordingAdapter(sent, () => {
       calls += 1;
 
-      if (calls > 1) throw new Error("fork stream failed");
+      if (calls > 1) {
+        throw new Error("fork stream failed");
+      }
     });
 
     const result = await sendQueueThenRetry(adapter);

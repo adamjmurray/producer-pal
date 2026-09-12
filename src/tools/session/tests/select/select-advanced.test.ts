@@ -286,7 +286,7 @@ describe("view", () => {
       mockNonExistentObjects();
 
       expect(() => select({ id: "id nonexistent" })).toThrow(
-        'select failed: id "id nonexistent" does not exist',
+        'id "id nonexistent" does not exist',
       );
     });
 
@@ -614,12 +614,12 @@ describe("view", () => {
       expect(result.view).toBe("session");
       expect(result.selectedTrack).toStrictEqual({
         id: "789",
+        path: "t0",
         type: "midi",
-        trackIndex: 0,
       });
       expect(result.selectedScene).toStrictEqual({
         id: "012",
-        sceneIndex: 2,
+        path: "s2",
       });
       // Clip and device are read from detail_clip and track view
       expect(result.selectedClip).toBeDefined();
@@ -633,7 +633,7 @@ describe("view", () => {
       expect(result).toStrictEqual(expectReadState({ view: "arrangement" }));
     });
 
-    it("reads return track with trackIndex", () => {
+    it("reads a return track", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -656,12 +656,11 @@ describe("view", () => {
 
       expect(result.selectedTrack).toStrictEqual({
         id: "return_456",
-        type: "return",
-        trackIndex: 2,
+        path: "rt2",
       });
     });
 
-    it("reads master track without trackIndex", () => {
+    it("reads the main track", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -681,9 +680,10 @@ describe("view", () => {
 
       const result = select({});
 
+      // No type: the path is what says this is the main track
       expect(result.selectedTrack).toStrictEqual({
         id: "master_789",
-        type: "master",
+        path: "mt",
       });
     });
 
@@ -711,8 +711,8 @@ describe("view", () => {
 
       expect(result.selectedTrack).toStrictEqual({
         id: "audio_track_456",
+        path: "t1",
         type: "audio",
-        trackIndex: 1,
       });
     });
 

@@ -23,6 +23,8 @@ the build-verification job, right after the build that produces it.
 - `tests/portal-toolset.test.ts` — `--tools` / `--disable-tools` /
   `--list-tools`: the header every request carries to the device, and the
   offline list the portal serves on its own.
+- `tests/portal-settings.test.ts` — the setting env vars the Claude Desktop
+  extension hands the portal, and the headers they become on the wire.
 - `tests/portal-reconnect.test.ts` — a portal that came up before the device:
   the fallback list, then the `tools/list_changed` nudge once the device answers
   (and no nudge when it was there all along).

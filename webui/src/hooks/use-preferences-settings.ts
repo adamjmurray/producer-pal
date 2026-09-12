@@ -25,7 +25,9 @@ const KEY_PREFIX = "producer_pal_";
 function readBool(key: string, defaultValue: boolean): boolean {
   const stored = localStorage.getItem(`${KEY_PREFIX}${key}`);
 
-  if (stored == null) return defaultValue;
+  if (stored == null) {
+    return defaultValue;
+  }
 
   return stored === "true";
 }

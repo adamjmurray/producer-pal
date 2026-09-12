@@ -42,7 +42,10 @@ describe("builtinFragments", () => {
       .slice(1); // drop the "# Producer Pal Skills" header
 
     expect(lines.length).toBeGreaterThan(10);
-    for (const line of lines) expect(line).toMatch(/^@include "\.\/.+"$/);
+
+    for (const line of lines) {
+      expect(line).toMatch(/^@include "\.\/.+"$/);
+    }
   });
 
   it("keeps every fragment a leaf — no fragment includes another", () => {
@@ -51,7 +54,9 @@ describe("builtinFragments", () => {
     const frags = builtinFragments(true);
 
     for (const [name, body] of Object.entries(frags)) {
-      if (name === "standard" || name === "basic") continue;
+      if (name === "standard" || name === "basic") {
+        continue;
+      }
 
       expect(body, `${name} must not include another fragment`).not.toContain(
         "@include",

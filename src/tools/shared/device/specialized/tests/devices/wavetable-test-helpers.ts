@@ -7,6 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { expect } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Shared mock data + builders for the Wavetable specs (wavetable.test.ts and
 // wavetable-modulation-helpers.test.ts).
@@ -107,8 +108,7 @@ export function expectModulationNotSet(
     expect.anything(),
     expect.anything(),
   );
-  expect(outlet).toHaveBeenCalledWith(
-    1,
+  expect(capturedWarnings()).toContainEqual(
     expect.stringContaining(warningSubstring),
   );
 }

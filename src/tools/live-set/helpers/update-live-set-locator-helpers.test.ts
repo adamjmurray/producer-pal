@@ -9,6 +9,7 @@ import {
   stopPlaybackIfNeeded,
   waitForPlayheadPosition,
 } from "./update-live-set-locator-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("stopPlaybackIfNeeded", () => {
   it("stops playback and warns when the set is playing", () => {
@@ -21,10 +22,7 @@ describe("stopPlaybackIfNeeded", () => {
 
     expect(stopped).toBe(true);
     expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "Playback stopped to modify locators",
-    );
+    expect(capturedWarnings()).toContain("Playback stopped to modify locators");
   });
 
   it("does nothing when the set is stopped (is_playing 0 is not playing)", () => {
@@ -37,7 +35,7 @@ describe("stopPlaybackIfNeeded", () => {
 
     expect(stopped).toBe(false);
     expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -64,14 +62,13 @@ describe("waitForPlayheadPosition", () => {
   it("resolves without warning once the playhead reaches the target", async () => {
     await waitForPlayheadPosition(liveSetAt(16), 16);
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("warns when the playhead never reaches the target", async () => {
     await waitForPlayheadPosition(liveSetAt(9999), 16);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Playhead position did not reach target 16"),
     );
   });
@@ -80,8 +77,7 @@ describe("waitForPlayheadPosition", () => {
     // SAME_TIME_EPSILON is 0.001; the tolerance is strict (< not <=).
     await waitForPlayheadPosition(liveSetAt(0.001), 0);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("did not reach target 0"),
     );
   });

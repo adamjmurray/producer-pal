@@ -6,8 +6,8 @@
 ## Context
 
 The note-value lexer — durations (`n/4`), `±n` beat offsets, the off-grid
-`n<beats>/4` escape, and `Nbar` forms — is written out three times: in both
-Peggy grammars (`barbeat-grammar.peggy`, `transform-grammar.peggy`) and as
+`n<beats>/4` escape, and `<count>bar` forms — is written out three times: in
+both Peggy grammars (`barbeat-grammar.peggy`, `transform-grammar.peggy`) and as
 regexes in `src/notation/barbeat/time/barbeat-time.ts`. It looks like an obvious
 target for "extract a shared fragment."
 

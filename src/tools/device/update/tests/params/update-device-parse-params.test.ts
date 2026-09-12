@@ -25,6 +25,16 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("NaN")).toBe("NaN");
   });
 
+  it.each(["-dB", ".Hz", "-%", ".kHz", "-ms"])(
+    "keeps '%s' a string instead of coercing it to NaN",
+    (value) => {
+      // A unit with no number in front of it is not a number. It has to stay a
+      // string so the setter warns it could not interpret the value; as a NaN
+      // it silently slams the param to one end of its range.
+      expect(normalizeParamValue(value)).toBe(value);
+    },
+  );
+
   it("keeps an empty string as a string (does not coerce to 0)", () => {
     expect(normalizeParamValue("")).toBe("");
   });
@@ -59,6 +69,54 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("50R")).toBe("50R");
     expect(normalizeParamValue("25L")).toBe("25L");
     expect(normalizeParamValue("C")).toBe(0);
+  });
+
+  describe("a recorded unit parseLabel doesn't know", () => {
+    it("coerces a value spelled in the param's own recorded unit", () => {
+      expect(
+        normalizeParamValue("1.5 octaves", "Erosion", "Filter Width"),
+      ).toBe(1.5);
+    });
+
+    it("ignores the recorded unit for a different param", () => {
+      expect(normalizeParamValue("1.5 octaves", "Erosion", "Other")).toBe(
+        "1.5 octaves",
+      );
+    });
+
+    // resolveParamsByName matches a param name case-insensitively, so this
+    // lookup has to as well or a lowercased name resolves to the right param
+    // but misses its recorded unit.
+    it("matches the param name case-insensitively", () => {
+      expect(
+        normalizeParamValue("1.5 octaves", "Erosion", "filter width"),
+      ).toBe(1.5);
+      expect(
+        normalizeParamValue("1.5 octaves", "Erosion", "Filter WIDTH"),
+      ).toBe(1.5);
+    });
+
+    it("ignores the recorded unit with no device/param context", () => {
+      expect(normalizeParamValue("1.5 octaves")).toBe("1.5 octaves");
+    });
+
+    it("keeps a division string a string even for a recorded-unit param", () => {
+      expect(normalizeParamValue("1/16", "Erosion", "Filter Width")).toBe(
+        "1/16",
+      );
+    });
+
+    it("keeps a value with no leading number a string", () => {
+      expect(normalizeParamValue("loud", "Erosion", "Filter Width")).toBe(
+        "loud",
+      );
+    });
+
+    it("keeps a malformed leading number a string", () => {
+      expect(normalizeParamValue(".octaves", "Erosion", "Filter Width")).toBe(
+        ".octaves",
+      );
+    });
   });
 });
 

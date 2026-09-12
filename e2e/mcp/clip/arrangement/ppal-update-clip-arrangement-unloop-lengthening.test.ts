@@ -32,10 +32,10 @@ import {
   lengthBeats,
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const MIDI_TRACK = 8;
 
 /** Four bars of notes, one per bar — proves the pattern spans the whole span. */
 const FOUR_BARS_OF_NOTES = "C3 1|1 D3 2|1 E3 3|1 F3 4|1";
@@ -50,7 +50,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
     // A 1-bar loop stretched to 4 bars lands as 4 clips, not one.
     expect(clips).toHaveLength(4);
-    expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+    expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
       "101|1",
       "102|1",
       "103|1",
@@ -117,7 +117,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     await callTool(ctx.client!, "ppal-duplicate", {
       type: "clip",
       id: sourceId,
-      arrangementStart: "151|1",
+      toPath: "[151|1]",
       arrangementLength: "4bar",
     });
     await sleep(200);
@@ -130,13 +130,12 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
 /**
  * Create a 1-bar looping arrangement clip on the empty MIDI track.
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @returns The new clip's ID
  */
-async function createLoopingArrClip(arrangementStart: string): Promise<string> {
+async function createLoopingArrClip(position: string): Promise<string> {
   const result = await callTool(ctx.client!, "ppal-create-clip", {
-    path: `t${MIDI_TRACK}`,
-    arrangementStart,
+    path: `t${EMPTY_MIDI_TRACK}[${position}]`,
     notes: "C3 1|1",
     length: "1bar",
     looping: true,
@@ -175,20 +174,20 @@ async function lengthenTo4Bars(
  * @returns Array of arrangement clip data
  */
 async function readArrClips(): Promise<ReadClipResult[]> {
-  return readArrangementClips(ctx.client!, MIDI_TRACK);
+  return readArrangementClips(ctx.client!, EMPTY_MIDI_TRACK);
 }
 
 /**
  * Assert a clip is the unlooped 4-bar result: right position, loop off, a
  * content region covering all four bars, and a note in each of them.
  * @param clip - The clip read back from the track
- * @param arrangementStart - Expected position in bar|beat format
+ * @param position - Expected position in bar|beat format
  */
 async function expectFourBarClipAt(
   clip: ReadClipResult,
-  arrangementStart: string,
+  position: string,
 ): Promise<void> {
-  expect(clip.arrangementStart).toBe(arrangementStart);
+  expect(arrangementStartOf(clip)).toBe(position);
   expect(lengthBeats(clip)).toBeCloseTo(beats("4bar"), 5);
   expect(clip.looping).toBe(false);
 

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type NoteOp,
   parse,
   type ParseOptions,
   type TransformAssignment,
@@ -25,4 +26,29 @@ export function parseAssignments(
   options?: ParseOptions,
 ): TransformAssignment[] {
   return parse(input, options) as TransformAssignment[];
+}
+
+/**
+ * Build the full assignment shape the parser emits, so tests can assert with
+ * `toStrictEqual` without repeating the unset-selector defaults on every case.
+ * @param overrides - Fields this case cares about
+ * @returns Assignment with `operator`/`pitchRange`/`timeRange` defaulted
+ */
+export function assignment(
+  overrides: Partial<TransformAssignment> &
+    Pick<TransformAssignment, "parameter" | "expression">,
+): TransformAssignment {
+  return { operator: "set", pitchRange: null, timeRange: null, ...overrides };
+}
+
+/**
+ * Build the full note-op shape the parser emits, so tests can assert with
+ * `toStrictEqual` without repeating the unset-selector defaults on every case.
+ * @param overrides - Fields this case cares about
+ * @returns Note op with `pitchRange`/`timeRange` defaulted
+ */
+export function noteOp(
+  overrides: Partial<NoteOp> & Pick<NoteOp, "name" | "args">,
+): NoteOp {
+  return { kind: "noteOp", pitchRange: null, timeRange: null, ...overrides };
 }

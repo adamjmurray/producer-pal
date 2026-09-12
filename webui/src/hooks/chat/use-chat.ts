@@ -15,9 +15,9 @@ import {
 import { useActiveSettings } from "./helpers/use-active-settings";
 import { useExecuteWithRetry } from "./helpers/use-execute-with-retry";
 import { useInitializeChat } from "./helpers/use-initialize-chat";
+import { useRestoreChatHistory } from "./helpers/use-restore-chat-history";
 import {
   type ChatClient,
-  type ConversationLockedSettings,
   type MessageOverrides,
   type RateLimitState,
   type UseChatProps,
@@ -176,10 +176,14 @@ export function useChat<
     // next conversation.
     clearPendingLock();
     pendingHistoryRef.current = null;
+
     // The conversation this fork branched from is gone, so nothing is left to
     // branch: drop the signal here or it mis-branches the next, unrelated save
     // into a spurious sibling. stopResponse deliberately keeps it.
-    if (pendingForkRef) pendingForkRef.current = null;
+    if (pendingForkRef) {
+      pendingForkRef.current = null;
+    }
+
     // stopResponse aborts any in-flight stream and resets the transient response
     // state. A UI-driven switch already called it, but a browser Back/Forward
     // (hashchange) reaches here directly — without the abort the orphaned
@@ -204,61 +208,21 @@ export function useChat<
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
-  const restoreChatHistory = useCallback(
-    (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
-      // No dispose() here: every caller reaches this with no live client —
-      // either on mount (clientRef is still null) or right after
-      // clearConversation() (which already disposed). The two sites that
-      // actually replace a live client — clearConversation and initializeChat —
-      // own the dispose.
-      clientRef.current = null;
-      // Same as clearConversation: no client, so no lock to hand anyone.
-      clearPendingLock();
-      pendingHistoryRef.current = chatHistory as TMessage[];
-      setMessages(adapter.formatMessages(chatHistory as TMessage[]));
-      restoreSettings(lockedSettings);
-      setRateLimitState(null);
-      setToolLimitReached(false);
-      invalidateCompactionUndo();
-    },
-    [adapter, restoreSettings, invalidateCompactionUndo, clearPendingLock],
-  );
-
-  // Bootstrap a client from the restored history (mirrors handleSend's first-
-  // send path). Synced into bootstrapClientRef so compaction — created above,
-  // before initializeChat — can reach it without a forward reference.
-  const bootstrapClient = useCallback(async () => {
-    const pendingHistory = pendingHistoryRef.current;
-
-    if (!pendingHistory || !apiKey) return;
-
-    // The connect below takes real network round-trips, and nothing blocks the
-    // user from switching conversations during them. Every switch bumps the
-    // generation, so this is the same liveness check the send and fork paths
-    // make — it just tracks the conversation rather than a turn, since a
-    // bootstrap isn't one.
-    const conversationGen = conversationGenRef.current;
-    const stillLive = () => conversationGen === conversationGenRef.current;
-
-    await initializeChat(pendingHistory, undefined, stillLive);
-
-    // Switched while connecting. The refs below belong to the conversation the
-    // user moved TO, and this bootstrap has nothing to say about it: nulling
-    // its pending history would leave it with no client and nothing to send
-    // from, which the teardown autosave then persists over the real thing.
-    if (!stillLive()) return;
-
-    // The client owns the restored history now (init baked it in), so drop the
-    // fallback. Deferred until after init, same as the send and fork paths: a
-    // thrown init (MCP down, unusable provider config) leaves it intact so the
-    // conversation is still there for the next send. Nulling it up front left
-    // that send nothing to continue from, and it persisted the empty start.
-    pendingHistoryRef.current = null;
-  }, [apiKey, initializeChat]);
-
-  useEffect(() => {
-    bootstrapClientRef.current = bootstrapClient;
-  }, [bootstrapClient]);
+  const { restoreChatHistory } = useRestoreChatHistory({
+    apiKey,
+    adapter,
+    clientRef,
+    pendingHistoryRef,
+    conversationGenRef,
+    bootstrapClientRef,
+    initializeChat,
+    clearPendingLock,
+    restoreSettings,
+    invalidateCompactionUndo,
+    setMessages,
+    setRateLimitState,
+    setToolLimitReached,
+  });
 
   const runWithChat = useCallback(
     async <T>(
@@ -291,13 +255,17 @@ export function useChat<
       while (true) {
         const userMessage = currentMessage.trim();
 
-        if (!userMessage) return;
+        if (!userMessage) {
+          return;
+        }
 
         // Guard the send-during-compaction race at the hook level, not just via
         // the disabled input: compact() reassigns client.chatHistory mid-flight,
         // so a concurrent send would corrupt history. Ref (not state) so a future
         // caller that bypasses the disabled-input prop is still protected.
-        if (isCompactingRef.current) return;
+        if (isCompactingRef.current) {
+          return;
+        }
 
         // Continuing the conversation invalidates the compaction undo snapshot.
         invalidateCompactionUndo();
@@ -348,7 +316,9 @@ export function useChat<
           // it. Bailing here is also what keeps a switch from reaching the throw
           // below, whose error recovery would overwrite the conversation the user
           // just switched TO with this turn's stray message.
-          if (!stillLive()) return false;
+          if (!stillLive()) {
+            return false;
+          }
 
           const client = clientRef.current;
 
@@ -400,11 +370,15 @@ export function useChat<
         // dropping them: they stay visible and flush on the next successful
         // send (the queueBaseline above keeps that next send from being
         // truncated by the carryover).
-        if (!succeeded) return;
+        if (!succeeded) {
+          return;
+        }
 
         const { messages: queued, overrides } = drainQueue();
 
-        if (queued.length === 0) return;
+        if (queued.length === 0) {
+          return;
+        }
 
         // Queued follow-ups coalesce into a single user turn (joined by blank
         // lines); the overrides (currently just `thinking`) were captured once
@@ -433,7 +407,9 @@ export function useChat<
   const drainQueuedFollowUps = useCallback(async () => {
     const { messages: queued, overrides } = drainQueue();
 
-    if (queued.length === 0) return;
+    if (queued.length === 0) {
+      return;
+    }
 
     await handleSend(queued.map((m) => m.text).join("\n\n"), overrides);
   }, [drainQueue, handleSend]);

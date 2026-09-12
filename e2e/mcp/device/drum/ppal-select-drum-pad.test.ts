@@ -40,6 +40,14 @@ interface LiveApiResult {
   results: { result: unknown }[];
 }
 
+/** The rack view properties no Producer Pal tool reports. */
+interface RackView {
+  selectedPadId: string;
+  selectedChainId: string;
+  showingChainDevices: number;
+  scroll: number;
+}
+
 /**
  * The LiveAPI path of a rack, which ppal-live-api takes in place of a Producer
  * Pal one.
@@ -59,12 +67,7 @@ function liveApiRack({ trackIndex, deviceIndex }: TrackDrumRack): string {
 async function readRackView(
   client: Client,
   rackPath: string,
-): Promise<{
-  selectedPadId: string;
-  selectedChainId: string;
-  showingChainDevices: number;
-  scroll: number;
-}> {
+): Promise<RackView> {
   const result = parseToolResult<LiveApiResult>(
     await client.callTool({
       name: "ppal-live-api",
@@ -89,6 +92,30 @@ async function readRackView(
   };
 }
 
+/**
+ * Select something by id or path and read back what ppal-select reports.
+ * @param args - ppal-select arguments
+ * @returns The tool's report of what is now selected
+ */
+async function select(
+  args: Record<string, unknown>,
+): Promise<SelectRackResult> {
+  return parseToolResult<SelectRackResult>(
+    await ctx.client!.callTool({ name: "ppal-select", arguments: args }),
+  );
+}
+
+/**
+ * Let Live settle after a selection, then read the rack's view properties.
+ * @param kit - The track and rack under test
+ * @returns The rack view's selection, chain-devices flag, and scroll row
+ */
+async function rackViewAfterSelect(kit: TrackDrumRack): Promise<RackView> {
+  await sleep(200);
+
+  return readRackView(ctx.client!, liveApiRack(kit));
+}
+
 describe("ppal-select inside a rack", () => {
   beforeEach(async () => {
     await setConfig({ liveApiEnabled: true });
@@ -109,21 +136,14 @@ describe("ppal-select inside a rack", () => {
       },
     });
 
-    const result = parseToolResult<SelectRackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-select",
-        arguments: { path: `${kit.rackPath}/pC1` },
-      }),
-    );
+    const result = await select({ path: `${kit.rackPath}/pC1` });
 
     expect(result.selectedDrumPad).toStrictEqual({
       id: padId,
       path: `${kit.rackPath}/pC1`,
     });
 
-    await sleep(200);
-
-    const view = await readRackView(ctx.client!, liveApiRack(kit));
+    const view = await rackViewAfterSelect(kit);
 
     expect(view.selectedPadId).toBe(padId);
     expect(view.showingChainDevices).toBe(1);
@@ -135,19 +155,12 @@ describe("ppal-select inside a rack", () => {
     const kit = await createTrackWithDrumRack(ctx.client!);
     const padId = (await readDrumPad(ctx.client!, `${kit.rackPath}/pD1`)).id;
 
-    const result = parseToolResult<SelectRackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-select",
-        arguments: { id: padId },
-      }),
-    );
+    const result = await select({ id: padId });
 
     expect(result.selectedDrumPad?.id).toBe(padId);
     expect(result.selectedDrumPad?.path).toBe(`${kit.rackPath}/pD1`);
 
-    await sleep(200);
-
-    const view = await readRackView(ctx.client!, liveApiRack(kit));
+    const view = await rackViewAfterSelect(kit);
 
     expect(view.selectedPadId).toBe(padId);
   });
@@ -174,14 +187,9 @@ describe("ppal-select inside a rack", () => {
 
     expect(pad.chains).toHaveLength(2);
 
-    await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { path: `${kit.rackPath}/pD1` },
-    });
+    await select({ path: `${kit.rackPath}/pD1` });
 
-    await sleep(200);
-
-    const view = await readRackView(ctx.client!, liveApiRack(kit));
+    const view = await rackViewAfterSelect(kit);
 
     expect(view.selectedChainId).toBe(pad.chains?.[0]?.id);
   });
@@ -190,19 +198,12 @@ describe("ppal-select inside a rack", () => {
     const kit = await createTrackWithDrumRack(ctx.client!);
     const padId = (await readDrumPad(ctx.client!, `${kit.rackPath}/pD1`)).id;
 
-    const result = parseToolResult<SelectRackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-select",
-        arguments: { path: `${kit.rackPath}/pD1/c0` },
-      }),
-    );
+    const result = await select({ path: `${kit.rackPath}/pD1/c0` });
 
     expect(result.selectedChain).toBeDefined();
     expect(result.selectedDrumPad).toBeUndefined();
 
-    await sleep(200);
-
-    const view = await readRackView(ctx.client!, liveApiRack(kit));
+    const view = await rackViewAfterSelect(kit);
 
     expect(view.selectedChainId).toBe(result.selectedChain!.id);
     // The layer's own pad, so Live shows the chain under the right pad.

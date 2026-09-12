@@ -52,7 +52,9 @@ export function applyAudioClipWarping(
 function unwarpAudioClip(clip: LiveAPI): void {
   // Already unwarped: end_marker is seconds and Live's own conversion is a
   // no-op, so restating would blow an existing region out to the whole sample.
-  if ((clip.getProperty("warping") as number) <= 0) return;
+  if ((clip.getProperty("warping") as number) <= 0) {
+    return;
+  }
 
   clip.set("warping", 0);
 

@@ -42,13 +42,29 @@ function saveIndicatorLabel(props: SaveIndicatorProps): {
   const muted = "text-zinc-500";
   const red = "text-red-600 dark:text-red-400";
 
-  if (status.kind === "loading") return { text: "Loading…", className: muted };
-  if (status.kind === "error") return { text: status.message, className: red };
-  if (saveStatus === "saving") return { text: "Saving…", className: muted };
-  if (saveStatus === "error") return { text: "Save failed", className: red };
-  if (dirty) return { text: "Editing…", className: muted };
-  if (saveStatus === "saved")
+  if (status.kind === "loading") {
+    return { text: "Loading…", className: muted };
+  }
+
+  if (status.kind === "error") {
+    return { text: status.message, className: red };
+  }
+
+  if (saveStatus === "saving") {
+    return { text: "Saving…", className: muted };
+  }
+
+  if (saveStatus === "error") {
+    return { text: "Save failed", className: red };
+  }
+
+  if (dirty) {
+    return { text: "Editing…", className: muted };
+  }
+
+  if (saveStatus === "saved") {
     return { text: "Saved", className: "text-green-600 dark:text-green-400" };
+  }
 
   return { text: "Auto-save on", className: muted };
 }

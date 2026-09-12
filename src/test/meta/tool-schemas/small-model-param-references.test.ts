@@ -23,10 +23,20 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 // Deprecation is the other way a param leaves the published schema, and it
 // applies in every mode — so both axes run here.
 //
-// The one carve-out is "clip slot" — Live's own name for a `t0/s1` location,
-// which the descriptions say constantly and which has nothing to do with the
-// deprecated `slot`/`slots` params. It's blanked out of the text before
-// matching, so a bare "set slot to ..." still gets caught.
+// Four carve-outs, none of them a param name, blanked out of the text before
+// matching so a bare "set slot to ..." or a real reference to the retired
+// `locator` param still gets caught:
+//
+//   "clip slot" — Live's name for a `t0/s1` location, said constantly and
+//     nothing to do with the deprecated `slot`/`slots` params.
+//   `loc:<locator ...>` — the placeholder inside the song-position prefix,
+//     nothing to do with the deprecated `locator` param.
+//   `split()` — the note-count transform op. update-clip deprecated a `split`
+//     param, and dodging the word left the op unnamed where models pick one.
+//     The parens are the whole distinction: a param is never written with them.
+//   `<count>` — the placeholder in the `<count>bar` duration form, which
+//     duplicate publishes while deprecating a `count` param. Angle brackets
+//     mark a placeholder, and a param is never written inside them.
 //
 // Every other surviving description is clean under a plain word-boundary match,
 // including the removed params whose names are also ordinary English (`count`,
@@ -81,21 +91,83 @@ describe("published param references", () => {
       danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
     ).toStrictEqual([]);
   });
+
+  it("allows `loc:<locator ...>` on a tool that deprecated `locator`", () => {
+    const def = slotDef("bar|beat, or loc:<locator name or id>", "locator");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([]);
+  });
+
+  it("allows `split()` on a tool that deprecated `split`", () => {
+    const def = slotDef(
+      "note ops: ratchet()/repeat()/split()/merge()",
+      "split",
+    );
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([]);
+  });
+
+  it("still catches a bare `split` next to the allowed op", () => {
+    const def = slotDef(
+      "use split() in transforms, or the split param",
+      "split",
+    );
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([
+      "fake (barbeat): tool description names removed param `split`",
+    ]);
+  });
+
+  it("allows `<count>bar` on a tool that deprecated `count`", () => {
+    const def = slotDef("duration: <count>bar (e.g., '4bar')", "count");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([]);
+  });
+
+  it("still catches a bare `count` next to the allowed placeholder", () => {
+    const def = slotDef("<count>bar durations, and a count of copies", "count");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([
+      "fake (barbeat): tool description names removed param `count`",
+    ]);
+  });
+
+  it("still catches a bare `locator` next to the allowed placeholder", () => {
+    const def = slotDef("loc:<locator name or id>, or locator", "locator");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([
+      "fake (barbeat): tool description names removed param `locator`",
+    ]);
+  });
 });
 
 /**
- * A tool that deprecated its `slot` param, for exercising the "clip slot"
- * carve-out.
+ * A tool that deprecated one of its params, for exercising the carve-outs.
  * @param description - The tool description to publish
+ * @param paramName - The param it deprecated
  * @returns A definition shaped enough for danglingReferences()
  */
-function slotDef(description: string): ToolDefFunction {
+function slotDef(description: string, paramName = "slot"): ToolDefFunction {
   return {
     toolName: "fake",
     toolOptions: {
       description: { default: description },
       inputSchema: {
-        slot: deprecatedParam(z.string().optional(), { replacedBy: "path" }),
+        [paramName]: deprecatedParam(z.string().optional(), {
+          replacedBy: "path",
+        }),
       },
     },
   } as unknown as ToolDefFunction;
@@ -119,7 +191,9 @@ function danglingReferences(
     ...Object.keys(hidden),
   ];
 
-  if (removed.length === 0) return [];
+  if (removed.length === 0) {
+    return [];
+  }
 
   const texts: [string, string][] = [
     [
@@ -131,7 +205,9 @@ function danglingReferences(
   for (const [name, schema] of Object.entries(published)) {
     const text = (schema as ZodType).description;
 
-    if (text != null) texts.push([`\`${name}\` description`, searchable(text)]);
+    if (text != null) {
+      texts.push([`\`${name}\` description`, searchable(text)]);
+    }
   }
 
   return removed.flatMap((name) =>
@@ -145,11 +221,16 @@ function danglingReferences(
 }
 
 /**
- * Blanks out "clip slot", so Live's term for a `t0/s1` location doesn't read as
- * a reference to the deprecated `slot`/`slots` params.
+ * Blanks out the three terms that collide with a retired param name: "clip
+ * slot" for a `t0/s1` location, the placeholder inside a `loc:` position, and
+ * `split()` for the transform op.
  * @param text - Published description text
- * @returns The same text with the term removed
+ * @returns The same text with those terms removed
  */
 function searchable(text: string): string {
-  return text.replaceAll(/\bclip slots?\b/gi, "");
+  return text
+    .replaceAll(/\bclip slots?\b/gi, "")
+    .replaceAll(/\bloc:<[^>]*>/gi, "")
+    .replaceAll(/\bsplit\(\)/gi, "")
+    .replaceAll(/<count>/gi, "");
 }

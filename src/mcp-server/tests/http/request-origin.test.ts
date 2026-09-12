@@ -25,8 +25,13 @@ function mockReq(headers: { origin?: string; host?: string }): Request {
     get(name: string): string | undefined {
       const key = name.toLowerCase();
 
-      if (key === "origin") return headers.origin;
-      if (key === "host") return headers.host;
+      if (key === "origin") {
+        return headers.origin;
+      }
+
+      if (key === "host") {
+        return headers.host;
+      }
 
       return undefined;
     },

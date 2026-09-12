@@ -14,7 +14,7 @@ import {
   type GeminiVadSettings,
   type SpeechSensitivity,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-helpers";
 
 const SELECT_CLASS =
   "w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded";

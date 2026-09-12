@@ -62,7 +62,9 @@ function handleOutlet(outletNumber: number, ...args: unknown[]): void {
     return;
   }
 
-  if (args[0] !== "node_request" || respondToNode == null) return;
+  if (args[0] !== "node_request" || respondToNode == null) {
+    return;
+  }
 
   const requestId = String(args[1]);
   const { route } = JSON.parse(String(args[2])) as { route: string };

@@ -69,8 +69,9 @@ export function buildGeminiMessageDeps(
     getSession: o.getSession,
     executeTool: o.executeTool,
     publishHistory: () => {
-      if (o.builderRef.current === o.builder)
+      if (o.builderRef.current === o.builder) {
         o.setHistory(o.builder.toRealtimeItems());
+      }
     },
     setAssistantSpeaking: o.setAssistantSpeaking,
     setAssistantThinking: o.setAssistantThinking,
@@ -106,7 +107,9 @@ export async function handleGeminiMessage(
   const sc = message.serverContent;
 
   if (sc) {
-    if (sc.interrupted) handleGeminiInterrupt(deps);
+    if (sc.interrupted) {
+      handleGeminiInterrupt(deps);
+    }
 
     if (sc.inputTranscription?.text) {
       deps.builder.addUserTranscript(sc.inputTranscription.text);

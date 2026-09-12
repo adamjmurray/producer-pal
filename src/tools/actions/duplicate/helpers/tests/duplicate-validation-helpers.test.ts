@@ -15,8 +15,8 @@ import {
   inferDestination,
   resolveDestinationTargets,
   validateAndConfigureRouteToSource,
-  validateArrangementParameters,
 } from "../duplicate-validation-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("validateAndConfigureRouteToSource", () => {
   it("returns the user values unchanged when routeToSource is falsy", () => {
@@ -80,32 +80,30 @@ describe("validateAndConfigureRouteToSource", () => {
 });
 
 describe("hasArrangementPosition", () => {
-  it("reads a real position from either param", () => {
-    expect(hasArrangementPosition("1|1", undefined)).toBe(true);
-    expect(hasArrangementPosition(undefined, "Verse")).toBe(true);
+  it("reads a real position", () => {
+    expect(hasArrangementPosition("1|1")).toBe(true);
   });
 
   it("treats a whitespace-only arrangementStart as absent", () => {
     // The `.trim() !== ""` guard: "   " must NOT be read as an arrangement start.
-    expect(hasArrangementPosition("   ", undefined)).toBe(false);
-    expect(hasArrangementPosition(undefined, undefined)).toBe(false);
+    expect(hasArrangementPosition("   ")).toBe(false);
+    expect(hasArrangementPosition(undefined)).toBe(false);
   });
 });
 
 describe("inferDestination", () => {
   it("returns 'arrangement' when a position is given", () => {
-    expect(inferDestination("scene", "1|1", undefined)).toBe("arrangement");
-    expect(inferDestination("scene", undefined, "Verse")).toBe("arrangement");
+    expect(inferDestination("scene", "1|1")).toBe("arrangement");
   });
 
   it("returns undefined for a device", () => {
-    expect(inferDestination("device", undefined, undefined)).toBeUndefined();
+    expect(inferDestination("device", undefined)).toBeUndefined();
   });
 
   it("defaults tracks and scenes to session", () => {
-    expect(inferDestination("track", undefined, undefined)).toBe("session");
-    expect(inferDestination("track", "   ", undefined)).toBe("session");
-    expect(inferDestination("scene", undefined, undefined)).toBe("session");
+    expect(inferDestination("track", undefined)).toBe("session");
+    expect(inferDestination("track", "   ")).toBe("session");
+    expect(inferDestination("scene", undefined)).toBe("session");
   });
 });
 
@@ -133,12 +131,20 @@ describe("resolveDestinationTargets", () => {
    * Register a destination track mock.
    * @param trackIndex - Track index to register
    * @param isMidi - Whether the track takes MIDI input
+   * @param isFrozen - Whether the track is frozen
    */
-  function destTrack(trackIndex: number, isMidi = true): void {
+  function destTrack(
+    trackIndex: number,
+    isMidi = true,
+    isFrozen = false,
+  ): void {
     registerMockObject(`dest_track_${String(trackIndex)}`, {
       path: livePath.track(trackIndex).toString(),
       type: "Track",
-      properties: { has_midi_input: isMidi ? 1 : 0 },
+      properties: {
+        has_midi_input: isMidi ? 1 : 0,
+        is_frozen: isFrozen ? 1 : 0,
+      },
     });
   }
 
@@ -182,10 +188,7 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual([
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'duplicate: no track at toPath "t99"',
-    );
+    expect(capturedWarnings()).toContain('no track at toPath "t99"');
   });
 
   it("marks a track a MIDI clip can't go to", () => {
@@ -198,9 +201,23 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(5)])).toStrictEqual([
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+    expect(capturedWarnings()).toContain(
+      "clip t3[1|1] (id src_clip) was not duplicated: track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
+    );
+  });
+
+  it("marks a frozen track, which Live refuses the copy to", () => {
+    // Live returns success and copies nothing onto a frozen track, so a
+    // matching type is not enough to let the copy through.
+    const clip = sourceClip(3, true);
+
+    destTrack(6, true, true);
+
+    expect(resolveDestinationTargets(clip, [mainLane(6)])).toStrictEqual([
+      null,
+    ]);
+    expect(capturedWarnings()).toContain(
+      "clip t3[1|1] (id src_clip) was not duplicated: track t6 (id dest_track_6) is frozen; unfreeze it first",
     );
   });
 
@@ -212,9 +229,8 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(8)])).toStrictEqual([
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "duplicate: audio clip cannot be duplicated to MIDI track 8",
+    expect(capturedWarnings()).toContain(
+      "clip t4[1|1] (id src_clip) was not duplicated: track t8 (id dest_track_8) is MIDI; an audio clip needs an audio track",
     );
   });
 
@@ -229,39 +245,8 @@ describe("resolveDestinationTargets", () => {
     expect(
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
     ).toStrictEqual([mainLane(7), null]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+    expect(capturedWarnings()).toContain(
+      "clip t3[1|1] (id src_clip) was not duplicated: track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
     );
-  });
-});
-
-describe("validateArrangementParameters", () => {
-  it("does nothing when destination is not arrangement", () => {
-    // Even with both start and locator present, a non-arrangement destination
-    // must return early without throwing.
-    expect(() =>
-      validateArrangementParameters("session", "1|1", "Verse"),
-    ).not.toThrow();
-  });
-
-  it("throws when both arrangementStart and locator are given", () => {
-    expect(() =>
-      validateArrangementParameters("arrangement", "1|1", "Verse"),
-    ).toThrow("arrangementStart and locator are mutually exclusive");
-  });
-
-  it("treats a whitespace-only arrangementStart as absent (no conflict with locator)", () => {
-    // The `.trim() !== ""` guard: "   " is not a real start, so pairing it with
-    // a locator must NOT trip the mutual-exclusivity throw.
-    expect(() =>
-      validateArrangementParameters("arrangement", "   ", "Verse"),
-    ).not.toThrow();
-  });
-
-  it("accepts arrangementStart alone", () => {
-    expect(() =>
-      validateArrangementParameters("arrangement", "1|1", undefined),
-    ).not.toThrow();
   });
 });

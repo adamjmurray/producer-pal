@@ -41,7 +41,9 @@ export async function callMcpToolToString(
     const content = result.content as Array<{ type: string; text?: string }>;
     const text = extractMcpText(content);
 
-    if (result.isError) return `Error from ${name}: ${text}`;
+    if (result.isError) {
+      return `Error from ${name}: ${text}`;
+    }
 
     return text;
   } catch (err) {

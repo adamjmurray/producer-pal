@@ -141,8 +141,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 170_000,
+      maxTokens: 9_000,
     },
   ],
 };

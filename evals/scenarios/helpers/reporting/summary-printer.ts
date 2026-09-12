@@ -15,11 +15,12 @@ import { styleText } from "node:util";
 import {
   WAVEFORM_UNIT,
   efficiencyColor,
+  pctColor,
 } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
-import { checkTally, judgeVerdict } from "./result-format.ts";
+import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
 import { buildMultiTrialParts, formatParts } from "../trials/trial-helpers.ts";
 
 /**
@@ -60,15 +61,19 @@ export function printSummary(
   let passCount = 0;
   let failCount = 0;
   let skipCount = 0;
+  let errorCount = 0;
 
   for (const results of allResultGroups) {
     const passed = results.filter((r) => r.result === "pass").length;
     const skipped = results.filter((r) => r.result === "skipped").length;
+    const errored = results.filter((r) => r.result === "error").length;
 
     passCount += passed;
     skipCount += skipped;
-    // Skipped runs never executed, so they count as neither pass nor fail.
-    failCount += results.length - passed - skipped;
+    errorCount += errored;
+    // Skipped and errored runs never executed, so they count as neither pass
+    // nor fail — an outage would otherwise read as a clean sweep of zeros.
+    failCount += results.length - passed - skipped - errored;
 
     // Show summary for the last trial (or only trial)
     const lastResult = results.at(-1) as JsonEvalResult;
@@ -80,11 +85,13 @@ export function printSummary(
     }
   }
 
-  const totalRuns = passCount + failCount + skipCount;
+  const totalRuns = passCount + failCount + skipCount + errorCount;
   const skipText = skipCount > 0 ? `, ${skipCount} skipped` : "";
+  const errorText =
+    errorCount > 0 ? styleText("red", `, ${errorCount} never ran (error)`) : "";
 
   console.log(
-    `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}`,
+    `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,
   );
 }
 
@@ -133,6 +140,25 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
   const { passed, total } = checkTally(checks.results);
   const checksColor = checks.pass ? "green" : "red";
   const parts = ["checks " + styleText(checksColor, `${passed}/${total}`)];
+
+  if (result.signals && result.signals.length > 0) {
+    const tally = checkTally(result.signals);
+    const color = tally.passed === tally.total ? "green" : "yellow";
+
+    parts.push("signals " + styleText(color, `${tally.passed}/${tally.total}`));
+  }
+
+  if (result.toolErrors && result.toolErrors.count > 0) {
+    parts.push(
+      "tool errors " + styleText("yellow", String(result.toolErrors.count)),
+    );
+  }
+
+  const score = scorePercentage([result]);
+
+  if (score != null) {
+    parts.push("score " + styleText(pctColor(score), `${score}%`));
+  }
 
   if (result.efficiency) {
     const effColor = efficiencyColor(result.efficiency.percentage);

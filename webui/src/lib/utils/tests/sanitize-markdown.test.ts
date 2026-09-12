@@ -79,7 +79,7 @@ describe("sanitizeMarkdown", () => {
     const [html, config] = mockSanitize.mock.calls[0]!;
 
     expect(html).toContain("<h1>Heading</h1>");
-    expect(config).toMatchObject({
+    expect(config).toStrictEqual({
       ALLOWED_TAGS: expect.arrayContaining(["a", "strong", "h1", "ul", "li"]),
       ALLOWED_ATTR: expect.arrayContaining(["href", "rel", "target"]),
     });
@@ -109,8 +109,40 @@ describe("sanitizeMarkdownInline", () => {
     const [html, config] = mockSanitize.mock.calls[0]!;
 
     expect(html).toContain("<strong>bold</strong>");
-    expect(config).toMatchObject({
-      ALLOWED_ATTR: expect.arrayContaining(["href", "rel", "target"]),
+    // Spelled out in full: a tag or attribute quietly joining the allowlist is
+    // exactly what this test exists to catch.
+    expect(config).toStrictEqual({
+      ALLOWED_TAGS: [
+        "a",
+        "blockquote",
+        "br",
+        "code",
+        "del",
+        "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "hr",
+        "img",
+        "li",
+        "ol",
+        "p",
+        "pre",
+        "s",
+        "span",
+        "strong",
+        "table",
+        "tbody",
+        "td",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+      ],
+      ALLOWED_ATTR: ["href", "title", "alt", "src", "class", "rel", "target"],
     });
   });
 

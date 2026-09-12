@@ -6,6 +6,7 @@
 import { type Express, type Request, type Response } from "express";
 import { z, type ZodType } from "zod";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -15,16 +16,22 @@ import {
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import {
+  unexpectedArgKeys,
+  unexpectedArgsWarning,
+} from "#src/tools/shared/tool-framework/unexpected-args.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "../create-mcp-server.ts";
+import { requestBody } from "../helpers/http/request-body.ts";
 import {
   resolveRequestProfile,
   type RequestProfile,
 } from "../helpers/http/request-profile.ts";
+import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
 
@@ -36,12 +43,28 @@ interface RestApiConfig {
 }
 
 /**
+ * The tool defs available to one request. The raw Live API is opt-in — via the
+ * device Setup tab, or per-request via LIVE_API_HEADER; when off, it is fully
+ * absent (not in the catalog, not callable). When on it flows through the same
+ * tools whitelist as every other tool.
+ *
+ * @param profile - The resolved settings for this request
+ * @returns The tool defs this request may see
+ */
+function activeToolDefs(profile: RequestProfile): ToolDefFunction[] {
+  return profile.liveApiEnabled
+    ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
+    : [...STANDARD_TOOL_DEFS];
+}
+
+/**
  * Register REST API routes on the Express app
  *
- * Both endpoints resolve the same three per-request headers POST /mcp reads
- * (see resolveRequestProfile) — the toolset, the notation, and small-model mode
- * — so a REST caller can run its own profile without a POST /config changing
- * every other connected client's.
+ * Both endpoints resolve the same per-request headers POST /mcp reads (see
+ * resolveRequestProfile) — the toolset, the notation, small-model mode, and the
+ * Direct Live API opt-in — so a REST caller can run its own profile without a
+ * POST /config changing every other connected client's. The output format is
+ * the one exception: REST keeps its own `?format=` query param.
  *
  * @param app - Express application
  * @param getConfig - Returns current config (called per-request for live updates)
@@ -56,15 +79,6 @@ export function registerRestApiRoutes(
   getConfig: () => RestApiConfig,
   buildCallLiveApi: (profile: RequestProfile) => CallLiveApiFunction,
 ): void {
-  // Resolve which tool defs are available right now. The raw Live API
-  // is opt-in via the device Setup tab; when disabled, it is fully absent
-  // (not in the catalog, not callable). When enabled it flows through the
-  // same /config tools whitelist as every other tool.
-  const getActiveToolDefs = () =>
-    getConfig().liveApiEnabled
-      ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
-      : [...STANDARD_TOOL_DEFS];
-
   // Like POST /mcp (see create-express-app.ts), these endpoints are NOT
   // origin-gated the way POST /config is: the chat UI reaches them same-origin
   // from the page URL, which over LAN/tunnel is a non-localhost origin, so a
@@ -83,7 +97,7 @@ export function registerRestApiRoutes(
       smallModelMode: profile.smallModelMode,
     };
 
-    const tools = getActiveToolDefs()
+    const tools = activeToolDefs(profile)
       .filter((td) => enabledSet.has(td.toolName))
       .map((td) => {
         // Same resolution define-tool.ts registers with, deprecation filter
@@ -118,7 +132,7 @@ export function registerRestApiRoutes(
       const profile = resolveRequestProfile(req, getConfig());
       const enabledSet = new Set(profile.tools);
 
-      const toolDef = getActiveToolDefs().find(
+      const toolDef = activeToolDefs(profile).find(
         (td) => td.toolName === toolName,
       );
 
@@ -159,17 +173,26 @@ export function registerRestApiRoutes(
       // `action: "delete"`, and so on. Every filtered value is one the tool
       // still handles; only the advertising shrinks.
       const { inputSchema } = toolDef.toolOptions;
-      const parsed = z
-        .object(inputSchema)
-        .safeParse(
-          unsetEmptyParams(req.body as Record<string, unknown>, inputSchema),
-        );
+      const body = requestBodyObject(req);
 
-      if (!parsed.success) {
+      if (body == null) {
         res.status(400).json({
-          error: "Validation failed",
-          details: parsed.error.issues,
+          error: "Request body must be a JSON object of tool arguments.",
         });
+
+        return;
+      }
+
+      // Diff the raw body against that same full schema, before Zod strips the
+      // rest, so a typo'd optional param doesn't come back as a clean success
+      // that changed nothing. MCP diffs against the filtered schema instead;
+      // here that would call a real param unexpected whenever small-model mode
+      // is on, for exactly the reason above.
+      const unexpectedKeys = unexpectedArgKeys(body, inputSchema);
+      const args = parseToolArgs(body, inputSchema);
+
+      if ("error" in args) {
+        res.status(400).json(args);
 
         return;
       }
@@ -179,7 +202,7 @@ export function registerRestApiRoutes(
 
         const mcpResponse = (await buildCallLiveApi(profile)(
           toolName,
-          parsed.data,
+          args.data,
           overrides,
         )) as McpResponse;
 
@@ -197,11 +220,18 @@ export function registerRestApiRoutes(
           return;
         }
 
+        // Same order define-tool.ts appends them in: what was ignored, then
+        // what to send instead.
+        const unexpectedWarning = unexpectedArgsWarning(unexpectedKeys);
+
+        if (unexpectedWarning != null) {
+          mcpResponse.content.push({ type: "text", text: unexpectedWarning });
+        }
+
         appendDeprecationNotices(
           mcpResponse,
-          toolName,
           toolDef.toolOptions.inputSchema,
-          parsed.data,
+          args.data,
         );
 
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
@@ -213,18 +243,69 @@ export function registerRestApiRoutes(
   );
 }
 
+type ToolArgs =
+  | { data: Record<string, unknown> }
+  | { error: string; details?: unknown[] };
+
+/**
+ * Normalize and validate one call's arguments.
+ *
+ * Both steps throw on input the caller controls: unsetEmptyParams refuses a
+ * blank on a param with no blank value, and safeParse runs that same refusal a
+ * level down, inside the nested shapes optionalParams builds. Catch both here.
+ * Uncaught, they reach Express's default handler, which answers a JSON API
+ * with an HTML page carrying a stack trace and the server's absolute paths.
+ *
+ * @param body - The posted arguments
+ * @param inputSchema - The tool's params, keyed by name
+ * @returns The validated arguments, or the JSON body to return with a 400
+ */
+function parseToolArgs(
+  body: Record<string, unknown>,
+  inputSchema: Record<string, ZodType>,
+): ToolArgs {
+  let parsed: z.ZodSafeParseResult<Record<string, unknown>>;
+
+  try {
+    parsed = z
+      .object(inputSchema)
+      .safeParse(unsetEmptyParams(body, inputSchema));
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  if (!parsed.success) {
+    return { error: "Validation failed", details: parsed.error.issues };
+  }
+
+  return { data: parsed.data };
+}
+
+/**
+ * The posted body as an argument list.
+ *
+ * requestBody() reads an array as no body at all, which every other route
+ * wants. Here it is the bug: a call sent as `[{...}]` runs with no arguments,
+ * so the tool answers by naming a param the caller did send, inside the
+ * element the route discarded. Refuse it instead.
+ *
+ * @param req - Express request
+ * @returns The arguments, or undefined when the body is not a JSON object
+ */
+function requestBodyObject(req: Request): Record<string, unknown> | undefined {
+  return Array.isArray(req.body) ? undefined : requestBody(req);
+}
+
 /**
  * Steers a REST caller off a hidden param, the way define-tool.ts does for MCP.
  * The catalog no longer lists the param, so this notice is the only signal a
  * REST caller gets that it is retired or a fallback.
  * @param response - The tool's response, appended to in place
- * @param toolName - Tool that was called
  * @param inputSchema - The tool's raw input schema
  * @param args - The validated arguments
  */
 function appendDeprecationNotices(
   response: McpResponse,
-  toolName: string,
   inputSchema: Record<string, ZodType>,
   args: Record<string, unknown>,
 ): void {
@@ -236,7 +317,7 @@ function appendDeprecationNotices(
     paramNamesSomething(args[key]),
   );
 
-  for (const text of hiddenParamWarnings(toolName, usedKeys, hidden)) {
+  for (const text of hiddenParamWarnings(usedKeys, hidden)) {
     response.content.push({ type: "text", text });
   }
 }
@@ -254,9 +335,17 @@ function appendDeprecationNotices(
  *   "invalid" when present but not recognized
  */
 function parseFormatQuery(raw: unknown): "json" | "compact" | "invalid" {
-  if (raw === undefined) return "json";
-  if (raw === "json") return "json";
-  if (raw === "compact") return "compact";
+  if (raw === undefined) {
+    return "json";
+  }
+
+  if (raw === "json") {
+    return "json";
+  }
+
+  if (raw === "compact") {
+    return "compact";
+  }
 
   return "invalid";
 }
@@ -269,8 +358,13 @@ function parseFormatQuery(raw: unknown): "json" | "compact" | "invalid" {
  *   present but not a positive integer in (0, MAX_TIMEOUT_MS]
  */
 function parseTimeoutQuery(raw: unknown): number | "invalid" | undefined {
-  if (raw === undefined) return undefined;
-  if (typeof raw !== "string") return "invalid";
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  if (typeof raw !== "string") {
+    return "invalid";
+  }
 
   const n = Number(raw);
 
@@ -376,8 +470,13 @@ function unwrapMcpResponse(
 
   const response: UnwrappedResponse = { result, isError: false };
 
-  if (warnings.length > 0) response.warnings = warnings;
-  if (appended.length > 0) response.appended = appended;
+  if (warnings.length > 0) {
+    response.warnings = warnings;
+  }
+
+  if (appended.length > 0) {
+    response.appended = appended;
+  }
 
   return response;
 }

@@ -79,12 +79,10 @@ describe("select-helpers", () => {
       });
 
       expect(result.selectedTrackId).toBe("id track-1");
-      expect(result.selectedCategory).toBeUndefined();
-      expect(result.selectedTrackIndex).toBeUndefined();
       expect(mock.set).toHaveBeenCalledWith("selected_track", "id track-1");
     });
 
-    it("selects by index alone, defaulting the category to regular", () => {
+    it("selects by index alone", () => {
       const { api } = setupSongView();
 
       registerMockObject("track-by-index", {
@@ -94,8 +92,7 @@ describe("select-helpers", () => {
 
       const result = updateTrackSelection({ songView: api, trackIndex: 1 });
 
-      expect(result.selectedCategory).toBe("regular");
-      expect(result.selectedTrackIndex).toBe(1);
+      expect(result.selectedTrackId).toBe("id track-by-index");
     });
   });
 

@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { mcpResultText, mcpResultWarnings } from "./mcp-result-text.ts";
+import {
+  mcpResultInjectedBlocks,
+  mcpResultText,
+  mcpResultWarnings,
+} from "./mcp-result-text.ts";
 
 /** A result shaped the way `max-api-adapter.ts` builds one: payload, then warnings. */
 const WARNED_RESULT = {
@@ -78,6 +82,68 @@ describe("mcpResultWarnings", () => {
         content: [
           { type: "text", text: 'notes: "a warning about the mix"' },
           { type: "image", data: "…" },
+        ],
+      }),
+    ).toStrictEqual([]);
+  });
+});
+
+/** A `ppal-connect` result: payload, injected context, then a warning. */
+const CONNECT_RESULT = {
+  content: [
+    { type: "text", text: '{"connected":true}' },
+    { type: "text", text: "# Skills\n…" },
+    { type: "text", text: "Ask the user what they are working on." },
+    { type: "text", text: "WARNING: no clip at t8/s0" },
+  ],
+};
+
+describe("mcpResultInjectedBlocks", () => {
+  it("returns the context blocks the tool appended after its payload", () => {
+    expect(mcpResultInjectedBlocks(CONNECT_RESULT)).toStrictEqual([
+      "# Skills\n…",
+      "Ask the user what they are working on.",
+    ]);
+  });
+
+  it("reads a bare content array the same way", () => {
+    expect(mcpResultInjectedBlocks(CONNECT_RESULT.content)).toStrictEqual(
+      mcpResultInjectedBlocks(CONNECT_RESULT),
+    );
+  });
+
+  it("leaves out warnings, which are reported on their own", () => {
+    expect(mcpResultInjectedBlocks(CONNECT_RESULT)).not.toContain(
+      "WARNING: no clip at t8/s0",
+    );
+  });
+
+  it("never returns the payload, even when nothing follows it", () => {
+    expect(mcpResultInjectedBlocks(WARNED_RESULT)).toStrictEqual([]);
+    expect(
+      mcpResultInjectedBlocks({ content: [{ type: "text", text: "{}" }] }),
+    ).toStrictEqual([]);
+  });
+
+  it("returns [] for values carrying no text blocks", () => {
+    expect(mcpResultInjectedBlocks(null)).toStrictEqual([]);
+    expect(mcpResultInjectedBlocks({})).toStrictEqual([]);
+    expect(
+      mcpResultInjectedBlocks({
+        content: [
+          { type: "text", text: "{}" },
+          { type: "image", data: "…" },
+        ],
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("drops an empty block, which carries nothing to store", () => {
+    expect(
+      mcpResultInjectedBlocks({
+        content: [
+          { type: "text", text: "{}" },
+          { type: "text", text: "" },
         ],
       }),
     ).toStrictEqual([]);

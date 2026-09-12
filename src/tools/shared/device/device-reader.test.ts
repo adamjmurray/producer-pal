@@ -618,18 +618,41 @@ describe("device-reader", () => {
         id: "simpler_1",
         path: "live_set tracks 0 devices 0",
         getProperty: (prop: string) => {
-          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
-          if (prop === "can_have_chains") return false;
-          if (prop === "can_have_drum_pads") return false;
-          if (prop === "class_display_name") return DEVICE_CLASS.SIMPLER;
-          if (prop === "name") return DEVICE_CLASS.SIMPLER;
-          if (prop === "is_active") return 1;
-          if (prop === "multi_sample_mode") return opts.multiSampleMode ?? 0;
+          if (prop === "type") {
+            return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          }
+
+          if (prop === "can_have_chains") {
+            return false;
+          }
+
+          if (prop === "can_have_drum_pads") {
+            return false;
+          }
+
+          if (prop === "class_display_name") {
+            return DEVICE_CLASS.SIMPLER;
+          }
+
+          if (prop === "name") {
+            return DEVICE_CLASS.SIMPLER;
+          }
+
+          if (prop === "is_active") {
+            return 1;
+          }
+
+          if (prop === "multi_sample_mode") {
+            return opts.multiSampleMode ?? 0;
+          }
 
           return null;
         },
+        getName: () => DEVICE_CLASS.SIMPLER,
         getChildren: (kind: string) => {
-          if (kind === "sample" && opts.samplePath) return [sampleChild];
+          if (kind === "sample" && opts.samplePath) {
+            return [sampleChild];
+          }
 
           return [];
         },
@@ -657,15 +680,33 @@ describe("device-reader", () => {
         id: "op_1",
         path: "live_set tracks 0 devices 0",
         getProperty: (prop: string) => {
-          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
-          if (prop === "can_have_chains") return false;
-          if (prop === "can_have_drum_pads") return false;
-          if (prop === "class_display_name") return "Operator";
-          if (prop === "name") return "Operator";
-          if (prop === "is_active") return 1;
+          if (prop === "type") {
+            return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          }
+
+          if (prop === "can_have_chains") {
+            return false;
+          }
+
+          if (prop === "can_have_drum_pads") {
+            return false;
+          }
+
+          if (prop === "class_display_name") {
+            return "Operator";
+          }
+
+          if (prop === "name") {
+            return "Operator";
+          }
+
+          if (prop === "is_active") {
+            return 1;
+          }
 
           return null;
         },
+        getName: () => "Operator",
         getChildren: () => [],
       };
     }

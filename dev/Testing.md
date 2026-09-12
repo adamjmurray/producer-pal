@@ -31,12 +31,28 @@ step.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
   split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
-  whole tree at one threshold.
+  whole tree at one threshold. Markdown is out of scope for all of them:
+  `config/.jscpd-docs.json` scans the repo's prose in one pass, so a doc is
+  measured once and never against a code threshold.
 - **Coverage**: test files are excluded.
 - **Suppression budgets**: counted against the `…Tests` tree in
   `src/test/lint-suppression-limits.test.ts`, so no test file goes unbudgeted.
 - **Layering**: test files are exempt from the `src/` layering contract, which
   only governs the shipped dependency graph.
+
+## Assertions
+
+Assert the whole result with `toStrictEqual`. Both `toEqual` and `toMatchObject`
+are lint errors: the first treats a missing key as `undefined`, the second
+ignores every field the expectation leaves out, so a result that grows a field
+keeps passing.
+
+Where a partial match is genuinely what you mean — a hook's whole return when
+the test is about two of its keys, a big nested tree with its own tests — say so
+with `expect.objectContaining()`. For a value that can't be a literal (a
+generated uuid, wall-clock time, an encrypted blob) use a matcher for that field
+and keep the rest exact. When the defaults get repetitive, build the expected
+shape in a helper.
 
 ## Live API tests
 
@@ -45,10 +61,18 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - `registerMockObject(id, { path, type, properties, methods })` returns a mock
   with instance-level `get`/`set`/`call` spies. Assert on it directly:
   `expect(track.set).toHaveBeenCalledWith(...)`.
+- Registering the same id twice re-describes that object **in place**, so
+  anything already holding it reads the new state — the way a held LiveAPI does
+  in Live. Registering a _different_ id at the same path is a different object
+  arriving there, and holders of the old one keep the old one.
 - `mockNonExistentObjects()` makes unregistered IDs non-existent, for invalid-ID
-  tests.
+  tests. `simulateMockDeletes()` makes `delete_*` calls really remove the
+  target, leaving holders half-stale: cleared path, but the id still lying.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
+
+What the mock does and doesn't model about a held object going stale is in
+`dev/LiveAPI-Object-Reuse.md`.
 
 ## MCP server tests
 
@@ -118,6 +142,34 @@ excludes line and branch coverage, not function coverage. The `-- reason` is
 required, and per-tree counts are ratcheted in
 `src/test/lint-suppression-limits.test.ts` — raising a limit needs user
 approval.
+
+## Comment volume
+
+`npm run comment:stats` counts comment lines, code lines, and the longest
+comment block per tree, and names the worst files (`--all` lists every file).
+The license header and lint directives don't count.
+
+`src/test/comment-limits.test.ts` ratchets those numbers: comment lines, longest
+block, and how many files hold a block of 8+ lines. The caps live in
+`src/test/helpers/comment-limits.ts`, and `--markdown` prints them beside the
+current counts. Lower a limit when a count falls; raising one needs user
+approval.
+
+## Auditing coverage
+
+**Don't audit by grepping for a name.** A table-driven test registers its cases
+through `it.each`, so the name never appears as a literal and the grep reports a
+gap that isn't there. A coverage audit did this twice in one pass: `sin()` and
+`tri()` were already covered by an `it.each` in
+`ppal-clip-transforms-waveforms.test.ts`, and `pitchShift`, `warpMode`,
+`firstStart` and `quantizePitch` each had a read and a write e2e. Read the
+suite, or grep for the helper that builds the table.
+
+**Green after a semantics change is weaker evidence than it looks.** When the
+mock registry changed how a re-registered object behaves, the affected tests
+were not read one by one — whatever stayed green was kept. Nothing broke, but
+green does not prove that a test still means what its author intended. Worth
+remembering if something surfaces later around mock identity.
 
 ## E2E
 

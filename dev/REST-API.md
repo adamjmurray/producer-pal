@@ -94,7 +94,7 @@ npx vitest run src/mcp-server/tests/rest-api-routes.test.ts
 # Manual testing with curl (requires Ableton running with Producer Pal)
 curl http://localhost:3350/api/tools
 curl -X POST http://localhost:3350/api/tools/ppal-connect -H 'Content-Type: application/json' -d '{}'
-curl -X POST http://localhost:3350/api/tools/ppal-read-track -H 'Content-Type: application/json' -d '{"trackIndex": 0}'
+curl -X POST http://localhost:3350/api/tools/ppal-read-track -H 'Content-Type: application/json' -d '{"path": "t0"}'
 ```
 
 ## Sample Scripts

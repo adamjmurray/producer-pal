@@ -13,6 +13,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 
 interface SetupLiveSetPathMappedMocksOptions {
   liveSetPath?: string;
@@ -117,6 +118,35 @@ function createDefaultLiveSetProperties(): Record<string, unknown> {
     tracks: [],
     return_tracks: [],
     scenes: [],
+  };
+}
+
+/**
+ * Read the Live Set and hand back its tracks, already narrowed.
+ * @param include - readLiveSet include options
+ * @returns The tracks in the result
+ */
+export function readLiveSetTracks(
+  include: string[] = ["tracks"],
+): Record<string, unknown>[] {
+  return readLiveSet({ include }).tracks as Record<string, unknown>[];
+}
+
+/**
+ * Returns the master track mock object every live-set scenario needs.
+ * @param properties - Extra properties merged over the defaults
+ * @returns Object with the master track path key and mock properties
+ */
+export function masterTrackMockObject(
+  properties: Record<string, unknown> = {},
+): Record<string, Record<string, unknown>> {
+  return {
+    [String(livePath.masterTrack())]: {
+      has_midi_input: 0,
+      name: "Master",
+      devices: [],
+      ...properties,
+    },
   };
 }
 

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -7,7 +8,7 @@
  * Uses: e2e-test-set (8 scenes with various tempo/time sig overrides)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp
+ * Run with: npm run e2e:mcp -- scene/ppal-read-scene
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -21,95 +22,137 @@ import {
 const ctx = setupMcpTestContext({ once: true });
 
 describe("ppal-read-scene", () => {
-  it("reads scenes by various methods with different include params", async () => {
-    // Get a scene ID from read-live-set first
-    const liveSetResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
-    });
-    const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
-    const firstScene = liveSet.scenes![0]!;
-    const sceneId = firstScene.id;
+  /**
+   * The Set's first scene, as read-live-set reports it.
+   * @returns The scene summary
+   */
+  async function firstScene(): Promise<{
+    id: string;
+    name: string;
+    path: string;
+  }> {
+    const liveSet = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: { include: ["scenes"] },
+      }),
+    );
 
-    // Test 1: Read scene by id, spelled the way a model guesses it. "sceneId"
-    // is a permanent alias, so this checks the read and the steer.
-    const byIdResult = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { sceneId },
-    });
+    return liveSet.scenes![0]!;
+  }
+
+  /**
+   * Read a scene.
+   * @param args - ppal-read-scene arguments
+   * @returns The parsed scene
+   */
+  async function readScene(
+    args: Record<string, unknown>,
+  ): Promise<ReadSceneResult> {
+    return parseToolResult<ReadSceneResult>(
+      await ctx.client!.callTool({ name: "ppal-read-scene", arguments: args }),
+    );
+  }
+
+  it("reads a scene by id, spelled the way a model guesses it", async () => {
+    // "sceneId" is a permanent alias, so this checks the read and the steer.
+    const scene = await firstScene();
     const byId = parseAliasedToolResult<ReadSceneResult>(
-      byIdResult,
-      "ppal-read-scene",
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { sceneId: scene.id },
+      }),
       "sceneId",
       "id",
     );
 
-    expect(byId.id).toBe(sceneId);
+    expect(byId.id).toBe(scene.id);
     expect(byId.name).toBeDefined();
-    expect(byId.sceneIndex).toBe(firstScene.sceneIndex);
-
-    // Test 2: Read scene by sceneIndex
-    const byIndexResult = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { sceneIndex: 0 },
-    });
-    const byIndex = parseToolResult<ReadSceneResult>(byIndexResult);
-
-    expect(byIndex.id).toBe(sceneId);
-    expect(byIndex.sceneIndex).toBe(0);
-
-    // Test 3: Default includes - clipCount should be present
+    expect(byId.path).toBe(scene.path);
+    // clipCount comes back without asking for any include
     expect(typeof byId.clipCount).toBe("number");
+  });
 
-    // Test 4: Read with include: ["clips"]
-    const clipsResult = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId, include: ["clips"] },
-    });
-    const withClips = parseToolResult<ReadSceneResult>(clipsResult);
+  it("reads a scene by index", async () => {
+    const scene = await firstScene();
+    const byIndex = await readScene({ path: "s0" });
 
-    expect(Array.isArray(withClips.clips)).toBe(true);
+    expect(byIndex.id).toBe(scene.id);
+    expect(byIndex.path).toBe("s0");
+  });
 
-    // Each clip names the track it sits on. The path ("t0/s0") says which
-    // track by index but not which one it is, so without this a caller asking
-    // what a scene holds can't tell the drums from the bass.
+  it("names the track each clip sits on with include clips", async () => {
+    const scene = await firstScene();
+    const withClips = await readScene({ id: scene.id, include: ["clips"] });
+
+    // The path ("t0/s0") says which track by index but not which one it is, so
+    // without the name a caller asking what a scene holds can't tell the drums
+    // from the bass.
     expect(withClips.clips).toStrictEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: "t0/s0", trackName: "Drums" }),
         expect.objectContaining({ path: "t1/s0", trackName: "Bass" }),
       ]),
     );
+  });
 
-    // Test 5: Read with include: ["color"]
-    const colorResult = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId, include: ["color"] },
-    });
-    const withColor = parseToolResult<ReadSceneResult>(colorResult);
+  it("adds the color only when asked", async () => {
+    const scene = await firstScene();
+    const withColor = await readScene({ id: scene.id, include: ["color"] });
 
-    expect(withColor.color).toBeDefined();
     expect(withColor.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
 
-    // Test 6: Read with include: ["*"] (all data)
-    const allResult = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId, include: ["*"] },
-    });
-    const all = parseToolResult<ReadSceneResult>(allResult);
+  it('includes everything with "*"', async () => {
+    const scene = await firstScene();
+    const all = await readScene({ id: scene.id, include: ["*"] });
 
     expect(all.color).toBeDefined();
     expect(Array.isArray(all.clips)).toBe(true);
+  });
 
-    // Test 7: Non-existent scene throws error
-    const nonExistentResult = await ctx.client!.callTool({
+  it("names warp as an include, and only then reports it", async () => {
+    // t4/s0 is a warped audio clip. `warp` reached the nested clip read through
+    // `*` before read-scene published it, so `*` must keep the data now that
+    // the option list expands here instead of downstream.
+    const scene = await firstScene();
+    const warpOf = async (include: string[]) =>
+      (await readScene({ id: scene.id, include })).clips?.find(
+        (clip) => clip.path === "t4/s0",
+      );
+
+    const named = await warpOf(["clips", "warp"]);
+
+    expect(named?.warping).toBe(true);
+    expect(named?.warpMode).toBeDefined();
+
+    expect((await warpOf(["*"]))?.warping).toBe(true);
+    expect((await warpOf(["clips"]))?.warping).toBeUndefined();
+  });
+
+  it("errors on a scene path that isn't there", async () => {
+    const result = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneIndex: 999 },
+      arguments: { path: "s999" },
     });
 
-    expect(isToolError(nonExistentResult)).toBe(true);
-    expect(getToolErrorMessage(nonExistentResult)).toContain(
-      "sceneIndex 999 does not exist",
-    );
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('nothing at path "s999"');
+  });
+
+  // isError already flags the failure, and the response is paired with the call
+  // that made it, so the message names the reason and not the tool.
+  it("reports the failure reason without naming the tool", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-scene",
+      arguments: {},
+    });
+
+    expect(isToolError(result)).toBe(true);
+    const message = getToolErrorMessage(result);
+
+    expect(message).not.toContain("executing tool");
+    expect(message).toBe("Error: id or path is required");
   });
 });
 
@@ -117,17 +160,22 @@ interface LiveSetResult {
   scenes?: Array<{
     id: string;
     name: string;
-    sceneIndex: number;
+    path: string;
   }>;
 }
 
 interface ReadSceneResult {
   id: string | null;
   name: string | null;
-  sceneIndex?: number | null;
+  path?: string;
   color?: string;
   tempo?: number;
   timeSignature?: string;
-  clips?: Array<{ path?: string; trackName?: string }>;
+  clips?: Array<{
+    path?: string;
+    trackName?: string;
+    warping?: boolean;
+    warpMode?: string;
+  }>;
   clipCount?: number;
 }

@@ -62,7 +62,9 @@ export function renderTranscript(history: ChatMessage[]): string {
   const lines: string[] = [];
 
   for (const msg of history) {
-    if (msg.isError) continue;
+    if (msg.isError) {
+      continue;
+    }
 
     if (msg.role === "user") {
       lines.push(`USER: ${msg.content}`);

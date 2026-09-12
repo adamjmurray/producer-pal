@@ -19,6 +19,12 @@ describe("normalizeErrorMessage", () => {
     expect(normalizeErrorMessage(new Error("boom"))).toBe("Error: boom");
   });
 
+  it("leaves a message that already starts with 'Error' alone", () => {
+    expect(normalizeErrorMessage("Error: already prefixed")).toBe(
+      "Error: already prefixed",
+    );
+  });
+
   it("prefixes 'Error: ' to string values that don't start with 'Error'", () => {
     expect(normalizeErrorMessage("network down")).toBe("Error: network down");
   });

@@ -51,7 +51,7 @@ node scripts/test/test-claude-desktop-extension.ts
 node scripts/test/test-claude-desktop-extension.ts ppal-read-live-set
 
 # With arguments
-node scripts/test/test-claude-desktop-extension.ts ppal-read-track '{"trackIndex": 0}'
+node scripts/test/test-claude-desktop-extension.ts ppal-read-track '{"path": "t0"}'
 
 # Custom URL
 node scripts/test/test-claude-desktop-extension.ts http://localhost:3350/mcp ppal-read-live-set

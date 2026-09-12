@@ -44,11 +44,15 @@ export function useUpdateCheck(): UseUpdateCheckReturn {
           signal: controller.signal,
         });
 
-        if (!response.ok) return;
+        if (!response.ok) {
+          return;
+        }
 
         const result = (await response.json()) as UpdateInfo | null;
 
-        if (result) setUpdate(result);
+        if (result) {
+          setUpdate(result);
+        }
       } catch {
         // The update badge is decoration — a failed read (including this
         // effect's own abort on unmount) just doesn't show it.
@@ -63,7 +67,9 @@ export function useUpdateCheck(): UseUpdateCheckReturn {
   // surfaces read. Hidden optimistically; a failed write only means it comes
   // back on the next mount.
   const dismissUpdate = useCallback(() => {
-    if (!update) return;
+    if (!update) {
+      return;
+    }
 
     setUpdate(null);
     void patchGlobalSettings({ dismissedUpdateVersion: update.version });

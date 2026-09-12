@@ -321,7 +321,7 @@ describe("Transform Parser", () => {
 
     it("throws on invalid function name", () => {
       expect(() => parseAssignments("velocity += invalid(1)")).toThrow(
-        'but "v" found',
+        "unknown function invalid()",
       );
     });
 

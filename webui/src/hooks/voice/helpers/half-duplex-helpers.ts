@@ -40,7 +40,10 @@ export function beginHalfDuplexMute(
   autoMutedRef: BooleanRef,
   halfDuplex: boolean,
 ): void {
-  if (!halfDuplex) return;
+  if (!halfDuplex) {
+    return;
+  }
+
   autoMutedRef.current = true;
 
   try {
@@ -63,8 +66,14 @@ export function beginHalfDuplexMute(
  * @param deps - The session and the mute/response/playback refs
  */
 export function endHalfDuplexMute(deps: HalfDuplexDeps): void {
-  if (!deps.autoMutedRef.current) return;
-  if (deps.responseActiveRef.current || deps.audioPlayingRef.current) return;
+  if (!deps.autoMutedRef.current) {
+    return;
+  }
+
+  if (deps.responseActiveRef.current || deps.audioPlayingRef.current) {
+    return;
+  }
+
   deps.autoMutedRef.current = false;
 
   try {

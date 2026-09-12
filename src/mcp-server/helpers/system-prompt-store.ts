@@ -88,7 +88,9 @@ export function readSystemPromptState(): SystemPromptState {
  * @returns The prompt's new state
  */
 export function writeSystemPrompt(content: string): SystemPromptState {
-  if (!content.trim()) return deleteSystemPrompt();
+  if (!content.trim()) {
+    return deleteSystemPrompt();
+  }
 
   writeConfigMarkdown(
     SYSTEM_PROMPT_FILENAME,

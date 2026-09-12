@@ -34,15 +34,25 @@ export interface JsonEvalResult {
   /** Total number of trials (present when using -r flag) */
   totalTrials?: number;
   /** Overall result. `skipped` means the scenario's `requires` weren't
-   *  satisfied by the active run environment, so it never ran (kept out of
-   *  pass/fail counts and score averages). */
-  result: "pass" | "fail" | "skipped";
+   *  satisfied by the active run environment, so it never ran. `error` means it
+   *  tried and never got started — the Live Set would not open, or the config
+   *  would not apply, so the model never saw a turn. Both are kept out of
+   *  pass/fail counts and score averages: scoring them as failures reads as a
+   *  clean 0/3 on scenarios nothing was ever asked of. */
+  result: "pass" | "fail" | "skipped" | "error";
   /** Why the scenario was skipped (present only when `result` is `skipped`) */
   skipReason?: string;
   /** Conversation turns */
   turns: JsonTurnRecord[];
-  /** Deterministic check results */
+  /** Gating deterministic check results */
   checks: JsonChecks;
+  /** Non-gating checks: run and reported, but excluded from pass/fail and from
+   *  the score. Prose `response_contains` patterns live here — they grade the
+   *  words a model chose, not what it did. */
+  signals?: JsonCheckResult[];
+  /** Failed tool calls (present when the run made any tool call). Never gates —
+   *  it discounts the score instead. */
+  toolErrors?: JsonToolErrors;
   /** Token usage efficiency (present when token_usage assertion exists) */
   efficiency?: JsonEfficiency;
   /** LLM judge review (present when llm_judge assertion exists) */
@@ -63,13 +73,23 @@ export interface JsonChecks {
   results: JsonCheckResult[];
 }
 
-/** Token usage efficiency relative to target */
+/** Failed tool calls in a run, and how many calls there were in total. */
+export interface JsonToolErrors {
+  /** How many tool calls came back as an error */
+  count: number;
+  /** How many tool calls were made */
+  total: number;
+  /** One entry per failed call, with the error text truncated */
+  errors: Array<{ turnIndex: number; name: string; message: string }>;
+}
+
+/** Output-token efficiency relative to target */
 export interface JsonEfficiency {
-  /** Actual input tokens used */
-  inputTokens: number;
+  /** Actual output tokens produced */
+  outputTokens: number;
   /** Target token budget */
   targetTokens: number;
-  /** inputTokens / targetTokens as percentage */
+  /** outputTokens / targetTokens as percentage */
   percentage: number;
 }
 
@@ -105,6 +125,12 @@ export interface JsonToolCall {
   result?: string;
   /** Relayed `WARNING:` blocks from the same result, when the tool emitted any */
   warnings?: string[];
+  /** Content hashes of the context blocks the tool appended after its payload -
+   *  what `ppal-connect` injects. The text for each is in the run's
+   *  `blocks/<hash>.txt`, stored once per run rather than once per scenario. */
+  injectedBlocks?: string[];
+  /** Present only when the transport reported MCP `isError: true` */
+  isError?: boolean;
 }
 
 export interface JsonTokenUsage {

@@ -1,5 +1,10 @@
 # Adding a Tool
 
+First: should this be a tool at all? Principles (Efficiency) says to cover the
+Live API with as few tools as possible, so a thing reachable through an existing
+tool's params belongs there instead. Device parameters are the worked example —
+they're a property of `update-device`'s target, not a tool of their own.
+
 A new MCP tool touches a handful of places. Most of them fail a test if you skip
 them — this list is so you don't discover that one at a time.
 

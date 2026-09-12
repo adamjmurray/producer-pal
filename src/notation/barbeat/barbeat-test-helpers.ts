@@ -41,8 +41,9 @@ export function kickSnareNotes(): NoteEvent[] {
  */
 export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
   return notes.toSorted((a, b) => {
-    if (Math.abs(a.start_time - b.start_time) > SAME_TIME_EPSILON)
+    if (Math.abs(a.start_time - b.start_time) > SAME_TIME_EPSILON) {
       return a.start_time - b.start_time;
+    }
 
     return a.pitch - b.pitch;
   });

@@ -14,12 +14,17 @@ import {
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_WARP_MODE_TEXTURE,
+  WARP_MODE,
 } from "#src/tools/constants.ts";
+import { publishedEnumValues } from "#src/test/helpers/enum-options-test-helpers.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { toolDefReadTrack } from "../read-track.def.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
-function createMasterTrackProperties(
+// An empty audio track that can't be armed — the master and return tracks.
+function createBareTrackProperties(
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
@@ -42,6 +47,32 @@ function createMasterTrackProperties(
     muted_via_solo: 0,
     ...overrides,
   };
+}
+
+function setupAudioSessionClipTrack(): void {
+  setupTrackPathMappedMocks({
+    pathIdMap: {
+      [String(livePath.track(0))]: "track1",
+      [livePath.track(0).clipSlot(0).clip()]: "audio_clip1",
+    },
+    objects: {
+      Track: mockTrackProperties({
+        name: "Audio Track",
+        has_midi_input: 0,
+        devices: [],
+        clip_slots: children("slot1"),
+        arrangement_clips: [],
+      }),
+      audio_clip1: {
+        is_midi_clip: 0,
+        name: "Audio Clip",
+        sample_length: 88200,
+        sample_rate: 44100,
+        warping: 1,
+        warp_mode: LIVE_API_WARP_MODE_TEXTURE,
+      },
+    },
+  });
 }
 
 describe("readTrack", () => {
@@ -106,22 +137,13 @@ describe("readTrack", () => {
         include: ["*"],
       });
 
-      // Test explicit list - should produce identical result
+      // Every option the tool publishes, named one by one — read from the def
+      // rather than copied, so this can't drift from what read-track offers
       const resultExplicit = readTrack({
         trackIndex: 0,
-        include: [
-          "session-clips",
-          "arrangement-clips",
-          "notes",
-          "timing",
-          "sample",
-          "devices",
-          "drum-map",
-          "routings",
-          "available-routings",
-          "mixer",
-          "color",
-        ],
+        include: publishedEnumValues(toolDefReadTrack, "include").filter(
+          (option) => option !== "*",
+        ),
       });
 
       // Results should be identical
@@ -138,6 +160,51 @@ describe("readTrack", () => {
           monitoringState: expect.any(String),
         }),
       );
+    });
+
+    it("passes warp through to nested clip reads", () => {
+      setupAudioSessionClipTrack();
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["session-clips", "warp"],
+      });
+
+      expect(
+        (result.sessionClips as Record<string, unknown>[])[0],
+      ).toStrictEqual(
+        expect.objectContaining({
+          warping: true,
+          warpMode: WARP_MODE.TEXTURE,
+          sampleLength: 88200,
+          sampleRate: 44100,
+        }),
+      );
+    });
+
+    it("includes warp in nested clip reads for '*'", () => {
+      setupAudioSessionClipTrack();
+
+      const result = readTrack({ trackIndex: 0, include: ["*"] });
+
+      expect(
+        (result.sessionClips as Record<string, unknown>[])[0],
+      ).toStrictEqual(
+        expect.objectContaining({ warping: true, warpMode: WARP_MODE.TEXTURE }),
+      );
+    });
+
+    it("omits warp from nested clip reads when it wasn't asked for", () => {
+      setupAudioSessionClipTrack();
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["session-clips", "sample"],
+      });
+
+      expect(
+        (result.sessionClips as Record<string, unknown>[])[0],
+      ).not.toHaveProperty("warping");
     });
 
     it("applies mapped path-key object properties", () => {
@@ -180,25 +247,11 @@ describe("readTrack", () => {
           trackPath: String(livePath.returnTrack(1)),
           trackId: "return_track_1",
           objects: {
-            Track: {
+            // The defaults already match a return track: audio in, unarmable.
+            Track: createBareTrackProperties({
               name: "Return B",
-              has_midi_input: 0, // Return tracks are typically audio
               color: 65280, // Green
-              mute: 0,
-              solo: 0,
-              arm: 0,
-              can_be_armed: 0, // Return tracks cannot be armed
-              is_foldable: 0,
-              is_grouped: 0,
-              group_track: ["id", 0],
-              devices: [],
-              clip_slots: [],
-              arrangement_clips: [],
-              back_to_arranger: 0,
-              playing_slot_index: -1,
-              fired_slot_index: -1,
-              muted_via_solo: 0,
-            },
+            }),
           },
         });
 
@@ -206,9 +259,8 @@ describe("readTrack", () => {
 
         expect(result).toStrictEqual({
           id: "return_track_1",
-          type: "return",
+          path: "rt1",
           name: "Return B",
-          returnTrackIndex: 1,
           sessionClipCount: 0,
           arrangementClipCount: 0,
           deviceCount: 0,
@@ -223,7 +275,7 @@ describe("readTrack", () => {
 
         expect(() =>
           readTrack({ trackIndex: 99, trackType: "return" }),
-        ).toThrow("readTrack: returnTrackIndex 99 does not exist");
+        ).toThrow("returnTrackIndex 99 does not exist");
       });
 
       it("includes routing properties for return tracks when requested", () => {
@@ -231,7 +283,7 @@ describe("readTrack", () => {
           trackPath: String(livePath.returnTrack(0)),
           trackId: "return_track_1",
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               name: "Return A",
               ...createOutputOnlyRoutingMock(),
               available_input_routing_channels: null,
@@ -275,7 +327,7 @@ describe("readTrack", () => {
             [String(livePath.masterTrack().device(0))]: "compressor1",
           },
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               color: 16777215, // White
               devices: children("compressor1"),
             }),
@@ -295,16 +347,12 @@ describe("readTrack", () => {
 
         expect(result).toStrictEqual({
           id: "master_track",
-          type: "master",
+          path: "mt",
           name: "Master",
           sessionClipCount: 0,
           arrangementClipCount: 0,
           deviceCount: 1,
         });
-
-        // trackIndex should be ignored for master track
-        expect(result.trackIndex).toBeUndefined();
-        expect(result.returnTrackIndex).toBeUndefined();
       });
 
       it("throws when master track does not exist", () => {
@@ -314,7 +362,7 @@ describe("readTrack", () => {
         });
 
         expect(() => readTrack({ trackIndex: 0, trackType: "master" })).toThrow(
-          "readTrack: trackIndex null does not exist",
+          "trackIndex null does not exist",
         );
       });
 
@@ -327,7 +375,7 @@ describe("readTrack", () => {
             [String(livePath.masterTrack().device(1))]: "limiter1",
           },
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               devices: children("compressor1", "limiter1"),
             }),
             compressor1: {
@@ -376,7 +424,7 @@ describe("readTrack", () => {
           trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           objects: {
-            Track: createMasterTrackProperties(),
+            Track: createBareTrackProperties(),
           },
         });
 
@@ -402,7 +450,7 @@ describe("readTrack", () => {
           trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
           objects: {
-            Track: createMasterTrackProperties({
+            Track: createBareTrackProperties({
               color: 16777215, // White
             }),
           },
@@ -412,7 +460,7 @@ describe("readTrack", () => {
 
         expect(result).toStrictEqual({
           id: "master_track",
-          type: "master",
+          path: "mt",
           name: "Master",
           sessionClipCount: 0,
           arrangementClipCount: 0,
@@ -433,6 +481,12 @@ describe("readTrack", () => {
 
         expectRegularTrackResult(result);
       });
+
+      it("reads regular track when trackType is explicitly regular", () => {
+        const result = setupAndReadRegularTrack("Regular Track", "regular");
+
+        expectRegularTrackResult(result);
+      });
     });
 
     describe("invalid trackType", () => {
@@ -440,14 +494,17 @@ describe("readTrack", () => {
         expect(() => {
           readTrack({ trackIndex: 0, trackType: "invalid" });
         }).toThrow(
-          'Invalid trackType: invalid. Must be "return" or "master", or omit for regular tracks.',
+          'Invalid trackType: invalid. Must be "regular", "return", or "master".',
         );
       });
     });
   });
 });
 
-function setupAndReadRegularTrack(name: string): ReturnType<typeof readTrack> {
+function setupAndReadRegularTrack(
+  name: string,
+  trackType?: string,
+): ReturnType<typeof readTrack> {
   setupTrackPathMappedMocks({
     trackId: "track1",
     objects: {
@@ -455,11 +512,10 @@ function setupAndReadRegularTrack(name: string): ReturnType<typeof readTrack> {
     },
   });
 
-  return readTrack({ trackIndex: 0 });
+  return readTrack({ trackIndex: 0, trackType });
 }
 
 function expectRegularTrackResult(result: ReturnType<typeof readTrack>): void {
-  expect(result.trackIndex).toBe(0);
-  expect(result.returnTrackIndex).toBeUndefined();
+  expect(result.path).toBe("t0");
   expect(result.id).toBe("track1");
 }

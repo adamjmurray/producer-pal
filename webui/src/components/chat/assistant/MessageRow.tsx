@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
+import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { CompactButton } from "#webui/components/chat/controls/CompactButton";
@@ -168,7 +169,9 @@ function AssistantRow({
           canRetry && handleCompact != null && isLastAssistantMessage
         }
         onCompact={() => {
-          if (handleCompact) void handleCompact(originalIdx);
+          if (handleCompact) {
+            void handleCompact(originalIdx);
+          }
         }}
       />
     </>
@@ -270,8 +273,13 @@ function ModelMismatchLabel({
   requestedModel?: string | null;
   responseModel?: string;
 }) {
-  if (!responseModel || !requestedModel) return null;
-  if (!isModelMismatch(requestedModel, responseModel)) return null;
+  if (!responseModel || !requestedModel) {
+    return null;
+  }
+
+  if (!isModelMismatch(requestedModel, responseModel)) {
+    return null;
+  }
 
   return (
     <div className="pt-1 text-right text-xs text-zinc-400 dark:text-zinc-500">
@@ -294,7 +302,9 @@ function TokenUsageLabel({
   usage?: TokenUsage;
   prevUsage?: TokenUsage;
 }) {
-  if (!usage) return null;
+  if (!usage) {
+    return null;
+  }
 
   const newContent = calcNewContentTokens(
     usage.inputTokens ?? 0,
@@ -344,21 +354,12 @@ function findPreviousUserMessageIndex(
   currentIdx: number,
 ): number {
   for (let i = currentIdx - 1; i >= 0; i--) {
-    if (messages[i]?.role === "user") return i;
+    if (messages[i]?.role === "user") {
+      return i;
+    }
   }
 
   return -1;
-}
-
-/**
- * Formats user message content as string.
- * @param {UIMessage} message - User message to format
- * @returns {string} Concatenated text content
- */
-function formatUserContent(message: UIMessage): string {
-  return message.parts
-    .map((part) => ("content" in part ? part.content : ""))
-    .join("");
 }
 
 /**
@@ -374,7 +375,9 @@ function getPrevModelUsage(
   for (let i = currentIdx - 1; i >= 0; i--) {
     const msg = messages[i];
 
-    if (msg?.role !== "model") continue;
+    if (msg?.role !== "model") {
+      continue;
+    }
 
     return getLastStepUsage(msg) ?? msg.usage;
   }
@@ -390,7 +393,9 @@ function getPrevModelUsage(
 function getLastStepUsage(message: UIMessage): TokenUsage | undefined {
   const part = message.parts.findLast((p) => p.type === "step-usage");
 
-  if (part?.type === "step-usage") return part.usage;
+  if (part?.type === "step-usage") {
+    return part.usage;
+  }
 
   return undefined;
 }

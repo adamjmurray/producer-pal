@@ -25,7 +25,9 @@
  * @returns True when the models are meaningfully different
  */
 export function isModelMismatch(requested: string, actual: string): boolean {
-  if (requested === actual) return false;
+  if (requested === actual) {
+    return false;
+  }
 
   return normalizeModelId(requested) !== normalizeModelId(actual);
 }

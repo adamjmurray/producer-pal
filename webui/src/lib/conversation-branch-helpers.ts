@@ -86,7 +86,9 @@ export function collapseBranchFamilies<T extends BranchRecord>(
     } else {
       family.latest = Math.max(family.latest, item.updatedAt);
 
-      if (preferRepresentative(item, family.rep, activeId)) family.rep = item;
+      if (preferRepresentative(item, family.rep, activeId)) {
+        family.rep = item;
+      }
     }
   }
 
@@ -131,7 +133,9 @@ export function computeBranchPoints(
   const byId = new Map(items.map((item) => [item.id, item]));
   const active = byId.get(activeId);
 
-  if (!active) return [];
+  if (!active) {
+    return [];
+  }
 
   const byAnchor = new Map<number, BranchPoint>();
 
@@ -176,7 +180,9 @@ export function branchFamilyIds(
   const family = new Set<string>(seedIds);
 
   for (const item of items) {
-    if (roots.has(branchRootId(item.id, byId))) family.add(item.id);
+    if (roots.has(branchRootId(item.id, byId))) {
+      family.add(item.id);
+    }
   }
 
   return family;
@@ -205,10 +211,15 @@ export function forkPointerCreatesCycle(
   const seen = new Set<string>();
 
   while (current != null) {
-    if (current === id) return true;
+    if (current === id) {
+      return true;
+    }
+
     // A pre-existing cycle that doesn't pass through `id` ends the walk without
     // implicating this pointer (those records are corrupt independently).
-    if (seen.has(current)) return false;
+    if (seen.has(current)) {
+      return false;
+    }
 
     seen.add(current);
     current = parentOf.get(current);
@@ -234,13 +245,20 @@ function preferRepresentative<T extends BranchRecord>(
   current: T,
   activeId: string | null,
 ): boolean {
-  if (candidate.id === activeId) return true;
-  if (current.id === activeId) return false;
+  if (candidate.id === activeId) {
+    return true;
+  }
+
+  if (current.id === activeId) {
+    return false;
+  }
 
   const candidateBookmarked = candidate.bookmarked ?? false;
   const currentBookmarked = current.bookmarked ?? false;
 
-  if (candidateBookmarked !== currentBookmarked) return candidateBookmarked;
+  if (candidateBookmarked !== currentBookmarked) {
+    return candidateBookmarked;
+  }
 
   return isNewer(candidate, current);
 }
@@ -275,7 +293,9 @@ function branchRootId(id: string, byId: Map<string, BranchRecord>): string {
   while (true) {
     const parent = byId.get(current)?.forkParentId;
 
-    if (parent == null || seen.has(parent)) return current;
+    if (parent == null || seen.has(parent)) {
+      return current;
+    }
 
     seen.add(parent);
     current = parent;
@@ -319,7 +339,9 @@ function addBranchPoint(
   const siblingIds = siblingsOfSet(trunkId, anchorIndex, items);
   const currentIndex = siblingIds.indexOf(activeId);
 
-  if (siblingIds.length < 2 || currentIndex < 0) return;
+  if (siblingIds.length < 2 || currentIndex < 0) {
+    return;
+  }
 
   const existing = byAnchor.get(anchorIndex);
 

@@ -16,6 +16,7 @@ import {
   untrackLiveApiObject,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Track an object whose path can't be cleared, standing in for a Live API
@@ -178,8 +179,9 @@ describe("live-api release", () => {
     expect(errorSpy).toHaveBeenCalledWith(
       "Failed to release 1 LiveAPI object(s): nope",
     );
-    // The Max console, not outlet 1 — outlet 1 is what reaches the model.
-    expect(vi.mocked(outlet)).not.toHaveBeenCalled();
+    // The Max console, not the response — a release failure has no request to
+    // ride, so the model never sees it.
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("reports the first failure when several objects refuse", () => {
@@ -445,7 +447,9 @@ describe("live-api release", () => {
     let reused = 0;
 
     for (let i = 0; i < MAX_POOLED_OBJECTS + overflow; i++) {
-      if (built.has(LiveAPI.from(livePath.track(i)))) reused++;
+      if (built.has(LiveAPI.from(livePath.track(i)))) {
+        reused++;
+      }
     }
 
     expect(reused).toBe(MAX_POOLED_OBJECTS);

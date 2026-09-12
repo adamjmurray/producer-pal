@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { CONTEXT_EDITOR_SAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
+import { useDocStatusMarkers } from "./helpers/use-doc-status-markers";
 import { type UseDocReturn } from "./use-doc";
 
 const SAVE_RETRY_MS = 5000;
@@ -92,8 +93,8 @@ interface ReplaceContext {
   retryTimerRef: TimerRef;
   /** How many Clear/Import writes are on the wire (see the hook's ref). */
   replacingRef: { current: number };
-  /** The live set of in-flight write promises. */
-  saves: Set<Promise<boolean>>;
+  /** Ref holding the live set of in-flight write promises. */
+  savesRef: { current: Set<Promise<boolean>> };
   setCharCount: (count: number) => void;
   setDirty: (dirty: boolean) => void;
   setEditorKey: (update: (key: number) => number) => void;
@@ -133,7 +134,7 @@ async function replaceDocument(
   let ok = false;
 
   try {
-    ok = await dispatchOrderedWrite(ctx.saves, write);
+    ok = await dispatchOrderedWrite(ctx.savesRef.current, write);
   } finally {
     ctx.replacingRef.current -= 1;
   }
@@ -282,6 +283,9 @@ export function useContextEditorState(
   // server happened to finish last. A set rather than one ref: writes can
   // overlap (a debounce flush, then a blur flush before the first echo lands),
   // and keeping only the newest would silently stop awaiting the earlier one.
+  // Nothing sweeps it on unmount, and nothing needs to: an entry can't outlive
+  // its request (the transport deadline settles every write), and the screens
+  // that own this hook are keyed, so a remount always starts from an empty set.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
   // How many Clear/Import writes are on the wire. Those two REPLACE the whole
   // document and remount the editor from the result, so a draft typed while one
@@ -313,58 +317,15 @@ export function useContextEditorState(
   // draftRef changes: seed-on-ready, keystroke, Clear, Reload.
   const [charCount, setCharCount] = useState(0);
 
-  // Seed the draft markers from the server when the doc first becomes ready.
-  // Only on first ready: subsequent status updates (save echoes, AI writes,
-  // toggle flips) must not blow away the user's in-progress draft.
-  useEffect(() => {
-    if (doc.status.kind !== "ready") return;
-    if (draftRef.current != null) return;
-    draftRef.current = doc.status.content;
-    lastSavedRef.current = doc.status.content;
-    setCharCount(doc.status.content.length);
-    // Decide override-vs-built-in structure from the seed content, once.
-    setHasOverride(doc.status.content !== "");
-  }, [doc.status]);
-
-  // Null the draft markers on transition to error. Without this, a recovery
-  // (error → ready) leaves the refs pointed at the pre-error value because
-  // the seed-on-first-ready effect above bails when draftRef is set; a
-  // subsequent beforeunload would then flush the stale value over the
-  // server's recovered content.
-  useEffect(() => {
-    if (doc.status.kind !== "error") return;
-    draftRef.current = null;
-    lastSavedRef.current = null;
-    setExternalUpdate(false);
-    setDirty(false);
-    setCharCount(0);
-  }, [doc.status]);
-
-  // Surface an "external update" banner when an AI/device write changes
-  // status.content out from under the uncontrolled editor AND the user has
-  // no in-progress diff (draftRef === lastSavedRef). Clean-draft is the
-  // safe case — reloading discards nothing the user typed.
-  useEffect(() => {
-    if (doc.status.kind !== "ready") return;
-    if (lastSavedRef.current == null) return;
-    const serverContent = doc.status.content;
-
-    // Compare against the server's canonical (trimmed) form of our baseline:
-    // the Node-side stores trim on save, so our OWN save echo comes back
-    // whitespace-normalized. Without this, forking a built-in that ends in a
-    // newline (Customize) — or simply saving a draft with trailing blank
-    // lines — would echo trimmed content that looks like an external write and
-    // flash a spurious "updated outside the editor" banner. A whitespace-only
-    // difference is never a meaningful external edit worth a Reload prompt.
-    if (serverContent.trim() === lastSavedRef.current.trim()) {
-      setExternalUpdate(false);
-
-      return;
-    }
-
-    if (draftRef.current !== lastSavedRef.current) return;
-    setExternalUpdate(true);
-  }, [doc.status]);
+  useDocStatusMarkers({
+    status: doc.status,
+    draftRef,
+    lastSavedRef,
+    setCharCount,
+    setDirty,
+    setExternalUpdate,
+    setHasOverride,
+  });
 
   // Ref-indirected so flushSave can schedule a retry via setTimeout(flushSave)
   // without tripping the no-use-before-defined rule on its own const binding.
@@ -379,16 +340,26 @@ export function useContextEditorState(
     const value = draftRef.current;
     const current = docRef.current;
 
-    if (value == null) return;
-    if (current.status.kind !== "ready") return;
-    if (value === lastSavedRef.current) return;
+    if (value == null) {
+      return;
+    }
+
+    if (current.status.kind !== "ready") {
+      return;
+    }
+
+    if (value === lastSavedRef.current) {
+      return;
+    }
 
     // A Clear or Import is on the wire. The editor stays live through its round
     // trip, so this draft is about to be thrown away by the remount that
     // follows — and ordering behind the replace only guarantees it lands LAST,
     // writing text to disk the editor no longer shows and no banner reports.
     // Dropping it matches what the user ends up looking at.
-    if (replacingRef.current > 0) return;
+    if (replacingRef.current > 0) {
+      return;
+    }
 
     // Mark optimistically so a concurrent flush (debounce + blur) doesn't
     // dispatch the same content twice. On failure, roll the marker back so the
@@ -433,7 +404,9 @@ export function useContextEditorState(
       // The hook unmounted mid-save: don't touch state or reschedule. The
       // flush already went out (best-effort); retrying after teardown would
       // loop forever against a persistent failure.
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) {
+        return;
+      }
 
       if (saved) {
         // Only clear dirty if the user hasn't typed past the saved value
@@ -495,14 +468,16 @@ export function useContextEditorState(
     debounceTimerRef,
     retryTimerRef,
     replacingRef,
-    saves: inFlightSavesRef.current,
+    savesRef: inFlightSavesRef,
     setCharCount,
     setDirty,
     setEditorKey,
   });
 
   const handleClear = useCallback(async (): Promise<boolean> => {
-    if (doc.status.kind !== "ready") return false;
+    if (doc.status.kind !== "ready") {
+      return false;
+    }
 
     if (!window.confirm(clearConfirmMessage)) {
       return false;
@@ -515,13 +490,18 @@ export function useContextEditorState(
     );
 
     // The override is gone — revert to the built-in "Customize" view.
-    if (ok) setHasOverride(false);
+    if (ok) {
+      setHasOverride(false);
+    }
 
     return ok;
   }, [doc, clearConfirmMessage]);
 
   const handleReload = useCallback((): void => {
-    if (doc.status.kind !== "ready") return;
+    if (doc.status.kind !== "ready") {
+      return;
+    }
+
     // Adopt the server's content as the new baseline and remount the editor.
     // Only offered when no in-progress diff exists, so this discards nothing
     // the user typed.
@@ -540,13 +520,17 @@ export function useContextEditorState(
 
   const handleImport = useCallback(
     async (content: string): Promise<void> => {
-      if (doc.status.kind !== "ready") return;
+      if (doc.status.kind !== "ready") {
+        return;
+      }
 
       // Guard against clobbering in-progress work. An empty editor imports
       // silently (the common "start from a file" case).
       const current = draftRef.current ?? "";
 
-      if (current.trim() !== "" && !window.confirm(IMPORT_CONFIRM)) return;
+      if (current.trim() !== "" && !window.confirm(IMPORT_CONFIRM)) {
+        return;
+      }
 
       setExternalUpdate(false);
 
@@ -555,7 +539,9 @@ export function useContextEditorState(
       );
 
       // Imported/forked content means the slot now overrides the built-in.
-      if (ok) setHasOverride(true);
+      if (ok) {
+        setHasOverride(true);
+      }
     },
     [doc],
   );

@@ -27,11 +27,11 @@ import { interpretMidiJson } from "#src/notation/midi-json/midi-json-notation.ts
 import { setupMcpTestContext } from "../mcp-test-helpers.ts";
 import {
   createAndReadback,
-  emptyMidiTrack,
   expectEvenlySpaced,
   restoreNotationAfterAll,
   THIRD,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -41,7 +41,7 @@ describe("ppal-create-clip MIDI JSON ratio round-trip", () => {
   it("round-trips eighth-note triplets (d:1/3) as thirds-of-a-beat", async () => {
     const { notation, events } = await createAndReadback(
       ctx,
-      `t${emptyMidiTrack}/s0`,
+      `t${EMPTY_MIDI_TRACK}/s0`,
       "[{p:60,t:0,d:1/3,v:100},{p:64,t:1/3,d:1/3,v:100}," +
         "{p:67,t:2/3,d:1/3,v:100},{p:60,t:1,d:1/3,v:100}," +
         "{p:64,t:4/3,d:1/3,v:100},{p:67,t:5/3,d:1/3,v:100}]",
@@ -58,7 +58,7 @@ describe("ppal-create-clip MIDI JSON ratio round-trip", () => {
   it("round-trips quarter-note triplets (d:2/3) as two-thirds-of-a-beat", async () => {
     const { notation, events } = await createAndReadback(
       ctx,
-      `t${emptyMidiTrack}/s1`,
+      `t${EMPTY_MIDI_TRACK}/s1`,
       "[{p:60,t:0,d:2/3,v:100},{p:64,t:2/3,d:2/3,v:100}," +
         "{p:67,t:4/3,d:2/3,v:100}]",
       "midi-json",

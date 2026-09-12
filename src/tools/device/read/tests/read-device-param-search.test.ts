@@ -54,8 +54,13 @@ function setupTwoParamDevice(includeFullProps = false) {
     methods: includeFullProps
       ? {
           str_for_value: (value: unknown) => {
-            if (value === 0) return "-inf dB";
-            if (value === 1) return "0 dB";
+            if (value === 0) {
+              return "-inf dB";
+            }
+
+            if (value === 1) {
+              return "0 dB";
+            }
 
             return "-6 dB";
           },
@@ -87,8 +92,13 @@ function setupTwoParamDevice(includeFullProps = false) {
     methods: includeFullProps
       ? {
           str_for_value: (value: unknown) => {
-            if (value === 20) return "20 Hz";
-            if (value === 20000) return "20.0 kHz";
+            if (value === 20) {
+              return "20 Hz";
+            }
+
+            if (value === 20000) {
+              return "20.0 kHz";
+            }
 
             return "1.00 kHz";
           },

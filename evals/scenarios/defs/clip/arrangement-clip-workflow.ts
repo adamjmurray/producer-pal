@@ -11,7 +11,11 @@
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { asArrangementTrack, clipStarts } from "../arrangement-helpers.ts";
+import {
+  asArrangementTrack,
+  callNamesArrangementPosition,
+  clipStarts,
+} from "../arrangement-helpers.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;
@@ -122,15 +126,19 @@ export const arrangementClipWorkflow: EvalScenario = {
     // Verify arrangement placement (not session)
     {
       type: "custom",
-      description: "ppal-create-clip uses arrangementStart",
+      description: "ppal-create-clip names an arrangement position",
       assert: (turns) => {
         const calls = getToolCalls(turns, 1);
         const createCall = calls.find((c) => c.name === "ppal-create-clip");
 
-        if (!createCall) throw new Error("ppal-create-clip not found");
+        if (!createCall) {
+          throw new Error("ppal-create-clip not found");
+        }
 
-        if (!createCall.args.arrangementStart) {
-          throw new Error("Missing arrangementStart — created session clip?");
+        if (!callNamesArrangementPosition(createCall.args, "path")) {
+          throw new Error(
+            'No arrangement position (e.g. path "t0[5|1]") — created session clip?',
+          );
         }
 
         return true;
@@ -156,8 +164,7 @@ export const arrangementClipWorkflow: EvalScenario = {
 
     {
       type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 110_000,
+      maxTokens: 8_000,
     },
 
     // No llm_judge: the clip layout above pins every outcome it used to grade,

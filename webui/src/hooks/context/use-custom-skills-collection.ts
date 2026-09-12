@@ -11,7 +11,7 @@ import {
   type DocCollectionStatus,
   type UseDocCollectionReturn,
   useDocCollection,
-} from "./use-doc-collection";
+} from "./helpers/use-doc-collection";
 
 /** One stored custom skill, as the manager needs it. */
 export interface CustomSkillView {

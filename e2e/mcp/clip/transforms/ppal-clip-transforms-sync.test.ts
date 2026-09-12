@@ -27,11 +27,11 @@ const ctx = setupMcpTestContext();
 
 /** Creates a MIDI arrangement clip with notes at given position. */
 async function createArrangementClip(
-  arrangementStart: string,
+  position: string,
   notes: string,
   length: string,
 ): Promise<string> {
-  return createArrangementClipHelper(ctx, arrangementStart, notes, length);
+  return createArrangementClipHelper(ctx, position, notes, length);
 }
 
 /** Creates a MIDI session clip with notes. */

@@ -63,8 +63,7 @@ export function notePitch(
 /**
  * Resolve a drum header's absolute pitch name (e.g. "Cb2", "F#3") to MIDI the
  * same arithmetic way note tokens do, so enharmonic spellings (Cb/E#/Fb/B#)
- * work. pitch.ts's noteNameToMidi rejects those — its exact table omits them —
- * silently dropping the whole drum line.
+ * work.
  * @param noteName - Absolute pitch name from the header
  * @returns MIDI pitch (Ableton C3 = 60), or null if out of range (e.g. "C9")
  */
@@ -121,8 +120,13 @@ function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
   // Callers pass an uppercased A-G letter, so the table lookup always hits.
   const base = NATURAL_PC[letter] as number;
 
-  if (accidental === "#") return base + 1;
-  if (accidental === "b") return base - 1;
+  if (accidental === "#") {
+    return base + 1;
+  }
+
+  if (accidental === "b") {
+    return base - 1;
+  }
 
   return base;
 }

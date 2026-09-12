@@ -6,8 +6,6 @@
 /**
  * Shared test utilities for MCP e2e tests
  */
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, afterEach, beforeAll, beforeEach, expect } from "vitest";
 import {
@@ -23,6 +21,7 @@ import {
   setConfig,
   type ConfigOptions,
 } from "#evals/shared/config.ts";
+import { KICK_FILE, LIVE_SET_PATH, SAMPLE_FILE } from "./e2e-test-set.ts";
 
 // Re-export for use in tests
 export { extractToolResultText };
@@ -30,29 +29,9 @@ export { extractToolResultText };
 // Re-export config utilities for use in tests
 export { CONFIG_URL, resetConfig, setConfig, type ConfigOptions };
 
-// Sample file for audio clip tests - resolve relative to this file's location
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-export const SAMPLE_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/sample.aiff",
-);
-
-export const KICK_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/drums/kick.aiff",
-);
-
-/**
- * A generated one-bar 4/4 drum loop at the test Set's tempo — 98000 frames at
- * 44100 Hz is exactly 4 beats at 108 BPM. SAMPLE_FILE is under a bar long, so
- * anything that needs a bar-aligned audio region uses this instead. See
- * live-sets/samples/generate-drum-loop.mjs.
- */
-export const DRUM_LOOP_FILE = resolve(
-  __dirname,
-  "../live-sets/samples/drum-loop-1bar.wav",
-);
+// Re-export the shared Live Set fixtures for use in tests
+export { DRUM_LOOP_8BAR_FILE, DRUM_LOOP_FILE } from "./e2e-test-set.ts";
+export { KICK_FILE, LIVE_SET_PATH, SAMPLE_FILE };
 
 /**
  * Parse a tool result as JSON with type casting.
@@ -134,7 +113,9 @@ export function getToolWarnings(result: unknown): string[] {
     content?: Array<{ text?: string; type?: string }>;
   } | null;
 
-  if (!typed?.content) return [];
+  if (!typed?.content) {
+    return [];
+  }
 
   return typed.content
     .filter(
@@ -182,29 +163,25 @@ export function parseToolResultWithWarnings<T>(
  * one live check each — folded into a test that already reads the same object
  * the canonical way, rather than a suite of its own.
  * @param result - Raw tool result
- * @param toolName - Tool that was called
  * @param alias - The alias param the call used
  * @param canonical - The param it folds onto
  * @returns The parsed result
  */
 export function parseAliasedToolResult<T>(
   result: unknown,
-  toolName: string,
   alias: string,
   canonical: string,
 ): T {
   const { data, warnings } = parseToolResultWithWarnings<T>(result);
 
   expect(warnings).toStrictEqual([
-    `WARNING: ${toolName} accepts "${alias}" as a fallback; the parameter is "${canonical}"`,
+    `WARNING: "${alias}" accepted as a fallback; the parameter is "${canonical}"`,
   ]);
 
   return data;
 }
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
-export const LIVE_SET_PATH =
-  "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";
 
 /**
  * Sleep for a specified number of milliseconds.
@@ -280,7 +257,7 @@ async function resetConfigAndSettle(): Promise<void> {
 
 interface CreateDeviceResult {
   id: string;
-  deviceIndex: number | null;
+  path?: string;
 }
 
 /**
@@ -332,14 +309,13 @@ function createdDevice(
   containerPath: string,
   created: CreateDeviceResult,
 ): CreatedDevice {
-  if (created.deviceIndex == null) {
-    throw new Error(`create-device gave no index for "${containerPath}"`);
+  const deviceIndex = Number(created.path?.match(/\/d(\d+)$/)?.[1]);
+
+  if (created.path == null || Number.isNaN(deviceIndex)) {
+    throw new Error(`create-device gave no device path for "${containerPath}"`);
   }
 
-  return {
-    path: `${containerPath}/d${created.deviceIndex}`,
-    deviceIndex: created.deviceIndex,
-  };
+  return { path: created.path, deviceIndex };
 }
 
 /**
@@ -383,7 +359,7 @@ export async function readDeviceCount(
   const track = parseToolResult<{ devices?: unknown[] }>(
     await client.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex, include: ["devices"] },
+      arguments: { path: `t${trackIndex}`, include: ["devices"] },
     }),
   );
 
@@ -396,7 +372,7 @@ export async function readDeviceCount(
  * @returns The new track's index
  */
 export async function createMidiTrack(client: Client): Promise<number> {
-  const track = parseToolResult<{ trackIndex: number }>(
+  const track = parseToolResult<{ path: string }>(
     await client.callTool({
       name: "ppal-create-track",
       arguments: { type: "midi" },
@@ -405,7 +381,23 @@ export async function createMidiTrack(client: Client): Promise<number> {
 
   await sleep(150);
 
-  return track.trackIndex;
+  return trackIndexFromPath(track.path);
+}
+
+/**
+ * The 0-based index a track path names. Track results report `path`, not an
+ * index, so a test that needs the number takes it from there.
+ * @param path - Track path from a tool result, e.g. `t3`
+ * @returns The track index
+ */
+export function trackIndexFromPath(path: string | undefined | null): number {
+  const index = Number(path?.match(/^t(\d+)$/)?.[1]);
+
+  if (Number.isNaN(index)) {
+    throw new Error(`not a regular track path: "${path}"`);
+  }
+
+  return index;
 }
 
 /**
@@ -426,8 +418,8 @@ export async function createTwoPadDrumRack(
         deviceName: "Drum Rack",
         path,
         params: [
-          { name: "pC1/d0/sample", value: KICK_FILE },
-          { name: "pD1/d0/sample", value: SAMPLE_FILE },
+          { name: "pC1/sample", value: KICK_FILE },
+          { name: "pD1/sample", value: SAMPLE_FILE },
         ],
       },
     }),
@@ -481,8 +473,13 @@ export async function fetchSkillOverrides(): Promise<SkillOverrides> {
   const disabled: string[] = [];
 
   for (const slot of slots) {
-    if (slot.override) fragments[slot.name] = slot.override;
-    if (!slot.enabled) disabled.push(slot.name);
+    if (slot.override) {
+      fragments[slot.name] = slot.override;
+    }
+
+    if (!slot.enabled) {
+      disabled.push(slot.name);
+    }
   }
 
   return { fragments, disabled };
@@ -554,12 +551,13 @@ export interface UpdateClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  length?: string;
 }
 
 /** Result from ppal-create-track tool */
 export interface CreateTrackResult {
   id: string;
-  trackIndex?: number;
+  path?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
@@ -571,13 +569,15 @@ export interface ReadClipResult {
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;
+  muted?: boolean;
   start?: string;
   end?: string;
   length?: string;
-  /** Where the clip is: "t0/s3", "t0", or "t0/l1" */
+  /** Where the clip is: "t0/s3", "t0[5|1]", or "t0/l1[5|1]" */
   path?: string;
-  arrangementStart?: string;
   arrangementLength?: string;
+  /** Only on a clip a move was set to overwrite: whether it was cleared */
+  deleted?: boolean;
   noteCount?: number;
   notes?: string;
   // Audio clip properties

@@ -90,7 +90,7 @@ describe("createDevice", () => {
           path: "t0",
           deviceName: "NotARealDevice",
         }),
-      ).toThrow(/createDevice failed: invalid deviceName "NotARealDevice"/);
+      ).toThrow(/invalid deviceName "NotARealDevice"/);
     });
 
     it("should include valid devices in error message", () => {
@@ -173,6 +173,28 @@ describe("createDevice", () => {
       expect(Array.isArray(result.audioEffects)).toBe(true);
     });
 
+    it.each([
+      ["path", { path: "t0" }],
+      ["name", { name: "Lead" }],
+      ["params", { params: [{ name: "Dry/Wet", value: "50%" }] }],
+    ])("refuses a list-mode call carrying %s", (param, args) => {
+      expect(() => createDevice(args)).toThrow(`${param} require deviceName`);
+    });
+
+    it("names every create-only arg it was sent", () => {
+      expect(() => createDevice({ path: "t0", name: "Lead" })).toThrow(
+        "path, name require deviceName; omit them to list available devices",
+      );
+    });
+
+    it("does not touch Live before refusing", () => {
+      expect(() => createDevice({ path: "t0" })).toThrow(
+        "path require deviceName",
+      );
+
+      expect(track0.call).not.toHaveBeenCalled();
+    });
+
     it("should not call Live API when listing devices", () => {
       createDevice({});
 
@@ -184,7 +206,7 @@ describe("createDevice", () => {
   describe("path validation", () => {
     it("should throw error when deviceName provided but path missing", () => {
       expect(() => createDevice({ deviceName: "Compressor" })).toThrow(
-        "createDevice failed: path is required when creating a device",
+        "path is required when creating a device",
       );
     });
   });
@@ -208,7 +230,7 @@ describe("createDevice", () => {
         expect(nameSets).toHaveLength(0);
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 2,
+          path: "t0/d2",
         });
       });
 
@@ -227,7 +249,7 @@ describe("createDevice", () => {
         );
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 1,
+          path: "t0/d1",
         });
       });
 
@@ -254,7 +276,7 @@ describe("createDevice", () => {
         );
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 0,
+          path: "rt0/d0",
         });
       });
 
@@ -272,7 +294,7 @@ describe("createDevice", () => {
         expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 0,
+          path: "t0/d0",
         });
       });
 
@@ -294,8 +316,25 @@ describe("createDevice", () => {
         );
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 1,
+          path: "t0/d1",
         });
+      });
+
+      it("counts the devices in the past-the-end warning in the plural", async () => {
+        const mockConsole = await import("#src/shared/max/v8-max-console.ts");
+
+        registerMockObject("track-0", {
+          path: livePath.track(0),
+          properties: { devices: children("device-a", "device-b") },
+          methods: { insert_device: () => ["id", "device123"] },
+        });
+        registerMockObject("device123", { path: livePath.track(0).device(2) });
+
+        createDevice({ path: "t0/d5", deviceName: "Compressor" });
+
+        expect(mockConsole.warn).toHaveBeenCalledWith(
+          expect.stringContaining("(2 devices)"),
+        );
       });
 
       it("should create device on master track via path", () => {
@@ -320,7 +359,7 @@ describe("createDevice", () => {
         expect(track0.call).not.toHaveBeenCalled();
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 0,
+          path: "mt/d0",
         });
       });
     });
@@ -333,7 +372,10 @@ describe("createDevice", () => {
         });
 
         expect(chain0.call).toHaveBeenCalledWith("insert_device", "Compressor");
-        expect(result).toMatchObject({ id: "device123" });
+        expect(result).toStrictEqual({
+          path: "t0/d2",
+          id: "device123",
+        });
       });
 
       it("should create device in chain via path with position", () => {
@@ -363,7 +405,7 @@ describe("createDevice", () => {
         expect(chain.call).toHaveBeenCalledWith("insert_device", "EQ Eight", 0);
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 0,
+          path: "t0/d0/c0/d0",
         });
       });
 
@@ -398,7 +440,7 @@ describe("createDevice", () => {
         );
         expect(result).toStrictEqual({
           id: "device123",
-          deviceIndex: 0,
+          path: "t0/d0/rc0/d0",
         });
       });
     });
@@ -433,9 +475,7 @@ describe("createDevice", () => {
             path: "t0/d0/c0",
             deviceName: "Compressor",
           }),
-        ).toThrow(
-          'createDevice failed: container at path "t0/d0/c0" does not exist',
-        );
+        ).toThrow('container at path "t0/d0/c0" does not exist');
 
         liveAPIGlobal.LiveAPI.prototype.exists = originalExists;
       });
@@ -460,7 +500,9 @@ describe("createDevice", () => {
           properties: { devices: children("existing-device") },
         });
         track0.call.mockImplementation((method: string) => {
-          if (method === "insert_device") return ["id", undefined];
+          if (method === "insert_device") {
+            return ["id", undefined];
+          }
 
           return null;
         });
@@ -485,9 +527,58 @@ describe("createDevice", () => {
       });
 
       expect(result).toStrictEqual([
-        { id: "device123", deviceIndex: 2 },
-        { id: "device456", deviceIndex: 0 },
+        { id: "device123", path: "t0/d2" },
+        { id: "device456", path: "t1/d0" },
       ]);
+    });
+
+    // "path is required" is false when a path was sent — it just named nothing,
+    // which is a different mistake with a different fix.
+    it("does not call a path that names nothing a missing path", () => {
+      expect(() =>
+        createDevice({ path: ", ,", deviceName: "Compressor" }),
+      ).toThrow('invalid path ", ," - it names nothing');
+    });
+
+    // name pairs with path by position, so dropping an empty path entry would
+    // hand t1 the name t2 was meant to get. Nothing has been created yet, so
+    // refusing costs the caller only a retry.
+    it("refuses an empty path entry", () => {
+      registerTrack1WithDevice456();
+
+      expect(() =>
+        createDevice({
+          path: "t0,,t1",
+          deviceName: "Compressor",
+          name: "A,B,C",
+        }),
+      ).toThrow('invalid path "t0,,t1" - it has an empty entry.');
+    });
+
+    // create-device used to warn and name what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match the paths", () => {
+      registerTrack1WithDevice456();
+
+      expect(() =>
+        createDevice({
+          path: "t0,t1",
+          deviceName: "Compressor",
+          name: "A,B,C",
+        }),
+      ).toThrow("path names 2 entries but name names 3 entries");
+    });
+
+    it("refuses an empty entry in a name list", () => {
+      registerTrack1WithDevice456();
+
+      expect(() =>
+        createDevice({
+          path: "t0,t1",
+          deviceName: "Compressor",
+          name: "A,",
+        }),
+      ).toThrow("path names 2 entries but name names 1 entry");
     });
 
     it("should return single result for single path (backward compatible)", () => {
@@ -496,7 +587,10 @@ describe("createDevice", () => {
         deviceName: "Compressor",
       });
 
-      expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
+      expect(result).toStrictEqual({
+        id: "device123",
+        path: "t0/d2",
+      });
     });
 
     it("should set display name on created device", () => {
@@ -510,7 +604,10 @@ describe("createDevice", () => {
         name: "My Compressor",
       });
 
-      expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
+      expect(result).toStrictEqual({
+        id: "device123",
+        path: "t0/d2",
+      });
       expect(device.set).toHaveBeenCalledWith("name", "My Compressor");
     });
 
@@ -525,7 +622,10 @@ describe("createDevice", () => {
         deviceName: "Compressor",
       });
 
-      expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
+      expect(result).toStrictEqual({
+        id: "device123",
+        path: "t0/d2",
+      });
       expect(mockConsole.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to create"),
       );
@@ -544,7 +644,7 @@ describe("createDevice", () => {
 
       expect(() =>
         createDevice({ path: "t99", deviceName: "Compressor" }),
-      ).toThrow("createDevice failed");
+      ).toThrow('container at path "t99" does not exist');
     });
   });
 

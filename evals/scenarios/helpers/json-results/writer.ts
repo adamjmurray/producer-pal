@@ -9,6 +9,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { externalizeInjectedBlocks } from "./injected-blocks.ts";
 import { type JsonEvalResult, RESULTS_DIR } from "./types.ts";
 
 /**
@@ -23,10 +24,11 @@ export async function writeJsonResult(result: JsonEvalResult): Promise<string> {
 
   await mkdir(dir, { recursive: true });
 
+  const stored = await externalizeInjectedBlocks(result, dir);
   const filename = buildResultFilename(result);
   const filePath = join(dir, filename);
 
-  await writeFile(filePath, JSON.stringify(result, null, 2) + "\n");
+  await writeFile(filePath, JSON.stringify(stored, null, 2) + "\n");
 
   return filePath;
 }

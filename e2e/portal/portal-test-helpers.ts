@@ -49,16 +49,18 @@ export interface Stoppable {
  * Spawn the portal and connect an MCP client to it.
  * @param origin - The device origin to point it at (MCP_SERVER_ORIGIN)
  * @param args - CLI flags, e.g. ["--tools", "clip"]
+ * @param env - Extra environment, e.g. { SMALL_MODEL_MODE: "true" }
  * @returns The connected session
  */
 export async function startPortal(
   origin: string,
   args: string[] = [],
+  env: Record<string, string> = {},
 ): Promise<PortalSession> {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [portalBundle(), ...args],
-    env: portalEnv(origin),
+    env: portalEnv(origin, env),
     // The bridge writes a connect line to stderr; piping keeps it out of the
     // test report.
     stderr: "pipe",
@@ -153,11 +155,15 @@ function portalBundle(): string {
 
 /**
  * The portal's environment: the SDK's portable default plus the device origin.
- * Deliberately not the test process's own env — the portal reads its overrides
+ * Deliberately not the test process's own env — the portal reads its settings
  * from there, and inheriting would let a developer's shell change the result.
  * @param origin - The device origin
+ * @param extra - Setting env vars the test wants
  * @returns The child environment
  */
-function portalEnv(origin: string): Record<string, string> {
-  return { ...getDefaultEnvironment(), MCP_SERVER_ORIGIN: origin };
+function portalEnv(
+  origin: string,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  return { ...getDefaultEnvironment(), MCP_SERVER_ORIGIN: origin, ...extra };
 }

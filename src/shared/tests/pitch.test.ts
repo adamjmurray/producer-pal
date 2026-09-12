@@ -174,6 +174,13 @@ describe("isValidNoteName", () => {
     expect(isValidNoteName("Cx3")).toBe(false);
   });
 
+  it("accepts enharmonic spellings", () => {
+    expect(isValidNoteName("Cb3")).toBe(true);
+    expect(isValidNoteName("Fb3")).toBe(true);
+    expect(isValidNoteName("E#3")).toBe(true);
+    expect(isValidNoteName("B#3")).toBe(true);
+  });
+
   it("returns false for non-strings", () => {
     expect(isValidNoteName(60 as unknown as string)).toBe(false);
     expect(isValidNoteName(null as unknown as string)).toBe(false);
@@ -223,8 +230,17 @@ describe("isValidPitchClassName", () => {
     expect(isValidPitchClassName("DB")).toBe(true);
   });
 
+  it("returns true for enharmonic spellings", () => {
+    expect(isValidPitchClassName("Cb")).toBe(true);
+    expect(isValidPitchClassName("Fb")).toBe(true);
+    expect(isValidPitchClassName("E#")).toBe(true);
+    expect(isValidPitchClassName("B#")).toBe(true);
+  });
+
   it("returns false for invalid inputs", () => {
     expect(isValidPitchClassName("H")).toBe(false);
+    expect(isValidPitchClassName("C##")).toBe(false);
+    expect(isValidPitchClassName("Cbb")).toBe(false);
     expect(isValidPitchClassName("C3")).toBe(false);
     expect(isValidPitchClassName("")).toBe(false);
     expect(isValidPitchClassName(null)).toBe(false);
@@ -266,8 +282,18 @@ describe("pitchClassToNumber", () => {
     expect(pitchClassToNumber("DB")).toBe(1);
   });
 
+  it("wraps enharmonic spellings into 0-11", () => {
+    // No octave to carry them into, unlike noteNameToMidi.
+    expect(pitchClassToNumber("Cb")).toBe(11);
+    expect(pitchClassToNumber("Fb")).toBe(4);
+    expect(pitchClassToNumber("E#")).toBe(5);
+    expect(pitchClassToNumber("B#")).toBe(0);
+  });
+
   it("returns null for invalid pitch class names", () => {
     expect(pitchClassToNumber("H")).toBe(null);
+    expect(pitchClassToNumber("C##")).toBe(null);
+    expect(pitchClassToNumber("Cbb")).toBe(null);
     expect(pitchClassToNumber("X")).toBe(null);
     expect(pitchClassToNumber("C3")).toBe(null);
     expect(pitchClassToNumber("")).toBe(null);
@@ -413,13 +439,19 @@ describe("noteNameToMidi", () => {
     expect(noteNameToMidi("X4")).toBe(null);
   });
 
-  it("returns null for accidentals with no value mapping", () => {
-    // The regex admits b/# on any letter, but Cb/Fb/E#/B# aren't in the value
-    // map. These must be null, not silently coerced to a wrong MIDI note.
-    expect(noteNameToMidi("Cb3")).toBe(null);
-    expect(noteNameToMidi("Fb3")).toBe(null);
-    expect(noteNameToMidi("E#3")).toBe(null);
-    expect(noteNameToMidi("B#3")).toBe(null);
+  it("resolves enharmonic spellings, carrying the octave edge", () => {
+    // Semitones stay unwrapped so the octave formula moves Cb and B# into the
+    // neighboring octave. Wrapping them to a 0-11 pitch class first would put
+    // both an octave off.
+    expect(noteNameToMidi("E#3")).toBe(65); // F3, same octave
+    expect(noteNameToMidi("Fb3")).toBe(64); // E3, same octave
+    expect(noteNameToMidi("Cb3")).toBe(59); // B2, an octave down
+    expect(noteNameToMidi("B#3")).toBe(72); // C4, an octave up
+  });
+
+  it("range-checks an enharmonic that steps out of MIDI range", () => {
+    expect(noteNameToMidi("Cb-2")).toBe(null); // one below C-2 (0)
+    expect(noteNameToMidi("B#8")).toBe(null); // one above B8 (127)
   });
 
   it("returns null for missing octave", () => {

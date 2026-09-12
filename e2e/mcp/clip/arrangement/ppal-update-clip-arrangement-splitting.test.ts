@@ -31,13 +31,16 @@ import {
   toSongPositions,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
-  type CreateTrackResult,
-  getToolWarnings,
   parseToolResult,
+  type CreateTrackResult,
+  getToolErrorMessage,
+  getToolWarnings,
+  trackIndexFromPath,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,
@@ -169,7 +172,9 @@ describe("Behavioral splitting tests", () => {
       arguments: { type: "midi", name: "Split Behavioral Tests" },
     });
 
-    dynamicTrackIndex = parseToolResult<CreateTrackResult>(result).trackIndex!;
+    dynamicTrackIndex = trackIndexFromPath(
+      parseToolResult<CreateTrackResult>(result).path,
+    );
   });
 
   /**
@@ -184,8 +189,12 @@ describe("Behavioral splitting tests", () => {
   ): Promise<ReadClipResult[]> {
     const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
     const spanStart = startBar - 1;
-    const startOf = (clip: ReadClipResult): number =>
-      clip.arrangementStart ? parseBarBeat(clip.arrangementStart) : -1;
+
+    const startOf = (clip: ReadClipResult): number => {
+      const start = arrangementStartOf(clip);
+
+      return start == null ? -1 : parseBarBeat(start);
+    };
 
     return clips
       .filter((c) => {
@@ -202,8 +211,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "200|1",
+        path: `t${dynamicTrackIndex}[200|1]`,
         notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
         length: "4bar",
         looping: true,
@@ -228,7 +236,9 @@ describe("Behavioral splitting tests", () => {
       await sleep(50);
       const clip = await readClip(ctx.client!, s.id, ["notes"]);
 
-      if (clip.notes) clipsWithNotes++;
+      if (clip.notes) {
+        clipsWithNotes++;
+      }
     }
 
     // Each split segment should have at least 1 note (4 notes across 4 segments)
@@ -239,8 +249,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "210|1",
+        path: `t${dynamicTrackIndex}[210|1]`,
         notes: "C3 1|1",
         length: "2bar",
         looping: true,
@@ -289,8 +298,7 @@ describe("Behavioral splitting tests", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "220|1",
+        path: `t${dynamicTrackIndex}[220|1]`,
         notes: "C3 1|1",
         length: "2bar",
         looping: true,
@@ -301,8 +309,7 @@ describe("Behavioral splitting tests", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "230|1",
+        path: `t${dynamicTrackIndex}[230|1]`,
         notes: "E3 1|1",
         length: "2bar",
         looping: true,
@@ -325,29 +332,28 @@ describe("Behavioral splitting tests", () => {
     expect(splitClips.length).toBe(4);
   });
 
+  /**
+   * Create a 4-bar looped MIDI clip at `startBar`.
+   * @param startBar - Arrangement bar to place the clip at
+   * @returns The new clip's id
+   */
+  async function createFourBarClip(startBar: number): Promise<string> {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${dynamicTrackIndex}[${startBar}|1]`,
+        notes: "C3 1|1",
+        length: "4bar",
+        looping: true,
+      },
+    });
+
+    return parseToolResult<{ id: string }>(result).id;
+  }
+
   // The two params read the same bar|beat text on different timelines. A clip
   // that starts away from bar 1 is the only place that difference shows.
   describe("split position coordinates", () => {
-    /**
-     * Create a 4-bar looped MIDI clip at `startBar`.
-     * @param startBar - Arrangement bar to place the clip at
-     * @returns The new clip's id
-     */
-    async function createFourBarClip(startBar: number): Promise<string> {
-      const result = await ctx.client!.callTool({
-        name: "ppal-create-clip",
-        arguments: {
-          path: `t${dynamicTrackIndex}`,
-          arrangementStart: `${startBar}|1`,
-          notes: "C3 1|1",
-          length: "4bar",
-          looping: true,
-        },
-      });
-
-      return parseToolResult<{ id: string }>(result).id;
-    }
-
     it("cuts arrangementSplit at the song bar the user named", async () => {
       // The reported failure, in miniature: a clip at bar 400 asked to split at
       // bar 402 must cut there, not 2 bars past its own start.
@@ -361,7 +367,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const clips = await clipsInSpan(400, 4);
 
-      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+      expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
         "400|1",
         "402|1",
       ]);
@@ -403,7 +409,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const clips = await clipsInSpan(420, 4);
 
-      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+      expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
         "420|1",
         "422|1",
       ]);
@@ -429,6 +435,75 @@ describe("Behavioral splitting tests", () => {
     });
   });
 
+  // A split makes new clips on new ids. A destination reaches only the piece
+  // Live left on the original id; one position reaches every piece and stacks
+  // them on one bar, which costs all but the last. Refused before any cut.
+  describe("arrangementSplit next to a move", () => {
+    it.each([
+      { param: "toPath", startBar: 440, destBar: 450 },
+      { param: "arrangementStart", startBar: 470, destBar: 480 },
+    ])(
+      "refuses $param in the same call, cutting and moving nothing",
+      async ({ param, startBar, destBar }) => {
+        const clipId = await createFourBarClip(startBar);
+        const destination =
+          param === "toPath"
+            ? `t${dynamicTrackIndex}[${destBar}|1]`
+            : `${destBar}|1`;
+
+        await sleep(200);
+        const result = await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: {
+            id: clipId,
+            arrangementSplit: `${startBar + 2}|1`,
+            [param]: destination,
+          },
+        });
+
+        expect(getToolErrorMessage(result)).toContain(
+          `arrangementSplit cannot be combined with ${param}`,
+        );
+
+        await sleep(200);
+        const clips = await clipsInSpan(startBar, 4);
+
+        expect(clips).toHaveLength(1);
+        expect(clips[0]?.id).toBe(clipId);
+        expect(await clipsInSpan(destBar, 4)).toHaveLength(0);
+      },
+    );
+
+    // Lengthening tiles copies in from the clip's own end, which after a cut
+    // is where the next piece starts — one length would bury the piece after
+    // each piece it lengthens. Refused with the rest.
+    it("refuses one arrangementLength, leaving both the clip and the bars after it", async () => {
+      const clipId = await createFourBarClip(460);
+
+      await sleep(200);
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: clipId,
+          arrangementSplit: "462|1",
+          arrangementLength: "4bar",
+        },
+      });
+
+      expect(getToolErrorMessage(result)).toContain(
+        "arrangementSplit cannot be combined with arrangementLength",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(460, 4);
+
+      expect(clips).toHaveLength(1);
+      expect(clips[0]?.id).toBe(clipId);
+      expect(clips[0]?.arrangementLength).toBe("4bar");
+      expect(await clipsInSpan(464, 4)).toHaveLength(0);
+    });
+  });
+
   // A point within EPSILON of an edge asks for a zero-length segment. Splitting
   // skips edge trims below that threshold, and the moves that follow assume
   // every trim ran — they place segments without checking for an occupant. So
@@ -444,8 +519,7 @@ describe("Behavioral splitting tests", () => {
       const result = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${dynamicTrackIndex}`,
-          arrangementStart: `${startBar}|1`,
+          path: `t${dynamicTrackIndex}[${startBar}|1]`,
           notes: "C3 1|1\nE3 2|1",
           length: "2bar",
           looping: true,
@@ -523,7 +597,9 @@ function parseSplitResult(result: unknown): Array<{ id: string }> {
     .split("\n")
     .find((line) => line.startsWith("[") || line.startsWith("{"));
 
-  if (!jsonLine) return [];
+  if (!jsonLine) {
+    return [];
+  }
 
   const parsed = JSON.parse(jsonLine) as { id: string } | Array<{ id: string }>;
 

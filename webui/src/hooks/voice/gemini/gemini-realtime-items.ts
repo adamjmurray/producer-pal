@@ -38,7 +38,10 @@ export class GeminiHistoryBuilder {
    * @param text - Transcript delta
    */
   addUserTranscript(text: string): void {
-    if (!text) return;
+    if (!text) {
+      return;
+    }
+
     this.closeAssistant();
     const last = this.turns.at(-1);
 
@@ -56,7 +59,10 @@ export class GeminiHistoryBuilder {
    * @param text - Transcript delta
    */
   addAssistantTranscript(text: string): void {
-    if (!text) return;
+    if (!text) {
+      return;
+    }
+
     const last = this.turns.at(-1);
 
     if (last?.kind === "assistant" && !last.done) {
@@ -97,7 +103,9 @@ export class GeminiHistoryBuilder {
   setToolOutput(id: string, output: string): void {
     const turn = this.turns.find((t) => t.kind === "tool" && t.id === id);
 
-    if (turn?.kind === "tool") turn.output = output;
+    if (turn?.kind === "tool") {
+      turn.output = output;
+    }
   }
 
   /** Mark the current assistant turn complete (Gemini turnComplete / barge-in). */
@@ -153,7 +161,9 @@ export class GeminiHistoryBuilder {
   private closeAssistant(): void {
     const last = this.turns.at(-1);
 
-    if (last?.kind === "assistant") last.done = true;
+    if (last?.kind === "assistant") {
+      last.done = true;
+    }
   }
 }
 

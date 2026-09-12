@@ -10,6 +10,25 @@ export const MAX_SPLIT_POINTS = 32;
 // Enforced with boundedString(), not z.string().max() — see ADR-0021.
 export const MAX_CODE_LENGTH = 10_000;
 
+export const MIN_TEMPO = 20;
+export const MAX_TEMPO = 999;
+
+// Said by both the schema bound and the handler's own check, so a caller gets
+// the same answer whichever refuses first. The range alone reads as a spec to
+// retry against: told "expected number to be >=20", a model clamps to 20 and
+// reports a tempo nobody asked for as done. Naming the range is not enough —
+// the refusal has to say not to substitute.
+export const TEMPO_REFUSAL = `Live's tempo range is ${MIN_TEMPO}-${MAX_TEMPO} BPM. Tell the user the value they asked for is outside it; do not substitute a different tempo.`;
+
+// What the takeLane deprecation warning says beyond naming its replacement.
+// The param counts from 1 and the `l<n>` path segment counts from 0, so a
+// caller who reads "use path" as a rename writes the wrong lane — and takeLane
+// 0 isn't a take lane at all. Lives here rather than beside the conversion in
+// take-lane-helpers.ts: that module reaches for the LiveAPI global, and the
+// tool defs that carry this note are typechecked Node-side too.
+export const TAKE_LANE_NOTE =
+  'Lanes count from 0 in a path: takeLane 1 is "l0", and takeLane 0 is the main lane.';
+
 // State string constants (6 valid states)
 export const STATE = {
   ACTIVE: "active",
@@ -24,6 +43,30 @@ export const STATE = {
 export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
 export const LIVE_API_DEVICE_TYPE_AUDIO_EFFECT = 2;
 export const LIVE_API_DEVICE_TYPE_MIDI_EFFECT = 4;
+
+// What ppal-duplicate can copy. One list, because the schema enum and the
+// runtime check both need it and a type added to only one is invisible until
+// a call fails.
+export const DUPLICATE_TYPES = [
+  "track",
+  "scene",
+  "clip",
+  "device",
+  "drum-pad",
+  "chain",
+] as const;
+
+// What ppal-delete can remove. One list, because the schema enum and the
+// runtime check both need it and a type added to only one is invisible until
+// a call fails.
+export const DELETABLE_TYPES = [
+  "track",
+  "scene",
+  "clip",
+  "device",
+  "drum-pad",
+  "chain",
+] as const;
 
 // Device type string constants (7 valid types)
 export const DEVICE_TYPE = {

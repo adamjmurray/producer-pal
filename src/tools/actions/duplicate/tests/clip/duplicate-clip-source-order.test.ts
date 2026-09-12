@@ -136,7 +136,9 @@ function sourcePath(
   isArrangementClip: boolean,
   sourceLane: number | null,
 ): PathLike {
-  if (!isArrangementClip) return livePath.track(0).clipSlot(0).clip();
+  if (!isArrangementClip) {
+    return livePath.track(0).clipSlot(0).clip();
+  }
 
   return sourceLane == null
     ? livePath.track(0).arrangementClip(9)
@@ -173,13 +175,11 @@ describe("duplicate clip fan-out order", () => {
     expect(result).toStrictEqual([
       {
         id: livePath.track(0).arrangementClip(0),
-        path: "t0",
-        arrangementStart: TARGET,
+        path: `t0[${TARGET}]`,
       },
       {
         id: livePath.track(1).arrangementClip(0),
-        path: "t1",
-        arrangementStart: TARGET,
+        path: `t1[${TARGET}]`,
       },
     ]);
   });

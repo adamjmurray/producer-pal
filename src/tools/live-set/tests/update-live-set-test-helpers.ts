@@ -9,7 +9,10 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  masterTrackMockObject,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 interface LocatorLiveSetConfig {
   numerator?: number;
@@ -19,7 +22,8 @@ interface LocatorLiveSetConfig {
 }
 
 interface SetupLocatorMocksOptions {
-  cuePoints?: Array<{ id: string; time: number; name?: string }>;
+  // name as number simulates Live returning an all-digit name as a number
+  cuePoints?: Array<{ id: string; time: number; name?: string | number }>;
   liveSet?: LocatorLiveSetConfig;
 }
 
@@ -66,7 +70,9 @@ export function setupLocatorMocks(
   for (const [index, cp] of cuePoints.entries()) {
     const props: Record<string, unknown> = { time: cp.time };
 
-    if (cp.name != null) props.name = cp.name;
+    if (cp.name != null) {
+      props.name = cp.name;
+    }
 
     handles.set(
       cp.id,
@@ -112,10 +118,21 @@ export function setupLocatorCreationMocks(
   });
 
   liveSetHandle.get.mockImplementation((prop: string) => {
-    if (prop === "signature_numerator") return [4];
-    if (prop === "signature_denominator") return [4];
-    if (prop === "is_playing") return [isPlaying];
-    if (prop === "song_length") return [songLength];
+    if (prop === "signature_numerator") {
+      return [4];
+    }
+
+    if (prop === "signature_denominator") {
+      return [4];
+    }
+
+    if (prop === "is_playing") {
+      return [isPlaying];
+    }
+
+    if (prop === "song_length") {
+      return [songLength];
+    }
 
     if (prop === "cue_points") {
       return locatorCreated ? children("new_cue") : children();
@@ -166,11 +183,7 @@ export function setupRoutingTestMocks(
         name: "Test Track",
         ...trackProps,
       },
-      [String(livePath.masterTrack())]: {
-        has_midi_input: 0,
-        name: "Master",
-        devices: [],
-      },
+      ...masterTrackMockObject(),
     },
   });
 }

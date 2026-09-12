@@ -17,6 +17,7 @@ import {
   writeIntFromSet,
   writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const LABELS = ["alpha", "beta", "gamma"] as const;
 
@@ -59,7 +60,6 @@ describe("writeEnumByIndex", () => {
       "mode_index",
       "gamma",
       LABELS,
-      "updateDevice",
       "mode",
     );
 
@@ -74,7 +74,6 @@ describe("writeEnumByIndex", () => {
       "mode_index",
       "  GaMmA ",
       LABELS,
-      "updateDevice",
       "mode",
     );
 
@@ -89,15 +88,13 @@ describe("writeEnumByIndex", () => {
       "mode_index",
       "delta",
       LABELS,
-      "updateDevice",
       "mode",
     );
 
     expect(device.set).not.toHaveBeenCalled();
     // The warning must list the valid labels, comma-separated — it is the only
     // place the model learns what it should have passed.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         '"delta" is not a valid mode. Options: alpha, beta, gamma',
       ),
@@ -152,13 +149,7 @@ describe("writeBoolProp", () => {
   it("writes 1 for a truthy value", () => {
     const device = registerDevice({ flag: 0 });
 
-    writeBoolProp(
-      LiveAPI.from("id dev-1"),
-      "flag",
-      "true",
-      "updateDevice",
-      "f",
-    );
+    writeBoolProp(LiveAPI.from("id dev-1"), "flag", "true", "f");
 
     expect(device.set).toHaveBeenCalledWith("flag", 1);
   });
@@ -166,7 +157,7 @@ describe("writeBoolProp", () => {
   it("writes 0 for a falsy value", () => {
     const device = registerDevice({ flag: 1 });
 
-    writeBoolProp(LiveAPI.from("id dev-1"), "flag", 0, "updateDevice", "f");
+    writeBoolProp(LiveAPI.from("id dev-1"), "flag", 0, "f");
 
     expect(device.set).toHaveBeenCalledWith("flag", 0);
   });
@@ -174,16 +165,12 @@ describe("writeBoolProp", () => {
   it("warns and skips uninterpretable input", () => {
     const device = registerDevice({ flag: 0 });
 
-    writeBoolProp(
-      LiveAPI.from("id dev-1"),
-      "flag",
-      "nope",
-      "updateDevice",
-      "f",
-    );
+    writeBoolProp(LiveAPI.from("id dev-1"), "flag", "nope", "f");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("valid f"));
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("valid f"),
+    );
   });
 });
 
@@ -203,35 +190,28 @@ describe("writeIntInRange", () => {
   it("writes a value inside the range", () => {
     const device = registerDevice({ count: 1 });
 
-    writeIntInRange(
+    const wrote = writeIntInRange(
       LiveAPI.from("id dev-1"),
       "count",
       3,
       1,
       6,
-      "updateDevice",
       "count",
     );
 
     expect(device.set).toHaveBeenCalledWith("count", 3);
+    // The return decides whether the param gets a result entry, so a write
+    // that landed and reported false would go missing from the response.
+    expect(wrote).toBe(true);
   });
 
   it("warns and skips a value outside the range", () => {
     const device = registerDevice({ count: 1 });
 
-    writeIntInRange(
-      LiveAPI.from("id dev-1"),
-      "count",
-      9,
-      1,
-      6,
-      "updateDevice",
-      "count",
-    );
+    writeIntInRange(LiveAPI.from("id dev-1"), "count", 9, 1, 6, "count");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("count must be an integer 1-6"),
     );
   });
@@ -239,15 +219,7 @@ describe("writeIntInRange", () => {
   it("warns and skips a non-integer", () => {
     const device = registerDevice({ count: 1 });
 
-    writeIntInRange(
-      LiveAPI.from("id dev-1"),
-      "count",
-      2.5,
-      1,
-      6,
-      "updateDevice",
-      "count",
-    );
+    writeIntInRange(LiveAPI.from("id dev-1"), "count", 2.5, 1, 6, "count");
 
     expect(device.set).not.toHaveBeenCalled();
   });
@@ -259,50 +231,42 @@ describe("writeIntFromSet", () => {
   it("writes the value when it is in the set", () => {
     const device = registerDevice({ voices: 4 });
 
-    writeIntFromSet(
+    const wrote = writeIntFromSet(
       LiveAPI.from("id dev-1"),
       "voices",
       16,
       ALLOWED,
-      "updateDevice",
       "voices",
     );
 
     expect(device.set).toHaveBeenCalledWith("voices", 16);
+    expect(wrote).toBe(true);
   });
 
   it("writes the catalog index when asIndex is true", () => {
     const device = registerDevice({ voice_count_index: 0 });
 
-    writeIntFromSet(
+    const wrote = writeIntFromSet(
       LiveAPI.from("id dev-1"),
       "voice_count_index",
       16,
       ALLOWED,
-      "updateDevice",
       "voiceCount",
       true,
     );
 
     expect(device.set).toHaveBeenCalledWith("voice_count_index", 2);
+    expect(wrote).toBe(true);
   });
 
   it("warns and skips a value not in the set", () => {
     const device = registerDevice({ voices: 4 });
 
-    writeIntFromSet(
-      LiveAPI.from("id dev-1"),
-      "voices",
-      5,
-      ALLOWED,
-      "updateDevice",
-      "voices",
-    );
+    writeIntFromSet(LiveAPI.from("id dev-1"), "voices", 5, ALLOWED, "voices");
 
     expect(device.set).not.toHaveBeenCalled();
     // The warning must enumerate the allowed values, comma-separated.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `voices must be one of ${ALLOWED.join(", ")} (got "5")`,
       ),

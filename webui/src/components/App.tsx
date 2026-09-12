@@ -22,6 +22,7 @@ import {
   useMcpConnection,
 } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
@@ -30,21 +31,19 @@ import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
+import { useViewingMode } from "#webui/hooks/view-state/use-viewing-mode";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
 import {
   enabledToolsDiverge as toolsetsDiffer,
   isToolEnabled,
   withLiveApiTool,
 } from "#webui/lib/utils/enabled-tools";
 import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
+import { useContextOverlay } from "#webui/hooks/use-context-overlay";
 import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
-
-const CONTEXT_ANIMATION_MS = 150;
 
 /**
  * Root component. Owns shared chrome (settings hook, theme, view state, MCP
@@ -128,17 +127,14 @@ export function App() {
     showSettings,
   );
 
-  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
-  // voice record opened while saved is a chat model) renders in its native UI
-  // without mutating the user's saved settings. null = follow savedModel.
-  // Cleared by "New conversation" so the next fresh session uses savedModel.
-  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
-  const onForeignRecord = useCallback((record: ConversationRecord) => {
-    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
-  }, []);
-  const clearViewingMode = useCallback(() => {
-    setViewingMode(null);
-  }, []);
+  // null = follow savedModel; cleared by "New conversation" so the next fresh
+  // session uses savedModel again.
+  const { viewingMode, onForeignRecord, clearViewingMode } = useViewingMode();
+
+  // Undo lives here, above the mode split: only one mode is mounted at a time,
+  // so a stack owned by either would drop its pending undos on a mode switch —
+  // and the sidebar showing both kinds of conversation is shared.
+  const undoDelete = useUndoDelete();
 
   const handleSaveSettings = useSaveSettingsHandler({
     settings,
@@ -161,11 +157,14 @@ export function App() {
     });
   }, [closeSettings, settings, setTheme, display]);
 
-  // Context overlay (project + global tabs; sibling to Settings). Animation timing mirrors
-  // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
-  // Transient session state, intentionally not persisted: a refresh or a fresh
-  // tab opened from the Max device lands on chat, not the context editor.
-  const [contextOpen, setContextOpen] = useState(false);
+  const {
+    contextOpen,
+    contextClosing,
+    openContext,
+    closeContext,
+    contextBackdrop,
+    contextConfirmLeaveRef,
+  } = useContextOverlay();
   const { shake, clearShake, overlayHandlers } = useSettingsDismiss({
     showSettings,
     settingsConfigured: settings.settingsConfigured,
@@ -181,41 +180,6 @@ export function App() {
     blockDismiss: presetDraftOpen,
   });
 
-  const [contextClosing, setContextClosing] = useState(false);
-  const openContext = useCallback(() => setContextOpen(true), []);
-  const closeContext = useCallback(() => {
-    setContextClosing(true);
-    setTimeout(() => {
-      setContextClosing(false);
-      setContextOpen(false);
-    }, CONTEXT_ANIMATION_MS);
-  }, []);
-
-  // The context editor's leave guard lives inside ContextTabs (which also mounts
-  // standalone on /context, so the guard can't move up here). ContextTabs
-  // publishes its confirmLeave into this ref so the overlay's Escape and
-  // backdrop-click paths — which close from OUTSIDE that subtree — honor an
-  // unsaved new-entry draft instead of silently discarding it. The header close
-  // button is already guarded inside ContextTabs.
-  const contextConfirmLeaveRef = useRef<(() => boolean) | null>(null);
-  const attemptCloseContext = useCallback(() => {
-    const confirmLeave = contextConfirmLeaveRef.current;
-
-    if (confirmLeave == null || confirmLeave()) closeContext();
-  }, [closeContext]);
-
-  const contextBackdrop = useBackdropClick(
-    useCallback(
-      (e: MouseEvent) => {
-        // Existing entries autosave, so a backdrop click is safe for them;
-        // an unsaved new-entry draft is guarded (confirm before discard).
-        // Only close on backdrop hits, not clicks inside the editor.
-        if (e.target === e.currentTarget) attemptCloseContext();
-      },
-      [attemptCloseContext],
-    ),
-  );
-
   // Jump from the Settings "Edit Context" shortcut straight into the context
   // editor. Settings and Context are sibling overlays with Settings stacked on
   // top, so leaving Settings open would hide the editor behind it — close
@@ -223,20 +187,6 @@ export function App() {
   const handleEditContext = useCallback(() => {
     closeSettings(() => openContext());
   }, [closeSettings, openContext]);
-
-  // Escape closes the context overlay (consistent with native modal idioms),
-  // honoring the editor's leave guard for an unsaved draft.
-  useEffect(() => {
-    if (!contextOpen) return undefined;
-
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") attemptCloseContext();
-    };
-
-    window.addEventListener("keydown", onKey);
-
-    return () => window.removeEventListener("keydown", onKey);
-  }, [contextOpen, attemptCloseContext]);
 
   // The active mode reports its conversation lock + delete handlers here via
   // setModeContext so the shared SettingsScreen renders them.
@@ -278,6 +228,7 @@ export function App() {
     onForeignRecord,
     clearViewingMode,
     setModeContext,
+    undoDelete,
   };
 
   // Blur+disable interaction beneath any modal overlay (settings or context).

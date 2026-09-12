@@ -403,7 +403,10 @@ function estimateTokens(text: string): number {
 function parseTurnsArg(): number {
   const idx = process.argv.indexOf("--turns");
 
-  if (idx === -1) return 3;
+  if (idx === -1) {
+    return 3;
+  }
+
   const n = Number.parseInt(process.argv[idx + 1] ?? "", 10);
 
   return Number.isFinite(n) && n >= 1 ? n : 3;
@@ -423,10 +426,15 @@ function loadEnvKey(name: string): string {
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
 
-    if (trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+    if (trimmed.startsWith("#") || !trimmed.includes("=")) {
+      continue;
+    }
+
     const [key, ...rest] = trimmed.split("=");
 
-    if (key?.trim() === name) return rest.join("=").trim();
+    if (key?.trim() === name) {
+      return rest.join("=").trim();
+    }
   }
 
   throw new Error(`${name} not found in .env (see .env.example)`);

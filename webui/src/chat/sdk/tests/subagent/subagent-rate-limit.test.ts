@@ -253,6 +253,22 @@ describe("runSubagentWithRetry", () => {
     expect(calls).toHaveLength(MAX_RETRY_ATTEMPTS);
   });
 
+  it("stringifies a rate limit thrown as a bare value", async () => {
+    // Providers do not always throw an Error; the give-up message still has to
+    // name what happened.
+    const thrown: unknown = "429 Too Many Requests";
+    const alwaysRateLimited = Array.from({ length: MAX_RETRY_ATTEMPTS }, () => {
+      return () => {
+        throw thrown;
+      };
+    });
+    const { options } = setup(alwaysRateLimited);
+
+    await expect(runSubagentWithRetry(options)).rejects.toThrow(
+      "429 Too Many Requests",
+    );
+  });
+
   it("publishes the backoff for the card and clears it when done", async () => {
     const statuses: Array<SubagentRateLimitStatus | null> = [];
     const { options } = setup([rateLimited, finishTask], {
@@ -263,7 +279,8 @@ describe("runSubagentWithRetry", () => {
 
     const backoff = statuses.find((s) => s != null);
 
-    expect(backoff).toMatchObject({
+    expect(backoff).toStrictEqual({
+      retryAtMs: expect.any(Number),
       attempt: 0,
       maxAttempts: MAX_RETRY_ATTEMPTS,
     });

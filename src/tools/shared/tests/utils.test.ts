@@ -7,9 +7,7 @@ import { describe, expect, it } from "vitest";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import {
   fromLiveApiView,
-  parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
-  parseCommaSeparatedIndices,
   parseTimeSignature,
   roundPan,
   setAllNonNull,
@@ -443,137 +441,10 @@ describe("parseCommaSeparatedIds", () => {
 
     expect(result).toStrictEqual(["1", "2", "3"]);
   });
-});
 
-describe("parseCommaSeparatedIndices", () => {
-  it("parses simple comma-separated indices", () => {
-    const result = parseCommaSeparatedIndices("0,1,2");
-
-    expect(result).toStrictEqual([0, 1, 2]);
-  });
-
-  it("trims whitespace around indices", () => {
-    const result = parseCommaSeparatedIndices("0, 1 , 2");
-
-    expect(result).toStrictEqual([0, 1, 2]);
-  });
-
-  it("handles extra spaces", () => {
-    const result = parseCommaSeparatedIndices("  0  ,  1,2  , 3  ");
-
-    expect(result).toStrictEqual([0, 1, 2, 3]);
-  });
-
-  it("filters out empty strings", () => {
-    const result = parseCommaSeparatedIndices("0,,1,,,2");
-
-    expect(result).toStrictEqual([0, 1, 2]);
-  });
-
-  it("handles single index without commas", () => {
-    const result = parseCommaSeparatedIndices("5");
-
-    expect(result).toStrictEqual([5]);
-  });
-
-  it("handles negative indices", () => {
-    const result = parseCommaSeparatedIndices("-1, 0, 1");
-
-    expect(result).toStrictEqual([-1, 0, 1]);
-  });
-
-  it("handles large indices", () => {
-    const result = parseCommaSeparatedIndices("100, 999, 1000");
-
-    expect(result).toStrictEqual([100, 999, 1000]);
-  });
-
-  it("throws error for non-numeric strings", () => {
-    expect(() => parseCommaSeparatedIndices("0, abc, 2")).toThrow(
-      'Invalid index "abc" - must be a valid integer',
-    );
-  });
-
-  it("handles decimal numbers by truncating to integers", () => {
-    // parseInt("1.5", 10) returns 1, so this is expected behavior
-    const result = parseCommaSeparatedIndices("0, 1.5, 2");
-
-    expect(result).toStrictEqual([0, 1, 2]);
-  });
-
-  it("throws error for mixed valid and invalid", () => {
-    expect(() => parseCommaSeparatedIndices("0, 1, invalid")).toThrow(
-      'Invalid index "invalid" - must be a valid integer',
-    );
-  });
-
-  it("returns empty array for empty input after filtering", () => {
-    const result = parseCommaSeparatedIndices(",,, , ,");
-
-    expect(result).toStrictEqual([]);
-  });
-
-  it("handles leading and trailing commas", () => {
-    const result = parseCommaSeparatedIndices(",0,1,2,");
-
-    expect(result).toStrictEqual([0, 1, 2]);
-  });
-
-  it("returns empty array for null or undefined input", () => {
-    expect(parseCommaSeparatedIndices(null)).toStrictEqual([]);
-    expect(parseCommaSeparatedIndices(undefined)).toStrictEqual([]);
-  });
-});
-
-describe("parseCommaSeparatedFloats", () => {
-  it("returns empty array for null input", () => {
-    expect(parseCommaSeparatedFloats(null)).toStrictEqual([]);
-  });
-
-  it("returns empty array for undefined input", () => {
-    expect(parseCommaSeparatedFloats(undefined)).toStrictEqual([]);
-  });
-
-  it("parses simple comma-separated floats", () => {
-    const result = parseCommaSeparatedFloats("1.5, 2.0, 3.14");
-
-    expect(result).toStrictEqual([1.5, 2.0, 3.14]);
-  });
-
-  it("handles integers", () => {
-    const result = parseCommaSeparatedFloats("1, 2, 3");
-
-    expect(result).toStrictEqual([1, 2, 3]);
-  });
-
-  it("handles negative numbers", () => {
-    const result = parseCommaSeparatedFloats("-1.5, 0, 2.5");
-
-    expect(result).toStrictEqual([-1.5, 0, 2.5]);
-  });
-
-  it("filters out invalid values (NaN)", () => {
-    const result = parseCommaSeparatedFloats("1.5, abc, 3.0, not-a-number");
-
-    expect(result).toStrictEqual([1.5, 3.0]);
-  });
-
-  it("trims whitespace around values", () => {
-    const result = parseCommaSeparatedFloats("  1.5  ,  2.0  ,  3.0  ");
-
-    expect(result).toStrictEqual([1.5, 2.0, 3.0]);
-  });
-
-  it("handles empty strings between commas", () => {
-    const result = parseCommaSeparatedFloats("1.0,,2.0,,,3.0");
-
-    expect(result).toStrictEqual([1.0, 2.0, 3.0]);
-  });
-
-  it("returns empty array when all values are invalid", () => {
-    const result = parseCommaSeparatedFloats("abc, def, ghi");
-
-    expect(result).toStrictEqual([]);
+  it("returns empty array for null or undefined", () => {
+    expect(parseCommaSeparatedIds(null)).toStrictEqual([]);
+    expect(parseCommaSeparatedIds(undefined)).toStrictEqual([]);
   });
 });
 

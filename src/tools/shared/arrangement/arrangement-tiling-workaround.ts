@@ -11,25 +11,23 @@
  */
 
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 
 /**
  * Verify a duplicate_clip_to_arrangement result and return the new clip's ID.
- * Throws if Ableton returned an invalid result (e.g. ["id", 0]) so destructive
- * follow-up steps cannot silently destroy the source clip.
+ * Throws when Live made no copy, so destructive follow-up steps cannot silently
+ * destroy the source clip.
  * @param result - Raw return value from track.call("duplicate_clip_to_arrangement", ...)
  * @param context - Short description of the failed operation for the error message
  * @returns The new clip's ID string
  */
-function verifyDupResult(
-  result: [string, string | number],
-  context: string,
-): string {
-  const newClip = LiveAPI.from(result);
+function verifyDupResult(result: unknown, context: string): string {
+  const newClip = clipFromDuplicateResult(result);
 
   if (!newClip.exists()) {
     throw new Error(
@@ -74,6 +72,7 @@ export function setArrangementDuplicateCrashWorkaround(enabled: boolean): void {
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @param source - The source clip, when the caller already resolved it
  * @returns true if it is safe to duplicate the source directly to the target;
  *   false if the source overlaps its own target (caller must handle)
  */
@@ -83,12 +82,17 @@ export function clearClipAtDuplicateTarget(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
+  source: LiveAPI | null = null,
 ): boolean {
-  if (!arrangementDuplicateCrashWorkaround) return true;
+  if (!arrangementDuplicateCrashWorkaround) {
+    return true;
+  }
 
-  const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
+  const sourceClip = source ?? LiveAPI.from(toLiveApiId(sourceClipId));
 
-  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return true;
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) {
+    return true;
+  }
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
@@ -196,7 +200,9 @@ export function canClearTiledSpan(
   totalLength: number,
   tileSpacing: number,
 ): boolean {
-  if (!arrangementDuplicateCrashWorkaround) return false;
+  if (!arrangementDuplicateCrashWorkaround) {
+    return false;
+  }
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
@@ -236,11 +242,15 @@ export function sourceOverlapsTarget(
   targetPosition: number,
   targetLength: number,
 ): boolean {
-  if (!arrangementDuplicateCrashWorkaround) return false;
+  if (!arrangementDuplicateCrashWorkaround) {
+    return false;
+  }
 
   const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
 
-  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return false;
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) {
+    return false;
+  }
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
@@ -290,7 +300,7 @@ export function moveClipFromHolding(
     "duplicate_clip_to_arrangement",
     toLiveApiId(holdingClipId),
     targetPosition,
-  ) as [string, string | number];
+  );
   const movedId = verifyDupResult(
     finalResult,
     `move from holding (id ${holdingClipId}) to ${targetPosition}`,
@@ -333,12 +343,12 @@ export function duplicateSelfOverlappingClip(
 ): LiveAPI {
   // Copy the source to a far holding area FIRST (guaranteed empty → no crash),
   // verified before anything is mutated, so the full content is preserved even
-  // if Ableton returns a silent dup failure. The holding area must clear the
-  // target placement (targetPosition + sourceLength), not just the existing
-  // clips: a full-length copy of a >100-beat clip placed far forward would
-  // otherwise land on a holding area pinned only to maxEnd, and
-  // moveClipFromHolding would misread that overlap as a self-overlap and skip
-  // clearing the original (re-triggering the Ableton crash).
+  // if Live refuses the copy. The holding area must clear the target placement
+  // (targetPosition + sourceLength), not just the existing clips: a full-length
+  // copy of a >100-beat clip placed far forward would otherwise land on a
+  // holding area pinned only to maxEnd, and moveClipFromHolding would misread
+  // that overlap as a self-overlap and skip clearing the original
+  // (re-triggering the Ableton crash).
   const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
   const sourceLength =
     (sourceClip.getProperty("end_time") as number) -
@@ -351,7 +361,7 @@ export function duplicateSelfOverlappingClip(
     "duplicate_clip_to_arrangement",
     toLiveApiId(sourceClipId),
     holdingStart,
-  ) as [string, string | number];
+  );
   const holdingClipId = verifyDupResult(
     holdingResult,
     `self-overlap dup-to-holding for clip ${sourceClipId} at ${holdingStart}`,
@@ -421,13 +431,13 @@ function clearOverlappingClip(
 
   // Step 1: Duplicate to holding area (safe: no clips there) and verify.
   // Order matters: the original clip must remain intact until the holding
-  // copy is confirmed. Otherwise a silent dup failure (Ableton returning
-  // ["id", 0]) would let the later trim/delete destroy the only copy.
+  // copy is confirmed. Otherwise a refused copy would let the later trim or
+  // delete destroy the only copy.
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
     toLiveApiId(clipId),
     holdingStart,
-  ) as [string, string | number];
+  );
   const holdingClipId = verifyDupResult(
     holdingResult,
     `dup-to-holding for clip ${clipId} at ${holdingStart}`,
@@ -485,10 +495,27 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
   for (const id of clipIds) {
     const end = LiveAPI.from(id).getProperty("end_time") as number;
 
-    if (end > maxEnd) maxEnd = end;
+    if (end > maxEnd) {
+      maxEnd = end;
+    }
   }
 
   return Math.max(maxEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;
+}
+
+/**
+ * The holding-area start that clears a block ending at `blockEnd`.
+ *
+ * For a caller that stages repeatedly on one track and knows how far its own
+ * last block reached: advancing past it is always at least as far out as a
+ * fresh scan would land, so it needs no scan. Only that caller's own staging
+ * can sit past the track's real clips, which is what makes the shortcut safe —
+ * see {@link holdingAreaStartOnTrack} for why nothing else may cache a start.
+ * @param blockEnd - Right edge of the block to clear, in beats
+ * @returns Holding-area start position in beats
+ */
+export function holdingAreaStartAfter(blockEnd: number): number {
+  return blockEnd + HOLDING_AREA_GAP_BEATS;
 }
 
 /**
@@ -500,6 +527,10 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
  * placed a clip past that point stages the next one on top of it: the Ableton
  * crash, or an overwrite that eats what was just placed. Verified in Live — a
  * 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
+ *
+ * The one exception is a caller that tracks its own staging and advances past
+ * it with {@link holdingAreaStartAfter}. That is not a cached start — it is a
+ * larger one.
  *
  * `minStartBeats` is for a caller that will place its copy at a target: pass
  * that placement's right edge so the holding area clears it. Without it, a copy

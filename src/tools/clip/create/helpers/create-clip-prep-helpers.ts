@@ -11,9 +11,9 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   resolveTakeLane,
-  takeLaneKey,
+  takeLaneLabel,
   takeLaneTargetsThatFit,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { convertTimingParameters } from "./create-clip-helpers.ts";
@@ -34,7 +34,7 @@ export interface ClipTimingParams {
   start: string | null;
   /** First playback start in bar|beat format, or null */
   firstStart: string | null;
-  /** Clip length (Nbar, n<fraction>, or Nbar+n<fraction>), or null */
+  /** Clip length (<count>bar, n<fraction>, or <count>bar+n<fraction>), or null */
   length: string | null;
   /** Whether the clip is looping */
   looping: boolean | null;
@@ -134,9 +134,9 @@ export function validateArrangementPositions(
  * as needed. Like the main lane, creating over an existing clip
  * replaces/truncates it (no overlap guard). A destination whose lane doesn't
  * fit is warned and left out, so the clips around it still get made.
- * @param takeLaneName - Name for a newly created lane
+ * @param takeLaneName - Deprecated: name for a newly created lane
  * @param arrangementPositions - Resolved arrangement destinations
- * @returns Take lane LiveAPI keyed by {@link takeLaneKey}, empty for main lanes
+ * @returns Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes
  */
 export function resolveCreateClipTakeLanes(
   takeLaneName: string | null,
@@ -147,15 +147,16 @@ export function resolveCreateClipTakeLanes(
   // Lanes are permanent (Live has no delete), so pick the whole call's
   // destinations before creating a lane on any of it — otherwise a cap failure
   // on the last destination strands empty lanes on all the earlier ones.
-  const fitting = takeLaneTargetsThatFit(arrangementPositions, "createClip");
+  const fitting = takeLaneTargetsThatFit(arrangementPositions);
 
-  // Resolve once per destination rather than once per clip — otherwise a single
-  // "l+" cycled over three arrangementStarts gets three fresh lanes.
+  // Resolve once per destination rather than once per clip.
   for (const position of fitting) {
     const { trackIndex, takeLane: target } = position;
-    const key = takeLaneKey(position);
+    const key = takeLaneLabel(position);
 
-    if (lanes.has(key)) continue;
+    if (lanes.has(key)) {
+      continue;
+    }
 
     const { lane, laneIndex } = resolveTakeLane(
       trackFor(position),
@@ -165,7 +166,7 @@ export function resolveCreateClipTakeLanes(
 
     lanes.set(key, lane);
     console.warn(
-      `createClip: targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
+      `targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
     );
   }
 

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -19,6 +20,7 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { arrangementStartOf } from "./helpers/arrangement-start-test-helpers.ts";
 
 // Use once: true since we're only reading pre-populated clips
 const ctx = setupMcpTestContext({ once: true });
@@ -52,7 +54,6 @@ describe("ppal-read-clip", () => {
     });
     const byIdClip = parseAliasedToolResult<ReadClipResult>(
       byIdResult,
-      "ppal-read-clip",
       "clipId",
       "id",
     );
@@ -131,7 +132,7 @@ describe("ppal-read-clip", () => {
     // First get the clip ID from reading the track's arrangement clips
     const trackResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 0, include: ["arrangement-clips"] },
+      arguments: { path: "t0", include: ["arrangement-clips"] },
     });
     const track = parseToolResult<TrackWithClips>(trackResult);
 
@@ -146,7 +147,7 @@ describe("ppal-read-clip", () => {
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 
     expect(arrClip.view).toBe("arrangement");
-    expect(arrClip.arrangementStart).toBe("1|1");
+    expect(arrangementStartOf(arrClip)).toBe("1|1");
     expect(arrClip.arrangementLength).toBeDefined();
   });
 
@@ -249,6 +250,54 @@ describe("ppal-read-clip compact notation", () => {
     expect(notes).not.toMatch(/p\d*\/\d+/);
   });
 });
+
+describe("ppal-read-clip drum spelling", () => {
+  it("spells a clip the same read alone as read in a batch", async () => {
+    // Whether a track holds a drum rack is worked out once per request, so a
+    // read spanning t0 (a Drum Rack) and t2 (Analog, no drum rack) is where one
+    // track's answer could reach the other's notes. A clip read on its own
+    // shares nothing, so it says what each spelling should be.
+    //
+    // t2/s0 "Chords" is the clip that can tell: it stacks Am on one beat, and
+    // grouping by pitch puts each of those on its own line where grouping by
+    // time keeps them together. A clip with one note per pitch AND one per beat
+    // — t0/s0 and t1/s0 both — spells the same either way and proves nothing.
+    // A scene read walks tracks in index order, so t0 always answers first;
+    // t2 is the one a shared answer would reach.
+    const notesOf = async (path: string) =>
+      parseToolResult<ReadClipResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-clip",
+          arguments: { path, include: ["notes"] },
+        }),
+      ).notes;
+
+    const drums = await notesOf("t0/s0");
+    const chords = await notesOf("t2/s0");
+
+    expect(drums).toBeDefined();
+    // Two pitches side by side is the melodic spelling and only the melodic
+    // spelling: grouping by pitch gives each of them a line of its own. Pinning
+    // the shape rather than the string keeps this about the grouping.
+    expect(chords).toMatch(/[A-G][b#]?-?\d+ [A-G][b#]?-?\d+/);
+
+    const scene = parseToolResult<SceneWithClipNotes>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { path: "s0", include: ["clips", "notes"] },
+      }),
+    );
+    const inScene = (path: string) =>
+      scene.clips?.find((clip) => clip.path === path)?.notes;
+
+    expect(inScene("t0/s0")).toBe(drums);
+    expect(inScene("t2/s0")).toBe(chords);
+  });
+});
+
+interface SceneWithClipNotes {
+  clips?: Array<{ path?: string; notes?: string }>;
+}
 
 interface TrackWithClips {
   arrangementClips?: Array<{ id: string; position: string; length: string }>;

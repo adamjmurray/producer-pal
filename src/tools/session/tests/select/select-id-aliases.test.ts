@@ -25,9 +25,9 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
 });
 
 // select takes every object type by id, so trackId/sceneId/clipId/deviceId are
-// all names a model reaches for here. Each folds onto `id`, which means the
-// type detection and the existence check apply to the guess too — a spelling
-// that used to be dropped as an unexpected argument now selects.
+// all names a model reaches for here. Each is a target of its own, type-detected
+// and existence-checked the way `id` is, so two together select two things and
+// two that can't both be selected are refused rather than half-honored.
 describe("select id aliases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,13 +100,13 @@ describe("select id aliases", () => {
   });
 
   // Dropping the guess was the old behavior: the call reported success and
-  // selected nothing. Folding it onto `id` is what makes this refusable.
+  // selected nothing. Reading it as a target is what makes this refusable.
   it("refuses an alias that names nothing", () => {
     mockNonExistentObjects();
     setupSongViewMock();
 
     expect(() => select({ clipId: "id missing" })).toThrow(
-      'select failed: id "id missing" does not exist',
+      'id "id missing" does not exist',
     );
   });
 
@@ -122,7 +122,191 @@ describe("select id aliases", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("keeps id and says the alias went nowhere when they disagree", () => {
+  // Reading only the first alias dropped the rest in silence, while the
+  // framework's migration notice told the caller every one had been honored.
+  it("selects a track and a scene named by separate aliases", () => {
+    registerMockObject("track_123", {
+      path: livePath.track(0),
+      type: "Track",
+    });
+    registerMockObject("scene_123", {
+      path: livePath.scene(2),
+      type: "Scene",
+    });
+    const songView = setupSongViewMock();
+
+    const result = select({
+      trackId: "id track_123",
+      sceneId: "id scene_123",
+    });
+
+    expect(result.selectedTrack).toBeDefined();
+    expect(result.selectedScene).toBeDefined();
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_123");
+    expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_123");
+  });
+
+  it("takes a clip alias alongside the track it sits on", () => {
+    registerMockObject("track_123", {
+      path: livePath.track(0),
+      type: "Track",
+    });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    const result = select({ trackId: "id track_123", clipId: "id clip_123" });
+
+    expect(result.selectedTrack).toBeDefined();
+    expect(result.selectedClip?.id).toBe("clip_123");
+  });
+
+  // Selecting the clip moves Live's track selection onto its own track, so
+  // honoring both would report a track that isn't the one on screen.
+  it("refuses a clip alias on a different track than trackId", () => {
+    registerMockObject("track_123", {
+      path: livePath.track(0),
+      type: "Track",
+    });
+    registerMockObject("track_456", {
+      path: livePath.track(3),
+      type: "Track",
+    });
+    registerMockObject("clip_123", {
+      path: livePath.track(3).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() =>
+      select({ trackId: "id track_123", clipId: "id clip_123" }),
+    ).toThrow("trackId and clipId name different tracks");
+  });
+
+  // No trackId to disagree with, so nothing caught this: both wrote a selection
+  // and Live's visible track was whichever went last.
+  it("refuses a clip and a device on different tracks", () => {
+    registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
+    registerMockObject("track_5", { path: livePath.track(5), type: "Track" });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    registerMockObject("device_123", {
+      path: livePath.track(5).device(0),
+      type: "Device",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() =>
+      select({ clipId: "id clip_123", deviceId: "id device_123" }),
+    ).toThrow("clipId and deviceId name different tracks");
+  });
+
+  it("takes a clip and a device on the same track", () => {
+    registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    registerMockObject("device_123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(
+      select({ clipId: "id clip_123", deviceId: "id device_123" })
+        .selectedDevice,
+    ).toBeDefined();
+  });
+
+  it("refuses a clip alias in a different scene than sceneId", () => {
+    registerMockObject("scene_123", {
+      path: livePath.scene(2),
+      type: "Scene",
+    });
+    registerMockObject("scene_456", {
+      path: livePath.scene(0),
+      type: "Scene",
+    });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() =>
+      select({ sceneId: "id scene_123", clipId: "id clip_123" }),
+    ).toThrow("sceneId and clipId name different scenes");
+  });
+
+  it("takes a device alias on the return track named by trackId", () => {
+    registerMockObject("return_0", {
+      path: livePath.returnTrack(0),
+      type: "Track",
+    });
+    registerMockObject("device_123", {
+      path: livePath.returnTrack(0).device(0),
+      type: "Device",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    const result = select({
+      trackId: "id return_0",
+      deviceId: "id device_123",
+    });
+
+    expect(result.selectedTrack).toBeDefined();
+    expect(result.selectedDevice?.id).toBe("device_123");
+  });
+
+  // An arrangement clip sits on a timeline, not in a scene, so there is no
+  // scene for a sceneId to disagree with.
+  it("takes a scene alias alongside an arrangement clip", () => {
+    registerMockObject("scene_123", {
+      path: livePath.scene(2),
+      type: "Scene",
+    });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).arrangementClip(0),
+      type: "Clip",
+      properties: { start_time: 0 },
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    const result = select({ sceneId: "id scene_123", clipId: "id clip_123" });
+
+    expect(result.selectedScene).toBeDefined();
+    expect(result.selectedClip?.id).toBe("clip_123");
+  });
+
+  it("refuses two ids of the same kind naming different objects", () => {
+    registerMockObject("track_123", {
+      path: livePath.track(0),
+      type: "Track",
+    });
+    registerMockObject("track_456", {
+      path: livePath.track(1),
+      type: "Track",
+    });
+    setupSongViewMock();
+
+    expect(() =>
+      select({ id: "id track_123", trackId: "id track_456" }),
+    ).toThrow("id and trackId name different tracks; send one");
+  });
+
+  it("takes the same object under two spellings", () => {
     registerMockObject("track_123", {
       path: livePath.track(0),
       type: "Track",
@@ -130,10 +314,10 @@ describe("select id aliases", () => {
     const warn = vi.spyOn(console, "warn");
 
     setupSongViewMock();
-    select({ id: "id track_123", trackId: "id other_track" });
 
-    expect(warn).toHaveBeenCalledWith(
-      'trackId "id other_track" ignored — "id" names the target',
-    );
+    expect(
+      select({ id: "id track_123", trackId: "id track_123" }).selectedTrack,
+    ).toBeDefined();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

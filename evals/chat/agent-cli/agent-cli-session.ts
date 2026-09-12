@@ -84,7 +84,9 @@ export async function createAgentCliSession(
       );
 
       // eslint-disable-next-line require-atomic-updates -- turns run sequentially
-      if (parsed.sessionId != null) sessionId = parsed.sessionId;
+      if (parsed.sessionId != null) {
+        sessionId = parsed.sessionId;
+      }
 
       const usage = options.usage === true ? parsed.usage : undefined;
 

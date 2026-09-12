@@ -43,7 +43,7 @@ vi.mock(import("#webui/lib/constants/autosave"), () => ({
 // suite lives apart from the other rename tests: several of theirs deliberately
 // hold a write open longer than this.
 vi.mock(import("#webui/lib/constants/transport"), () => ({
-  COLLECTION_REQUEST_TIMEOUT_MS: 400,
+  DOC_REQUEST_TIMEOUT_MS: 150,
 }));
 
 /**

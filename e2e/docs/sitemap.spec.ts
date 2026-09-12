@@ -3,13 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
 import { expect, test } from "@playwright/test";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const DIST_DIR = join(__dirname, "..", "..", "docs", ".vitepress", "dist");
+import { DIST_DIR, parseSitemap, SITE_URL } from "./docs-test-helpers.ts";
 
 // Known external domains that are allowed
 const ALLOWED_EXTERNAL_DOMAINS = [
@@ -50,37 +46,6 @@ const ALLOWED_EXTERNAL_DOMAINS = [
 ];
 
 /**
- * Parse sitemap.xml and extract all URLs
- */
-function parseSitemap(): string[] {
-  const sitemapPath = join(
-    __dirname,
-    "..",
-    "..",
-    "docs",
-    ".vitepress",
-    "dist",
-    "sitemap.xml",
-  );
-  const sitemapContent = readFileSync(sitemapPath, "utf-8");
-
-  // Extract all <loc> URLs from sitemap
-  const urlMatches = sitemapContent.matchAll(/<loc>(.*?)<\/loc>/g);
-  const urls = Array.from(urlMatches, (match) => match[1]).filter(
-    (url): url is string => url != null,
-  );
-
-  if (urls.length === 0) {
-    throw new Error(
-      `No URLs found in sitemap at ${sitemapPath}. ` +
-        `Ensure docs are built with 'npm run docs:build' before running tests.`,
-    );
-  }
-
-  return urls;
-}
-
-/**
  * Convert absolute URL to relative path for local testing
  */
 function toRelativePath(absoluteUrl: string): string {
@@ -116,7 +81,9 @@ function buildAnchorIndex(): Map<string, Set<string>> {
         continue;
       }
 
-      if (!entry.name.endsWith(".html")) continue;
+      if (!entry.name.endsWith(".html")) {
+        continue;
+      }
 
       const html = readFileSync(fullPath, "utf-8");
       const ids = new Set(
@@ -155,11 +122,15 @@ function checkAnchor(
 ): string | null {
   const hashIndex = href.indexOf("#");
 
-  if (hashIndex === -1) return null;
+  if (hashIndex === -1) {
+    return null;
+  }
 
   const rawFragment = href.slice(hashIndex + 1);
 
-  if (rawFragment === "") return null;
+  if (rawFragment === "") {
+    return null;
+  }
 
   let fragment = rawFragment;
 
@@ -179,7 +150,9 @@ function checkAnchor(
       : new URL(pathPart, `http://localhost${currentPath}`).pathname;
   const ids = anchorIndex.get(normalizeRoute(targetPath));
 
-  if (ids == null) return `Anchor link to unknown page: ${href}`;
+  if (ids == null) {
+    return `Anchor link to unknown page: ${href}`;
+  }
 
   if (!ids.has(fragment)) {
     return `Dead anchor: ${href} (no element with id="${fragment}" on ${normalizeRoute(targetPath)})`;
@@ -221,7 +194,7 @@ function isAllowedExternalDomain(href: string): boolean {
  */
 function normalizeUrlForSitemap(
   href: string,
-  baseUrl = "https://producer-pal.org",
+  baseUrl = SITE_URL,
 ): string | null {
   try {
     // Handle hash-only links (same page)
@@ -239,7 +212,10 @@ function normalizeUrlForSitemap(
     // Handle absolute URLs
     const url = new URL(href);
 
-    if (url.hostname === "producer-pal.org" || url.hostname === "localhost") {
+    if (
+      url.hostname === new URL(SITE_URL).hostname ||
+      url.hostname === "localhost"
+    ) {
       // Strip hash fragment for sitemap comparison
       return baseUrl + url.pathname;
     }
@@ -335,10 +311,17 @@ test.describe("Docs Site Sitemap Tests", () => {
       for (const link of links) {
         const href = await link.getAttribute("href");
 
-        if (!href) continue;
+        if (!href) {
+          continue;
+        }
 
-        if (href.startsWith("mailto:")) continue;
-        if ((await link.getAttribute("download")) != null) continue;
+        if (href.startsWith("mailto:")) {
+          continue;
+        }
+
+        if ((await link.getAttribute("download")) != null) {
+          continue;
+        }
 
         // Validate the #anchor fragment of same-page and internal links. The
         // sitemap check below only sees the path, so without this a link to a
@@ -346,11 +329,15 @@ test.describe("Docs Site Sitemap Tests", () => {
         if (!isExternalUrl(href)) {
           const anchorError = checkAnchor(href, relativePath, anchorIndex);
 
-          if (anchorError) linkValidationErrors.push(anchorError);
+          if (anchorError) {
+            linkValidationErrors.push(anchorError);
+          }
         }
 
         // Hash-only links are same-page: fully validated by checkAnchor above
-        if (href.startsWith("#")) continue;
+        if (href.startsWith("#")) {
+          continue;
+        }
 
         // Check if it's an external link
         if (isExternalUrl(href)) {

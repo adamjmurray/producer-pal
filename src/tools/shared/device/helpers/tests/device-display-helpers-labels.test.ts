@@ -3,18 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Robustness of the display-label lexer: anchoring, optional whitespace, and
-// optional sign/quantifier handling. Split from device-display-helpers.test.ts
-// (unit-by-unit value parsing) to keep both files under the line limit.
+// The display-label lexer: what each unit parses to, and how the patterns hold
+// up against anchoring, stray whitespace, and optional signs. Split from
+// device-display-helpers.test.ts (readParameter) to keep both under the line
+// limit.
 
 import { describe, expect, it } from "vitest";
 import {
   extractMaxPanValue,
   isDivisionLabel,
+  isDivisionParam,
   isPanLabel,
+  normalizeDivisionLabel,
   normalizePan,
-  parseLabel,
 } from "../device-display-helpers.ts";
+import { parseLabel } from "../device-label-helpers.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [
@@ -27,6 +30,8 @@ const UNIT_LABELS = [
   "50 %",
   "180 °",
   "+12 st",
+  "-50 ct",
+  "10 sd",
   "C4",
   "50L",
   "C",
@@ -82,6 +87,18 @@ describe("parseLabel optional sign and multi-digit tokens", () => {
   });
 });
 
+describe("parseLabel rejects labels with no number in them", () => {
+  it.each(["-dB", ".Hz", "-%", ".kHz", "-degrees", "---", "-", ".."])(
+    "returns nothing for '%s' rather than a NaN value",
+    (label) => {
+      // The numeric groups accept a bare "-" or ".", which parseFloat turns
+      // into NaN. Every comparison against NaN is false, so a NaN escaping here
+      // would walk a param to full scale and report success.
+      expect(parseLabel(label)).toStrictEqual({ value: null, unit: null });
+    },
+  );
+});
+
 describe("isPanLabel anchoring", () => {
   it.each(["x50L", "50Lx", "xC", "Cx"])(
     "returns false for the unanchored label '%s'",
@@ -118,4 +135,322 @@ describe("extractMaxPanValue anchoring", () => {
       expect(extractMaxPanValue(label)).toBe(50);
     },
   );
+});
+
+describe("parseLabel ratios", () => {
+  // Live writes compression as "N : 1" and expansion as "1 : N". Reading the
+  // leading number off both would report 1 for every expansion ratio, which
+  // collapses the range to a point and leaves a write nothing to aim at.
+  it.each([
+    ["4.00 : 1", 4],
+    ["1.00 : 1", 1],
+    ["1 : 2.00", 2],
+    ["1 : 0.50", 0.5],
+    ["1.0 : 0.25", 0.25],
+  ])("reads the meaningful side of '%s'", (label, value) => {
+    expect(parseLabel(label)).toStrictEqual({ value, unit: null });
+  });
+
+  it.each(["inf : 1", "1 : Inf", "1 : ", " : 1"])(
+    "reads no number from '%s', leaving it to the sentinel trim",
+    (label) => {
+      expect(parseLabel(label)).toStrictEqual({ value: null, unit: null });
+    },
+  );
+});
+
+describe("isDivisionLabel spacing", () => {
+  it.each(["1/16", "1 / 16", "1/ 16", "1 /16"])(
+    "accepts '%s', which Live spaces differently per param",
+    (label) => {
+      expect(isDivisionLabel(label)).toBe(true);
+    },
+  );
+});
+
+describe("isDivisionParam", () => {
+  it("sees a fraction at the max end", () => {
+    // Sync ladders run from bar counts to fractions ("8".."1/64"), so the
+    // current value and the minimum are both bare numbers.
+    expect(isDivisionParam("2", "8", "1/64")).toBe(true);
+  });
+
+  it("stays false when no end names a fraction", () => {
+    expect(isDivisionParam("0.0 dB", "-70 dB", "6 dB")).toBe(false);
+  });
+});
+
+describe("normalizeDivisionLabel", () => {
+  it("makes a written '1/16' match a label Live spaced as '1 / 16'", () => {
+    expect(normalizeDivisionLabel("1 / 16")).toBe(
+      normalizeDivisionLabel("1/16"),
+    );
+  });
+});
+
+describe("parseLabel", () => {
+  describe("frequency (Hz)", () => {
+    it("parses kHz and converts to Hz", () => {
+      expect(parseLabel("1.00 kHz")).toStrictEqual({
+        value: 1000,
+        unit: "Hz",
+      });
+      expect(parseLabel("12.5 kHz")).toStrictEqual({
+        value: 12500,
+        unit: "Hz",
+      });
+      expect(parseLabel("0.5 kHz")).toStrictEqual({ value: 500, unit: "Hz" });
+    });
+
+    it("parses Hz directly", () => {
+      expect(parseLabel("440 Hz")).toStrictEqual({ value: 440, unit: "Hz" });
+      expect(parseLabel("20 Hz")).toStrictEqual({ value: 20, unit: "Hz" });
+    });
+  });
+
+  describe("time (ms)", () => {
+    it("parses seconds and converts to ms", () => {
+      expect(parseLabel("1.00 s")).toStrictEqual({ value: 1000, unit: "ms" });
+      expect(parseLabel("0.5 s")).toStrictEqual({ value: 500, unit: "ms" });
+      expect(parseLabel("2.5 s")).toStrictEqual({ value: 2500, unit: "ms" });
+    });
+
+    it("parses ms directly", () => {
+      expect(parseLabel("100 ms")).toStrictEqual({ value: 100, unit: "ms" });
+      expect(parseLabel("500 ms")).toStrictEqual({ value: 500, unit: "ms" });
+    });
+  });
+
+  describe("decibels (dB)", () => {
+    it("parses positive and negative dB values", () => {
+      expect(parseLabel("0 dB")).toStrictEqual({ value: 0, unit: "dB" });
+      expect(parseLabel("-6 dB")).toStrictEqual({ value: -6, unit: "dB" });
+      expect(parseLabel("-18.5 dB")).toStrictEqual({
+        value: -18.5,
+        unit: "dB",
+      });
+      expect(parseLabel("3 dB")).toStrictEqual({ value: 3, unit: "dB" });
+    });
+
+    it("converts -inf dB to -70", () => {
+      expect(parseLabel("-inf dB")).toStrictEqual({ value: -70, unit: "dB" });
+    });
+  });
+
+  describe("percentage (%)", () => {
+    it("parses percentage values", () => {
+      expect(parseLabel("0 %")).toStrictEqual({ value: 0, unit: "%" });
+      expect(parseLabel("50 %")).toStrictEqual({ value: 50, unit: "%" });
+      expect(parseLabel("100 %")).toStrictEqual({ value: 100, unit: "%" });
+      expect(parseLabel("-50 %")).toStrictEqual({ value: -50, unit: "%" });
+    });
+
+    it("parses 'percent' word as %", () => {
+      expect(parseLabel("50 percent")).toStrictEqual({
+        value: 50,
+        unit: "%",
+      });
+      expect(parseLabel("100percent")).toStrictEqual({
+        value: 100,
+        unit: "%",
+      });
+      expect(parseLabel("25 PERCENT")).toStrictEqual({
+        value: 25,
+        unit: "%",
+      });
+    });
+  });
+
+  describe("degrees (°)", () => {
+    it("parses degree values", () => {
+      expect(parseLabel("300°")).toStrictEqual({
+        value: 300,
+        unit: "degrees",
+      });
+      expect(parseLabel("0°")).toStrictEqual({ value: 0, unit: "degrees" });
+      expect(parseLabel("180 °")).toStrictEqual({
+        value: 180,
+        unit: "degrees",
+      });
+      expect(parseLabel("-90°")).toStrictEqual({
+        value: -90,
+        unit: "degrees",
+      });
+    });
+
+    it("parses 'degrees', 'degree', and 'deg' as °", () => {
+      expect(parseLabel("180 degrees")).toStrictEqual({
+        value: 180,
+        unit: "degrees",
+      });
+      expect(parseLabel("1 degree")).toStrictEqual({
+        value: 1,
+        unit: "degrees",
+      });
+      expect(parseLabel("90 deg")).toStrictEqual({
+        value: 90,
+        unit: "degrees",
+      });
+      expect(parseLabel("180DEGREES")).toStrictEqual({
+        value: 180,
+        unit: "degrees",
+      });
+      expect(parseLabel("-45deg")).toStrictEqual({
+        value: -45,
+        unit: "degrees",
+      });
+    });
+  });
+
+  describe("note names", () => {
+    it("parses note names and keeps as string", () => {
+      expect(parseLabel("C4")).toStrictEqual({ value: "C4", unit: "note" });
+      expect(parseLabel("F#-1")).toStrictEqual({
+        value: "F#-1",
+        unit: "note",
+      });
+      expect(parseLabel("Bb3")).toStrictEqual({ value: "Bb3", unit: "note" });
+      expect(parseLabel("G#8")).toStrictEqual({ value: "G#8", unit: "note" });
+    });
+  });
+
+  describe("pan", () => {
+    it("parses pan labels with direction", () => {
+      expect(parseLabel("50L")).toStrictEqual({
+        value: 50,
+        unit: "pan",
+        direction: "L",
+      });
+      expect(parseLabel("50R")).toStrictEqual({
+        value: 50,
+        unit: "pan",
+        direction: "R",
+      });
+      expect(parseLabel("25L")).toStrictEqual({
+        value: 25,
+        unit: "pan",
+        direction: "L",
+      });
+    });
+
+    it("parses center pan as fixed value", () => {
+      expect(parseLabel("C")).toStrictEqual({ value: 0, unit: "pan" });
+    });
+  });
+
+  describe("unitless numbers", () => {
+    it("extracts numbers without units", () => {
+      expect(parseLabel("76")).toStrictEqual({ value: 76, unit: null });
+      expect(parseLabel("0.5")).toStrictEqual({ value: 0.5, unit: null });
+      expect(parseLabel("-3.5")).toStrictEqual({ value: -3.5, unit: null });
+    });
+  });
+
+  describe("edge cases", () => {
+    it("returns null for non-parseable strings", () => {
+      expect(parseLabel("Repitch")).toStrictEqual({
+        value: null,
+        unit: null,
+      });
+      expect(parseLabel("Off")).toStrictEqual({ value: null, unit: null });
+    });
+
+    it("trims whitespace from VST-style right-padded labels", () => {
+      expect(parseLabel("    8 Hz")).toStrictEqual({ value: 8, unit: "Hz" });
+      expect(parseLabel("  425 Hz")).toStrictEqual({
+        value: 425,
+        unit: "Hz",
+      });
+      expect(parseLabel("22050 Hz ")).toStrictEqual({
+        value: 22050,
+        unit: "Hz",
+      });
+      expect(parseLabel("  -6 dB")).toStrictEqual({ value: -6, unit: "dB" });
+    });
+
+    it("handles null/undefined/non-string input", () => {
+      expect(parseLabel(null as unknown as string)).toStrictEqual({
+        value: null,
+        unit: null,
+      });
+      expect(parseLabel(undefined as unknown as string)).toStrictEqual({
+        value: null,
+        unit: null,
+      });
+      expect(parseLabel(123 as unknown as string)).toStrictEqual({
+        value: null,
+        unit: null,
+      });
+    });
+  });
+});
+
+describe("isPanLabel", () => {
+  it("returns true for pan labels", () => {
+    expect(isPanLabel("50L")).toBe(true);
+    expect(isPanLabel("50R")).toBe(true);
+    expect(isPanLabel("C")).toBe(true);
+    expect(isPanLabel("25L")).toBe(true);
+  });
+
+  it("returns false for non-pan labels", () => {
+    expect(isPanLabel("50 Hz")).toBe(false);
+    expect(isPanLabel("Center")).toBe(false);
+    expect(isPanLabel(null as unknown as string)).toBe(false);
+    expect(isPanLabel(undefined as unknown as string)).toBe(false);
+  });
+});
+
+describe("isDivisionLabel", () => {
+  it("returns true for division fraction labels", () => {
+    expect(isDivisionLabel("1/8")).toBe(true);
+    expect(isDivisionLabel("1/16")).toBe(true);
+    expect(isDivisionLabel("1/64")).toBe(true);
+    expect(isDivisionLabel("1/4")).toBe(true);
+    expect(isDivisionLabel("1/2")).toBe(true);
+  });
+
+  it("returns false for non-division labels", () => {
+    expect(isDivisionLabel("2/4")).toBe(false); // must start with 1/
+    expect(isDivisionLabel("1")).toBe(false);
+    expect(isDivisionLabel("1/")).toBe(false);
+    expect(isDivisionLabel("50 Hz")).toBe(false);
+    expect(isDivisionLabel(null as unknown as string)).toBe(false);
+    expect(isDivisionLabel(undefined as unknown as string)).toBe(false);
+    expect(isDivisionLabel(123 as unknown as string)).toBe(false);
+  });
+});
+
+describe("normalizePan", () => {
+  it("normalizes pan values to -1 to 1", () => {
+    expect(normalizePan("50L", 50)).toBe(-1);
+    expect(normalizePan("50R", 50)).toBe(1);
+    expect(normalizePan("25L", 50)).toBe(-0.5);
+    expect(normalizePan("25R", 50)).toBe(0.5);
+    expect(normalizePan("C", 50)).toBe(0);
+  });
+
+  it("handles different max pan values", () => {
+    expect(normalizePan("64L", 64)).toBe(-1);
+    expect(normalizePan("64R", 64)).toBe(1);
+    expect(normalizePan("32L", 64)).toBe(-0.5);
+  });
+
+  it("returns 0 for non-matching label", () => {
+    expect(normalizePan("invalid", 50)).toBe(0);
+    expect(normalizePan("", 50)).toBe(0);
+  });
+});
+
+describe("extractMaxPanValue", () => {
+  it("extracts max pan value from label", () => {
+    expect(extractMaxPanValue("50L")).toBe(50);
+    expect(extractMaxPanValue("50R")).toBe(50);
+    expect(extractMaxPanValue("64L")).toBe(64);
+  });
+
+  it("returns default 50 for non-matching labels", () => {
+    expect(extractMaxPanValue("C")).toBe(50);
+    expect(extractMaxPanValue("invalid")).toBe(50);
+  });
 });

@@ -19,7 +19,7 @@ import {
 import {
   type CollectionEntryAutosaveParams,
   useCollectionEntryAutosave,
-} from "#webui/hooks/context/use-doc-collection";
+} from "#webui/hooks/context/helpers/use-doc-collection";
 
 /**
  * Render the hook with initial params and a rerender helper. Shared by both
@@ -485,7 +485,9 @@ function deferredPersist(): {
 
 /** Settle the promise chain a released persist unblocks. */
 async function flushMicrotasks(): Promise<void> {
-  for (let i = 0; i < 4; i++) await Promise.resolve();
+  for (let i = 0; i < 4; i++) {
+    await Promise.resolve();
+  }
 }
 
 /**

@@ -27,18 +27,13 @@ import {
   type CreateClipResult,
   DRUM_LOOP_FILE,
   parseToolResult,
-  parseToolResultWithWarnings,
-  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { updateAndRead } from "../helpers/clip-io-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-/** t8 "9-MIDI": an empty MIDI track. */
-const MIDI_TRACK = 8;
-/** t5 "Audio 2": an audio track with free slots and an empty arrangement. */
-const AUDIO_TRACK = 5;
 
 /**
  * Half of the one-bar drum loop, and of the one-bar MIDI clips here. Short
@@ -69,34 +64,6 @@ async function create(
 }
 
 /**
- * Update a clip and read it back.
- * @param client - The MCP client
- * @param clipId - The clip to update
- * @param args - ppal-update-clip arguments, merged over the clip id
- * @returns The clip as read back, and any warnings the update reported
- */
-async function updateAndRead(
-  client: Client,
-  clipId: string,
-  args: Record<string, unknown>,
-): Promise<{ clip: ReadClipResult; warnings: string[] }> {
-  const result = await client.callTool({
-    name: "ppal-update-clip",
-    arguments: { id: clipId, ...args },
-  });
-  const { warnings } = parseToolResultWithWarnings<unknown>(result);
-
-  await sleep(100);
-
-  const read = await client.callTool({
-    name: "ppal-read-clip",
-    arguments: { id: clipId, include: ["*"] },
-  });
-
-  return { clip: parseToolResult<ReadClipResult>(read), warnings };
-}
-
-/**
  * A one-bar clip of the given kind, cut down to its first half and left not
  * looping — the state a bare `looping: true` used to reset to the whole bar.
  * @param client - The MCP client
@@ -110,7 +77,7 @@ async function halvedClip(
   sceneIndex: number,
 ): Promise<string> {
   const clipId = await create(client, {
-    path: `t${kind === "midi" ? MIDI_TRACK : AUDIO_TRACK}/s${sceneIndex}`,
+    path: `t${kind === "midi" ? EMPTY_MIDI_TRACK : AUDIO_TRACK}/s${sceneIndex}`,
     name: `loop toggle ${kind}`,
     ...(kind === "midi"
       ? { length: WHOLE, notes: "C3 1|1 E3 1|3" }
@@ -211,7 +178,7 @@ describe("ppal-update-clip loop toggle", () => {
     // region that survives — and it is what read-clip was already reporting as
     // `start`/`length`.
     const clipId = await create(ctx.client!, {
-      path: `t${MIDI_TRACK}/s6`,
+      path: `t${EMPTY_MIDI_TRACK}/s6`,
       name: "offset loop",
       length: "2bar",
       notes: "C3 1|1 E3 2|1",
@@ -239,8 +206,7 @@ describe("ppal-update-clip loop toggle", () => {
 
   it("keeps the region of an arrangement clip", async () => {
     const clipId = await create(ctx.client!, {
-      path: `t${AUDIO_TRACK}`,
-      arrangementStart: "97|1",
+      path: `t${AUDIO_TRACK}[97|1]`,
       sampleFile: DRUM_LOOP_FILE,
       name: "loop toggle arrangement",
       warping: true,

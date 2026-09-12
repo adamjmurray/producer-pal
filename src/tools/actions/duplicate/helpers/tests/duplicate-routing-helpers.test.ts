@@ -98,7 +98,7 @@ describe("findRoutingOptionForDuplicateNames", () => {
 
     expect(result).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(
-      'Could not find source track in duplicate name list for "Bass"',
+      'Could not find source track id 99 in the duplicate name list for "Bass"',
     );
   });
 });

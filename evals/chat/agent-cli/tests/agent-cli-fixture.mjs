@@ -59,7 +59,9 @@ async function main() {
 
   const stderr = process.env.PPAL_FIXTURE_STDERR;
 
-  if (stderr) process.stderr.write(stderr);
+  if (stderr) {
+    process.stderr.write(stderr);
+  }
 
   await writeStdout();
 
@@ -78,7 +80,9 @@ async function writeStdout() {
   const out = Buffer.from(process.env.PPAL_FIXTURE_STDOUT ?? "", "utf8");
   const splitAt = Number(process.env.PPAL_FIXTURE_SPLIT_AT ?? "0");
 
-  if (out.length === 0) return;
+  if (out.length === 0) {
+    return;
+  }
 
   if (splitAt > 0 && splitAt < out.length) {
     process.stdout.write(out.subarray(0, splitAt));
@@ -100,7 +104,9 @@ async function readStdin() {
 
   process.stdin.setEncoding("utf8");
 
-  for await (const chunk of process.stdin) text += chunk;
+  for await (const chunk of process.stdin) {
+    text += chunk;
+  }
 
   return text;
 }

@@ -96,8 +96,9 @@ export function compareCorpora(
   for (const [file, content] of after) {
     const was = before.get(file);
 
-    if (was == null) changes.push({ kind: "added", file, now: content.length });
-    else if (was !== content) {
+    if (was == null) {
+      changes.push({ kind: "added", file, now: content.length });
+    } else if (was !== content) {
       changes.push({
         kind: "changed",
         file,
@@ -108,7 +109,9 @@ export function compareCorpora(
   }
 
   for (const file of before.keys()) {
-    if (!after.has(file)) changes.push({ kind: "removed", file });
+    if (!after.has(file)) {
+      changes.push({ kind: "removed", file });
+    }
   }
 
   return changes;
@@ -121,7 +124,9 @@ export function compareCorpora(
  * @returns One line per change, or a single "nothing changed" line
  */
 export function formatChanges(changes: readonly CorpusChange[]): string {
-  if (changes.length === 0) return "No blob changed.";
+  if (changes.length === 0) {
+    return "No blob changed.";
+  }
 
   return changes.map(formatChange).join("\n");
 }
@@ -136,12 +141,19 @@ export function formatChanges(changes: readonly CorpusChange[]): string {
  * @returns The display line
  */
 function formatChange(change: CorpusChange): string {
-  if (change.kind === "added") return `  + ${change.file} (${change.now})`;
-  if (change.kind === "removed") return `  - ${change.file}`;
+  if (change.kind === "added") {
+    return `  + ${change.file} (${change.now})`;
+  }
+
+  if (change.kind === "removed") {
+    return `  - ${change.file}`;
+  }
 
   const delta = (change.now ?? 0) - (change.was ?? 0);
 
-  if (delta === 0) return `  ~ ${change.file} (same size, different text)`;
+  if (delta === 0) {
+    return `  ~ ${change.file} (same size, different text)`;
+  }
 
   return `  ~ ${change.file} ${change.was} → ${change.now} (${delta > 0 ? "+" : ""}${delta})`;
 }

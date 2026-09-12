@@ -1,0 +1,47 @@
+# Ordering canary — the subset to run after editing a skill fragment.
+#
+# Why these: a fragment move shows up as a scenario COLLAPSING (3/3 -> 0/3),
+# not as drift. Two sources, both derived from the recorded runs rather than
+# guessed:
+#
+#   1. Every scenario that has ever collapsed between two `-r 3` luna runs.
+#   2. One representative per fragment in `standardDriver`, so a fragment
+#      nothing else covers still has a witness.
+#
+# Run it at `-r 1`: that cannot see 2/3 drift, and is not meant to — it is a
+# gate for total loss, which is what a bad include position causes. Confirm
+# anything it flags with `-r 3` on that scenario alone before believing it.
+#
+# Blank lines and #-comments are ignored. Keep one id per line, grouped, so
+# adding a scenario to the gate stays a deliberate, reviewable act.
+
+# --- has collapsed before (swing 1.00 across -r 3 luna runs) ---
+swing-and-quantize
+melody-transforms
+update-live-set
+scene-update-and-select
+path-insert-position
+duplicate
+duplicate-loop
+device-drum-kit
+note-ops-merge
+
+# --- has partly collapsed before (swing >= 0.67) ---
+locator-navigation
+negative-cases
+drum-pad-force-guard
+context-memory-update-not-duplicate
+middle-c-scale-stark
+library-search-fanout
+
+# --- fragment coverage (one witness per standardDriver include) ---
+melody-pitch-barbeat                 # barbeat-standard
+bar-beat-triplets                    # barbeat-standard-write
+duration-reach-for-quarter           # time-and-values
+where-transforms                     # transforms-core
+pretransforms-snare-swap-baseline    # transforms-editing
+note-ops-repeat                      # transforms-generative
+path-spoken-scene-number             # object-paths
+arrangement-clip-workflow            # arrangement
+device-sound-design                  # devices / specialized-devices
+context-follow-project               # context-standard

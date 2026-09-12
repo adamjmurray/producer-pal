@@ -39,6 +39,17 @@ function recoverThroughError(
   );
 }
 
+/**
+ * Assert the editor rolled all the way back to the stored "old" draft —
+ * content, size readout, and dirty flag.
+ * @param result - The rendered editor
+ */
+function expectRestoredToOldDraft(result: RenderedEditor["result"]): void {
+  expect(result.current.getContent()).toBe("old");
+  expect(result.current.charCount).toBe("old".length);
+  expect(result.current.dirty).toBe(false);
+}
+
 describe("useContextEditorState", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -209,7 +220,10 @@ describe("useContextEditorState", () => {
       // so dirty must stay true.
       await act(async () => {
         resolveSave(true);
-        for (let i = 0; i < 3; i++) await Promise.resolve();
+
+        for (let i = 0; i < 3; i++) {
+          await Promise.resolve();
+        }
       });
 
       expect(result.current.dirty).toBe(true);
@@ -402,9 +416,7 @@ describe("useContextEditorState", () => {
         await result.current.handleImport("# imported");
       });
 
-      expect(result.current.getContent()).toBe("old");
-      expect(result.current.charCount).toBe("old".length);
-      expect(result.current.dirty).toBe(false);
+      expectRestoredToOldDraft(result);
     });
 
     it("restores the pre-clear draft when the clear fails", async () => {
@@ -417,9 +429,7 @@ describe("useContextEditorState", () => {
         await result.current.handleClear();
       });
 
-      expect(result.current.getContent()).toBe("old");
-      expect(result.current.charCount).toBe("old".length);
-      expect(result.current.dirty).toBe(false);
+      expectRestoredToOldDraft(result);
     });
 
     it("leaves an unflushed draft dirty when the clear fails", async () => {

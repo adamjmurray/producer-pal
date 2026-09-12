@@ -147,6 +147,9 @@ export default defineConfig({
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
           { text: "Extending", link: "/extending" },
+          // Scripts only — a chat user reads the current schemas every session
+          // and never sees the old spellings.
+          { text: "Migration Guide", link: "/guide/migration" },
         ],
       },
       {
@@ -307,7 +310,9 @@ export default defineConfig({
  * @returns the title, brand-suffixed unless it already names the brand
  */
 function socialTitle(title: string | undefined): string {
-  if (!title) return SITE_TITLE;
+  if (!title) {
+    return SITE_TITLE;
+  }
 
   return title.includes("Producer Pal") ? title : `${title} — Producer Pal`;
 }

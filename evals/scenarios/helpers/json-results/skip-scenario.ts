@@ -40,7 +40,9 @@ export function shouldSkipScenario(
 ): string | null {
   const req = scenario.requires;
 
-  if (!req) return null;
+  if (!req) {
+    return null;
+  }
 
   const smallModel = env.smallModelMode;
 

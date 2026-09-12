@@ -164,8 +164,8 @@ beatSpec "beat specification"
 
 // Repeat step: the note-value duration grammar, prefixed by `@`.
 //   @n<fraction>   note value (@n/4 = quarter, @n/12 = eighth triplet)
-//   @Nbar          meter-aware bars (@1bar = one bar)
-//   @Nbar±n<frac>  mixed (@1bar-n/16 = almost a full bar)
+//   @<count>bar          meter-aware bars (@1bar = one bar)
+//   @<count>bar±n<frac>  mixed (@1bar-n/16 = almost a full bar)
 // Bare beats (@1) and bare fractions (@/4) are rejected — authoring stays
 // note-value-only; off-grid bare beats are a length-field concept only.
 stepInterval
@@ -174,15 +174,15 @@ stepInterval
     }
   / "@" "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
       // `n`-prefixed bar step (`@n1bar`, `@n/1bar`, `@n3/4bar`): same category
-      // error as the duration sites — bars are the bare `Nbar` form. Placed
+      // error as the duration sites — bars are the bare `<count>bar` form. Placed
       // before the `@n<frac>` branch so it catches the trailing `bar` first.
-      throw new Error(`"@${text().slice(1)}" is invalid: bar steps don't use the "n" prefix — write @Nbar (e.g. @${last}bar).`);
+      throw new Error(`"@${text().slice(1)}" is invalid: bar steps don't use the "n" prefix — write @<count>bar (e.g. @${last}bar).`);
     }
   / "@" "n" frac:unsignedFraction {
       return { bars: 0, fraction: frac };
     }
   / "@" bad:badStepValue {
-      throw new Error(`step intervals use the note-value form: @n/4 = quarter, @n/8 = eighth, @n/12 = eighth triplet, @1bar = one bar. Got @${bad} — note values need the n prefix (@n/4, not @/4); bars use Nbar (@1bar).`);
+      throw new Error(`step intervals use the note-value form: @n/4 = quarter, @n/8 = eighth, @n/12 = eighth triplet, @1bar = one bar. Got @${bad} — note values need the n prefix (@n/4, not @/4); bars use <count>bar (@1bar).`);
     }
 
 // Tail of a mixed duration: "±nA/B" (the note-value fraction wears its own `n`).
@@ -239,7 +239,7 @@ velocity "velocity value"
 duration "duration value"
   = badBarDuration
   / bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
-    // Nbar (e.g. 1bar) or Nbar±nA/B (e.g. 1bar+n3/4, 1bar-n/16). `bar` is
+    // <count>bar (e.g. 1bar) or <count>bar±nA/B (e.g. 1bar+n3/4, 1bar-n/16). `bar` is
     // meter-aware and never wears an `n`; the interpreter resolves it against
     // beatsPerBar. `frac` is signed (the minus tail subtracts), so `1bar-n/16`
     // is "almost a full bar". A plural `bars` (`2bars`) is an accepted tolerance
@@ -261,10 +261,10 @@ badAbsoluteValue
 
 // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
 // the `n` sigil marks a note-value fraction (denominator required); bars are the
-// bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
+// bare `<count>bar` form. Matched only to raise a targeted "did you mean <count>bar" error.
 badBarDuration
   = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
-      throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
+      throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write <count>bar (e.g. ${last}bar).`);
     }
 
 pitch "note pitch"
@@ -287,7 +287,7 @@ pitchAccidental
 // stream persists until that parameter is reassigned, so its cursor carries
 // across separate time positions (cross-event cursor). The emitter zips it
 // against the positions: value at cursor i = values[i mod values.length]; see
-// "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
+// dev/specs/barbeat/pattern-brackets.md.
 //
 // One bracket holds ONE parameter kind. Values are kind-tagged so buildStream
 // can reject a mix (`[v80 C3]`); homogeneous output keeps the bare per-kind
@@ -323,7 +323,7 @@ chord "chord"
 // triplet, in every meter). `options.timeSigDenominator` only multiplies it
 // into musical beats (the grid's unit) so it can be added to the grid beat;
 // that factor cancels when musical beats convert to Ableton beats, so the note
-// value's musical meaning never depends on the meter. (Contrast `Nbar`, which
+// value's musical meaning never depends on the meter. (Contrast `<count>bar`, which
 // IS meter-relative.) Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are intentionally
 // rejected so note values always wear the `n` sigil.

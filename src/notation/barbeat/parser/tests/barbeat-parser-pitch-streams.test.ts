@@ -13,6 +13,17 @@ const SIBLING_PITCH_STREAMS = [
   { stream: { param: "pitch", values: [[{ pitch: 67 }], [{ pitch: 69 }]] } },
 ];
 
+// A bare pitch then the chord `(E3 G3)`. Shared by the compact and the
+// whitespace-padded spelling, whose ASTs are identical.
+const BARE_PITCH_THEN_CHORD = [
+  {
+    stream: {
+      param: "pitch",
+      values: [[{ pitch: 60 }], [{ pitch: 64 }, { pitch: 67 }]],
+    },
+  },
+];
+
 describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
   describe("valid streams", () => {
     it("parses a bracketed pitch stream as chord values", () => {
@@ -47,25 +58,13 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
     });
 
     it("mixes bare pitches and chords", () => {
-      expect(parser.parse("[C3 (E3 G3)]")).toStrictEqual([
-        {
-          stream: {
-            param: "pitch",
-            values: [[{ pitch: 60 }], [{ pitch: 64 }, { pitch: 67 }]],
-          },
-        },
-      ]);
+      expect(parser.parse("[C3 (E3 G3)]")).toStrictEqual(BARE_PITCH_THEN_CHORD);
     });
 
     it("tolerates whitespace inside brackets and chords", () => {
-      expect(parser.parse("[ C3   ( E3  G3 ) ]")).toStrictEqual([
-        {
-          stream: {
-            param: "pitch",
-            values: [[{ pitch: 60 }], [{ pitch: 64 }, { pitch: 67 }]],
-          },
-        },
-      ]);
+      expect(parser.parse("[ C3   ( E3  G3 ) ]")).toStrictEqual(
+        BARE_PITCH_THEN_CHORD,
+      );
     });
 
     it("parses a stream followed by a time position", () => {

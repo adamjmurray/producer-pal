@@ -30,7 +30,7 @@ const tag = `v${version}`;
 
 // The build reads its version from config.ts, not package.json, so this is the
 // one disagreement that would put a tag on artifacts calling themselves
-// something else. src/test/meta/version-agreement.test.ts holds the full
+// something else. src/test/meta/versions/version-agreement.test.ts holds the full
 // inventory; this checks the one copy that decides what was just built.
 const configSource = readFileSync(
   join(rootDir, "src/shared/config.ts"),

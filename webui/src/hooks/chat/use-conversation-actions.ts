@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useCallback } from "preact/hooks";
+import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
 import { beginTurn } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   type ChatAdapter,
@@ -96,20 +97,26 @@ export function useConversationActions<
       newMessage: string,
       anchorIndex = mergedMessageIndex,
     ) => {
-      if (!apiKey) return;
+      if (!apiKey) {
+        return;
+      }
 
       // Don't discard queued follow-ups on a retry/edit fork — they're the
       // user's words. They stay queued through the fork and flush afterward (via
       // drainQueuedFollowUps on success), rather than vanishing silently here.
       const message = messages[mergedMessageIndex];
 
-      if (message?.role !== "user") return;
+      if (message?.role !== "user") {
+        return;
+      }
 
       const rawIndex = message.rawHistoryIndex;
       const history =
         clientRef.current?.chatHistory ?? pendingHistoryRef.current;
 
-      if (!history) return;
+      if (!history) {
+        return;
+      }
 
       invalidateCompactionUndo();
 
@@ -151,7 +158,9 @@ export function useConversationActions<
         // Stopped, switched away from, or superseded while init was in flight:
         // the turn that is live now owns the client's stream, so this one must
         // not take it. Same guard as handleSend's send path.
-        if (!stillLive()) return false;
+        if (!stillLive()) {
+          return false;
+        }
 
         // Init succeeded, so the new client now owns the (truncated) history;
         // clear the restored-conversation fallback. Deferred until after init
@@ -190,7 +199,10 @@ export function useConversationActions<
         // sibling. Without this, drainQueuedFollowUps below sends the follow-up,
         // whose autosave inherits the lingering signal and mis-branches under it
         // instead of appending to the fork.
-        if (pendingForkRef?.current != null) autoSaveRef?.current?.();
+        if (pendingForkRef?.current != null) {
+          autoSaveRef?.current?.();
+        }
+
         await drainQueuedFollowUps();
       }
     },
@@ -215,20 +227,25 @@ export function useConversationActions<
     async (mergedMessageIndex: number) => {
       const message = messages[mergedMessageIndex];
 
-      if (message?.role !== "user") return;
+      if (message?.role !== "user") {
+        return;
+      }
 
       const history =
         clientRef.current?.chatHistory ?? pendingHistoryRef.current;
+      const rawMessage = history?.[message.rawHistoryIndex];
+      // A send that failed before the client saw it (no API key) renders the
+      // row against a history the client never got, so rawHistoryIndex points
+      // past the end. Fall back to the text on screen — what handleEdit forks
+      // from — instead of doing nothing.
+      const userMessage =
+        rawMessage == null
+          ? formatUserContent(message)
+          : adapter.extractUserMessage(rawMessage);
 
-      if (!history) return;
-
-      const rawMessage = history[message.rawHistoryIndex];
-
-      if (!rawMessage) return;
-
-      const userMessage = adapter.extractUserMessage(rawMessage);
-
-      if (!userMessage) return;
+      if (!userMessage) {
+        return;
+      }
 
       // Retry forks like an edit, but anchors the ‹ n/m › arrows under the
       // assistant response (mergedMessageIndex + 1) rather than the user message:
@@ -247,7 +264,9 @@ export function useConversationActions<
     async (mergedMessageIndex: number, newMessage: string) => {
       const trimmed = newMessage.trim();
 
-      if (!trimmed) return;
+      if (!trimmed) {
+        return;
+      }
 
       await forkConversation(mergedMessageIndex, trimmed);
     },

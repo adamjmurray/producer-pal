@@ -13,10 +13,11 @@ import {
   formatSectionHeader,
   formatSubsectionHeader,
   formatUsageLine,
+  pctColor,
 } from "#evals/chat/shared/formatting.ts";
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { checkTally, judgeVerdict } from "./result-format.ts";
+import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
 
 /**
  * Print result for a single scenario run
@@ -47,6 +48,12 @@ export function printResult(result: JsonEvalResult): void {
 
   // Checks section
   printChecksSection(result);
+
+  // Signals section (non-gating)
+  printSignalsSection(result);
+
+  // Tool errors section (non-gating)
+  printToolErrorsSection(result);
 
   // Efficiency section
   if (result.efficiency) {
@@ -87,6 +94,72 @@ function printChecksSection(result: JsonEvalResult): void {
 }
 
 /**
+ * Print the Signals section — prose checks that report but don't gate
+ *
+ * @param result - The eval result
+ */
+function printSignalsSection(result: JsonEvalResult): void {
+  const signals = result.signals;
+
+  if (!signals || signals.length === 0) {
+    return;
+  }
+
+  const { passed, total } = checkTally(signals);
+
+  console.log("\n" + formatSubsectionHeader(`Signals (${passed}/${total})`));
+  console.log("");
+
+  for (const signal of signals) {
+    const icon = signal.pass
+      ? styleText("green", "\u2713")
+      : styleText("yellow", "\u2022");
+
+    console.log(`  ${icon} ${signal.label}`);
+  }
+}
+
+/**
+ * Print the Tool errors section — failed calls the model may have recovered from
+ *
+ * @param result - The eval result
+ */
+function printToolErrorsSection(result: JsonEvalResult): void {
+  const tally = result.toolErrors;
+
+  if (!tally || tally.count === 0) {
+    return;
+  }
+
+  console.log(
+    "\n" +
+      formatSubsectionHeader(
+        `Tool errors (${tally.count}/${tally.total} calls)`,
+      ),
+  );
+  console.log("");
+
+  for (const error of tally.errors) {
+    const where = `turn ${error.turnIndex} ${error.name}`;
+
+    console.log(
+      "  " +
+        styleText("yellow", `\u2022 ${where}: ${firstLine(error.message)}`),
+    );
+  }
+}
+
+/**
+ * First line of a possibly multi-line error message
+ *
+ * @param message - The error text
+ * @returns Its first line
+ */
+function firstLine(message: string): string {
+  return message.split("\n")[0] ?? "";
+}
+
+/**
  * Print the Efficiency section
  *
  * @param result - The eval result
@@ -94,20 +167,22 @@ function printChecksSection(result: JsonEvalResult): void {
 function printEfficiencySection(result: JsonEvalResult): void {
   const eff = result.efficiency;
 
-  if (!eff) return;
+  if (!eff) {
+    return;
+  }
 
   console.log("\n" + formatSubsectionHeader("Efficiency"));
   console.log("");
 
   const color = efficiencyColor(eff.percentage);
-  const actual = formatTokenLabel(eff.inputTokens);
+  const actual = formatTokenLabel(eff.outputTokens);
   const target = formatTokenLabel(eff.targetTokens);
 
   console.log(
     "  " +
       styleText(
         color,
-        `inputTokens ${actual} / ${target} target (${eff.percentage}%)`,
+        `outputTokens ${actual} / ${target} target (${eff.percentage}%)`,
       ),
   );
 }
@@ -120,7 +195,9 @@ function printEfficiencySection(result: JsonEvalResult): void {
 function printJudgeSection(result: JsonEvalResult): void {
   const judge = result.judge;
 
-  if (!judge) return;
+  if (!judge) {
+    return;
+  }
 
   const advisory = judge.advisory === true;
 
@@ -177,11 +254,13 @@ export function printResultBlock(result: JsonEvalResult): void {
 
   console.log(`  Checks:     ${styleText(checksColor, checksText)}`);
 
+  printNonGatingLines(result);
+
   // Efficiency line
   if (result.efficiency) {
     const eff = result.efficiency;
     const effColor = efficiencyColor(eff.percentage);
-    const actual = formatTokenLabel(eff.inputTokens);
+    const actual = formatTokenLabel(eff.outputTokens);
     const target = formatTokenLabel(eff.targetTokens);
     const effText = `${eff.percentage}% (${actual} / ${target})`;
 
@@ -203,6 +282,40 @@ export function printResultBlock(result: JsonEvalResult): void {
 
   if (result.totalUsage) {
     console.log("  " + formatUsageLine(result.totalUsage));
+  }
+}
+
+/**
+ * Print the RESULT-block lines that report without gating: the prose signals,
+ * the failed tool calls, and the score they discount.
+ *
+ * @param result - The eval result
+ */
+function printNonGatingLines(result: JsonEvalResult): void {
+  const signals = result.signals;
+
+  if (signals && signals.length > 0) {
+    const tally = checkTally(signals);
+    const color = tally.passed === tally.total ? "green" : "yellow";
+    const text = `${tally.passed}/${tally.total}`;
+
+    console.log(`  Signals:    ${styleText(color, text)}`);
+  }
+
+  const tally = result.toolErrors;
+
+  if (tally && tally.count > 0) {
+    const text = `${tally.count} of ${tally.total} calls`;
+
+    console.log(`  Tool errs:  ${styleText("yellow", text)}`);
+  }
+
+  const score = scorePercentage([result]);
+
+  if (score != null) {
+    const text = styleText(pctColor(score), `${score}%`);
+
+    console.log(`  Score:      ${text}`);
   }
 }
 

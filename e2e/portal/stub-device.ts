@@ -36,12 +36,27 @@ export const DEVICE_TOOL_REPLY = "the device answered";
  */
 export const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
 
+/** The per-client setting headers, spelled out for the same reason. */
+export const SETTING_HEADERS = {
+  smallModelMode: "x-producer-pal-small-model-mode",
+  notation: "x-producer-pal-notation",
+  format: "x-producer-pal-format",
+  liveApi: "x-producer-pal-live-api",
+} as const;
+
+/** One setting per key, absent when the portal sent no header for it. */
+export type DeviceSettings = Partial<
+  Record<keyof typeof SETTING_HEADERS, string>
+>;
+
 /** One request the device received. */
 export interface DeviceRequest {
   /** The JSON-RPC method, e.g. "tools/list". */
   method: string;
   /** The disabled-tools header, or undefined when the portal sent none. */
   disabledTools: string | undefined;
+  /** The setting headers that rode along, if any. */
+  settings: DeviceSettings;
 }
 
 /** The fake device under a test's control. */
@@ -111,6 +126,7 @@ async function handleRequest(
   requests.push({
     method: methodOf(body),
     disabledTools: headerValue(req, DISABLED_TOOLS_HEADER),
+    settings: settingsOf(req),
   });
 
   const server = new McpServer({ name: "stub-device", version: "1.0.0" });
@@ -210,6 +226,24 @@ function methodOf(body: unknown): string {
   const method = (body as { method?: unknown } | null)?.method;
 
   return typeof method === "string" ? method : "unknown";
+}
+
+/**
+ * Collect the setting headers one request carried, skipping the absent ones so
+ * "sent nothing" and "sent an empty value" stay distinguishable.
+ * @param req - The incoming request
+ * @returns The settings that were sent
+ */
+function settingsOf(req: IncomingMessage): DeviceSettings {
+  const settings: DeviceSettings = {};
+
+  for (const [key, header] of Object.entries(SETTING_HEADERS)) {
+    const value = headerValue(req, header);
+
+    if (value != null) settings[key as keyof DeviceSettings] = value;
+  }
+
+  return settings;
 }
 
 /**

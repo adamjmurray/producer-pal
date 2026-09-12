@@ -49,11 +49,11 @@ describe("extractWarnings", () => {
   it("handles case-insensitive Warning: prefix", () => {
     const result = toolResult(
       { view: "arrangement" },
-      "Warning: ppal-select ignored unexpected argument(s): invalidParam",
+      "Warning: ignored unexpected argument(s): invalidParam",
     );
 
     expect(extractWarnings(result)).toStrictEqual([
-      "ppal-select ignored unexpected argument(s): invalidParam",
+      "ignored unexpected argument(s): invalidParam",
     ]);
   });
 

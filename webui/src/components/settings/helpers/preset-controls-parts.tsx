@@ -231,8 +231,13 @@ export function PresetCreateForm(props: PresetCreateFormProps) {
             props.onNameChange((e.target as HTMLInputElement).value)
           }
           onKeyDown={(e) => {
-            if (e.key === "Enter") props.onConfirm();
-            if (e.key === "Escape") props.onCancel();
+            if (e.key === "Enter") {
+              props.onConfirm();
+            }
+
+            if (e.key === "Escape") {
+              props.onCancel();
+            }
           }}
           placeholder="Preset name"
           className={`flex-1 ${INPUT_CLASS}`}

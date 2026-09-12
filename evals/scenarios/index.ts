@@ -8,6 +8,8 @@
  * CLI for running Producer Pal evaluation scenarios
  */
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { styleText } from "node:util";
 import { Command } from "commander";
 import "#evals/shared/install-fetch-dispatcher.ts";
@@ -54,6 +56,8 @@ interface CliOptions {
   list?: boolean;
   listModels?: string | boolean;
   all?: boolean;
+  /** Run the ordering canary subset from evals/canary-scenarios.txt. */
+  canary?: boolean;
   skipSetup?: boolean;
   skipJudge?: boolean;
   skipReflection?: boolean;
@@ -76,6 +80,28 @@ interface CliOptions {
 function collectValues(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
+
+/**
+ * Read the ordering canary's scenario ids.
+ *
+ * The list is a checked-in file rather than a tag so that adding a scenario to
+ * the gate stays a reviewable act. Blank lines and #-comments are ignored.
+ *
+ * @returns Scenario ids to run
+ */
+function readCanaryScenarios(): string[] {
+  const path = fileURLToPath(
+    new URL("../canary-scenarios.txt", import.meta.url),
+  );
+
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .map((line) => line.replace(/#.*$/, "").trim())
+    .filter((line) => line !== "");
+}
+
+/** Stop the run after this many scenarios in a row fail to start at all. */
+const MAX_CONSECUTIVE_SCENARIO_ERRORS = 3;
 
 const program = new Command();
 
@@ -145,6 +171,10 @@ program
   .option("--no-save", "Skip writing JSON result files to disk")
   .option("-a, --all", "Run all scenarios")
   .option(
+    "--canary",
+    "Run the ordering canary subset (evals/canary-scenarios.txt)",
+  )
+  .option(
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
   )
@@ -161,7 +191,7 @@ program
     }
 
     if (options.list) {
-      printList();
+      printList(buildRunEnv(options));
 
       return;
     }
@@ -185,8 +215,17 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     );
   }
 
+  if (options.canary) {
+    if (options.all || options.test.length > 0) {
+      program.error("--canary cannot be combined with --all or --test");
+    }
+
+    options.test = readCanaryScenarios();
+    console.log(`Canary: ${options.test.length} scenarios`);
+  }
+
   if (!options.all && options.test.length === 0) {
-    program.error("must specify -t, --test <id> or -a, --all");
+    program.error("must specify -t, --test <id>, -a, --all, or --canary");
   }
 
   if (options.all && options.test.length > 0) {
@@ -289,6 +328,11 @@ async function runAllScenarios(
   // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
   // that wants the same one runs against it instead of paying another open.
   let lastOpenedLiveSet: string | null = null;
+  // Consecutive scenarios where nothing ran at all. Live has already retried
+  // and relaunched by this point, so the run is not going to recover — and a
+  // long unattended run would otherwise fill the results directory with
+  // scenarios nobody ever asked a model about.
+  let consecutiveErrors = 0;
 
   for (const scenario of scenarios) {
     const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
@@ -325,7 +369,35 @@ async function runAllScenarios(
     }
 
     resultsByScenario.set(scenario.id, modelResults);
+
+    consecutiveErrors = allRunsErrored(modelResults)
+      ? consecutiveErrors + 1
+      : 0;
+
+    if (consecutiveErrors >= MAX_CONSECUTIVE_SCENARIO_ERRORS) {
+      throw new Error(
+        `${consecutiveErrors} scenarios in a row never started — Live is not ` +
+          `recovering. Stopping so the rest of the run isn't scored blind. ` +
+          `Results so far are saved.`,
+      );
+    }
   }
 
   return resultsByScenario;
+}
+
+/**
+ * Whether every run of a scenario errored before the model took a turn.
+ *
+ * @param modelResults - The scenario's results, by model and label
+ * @returns True when nothing ran
+ */
+function allRunsErrored(
+  modelResults: Map<string, Map<string, JsonEvalResult[]>>,
+): boolean {
+  const runs = [...modelResults.values()].flatMap((byLabel) =>
+    [...byLabel.values()].flat(),
+  );
+
+  return runs.length > 0 && runs.every((run) => run.result === "error");
 }
