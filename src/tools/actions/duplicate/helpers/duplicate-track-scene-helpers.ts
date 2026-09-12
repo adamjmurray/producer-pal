@@ -328,6 +328,7 @@ export function calculateSceneLength(sceneIndex: number): number {
  * @param sceneId - Scene ID to duplicate
  * @param arrangementStartBeats - Start position in beats
  * @param name - Optional name for the duplicated clips
+ * @param color - Optional color for the duplicated clips
  * @param withoutClips - Whether to exclude clips when duplicating
  * @param arrangementLength - Optional length (<count>bar, n<fraction>, or <count>bar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator
@@ -339,6 +340,7 @@ export async function duplicateSceneToArrangement(
   sceneId: string,
   arrangementStartBeats: number,
   name?: string,
+  color?: string,
   withoutClips?: boolean,
   arrangementLength?: string,
   songTimeSigNumerator = 4,
@@ -402,6 +404,7 @@ export async function duplicateSceneToArrangement(
         songTimeSigDenominator,
         name,
         context,
+        color,
       );
 
       duplicatedClips.push(...clipsForTrack);

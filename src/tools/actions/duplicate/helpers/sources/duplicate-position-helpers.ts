@@ -12,6 +12,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   claimLabels,
+  labelColor,
   labelName,
   type CopyLabels,
 } from "./duplicate-label-helpers.ts";
@@ -105,6 +106,7 @@ export async function duplicateSceneToArrangementAtPositions(
       id,
       allPositions[i] as number, // bounded by loop
       labelName(labels, i),
+      labelColor(labels, i),
       withoutClips,
       arrangementLength,
       songTimeSigNumerator,

@@ -203,6 +203,7 @@ export async function createClipsForLength(
         songTimeSigNumerator,
         songTimeSigDenominator,
         name,
+        color,
         context,
         duplicatedClips,
       );
@@ -223,6 +224,7 @@ export async function createClipsForLength(
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length)
  * @param name - Optional name
+ * @param color - Optional color
  * @param context - Context object
  * @param duplicatedClips - Array to push results to
  */
@@ -233,6 +235,7 @@ async function lengthenClipAndCollectInfo(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name: string | undefined,
+  color: string | undefined,
   context: Partial<ToolContext & TilingContext>,
   duplicatedClips: MinimalClipInfo[],
 ): Promise<void> {
@@ -246,7 +249,7 @@ async function lengthenClipAndCollectInfo(
   );
 
   const updateResult = await updateClip(
-    { ids: newClipId, arrangementLength, name },
+    { ids: newClipId, arrangementLength, name, color },
     context,
   );
 

@@ -298,6 +298,27 @@ describe("duplicate - scene duplication", () => {
       );
     });
 
+    it("puts color on a scene's arrangement copies", async () => {
+      setupArrangementSceneMocks(1);
+
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      const clip = registerArrangementClip(0, 0, 16);
+
+      await duplicate({
+        type: "scene",
+        id: "scene1",
+        toPath: "[5|1]",
+        color: "#00ff00",
+      });
+
+      expectSceneDupAtBeat(track0, 16);
+      // Color, like name, lands on the clip the copy places.
+      expect(clip.set).toHaveBeenCalledWith("color", 0x00ff00);
+    });
+
     it("refuses a scene position spelled on both params", async () => {
       setupArrangementSceneMocks();
 

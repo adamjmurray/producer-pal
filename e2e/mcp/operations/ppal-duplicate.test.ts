@@ -278,6 +278,53 @@ describe("ppal-duplicate", () => {
     },
   );
 
+  // Color, like name, lands on every clip the copy lands — s7 starts empty,
+  // so the clip created here is the whole scene.
+  it("puts color on a scene's arrangement copies", async () => {
+    const createClipResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s7`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+
+    expect(parseToolResult<{ id: string }>(createClipResult).id).toBeDefined();
+
+    await sleep(100);
+
+    const scenesResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["scenes"] },
+    });
+    const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
+
+    const dupResult = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "scene",
+        id: scenes.scenes![7]!.id,
+        toPath: "[45|1]",
+        color: "#00FF00",
+      },
+    });
+    const dup = parseToolResult<{ clips: Array<{ id: string }> }>(dupResult);
+
+    expect(dup.clips.length).toBeGreaterThan(0);
+
+    await sleep(100);
+
+    const readCopy = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: dup.clips[0]!.id, include: ["color"] },
+    });
+
+    // Color may be quantized to Live's palette, but should be set — it was
+    // silently dropped before this fix.
+    expect(parseToolResult<ReadClipResult>(readCopy).color).toBeDefined();
+  });
+
   it("duplicates clips", async () => {
     // Test 1: Session clip to session
     // First create a clip to duplicate on empty track
