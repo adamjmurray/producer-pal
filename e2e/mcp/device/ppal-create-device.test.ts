@@ -342,6 +342,18 @@ describe("ppal-create-device", () => {
     );
   });
 
+  it("uses singular grammar when only one create-only arg was sent", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { path: "t0" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path requires deviceName; omit it to list available devices",
+    );
+  });
+
   it("still lists devices when no create-only args come with it", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",

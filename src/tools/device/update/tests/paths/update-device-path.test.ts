@@ -80,6 +80,14 @@ describe("updateDevice with path parameter", () => {
     ).toThrow("id and path names 2 entries but name names 3 entries.");
   });
 
+  // A mismatch names only the param the caller actually sent, not both
+  // addressing params — nothing here said "id".
+  it("names path, not id, when only path was sent", () => {
+    expect(() => updateDevice({ path: "t1,t2,t3", name: "X,Y" })).toThrow(
+      "path names 3 entries but name names 2 entries.",
+    );
+  });
+
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still updates by the ids alias", () => {

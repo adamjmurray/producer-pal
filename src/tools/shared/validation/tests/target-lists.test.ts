@@ -5,7 +5,33 @@
 
 import { describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-import { warnBlankTarget } from "#src/tools/shared/validation/lists/target-lists.ts";
+import {
+  targetParamLabel,
+  warnBlankTarget,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
+
+describe("targetParamLabel", () => {
+  it("names path when only path was sent", () => {
+    expect(targetParamLabel({ path: "t1,t2,t3" })).toBe("path");
+  });
+
+  it("names id when only id was sent", () => {
+    expect(targetParamLabel({ id: "1,2,3" })).toBe("id");
+  });
+
+  it("names both when the call sent both", () => {
+    expect(targetParamLabel({ id: "1,2", path: "t1,t2" })).toBe("id and path");
+  });
+
+  it("reports the alias's canonical name, not the alias", () => {
+    expect(targetParamLabel({ paths: "t1,t2" })).toBe("path");
+    expect(targetParamLabel({ ids: "1,2" })).toBe("id");
+  });
+
+  it("falls back to both names when neither was sent", () => {
+    expect(targetParamLabel({})).toBe("id and path");
+  });
+});
 
 describe("warnBlankTarget", () => {
   it("names the blank param and the one that carried the call", () => {

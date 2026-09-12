@@ -599,7 +599,7 @@ describe("updateClip - Basic operations", () => {
 
     await expect(
       updateClip({ id: "123, 456", name: "A, B, C" }),
-    ).rejects.toThrow("id and path names 2 entries but name names 3 entries.");
+    ).rejects.toThrow("id names 2 entries but name names 3 entries.");
 
     expect(mocks.clip123.set).not.toHaveBeenCalledWith("name", "A");
   });

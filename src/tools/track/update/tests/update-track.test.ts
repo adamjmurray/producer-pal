@@ -173,7 +173,7 @@ describe("updateTrack", () => {
   // against 2, and refused.
   it("refuses a trailing comma that leaves the lists uneven", () => {
     expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
-      "id and path names 3 entries but name names 2 entries.",
+      "id names 3 entries but name names 2 entries.",
     );
   });
 

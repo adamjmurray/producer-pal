@@ -12,6 +12,9 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  createTestDeviceAt,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -265,6 +268,21 @@ describe("ppal-update-device", () => {
     );
 
     expect(afterDelete.variations?.count).toBe(1);
+  });
+
+  it("names path, not id, when a path-only call's lists disagree", async () => {
+    const pathA = await createTestDeviceAt(ctx.client!, "Compressor", "t0");
+    const pathB = await createTestDeviceAt(ctx.client!, "Compressor", "t1");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${pathA},${pathB}`, name: "A,B,C" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path names 2 entries but name names 3 entries.",
+    );
   });
 });
 

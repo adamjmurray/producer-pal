@@ -90,8 +90,11 @@ function validateListModeArgs(args: {
   );
 
   if (sent.length > 0) {
+    const verb = sent.length === 1 ? "requires" : "require";
+    const pronoun = sent.length === 1 ? "it" : "them";
+
     throw new Error(
-      `${sent.join(", ")} require deviceName; omit them to list available devices`,
+      `${sent.join(", ")} ${verb} deviceName; omit ${pronoun} to list available devices`,
     );
   }
 }

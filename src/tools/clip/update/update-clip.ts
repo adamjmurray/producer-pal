@@ -43,6 +43,7 @@ import { validateListLengths } from "#src/tools/shared/validation/lists/list-len
 import {
   targetCount,
   targetIds,
+  targetParamLabel,
   warnBlankTarget,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -328,7 +329,7 @@ function resolveClipTargets(
   >,
 ): Array<string | null> {
   validateListLengths([
-    { param: "id and path", count: targetCount(targets) },
+    { param: targetParamLabel(targets), count: targetCount(targets) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
     { param: "arrangementStart", value: values.arrangementStart },

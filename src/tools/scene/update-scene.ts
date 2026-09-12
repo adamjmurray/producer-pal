@@ -24,6 +24,7 @@ import { validateListLengths } from "#src/tools/shared/validation/lists/list-len
 import {
   targetCount,
   targetIds,
+  targetParamLabel,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
@@ -90,7 +91,7 @@ export function updateScene(
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
   validateListLengths([
-    { param: "id and path", count: targetCount(named) },
+    { param: targetParamLabel(named), count: targetCount(named) },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);

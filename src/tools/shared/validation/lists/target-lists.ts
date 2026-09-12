@@ -46,6 +46,34 @@ export function targetCount(args: TargetParams): number {
 }
 
 /**
+ * The param name to report a target-count mismatch against: whichever of
+ * `id`/`ids` or `path`/`paths` the call actually sent, by its canonical name.
+ * The alias only ever stands in for its canonical, so a caller never sees it
+ * named back.
+ * @param args - The call's id/ids and path/paths params
+ * @returns "id", "path", or "id and path" when both sides were sent
+ */
+export function targetParamLabel(args: TargetParams): string {
+  const named = paramNamesSomething(args.id) || paramNamesSomething(args.ids);
+  const pathed =
+    paramNamesSomething(args.path) || paramNamesSomething(args.paths);
+
+  if (named && pathed) {
+    return "id and path";
+  }
+
+  if (named) {
+    return "id";
+  }
+
+  if (pathed) {
+    return "path";
+  }
+
+  return "id and path";
+}
+
+/**
  * The ids a call names, ids first, keeping one slot per entry so a caller
  * pairing them against another list keeps its positions.
  * @param args - The call's id/ids and path/paths params

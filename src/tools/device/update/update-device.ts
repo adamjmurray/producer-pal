@@ -18,7 +18,10 @@ import { type UpdateTargetOptions } from "./helpers/update-device-property-helpe
 import { updateMultipleTargets } from "./helpers/update-device-target-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { targetCount } from "#src/tools/shared/validation/lists/target-lists.ts";
+import {
+  targetCount,
+  targetParamLabel,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -124,7 +127,10 @@ export function updateDevice(
     // toPath is left out — it is one destination for the whole call, not a
     // per-device list.
     validateListLengths([
-      { param: "id and path", count: targetCount({ ids, path }) },
+      {
+        param: targetParamLabel({ ids, path }),
+        count: targetCount({ ids, path }),
+      },
       { param: "name", value: name },
       { param: "color", value: color },
     ]);

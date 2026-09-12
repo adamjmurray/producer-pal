@@ -101,7 +101,7 @@ describe("updateClip - arrangement params per clip", () => {
     await expect(
       updateClip({ id: "100,101,102", arrangementStart: "5|1,9|1" }),
     ).rejects.toThrow(
-      "id and path names 3 entries but arrangementStart names 2 entries.",
+      "id names 3 entries but arrangementStart names 2 entries.",
     );
 
     expect(tracks.map(movedTo)).toStrictEqual([null, null, null]);
@@ -126,7 +126,7 @@ describe("updateClip - arrangement params per clip", () => {
     await expect(
       updateClip({ id: "100,101,102", arrangementLength: "2bar,1bar" }),
     ).rejects.toThrow(
-      "id and path names 3 entries but arrangementLength names 2 entries.",
+      "id names 3 entries but arrangementLength names 2 entries.",
     );
 
     for (const track of tracks) {

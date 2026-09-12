@@ -125,6 +125,10 @@ export function splitCoord(input: string, label: string): LexedPath {
 
   const position = input.slice(open + 1, -1).trim();
 
+  if (position.includes("[")) {
+    throw pathError(label, input, 'it hit an unexpected second "["');
+  }
+
   if (position === "") {
     throw pathError(
       label,

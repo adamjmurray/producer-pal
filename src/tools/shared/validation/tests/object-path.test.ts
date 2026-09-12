@@ -440,6 +440,7 @@ describe("parseObjectPath - the [song position] coordinate", () => {
     ["an empty coordinate", "t0[]", 'its "[]" names no position'],
     ["an unclosed bracket", "t0[5|1", 'its "[" is never closed'],
     ["a stray closer", "t0 5|1]", 'it closes a "[" it never opened'],
+    ["a second coordinate", "t0[5|1][3|1]", 'it hit an unexpected second "["'],
   ])("refuses %s", (_label, path, problem) => {
     expect(() => parseObjectPath(path)).toThrow(problem);
   });

@@ -138,7 +138,7 @@ describe("updateScene", () => {
 
   it("refuses more names than scenes, naming both counts", () => {
     expect(() => updateScene({ id: "123,456", name: "A,B,C,D" })).toThrow(
-      "id and path names 2 entries but name names 4 entries.",
+      "id names 2 entries but name names 4 entries.",
     );
   });
 
