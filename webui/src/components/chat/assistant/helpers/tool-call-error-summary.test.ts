@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { extractErrorSummary } from "./tool-call-error-helpers";
+import { extractErrorSummary } from "./tool-call-error-summary";
 
 describe("extractErrorSummary", () => {
   describe("MCP content array with error field", () => {

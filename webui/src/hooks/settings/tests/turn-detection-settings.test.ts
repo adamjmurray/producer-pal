@@ -20,11 +20,11 @@ import {
   TURN_DETECTION_THRESHOLD_MAX,
   TURN_DETECTION_THRESHOLD_MIN,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 const KEY = "producer_pal_turn_detection";
 
-describe("turn-detection-helpers", () => {
+describe("turn-detection-settings", () => {
   beforeEach(() => {
     localStorage.clear();
   });

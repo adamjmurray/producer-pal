@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useCallback } from "preact/hooks";
-import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
+import { formatUserContent } from "#webui/chat/helpers/message-formatting";
 import { type UserMessage, toSentMessage } from "#webui/chat/sdk/types";
 import { beginTurn } from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 import {

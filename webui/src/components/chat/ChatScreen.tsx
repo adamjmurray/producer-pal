@@ -15,7 +15,7 @@ import {
   type SendMessageHandler,
 } from "#webui/hooks/chat/use-chat-types";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
-import { type BranchNavState } from "#webui/lib/conversation-branch-helpers";
+import { type BranchNavState } from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatStart } from "./ChatStart";
 import { ChatInput } from "./controls/composer/ChatInput";

@@ -7,7 +7,7 @@ import { type Session } from "@google/genai";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import {
   applyManualMute,
   endGeminiHalfDuplexMute,

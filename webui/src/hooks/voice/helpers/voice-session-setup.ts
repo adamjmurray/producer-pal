@@ -13,8 +13,8 @@ import {
   mapThinkingToRealtimeEffort,
   mapTurnDetectionToConfig,
 } from "#webui/hooks/settings/config-builders";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
-import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
+import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/helpers/voice-settings-storage";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   DEFAULT_VOICE_LANGUAGE,

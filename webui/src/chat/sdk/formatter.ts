@@ -6,7 +6,7 @@
 import {
   addTextContent,
   markLastThoughtAsOpen,
-} from "#webui/chat/helpers/formatter-helpers";
+} from "#webui/chat/helpers/message-formatting";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
 import { type ChatMessage } from "./types";
 

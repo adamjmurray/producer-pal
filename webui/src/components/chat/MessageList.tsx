@@ -9,7 +9,7 @@ import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import {
   type BranchNavState,
   type BranchPoint,
-} from "#webui/lib/conversation-branch-helpers";
+} from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
 import { MessageRow, type MessageRowProps } from "./assistant/MessageRow";

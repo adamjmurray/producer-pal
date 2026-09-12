@@ -24,7 +24,7 @@ import {
   clearTimer,
   mergeEntry,
   removeEntry,
-} from "./doc-collection-helpers";
+} from "./doc-collection-entries";
 import {
   runGuardedRefresh,
   statusAfterFailedRefresh,

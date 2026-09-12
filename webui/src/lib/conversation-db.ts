@@ -9,8 +9,8 @@ import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
 import {
   branchFamilyIds,
   collapseBranchFamilies,
-} from "#webui/lib/conversation-branch-helpers";
-import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
+} from "#webui/lib/conversation-branches";
+import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-open";
 
 export const MAX_CONVERSATIONS = 200;
 

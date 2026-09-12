@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { extractWarnings } from "./tool-call-warning-helpers";
+import { extractWarnings } from "./tool-call-warnings";
 
 /**
  * Build a tool result string matching the MCP content array format.

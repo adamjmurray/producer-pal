@@ -9,7 +9,7 @@ import {
   type RealtimeSession,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { fetchEphemeralToken } from "#webui/hooks/voice/helpers/ephemeral-token";
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 import {

@@ -18,7 +18,7 @@
 // rather than launch a worker that knows nothing about the Live Set.
 
 import { BRIEFING_REQUEST_HEADER } from "#src/shared/config";
-import { perRequestHeaders } from "#webui/chat/helpers/mcp-client-helpers";
+import { perRequestHeaders } from "#webui/chat/helpers/mcp-client-connection";
 import { type ChatClientConfig } from "#webui/chat/sdk/types";
 import { getSubagentBriefingUrl } from "#webui/utils/mcp-url";
 

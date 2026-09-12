@@ -15,24 +15,26 @@ import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import { useApplyPreset } from "./presets/preset-apply";
 import {
+  loadEnabledTools,
+  loadMaxToolSteps,
+  loadSmallModelMode,
+  loadSubagentPresetId,
+  saveCurrentSettings,
+  saveMaxToolSteps,
+  saveSmallModelMode,
+  saveSubagentPresetId,
+} from "./helpers/chat-settings-storage";
+import {
   type AllProviderSettings,
   checkHasApiKey,
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
-  loadMaxToolSteps,
-  loadSubagentPresetId,
-  loadEnabledTools,
   loadProviderSettings,
-  loadSmallModelMode,
   type ProviderSettings,
   type ProviderSettingsApplier,
   type ProviderStateSetters,
-  saveCurrentSettings,
-  saveMaxToolSteps,
-  saveSubagentPresetId,
-  saveSmallModelMode,
-} from "./settings-helpers";
+} from "./helpers/provider-settings";
 import { useProviderSlices } from "./use-provider-connections";
 import { useVoiceModeSettings } from "./use-voice-mode-settings";
 

@@ -46,7 +46,7 @@ import {
   type BranchNavState,
   type BranchPoint,
   computeBranchPoints,
-} from "#webui/lib/conversation-branch-helpers";
+} from "#webui/lib/conversation-branches";
 import {
   type ConversationRecord,
   listAllConversationSummaries,

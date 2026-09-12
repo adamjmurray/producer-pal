@@ -20,7 +20,7 @@ import {
   memoryEntryKey,
   useMemoryEntrySave,
   useMemoryValidation,
-} from "./memory-entry-editor-helpers";
+} from "./use-memory-entry-save";
 
 interface MemoryEntryEditorProps {
   /** The collection hook (per-entry save/delete lives here). */

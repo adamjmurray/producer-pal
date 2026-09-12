@@ -13,7 +13,7 @@ import {
   type RealtimeInputConfig,
   StartSensitivity,
 } from "@google/genai";
-import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
 import {

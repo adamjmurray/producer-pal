@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
-import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
+import { formatUserContent } from "#webui/chat/helpers/message-formatting";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { CompactButton } from "#webui/components/chat/controls/CompactButton";
@@ -23,10 +23,7 @@ import {
 } from "#webui/lib/utils/format-timestamp";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
-import {
-  RenderErrorFallback,
-  SafeMarkdown,
-} from "./helpers/message-list-helpers";
+import { RenderErrorFallback, SafeMarkdown } from "./helpers/SafeMarkdown";
 
 export interface MessageRowProps {
   message: UIMessage;

@@ -12,7 +12,7 @@ import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {

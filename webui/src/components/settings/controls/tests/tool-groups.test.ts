@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
-import { groupTools } from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
+import { groupTools } from "#webui/components/settings/controls/helpers/tool-groups";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";

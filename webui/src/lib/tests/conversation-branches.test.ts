@@ -11,7 +11,7 @@ import {
   computeBranchPoints,
   deriveForkParentId,
   forkPointerCreatesCycle,
-} from "#webui/lib/conversation-branch-helpers";
+} from "#webui/lib/conversation-branches";
 
 /**
  * Build a branch record with sensible defaults.

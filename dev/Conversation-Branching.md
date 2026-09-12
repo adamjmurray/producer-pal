@@ -109,8 +109,8 @@ at a different index → a fresh set rooted at the current record.
 ## Branch navigation (the `‹ n/m ›` arrows)
 
 `computeBranchPoints(activeId, items)` (pure, in
-`webui/src/lib/conversation-branch-helpers.ts`) returns the `BranchPoint[]`
-visible while viewing one conversation:
+`webui/src/lib/conversation-branches.ts`) returns the `BranchPoint[]` visible
+while viewing one conversation:
 
 - the set the active conversation belongs to **as a fork**, plus
 - any sets it anchors **as a trunk** (others forked from it).
@@ -172,7 +172,7 @@ the collapse; the branch arrows read `listAllConversationSummaries`
 
 | File                                                                     | Role                                                                                                                                      |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `webui/src/lib/conversation-branch-helpers.ts`                           | Pure helpers — exported: `computeBranchPoints`, `collapseBranchFamilies`, `deriveForkParentId`; internal: `siblingsOfSet`, `branchRootId` |
+| `webui/src/lib/conversation-branches.ts`                                 | Pure helpers — exported: `computeBranchPoints`, `collapseBranchFamilies`, `deriveForkParentId`; internal: `siblingsOfSet`, `branchRootId` |
 | `webui/src/hooks/chat/use-conversation-actions.ts`                       | `forkConversation` / `handleEdit` / `handleRetry`; sets `pendingForkRef`                                                                  |
 | `webui/src/hooks/chat/use-conversations.ts`                              | `saveCurrentConversation` (consumes the signal), `switchConversation`, `forkProtectedIds`                                                 |
 | `webui/src/hooks/chat/helpers/conversations/conversation-save-record.ts` | `buildConversationSaveRecord`, `buildForkedRecord`                                                                                        |

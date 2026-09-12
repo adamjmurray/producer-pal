@@ -10,7 +10,7 @@ import {
   StartSensitivity,
 } from "@google/genai";
 import { describe, expect, it } from "vitest";
-import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import {
   buildGeminiConfig,
   createGenAIClient,

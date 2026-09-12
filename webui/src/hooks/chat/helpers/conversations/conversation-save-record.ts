@@ -10,7 +10,7 @@ import {
 } from "#webui/hooks/chat/use-chat-types";
 import { type ActiveMeta } from "#webui/lib/conversation-store";
 import { getModelName } from "#webui/lib/config";
-import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
+import { deriveForkParentId } from "#webui/lib/conversation-branches";
 import {
   type ConversationRecord,
   loadConversation,

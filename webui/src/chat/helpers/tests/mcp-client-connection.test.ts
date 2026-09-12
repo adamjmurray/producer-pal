@@ -14,7 +14,7 @@ import {
   createConnectedMcpClient,
   filterEnabledTools,
   type McpToolDefinition,
-} from "#webui/chat/helpers/mcp-client-helpers";
+} from "#webui/chat/helpers/mcp-client-connection";
 
 const mockConnect = vi.fn().mockResolvedValue(undefined);
 

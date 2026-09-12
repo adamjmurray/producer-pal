@@ -8,7 +8,7 @@ import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 
 // Mock MCP client helpers. connectAndListTools is deliberately NOT mocked — it
 // owns the close-on-catalog-failure path asserted below.
-vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
+vi.mock(import("#webui/chat/helpers/mcp-client-connection"), () => ({
   createConnectedMcpClient: vi.fn(),
   filterEnabledTools: vi.fn((tools) => tools),
 }));
@@ -16,7 +16,7 @@ vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
 import {
   createConnectedMcpClient,
   filterEnabledTools,
-} from "#webui/chat/helpers/mcp-client-helpers";
+} from "#webui/chat/helpers/mcp-client-connection";
 import { createMcpTools } from "#webui/chat/sdk/mcp-tools";
 
 describe("createMcpTools", () => {

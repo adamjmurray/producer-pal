@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   isErrorResult,
   safeParseToolArgs,
-} from "#webui/chat/helpers/formatter-helpers";
+} from "#webui/chat/helpers/message-formatting";
 
 describe("isErrorResult", () => {
   it("detects direct error key in JSON", () => {

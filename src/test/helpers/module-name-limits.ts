@@ -20,7 +20,7 @@ export const NOTHING_WORDS = ["helpers", "utils", "misc", "common", "support"];
 export const NOTHING_WORD_FILE_LIMITS: Record<CommentTree, number> = {
   src: 95,
   scripts: 3,
-  webui: 18,
+  webui: 0,
   evals: 8,
   e2e: 0,
 };

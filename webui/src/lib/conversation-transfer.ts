@@ -8,7 +8,7 @@ import {
   type BranchRecord,
   branchFamilyIds,
   forkPointerCreatesCycle,
-} from "#webui/lib/conversation-branch-helpers";
+} from "#webui/lib/conversation-branches";
 import {
   type ConversationRecord,
   listAllConversationSummaries,

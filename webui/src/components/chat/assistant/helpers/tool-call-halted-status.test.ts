@@ -11,7 +11,7 @@ import {
 import {
   haltedToolStatus,
   unwrapToolResultText,
-} from "./tool-call-halted-helpers";
+} from "./tool-call-halted-status";
 
 describe("haltedToolStatus", () => {
   it("reads a canceled placeholder as stopped", () => {

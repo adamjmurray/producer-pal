@@ -8,7 +8,7 @@ import {
   type GoogleGenAI,
   type Session,
 } from "@google/genai";
-import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type GeminiVadSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { buildGeminiConfig } from "#webui/hooks/voice/gemini/gemini-client";
 import {
   type GeminiMessageDeps,

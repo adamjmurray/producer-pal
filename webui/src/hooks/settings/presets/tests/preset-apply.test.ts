@@ -12,7 +12,7 @@ import { useApplyPreset } from "#webui/hooks/settings/presets/preset-apply";
 import {
   type ProviderSettings,
   type ProviderStateSetters,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/provider-settings";
 import { type ChatPreset, type Provider } from "#webui/types/settings";
 
 const ALL_PROVIDERS: Provider[] = [

@@ -11,7 +11,7 @@ import {
   RealtimeSession,
   type TransportEvent,
 } from "@openai/agents/realtime";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 import {
   handleTransportEvent,
