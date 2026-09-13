@@ -37,7 +37,7 @@ const PROJECT_LABELS: ContextEditorLabels = {
   externalUpdateMessage: "Project context was updated outside the editor.",
   exportBasename: "producer-pal-project-context",
   description:
-    "Notes about this Ableton project, like its genre and song structure, included in every conversation. Saved in this project's Max for Live device (delete the device and it's gone). The AI can edit them too.",
+    "Notes about this Ableton project, like its genre and song structure, included in every conversation. Saved in this project's Max for Live device and mirrored to a file in your Live Project folder, so they survive deleting or upgrading the device. The AI can edit them too.",
 };
 
 const GLOBAL_LABELS: ContextEditorLabels = {
