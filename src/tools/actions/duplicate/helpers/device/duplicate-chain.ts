@@ -23,20 +23,15 @@ import {
   pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
-import {
-  claimLabels,
-  labelName,
-  type CopyLabels,
-} from "../sources/copy-labels.ts";
+import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
   withTempTrackCopy,
 } from "./temp-track-copy.ts";
 import { copyChainMixerTo } from "./copy-chain-mixer.ts";
-import { copyPerDestination } from "./copy-per-destination.ts";
+import { copyToDestinations } from "./copy-per-destination.ts";
 
 /** A chain copy: the new chain, and what didn't finish when something didn't. */
 interface ChainCopy {
@@ -63,23 +58,14 @@ export function duplicateChainWithPaths(
   labels: CopyLabels,
   count: number,
 ): object[] {
-  const paths = pathEntries(toPath, "toPath");
-
-  claimLabels(labels, Math.max(paths.length, 1));
-
-  if (count > 1) {
-    console.warn(
-      "count parameter ignored for chain duplication (only single copy supported)",
-    );
-  }
-
-  // Read the source fresh per destination: a copy into the source's own rack
-  // shifts nothing above it, but a LiveAPI object follows its path, and taking
-  // the id first is what survives either way.
-  const sourceId = chain.id;
-
-  return copyPerDestination(paths, source, (destination, i) =>
-    duplicateChain(LiveAPI.from(sourceId), destination, labelName(labels, i)),
+  return copyToDestinations(
+    chain,
+    toPath,
+    source,
+    labels,
+    count,
+    "chain",
+    duplicateChain,
   );
 }
 

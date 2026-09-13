@@ -5,13 +5,11 @@
 
 import { type PseudoParam } from "./specialized-device-types.ts";
 
-// Shared read/write helpers for specialized-device pseudo-params. Most
-// specialized state is a small int that maps to a stable string enum
-// (Roar routing mode, EQ Eight global mode, ...), a boolean toggle, or a
-// bounded / discrete-set integer. These helpers centralize the index↔label
-// mapping, coercion, and validation so each device spec stays declarative. A
-// write that refuses a value answers with the reason, which becomes that
-// param's own result entry. See dev/Specialized-Devices.md.
+// Read/write helpers for specialized-device pseudo-params. Specialized state is
+// nearly always a small int behind a string enum, a boolean toggle, or a
+// bounded or discrete-set integer, so the index↔label mapping, coercion and
+// validation live here and each device spec stays declarative. A refused write
+// answers with the reason, which becomes that param's own result entry.
 
 /**
  * Read an int-indexed property and map it to its enum label.
@@ -60,11 +58,9 @@ export function writeEnumByIndex(
 }
 
 /**
- * Build a complete enum pseudo-param backed by an int-indexed Live property:
- * `options` exposes the labels, `read` maps the stored index to its label, and
- * `write` maps a label back to its index (refusing an unknown label).
- * Collapses the otherwise-identical read/write wiring that every index↔label
- * control across the specialized device specs would repeat.
+ * Build a whole enum pseudo-param over an int-indexed Live property: `options`
+ * exposes the labels, `read` maps the stored index to one, and `write` maps a
+ * label back (refusing an unknown one).
  * @param name - camelCase pseudo-param name
  * @param property - Live API int-indexed property backing it
  * @param labels - User-facing labels in internal-index order
@@ -92,6 +88,37 @@ export function enumParam(
  */
 export function readBoolProp(device: LiveAPI, property: string): boolean {
   return (device.getProperty(property) as number) > 0;
+}
+
+/**
+ * Read a numeric property.
+ * @param device - LiveAPI device object
+ * @param property - Live API property name
+ * @returns The value
+ */
+export function readNumberProp(
+  device: LiveAPI,
+  property: string,
+): number | undefined {
+  return device.getProperty(property) as number | undefined;
+}
+
+/**
+ * Read an int-indexed property and map it to its catalog value — the read side
+ * of {@link writeIntFromSet} with `asIndex`.
+ * @param device - LiveAPI device object
+ * @param property - Live API property holding the int index
+ * @param catalog - Values in internal-index order
+ * @returns The matching value, or undefined if the index is out of range
+ */
+export function readNumberByIndex(
+  device: LiveAPI,
+  property: string,
+  catalog: readonly number[],
+): number | undefined {
+  const index = device.getProperty(property) as number;
+
+  return catalog[index];
 }
 
 /**

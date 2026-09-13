@@ -5,7 +5,6 @@
 
 import { isSameSlot } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "../../transform-warning-label.ts";
 import {
   type ExpressionNode,
@@ -16,6 +15,7 @@ import {
   evaluateExpression,
 } from "../transform-evaluation.ts";
 import { MAX_NOTE_PIECES } from "./note-cuts.ts";
+import { numericOpArg } from "./numeric-op-arg.ts";
 
 /**
  * Repeat (echo) matched notes: keep the originals and emit `copies` time-shifted
@@ -177,41 +177,18 @@ function resolveRepeatCopies(
     return 1; // default — a single echo
   }
 
-  // A bare pitch literal (`repeat(n/8, C2)`) is nonsensical as a count and would
-  // silently coerce to its MIDI number — warn-and-skip, mirroring ratchet.
-  if (typeof arg === "object" && arg.type === "pitchLiteral") {
-    console.warn(
-      `pitch name "${arg.name}" isn't a valid repeat copy count; use a number like repeat(n/8, 3). Skipping repeat.`,
-    );
-
-    return null;
-  }
-
-  let value: number;
-
-  try {
-    // Args are constants (no per-note context); a count evaluates to a number.
-    // evaluateExpression only throws on non-finite for pow(); plain arithmetic
-    // can still overflow to ±Infinity or yield NaN, so guard explicitly below.
-    value = evaluateExpression(
-      arg,
-      constantEvalContext(numerator, denominator),
-    );
-  } catch (error) {
-    console.warn(
-      `repeat() copy count could not be evaluated (${errorMessage(error)}); skipping`,
-    );
-
-    return null;
-  }
-
   // A non-finite count (e.g. Infinity - Infinity = NaN) would slip past both
   // guards below — NaN < 1 and NaN > MAX are both false — and the caller's
-  // `k <= NaN` loop would silently emit zero copies. Warn-and-skip instead,
-  // mirroring resolveRatchetPlan.
-  if (!Number.isFinite(value)) {
-    console.warn(`repeat() copy count must be a finite number; skipping`);
+  // `k <= NaN` loop would silently emit zero copies.
+  const value = numericOpArg(arg, numerator, denominator, {
+    pitchLiteral: (name) =>
+      `pitch name "${name}" isn't a valid repeat copy count; use a number like repeat(n/8, 3). Skipping repeat.`,
+    unevaluable: (reason) =>
+      `repeat() copy count could not be evaluated (${reason}); skipping`,
+    notFinite: "repeat() copy count must be a finite number; skipping",
+  });
 
+  if (value == null) {
     return null;
   }
 

@@ -17,17 +17,13 @@ const MIDI_MAX = 127;
  * @returns Velocity clamped to 0-127
  */
 export function clampVelocity(value: number, label: string): number {
-  if (value < MIDI_MIN || value > MIDI_MAX) {
-    const clamped = Math.max(MIDI_MIN, Math.min(MIDI_MAX, value));
-
-    console.warn(
-      `${label} ${value} outside valid range ${MIDI_MIN}-${MIDI_MAX}; clamped to ${clamped}`,
-    );
-
-    return clamped;
-  }
-
-  return value;
+  return clampAndWarn(
+    value,
+    MIDI_MIN,
+    MIDI_MAX,
+    `${MIDI_MIN}-${MIDI_MAX}`,
+    label,
+  );
 }
 
 /**
@@ -36,17 +32,7 @@ export function clampVelocity(value: number, label: string): number {
  * @returns Probability clamped to 0.0-1.0
  */
 export function clampProbability(value: number): number {
-  if (value < 0 || value > 1) {
-    const clamped = Math.max(0, Math.min(1, value));
-
-    console.warn(
-      `probability ${value} outside valid range 0.0-1.0; clamped to ${clamped}`,
-    );
-
-    return clamped;
-  }
-
-  return value;
+  return clampAndWarn(value, 0, 1, "0.0-1.0", "probability");
 }
 
 /**
@@ -66,4 +52,34 @@ export function acceptPitch(pitch: number): boolean {
   }
 
   return true;
+}
+
+/**
+ * Clamp a value into range, warning when it was outside. A NaN is left alone:
+ * it fails both comparisons, and inventing a bound for it would be a guess.
+ * @param value - Raw value from the parser
+ * @param min - Lowest allowed value
+ * @param max - Highest allowed value
+ * @param range - How to spell the range in the warning
+ * @param label - What is being clamped, e.g. "velocity"
+ * @returns The value, clamped
+ */
+function clampAndWarn(
+  value: number,
+  min: number,
+  max: number,
+  range: string,
+  label: string,
+): number {
+  if (value < min || value > max) {
+    const clamped = Math.max(min, Math.min(max, value));
+
+    console.warn(
+      `${label} ${value} outside valid range ${range}; clamped to ${clamped}`,
+    );
+
+    return clamped;
+  }
+
+  return value;
 }

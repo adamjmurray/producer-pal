@@ -34,7 +34,7 @@ import {
   resolveClipLocation,
 } from "./helpers/clip-resolution.ts";
 
-interface ReadClipArgs {
+export interface ReadClipArgs {
   /** Clip slot, "t<track>/s<scene>" */
   path?: string | null;
   /** Hidden alias for path */

@@ -6,6 +6,8 @@
 import {
   enumParam,
   readBoolProp,
+  readNumberByIndex,
+  readNumberProp,
   writeBoolProp,
   writeIntFromSet,
   writeIntInRange,
@@ -32,26 +34,6 @@ const PITCH_MODES = ["Hertz", "MIDI Note"] as const;
 // polyphony index → voice count (the count box next to the Poly toggle).
 const POLYPHONY_COUNTS = [2, 4, 8, 16] as const;
 
-/**
- * Read pitch_bend_range from the device.
- * @param device - LiveAPI device object
- * @returns The pitch bend range in semitones
- */
-function readPitchBendRange(device: LiveAPI): number {
-  return device.getProperty("pitch_bend_range") as number;
-}
-
-/**
- * Read the polyphony voice count (maps the polyphony index to its count value).
- * @param device - LiveAPI device object
- * @returns The voice count (2, 4, 8, or 16)
- */
-function readPolyphony(device: LiveAPI): number | undefined {
-  const index = device.getProperty("polyphony") as number;
-
-  return POLYPHONY_COUNTS[index];
-}
-
 export const spectralResonatorSpec: SpecializedDeviceSpec = {
   displayNames: ["Spectral Resonator"],
   params: [
@@ -65,7 +47,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     {
       name: "pitchBendRange",
       options: "0-24",
-      read: readPitchBendRange,
+      read: (device) => readNumberProp(device, "pitch_bend_range"),
       write: (device, value) =>
         writeIntInRange(
           device,
@@ -81,7 +63,8 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     {
       name: "polyphony",
       options: POLYPHONY_COUNTS,
-      read: readPolyphony,
+      read: (device) =>
+        readNumberByIndex(device, "polyphony", POLYPHONY_COUNTS),
       write: (device, value) =>
         writeIntFromSet(
           device,

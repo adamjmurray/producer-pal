@@ -23,16 +23,14 @@ if (typeof LiveAPI !== "undefined") {
     return buildOrReuse(parseIdOrPath(idOrPath));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
-    // A nonexistent object reports id "0" (a string) on Live 12.4.3 (v8) —
-    // probed for a bad path, a bad nested path, and a bad id. The "id 0" and
-    // numeric 0 comparisons below have never been observed to fire; they are
-    // kept as cheap insurance against other Live versions, not because either
-    // form is known to occur. Do not read them as documentation that `id` can
-    // be a number: see the contract on `id` in src/types/live-api.d.ts.
+    // A nonexistent object reports id "0" (a string) on Live 12.4.3. The other
+    // two comparisons have never been seen to fire — cheap insurance for other
+    // Live versions, not documentation that `id` can be a number (see the
+    // contract on `id` in src/types/live-api.d.ts).
     //
     // Don't replace this with the LiveAPI `valid` field, obvious as that looks.
-    // Measured on 12.4.3, it reads 1 for a bad path, a bad index, a bad id, and
-    // a path cleared to "" — it describes the wrapper, not the target.
+    // On 12.4.3 it reads 1 for a bad path, index, id, and a cleared path — it
+    // describes the wrapper, not the target.
     const id = this.id as string | number;
 
     return id !== "id 0" && id !== NONEXISTENT_ID && id !== 0;
@@ -322,133 +320,95 @@ if (typeof LiveAPI !== "undefined") {
     }
   };
 
-  // Index extraction getters (only define if not already defined)
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "trackIndex")) {
-    Object.defineProperty(LiveAPI.prototype, "trackIndex", {
-      get: function (this: LiveAPI) {
-        const match = this.path.match(/live_set tracks (\d+)/);
-        return match ? Number(match[1]) : null;
-      },
-    });
+  defineGetter("trackIndex", function (this: LiveAPI) {
+    return pathIndex(this.path, /live_set tracks (\d+)/);
+  });
+
+  defineGetter("returnTrackIndex", function (this: LiveAPI) {
+    return pathIndex(this.path, /live_set return_tracks (\d+)/);
+  });
+
+  defineGetter("category", function (this: LiveAPI) {
+    if (this.path.includes("live_set tracks")) {
+      return "regular";
+    } else if (this.path.includes("live_set return_tracks")) {
+      return "return";
+    } else if (this.path.includes("live_set master_track")) {
+      return "master";
+    }
+    return null;
+  });
+
+  // In session view a scene index and a clip slot index are the same number, so
+  // each getter answers from whichever path spelling it is given.
+  defineGetter("sceneIndex", function (this: LiveAPI) {
+    return pathIndex(
+      this.path,
+      /live_set scenes (\d+)/,
+      /live_set tracks \d+ clip_slots (\d+)/,
+    );
+  });
+
+  defineGetter("clipSlotIndex", function (this: LiveAPI) {
+    return pathIndex(
+      this.path,
+      /live_set tracks \d+ clip_slots (\d+)/,
+      /live_set scenes (\d+)/,
+    );
+  });
+
+  defineGetter("takeLaneIndex", function (this: LiveAPI) {
+    return pathIndex(this.path, /take_lanes (\d+)/);
+  });
+
+  // The LAST "devices N", so a device nested in a rack reports its own index.
+  defineGetter("deviceIndex", function (this: LiveAPI) {
+    const last = [...this.path.matchAll(/devices (\d+)/g)].at(-1);
+
+    return last == null ? null : Number(last[1]);
+  });
+
+  defineGetter("timeSignature", function (this: LiveAPI) {
+    // Scenes spell the properties differently from everything else.
+    const prefix = this.type === "Scene" ? "time_signature" : "signature";
+    const numerator = this.getProperty(`${prefix}_numerator`) as number | null;
+    const denominator = this.getProperty(`${prefix}_denominator`) as
+      | number
+      | null;
+
+    if (numerator != null && denominator != null) {
+      return `${String(numerator)}/${String(denominator)}`;
+    }
+
+    return null;
+  });
+}
+
+/**
+ * Add a getter to LiveAPI.prototype, unless something already defined it.
+ * @param name - The property name
+ * @param get - Reads the value off the object
+ */
+function defineGetter(name: string, get: (this: LiveAPI) => unknown): void {
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, name)) {
+    Object.defineProperty(LiveAPI.prototype, name, { get });
+  }
+}
+
+/**
+ * The number the first matching pattern captures in a path.
+ * @param path - A Live API path
+ * @param patterns - Patterns to try in order, each capturing one index
+ * @returns The index, or null when none of them match
+ */
+function pathIndex(path: string, ...patterns: RegExp[]): number | null {
+  for (const pattern of patterns) {
+    const match = path.match(pattern);
+
+    if (match) {
+      return Number(match[1]);
+    }
   }
 
-  // Return track index extension
-  if (
-    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "returnTrackIndex")
-  ) {
-    Object.defineProperty(LiveAPI.prototype, "returnTrackIndex", {
-      get: function (this: LiveAPI) {
-        const match = this.path.match(/live_set return_tracks (\d+)/);
-        return match ? Number(match[1]) : null;
-      },
-    });
-  }
-
-  // Track category extension
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "category")) {
-    Object.defineProperty(LiveAPI.prototype, "category", {
-      get: function (this: LiveAPI) {
-        if (this.path.includes("live_set tracks")) {
-          return "regular";
-        } else if (this.path.includes("live_set return_tracks")) {
-          return "return";
-        } else if (this.path.includes("live_set master_track")) {
-          return "master";
-        }
-        return null;
-      },
-    });
-  }
-
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "sceneIndex")) {
-    Object.defineProperty(LiveAPI.prototype, "sceneIndex", {
-      get: function (this: LiveAPI) {
-        // Try scene path first
-        let match = this.path.match(/live_set scenes (\d+)/);
-        if (match) {
-          return Number(match[1]);
-        }
-
-        // Also try clip_slots path (scene index is the clip slot index in session view)
-        match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
-        return match ? Number(match[1]) : null;
-      },
-    });
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "clipSlotIndex")
-  ) {
-    Object.defineProperty(LiveAPI.prototype, "clipSlotIndex", {
-      get: function (this: LiveAPI) {
-        // Try clip_slots path first
-        let match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
-        if (match) {
-          return Number(match[1]);
-        }
-
-        // Also try scene path (clip slot index is the scene index in session view)
-        match = this.path.match(/live_set scenes (\d+)/);
-        return match ? Number(match[1]) : null;
-      },
-    });
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "takeLaneIndex")
-  ) {
-    Object.defineProperty(LiveAPI.prototype, "takeLaneIndex", {
-      get: function (this: LiveAPI) {
-        const match = this.path.match(/take_lanes (\d+)/);
-        return match ? Number(match[1]) : null;
-      },
-    });
-  }
-
-  // Device index extension - matches LAST "devices X" for nested rack support
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "deviceIndex")) {
-    Object.defineProperty(LiveAPI.prototype, "deviceIndex", {
-      get: function (this: LiveAPI) {
-        const matches = this.path.match(/devices (\d+)/g);
-        if (!matches || matches.length === 0) {
-          return null;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length check above guarantees element exists
-        const lastMatch = matches.at(-1)!.match(/devices (\d+)/);
-        return lastMatch ? Number(lastMatch[1]) : null;
-      },
-    });
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "timeSignature")
-  ) {
-    Object.defineProperty(LiveAPI.prototype, "timeSignature", {
-      get: function (this: LiveAPI) {
-        // Different Live API object types use different property names for time signature
-        const objectType = this.type;
-        let numeratorProp, denominatorProp;
-
-        switch (objectType) {
-          case "Scene":
-            numeratorProp = "time_signature_numerator";
-            denominatorProp = "time_signature_denominator";
-            break;
-          default:
-            numeratorProp = "signature_numerator";
-            denominatorProp = "signature_denominator";
-            break;
-        }
-
-        const numerator = this.getProperty(numeratorProp) as number | null;
-        const denominator = this.getProperty(denominatorProp) as number | null;
-
-        if (numerator != null && denominator != null) {
-          return `${String(numerator)}/${String(denominator)}`;
-        }
-
-        return null;
-      },
-    });
-  }
+  return null;
 }

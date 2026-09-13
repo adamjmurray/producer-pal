@@ -373,6 +373,20 @@ export function findSourceFiles(
 }
 
 /**
+ * Source files under a directory whose text matches a pattern. For the content
+ * guards: a concept with one home should match in exactly one file.
+ * @param dir - Project-relative directory, e.g. "src/tools"
+ * @param pattern - What a copy of the concept looks like
+ * @returns The matching files, as project-relative paths, sorted
+ */
+export function filesContaining(dir: string, pattern: RegExp): string[] {
+  return findSourceFiles(path.join(projectRoot, dir), true)
+    .filter((file) => pattern.test(fs.readFileSync(file, "utf8")))
+    .map((file) => path.relative(projectRoot, file))
+    .toSorted();
+}
+
+/**
  * Recursively find all test files in a directory
  * @param dirPath - Directory to scan
  * @returns Array of test file paths

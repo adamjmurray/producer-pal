@@ -4,18 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import {
   extractDevicePath,
   insertionContainerPath,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
-import {
-  claimLabels,
-  labelName,
-  type CopyLabels,
-} from "../sources/copy-labels.ts";
+import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
@@ -25,9 +20,8 @@ import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { copyPerDestination } from "./copy-per-destination.ts";
+import { copyToDestinations } from "./copy-per-destination.ts";
 
 /** A finished device copy: what it is, where it was sent, and what it landed in. */
 interface DeviceCopy {
@@ -54,44 +48,24 @@ export function duplicateDeviceWithPaths(
   labels: CopyLabels,
   count: number,
 ): object[] {
-  // Reads a blank toPath as omitted the way clips do, and refuses one that
-  // names nothing rather than quietly falling back to the default destination.
-  const paths = pathEntries(toPath, "toPath");
-
-  claimLabels(labels, Math.max(paths.length, 1));
-
-  if (count > 1) {
-    console.warn(
-      "count parameter ignored for device duplication (only single copy supported)",
-    );
-  }
-
-  // Read the source fresh per destination. A LiveAPI object follows its path,
-  // and an earlier copy inserted at or before the source's own index shifts it
-  // up — so reusing this one would duplicate whatever moved into its place.
-  // Take the id before anything moves; after the first copy the path is stale.
-  const sourceId = object.id;
-
-  return copyPerDestination(paths, source, (destination, i) =>
-    withDevicePath(
-      duplicateDevice(
-        LiveAPI.from(sourceId),
-        destination,
-        labelName(labels, i),
-      ),
-    ),
+  return copyToDestinations(
+    object,
+    toPath,
+    source,
+    labels,
+    count,
+    "device",
+    (device, destination, name) =>
+      withDevicePath(duplicateDevice(device, destination, name)),
   );
 }
 
 /**
  * Name the copy by where it ended up. Read after duplicateDevice returns, not
  * inside it: the temp track it works through shifts every later track index,
- * so a path read before the cleanup is one track off.
- *
- * The container is rebuilt from the id the move reported, not reused: it was
- * resolved while the temp track still shifted every later track index, so only
- * an id survives the cleanup. Rebuilt lazily — nothing but a drum-pad spelling
- * ever looks at it.
+ * so a path or a container read before the cleanup is one track off — which is
+ * why the container is rebuilt here from the id the move reported, and lazily,
+ * since nothing but a drum-pad spelling looks at it.
  * @param result - The copy's id, destination and landing container
  * @returns The result with its path
  */

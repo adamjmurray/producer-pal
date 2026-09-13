@@ -134,6 +134,18 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
       restore();
     }
   });
+
+  it("rejects when outlet() throws, rather than answering a failed result", () => {
+    // Unlike node_request, code-exec doesn't report a send failure as a result:
+    // a Max IPC failure reaches the caller as a rejection.
+    vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+      throw new Error("outlet exploded");
+    });
+
+    return expect(requestCodeExecution("return notes")).rejects.toThrow(
+      "outlet exploded",
+    );
+  });
 });
 
 describe("code-exec-v8-protocol handleCodeExecResult", () => {

@@ -7,6 +7,8 @@ import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
   enumParam,
+  readNumberByIndex,
+  readNumberProp,
   writeIntFromSet,
   writeIntInRange,
 } from "../specialized-param-access.ts";
@@ -53,27 +55,6 @@ const OSC_ENGINES = ["None", "Fm", "Classic", "Modern"] as const;
 // index 0-7 → these counts; 8+ silently reverts. unison_voice_count, by
 // contrast, IS a raw count (range 2-8).
 const POLY_VOICES = [2, 3, 4, 5, 6, 7, 8, 16] as const;
-
-/**
- * Read poly_voices and map its catalog index to the actual voice count.
- * (poly_voices stores an index into POLY_VOICES, not the count itself.)
- * @param device - LiveAPI device object
- * @returns The voice count (2,3,4,5,6,7,8,16), or undefined
- */
-function readPolyVoices(device: LiveAPI): number | undefined {
-  const index = device.getProperty("poly_voices") as number;
-
-  return POLY_VOICES[index];
-}
-
-/**
- * Read unison_voice_count as a plain number (it stores the raw count).
- * @param device - LiveAPI device object
- * @returns The unison voice count, or undefined
- */
-function readUnisonVoiceCount(device: LiveAPI): number | undefined {
-  return device.getProperty("unison_voice_count") as number | undefined;
-}
 
 /**
  * Build a pair of category + wavetable pseudo-params for one oscillator.
@@ -191,7 +172,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     {
       name: "polyVoices",
       options: POLY_VOICES,
-      read: readPolyVoices,
+      read: (device) => readNumberByIndex(device, "poly_voices", POLY_VOICES),
       write: (device, value) =>
         writeIntFromSet(
           device,
@@ -206,7 +187,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     {
       name: "unisonVoiceCount",
       options: "2-8",
-      read: readUnisonVoiceCount,
+      read: (device) => readNumberProp(device, "unison_voice_count"),
       write: (device, value) =>
         writeIntInRange(
           device,

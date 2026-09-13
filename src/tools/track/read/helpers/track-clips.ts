@@ -7,6 +7,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import {
   readOneClip,
+  type ReadClipArgs,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
 import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -40,22 +41,18 @@ export function readSessionClips(
 ): ReadClipResult[] {
   const drumMode = isDrumMode();
 
-  return track
-    .getChildIds("clip_slots")
-    .map((_clipSlotId, sceneIndex) =>
-      readOneClip(
-        {
-          trackIndex,
-          sceneIndex,
-          suppressEmptyWarning: true,
-          slotValidated: true,
-          drumMode,
-          ...(include && { include }),
-        },
-        { notation },
-      ),
-    )
-    .filter((clip) => clip.id != null);
+  return readClips(
+    track.getChildIds("clip_slots"),
+    (_clipSlotId, sceneIndex) => ({
+      trackIndex,
+      sceneIndex,
+      suppressEmptyWarning: true,
+      slotValidated: true,
+      drumMode,
+      ...(include && { include }),
+    }),
+    notation,
+  );
 }
 
 /**
@@ -97,21 +94,7 @@ export function readArrangementClips(
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
-  const drumMode = isDrumMode();
-
-  return track
-    .getChildIds("arrangement_clips")
-    .map((clipId) =>
-      readOneClip(
-        {
-          id: clipId,
-          drumMode,
-          ...(include && { include }),
-        },
-        { notation },
-      ),
-    )
-    .filter((clip) => clip.id != null);
+  return readArrangementClipsOf(track, isDrumMode(), include, notation);
 }
 
 /**
@@ -164,15 +147,7 @@ export function readTakeLaneClips(
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
-  const clips = lane
-    .getChildIds("arrangement_clips")
-    .map((clipId) =>
-      readOneClip(
-        { id: clipId, drumMode, ...(include && { include }) },
-        { notation },
-      ),
-    )
-    .filter((clip) => clip.id != null);
+  const clips = readArrangementClipsOf(lane, drumMode, include, notation);
 
   // Strip fields redundant with the parent context: a take lane clip is always
   // an arrangement clip on this track, matching its MIDI/audio type. The path
@@ -180,4 +155,42 @@ export function readTakeLaneClips(
   stripFields(clips, "view", "type");
 
   return clips;
+}
+
+/**
+ * Read the arrangement clips of a track or take lane.
+ * @param owner - The track or take lane holding the clips
+ * @param drumMode - Whether the clip reads use drum mode (see drumModeForTrack)
+ * @param include - Include array for nested clip reads
+ * @param notation - Active notation for nested clip note formatting
+ * @returns The clips that exist, in order
+ */
+function readArrangementClipsOf(
+  owner: LiveAPI,
+  drumMode: boolean,
+  include?: string[],
+  notation?: Notation,
+): ReadClipResult[] {
+  return readClips(
+    owner.getChildIds("arrangement_clips"),
+    (clipId) => ({ id: clipId, drumMode, ...(include && { include }) }),
+    notation,
+  );
+}
+
+/**
+ * Read a collection's clips, dropping the slots that hold none.
+ * @param clipIds - The collection's child ids
+ * @param argsFor - The read args for one clip, by id and position
+ * @param notation - Active notation for nested clip note formatting
+ * @returns The clips that exist, in order
+ */
+function readClips(
+  clipIds: string[],
+  argsFor: (clipId: string, index: number) => ReadClipArgs,
+  notation?: Notation,
+): ReadClipResult[] {
+  return clipIds
+    .map((clipId, index) => readOneClip(argsFor(clipId, index), { notation }))
+    .filter((clip) => clip.id != null);
 }
