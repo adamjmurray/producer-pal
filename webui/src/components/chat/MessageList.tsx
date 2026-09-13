@@ -40,6 +40,8 @@ interface MessageListProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  /** Opens the Instructions tab from that notice; omitted in voice/demo. */
+  onOpenInstructions?: () => void;
 }
 
 /**
@@ -76,6 +78,7 @@ export function MessageList({
   requestedModel,
   branchNav,
   systemInstruction,
+  onOpenInstructions,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -135,7 +138,10 @@ export function MessageList({
       data-testid="message-list"
     >
       {systemInstruction != null && (
-        <SystemPromptNotice systemInstruction={systemInstruction} />
+        <SystemPromptNotice
+          systemInstruction={systemInstruction}
+          onOpenInstructions={onOpenInstructions}
+        />
       )}
 
       {messages.map((message, originalIdx) => (

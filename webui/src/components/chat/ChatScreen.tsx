@@ -53,6 +53,8 @@ interface ChatScreenProps {
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
   onOpenContext: () => void;
+  /** Open the context editor's Instructions tab (the system prompt). */
+  onOpenInstructions: () => void;
   onStop: () => void;
   showTimestamps: boolean;
   showTokenUsage: boolean;
@@ -118,6 +120,7 @@ export function ChatScreen(props: ChatScreenProps) {
     onOpenToolsSettings,
     onOpenConnectionSettings,
     onOpenContext,
+    onOpenInstructions,
     onStop,
     showTimestamps,
     showTokenUsage,
@@ -167,6 +170,7 @@ export function ChatScreen(props: ChatScreenProps) {
             requestedModel={headerInfo.activeModel}
             branchNav={branchNav}
             systemInstruction={systemInstruction}
+            onOpenInstructions={onOpenInstructions}
           />
         )}
       </div>

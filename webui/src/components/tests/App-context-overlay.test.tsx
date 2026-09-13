@@ -11,10 +11,15 @@ import { SETTINGS_ANIMATION_MS } from "#webui/hooks/settings/use-settings-close"
 import { describe, expect, it, vi } from "vitest";
 
 import "./App-mocks-test-helpers";
+import { useChat } from "#webui/hooks/chat/use-chat";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { setStubLeaveGuard } from "./App-context-mocks";
-import { installAppTestSetup, mockSettingsHook } from "./App-test-helpers";
+import {
+  installAppTestSetup,
+  mockChatHook,
+  mockSettingsHook,
+} from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
 describe("App", () => {
@@ -87,6 +92,38 @@ describe("App", () => {
       expect(contextStub()).toBe(null);
       openContext(container);
       expect(contextStub()).not.toBe(null);
+    });
+
+    it("opens the editor on Project from the header button", () => {
+      const { container } = render(<App />);
+
+      openContext(container);
+      expect(contextStub()?.getAttribute("data-initial-tab")).toBe("project");
+    });
+
+    it("opens the Instructions tab from the transcript's system prompt notice", () => {
+      (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockChatHook,
+        messages: [
+          {
+            id: "1",
+            role: "user",
+            content: "hello",
+            parts: [{ type: "text", content: "hello" }],
+          },
+        ],
+      });
+
+      const { container } = render(<App />);
+      const customize = container.querySelector(
+        'button[aria-label="Customize system prompt"]',
+      );
+
+      expect(customize).not.toBe(null);
+      fireEvent.click(customize!);
+      expect(contextStub()?.getAttribute("data-initial-tab")).toBe(
+        "instructions",
+      );
     });
 
     it("wraps the editor in a stable element so tab switches don't re-flash the panel", () => {

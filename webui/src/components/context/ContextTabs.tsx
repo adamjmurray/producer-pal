@@ -25,7 +25,7 @@ type DocTab = "project" | "global" | "instructions";
  * All context editor tabs: the doc tabs plus the multi-fragment Skills override
  * tab and the multi-entry Memory tab.
  */
-type ContextTab = DocTab | "skills" | "memory";
+export type ContextTab = DocTab | "skills" | "memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
@@ -70,6 +70,8 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
 };
 
 interface ContextTabsProps {
+  /** Tab to open on; defaults to Project. Only read at mount. */
+  initialTab?: ContextTab;
   /** Close the overlay; omitted on the standalone `/context` page. */
   onClose?: () => void;
   /**
@@ -95,7 +97,7 @@ interface ContextTabsProps {
  * @returns Tabbed editor element
  */
 export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
-  const [tab, setTab] = useState<ContextTab>("project");
+  const [tab, setTab] = useState<ContextTab>(props.initialTab ?? "project");
   const projectContext = useProjectContext();
   const globalContext = useGlobalContext();
   const instructions = useSystemPrompt();
