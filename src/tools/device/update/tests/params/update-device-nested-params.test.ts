@@ -167,7 +167,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
         ok: false,
         reason: "Cannot auto-create 21 drum pad chains (max: 16)",
       },
-      { id: "macro-param", name: "Macro 1", value: 0.5 },
+      { id: "macro-param", name: "Macro 1" },
     ]);
     expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
   });

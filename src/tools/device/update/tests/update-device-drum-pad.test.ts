@@ -142,12 +142,13 @@ describe("updateDevice - bare drum pad paths", () => {
     });
 
     expect(chains[0]?.set).toHaveBeenCalledWith("name", "Kick");
-    // The chain's mixer read-back rides along, so a single-layer pad reports
-    // the level that landed the same way a chain path does.
+    // The chain's mixer report rides along, so a single-layer pad says what
+    // Live kept the same way a chain path does.
     expect(result).toStrictEqual({
       id: "pad-36",
       chainIds: ["chain-0"],
       gainDb: -6.02,
+      reason: "gainDb read back as shown, not as sent",
     });
   });
 

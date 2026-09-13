@@ -3,17 +3,25 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type MixerApplied,
-  setParamAndReadBack,
+  PARAM_DISABLED_REASON,
+  isParamEnabled,
 } from "#src/tools/shared/device/helpers/param-writing.ts";
+import {
+  type PublishedValue,
+  differsAtPublishedResolution,
+  publishedReadBack,
+  readBackReason,
+} from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { roundGainDb, roundPan } from "#src/tools/shared/helpers/rounding.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+
+/** The two ways a track pans, and which pan params apply in each. */
+export type PanningMode = "stereo" | "split";
 
 interface MixerParams extends PanParams {
   gainDb?: number;
-  panningMode?: string;
+  panningMode?: PanningMode;
 }
 
 /** The pan values from a call, which apply in one panning mode or the other. */
@@ -23,43 +31,75 @@ interface PanParams {
   rightPan?: number;
 }
 
-/** What a track mixer write landed, read back off the track. */
+/**
+ * What a track mixer write has to say. A value that landed as asked isn't here:
+ * the caller already knows it.
+ */
 export interface TrackMixerApplied extends MixerApplied {
-  leftPan?: number;
-  rightPan?: number;
+  leftPan?: PublishedValue;
+  rightPan?: PublishedValue;
+  /**
+   * Only ever "split", and only when the call didn't set the mode itself:
+   * stereo is what a caller assumes, split is the state they may never have
+   * read.
+   */
+  panningMode?: "split";
+  /** Why a value isn't the one asked for, or had no effect */
+  reason?: string;
+}
+
+/** One mixer parameter to write, and how the result would name it. */
+interface MixerWrite {
+  /** The result field, which is also the param name the caller wrote */
+  field: "gainDb" | "pan" | "leftPan" | "rightPan";
+  /** Which mixer child holds the parameter */
+  child: string;
+  /** Which property carries the value */
+  property: "value" | "display_value";
+  requested: number | undefined;
+  /** Rounds the read-back to the resolution reads publish */
+  round: (value: number) => number;
+}
+
+/** A track's mixer write while it is still being collected. */
+interface MixerReport {
+  applied: TrackMixerApplied;
+  /** Params whose read-back isn't the number asked for */
+  changed: string[];
+  /** Params that had no effect, and what to do instead */
+  refused: string[];
 }
 
 /**
  * Apply mixer properties (gain and panning) to a track.
  *
- * The reported values are read back off the track, not echoed from the
- * arguments: Live clamps and snaps what it is given.
+ * Values are read back off the track, not echoed: Live clamps and snaps what it
+ * is given. One that came back the same is left out of the result.
  * @param track - Track object
  * @param params - Mixer properties
- * @returns What landed, read back
+ * @returns What didn't land as asked, read back
  */
 export function applyMixerProperties(
   track: LiveAPI,
   params: MixerParams,
 ): TrackMixerApplied {
   const { gainDb, pan, panningMode, leftPan, rightPan } = params;
-  const applied: TrackMixerApplied = {};
+  const report: MixerReport = { applied: {}, changed: [], refused: [] };
 
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
-    return applied;
+    return report.applied;
   }
 
   // Gain is independent of panning mode.
-  setIfLanded(
-    applied,
-    "gainDb",
-    writeMixerChild(mixer, "volume", "display_value", gainDb, {
-      label: "gainDb",
-      round: roundGainDb,
-    }),
-  );
+  writeMixerParam(mixer, report, {
+    field: "gainDb",
+    child: "volume",
+    property: "display_value",
+    requested: gainDb,
+    round: roundGainDb,
+  });
 
   const currentIsSplit = mixer.getProperty("panning_mode") === 1;
 
@@ -72,125 +112,148 @@ export function applyMixerProperties(
   const effectiveMode = panningMode ?? (currentIsSplit ? "split" : "stereo");
 
   if (effectiveMode === "stereo") {
-    applyStereoPan(mixer, track, applied, { pan, leftPan, rightPan });
+    applyStereoPan(mixer, report, { pan, leftPan, rightPan });
   } else {
-    applySplitPan(mixer, track, applied, { pan, leftPan, rightPan });
+    applySplitPan(mixer, report, { pan, leftPan, rightPan });
   }
 
-  return applied;
+  // Split is the mode a caller doesn't expect, and it decides which pan params
+  // the call could reach. Stereo is what they already assume, so it goes unsaid.
+  if (
+    panningMode == null &&
+    effectiveMode === "split" &&
+    (pan ?? leftPan ?? rightPan) != null
+  ) {
+    report.applied.panningMode = "split";
+  }
+
+  return finishReport(report);
 }
 
 /**
- * Apply stereo panning and warn about the split-only params
+ * Apply stereo panning, reporting the split-only params as having no effect
  * @param mixer - Mixer device object
- * @param track - The track being updated, for the warning
- * @param applied - Collects what landed
+ * @param report - Collects what the write has to say
  * @param params - The pan values from the call
  */
 function applyStereoPan(
   mixer: LiveAPI,
-  track: LiveAPI,
-  applied: TrackMixerApplied,
+  report: MixerReport,
   params: PanParams,
 ): void {
-  setIfLanded(
-    applied,
-    "pan",
-    writeMixerChild(mixer, "panning", "value", params.pan, {
-      label: "pan",
-      round: roundPan,
-    }),
-  );
+  writeMixerParam(mixer, report, {
+    field: "pan",
+    child: "panning",
+    property: "value",
+    requested: params.pan,
+    round: roundPan,
+  });
 
   if (params.leftPan != null || params.rightPan != null) {
-    console.warn(
-      `track ${targetLabel(track)} is in stereo panning mode, so leftPan/rightPan ` +
-        "had no effect; set panningMode to 'split', or use pan",
+    report.refused.push(
+      "leftPan/rightPan had no effect: they only apply in split panning " +
+        "mode — set panningMode to 'split', or use pan",
     );
   }
 }
 
 /**
- * Apply split panning and warn about the stereo-only param
+ * Apply split panning, reporting the stereo-only param as having no effect
  * @param mixer - Mixer device object
- * @param track - The track being updated, for the warning
- * @param applied - Collects what landed
+ * @param report - Collects what the write has to say
  * @param params - The pan values from the call
  */
 function applySplitPan(
   mixer: LiveAPI,
-  track: LiveAPI,
-  applied: TrackMixerApplied,
+  report: MixerReport,
   params: PanParams,
 ): void {
-  setIfLanded(
-    applied,
-    "leftPan",
-    writeMixerChild(mixer, "left_split_stereo", "value", params.leftPan, {
-      label: "leftPan",
-      round: roundPan,
-    }),
-  );
+  writeMixerParam(mixer, report, {
+    field: "leftPan",
+    child: "left_split_stereo",
+    property: "value",
+    requested: params.leftPan,
+    round: roundPan,
+  });
 
-  setIfLanded(
-    applied,
-    "rightPan",
-    writeMixerChild(mixer, "right_split_stereo", "value", params.rightPan, {
-      label: "rightPan",
-      round: roundPan,
-    }),
-  );
+  writeMixerParam(mixer, report, {
+    field: "rightPan",
+    child: "right_split_stereo",
+    property: "value",
+    requested: params.rightPan,
+    round: roundPan,
+  });
 
   if (params.pan != null) {
-    console.warn(
-      `track ${targetLabel(track)} is in split panning mode, so pan had no ` +
-        "effect; set panningMode to 'stereo', or use leftPan/rightPan",
+    report.refused.push(
+      "pan had no effect: it only applies in stereo panning mode — set " +
+        "panningMode to 'stereo', or use leftPan/rightPan",
     );
   }
 }
 
 /**
- * Write one of the mixer's parameters and read it back. The parameter is only
- * looked up when there is something to write — every update-track call would
- * otherwise build all four.
+ * Write one of the mixer's parameters, read it back, and report it only when
+ * Live kept a different value. The parameter is only looked up when there is
+ * something to write — every update-track call would otherwise build all four.
+ *
+ * A parameter something else owns is reported on the track's entry rather than
+ * warned about: silence here means the value landed.
  * @param mixer - Mixer device object
- * @param name - Which mixer child holds the parameter
- * @param property - Which property carries the value
- * @param value - Value to write, or undefined to leave it alone
- * @param naming - How to name the parameter in a warning, and how to round the
- *   read-back to the resolution reads report
- * @returns What the parameter now reads, or undefined when nothing was written
+ * @param report - Collects what the write has to say
+ * @param write - The parameter to write and how to name it
  */
-function writeMixerChild(
+function writeMixerParam(
   mixer: LiveAPI,
-  name: string,
-  property: "value" | "display_value",
-  value: number | undefined,
-  naming: { label: string; round: (value: number) => number },
-): number | undefined {
-  if (value == null) {
-    return undefined;
+  report: MixerReport,
+  write: MixerWrite,
+): void {
+  const { field, requested, round } = write;
+
+  if (requested == null) {
+    return;
   }
 
-  const param = mixer.child(name);
+  const param = mixer.child(write.child);
 
-  return param.exists()
-    ? setParamAndReadBack(param, property, value, naming.label, naming.round)
-    : undefined;
+  if (!param.exists()) {
+    return;
+  }
+
+  if (!isParamEnabled(param)) {
+    report.refused.push(`${field} ${PARAM_DISABLED_REASON}`);
+
+    return;
+  }
+
+  param.set(write.property, requested);
+
+  const landed = publishedReadBack(param.getProperty(write.property), round);
+
+  if (
+    landed == null ||
+    !differsAtPublishedResolution(requested, landed, round)
+  ) {
+    return;
+  }
+
+  report.applied[field] = landed;
+  report.changed.push(field);
 }
 
 /**
- * Record a value that landed, leaving the field out when nothing was written
- * @param applied - Collects what landed
- * @param field - Which result field the value belongs to
- * @param landed - The value read back, or undefined when nothing was written
+ * Put everything the mixer write has to say into one reason on the entry
+ * @param report - What the write collected
+ * @returns The mixer fields for the track's result entry
  */
-function setIfLanded(
-  applied: TrackMixerApplied,
-  field: keyof TrackMixerApplied,
-  landed: number | undefined,
-): void {
-  if (landed != null) {
-    applied[field] = landed;
+function finishReport(report: MixerReport): TrackMixerApplied {
+  const changed = readBackReason(report.changed);
+  const reasons =
+    changed == null ? report.refused : [...report.refused, changed];
+
+  if (reasons.length > 0) {
+    report.applied.reason = reasons.join("; ");
   }
+
+  return report.applied;
 }

@@ -4,12 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type PublishedValue,
+  publishedReadBack,
+} from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { strForValue } from "./param-label-parsing.ts";
 
 /** What a mixer write landed, read back off the object it was written to. */
 export interface MixerApplied {
-  gainDb?: number;
-  pan?: number;
+  gainDb?: PublishedValue;
+  pan?: PublishedValue;
 }
 
 /**
@@ -58,9 +62,14 @@ export function setParamIfEnabled(
 }
 
 /**
- * Write a parameter and report what it now reads. Live clamps and snaps what it
- * is given, so echoing the argument would report a value the parameter doesn't
- * hold.
+ * Write a parameter and report what it now reads, the way a read publishes it.
+ * Live clamps and snaps what it is given, so echoing the argument would report
+ * a value the parameter doesn't hold.
+ *
+ * Max serializes some floats as strings (a pan of 0.0001 comes back as
+ * "9.999999747378752e-05"), which publish as the number they spell; a volume at
+ * the bottom of its range answers "-inf", which is no number at all and comes
+ * back as the label a read would show.
  * @param param - DeviceParameter LiveAPI object
  * @param property - Which property carries the value
  * @param value - Value to write, or undefined to leave the parameter alone
@@ -74,20 +83,12 @@ export function setParamAndReadBack(
   value: number | undefined,
   label: string,
   round: (value: number) => number,
-): number | undefined {
+): PublishedValue | undefined {
   if (value == null || !setParamIfEnabled(param, property, value, label)) {
     return undefined;
   }
 
-  const landed = param.getProperty(property);
-
-  // Max hands some floats back as strings (a pan of 0.0001 comes back as
-  // "9.999999747378752e-05"), and omitting a value that landed would read as
-  // "no write", so the argument stands in — rounded, like a real read-back.
-  // It is a stand-in, not a reading: where the property answers with something
-  // else entirely (a volume at the bottom of its range reads "-inf"), the
-  // number reported is not what the parameter holds.
-  return round(typeof landed === "number" ? landed : value);
+  return publishedReadBack(param.getProperty(property), round);
 }
 
 /**
@@ -130,9 +131,9 @@ export const PARAM_DISABLED_REASON =
   "is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.";
 
 /**
- * Warn that a disabled parameter was skipped. For the writes whose results have
- * no per-parameter entry to carry the reason instead — a chain's own mixer, a
- * track send.
+ * Warn that a disabled parameter was skipped. For a chain's own mixer, which
+ * still announces it this way; a track's mixer and sends carry the reason on
+ * their own entry instead, since silence there means the value landed.
  * @param label - How to name the parameter in the warning
  */
 export function warnParamDisabled(label: string): void {

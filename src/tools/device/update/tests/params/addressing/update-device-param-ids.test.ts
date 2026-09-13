@@ -56,10 +56,11 @@ describe("updateDevice - params addressed by id", () => {
     });
 
     expect(volume.set).toHaveBeenCalledWith("value", 0.75);
+    // The param reads back the number asked for, so the entry only names it.
     expect(result).toStrictEqual({
       id: "dev1",
       path: "t0/d0",
-      params: [{ id: "1", name: "Volume", value: 0.75 }],
+      params: [{ id: "1", name: "Volume" }],
     });
   });
 

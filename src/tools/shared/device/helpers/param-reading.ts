@@ -13,6 +13,10 @@ import {
 } from "./param-label-parsing.ts";
 import { recordedUnitFor } from "../known-param-units.ts";
 import { readNumericRange } from "./param-numeric-range.ts";
+import {
+  differsAtPublishedResolution,
+  readBackReason,
+} from "#src/tools/shared/helpers/read-back-comparison.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP: Record<number, string> = {
@@ -344,6 +348,9 @@ export interface WrittenParam {
   id: string;
   name: string;
   reason?: string;
+  /** The bare number the call asked for, when there was one. Decides whether
+   * the entry reports a value at all, and never reaches the result itself. */
+  requested?: number;
 }
 
 /**
@@ -403,9 +410,20 @@ export function skippedParamById(id: string, reason: string): UnresolvedParam {
   return { id, ok: false, reason };
 }
 
-/** What create-device and update-device report for each param they wrote. */
-export interface ParamValueResult extends WrittenParam {
+/** What create-device and update-device report for a param whose value isn't
+ * the one asked for. */
+export interface ParamValueResult {
+  id: string;
+  name: string;
   value: unknown;
+  reason?: string;
+}
+
+/** What they report for a param that reads back the number asked for: the
+ * caller already has the value, so only its identity is worth the tokens. */
+export interface LandedParam {
+  id: string;
+  name: string;
 }
 
 /** What they report for a written pseudo-param, which has no id. */
@@ -417,6 +435,7 @@ export interface PseudoParamValueResult {
 /** One entry of the `params` a create-device or update-device result reports. */
 export type ParamResult =
   | ParamValueResult
+  | LandedParam
   | PseudoParamValueResult
   | UnresolvedParam;
 
@@ -478,14 +497,35 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
 }
 
 /**
- * One written param's entry, with the value it reads as. The reason a value was
- * changed on its way in comes after the value it changed to.
+ * One written param's entry. A bare number that reads back as the one asked for
+ * is left out: the caller wrote it, so repeating it says nothing. Everything
+ * else reports what the param reads now, plus the reason it isn't the value
+ * asked for.
+ *
+ * The comparison is exact, because the read already publishes the value at the
+ * param's own display precision — rounding it again would call a step the
+ * param really moved to the same value.
  * @param entry - The param the write landed on
  * @param value - What it reads as now
  * @returns The result entry
  */
-function writtenResult(entry: WrittenParam, value: unknown): ParamValueResult {
-  const { id, name, reason } = entry;
+function writtenResult(
+  entry: WrittenParam,
+  value: unknown,
+): ParamValueResult | LandedParam {
+  const { id, name, requested } = entry;
+  const changed =
+    requested == null || differsAtPublishedResolution(requested, value);
+
+  if (!changed && entry.reason == null) {
+    return { id, name };
+  }
+
+  // A value the write itself knew it changed says why; one only the read-back
+  // reveals (a pan step, an A/B swap later in the call) says what it is.
+  const reason =
+    entry.reason ??
+    (changed && requested != null ? readBackReason(["value"]) : undefined);
 
   return reason == null ? { id, name, value } : { id, name, value, reason };
 }

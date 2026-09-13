@@ -4,11 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import {
-  roundDisplayValue,
-  roundGainDb,
-} from "#src/tools/shared/helpers/rounding.ts";
+  differsAtPublishedResolution,
+  publishedReadBack,
+  readBackReason,
+} from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
+import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
 
 /** A `sends` entry paired with the return it resolved to. */
 export interface IndexedSend extends SendEntry {
@@ -24,35 +26,74 @@ export interface SendResult {
   return: string;
   /** Omitted when no return lines up with this send */
   returnId?: string;
-  gainDb: unknown;
+  /** A number, or the label Live shows when the level isn't one ("-inf").
+   * Absent only when nothing was written. */
+  gainDb?: unknown;
+  /** Only on a send nothing was written to */
+  ok?: false;
+  /** Why the level isn't the one asked for, or why nothing was written */
+  reason?: string;
 }
 
 /**
  * Read a send's level back off Live, so a write result says what landed rather
  * than what was asked for — Live clamps the level and hands back a 32-bit float.
+ *
+ * The `reason` marks a level Live didn't keep, which is the only one a result
+ * reports: a send that took the level asked for has nothing to say. The entry
+ * is built either way, because a collision names the level the send ended up at.
  * @param send - The send DeviceParameter
  * @param name - The resolved return's name
  * @param id - The resolved return's id, when there is one
- * @param written - The level just written, for a write to fall back on
+ * @param written - The level just written
  * @returns The entry to report for this send
  */
 export function readSendBack(
   send: LiveAPI,
   name: string,
-  id?: string,
-  written?: number,
+  id: string | undefined,
+  written: number,
 ): SendResult {
-  const gainDb = send.getProperty("display_value");
+  // Published the way a read publishes it. The level written stands in only
+  // when nothing reads back at all, so a level that landed can't vanish from
+  // the result — an omission reads as "no write".
+  const landed =
+    publishedReadBack(send.getProperty("display_value"), roundGainDb) ??
+    written;
+  const reason = readBackReason(
+    differsAtPublishedResolution(written, landed, roundGainDb)
+      ? ["gainDb"]
+      : [],
+  );
 
   return {
     return: name,
     // The id is what a write should quote back: names collide and get renamed,
     // and `sends` accepts either.
     ...(id == null ? {} : { returnId: id }),
-    // Max hands some floats back as strings, and a level that landed must not
-    // vanish from the result over that — an omission reads as "no write".
-    gainDb:
-      typeof gainDb === "number" ? roundGainDb(gainDb) : (written ?? gainDb),
+    gainDb: landed,
+    ...(reason == null ? {} : { reason }),
+  };
+}
+
+/**
+ * The entry for a send nothing was written to. It has no level the call put
+ * there, so it carries the reason in place of one.
+ * @param name - The resolved return's name
+ * @param id - The resolved return's id, when there is one
+ * @param reason - Why nothing was written
+ * @returns The entry to report for this send
+ */
+export function refusedSend(
+  name: string,
+  id: string | undefined,
+  reason: string,
+): SendResult {
+  return {
+    return: name,
+    ...(id == null ? {} : { returnId: id }),
+    ok: false,
+    reason,
   };
 }
 
@@ -74,7 +115,7 @@ export function readSendGainDb(
   return {
     return: name,
     ...(id == null ? {} : { returnId: id }),
-    gainDb: roundDisplayValue(send.getProperty("display_value"), roundGainDb),
+    gainDb: publishedReadBack(send.getProperty("display_value"), roundGainDb),
   };
 }
 
@@ -143,8 +184,8 @@ export function dedupeSendsByReturn<T extends IndexedSend>(
  * to the next one.
  * @param collisions - From {@link dedupeSendsByReturn}
  * @param landed - What each send that was written now reads, by its position.
- *   A collision missing from it is skipped — the write didn't land, so there is
- *   no final level to name, and the failure warned for itself.
+ *   A collision whose write didn't land is skipped: there is no final level to
+ *   name, and the refusal is already on that send's own entry.
  * @returns Whether anything was announced
  */
 export function warnSendCollisions(
@@ -156,7 +197,7 @@ export function warnSendCollisions(
   for (const { index, overrodeScalar } of collisions) {
     const entry = landed.get(index);
 
-    if (entry == null) {
+    if (entry == null || entry.ok === false) {
       continue;
     }
 

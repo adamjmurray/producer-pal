@@ -25,7 +25,9 @@ import {
   createTestDevice,
   parseToolResult,
   setupMcpTestContext,
+  sleep,
 } from "../../mcp-test-helpers";
+import { readParam } from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -197,10 +199,13 @@ describe("ppal-update-device param units", () => {
         "5",
       );
 
+      const [entry] = data.params ?? [];
+
       expect(warnings).toStrictEqual([]);
-      expect(data.params).toStrictEqual([
-        { id: expect.any(String), name: "S/C EQ Q", value: expect.any(Number) },
-      ]);
+      // A bare number reports a value only where Live kept a different one, so
+      // what says the write landed is the entry naming the param with no `ok`.
+      expect(entry?.name).toBe("S/C EQ Q");
+      expect(entry?.ok).toBeUndefined();
     });
   });
 });
@@ -217,9 +222,13 @@ async function writeValue(
   name: string,
   value: string,
 ): Promise<number | string | undefined> {
-  const { data } = await writeParam(ctx.client!, deviceId, name, value);
+  await writeParam(ctx.client!, deviceId, name, value);
 
-  return data.params?.[0]?.value;
+  // Read back rather than taking the write's word: a bare number that lands as
+  // asked reports no value at all.
+  await sleep(100);
+
+  return (await readParam(ctx.client!, deviceId, name)).value;
 }
 
 /**

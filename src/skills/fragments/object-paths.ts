@@ -20,6 +20,8 @@ A \`path\` names an object by where it is, counting from 0: \`t0\` is the first 
 
 Reads take a comma-separated list too: \`path: "t0,t2"\` returns one entry per target in order, and a target the call couldn't carry out is \`ok: false\` with a \`reason\` — reads and writes alike. One target returns the object, not an array, and errors instead of reporting.
 
+A write's entry says only what you don't already know: a value that landed as you asked for it isn't repeated back, so an entry with nothing but an \`id\` and \`path\` means everything worked. What comes back is a value Live kept instead of yours, with a \`reason\` saying so.
+
 **A number the user says is 1-based — subtract one.** Their "scene 1" is \`s0\`, their "scene 3" is \`s2\`, their "track 3" is \`t2\`. Live labels scenes from 1 too, so the scene shown as "3" is also \`s2\`. Never pass their number straight through.
 
 A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a return track and on the main track, whose \`path\` is what identifies them.

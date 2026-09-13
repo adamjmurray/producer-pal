@@ -471,7 +471,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorTime: "1|1",
       });
 
-      expect(result.tempo).toBe(140);
+      expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
       expect(result.locator).toStrictEqual({
         operation: "created",
         time: "1|1",
@@ -509,7 +509,8 @@ describe("updateLiveSet - locator operations", () => {
     it("leaves a call carrying no locator args alone", async () => {
       const result = await updateLiveSet({ tempo: 140 });
 
-      expect(result.tempo).toBe(140);
+      expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
+      expect(result.locator).toBeUndefined();
     });
   });
 });

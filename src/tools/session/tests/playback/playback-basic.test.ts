@@ -57,12 +57,9 @@ describe("transport", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
     expectLiveSetProperty(liveSet, "start_time", 16); // bar 5 = 16 beats in 4/4
-    // play-arrangement obeys the loop, so it says whether one is coming.
-    expect(result).toStrictEqual({
-      playing: true,
-      startTime: "5|1",
-      loop: false,
-    });
+    // Playback began where the caller put it, so the result says nothing about
+    // it. play-arrangement obeys the loop, so it says whether one is coming.
+    expect(result).toStrictEqual({ playing: true, loop: false });
   });
 
   it("should handle update-arrangement action with loop settings", () => {
@@ -226,7 +223,8 @@ describe("transport", () => {
     });
 
     expectLiveSetProperty(liveSet, "start_time", 6); // bar 3 = 6 beats in 3/4
-    expect(result.startTime).toBe("3|1");
+    // The position landed where it was asked for, in the song's own meter.
+    expect(result.startTime).toBeUndefined();
     // The loop is off in the mock, and play-arrangement obeys it — so it says
     // the loop is off, and spends no tokens on bounds that do nothing.
     expectReportedLoop(result, { loop: false });
@@ -576,8 +574,8 @@ describe("transport", () => {
     expectLiveSetProperty(liveSet, "loop_start", 0);
     expectLiveSetProperty(liveSet, "loop_length", 6); // 2 bars = 6 Ableton beats
 
-    // Both ends came from the call, so the result repeats neither.
-    expect(result).toStrictEqual({ playing: true, startTime: "2|1" });
+    // Every position came from the call, so the result repeats none of them.
+    expect(result).toStrictEqual({ playing: true });
   });
 
   it("plays from the start position already set when given no startTime", () => {

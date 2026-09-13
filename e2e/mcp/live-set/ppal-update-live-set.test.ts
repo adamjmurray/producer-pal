@@ -50,7 +50,9 @@ describe("ppal-update-live-set", () => {
     });
     const tempoResult = parseToolResult<UpdateResult>(tempoUpdate);
 
-    expect(tempoResult.tempo).toBe(newTempo);
+    // Live kept the tempo asked for, so the write says nothing about it — the
+    // read below is what proves it landed.
+    expect(tempoResult.tempo).toBeUndefined();
 
     // Verify with read
     const afterTempo = await ctx.client!.callTool({
@@ -75,7 +77,7 @@ describe("ppal-update-live-set", () => {
     });
     const timeSigResult = parseToolResult<UpdateResult>(timeSigUpdate);
 
-    expect(timeSigResult.timeSignature).toBe(newTimeSig);
+    expect(timeSigResult.timeSignature).toBeUndefined();
 
     // Wait for Live API state to settle, then verify with read
     await sleep(100);
@@ -100,10 +102,16 @@ describe("ppal-update-live-set", () => {
     // Live stores tempo as a 32-bit float, so a value like 123.456789 comes
     // back with float32 noise (e.g. 123.456787109375) unless the read rounds
     // it to what Live's UI shows.
-    await ctx.client!.callTool({
-      name: "ppal-update-live-set",
-      arguments: { tempo: 123.456789 },
-    });
+    const written = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { tempo: 123.456789 },
+      }),
+    );
+
+    // 123.46 either way, which is the resolution the read publishes — the same
+    // value, so the write reports none.
+    expect(written.tempo).toBeUndefined();
 
     await sleep(100);
     const afterRead = await ctx.client!.callTool({
@@ -156,8 +164,10 @@ describe("ppal-update-live-set", () => {
     });
     const multiResult = parseToolResult<UpdateResult>(multiUpdate);
 
-    expect(multiResult.tempo).toBe(140);
-    expect(multiResult.timeSignature).toBe("6/8");
+    // Both landed as asked, so only the scale — which Live spells its own
+    // way — comes back.
+    expect(multiResult.tempo).toBeUndefined();
+    expect(multiResult.timeSignature).toBeUndefined();
     expect(multiResult.scale).toBe("G Major");
 
     // Wait for Live API state to settle, then verify all with read

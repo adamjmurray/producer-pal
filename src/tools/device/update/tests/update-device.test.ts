@@ -136,12 +136,12 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.8);
-      // The value comes back read from the param, so a param that snapped to a
-      // different step would report the step, not what was asked for.
+      // The param reads back the number asked for, so the entry names it and
+      // spends nothing repeating the value.
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ id: "789", name: "Param 789", value: 0.8 }],
+        params: [{ id: "789", name: "Param 789" }],
       });
     });
 
@@ -160,8 +160,8 @@ describe("updateDevice", () => {
         id: "123",
         path: "t0/d0",
         params: [
-          { id: "789", name: "Param 789", value: 0.3 },
-          { id: "790", name: "Param 790", value: 0.7 },
+          { id: "789", name: "Param 789" },
+          { id: "790", name: "Param 790" },
         ],
       });
     });
@@ -363,11 +363,19 @@ describe("updateDevice", () => {
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
       expect(param792.set).toHaveBeenCalledWith("value", 0.25);
-      // The mock always reads back "C", so the reported value is center.
+      // The mock always reads back "C", so the param reports the center it
+      // holds rather than the -0.5 asked for, and says that is what happened.
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ id: "792", name: "Pan", value: 0 }],
+        params: [
+          {
+            id: "792",
+            name: "Pan",
+            value: 0,
+            reason: "value read back as shown, not as sent",
+          },
+        ],
       });
     });
 

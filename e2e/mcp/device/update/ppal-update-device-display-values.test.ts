@@ -54,6 +54,28 @@ describe("ppal-update-device display values", () => {
     expect(await writeThenRead(deviceId, "Drive", 2.06)).toBe(2.1);
   });
 
+  it("reports the value a unit-carrying write landed on", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Utility", "t0");
+    const written = parseToolResult<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          id: deviceId,
+          params: [{ name: "Output", value: "-1.2 dB" }],
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    // "-1.2 dB" is a display value, not a number to compare a read-back with,
+    // so the entry reports what the param reads now either way.
+    expect(written.params).toStrictEqual([
+      { id: expect.any(String), name: "Output", value: -1.2 },
+    ]);
+    expect((await readParam(ctx.client!, deviceId, "Output")).value).toBe(-1.2);
+  });
+
   it("writes a display value through create-device too", async () => {
     // create-device and update-device share the write path, and the bug report
     // reached it through create-device.
@@ -70,8 +92,10 @@ describe("ppal-update-device display values", () => {
 
     await sleep(100);
 
+    // The param took the value asked for, so the entry only names it — the
+    // read is what proves the write landed.
     expect(created.params).toStrictEqual([
-      { id: expect.any(String), name: "Output", value: -1.2 },
+      { id: expect.any(String), name: "Output" },
     ]);
     expect((await readParam(ctx.client!, created.id, "Output")).value).toBe(
       -1.2,
@@ -155,8 +179,9 @@ async function createSaturator(): Promise<string> {
 
 /**
  * Write a display value to a parameter and read back what Live shows. The write
- * reports what it landed on too, so this also holds the two in step — a caller
- * trusting the write response must never need a read to correct it.
+ * reports a value only when Live kept a different one, so this also holds the
+ * two in step — a caller trusting the write response must never need a read to
+ * correct it.
  * @param deviceId - Device holding the parameter
  * @param paramName - Parameter to write
  * @param value - Display value to request
@@ -191,10 +216,17 @@ async function writeThenRead(
   );
 
   const readValue = result.parameters?.find((p) => p.name === paramName)?.value;
+  const [entry] = written.params ?? [];
 
-  expect(written.params).toStrictEqual([
-    { id: expect.any(String), name: paramName, value: readValue },
-  ]);
+  expect(entry?.id).toStrictEqual(expect.any(String));
+  expect(entry?.name).toBe(paramName);
+
+  if (entry?.value == null) {
+    // Silence means the param took the number asked for.
+    expect(readValue).toBe(value);
+  } else {
+    expect(entry.value).toBe(readValue);
+  }
 
   return readValue;
 }

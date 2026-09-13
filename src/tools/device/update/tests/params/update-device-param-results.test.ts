@@ -102,7 +102,7 @@ describe("updateDevice - written param values", () => {
     expect(result).toStrictEqual({
       id: "drum-rack",
       path: "t0/d0",
-      params: [{ id: "pad-vol", name: "pC1/d0/Volume", value: 50 }],
+      params: [{ id: "pad-vol", name: "pC1/d0/Volume" }],
     });
   });
 
@@ -295,11 +295,19 @@ describe("updateDevice - written param values", () => {
       macroVariationIndex: 0,
     });
 
-    // 50 is what the write landed; 90 is what the same call left behind.
+    // 50 is what the write landed; 90 is what the same call left behind, and
+    // the entry says the value isn't the one that was sent.
     expect(result).toStrictEqual({
       id: "rack",
       path: "t0/d0",
-      params: [{ id: "macro-1", name: "Macro 1", value: 90 }],
+      params: [
+        {
+          id: "macro-1",
+          name: "Macro 1",
+          value: 90,
+          reason: "value read back as shown, not as sent",
+        },
+      ],
     });
   });
 

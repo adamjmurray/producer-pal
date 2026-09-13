@@ -333,7 +333,7 @@ describe("ppal-create-device", () => {
       ],
     });
 
-    expectSkipThenValue(created, "Nope", { name: "Ratio", value: 4 });
+    expectSkipThenValue(created, "Nope", { name: "Ratio" });
   });
 
   it("creates a device at position 0 in an empty rack chain", async () => {

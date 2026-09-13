@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyScale,
   applyTempo,
+  applyTimeSignature,
   parseScale,
 } from "../tempo-and-scale-updates.ts";
 
@@ -31,6 +32,14 @@ function mockLiveSetWithScaleState(): LiveAPI {
       stored[property] = value;
     }),
     getProperty: vi.fn((property: string) => stored[property]),
+  } as unknown as LiveAPI;
+}
+
+/** A live_set mock that answers with `held`, whatever is written to it. */
+function mockLiveSetHolding(held: Record<string, unknown>): LiveAPI {
+  return {
+    set: vi.fn(),
+    getProperty: vi.fn((property: string) => held[property]),
   } as unknown as LiveAPI;
 }
 
@@ -103,46 +112,69 @@ describe("tempo-and-scale-updates", () => {
   });
 
   describe("applyTempo", () => {
-    it("should set tempo on live set for valid value", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+    it.each([120, 20, 999])("writes %i and says nothing about it", (tempo) => {
+      const mockLiveSet = mockLiveSetWithScaleState();
       const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, tempo, result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", tempo);
+      // The caller asked for it and Live kept it, so there is nothing to say.
+      expect(result.tempo).toBeUndefined();
+    });
+
+    it("reports the tempo Live kept instead", () => {
+      const mockLiveSet = mockLiveSetHolding({ tempo: 20 });
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 19.5, result);
+
+      expect(result.tempo).toBe(20);
+    });
+
+    it("counts a tempo Live rounded past the 2nd decimal as kept", () => {
+      const mockLiveSet = mockLiveSetHolding({ tempo: 123.456789 });
+      const result: { tempo?: number } = {};
+
+      applyTempo(mockLiveSet, 123.46, result);
+
+      expect(result.tempo).toBeUndefined();
+    });
+
+    it("reports a tempo that doesn't read back as a number", () => {
+      // Nothing to compare 120 with, so the caller only learns what the Set
+      // holds if the label a read would publish is reported.
+      const mockLiveSet = mockLiveSetHolding({ tempo: "-" });
+      const result: { tempo?: number | string } = {};
 
       applyTempo(mockLiveSet, 120, result);
 
-      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 120);
-      expect(result.tempo).toBe(120);
+      expect(result.tempo).toBe("-");
+    });
+  });
+
+  describe("applyTimeSignature", () => {
+    it("writes both halves and says nothing about the one Live kept", () => {
+      const mockLiveSet = mockLiveSetWithScaleState();
+      const result: { timeSignature?: string } = {};
+
+      applyTimeSignature(mockLiveSet, { numerator: 6, denominator: 8 }, result);
+
+      expect(mockLiveSet.set).toHaveBeenCalledWith("signature_numerator", 6);
+      expect(mockLiveSet.set).toHaveBeenCalledWith("signature_denominator", 8);
+      expect(result.timeSignature).toBeUndefined();
     });
 
-    it("should accept minimum tempo of 20 BPM", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { tempo?: number } = {};
+    it("reports the time signature Live kept instead", () => {
+      const mockLiveSet = mockLiveSetHolding({
+        signature_numerator: 4,
+        signature_denominator: 4,
+      });
+      const result: { timeSignature?: string } = {};
 
-      applyTempo(mockLiveSet, 20, result);
+      applyTimeSignature(mockLiveSet, { numerator: 7, denominator: 8 }, result);
 
-      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 20);
-      expect(result.tempo).toBe(20);
-    });
-
-    it("should accept maximum tempo of 999 BPM", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { tempo?: number } = {};
-
-      applyTempo(mockLiveSet, 999, result);
-
-      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 999);
-      expect(result.tempo).toBe(999);
-    });
-
-    // The range is refused by validateTempo before updateLiveSet writes
-    // anything, so by here the value is known good. See update-live-set.test.ts.
-    it("writes a boundary tempo", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { tempo?: number } = {};
-
-      applyTempo(mockLiveSet, 20, result);
-
-      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 20);
-      expect(result.tempo).toBe(20);
+      expect(result.timeSignature).toBe("4/4");
     });
   });
 

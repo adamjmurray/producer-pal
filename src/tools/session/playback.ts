@@ -187,7 +187,7 @@ export function playback(
   const startTimePosition = readStartTime(
     liveSet,
     action,
-    writes.startTimeBeats != null,
+    { ...writes, startTime: timeline.startTime },
     songTimeSigNumerator,
     songTimeSigDenominator,
   );

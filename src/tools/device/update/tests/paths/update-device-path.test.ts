@@ -699,12 +699,12 @@ describe("updateDevice with path parameter", () => {
         {
           id: "device-100",
           path: "t0/d0",
-          params: [{ id: "param-100-5", name: "Filter Freq", value: 1000 }],
+          params: [{ id: "param-100-5", name: "Filter Freq" }],
         },
         {
           id: "device-200",
           path: "t1/d0",
-          params: [{ id: "param-200-5", name: "Filter Freq", value: 1000 }],
+          params: [{ id: "param-200-5", name: "Filter Freq" }],
         },
       ]);
     });

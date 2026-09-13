@@ -22,9 +22,22 @@ import {
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+const SNAPPED = "gainDb read back as shown, not as sent";
+
 const rackPath = livePath.track(0).device(0);
 const chainPath = rackPath.chain(1);
 const mixerPath = `${chainPath} mixer_device`;
+
+/**
+ * The entry a send reports when Live kept a level other than the one written
+ * @param gainDb - The level read back off the send
+ * @param name - The return chain it went to
+ * @param returnId - That chain's id
+ * @returns The expected send entry
+ */
+function snappedSend(gainDb: number, name = "a Delay", returnId = "rc-0") {
+  return { return: name, returnId, gainDb, reason: SNAPPED };
+}
 
 interface MixerMocks {
   chain: RegisteredMockObject;
@@ -443,8 +456,8 @@ describe("applyChainMixer", () => {
         // Keyed by the return that resolved, with the id a write can quote
         // back, and the level read off the send — Live kept neither argument.
         expect(applied.sends).toStrictEqual([
-          { return: "a Delay", returnId: "rc-0", gainDb: -6.02 },
-          { return: "b Reverb", returnId: "rc-1", gainDb: -11.98 },
+          snappedSend(-6.02),
+          snappedSend(-11.98, "b Reverb", "rc-1"),
         ]);
       });
 
@@ -461,9 +474,7 @@ describe("applyChainMixer", () => {
         });
 
         expect(first?.set).toHaveBeenCalledWith("display_value", -6);
-        expect(applied.sends).toStrictEqual([
-          { return: "a Delay", returnId: "rc-0", gainDb: -6.02 },
-        ]);
+        expect(applied.sends).toStrictEqual([snappedSend(-6.02)]);
         expect(capturedWarnings().join()).toContain(
           'no return chain matching "nope"',
         );
@@ -496,9 +507,7 @@ describe("applyChainMixer", () => {
         expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
         // Both writes succeeded, so both used to be reported — naming a level
         // the send does not have, to a model that reads this back.
-        expect(applied.sends).toStrictEqual([
-          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
-        ]);
+        expect(applied.sends).toStrictEqual([snappedSend(-11.98)]);
         // "ended up at" is a claim about the final state, so it names the
         // level read back — not the one that won the argument list.
         expect(capturedWarnings().join()).toContain(
@@ -520,9 +529,7 @@ describe("applyChainMixer", () => {
         });
 
         expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
-        expect(applied.sends).toStrictEqual([
-          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
-        ]);
+        expect(applied.sends).toStrictEqual([snappedSend(-11.98)]);
         expect(capturedWarnings().join()).toContain(
           'sends names one return more than once: "a Delay" ended up at -11.98 dB',
         );
@@ -568,9 +575,7 @@ describe("applyChainMixer", () => {
         });
 
         // Reported by the return that resolved, not by either spelling.
-        expect(applied.sends).toStrictEqual([
-          { return: "a Delay", returnId: "rc-0", gainDb: -11.98 },
-        ]);
+        expect(applied.sends).toStrictEqual([snappedSend(-11.98)]);
         // And the warning names it the same way. Naming the winner's own
         // spelling ("a") would point at a return the result never mentions.
         expect(capturedWarnings().join()).toContain(
@@ -590,9 +595,7 @@ describe("applyChainMixer", () => {
             sends: [{ return: "a Delay", gainDb: -100 }],
           });
 
-          expect(applied.sends).toStrictEqual([
-            { return: "a Delay", returnId: "rc-0", gainDb: -70 },
-          ]);
+          expect(applied.sends).toStrictEqual([snappedSend(-70)]);
         });
 
         it("rounds the raw float32 to Live's display resolution", () => {
@@ -606,13 +609,11 @@ describe("applyChainMixer", () => {
             sends: [{ return: "a Delay", gainDb: -6.5 }],
           });
 
-          expect(applied.sends).toStrictEqual([
-            { return: "a Delay", returnId: "rc-0", gainDb: -6.33 },
-          ]);
+          expect(applied.sends).toStrictEqual([snappedSend(-6.33)]);
         });
 
         // Max serializes an exponent-notation float as a string. The level
-        // landed, so reporting nothing for it would read as "no write".
+        // landed, so the written level stands in — and it has nothing to say.
         it("falls back to the written level when Live answers with a string", () => {
           const [first] = registerChainWithSends();
 

@@ -49,9 +49,9 @@ describe("ppal-update-device params addressed by id", () => {
       params: [{ id: thresholdId, value: "-12" }],
     });
 
-    expect(entries).toStrictEqual([
-      { id: thresholdId, name: "Threshold", value: -12 },
-    ]);
+    // The param took the number asked for, so the entry only names it — the
+    // read is what proves the write landed.
+    expect(entries).toStrictEqual([{ id: thresholdId, name: "Threshold" }]);
     expect((await readParam(ctx.client!, deviceId, "Threshold")).value).toBe(
       -12,
     );
@@ -66,9 +66,10 @@ describe("ppal-update-device params addressed by id", () => {
       params: [{ name: "", id: thresholdId, value: "-9" }],
     });
 
-    expect(entries).toStrictEqual([
-      { id: thresholdId, name: "Threshold", value: -9 },
-    ]);
+    expect(entries).toStrictEqual([{ id: thresholdId, name: "Threshold" }]);
+    expect((await readParam(ctx.client!, deviceId, "Threshold")).value).toBe(
+      -9,
+    );
   });
 
   it("reports a miss under the id the call sent", async () => {
@@ -88,7 +89,7 @@ describe("ppal-update-device params addressed by id", () => {
 
     expect(entries).toStrictEqual([
       { id: "N/A", ok: false, reason: expect.stringMatching(/^not found on /) },
-      { id: expect.any(String), name: "Threshold", value: -9 },
+      { id: expect.any(String), name: "Threshold" },
     ]);
     expect(warnings).toStrictEqual([]);
   });

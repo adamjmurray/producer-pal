@@ -81,16 +81,18 @@ export async function callForParams(
 
 /**
  * Assert a two-param write answered with one entry each: the name that reached
- * nothing as a skip, the one that landed with the value it reads as, and no
- * warning.
+ * nothing as a skip, the one that was written, and no warning. The written one
+ * carries a `value` only where Live kept a different one, so pass `value` only
+ * then.
  * @param result - What callForParams returned
  * @param missing - The name that was to reach nothing
- * @param landed - The param that was written, and the value it should read as
+ * @param landed - The param that was written, and the value Live kept if it
+ *   isn't the one asked for
  */
 export function expectSkipThenValue(
   result: { entries: ParamResultEntry[]; warnings: string[] },
   missing: string,
-  landed: { name: string; value: unknown },
+  landed: { name: string; value?: unknown },
 ): void {
   expect(result.entries).toStrictEqual([
     {

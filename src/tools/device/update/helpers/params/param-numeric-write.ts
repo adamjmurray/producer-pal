@@ -18,6 +18,9 @@ import {
 export interface NumericWrite {
   param: LiveAPI;
   inputValue: number;
+  /** The value asked for, when the call wrote a bare number the read-back can
+   * be compared with */
+  requested: number | undefined;
   range: ParamNumericRange | null;
   currentLabel: string;
   minLabel: string;
@@ -68,5 +71,8 @@ export function setNumericParamValue(write: NumericWrite): ParamWriteOutcome {
     return target;
   }
 
-  return writeParam(param, target.value, target.reason);
+  return writeParam(param, target.value, {
+    changed: target.reason,
+    requested: write.requested,
+  });
 }

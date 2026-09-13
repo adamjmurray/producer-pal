@@ -1,8 +1,8 @@
 ---
 title: Migration Guide
 description:
-  Upgrading a script that drives Producer Pal. What changed in 2.3, what is
-  removed in 2.4, and an adapter script that rewrites the old arguments.
+  Upgrading a script that drives Producer Pal. What changed in 2.3 and 2.4, what
+  is removed in 2.4, and an adapter script that rewrites the old arguments.
 head:
   - - meta
     - name: keywords
@@ -15,8 +15,8 @@ head:
   - - meta
     - property: og:description
       content:
-        What changed for scripts in Producer Pal 2.3, what is removed in 2.4,
-        and how to rewrite the old arguments.
+        What changed for scripts in Producer Pal 2.3 and 2.4, what is removed in
+        2.4, and how to rewrite the old arguments.
 ---
 
 # Migration Guide
@@ -29,10 +29,10 @@ conversation and writes calls in the current spelling.
 
 There are two migrations here and they are not equally urgent:
 
-| What                      | When                    | Urgency                                                        |
-| ------------------------- | ----------------------- | -------------------------------------------------------------- |
-| **Response fields** moved | already shipped, in 2.3 | **Do this now.** No field kept a back-compat key.              |
-| **Input params** removed  | 2.4                     | Forward notice. Everything still works, and warns, until then. |
+| What                      | When                          | Urgency                                                        |
+| ------------------------- | ----------------------------- | -------------------------------------------------------------- |
+| **Response fields** moved | 2.3, and trimmed again in 2.4 | **Do this now.** No field kept a back-compat key.              |
+| **Input params** removed  | 2.4                           | Forward notice. Everything still works, and warns, until then. |
 
 Most upgrade guides lead with the deprecations. This one leads with the
 responses, because that is the half that breaks the moment you install 2.3.
@@ -149,6 +149,32 @@ place of slugs like `locator_not_found`.
 `Error executing tool 'ppal-update-clip': <reason>` is now `Error: <reason>`,
 and no warning carries a tool-name prefix any more. Anything matching on that
 text needs updating.
+
+## Write results say less in 2.4
+
+**A write reports only what didn't land as asked.** A value you sent that Live
+kept is no longer echoed back, so a result with nothing but an `id` and `path`
+means every write in the call worked. What still comes back is a value Live put
+somewhere else, read off the object and carrying a `reason` that names the
+fields it applies to ("gainDb, pan read back as shown, not as sent"), plus state
+that governs what the call did.
+
+| Tool                         | Gone when the write landed                      | Still there                                                                      |
+| ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| `ppal-update-track`          | `gainDb`, `pan`, `leftPan`, `rightPan`, `sends` | `panningMode: "split"`, when you set a pan param in split mode without naming it |
+| update-device, create-device | a `params` entry's `value` for a bare number    | `{id, name}` for that entry; the value for a unit, enum label, or note name      |
+| `ppal-update-device`         | a chain's `gainDb`, `pan`, `sends`              | `{id, path}`, plus a `reason` when one applies                                   |
+| `ppal-update-live-set`       | `tempo`, `timeSignature`                        | `scale`, which Live spells its own way                                           |
+| `ppal-playback`              | `startTime` you sent as a bar\|beat             | `startTime` you didn't send, or that a `loc:` name resolved to                   |
+
+Two things moved rather than vanished. A `sends` array now holds only the sends
+Live didn't give the level you asked for, so no `sends` means every one landed;
+one nothing could be written to keeps its slot as
+`{return, returnId, ok: false, reason}`. And a refusal that used to warn is a
+`reason` on the track's own entry now: `pan` sent in split panning mode,
+`leftPan`/`rightPan` sent in stereo, or a mixer or send param a rack macro owns.
+
+`ppal-select` is unchanged: what it reports is the selection it made.
 
 ## Params being removed in 2.4
 

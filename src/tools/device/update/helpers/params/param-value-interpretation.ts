@@ -49,6 +49,12 @@ export function setParamValue(
     return { reason: PARAM_DISABLED_REASON };
   }
 
+  // Only a bare number can be compared with what the param reads back. A unit,
+  // a note name, an enum label or a division is a spelling of the value, not
+  // the same number, so those always report what landed.
+  const requested = Number.isFinite(Number(writtenText))
+    ? Number(writtenText)
+    : undefined;
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
   // 1. Enum - quantized param. Resolve the input against value_items by string.
@@ -87,7 +93,7 @@ export function setParamValue(
   const currentLabel = strForValue(param, currentValue);
 
   if (isPanLabel(currentLabel)) {
-    return setPanParamValue(param, inputValue);
+    return setPanParamValue(param, inputValue, requested);
   }
 
   // 4. Division params - string input matching fraction format (e.g., "1/8")
@@ -115,6 +121,7 @@ export function setParamValue(
     return setNumericParamValue({
       param,
       inputValue,
+      requested,
       range,
       currentLabel,
       minLabel,
@@ -146,11 +153,13 @@ export function setParamValue(
  * directional label like "50L") into the parameter's own raw range.
  * @param param - Parameter to set
  * @param inputValue - Value to set
+ * @param requested - The value asked for, when the call wrote a bare number
  * @returns The param the write landed on, or why it landed nowhere
  */
 function setPanParamValue(
   param: LiveAPI,
   inputValue: string | number,
+  requested: number | undefined,
 ): ParamWriteOutcome {
   const min = param.getProperty("min") as number;
   const max = param.getProperty("max") as number;
@@ -179,7 +188,9 @@ function setPanParamValue(
   }
 
   // Convert -1 to 1 → internal range
-  return writeParam(param, ((numValue + 1) / 2) * (max - min) + min);
+  return writeParam(param, ((numValue + 1) / 2) * (max - min) + min, {
+    requested,
+  });
 }
 
 /**

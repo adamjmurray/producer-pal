@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-writing.ts";
+import {
+  PARAM_DISABLED_REASON,
+  isParamEnabled,
+} from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
   type ReturnTrackInfo,
   readReturnTrackInfo,
@@ -15,6 +18,7 @@ import {
   type SendResult,
   dedupeSendsByReturn,
   readSendBack,
+  refusedSend,
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
@@ -111,7 +115,8 @@ export function applyTrackSends(
  * fact about the track, so it is checked here rather than once for the call.
  *
  * The level is read back rather than echoed: Live clamps it and hands back a
- * 32-bit float, so the argument is not what the send holds.
+ * 32-bit float, so the argument is not what the send holds. A send something
+ * else owns says so on its own entry — silence means the level landed.
  * @param track - Track object
  * @param send - One send from {@link resolveTrackSends}
  * @returns What the send now reads, or null when nothing was written
@@ -143,16 +148,17 @@ function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult | null {
     return null;
   }
 
-  const written = setParamIfEnabled(
-    target,
-    "display_value",
-    send.gainDb,
-    `track ${targetLabel(track)} send "${send.name}"`,
-  );
+  if (!isParamEnabled(target)) {
+    return refusedSend(
+      send.name,
+      send.returnId,
+      `gainDb ${PARAM_DISABLED_REASON}`,
+    );
+  }
 
-  return written
-    ? readSendBack(target, send.name, send.returnId, send.gainDb)
-    : null;
+  target.set("display_value", send.gainDb);
+
+  return readSendBack(target, send.name, send.returnId, send.gainDb);
 }
 
 /**

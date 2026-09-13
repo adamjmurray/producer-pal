@@ -12,6 +12,7 @@ import {
 } from "#src/tools/constants.ts";
 import { stripReturnTrackLetter } from "../helpers/return-track-letter.ts";
 import {
+  type PanningMode,
   type TrackMixerApplied,
   applyMixerProperties,
 } from "./helpers/track-mixer-updates.ts";
@@ -58,7 +59,7 @@ interface UpdateTrackArgs {
   color?: string;
   gainDb?: number;
   pan?: number;
-  panningMode?: string;
+  panningMode?: PanningMode;
   leftPan?: number;
   rightPan?: number;
   mute?: boolean;
@@ -283,12 +284,18 @@ export function updateTrack(
       );
     }
 
+    // A send that took the level asked for has nothing to say — the caller
+    // named the return and knows the level — so only the rest report.
+    const changedSends = [...landed.values()].filter(
+      (send) => send.reason != null,
+    );
+
     // Optimistic except for the mixer and sends, read back off the track.
     return {
       id: track.id,
       ...pathField(track),
       ...mixer,
-      ...(landed.size > 0 ? { sends: [...landed.values()] } : {}),
+      ...(changedSends.length > 0 ? { sends: changedSends } : {}),
     };
   });
 }

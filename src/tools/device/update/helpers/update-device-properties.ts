@@ -12,9 +12,12 @@ import {
 import { applyChainSampleParams } from "./chain-sample-params.ts";
 import {
   applyChainMixer,
-  type ChainMixerApplied,
   type ChainSend,
 } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import {
+  chainMixerReport,
+  type ChainMixerReport,
+} from "./chain-mixer-report.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
 import {
@@ -123,8 +126,8 @@ export function updateDeviceProperties(
   return refreshParamValues(paramResults);
 }
 
-/** What a chain or pad update wrote: its mixer, plus any params it took. */
-export interface NonDeviceApplied extends ChainMixerApplied {
+/** What a chain or pad update has to say: its mixer, plus any params it took. */
+export interface NonDeviceApplied extends ChainMixerReport {
   params?: ParamResult[];
 }
 
@@ -133,7 +136,7 @@ export interface NonDeviceApplied extends ChainMixerApplied {
  * @param target - Chain or drum pad to update
  * @param type - Target type
  * @param options - Update options
- * @returns What the chain's mixer and sample writes landed, read back off Live
+ * @returns What the chain's mixer and sample writes didn't land as asked
  */
 export function updateNonDeviceProperties(
   target: LiveAPI,
@@ -159,7 +162,7 @@ export function updateNonDeviceProperties(
     target.set("solo", options.solo ? 1 : 0);
   }
 
-  let mixer: ChainMixerApplied = {};
+  let mixer: ChainMixerReport = {};
 
   if (isChainType(type)) {
     if (options.color != null) {
@@ -167,7 +170,7 @@ export function updateNonDeviceProperties(
     }
 
     if (hasChainMixerParams(options)) {
-      mixer = applyChainMixer(target, options);
+      mixer = chainMixerReport(applyChainMixer(target, options), options);
     }
   } else {
     warnIfSet("color", options.color, type, target);

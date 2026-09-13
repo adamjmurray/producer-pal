@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ChainMixerApplied } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { type ChainMixerReport } from "./chain-mixer-report.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   type DrumPadGroup,
@@ -44,7 +44,7 @@ import {
 import { isDeviceType, isValidUpdateType } from "./update-target-types.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
-interface UpdateTargetResult extends ChainMixerApplied {
+interface UpdateTargetResult extends ChainMixerReport {
   id: string;
   path?: string;
   params?: ParamResult[];

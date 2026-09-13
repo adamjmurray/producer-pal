@@ -10,6 +10,7 @@ import {
   expectParamRefused,
   expectValueSet,
   livePath,
+  paramsOf,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -61,10 +62,28 @@ describe("updateDevice - param units", () => {
       expect(expectValueSet(param)).toBe(20);
     });
 
-    it("writes a value with no unit at all", () => {
-      updateDevice({ id: "dev1", params: [{ name: "Amount", value: "20" }] });
+    it("writes a value with no unit at all, and says nothing about it", () => {
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "Amount", value: "20" }],
+      });
 
       expect(expectValueSet(param)).toBe(20);
+      // A bare number the param took back is the caller's own value.
+      expect(paramsOf(result)).toStrictEqual([{ id: "p1", name: "Amount" }]);
+    });
+
+    it("reports what the param reads after a value carrying a unit", () => {
+      // "20 %" is a spelling of the value, not a number to compare a read-back
+      // with, so the entry reports what the param reads either way.
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "Amount", value: "20 %" }],
+      });
+
+      expect(paramsOf(result)).toStrictEqual([
+        { id: "p1", name: "Amount", value: 20 },
+      ]);
     });
 
     it("refuses a value in some other unit, naming the one it wants", () => {

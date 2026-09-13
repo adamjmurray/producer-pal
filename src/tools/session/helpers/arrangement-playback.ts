@@ -6,7 +6,10 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { applyArrangementLoop } from "./arrangement-loop.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
+import {
+  locatorRef,
+  songPositionToBeats,
+} from "#src/tools/shared/locator/song-position.ts";
 import { type PlaybackState } from "./scene-playback.ts";
 
 /** What a timeline write actually landed. */
@@ -217,33 +220,43 @@ export function applyArrangementTimeline(
 }
 
 /**
- * Read the arrangement start position back after the action, so a value Live
- * snapped is what the caller sees. Reported when the call set it, and on
- * play-arrangement, which is governed by it — that's where playback just
- * began, and the caller may never have read it. Nothing else moves it.
+ * Read the arrangement start position back after the action, and report it only
+ * when it is news: a position the caller didn't write, one Live didn't put
+ * where they asked, or one a `loc:` name resolved to. play-arrangement always
+ * reads it, because that is where playback just began and the caller may never
+ * have looked.
  * @param liveSet - The live_set LiveAPI object
  * @param action - The playback action that just ran
- * @param wroteStartTime - Whether the call set the start position itself
+ * @param wrote - The start position the call sent, and the beat it resolved to
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns The start position in bar|beat, or undefined when nothing moved it
+ * @returns The start position in bar|beat, or undefined when it says nothing
  */
 export function readStartTime(
   liveSet: LiveAPI,
   action: string,
-  wroteStartTime: boolean,
+  wrote: TimelineWrites & { startTime?: string },
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): string | undefined {
-  if (!wroteStartTime && action !== PLAY_ARRANGEMENT) {
+  const { startTime, startTimeBeats } = wrote;
+
+  if (startTimeBeats == null && action !== PLAY_ARRANGEMENT) {
     return undefined;
   }
 
-  return abletonBeatsToBarBeat(
-    liveSet.getProperty("start_time") as number,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  const beats = liveSet.getProperty("start_time") as number;
+  // A locator resolved to a bar the caller has never seen, so it always
+  // reports. A bar|beat they wrote themselves reports only when Live moved it:
+  // the margin is for the 32-bit float Live stores, far below one tick.
+  const landedWhereAsked =
+    startTimeBeats != null &&
+    locatorRef(startTime ?? "") == null &&
+    Math.abs(beats - startTimeBeats) < 1e-6;
+
+  return landedWhereAsked
+    ? undefined
+    : abletonBeatsToBarBeat(beats, timeSigNumerator, timeSigDenominator);
 }
 
 /**

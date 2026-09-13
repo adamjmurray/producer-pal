@@ -108,3 +108,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0041](0041-device-type-segments-are-input-only.md)                | `inst`/`mfx<n>`/`afx<n>` are input only; results keep `d<n>`          |
 | [0042](0042-a-skipped-target-keeps-its-slot.md)                    | A skipped target keeps its slot: `ok: false` and a reason             |
 | [0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md) | A `+` belongs to the tool that creates that kind of object            |
+| [0044](0044-write-results-report-only-what-changed.md)             | A write result reports only what didn't land as asked                 |

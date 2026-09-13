@@ -140,7 +140,7 @@ describe("ppal-update-device", () => {
       ],
     });
 
-    expectSkipThenValue(updated, "Nope", { name: "Ratio", value: 4 });
+    expectSkipThenValue(updated, "Nope", { name: "Ratio" });
   });
 
   it("updates multiple devices in batch", async () => {

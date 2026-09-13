@@ -26,7 +26,11 @@ import {
   cleanupTempClip,
   extendSongIfNeeded,
 } from "./helpers/song-extension.ts";
-import { applyScale, applyTempo } from "./helpers/tempo-and-scale-updates.ts";
+import {
+  applyScale,
+  applyTempo,
+  applyTimeSignature,
+} from "./helpers/tempo-and-scale-updates.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;
@@ -107,9 +111,7 @@ export async function updateLiveSet(
   }
 
   if (parsedTimeSignature != null) {
-    liveSet.set("signature_numerator", parsedTimeSignature.numerator);
-    liveSet.set("signature_denominator", parsedTimeSignature.denominator);
-    result.timeSignature = `${parsedTimeSignature.numerator}/${parsedTimeSignature.denominator}`;
+    applyTimeSignature(liveSet, parsedTimeSignature, result);
   }
 
   if (scale != null) {
