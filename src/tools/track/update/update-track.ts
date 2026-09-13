@@ -17,6 +17,12 @@ import {
 } from "./helpers/track-mixer-updates.ts";
 import { applyRoutingProperties } from "./helpers/track-routing-updates.ts";
 import {
+  paramsTakeLanesIgnore,
+  planTakeLaneTargets,
+  updateTakeLane,
+  type UpdateTakeLaneResult,
+} from "./helpers/track-take-lanes.ts";
+import {
   applyTrackSends,
   resolveTrackSends,
 } from "./helpers/track-send-updates.ts";
@@ -126,11 +132,11 @@ function applyMonitoringState(
 }
 
 /**
- * Updates properties of existing tracks
+ * Updates properties of existing tracks, and the take lanes on them
  * @param args - The track parameters
  * @param args.id - Track ID or comma-separated list of track IDs to update
  * @param args.ids - Hidden alias for id
- * @param args.path - Track path(s) to update instead of ids, comma-separated
+ * @param args.path - Track or take lane path(s) to update instead of ids, comma-separated
  * @param args.paths - Hidden alias for path
  * @param args.name - Optional track name
  * @param args.color - Optional track color (CSS format: hex)
@@ -155,10 +161,13 @@ function applyMonitoringState(
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param args.sends - Optional [{return, gainDb}] list, to set several at once
  * @param _context - Internal context object (unused)
- * @returns The track when one was named, otherwise one entry per target
+ * @returns The target when one was named, otherwise one entry per target
  */
 export function updateTrack(
-  {
+  args: UpdateTrackArgs,
+  _context: Partial<ToolContext> = {},
+): WriteResult<UpdateTrackResult | UpdateTakeLaneResult> {
+  const {
     id,
     ids,
     path,
@@ -185,9 +194,7 @@ export function updateTrack(
     sendGainDb,
     sendReturn,
     sends,
-  }: UpdateTrackArgs,
-  _context: Partial<ToolContext> = {},
-): WriteResult<UpdateTrackResult> {
+  } = args;
   const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
     noun: "track",
     targets: { id, ids, path, paths },
@@ -196,6 +203,11 @@ export function updateTrack(
   });
 
   validateSendPair(sendGainDb, sendReturn);
+
+  // Lanes are planned before anything runs: a plan over the cap is refused
+  // whole, because a lane an earlier entry created can't be taken back.
+  const laneTargets = planTakeLaneTargets(targets);
+  const laneIgnores = laneTargets.size === 0 ? [] : paramsTakeLanesIgnore(args);
 
   // Resolved once: the return tracks belong to the Live Set, so a per-track
   // lookup would repeat one warning down the list.
@@ -206,10 +218,15 @@ export function updateTrack(
   let announcedCollisions = false;
 
   return writeFanOut(targets, (target, i) => {
+    const trackName = getNameForIndex(name, i, parsedNames);
+    const lane = laneTargets.get(i);
+
+    if (lane != null) {
+      return updateTakeLane(lane, trackName, laneIgnores);
+    }
+
     const track = targetObject(target, "track", trackIdAtPath);
     const trackColor = getColorForIndex(color, i, parsedColors);
-
-    const trackName = getNameForIndex(name, i, parsedNames);
 
     track.setAll({
       name:

@@ -29,14 +29,14 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
-        "track path(s) to update instead of id, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt<index>' (return), or 'mt' (main) - e.g. 't0' or 't0,rt1'",
+        "track or take lane path(s) to update instead of id, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt<index>' (return), 'mt' (main), 't<index>/l<lane>' (a take lane, creating the lanes up to it), 't<index>/l+' (append a take lane). A lane takes only name - e.g. 't0,rt1' or 't2/l+'",
       smallModel:
-        "track path to update instead of id: 't<index>', where t0 is the first track (a user's \"track 3\" is t2)",
+        "track path to update instead of id: 't<index>', where t0 is the first track (a user's \"track 3\" is t2). 't0/l0' names a take lane and 't0/l+' adds one; a lane takes only name",
     }),
 
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated one per track, in order, ideally unique",
+        "name for all, or comma-separated one per target, in order, ideally unique",
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {

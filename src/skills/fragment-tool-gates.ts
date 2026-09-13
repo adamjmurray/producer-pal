@@ -132,6 +132,11 @@ const DEVICE_WRITE_TOOLS = [
  * dual-meter rule to make sense of the position either way. read-scene is
  * absent because it reads clip slots only, so no arrangement position ever
  * reaches it.
+ *
+ * update-track is absent even though it owns the take lanes: a gate is any-of,
+ * so adding it would ship the whole arrangement document to a caller that can
+ * only rename a track. The lane-creation spelling lives in `object-paths`,
+ * whose gate already keeps it.
  */
 const ARRANGEMENT_TOOLS = [
   CREATE_CLIP,

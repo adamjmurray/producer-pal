@@ -164,7 +164,11 @@ clip is read via `readClip()`. Nested clips have `view` and `type` stripped (see
 "Redundant field stripping").
 
 `arrangement-clips` also replaces `takeLaneCount` with `takeLanes`: one entry
-per lane, each with its `path` (e.g. `"t2/l0"`), `name`, and `clips`.
+per lane, each with its `id`, `path` (e.g. `"t2/l0"`), `name`, and `clips`.
+
+A lane path reads on its own too: `path: "t2/l0"` answers with that lane — `id`,
+`path`, `name` — plus its `clips` under the same `arrangement-clips` include.
+Every other include is a track's, and a lane ignores them.
 
 ### Other includes
 

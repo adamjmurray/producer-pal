@@ -19,6 +19,7 @@ import {
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { entriesFrom } from "#src/tools/shared/helpers/target-entries.ts";
 import {
+  NEW_TAKE_LANE_ADVICE,
   splitPathEntries,
   pathError,
 } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
@@ -40,6 +41,15 @@ export type ClipPath = Extract<
   ObjectPath,
   { kind: "track" | "slot" | "take-lane" }
 >;
+
+/** A take lane, or the `l+` that appends one. */
+export type TakeLanePath = Extract<
+  ObjectPath,
+  { kind: "take-lane" | "new-take-lane" }
+>;
+
+/** A path whose last segment could name a take lane. */
+const TAKE_LANE_ENTRY = /\/l(?:\d+|\+)$/;
 
 /** A track or device-chain location, which is what can hold a device. */
 export interface DeviceContainerPath {
@@ -146,6 +156,30 @@ export function arrangementPath(
     trackIndex,
     laneIndex: takeLane,
   });
+}
+
+/**
+ * The take lane a path entry names, for a track tool that acts on lanes as well
+ * as tracks. Null for anything else, including a path that doesn't parse — the
+ * caller resolves the entry as a track and reports the problem from there, so
+ * the path is neither parsed nor complained about twice.
+ * @param entry - One path, as the caller wrote it
+ * @returns The lane it names, or null when it names no lane
+ */
+export function takeLanePathEntry(entry: string): TakeLanePath | null {
+  if (!TAKE_LANE_ENTRY.test(entry.trim())) {
+    return null;
+  }
+
+  try {
+    const path = parseObjectPath(entry);
+
+    return path.kind === "take-lane" || path.kind === "new-take-lane"
+      ? path
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -302,6 +336,8 @@ function describeNonClipPath(path: ObjectPath): string {
   switch (path.kind) {
     case "device":
       return "device paths hold no clips";
+    case "new-take-lane":
+      return NEW_TAKE_LANE_ADVICE;
     case "scene":
       return "a scene alone names no track";
     case "arrangement-position":

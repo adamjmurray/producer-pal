@@ -11,6 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
@@ -103,8 +104,8 @@ const REFUSALS: Array<[string, MoveOptions, string]> = [
   ],
   [
     "a take lane past the per-track limit",
-    { destination: { trackIndex: DEST_TRACK, takeLane: 8 } },
-    'take lane "l8" is out of range',
+    { destination: { trackIndex: DEST_TRACK, takeLane: MAX_TAKE_LANES } },
+    `take lane "l${MAX_TAKE_LANES}" is out of range`,
   ],
   [
     "a destination track that isn't there",

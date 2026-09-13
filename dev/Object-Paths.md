@@ -34,8 +34,8 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ```
 path     := ( root ( "/" segment )* )? coord?
 root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
-segment  := "s"<n> | "l"<n> | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
-           | "inst" | "mfx"<n> | "afx"<n>
+segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note>
+           | "p*" | "inst" | "mfx"<n> | "afx"<n>
 coord    := "[" position "]"
 position := <bar|beat> | "loc:" <locator>
 ```
@@ -52,11 +52,11 @@ list-length check, which would otherwise call one destination two and refuse a
 call for a mismatch that isn't there. Peeling the coordinate off first leaves a
 body with no brackets, so splitting that on `/` needs no depth of its own.
 
-The `+` roots name a place rather than a thing, so only the create tools take
-one, and only as a whole path — `t+/s0` names nothing yet. On create, `t2`
-inserts at 2 while `t+` appends. `rt<n>` is refused there: Live always adds a
-return track at the end, so a path naming a position it can't honor would
-silently create the track somewhere else.
+A `+` names a place rather than a thing, so it is taken only by the tool that
+creates that kind of object, and a `+` root is a whole path — `t+/s0` names
+nothing yet. On create, `t2` inserts at 2 while `t+` appends. `rt<n>` is refused
+there: Live always adds a return track at the end, so a path naming a position
+it can't honor would silently create the track somewhere else.
 
 Segments have to nest the way Live does, and a path that doesn't is a parse
 error rather than a missing object later: a track holds devices, a device holds
@@ -94,6 +94,7 @@ needs a measurement
 | `s+`           | a new scene, appended             | —                                      |
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
+| `t0/l+`        | a new take lane, appended         | —                                      |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
 | `t0/inst`      | the track's instrument            | the `devices N` whose `type` is 1      |
 | `t0/mfx0`      | its first MIDI effect             | the first `devices N` with `type` 4    |
@@ -113,11 +114,14 @@ clamps a drum chain's `in_note` to 0-127, so a `p*` chain can't be made and a
 write that would create one refuses instead. An existing one still resolves.
 Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
 
-A `+` is a root — `t+`, `rt+`, `s+` — and only the tool that creates that kind
-of object accepts a `+` path for it. Every other path must name something that
-already exists, or an index a tool fills in up to. So there is no `l+`: a take
-lane is reached by its index in a clip path, and the clip tools create the lanes
-up to that index. A rack chain works the same way.
+A `+` is accepted only by the tool that creates that kind of object: `t+`, `rt+`
+and `s+` by the create tools, `l+` by `ppal-update-track`, because a take lane
+is an aspect of its track rather than an object a tool makes on its own
+([ADR-0043](decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
+Every other path must name something that already exists, or an index a tool
+fills in up to. A clip tool given `l+` is refused and told which tool adds a
+lane. A rack chain has no `+` at all: it is reached by its index, and the write
+creates the chains up to it.
 
 ## Song-timeline positions
 
@@ -154,7 +158,8 @@ occupy the location.
 | `rt0`, `mt`               | ❌ no clip slots | ✅        | ✅     | —      |
 | `s3`                      | ❌               | ❌        | —      | ✅     |
 | `t0/s3`                   | ✅ clip slot     | ❌        | —      | —      |
-| `t0/l1`                   | ✅ arrangement   | ❌        | —      | —      |
+| `t0/l1`                   | ✅ arrangement   | ❌        | ✅     | —      |
+| `t0/l+`                   | ❌ update-track  | ❌        | ✅     | —      |
 | `t0/d1` and below         | ❌               | ✅        | —      | —      |
 | `t0[5\|1]`, `t0/l1[5\|1]` | ✅ arrangement   | ❌        | —      | —      |
 | `[5\|1]`                  | ✅ arrangement   | ❌        | —      | —      |
@@ -216,8 +221,18 @@ excludes the main lane, so `l0` is the first take lane and the segment index is
 the Live API index like every other segment.
 
 `takeLane` (1-based, `0` = main) is a hidden alias mapping `N → l(N-1)` and
-`0 → no segment`. `takeLaneName` is deprecated with no replacement: naming a
-lane is a property of the lane, not an address, and not a clip-tool concern.
+`0 → no segment`. `takeLaneName` is deprecated: naming a lane is a property of
+the lane, not an address, so it belongs to the lane's own target —
+`ppal-update-track` with `path: "t2/l0"` and `name`.
+
+**The lanes themselves are `ppal-update-track`'s.** A lane path there names a
+lane to write to: `t2/l<n>` fills in the lanes up to that index, `t2/l+` appends
+one, and each `l+` in the list appends its own. `name` is the only param a lane
+takes, and every other one the call sent is reported on the lane's entry rather
+than refusing the call. A whole call is refused up front when its lanes would
+put a track over the cap — lanes can't be deleted, so a half-run list would
+strand the ones it made. `ppal-read-track` takes a lane path too, answering with
+the lane and, with the `arrangement-clips` include, its clips.
 
 **Writes to and from a lane re-create the clip**, because Live's arrangement
 duplicate handles neither direction: `TakeLane` has no duplicate API, and

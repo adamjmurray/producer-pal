@@ -219,7 +219,8 @@ limitation).
 - Get detailed track information
 - View all clips in Session and Arrangement
 - List [take lanes](/features#take-lanes) and their clips (with the
-  `arrangement-clips` include)
+  `arrangement-clips` include), or read one lane on its own from a lane path
+  (`t2/l0`)
 - See devices, routing options, and drum pad mappings
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
@@ -235,6 +236,9 @@ limitation).
   letter)
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
+- Add and name [take lanes](/features#take-lanes) from a lane path: `t2/l+`
+  appends one, `t2/l2` names an existing lane (adding the lanes up to it), and
+  `name` is the only param a lane takes
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->

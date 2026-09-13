@@ -7,6 +7,11 @@ export const MAX_AUTO_CREATED_TRACKS = 100;
 export const MAX_AUTO_CREATED_SCENES = 1000;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
 export const MAX_SPLIT_POINTS = 32;
+/** Take lanes per track (total non-main lanes). Producer Pal's cap, not one of
+ * Live's. Here rather than beside the lane code because the e2e suites read it,
+ * and that module names the LiveAPI type, which e2e's typecheck has no
+ * declaration for. */
+export const MAX_TAKE_LANES = 10;
 // Enforced with boundedString(), not z.string().max() — see ADR-0021.
 export const MAX_CODE_LENGTH = 10_000;
 

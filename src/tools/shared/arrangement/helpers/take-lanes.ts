@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Take lane targeting shared by ppal-create-clip and ppal-duplicate.
+ * Take lane targeting, shared by the clip and track tools.
  *
  * Live API notes (verified against Live 12.4.3):
  * - `Track.take_lanes` excludes the main lane; `create_take_lane()` appends one
@@ -31,11 +31,9 @@
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
-
-/** Maximum take lanes per track (soft cap; total non-main lanes). */
-export const MAX_TAKE_LANES = 8;
 
 /** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
  * keeps the match anchored to the segment so future paths that happen to
@@ -85,6 +83,24 @@ export interface ArrangementTrack {
   trackIndex: number;
   /** Take lane target, or null for the main lane. */
   takeLane: TakeLaneTarget | null;
+}
+
+/**
+ * Checks a track can hold take lanes, for a lane target on it. A group track
+ * has no arrangement of its own, so Live gives it none.
+ * @param track - The track a lane path named
+ * @param trackIndex - Its index, for the message
+ * @throws Error when the track is a group
+ */
+export function assertTrackTakesLanes(
+  track: LiveAPI,
+  trackIndex: number,
+): void {
+  if ((track.getProperty("is_foldable") as number) > 0) {
+    throw new Error(
+      `only regular tracks have take lanes; "t${trackIndex}" is a group track`,
+    );
+  }
 }
 
 /**
@@ -235,7 +251,7 @@ export function resolveTakeLane(
       lane.setAll({ name: takeLaneName });
     } else {
       console.warn(
-        `takeLaneName ignored: take lane ${laneIndex} already exists and keeps its own name`,
+        `takeLaneName ignored: take lane ${laneIndex} already exists; rename it with ppal-update-track`,
       );
     }
   }
@@ -312,10 +328,11 @@ function assertTakeLaneCapacity(laneIndex: number): void {
 }
 
 /**
- * Says why a lane doesn't fit.
+ * Says why a lane doesn't fit. One wording for every tool that runs out of
+ * lanes, so the cap reads the same however a call reached it.
  * @param laneIndex - 0-based index of the lane that didn't fit
  * @returns The explanation
  */
-function takeLaneCapacityMessage(laneIndex: number): string {
+export function takeLaneCapacityMessage(laneIndex: number): string {
   return `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`;
 }

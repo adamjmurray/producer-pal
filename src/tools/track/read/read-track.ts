@@ -24,6 +24,7 @@ import {
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { trackTypeField } from "#src/tools/track/helpers/track-type-field.ts";
+import { readOneTakeLane, takeLaneRead } from "./helpers/read-take-lane.ts";
 import {
   resolveReadTrackTarget,
   type ReadTrackArgs,
@@ -111,15 +112,26 @@ export function readTrack(
 }
 
 /**
- * Read comprehensive information about one track
+ * Read comprehensive information about one track, or the take lane a path names
  * @param args - The parameters
  * @param context - Internal context object (supplies the active notation)
- * @returns Track information
+ * @returns Track information, or the lane's
  */
 export function readOneTrack(
   args: ReadTrackArgs = {},
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
+  const lane = takeLaneRead(args);
+
+  if (lane != null) {
+    return readOneTakeLane(
+      lane,
+      args.path as string,
+      args.include,
+      context.notation,
+    );
+  }
+
   const { track, category, trackIndex } = resolveReadTrackTarget(args);
 
   return readTrackGeneric({

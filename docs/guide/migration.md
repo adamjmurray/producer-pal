@@ -211,9 +211,7 @@ refused.
 
 `takeLane: "new"` is gone: name the lane by index instead, and lanes up to it
 are created as needed. Read a track's `takeLanes` first and use the next free
-index, since a track holds 8 lanes and none can be deleted. Appending a lane
-without knowing how many a track has isn't possible for now; it will come back
-as a track-tool feature.
+index: the per-track cap is small, and no lane can be deleted.
 
 ```js
 // before: two clips, one new lane
@@ -225,7 +223,27 @@ as a track-tool feature.
 ### `takeLaneName` is deprecated
 
 It still works on `ppal-create-clip` and `ppal-duplicate`, with a warning, and
-will be removed. Name take lanes in Live.
+will be removed. Name a take lane with `ppal-update-track` instead:
+`path: "t2/l0"` and `name`, which also works on a lane that already has a name.
+See below.
+
+### Take lanes are `ppal-update-track`'s in 2.4
+
+Nothing to migrate: this is where the lane params went. A take lane is a target
+of the track tools now, addressed by the same path a clip destination uses:
+
+| To                        | Call                                                     |
+| ------------------------- | -------------------------------------------------------- |
+| add a lane                | `ppal-update-track` `path: "t2/l+"` (one lane per entry) |
+| name one, adding up to it | `ppal-update-track` `path: "t2/l2"` with `name`          |
+| read one                  | `ppal-read-track` `path: "t2/l0"`                        |
+
+`name` is the only param a lane takes; any other one is reported on that lane's
+entry and changes nothing. A call whose lanes would put a track over the cap is
+refused before it creates any, because no lane can be deleted.
+
+The cap itself went from 8 lanes per track to 10. It is Producer Pal's, not
+Live's.
 
 ### `arrangementStart` becomes a coordinate, not a param
 

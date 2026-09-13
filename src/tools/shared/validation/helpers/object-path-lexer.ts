@@ -10,6 +10,13 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ObjectPath } from "../object-path.ts";
 
+/**
+ * Why a tool other than ppal-update-track can't act on an `l+`. Here with
+ * {@link pathError} because every part of the grammar imports this file.
+ */
+export const NEW_TAKE_LANE_ADVICE =
+  '"l+" adds a take lane, which only ppal-update-track does';
+
 const LEGACY_TRACK = /^(\d+)$/;
 const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
 

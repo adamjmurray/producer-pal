@@ -74,17 +74,28 @@ describe("parseObjectPath", () => {
     });
   });
 
-  // "l=" and "l+" used to append or name an appended lane. Both are gone: a
-  // "+" only ever roots a path, and a lane is named by its index.
-  it("refuses the retired l= and l+ segments", () => {
+  it("reads l+ as a lane to append", () => {
+    expect(parseObjectPath("t2/l+")).toStrictEqual({
+      kind: "new-take-lane",
+      trackIndex: 2,
+    });
+  });
+
+  // Only the track's own tools append a lane, so a clip destination carrying
+  // one is refused with the tool that does it.
+  it("refuses l+ under a song position, and on a track that has no lanes", () => {
+    expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
+      '"l+" adds a take lane, which only ppal-update-track does; name an existing lane as "t<track>/l<lane>"',
+    );
+    expect(() => parseObjectPath("rt0/l+")).toThrow(
+      'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
+    );
+  });
+
+  // "l=" once named the lane an "l+" before it appended. It never shipped.
+  it("refuses the retired l= segment", () => {
     expect(() => parseObjectPath("t2/l=")).toThrow(
       '"l=" is not a device, chain, or drum pad',
-    );
-    expect(() => parseObjectPath("t2/l+")).toThrow(
-      'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
-    );
-    expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
-      'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
     );
   });
 

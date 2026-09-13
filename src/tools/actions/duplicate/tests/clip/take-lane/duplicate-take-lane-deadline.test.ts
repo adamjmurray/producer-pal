@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../../duplicate-mocks-test-helpers.ts";
-import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 // Capture the deadline warning, which shares the outlet with the take-lane ones
@@ -119,7 +119,9 @@ describe("duplicate to a take lane, cut short", () => {
         ok: false,
         reason: `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
       },
-      { id: "tl_clip_10", path: "t1/l0[5|1]" },
+      // The mock's clip ids run off a counter every test shares, so the copy
+      // is matched by shape rather than by a number that shifts.
+      { id: expect.stringMatching(/^tl_clip_\d+$/), path: "t1/l0[5|1]" },
       {
         path: "t1/l1[9|1]",
         ok: false,

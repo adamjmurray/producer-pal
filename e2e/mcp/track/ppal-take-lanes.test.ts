@@ -38,6 +38,7 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../mcp-test-helpers";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { CHILD_TRACK, EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
@@ -114,7 +115,7 @@ describe("take lanes", () => {
 
     expect(lane1.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[5|1]`);
     expect(lane1.warnings.join("\n")).toContain(
-      'param "takeLaneName" is deprecated and will be removed; name the lane in Live',
+      'param "takeLaneName" is deprecated and will be removed; name the lane with ppal-update-track',
     );
 
     // A main-lane clip's path is the track plus where it starts
@@ -217,7 +218,7 @@ describe("take lanes", () => {
     expect(master).not.toHaveProperty("takeLaneCount");
   });
 
-  it("replaces an overlapping clip and enforces the 8-lane cap", async () => {
+  it("replaces an overlapping clip and enforces the lane cap", async () => {
     await createOnLane({
       path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
@@ -239,12 +240,14 @@ describe("take lanes", () => {
     expect(afterReplace.takeLanes![0]!.clips).toHaveLength(1);
 
     // Targeting the last lane auto-creates the lanes up to it
-    const lane7 = await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l7[1|1]`,
+    const lastLane = await createOnLane({
+      path: `t${EMPTY_MIDI_TRACK}/l${MAX_TAKE_LANES - 1}[1|1]`,
       notes: "C3 1|1",
     });
 
-    expect(lane7.path).toBe(`t${EMPTY_MIDI_TRACK}/l7[1|1]`);
+    expect(lastLane.path).toBe(
+      `t${EMPTY_MIDI_TRACK}/l${MAX_TAKE_LANES - 1}[1|1]`,
+    );
 
     await sleep(100);
     const overview = parseToolResult<ReadTrackTakeLanesResult>(
@@ -254,7 +257,7 @@ describe("take lanes", () => {
       }),
     );
 
-    expect(overview.takeLaneCount).toBe(8);
+    expect(overview.takeLaneCount).toBe(MAX_TAKE_LANES);
 
     // Past the cap: the lane is warned and dropped, not fatal, so the
     // destinations alongside it in the same call still land.
@@ -262,7 +265,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${EMPTY_MIDI_TRACK}/l8[5|1]`,
+          path: `t${EMPTY_MIDI_TRACK}/l${MAX_TAKE_LANES}[5|1]`,
           notes: "C3 1|1",
         },
       }),
@@ -270,7 +273,7 @@ describe("take lanes", () => {
 
     expect(outOfRange.data).toStrictEqual([]);
     expect(outOfRange.warnings.join(" ")).toContain(
-      'take lane "l8" is out of range: a track has "l0" through "l7"',
+      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
     );
   });
 
@@ -617,9 +620,9 @@ describe("take lanes", () => {
     expect(detail.takeLanes![1]!.clips).toHaveLength(1);
   });
 
-  // "l=" and "l+" once appended a lane or named the appended one. Both are
-  // gone: a "+" only ever roots a path, and a lane is named by its index.
-  it("refuses the retired l= and l+ in toPath", async () => {
+  // A copy goes on a lane that exists; ppal-update-track is what adds one. The
+  // retired "l=" named the lane an "l+" before it appended, and never shipped.
+  it("refuses l+ and the retired l= in toPath", async () => {
     const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Retired Spelling");
 
     const equals = await ctx.client!.callTool({
@@ -647,7 +650,7 @@ describe("take lanes", () => {
 
     expect(isToolError(plus)).toBe(true);
     expect(getToolErrorMessage(plus)).toContain(
-      'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
+      '"l+" adds a take lane, which only ppal-update-track does',
     );
   });
 

@@ -5,10 +5,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
   isTakeLaneClip,
   isTakeLaneRequested,
-  MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
   takeLaneLabel,
@@ -229,7 +229,7 @@ describe("resolveTakeLane", () => {
     const trackApi = LiveAPI.from(livePath.track(0));
 
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
-      /take lane "l9" is out of range: a track has "l0" through "l7"/,
+      `take lane "l${MAX_TAKE_LANES + 1}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
     );
   });
 
@@ -238,13 +238,13 @@ describe("resolveTakeLane", () => {
 
     expect(() =>
       resolveTakeLane(LiveAPI.from(livePath.track(0)), MAX_TAKE_LANES),
-    ).toThrow(/take lane "l8" is out of range/);
+    ).toThrow(`take lane "l${MAX_TAKE_LANES}" is out of range`);
   });
 
   it("allows targeting exactly the cap-numbered lane (boundary is > not >=)", () => {
-    // Targeting the last lane MAX_TAKE_LANES allows (index 7) when 8 already
-    // exist is at the cap, not over it — it must resolve, not throw. Guards the
-    // `>` vs `>=` boundary.
+    // The last lane MAX_TAKE_LANES allows, on a track already holding that
+    // many, is at the cap and not over it — it must resolve, not throw. Guards
+    // the `>` vs `>=` boundary.
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
     const trackApi = LiveAPI.from(livePath.track(0));
 
@@ -283,8 +283,8 @@ describe("takeLaneTargetsThatFit", () => {
     expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: 0 }]);
     // Handed back rather than warned: a caller with an entry per destination
     // puts it there.
-    expect(dropped.get("t0/l8")).toBe(
-      'take lane "l8" is out of range: a track has "l0" through "l7"',
+    expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toBe(
+      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
     );
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
@@ -298,13 +298,13 @@ describe("takeLaneTargetsThatFit", () => {
     expect(fitting).toStrictEqual([]);
     expect([...dropped]).toStrictEqual([
       [
-        "t0/l8",
-        'take lane "l8" is out of range: a track has "l0" through "l7"',
+        `t0/l${MAX_TAKE_LANES}`,
+        `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
       ],
     ]);
   });
 
-  // Lane 7 is the last one MAX_TAKE_LANES allows, so it fits.
+  // The last lane MAX_TAKE_LANES allows still fits.
   it("keeps a call whose lanes all fit", () => {
     const targets: ArrangementTrack[] = [
       { trackIndex: 0, takeLane: 0 },

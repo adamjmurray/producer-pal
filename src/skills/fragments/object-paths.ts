@@ -7,8 +7,9 @@
 // `arrangement-write`, gated on the clip writers; this is the half every
 // track/scene tool needs, in both directions.
 //
-// Names no tool on purpose, so a wide gate costs nothing: the round trip is the
-// content, and each tool's own `path` description says what it takes.
+// Names one tool, and only where the spelling belongs to it: ppal-update-track
+// owns the take lanes, and no narrower gate keeps it. Everything else here is
+// the round trip, which each tool's own `path` description already covers.
 //
 // Says nothing about `type: "return"` on create-track. That value still works
 // but is no longer offered, and naming it here would push a model back toward
@@ -25,7 +26,9 @@ A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a re
 
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
-Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. \`name\` and \`color\` pair with the list 1:1.`;
+Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. \`name\` and \`color\` pair with the list 1:1.
+
+A track's take lanes are \`ppal-update-track\`'s: \`t2/l+\` appends one (each \`l+\` in the list its own), and \`t2/l<n>\` names an existing lane, creating the lanes up to it. \`name\` is the only param a lane takes, and \`ppal-read-track\` reads a lane path too.`;
 
 // The small-model half. Not a trim for its own sake: a small model makes one
 // object at a time, so a path list points at something it never writes, and the

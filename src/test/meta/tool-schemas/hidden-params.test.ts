@@ -297,7 +297,8 @@ describe("hidden params", () => {
       expect(Object.keys(validating)).toContain("takeLaneName");
       expect(hidden.takeLaneName).toStrictEqual({
         kind: "deprecated",
-        guidance: "name the lane in Live",
+        guidance:
+          'name the lane with ppal-update-track (path "t0/l0" and the name)',
       });
     }
   });

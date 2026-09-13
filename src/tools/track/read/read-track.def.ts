@@ -30,7 +30,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       .string()
       .optional()
       .describe(
-        "track path(s) to read, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt0' for a return, 'mt' for the main track",
+        "track path(s) to read, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt0' for a return, 'mt' for the main track, 't0/l0' for one take lane",
       ),
 
     trackType: deprecatedParam(

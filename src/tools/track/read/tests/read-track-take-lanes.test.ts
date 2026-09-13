@@ -6,10 +6,14 @@
 import { describe, expect, it } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readOneTrack } from "../read-track.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { readOneTrack, readTrack } from "../read-track.ts";
 
 interface TakeLane {
+  id: string;
   path: string;
   name: string;
   clips: Array<Record<string, unknown>>;
@@ -91,9 +95,11 @@ describe("readOneTrack take lanes", () => {
     const takeLanes = result.takeLanes as TakeLane[];
 
     expect(takeLanes).toHaveLength(2);
+    expect(takeLanes[0]!.id).toBe("lane1");
     expect(takeLanes[0]!.path).toBe("t2/l0");
     expect(takeLanes[0]!.name).toBe("Take A");
     expect(takeLanes[0]!.clips.map((c) => c.id)).toStrictEqual(["clip_a"]);
+    expect(takeLanes[1]!.id).toBe("lane2");
     expect(takeLanes[1]!.path).toBe("t2/l1");
     expect(takeLanes[1]!.name).toBe("Take B");
     expect(takeLanes[1]!.clips.map((c) => c.id)).toStrictEqual([
@@ -189,5 +195,94 @@ describe("readOneTrack take lanes", () => {
 
     expect(result).not.toHaveProperty("takeLaneCount");
     expect(result).not.toHaveProperty("takeLanes");
+  });
+});
+
+describe("readTrack on a take lane path", () => {
+  it("reads the lane itself, with no clips until they are asked for", () => {
+    registerTrackWithTakeLanes();
+
+    expect(readOneTrack({ path: "t2/l0" })).toStrictEqual({
+      id: "lane1",
+      path: "t2/l0",
+      name: "Take A",
+    });
+  });
+
+  it("reads the lane's clips with the arrangement-clips include", () => {
+    registerTrackWithTakeLanes();
+
+    const result = readOneTrack({
+      path: "t2/l1",
+      include: ["arrangement-clips"],
+    });
+
+    expect(result.id).toBe("lane2");
+    expect((result.clips as Array<{ id: string }>).map((c) => c.id)) //
+      .toStrictEqual(["clip_b1", "clip_b2"]);
+  });
+
+  it("mixes lane paths with track paths, one entry each", () => {
+    registerTrackWithTakeLanes();
+
+    const result = readTrack({ path: "t2,t2/l1" }) as Array<
+      Record<string, unknown>
+    >;
+
+    expect(result[0]!.id).toBe("track3");
+    expect(result[1]).toStrictEqual({
+      id: "lane2",
+      path: "t2/l1",
+      name: "Take B",
+    });
+  });
+
+  it("keeps the slot of a lane, track, or spelling it can't read", () => {
+    mockNonExistentObjects();
+    registerTrackWithTakeLanes();
+    registerMockObject("group", {
+      path: livePath.track(3),
+      type: "Track",
+      properties: { is_foldable: 1 },
+    });
+
+    const result = readTrack({ path: "t2/l5,t9/l0,t3/l0,t2/l+" }) as Array<
+      Record<string, unknown>
+    >;
+
+    expect(result).toStrictEqual([
+      { path: "t2/l5", ok: false, reason: 'nothing at path "t2/l5"' },
+      { path: "t9/l0", ok: false, reason: 'nothing at path "t9/l0"' },
+      {
+        path: "t3/l0",
+        ok: false,
+        reason: 'only regular tracks have take lanes; "t3" is a group track',
+      },
+      {
+        path: "t2/l+",
+        ok: false,
+        reason:
+          'invalid path "t2/l+" - "l+" adds a take lane, which only ppal-update-track does; read an existing lane as "t<track>/l<lane>"',
+      },
+    ]);
+  });
+
+  // A lane path beside a track index names two targets; the track read's own
+  // refusal has to win.
+  it("refuses a lane path sent with a track index", () => {
+    registerTrackWithTakeLanes();
+
+    expect(() => readOneTrack({ path: "t2/l0", trackIndex: 1 })).toThrow(
+      "path names the track on its own",
+    );
+  });
+
+  it("throws for a lone lane it can't read", () => {
+    mockNonExistentObjects();
+    registerTrackWithTakeLanes();
+
+    expect(() => readOneTrack({ path: "t2/l5" })).toThrow(
+      'nothing at path "t2/l5"',
+    );
   });
 });

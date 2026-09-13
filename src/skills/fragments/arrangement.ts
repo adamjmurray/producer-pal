@@ -24,9 +24,12 @@ export const arrangement = `## Arrangement
 /**
  * Putting clips on the timeline: moving and splitting them, and stacking take
  * lanes. Four fifths of the subject, and only create-clip, update-clip, and
- * duplicate can run any of it — a read-only clip caller was paying for recipes
- * it had no tool to execute. The direction split (ADR-0019), applied to
- * arrangement.
+ * duplicate can run it — a read-only clip caller was paying for recipes it had
+ * no tool to execute. The direction split (ADR-0019), applied to arrangement.
+ *
+ * One line points past them: the lanes themselves are the track update tool's,
+ * and this gate can't promise a caller has it, so the line names no tool. The
+ * spelling is taught where the gate does keep it, in `object-paths`.
  *
  * The read-track `arrangement-clips` clause rides along because it is a
  * round-trip instruction — read the take lanes so you can write to one — and
@@ -64,10 +67,11 @@ duplicate's \`id\` takes a list, copying each source in turn: \`count\` applies 
 
 Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
 
-- A lane is a path segment: \`t2/l0\` is the track's first take lane. Arrangement only, and lanes up to the index are created as needed. Read \`takeLanes\` from read-track first so you know which lanes exist — there are only 8 per track and none can be deleted. A stack of takes on one lane is \`toPath: "t2/l0[9|1],t2/l0[13|1]"\`.
+- A lane is a path segment: \`t2/l0\` is the track's first take lane. Arrangement only, and lanes up to the index are created as needed. Read \`takeLanes\` from read-track first so you know which lanes exist — Producer Pal caps them at 10 per track, and none can be deleted. A stack of takes on one lane is \`toPath: "t2/l0[9|1],t2/l0[13|1]"\`.
+- A clip write only fills in the lanes up to the index it names. Adding or naming a lane on its own is the track update tool's job, through the same lane path: \`t2/l+\` appends one, \`t2/l0\` with a name renames it.
 - Promote a take back to the main lane with a \`toPath\` that has no \`l\` segment (\`t2\`). \`duplicate\` copies it and leaves the take alone; \`update-clip\` empties the take behind it.
-- Variation workflow: one duplicate with a lane each, \`toPath: "t2/l0,t2/l1,t2/l2"\` (on a track that already has lanes, start after the last) + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
-- 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
+- Variation workflow: one duplicate with a lane each, \`toPath: "t2/l0,t2/l1,t2/l2"\` (on a track that already has lanes, start after the last) + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`id\`, \`path\` (e.g. \`t2/l0\`) and \`name\`.
+- Producer Pal's cap is 10 lanes a track; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
 - Take-lane clips are append-only. Moving one off its lane (\`update-clip\` with \`toPath\`, to another lane, another track, or a session slot) copies the content to the destination and leaves a muted \`(moved) ...\` clip behind, because Live's API can't remove it — tell the user to delete that leftover in Live. A MIDI leftover is emptied of notes; an audio one keeps its sample (Live won't let it be cleared) and is only muted. \`arrangementSplit\` and \`arrangementLength\` change nothing on a lane clip — its entry says why, and a call that asked for nothing else reports \`ok: false\` — and \`ppal-delete\` reports it \`ok: false\` too; those need Live's UI. Moving a main-lane clip ONTO a lane works: \`update-clip\` with \`toPath: "t2/l0"\`.
 - Anything that puts a clip on a lane recreates it (MIDI from its notes, audio from its sample), which drops envelope automation and resets a warped audio clip's warp markers. The response says which applied.`;
 

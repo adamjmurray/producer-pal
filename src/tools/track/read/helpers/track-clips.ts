@@ -14,6 +14,7 @@ import { arrangementPath } from "#src/tools/shared/validation/helpers/object-pat
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {
+  id: string;
   /** The lane's path ("t0/l0"), which pastes back into any path/toPath param.
    * Saves a consumer inferring the index from array position. */
   path: string;
@@ -141,27 +142,42 @@ export function readTakeLanes(
 ): ReadTakeLaneResult[] {
   const drumMode = isDrumMode();
 
-  return track.getChildren("take_lanes").map((lane, i) => {
-    const clips = lane
-      .getChildIds("arrangement_clips")
-      .map((clipId) =>
-        readOneClip(
-          { id: clipId, drumMode, ...(include && { include }) },
-          { notation },
-        ),
-      )
-      .filter((clip) => clip.id != null);
+  return track.getChildren("take_lanes").map((lane, i) => ({
+    id: lane.id,
+    path: arrangementPath(trackIndex as number, i),
+    name: lane.getName(),
+    clips: readTakeLaneClips(lane, drumMode, include, notation),
+  }));
+}
 
-    // Strip fields redundant with the parent context: a take lane clip is
-    // always an arrangement clip on this track, matching its MIDI/audio type.
-    // The path stays — it carries where the clip starts, which the lane's own
-    // path doesn't say.
-    stripFields(clips, "view", "type");
+/**
+ * Read the arrangement clips on one take lane.
+ * @param lane - The take lane object
+ * @param drumMode - Whether the clip reads use drum mode (see drumModeForTrack)
+ * @param include - Include array for nested clip reads
+ * @param notation - Active notation for nested clip note formatting
+ * @returns The clips on the lane
+ */
+export function readTakeLaneClips(
+  lane: LiveAPI,
+  drumMode: boolean,
+  include?: string[],
+  notation?: Notation,
+): ReadClipResult[] {
+  const clips = lane
+    .getChildIds("arrangement_clips")
+    .map((clipId) =>
+      readOneClip(
+        { id: clipId, drumMode, ...(include && { include }) },
+        { notation },
+      ),
+    )
+    .filter((clip) => clip.id != null);
 
-    return {
-      path: arrangementPath(trackIndex as number, i),
-      name: lane.getName(),
-      clips,
-    };
-  });
+  // Strip fields redundant with the parent context: a take lane clip is always
+  // an arrangement clip on this track, matching its MIDI/audio type. The path
+  // stays — it carries where the clip starts, which the lane's own path doesn't.
+  stripFields(clips, "view", "type");
+
+  return clips;
 }

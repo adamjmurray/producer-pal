@@ -14,6 +14,11 @@ and only the tool that creates that kind of object accepts one; `l+` was the
 only `+` that was neither. `l<n>` already creates lanes up to the index, so it
 says everything `l+` could. See ADR-0025.
 
+`l+` is back, on `ppal-update-track` rather than on a clip destination, where
+each one in the list appends its own lane — so the stack-on-one-lane case still
+belongs to `l<n>`. See
+[ADR-0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md).
+
 ## Context
 
 [ADR-0037](0037-arrangement-time-is-part-of-the-path.md) put the song position

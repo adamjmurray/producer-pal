@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../../duplicate-mocks-test-helpers.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
-import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,
@@ -592,7 +592,10 @@ describe("duplicate take lane", () => {
     })) as Array<{ ok?: false; reason?: string }>;
 
     expect(
-      lookupMockObject(undefined, livePath.track(1).takeLane(7))?.call,
+      lookupMockObject(
+        undefined,
+        livePath.track(1).takeLane(MAX_TAKE_LANES - 1),
+      )?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(result[1]?.reason).toContain(
       `take lane "l${MAX_TAKE_LANES}" is out of range`,
@@ -661,8 +664,10 @@ describe("duplicate take lane", () => {
     });
 
     // Landed on the named lane, not the one the source sits on
+    // The mock's clip ids run off a counter every test shares, so the copy is
+    // matched by shape rather than by a number that shifts.
     expect(result).toStrictEqual({
-      id: "tl_clip_73",
+      id: expect.stringMatching(/^tl_clip_\d+$/),
       path: "t0/l1[5|1]",
     });
 
@@ -676,9 +681,9 @@ describe("duplicate take lane", () => {
     });
   });
 
-  // "l=" and "l+" once appended a lane or named the appended one. Both are
-  // gone: a "+" only ever roots a path, and a lane is named by its index.
-  it("refuses the retired l= and l+ destinations", async () => {
+  // A copy goes on a lane that exists; ppal-update-track is what adds one. The
+  // retired "l=" named the lane an "l+" before it appended, and never shipped.
+  it("refuses l+ and the retired l= destinations", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 1 });
@@ -688,7 +693,14 @@ describe("duplicate take lane", () => {
     ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
     await expect(
       duplicate({ type: "clip", id: "src_clip", toPath: "t0/l+[1|1]" }),
-    ).rejects.toThrow('a take lane is "t<track>/l<lane>" (e.g. "t0/l0")');
+    ).rejects.toThrow(
+      '"l+" adds a take lane, which only ppal-update-track does',
+    );
+    await expect(
+      duplicate({ type: "clip", id: "src_clip", toPath: "t0/l+" }),
+    ).rejects.toThrow(
+      '"l+" adds a take lane, which only ppal-update-track does',
+    );
   });
 
   // Unlike the create-outright failure above, the create itself succeeds and

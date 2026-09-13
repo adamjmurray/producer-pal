@@ -7,7 +7,7 @@
 // path it makes. See dev/Object-Paths.md.
 
 import { type ObjectPath } from "../object-path.ts";
-import { pathError } from "./object-path-lexer.ts";
+import { NEW_TAKE_LANE_ADVICE, pathError } from "./object-path-lexer.ts";
 
 /**
  * An arrangement lane a coordinate can sit on — the subset of ObjectPath a
@@ -61,8 +61,10 @@ export function arrangementPosition(
     throw pathError(
       label,
       input,
-      `a song position needs an arrangement lane; expected "t<track>", ` +
-        `"t<track>/l<lane>", or "[${position}]" on its own`,
+      lane.kind === "new-take-lane"
+        ? `${NEW_TAKE_LANE_ADVICE}; name an existing lane as "t<track>/l<lane>"`
+        : `a song position needs an arrangement lane; expected "t<track>", ` +
+            `"t<track>/l<lane>", or "[${position}]" on its own`,
     );
   }
 
