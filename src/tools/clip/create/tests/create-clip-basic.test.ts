@@ -16,6 +16,7 @@ import {
   expectClipCreated,
   expectNotesAdded,
   note,
+  registerEmptyClipSlot,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -253,24 +254,54 @@ describe("createClip - basic validation and time signatures", () => {
     expectClipCreated(clipSlot, 8); // Rounds up to 2 bars = 8 Ableton beats
   });
 
-  it("warns when firstStart is used with non-looping clips", async () => {
+  // `looping` unset means the clip won't loop, so firstStart is dropped there
+  // too — the entry has to say so, not just for an explicit `looping: false`.
+  it.each([
+    ["looping is off", { looping: false }],
+    ["looping is unset", {}],
+  ])(
+    "reports an ignored firstStart on the clip's own entry when %s",
+    async (_case, args) => {
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        clip: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      const result = await createClip({
+        slot: "0/0",
+        notes: "C4 1|1",
+        firstStart: "1|2",
+        ...args,
+      });
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          reason: "firstStart ignored: set looping: true to use it",
+        }),
+      );
+      expect(capturedWarnings().join(" ")).not.toContain("firstStart");
+    },
+  );
+
+  it("puts the reason on every clip the call made", async () => {
     setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { signature_numerator: 4, signature_denominator: 4 },
     });
+    registerEmptyClipSlot(1);
 
-    await createClip({
-      slot: "0/0",
+    const result = (await createClip({
+      slot: "0/0,0/1",
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
-    });
+    })) as Array<{ reason?: string }>;
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "firstStart parameter ignored for non-looping clips",
-      ),
-    );
+    expect(result).toHaveLength(2);
+    expect(result.map((clip) => clip.reason)).toStrictEqual([
+      "firstStart ignored: set looping: true to use it",
+      "firstStart ignored: set looping: true to use it",
+    ]);
   });
 
   it("sets playing_position when firstStart is used with looping clips", async () => {
@@ -292,32 +323,27 @@ describe("createClip - basic validation and time signatures", () => {
 });
 
 describe("convertTimingParameters (unit)", () => {
-  it("warns when firstStart is used with a non-looping clip", () => {
-    convertTimingParameters(null, null, "1|2", null, false, 4, 4, 4, 4);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("firstStart parameter ignored"),
+  // `firstStart != null && !looping`, one case per way it can go. Sending no
+  // firstStart is what kills the && → || mutant.
+  it.each([
+    ["firstStart on a non-looping clip is ignored", "1|2", false, true],
+    ["firstStart with looping unset is ignored", "1|2", null, true],
+    ["firstStart on a looping clip is used", "1|2", true, false],
+    ["no firstStart is nothing to ignore", null, false, false],
+  ])("%s", (_case, firstStart, looping, ignored) => {
+    const result = convertTimingParameters(
+      null,
+      null,
+      firstStart,
+      null,
+      looping,
+      4,
+      4,
+      4,
+      4,
     );
-  });
 
-  it("does NOT warn when firstStart is used with a looping clip", () => {
-    // looping === true: the firstStart-ignored warning must not fire. Kills the
-    // `looping === false` → true and whole-condition → true / && → || mutants.
-    convertTimingParameters(null, null, "1|2", null, true, 4, 4, 4, 4);
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("firstStart parameter ignored"),
-    );
-  });
-
-  it("does NOT warn when firstStart is set but looping is unset (null)", () => {
-    // looping is null (not false), so `firstStart != null && looping === false`
-    // is false; the && → || mutant would make it warn.
-    convertTimingParameters(null, null, "1|2", null, null, 4, 4, 4, 4);
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("firstStart parameter ignored"),
-    );
+    expect(result.firstStartIgnored).toBe(ignored);
   });
 
   it("adds startBeats to the length when computing endBeats (?? 0 fallback)", () => {

@@ -26,6 +26,7 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { updateAndRead } from "../helpers/clip-io-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
@@ -50,6 +51,43 @@ describe("ppal-update-clip ignored params", () => {
       "firstStart ignored: the clip is not looping",
     );
     expect(warnings.join(" ")).not.toContain("firstStart");
+  });
+
+  // A MIDI clip has no sample, so the audio params wrote nothing — one reason
+  // naming all of them, beside the rename that did land.
+  it("reports the audio params a MIDI clip ignored on its own entry", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s5`, {
+      notes: "C3 1|1",
+    });
+
+    const { clip, entry, warnings } = await updateAndRead(ctx.client!, clipId, {
+      name: "Renamed Anyway",
+      gainDb: 3,
+      pitchShift: -2,
+    });
+
+    expect(entry.reason).toContain(
+      "gainDb/pitchShift ignored: the clip is MIDI",
+    );
+    expect(entry).not.toHaveProperty("ok");
+    expect(clip.name).toBe("Renamed Anyway");
+    expect(warnings.join(" ")).not.toContain("gainDb");
+  });
+
+  it("refuses a lone MIDI clip sent only an audio param", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s6`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, gainDb: 3 },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "gainDb ignored: the clip is MIDI",
+    );
   });
 
   // Nothing else was asked of the one clip named, so the reason comes back as

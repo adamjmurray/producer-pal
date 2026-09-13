@@ -98,6 +98,8 @@ export interface ClipResultObject {
   length?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
+  /** What the call asked for that the clip didn't get */
+  reason?: string;
 }
 
 /**

@@ -4,14 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for create-clip warning about params that don't apply to the clip
- * type it was asked to make.
+ * E2E tests for create-clip params that don't apply to the clip it was asked to
+ * make.
  *
- * These params are dropped rather than applied, so the warning is the only sign
+ * A param for the other clip type is dropped, so the warning is the only sign
  * the request wasn't honored — and it only counts if it survives the MCP round
  * trip as a WARNING block. Real Live is what shows the drop actually landed:
  * the clip keeps the sample's own region instead of the length that was asked
- * for.
+ * for. A param the clip itself can do nothing with is a reason on its entry.
  *
  * Uses: e2e-test-set - t5 "Audio 2" (free slots), t8 "9-MIDI" (empty)
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -129,6 +129,35 @@ describe("ppal-create-clip with params for the other clip type", () => {
 
     // Warned, not refused: the clip is still there.
     expect(clip.type).toBe("midi");
+    expect(clip.notes).toContain("C3");
+  });
+});
+
+describe("ppal-create-clip with a param the new clip can't use", () => {
+  // firstStart only lands when the call also asks for looping, so anything else
+  // says so on its own entry — the clip was still created.
+  it("reports an ignored firstStart on the clip's own entry", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
+        notes: "C3 1|1",
+        firstStart: "1|3",
+        looping: false,
+      },
+    });
+    const created = parseToolResultWithWarnings<CreateClipResult>(result);
+
+    expect(created.data.reason).toBe(
+      "firstStart ignored: set looping: true to use it",
+    );
+    expect(created.warnings.join("\n")).not.toContain("firstStart");
+
+    await sleep(100);
+
+    // Reported, not refused: the clip is still there.
+    const clip = await readClipWithNotes(ctx.client!, created.data.id);
+
     expect(clip.notes).toContain("C3");
   });
 });

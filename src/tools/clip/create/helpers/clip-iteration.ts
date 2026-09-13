@@ -21,7 +21,11 @@ import {
   createAudioArrangementClip,
   createAudioSessionClip,
 } from "./audio-clip-creation.ts";
-import { buildClipProperties, buildClipResult } from "./created-clip-result.ts";
+import {
+  buildClipProperties,
+  buildClipResult,
+  type ClipResultObject,
+} from "./created-clip-result.ts";
 
 export interface CreateClipAudioParams {
   /** Requested warp state, or null/undefined to keep Live's own choice */
@@ -85,7 +89,7 @@ export function processClipIteration(
   audio: CreateClipAudioParams = {},
   timeSignature: string | null = null,
   track: LiveAPI | null = null,
-): object {
+): ClipResultObject {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
 

@@ -118,14 +118,18 @@ target, so no entry exists yet to carry them.
   with a `reason`: a throw partway, a move refused beside a name or a length
   that landed, a re-create and what it cost, a take-lane leftover. A param the
   clip can't take — notes, preTransforms, duplicateLoop or quantize on an audio
-  clip, warp markers on a MIDI clip, firstStart on a clip that isn't looping or
-  past its content end, warping off while looping — is a reason on its entry
-  too, and a skip when it was all the call asked of the clip. The move and
-  arrangement helpers report all of it on the clip's entry instead of warning,
-  through a per-call collector keyed by the clip id the call found; a step that
-  writes under a new id — a move re-creates the clip — hands its reasons back to
-  the id the caller named. One target never answers with no entries: a split
-  whose pieces the rescan can't find says so too.
+  clip, warp markers or the audio params (gainDb, pitchShift, warpMode, warping)
+  on a MIDI clip, firstStart on a clip that isn't looping or past its content
+  end, warping off while looping — is a reason on its entry too, and a skip when
+  it was all the call asked of the clip. The move and arrangement helpers report
+  all of it on the clip's entry instead of warning, through a per-call collector
+  keyed by the clip id the call found; a step that writes under a new id — a
+  move re-creates the clip — hands its reasons back to the id the caller named.
+  One target never answers with no entries: a split whose pieces the rescan
+  can't find says so too.
+- **create-clip says it on the clip it made.** A `firstStart` the call can't use
+  — it only lands alongside `looping: true` — is a `reason` on that clip's entry
+  rather than a warning, and no `ok`: the clip exists.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `reason` on the lane's own entry, which otherwise reads like any other hit.

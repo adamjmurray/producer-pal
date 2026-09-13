@@ -16,6 +16,7 @@ import { type ClipSlotPosition } from "#src/tools/shared/validation/position-par
 import { resolveCreateClipDestinations } from "./helpers/create-clip-destinations.ts";
 import { prepareClipData } from "./helpers/clip-data-preparation.ts";
 import { createClips } from "./helpers/create-clips-loop.ts";
+import { type ClipResultObject } from "./helpers/created-clip-result.ts";
 import {
   resolveClipTimingContext,
   resolveCreateClipTakeLanes,
@@ -143,8 +144,6 @@ export async function createClip(
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
-  // Set once per request by the V8 adapter (see buildRequestContext).
-  const deadline = _context.deadline;
   const audio = { warping, gainDb, pitchShift, warpMode };
 
   // Treat a blank/whitespace-only transforms string as "no transform".
@@ -247,7 +246,8 @@ export async function createClip(
       songTimeSigDenominator: timing.songTimeSigDenominator,
       length,
       sampleFile,
-      deadline,
+      // Set once per request by the V8 adapter (see buildRequestContext).
+      deadline: _context.deadline,
       code,
       ...audio,
     });
@@ -256,6 +256,8 @@ export async function createClip(
     ...(await clipsForView("session", 0)),
     ...(await clipsForView("arrangement", clipSlots.length)),
   ];
+
+  noteIgnoredFirstStart(createdClips, timing.firstStartIgnored);
 
   return finalizeCreatedClips(createdClips, auto, clipSlots, focus);
 }
@@ -340,18 +342,18 @@ function normalizeTransforms(transformString: string | null): string | null {
  * @returns Single clip object when one, array when multiple
  */
 function finalizeCreatedClips(
-  createdClips: object[],
+  createdClips: ClipResultObject[],
   auto: string | null,
   clipSlots: ClipSlotPosition[],
   focus: boolean | undefined,
-): object | object[] {
+): ClipResultObject | ClipResultObject[] {
   // Handle automatic playback (session clips only, guard inside handles no-op)
   handleAutoPlayback(auto, "session", clipSlots);
 
   // Focus last created clip: arrangement clips are after session clips, so
   // arrangement gets priority (the arrangement is where the final song lives)
   if (focus && createdClips.length > 0) {
-    const lastClip = createdClips.at(-1) as { id: string };
+    const lastClip = createdClips.at(-1) as ClipResultObject;
 
     focusSelect({ id: lastClip.id, detailView: "clip" });
   }
@@ -377,4 +379,23 @@ function clipLabels(
     name: name ?? undefined,
     color: color ?? undefined,
   });
+}
+
+/**
+ * Say on each clip's own entry that firstStart did nothing: it sets where a
+ * looping clip starts playing, and these clips don't loop.
+ * @param createdClips - The clips the call made
+ * @param ignored - Whether firstStart was sent for clips that won't loop
+ */
+function noteIgnoredFirstStart(
+  createdClips: ClipResultObject[],
+  ignored: boolean,
+): void {
+  if (!ignored) {
+    return;
+  }
+
+  for (const clip of createdClips) {
+    clip.reason = "firstStart ignored: set looping: true to use it";
+  }
 }

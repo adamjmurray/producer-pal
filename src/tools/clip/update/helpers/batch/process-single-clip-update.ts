@@ -12,7 +12,6 @@ import {
   markerClampSeconds,
 } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
@@ -158,10 +157,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     });
     forceWarpForLooping(clip, reasons, looping, warping);
   } else {
-    warnIgnoredParams(
-      { gainDb, pitchShift, warpMode, warping },
-      `MIDI clip ${targetLabel(clip)}`,
-    );
+    ignoreAudioParams(clip.id, reasons, params);
   }
 
   // Determine looping state. Read `wasLooping` here, after the audio params:
@@ -439,4 +435,46 @@ function handleAudioClipUpdate(
       "preTransforms ignored: the clip is audio",
     );
   }
+}
+
+/** The audio-only params, as one update-clip call sent them. */
+type ClipAudioParams = Pick<
+  ClipAudioWarpQuantizeParams,
+  "gainDb" | "pitchShift" | "warpMode" | "warping"
+>;
+
+/**
+ * Say on a MIDI clip's entry that the audio-only params it was sent did
+ * nothing. Only the ones the call actually sent are named, and `warping` counts
+ * here because a MIDI clip has no sample to warp.
+ * @param clipId - The MIDI clip, by the id the call found it at
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param audio - The audio-only params, as the call sent them
+ * @param audio.gainDb - Requested gain in decibels
+ * @param audio.pitchShift - Requested pitch shift in semitones
+ * @param audio.warpMode - Requested warp mode
+ * @param audio.warping - Requested warp state
+ */
+function ignoreAudioParams(
+  clipId: string,
+  reasons: ClipReasons,
+  { gainDb, pitchShift, warpMode, warping }: ClipAudioParams,
+): void {
+  const sent = [
+    gainDb != null ? "gainDb" : null,
+    pitchShift != null ? "pitchShift" : null,
+    warpMode != null ? "warpMode" : null,
+    warping != null ? "warping" : null,
+  ].filter((param) => param != null);
+
+  if (sent.length === 0) {
+    return;
+  }
+
+  ignoreClipParams(
+    reasons,
+    clipId,
+    sent,
+    `${sent.join("/")} ignored: the clip is MIDI`,
+  );
 }

@@ -8,13 +8,14 @@ import {
   durationToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface TimingParameters {
   arrangementStartBeats: number | null;
   startBeats: number | null;
   firstStartBeats: number | null;
   endBeats: number | null;
+  /** Whether firstStart was sent for a clip that won't loop, so it did nothing */
+  firstStartIgnored: boolean;
 }
 
 /**
@@ -28,7 +29,7 @@ export interface TimingParameters {
  * @param timeSigDenominator - Clip time signature denominator
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
- * @returns Converted timing parameters in beats
+ * @returns Converted timing parameters in beats, plus whether firstStart did nothing
  */
 export function convertTimingParameters(
   arrangementStart: string | null,
@@ -77,10 +78,10 @@ export function convertTimingParameters(
     );
   }
 
-  // Handle firstStart warning for non-looping clips
-  if (firstStart != null && looping === false) {
-    console.warn("firstStart parameter ignored for non-looping clips");
-  }
+  // Only a looping clip gets a playback start, and `looping` unset means it
+  // won't loop — matches the write guard in buildClipProperties. The caller is
+  // told on the clip's own entry.
+  const firstStartIgnored = firstStart != null && !looping;
 
   // Convert length parameter to end position
   let endBeats: number | null = null;
@@ -96,5 +97,11 @@ export function convertTimingParameters(
     endBeats = startOffsetBeats + lengthBeats;
   }
 
-  return { arrangementStartBeats, startBeats, firstStartBeats, endBeats };
+  return {
+    arrangementStartBeats,
+    startBeats,
+    firstStartBeats,
+    endBeats,
+    firstStartIgnored,
+  };
 }

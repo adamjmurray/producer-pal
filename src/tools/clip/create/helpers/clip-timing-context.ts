@@ -26,6 +26,8 @@ export interface ClipTimingContext {
   startBeats: number | null;
   firstStartBeats: number | null;
   endBeats: number | null;
+  /** Whether firstStart was sent for a clip that won't loop, so it did nothing */
+  firstStartIgnored: boolean;
 }
 
 /** The MIDI-only timing params, as the tool received them. */
@@ -48,7 +50,7 @@ export interface ClipTimingParams {
  * @param timeSignature - Custom clip time signature (e.g. "4/4"), or null
  * @param sampleFile - Audio file path, or null for a MIDI clip
  * @param timing - The MIDI-only timing params, ignored for an audio clip
- * @returns Resolved time signatures and converted timing in beats
+ * @returns Resolved time signatures, timing in beats, and whether firstStart did nothing
  */
 export function resolveClipTimingContext(
   liveSet: LiveAPI,
@@ -78,17 +80,18 @@ export function resolveClipTimingContext(
     songTimeSigDenominator,
   );
 
-  const { startBeats, firstStartBeats, endBeats } = convertTimingParameters(
-    null, // arrangementStart converted per-position
-    start,
-    firstStart,
-    length,
-    looping,
-    timeSigNumerator,
-    timeSigDenominator,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
+  const { startBeats, firstStartBeats, endBeats, firstStartIgnored } =
+    convertTimingParameters(
+      null, // arrangementStart converted per-position
+      start,
+      firstStart,
+      length,
+      looping,
+      timeSigNumerator,
+      timeSigDenominator,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
 
   return {
     songTimeSigNumerator,
@@ -98,6 +101,7 @@ export function resolveClipTimingContext(
     startBeats,
     firstStartBeats,
     endBeats,
+    firstStartIgnored,
   };
 }
 

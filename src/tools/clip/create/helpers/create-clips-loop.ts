@@ -29,6 +29,7 @@ import { type ClipSlotPosition } from "#src/tools/shared/validation/position-par
 
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { processClipIteration } from "./clip-iteration.ts";
+import { type ClipResultObject } from "./created-clip-result.ts";
 import {
   type ClipTransformInputs,
   resolveClipTransform,
@@ -84,9 +85,9 @@ export interface CreateClipsParams {
  */
 export async function createClips(
   params: CreateClipsParams,
-): Promise<object[]> {
+): Promise<ClipResultObject[]> {
   const { view, clipSlots, arrangementPositions, deadline } = params;
-  const createdClips: object[] = [];
+  const createdClips: ClipResultObject[] = [];
   const count =
     view === "session" ? clipSlots.length : arrangementPositions.length;
 
@@ -137,7 +138,7 @@ async function createClipAtIndex(
   params: CreateClipsParams,
   transformInputs: ClipTransformInputs,
   i: number,
-  createdClips: object[],
+  createdClips: ClipResultObject[],
 ): Promise<void> {
   const { view, baseName, parsedNames, parsedColors, nameStartIndex, code } =
     params;
@@ -237,18 +238,16 @@ async function createClipAtIndex(
     createdClips.push(clipResult);
 
     // Apply code execution to the newly created clip
-    const clipId = code != null ? (clipResult as { id?: string }).id : null;
-
-    if (clipId != null && code != null) {
+    if (code != null) {
       const noteCount = await applyCodeToSingleClip(
-        clipId,
+        clipResult.id,
         code,
         globalIndex,
         totalCount,
       );
 
       if (noteCount != null) {
-        (clipResult as { noteCount?: number }).noteCount = noteCount;
+        clipResult.noteCount = noteCount;
       }
     }
   } catch (error) {
