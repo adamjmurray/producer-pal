@@ -23,7 +23,7 @@ import {
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
-import { planClipUpdate } from "#src/tools/clip/update/helpers/update-clip-prep-helpers.ts";
+import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 
@@ -96,7 +96,7 @@ describe("updateClip - splitting smoke tests", () => {
     );
   });
 
-  it("splits nothing, and says nothing, for a blank arrangementSplit", async () => {
+  it("splits nothing, and says only that it was dropped, for a blank arrangementSplit", async () => {
     const clipId = "clip_1";
     const consoleSpy = vi.spyOn(console, "warn");
 
@@ -109,10 +109,11 @@ describe("updateClip - splitting smoke tests", () => {
       expect.any(String),
       expect.any(Number),
     );
-    // Complaining about the format of a param that named nothing sends the
-    // model looking for a problem with a value it never meant to send.
-    expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit"),
+    // The one thing said about it is that it was dropped. Complaining about the
+    // format of a param that named nothing sends the model looking for a
+    // problem with a value it never meant to send.
+    expect(consoleSpy).toHaveBeenCalledExactlyOnceWith(
+      "blank arrangementSplit ignored — leave it out instead",
     );
   });
 

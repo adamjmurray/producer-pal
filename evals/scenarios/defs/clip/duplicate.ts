@@ -15,15 +15,15 @@ import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { callNamesArrangementPosition } from "../arrangement-helpers.ts";
-import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
+import { callNamesArrangementPosition } from "../arrangement-readback.ts";
+import { assertNamesTarget } from "../path/path-assertions.ts";
+import { clipStateAssertion } from "./helpers/clip-note-assertions.ts";
 import {
-  clearClipSlots,
-  clipStateAssertion,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./helpers/clip-scenario-helpers.ts";
+} from "./helpers/clip-tool-constants.ts";
+import { clearClipSlots } from "./helpers/clip-turn-readers.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 

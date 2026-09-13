@@ -271,7 +271,7 @@ describe("MemoryEntryEditor — existing entry", () => {
   });
 
   // Existing memories autosave; the editor has neither a Save button (autosave)
-  // nor a Delete button (delete lives on the list row, see MemoryList.test).
+  // nor a Delete button (delete lives on the list row, see MemoryScreen.test).
   it("renders neither a Save nor a Delete button for an existing memory", () => {
     renderEditor({ entry: EXISTING });
 

@@ -30,9 +30,9 @@ import {
   CONTEXT_LIVE_SET,
   MSG_CONNECT,
   TOOL_CONNECT,
-  assertContextWritePreserves,
   seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-scenario-setup.ts";
+import { assertContextWritePreserves } from "./helpers/context-write-assertions.ts";
 
 /** Pre-existing project document. The model must carry these facts forward. */
 const EXISTING_PROJECT = [

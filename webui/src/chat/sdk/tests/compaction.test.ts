@@ -61,6 +61,26 @@ describe("renderTranscript", () => {
 
     expect(renderTranscript(history)).toBe("USER: hi");
   });
+
+  it.each([
+    { count: 1, label: "1 image" },
+    { count: 2, label: "2 images" },
+  ])("notes that $label were attached", ({ count, label }) => {
+    const history: ChatMessage[] = [
+      {
+        role: "user",
+        content: "match this",
+        images: Array.from({ length: count }, () => ({
+          mediaType: "image/png",
+          data: "AAA",
+        })),
+      },
+    ];
+
+    expect(renderTranscript(history)).toBe(
+      `USER: [${label} attached] match this`,
+    );
+  });
 });
 
 describe("summarizeHistory", () => {

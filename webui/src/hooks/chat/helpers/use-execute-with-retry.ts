@@ -17,7 +17,7 @@ import {
 } from "#webui/lib/rate-limit";
 import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
 import { type UIMessage } from "#webui/types/messages";
-import { handleMessageStream } from "./streaming-helpers";
+import { handleMessageStream } from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 
 interface UseExecuteWithRetryDeps<
   TClient extends ChatClient<TMessage>,

@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
   type ArrangementContext,
   type ClipIdResult,
-} from "./helpers/arrangement-operations-helpers.ts";
+} from "./helpers/arrangement-length-changes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface HandleArrangementLengthOperationArgs {

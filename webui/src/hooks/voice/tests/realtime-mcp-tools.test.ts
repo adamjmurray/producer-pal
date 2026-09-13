@@ -8,7 +8,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
-import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
+import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-connection";
 import {
   callToolMock,
   fakeMcpClient,
@@ -23,7 +23,7 @@ import {
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
 // connectAndListTools stays real — it owns the close-on-catalog-failure path.
-vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
+vi.mock(import("#webui/chat/helpers/mcp-client-connection"), () =>
   mcpClientHelpersMock(),
 );
 

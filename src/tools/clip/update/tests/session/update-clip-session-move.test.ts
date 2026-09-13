@@ -10,22 +10,17 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { handleArrangementOperations } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
-import {
-  handlePositionOperations,
-  resolveMoveDestinations,
-} from "../../helpers/update-clip-session-helpers.ts";
-import { handleClipSlotMove } from "../../helpers/slot-move/update-clip-slot-move-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { handleArrangementOperations } from "../../helpers/arrangement/arrangement-move.ts";
+import { resolveMoveDestinations } from "../../helpers/move/move-destinations.ts";
+import { handlePositionOperations } from "../../helpers/move/position-operations.ts";
+import { handleClipSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-vi.mock(
-  import("../../helpers/arrangement/update-clip-arrangement-helpers.ts"),
-  () => ({
-    handleArrangementOperations: vi.fn(),
-  }),
-);
+vi.mock(import("../../helpers/arrangement/arrangement-move.ts"), () => ({
+  handleArrangementOperations: vi.fn(),
+}));
 
 /** Id of the clip Live creates in the destination slot when the copy lands */
 const COPY_ID = "456";

@@ -9,32 +9,34 @@ import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpe
 import {
   namedIdParam,
   namedPathParam,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseClipDestinationList,
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
-import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
+import { focusIfRequested } from "./helpers/focus-if-requested.ts";
+import { copyLabels } from "./helpers/sources/copy-labels.ts";
 import {
   duplicateChainSources,
   duplicateOneSource,
-} from "./helpers/sources/duplicate-run-source-helpers.ts";
+} from "./helpers/sources/duplicate-one-source.ts";
 import {
   planSources,
   resolveSourceClipDestinations,
-} from "./helpers/sources/duplicate-source-helpers.ts";
-import { markOverwrittenCopies } from "./helpers/clip/duplicate-overwrite-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
+} from "./helpers/sources/source-plan.ts";
+import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
 import {
   hasArrangementPosition,
   resolveDestinationAndWarn,
+} from "./helpers/duplicate-destinations.ts";
+import {
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-} from "./helpers/duplicate-validation-helpers.ts";
+} from "./helpers/duplicate-input-validation.ts";
 
 interface DuplicateArgs {
   type: string;
@@ -322,6 +324,10 @@ function settleDestination(
  * track a scene copy has no use for. Positions are spelled back as bar|beat
  * before they join arrangementStart's comma-separated list, so a locator name
  * holding a comma survives the trip.
+ *
+ * A scene's only destination is an arrangement position, so a toPath naming
+ * anything else (a track, a clip slot) can't be honored at all — the call is
+ * refused up front rather than silently duplicating into the session instead.
  * @param type - What is being duplicated
  * @param toPath - Destination path(s) as the caller wrote them
  * @param arrangementStart - Position list as the caller wrote it
@@ -332,8 +338,15 @@ function foldSceneDestination(
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): { toPath?: string; arrangementStart?: string } {
-  if (type !== "scene" || !pathCarriesPosition(toPath)) {
+  if (type !== "scene" || toPath == null || toPath.trim() === "") {
     return { toPath, arrangementStart };
+  }
+
+  if (!pathCarriesPosition(toPath)) {
+    throw new Error(
+      `toPath "${toPath.trim()}" names no arrangement position; a scene's ` +
+        `only destination is one, written as "[5|1]"`,
+    );
   }
 
   refuseDoubledPosition(toPath, arrangementStart, "toPath");
@@ -349,7 +362,7 @@ function foldSceneDestination(
     }
 
     throw new Error(
-      `toPath "${toPath?.trim()}" names a lane, but a scene ` +
+      `toPath "${toPath.trim()}" names a lane, but a scene ` +
         `copies across every track; name the position alone, as "[5|1]"`,
     );
   }

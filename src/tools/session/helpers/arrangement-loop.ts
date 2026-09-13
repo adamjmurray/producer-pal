@@ -6,7 +6,7 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
-import { type ArrangementParams } from "./playback-helpers.ts";
+import { type ArrangementParams } from "./arrangement-playback.ts";
 
 /** Where the loop should end up: Live stores a start and a length, not two ends. */
 interface LoopPlan {
@@ -128,11 +128,13 @@ function planLoop({
   const slid = startBeats ?? (endBeats as number) - currentLengthBeats;
 
   if (slid < 0) {
-    return {
-      refusal:
-        `loopEnd ${barBeat(endBeats as number)} would start the loop before ` +
-        `1|1 — leaving the loop as it was`,
-    };
+    const refusal =
+      startBeats != null
+        ? `loopStart ${barBeat(startBeats)} is before 1|1 — leaving the loop as it was`
+        : `loopEnd ${barBeat(endBeats as number)} would set the loop start before ` +
+          `1|1 — leaving the loop as it was`;
+
+    return { refusal };
   }
 
   return { plan: { startBeats: slid, lengthBeats: currentLengthBeats } };

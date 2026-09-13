@@ -50,6 +50,8 @@ export function setStubLeaveGuard(guard: (() => boolean) | null): void {
 
 /** Props for {@link ContextTabsStub}. */
 interface ContextTabsStubProps {
+  /** Tab the editor was opened on; mirrored into `data-initial-tab`. */
+  initialTab?: string;
   /** Invoked when the stubbed close button is clicked. */
   onClose?: () => void;
   /** Ref the real ContextTabs publishes confirmLeave into. */
@@ -83,7 +85,7 @@ export function ContextTabsStub(
   }, [confirmLeaveRef]);
 
   return (
-    <div data-testid="context-stub">
+    <div data-testid="context-stub" data-initial-tab={props.initialTab}>
       <button type="button" aria-label="Close context editor" onClick={onClose}>
         close
       </button>

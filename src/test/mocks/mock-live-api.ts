@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Mock, vi } from "vitest";
-import { parseIdOrPath } from "#src/live-api-adapter/live-api-path-utils.ts";
+import { parseIdOrPath } from "#src/live-api-adapter/live-api-id-or-path.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {

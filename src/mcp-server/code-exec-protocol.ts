@@ -9,7 +9,7 @@
  */
 
 import Max from "max-api";
-import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
+import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
 import * as console from "./node-for-max-logger.ts";
 

@@ -75,7 +75,7 @@ export const createAndEditClip: EvalScenario = {
       description: "ppal-update-clip uses quantize parameter",
       assert: (turns) => {
         const calls = getToolCalls(turns, 3);
-        const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
+        const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
 
         if (!updateCall) {
           throw new Error("ppal-update-clip not found in turn 3");

@@ -5,8 +5,8 @@
 
 /**
  * Scenario builders for create-clip eval scenarios — the shared shell the
- * notation suites fill in. The assertion helpers they compose live in
- * clip-scenario-helpers.ts.
+ * notation suites fill in. The assertions they compose live in
+ * clip-note-assertions.ts.
  */
 
 import {
@@ -15,13 +15,13 @@ import {
   type ScenarioRequirements,
 } from "../../../types.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { clipStateAssertion } from "./clip-note-assertions.ts";
 import {
-  clearClipSlots,
-  clipStateAssertion,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_CREATE_CLIP,
-} from "./clip-scenario-helpers.ts";
+} from "./clip-tool-constants.ts";
+import { clearClipSlots } from "./clip-turn-readers.ts";
 
 /** basic-midi-4-track: the 4-track Live Set shared by Lead-track notation scenarios. */
 export const LEAD_LIVE_SET = "basic-midi-4-track";

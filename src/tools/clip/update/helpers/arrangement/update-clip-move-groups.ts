@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 
 /** A clip left in place until the clip that overwrites it has landed. */
 export interface DeferredDeletion {

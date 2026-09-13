@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
-import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warning-helpers";
+import { isErrorResult } from "#webui/chat/helpers/message-formatting";
+import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warnings";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { type UIStepUsagePart, type UIToolPart } from "#webui/types/messages";

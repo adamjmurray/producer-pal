@@ -20,11 +20,13 @@ export { assertResponseContains } from "./response.ts";
 export {
   getAllToolCalls,
   getToolCalls,
-  isSignalAssertion,
   lastSuccessfulToolCall,
   parsedToolResult,
-  partialMatch,
-  normalizeCount,
-  formatExpectedCount,
   toolCallFailed,
-} from "./helpers.ts";
+} from "./helpers/turn-tool-calls.ts";
+export {
+  formatExpectedCount,
+  normalizeCount,
+  partialMatch,
+} from "./helpers/argument-matching.ts";
+export { isSignalAssertion } from "./helpers/signal-assertions.ts";

@@ -9,7 +9,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
-import { DEFAULT_META } from "#webui/lib/conversation-store";
+import { DEFAULT_META } from "#webui/lib/conversations/conversation-store";
 import { storeWithPersistedTrunk } from "#webui/test-utils/conversation-test-helpers";
 import { getConversationDb, resetDbCache } from "#webui/lib/conversation-db";
 

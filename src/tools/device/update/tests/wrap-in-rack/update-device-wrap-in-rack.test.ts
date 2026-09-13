@@ -42,11 +42,13 @@ describe("updateDevice - wrapInRack", () => {
       properties: { type: 4 },
     });
 
-    // New rack created by insert_device
+    // New rack created by insert_device. A freshly created rack starts with
+    // one chain, matching Live's real behavior — deviceCount is read back off
+    // this list, not echoed from the input, so it has to reflect reality.
     newRack = registerMockObject("new-rack", {
       path: "new-rack",
       type: "RackDevice",
-      properties: { chains: children("chain-0", "chain-1") },
+      properties: { chains: children("chain-0") },
       methods: { insert_chain: () => ["id", "new-chain"] },
     });
 
@@ -91,6 +93,14 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
+  it("should report the new rack's path in the result", () => {
+    registerMockObject("new-rack", { path: livePath.track(0).device(9) });
+
+    const result = updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    expect((result as Record<string, unknown>).path).toBe("t0/d9");
+  });
+
   it("should wrap a single MIDI effect in a MIDI Effect Rack", () => {
     const result = updateDevice({
       path: "t0/d2",
@@ -112,6 +122,12 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should wrap multiple audio effects into one rack with multiple chains", () => {
+    // This wrap needs a second chain; give the rack both from the start so the
+    // read-back at the end sees the final state.
+    newRack.get.mockImplementation((prop: string) =>
+      prop === "chains" ? children("chain-0", "chain-1") : [0],
+    );
+
     const result = updateDevice({
       path: "t0/d0,t0/d1",
       wrapInRack: true,
@@ -202,32 +218,35 @@ describe("updateDevice - wrapInRack", () => {
       });
     });
 
-    it("should wrap multiple instruments into rack with multiple chains", () => {
-      const result = updateDevice({
-        path: "t0/d3,t0/d4",
-        wrapInRack: true,
-      });
+    it("should report the new rack's path in the result", () => {
+      // A distinct path stands in for where the rack lands, since the original
+      // device's own path is still registered and mustn't be displaced by it.
+      registerMockObject("new-rack", { path: livePath.track(0).device(9) });
 
-      // Should create Instrument Rack
-      expect(track0.call).toHaveBeenCalledWith(
+      const result = updateDevice({ path: "t0/d3", wrapInRack: true });
+
+      expect((result as Record<string, unknown>).path).toBe("t0/d9");
+    });
+
+    it("should refuse to wrap more than one instrument, before staging anything", () => {
+      // Live allows only one instrument per track, so a second move_device onto
+      // the staging track would silently no-op — refuse up front instead.
+      expect(() =>
+        updateDevice({
+          path: "t0/d3,t0/d4",
+          wrapInRack: true,
+        }),
+      ).toThrow(
+        'wrapInRack can wrap only one instrument at a time; 2 named: path "t0/d3", path "t0/d4"',
+      );
+
+      // Nothing should have been staged or created.
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_midi_track", -1);
+      expect(track0.call).not.toHaveBeenCalledWith(
         "insert_device",
-        "Instrument Rack",
-        3,
+        expect.anything(),
+        expect.anything(),
       );
-
-      // One chain is inserted per instrument (the reverse loop runs exactly
-      // deviceCount times) — a bound-off mutant makes too few or too many.
-      const insertChainCalls = newRack.call.mock.calls.filter(
-        (c: unknown[]) => c[0] === "insert_chain",
-      );
-
-      expect(insertChainCalls).toHaveLength(2);
-
-      expect(result).toStrictEqual({
-        id: "new-rack",
-        type: "instrument-rack",
-        deviceCount: 2,
-      });
     });
 
     it("should set rack name for instrument rack", () => {
@@ -661,9 +680,10 @@ describe("updateDevice - wrapInRack", () => {
       "wrapInRack: failed to create chain 1/1",
     );
 
-    // Result contains rack info even if chain creation failed
+    // deviceCount is read back from the rack's actual chains, not echoed from
+    // the input — since the chain was never created, it reports 0, not 1.
     expect(result).toStrictEqual({
-      deviceCount: 1,
+      deviceCount: 0,
       id: "new-rack",
       type: "audio-effect-rack",
     });
@@ -685,8 +705,9 @@ describe("updateDevice - wrapInRack", () => {
       "wrapInRack: failed to create chain 1/1",
     );
 
+    // Read back, not echoed: the chain was never created, so this reports 0.
     expect(result).toStrictEqual({
-      deviceCount: 1,
+      deviceCount: 0,
       id: "new-rack",
       type: "audio-effect-rack",
     });
@@ -699,13 +720,9 @@ describe("updateDevice - wrapInRack", () => {
   });
 
   it("should create a chain when the rack starts with none", () => {
-    // Rack with no pre-existing chains; insert_chain succeeds with a valid id.
-    newRack.get.mockImplementation((prop: string) =>
-      prop === "chains" ? [] : [0],
-    );
-    newRack.call.mockImplementation((method: string) =>
-      method === "insert_chain" ? ["id", "new-chain"] : null,
-    );
+    // Rack with no pre-existing chains; insert_chain succeeds and the rack's
+    // chain list grows, so the deviceCount read-back sees it.
+    newRack = registerGrowingChainRack(0);
 
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
 

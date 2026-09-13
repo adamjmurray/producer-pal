@@ -41,7 +41,10 @@ import {
   durationToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { evaluateExpression } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import {
+  constantEvalContext,
+  evaluateExpression,
+} from "#src/notation/transform/helpers/transform-evaluation.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
 import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 
@@ -90,14 +93,7 @@ function durationViaTransform(token: string, num: number, den: number): number {
     throw new Error(`transform did not parse duration "${token}"`);
   }
 
-  const musicalBeats = evaluateExpression(
-    expr,
-    0,
-    num,
-    den,
-    { start: 0, end: 0 },
-    {},
-  );
+  const musicalBeats = evaluateExpression(expr, constantEvalContext(num, den));
 
   return musicalBeats * (4 / den); // musical beats → Ableton beats
 }
@@ -288,17 +284,33 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
-  describe("an n-prefixed bar duration is rejected with a helpful error", () => {
-    // Convergent hallucination: models reach for `n1bar` to fill a bar because
-    // every other note value wears the `n` sigil. It's a category error (the `n`
-    // marks a denominator-bearing fraction; bars are the bare `<count>bar` form) — every
-    // duration site rejects it with the same targeted "don't use the n prefix"
-    // steer rather than a generic format error.
-    for (const token of ["n1bar", "n/1bar", "n3/4bar"]) {
-      it(`"${token}" throws the <count>bar steer on every duration site`, () => {
+  describe("bare-count n<count>bar is an accepted alias for <count>bar", () => {
+    // Convergent hallucination: models reach for `n1bar`/`n4bar` because every
+    // other note value wears the `n` sigil. The bare count is unambiguous, so
+    // it is tolerated as an alias (ADR-0018) and computes the same value on
+    // every duration site as the bare `<count>bar` form.
+    for (const [token, equiv] of [
+      ["n1bar", "1bar"],
+      ["n4bar", "4bar"],
+    ] as const) {
+      it(`"${token}" ≡ "${equiv}" on every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(site.fn(token, 4, 4)).toBeCloseTo(site.fn(equiv, 4, 4), 9);
+        }
+      });
+    }
+  });
+
+  describe("an n-fraction bar duration is rejected with a helpful error", () => {
+    // Fraction forms (`n/1bar`, `n3/4bar`) stay rejected: the `n` sigil marks a
+    // denominator-bearing fraction, and no bar count can be guessed from one.
+    // Every duration site rejects it with the same "different things" steer,
+    // never a guessed count.
+    for (const token of ["n/1bar", "n3/4bar"]) {
+      it(`"${token}" throws the fraction-vs-bar-count steer on every duration site`, () => {
         for (const site of DURATION_SITES) {
           expect(() => site.fn(token, 4, 4)).toThrow(
-            /bar durations don't use the "n" prefix/,
+            /an n fraction and a bar count are different things/,
           );
         }
       });

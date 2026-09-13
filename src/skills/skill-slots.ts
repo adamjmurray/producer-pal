@@ -197,7 +197,17 @@ export interface SkillSlotDef {
   alwaysOn?: boolean;
 }
 
-/** The overridable skills fragments, keyed by their stable slot name. */
+/**
+ * The overridable skills fragments, keyed by their stable slot name. This is
+ * where a fragment's body is declared; `builtinFragments()` reads it, so the
+ * editor and the assembled document can't drift apart.
+ *
+ * Subjects that grew past a file or two get a fragments/ subfolder — transforms
+ * and devices so far. A file inside one keeps its full fragment name
+ * (`transforms/transforms-core.ts`), stutter and all: that name is the include
+ * ref and the user's override slot, so shortening it to match the folder would
+ * hide the one thing a reader needs to match up.
+ */
 export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   standard: {
     title: "Full skills (standard)",

@@ -14,7 +14,7 @@ import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import {
   loadSubagentPresetId,
   saveSubagentPresetId,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/chat-settings-storage";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { flushLoad } from "./use-settings-test-helpers";
 

@@ -17,15 +17,17 @@ import {
   type EvalSession,
 } from "./eval-session.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
-import { openLiveSetWithRecovery } from "./helpers/open-live-set-recovery.ts";
+import { openLiveSetWithRecovery } from "./helpers/open-live-set/open-live-set-recovery.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
 import {
   computeTotalUsage,
+  runMessageTurns,
+} from "./run-scenario/message-turns.ts";
+import {
   mergeConfigs,
   resolveLiveSetPath,
-  runMessageTurns,
   validateConfig,
-} from "./run-scenario-helpers.ts";
+} from "./run-scenario/scenario-config.ts";
 import {
   runAllAssertions,
   type JudgeOverride,

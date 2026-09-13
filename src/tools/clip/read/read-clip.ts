@@ -11,29 +11,39 @@ import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
+import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  readFanOut,
+  type ReadResult,
+} from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import {
   clipRegionBeats,
-  isDrumRackTrack,
   processWarpMarkers,
+  WARP_MODE_MAPPING,
+} from "./helpers/clip-region-and-warp.ts";
+import {
+  isDrumRackTrack,
   resolveClip,
   resolveClipLocation,
-  WARP_MODE_MAPPING,
-} from "./helpers/read-clip-helpers.ts";
+} from "./helpers/clip-resolution.ts";
 
 interface ReadClipArgs {
   /** Clip slot, "t<track>/s<scene>" */
   path?: string | null;
+  /** Hidden alias for path */
+  paths?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
   id?: string | null;
+  /** Hidden alias for id */
+  ids?: string | null;
   /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
@@ -99,6 +109,54 @@ export interface ReadClipResult {
 }
 
 /**
+ * Read the MIDI or audio clip(s) a call names
+ * @param args - Arguments for the function
+ * @param args.path - Comma-separated clip locations (e.g., "t0/s3")
+ * @param args.paths - Hidden alias for path
+ * @param args.id - Comma-separated clip IDs
+ * @param args.ids - Hidden alias for id
+ * @param args.include - Array of data to include in response
+ * @param context - Context object (supplies the global notation setting)
+ * @returns One clip, or one entry per clip named
+ */
+export function readClip(
+  args: ReadClipArgs = {},
+  context: Partial<ToolContext> = {},
+): ReadResult<ReadClipResult> {
+  return readFanOut(
+    args,
+    {
+      object: "clip",
+      idAlias: "clipId",
+      oneTargetParams: ["trackIndex", "sceneIndex", "slot"],
+    },
+    (one, listed) =>
+      listed ? readListedClip(one, context) : readOneClip(one, context),
+  );
+}
+
+/**
+ * Read one clip of a list, where an empty slot is a miss like any other: the
+ * entry says so, so the warning a lone read gives would only repeat it.
+ * @param args - Arguments for one clip
+ * @param context - Context object
+ * @returns Result object with clip information
+ * @throws Error when the slot holds no clip
+ */
+function readListedClip(
+  args: ReadClipArgs,
+  context: Partial<ToolContext>,
+): ReadClipResult {
+  const clip = readOneClip({ ...args, suppressEmptyWarning: true }, context);
+
+  if (clip.id == null) {
+    throw new Error(`no clip at ${clip.path}`);
+  }
+
+  return clip;
+}
+
+/**
  * Read a MIDI or audio clip from Ableton Live
  * @param args - Arguments for the function
  * @param args.path - Session clip slot (e.g., "t0/s3")
@@ -107,7 +165,7 @@ export interface ReadClipResult {
  * @param context - Context object (supplies the global notation setting)
  * @returns Result object with clip information
  */
-export function readClip(
+export function readOneClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadClipResult {

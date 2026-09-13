@@ -62,7 +62,7 @@ describe("updateDevice", () => {
     ]);
   });
 
-  it("should skip non-existent devices with warning", () => {
+  it("reports a dead id in its own slot and writes the rest", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
@@ -70,14 +70,16 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(capturedWarnings()).toContain('target not found at id "999"');
     expect(result).toStrictEqual([
       { id: "123", path: "t0/d0" },
+      { id: "999", ok: false, reason: 'id "999" does not exist' },
       { id: "456", path: "t0/d1" },
     ]);
+    // The entries carry it, so nothing warns about a target twice.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should return empty array when all devices are invalid", () => {
+  it("reports every target when none of them is there", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
@@ -85,7 +87,18 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "998", ok: false, reason: 'id "998" does not exist' },
+      { id: "999", ok: false, reason: 'id "999" does not exist' },
+    ]);
+  });
+
+  it("throws when the one id it was given isn't there", () => {
+    mockNonExistentObjects();
+
+    expect(() => updateDevice({ id: "999", name: "Test" })).toThrow(
+      'id "999" does not exist',
+    );
   });
 
   it("should handle 'id ' prefixed device IDs", () => {
@@ -153,7 +166,7 @@ describe("updateDevice", () => {
       });
     });
 
-    it("reports an id that reached no param, in the entry and a warning", () => {
+    it("reports an id that reached no param in its entry, and warns nowhere", () => {
       mockNonExistentObjects();
 
       const result = updateDevice({
@@ -161,14 +174,14 @@ describe("updateDevice", () => {
         params: [{ name: "999", value: "0.5" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        'param "999" not found on t0/d0 (id 123)',
-      );
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ name: "999", reason: "not found on t0/d0 (id 123)" }],
+        params: [
+          { name: "999", ok: false, reason: "not found on t0/d0 (id 123)" },
+        ],
       });
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     // A hole in the params list, the same shape a hole in a comma-separated
@@ -217,18 +230,25 @@ describe("updateDevice", () => {
       });
     });
 
-    it("should log error for invalid enum value", () => {
+    it("reports an invalid enum value in the param's entry", () => {
       const result = updateDevice({
         id: "123",
         params: [{ name: "791", value: "InvalidValue" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Warp Mode" (id 791): "InvalidValue" is not valid. ' +
-          "Options: Repitch, Fade, Jump",
-      );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          {
+            name: "791",
+            ok: false,
+            reason: '"InvalidValue" is not valid. Options: Repitch, Fade, Jump',
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
@@ -261,20 +281,27 @@ describe("updateDevice", () => {
       });
     });
 
-    it("warns when a numeric input matches no quantized label", () => {
-      // A bare index that isn't a label (value_items are words) must warn with
-      // the options, not silently binary-search a garbage raw value.
+    it("reports a numeric input that matches no quantized label", () => {
+      // A bare index that isn't a label (value_items are words) must come back
+      // with the options, not silently binary-search a garbage raw value.
       const result = updateDevice({
         id: "123",
         params: [{ name: "791", value: "1" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Warp Mode" (id 791): "1" is not valid. ' +
-          "Options: Repitch, Fade, Jump",
-      );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          {
+            name: "791",
+            ok: false,
+            reason: '"1" is not valid. Options: Repitch, Fade, Jump',
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -389,17 +416,26 @@ describe("updateDevice", () => {
       expect(panDir.set).toHaveBeenCalledWith("value", -0.5); // half left
     });
 
-    it("warns and skips a non-pan string instead of writing NaN", () => {
-      updateDevice({
+    it("reports a non-pan string instead of writing NaN", () => {
+      const result = updateDevice({
         id: "123",
         params: [{ name: "792", value: "hard-left" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Pan" (id 792): "hard-left" is not a valid pan ' +
-          'value (use -1 to 1, or "50L"/"50R"/"C")',
-      );
       expect(param792.set).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          {
+            name: "792",
+            ok: false,
+            reason:
+              '"hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -704,19 +740,32 @@ describe("updateDevice", () => {
   });
 
   describe("type validation", () => {
-    it("should warn and skip an object that is not a device, chain, or pad", () => {
+    it("refuses an object that is not a device, chain, or pad", () => {
       registerMockObject("999", {
         path: livePath.track(3),
         type: "Track",
       });
 
-      const result = updateDevice({ id: "999", name: "Nope" });
-
-      expect(capturedWarnings()).toContain(
+      // Nothing can be written to it, so the lone target is refused and the
+      // reason is the error rather than a warning.
+      expect(() => updateDevice({ id: "999", name: "Nope" })).toThrow(
         "cannot update Track objects: t3 (id 999)",
       );
-      // Nothing is written to an unsupported object, and it drops from results.
-      expect(result).toStrictEqual([]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("keeps its slot when a writable target was named too", () => {
+      registerMockObject("999", { path: livePath.track(3), type: "Track" });
+
+      expect(updateDevice({ id: "999,123", name: "Nope" })).toStrictEqual([
+        {
+          id: "999",
+          ok: false,
+          reason: "cannot update Track objects: t3 (id 999)",
+        },
+        { id: "123", path: "t0/d0" },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

@@ -5,7 +5,10 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
-import { parseToolResult } from "../../mcp-test-helpers.ts";
+import {
+  parseToolResult,
+  parseToolResultWithWarnings,
+} from "../../mcp-test-helpers.ts";
 
 export interface ParamInfo {
   name: string;
@@ -43,4 +46,57 @@ export async function readParam(
   expect(found, `no parameter named "${name}"`).toBeDefined();
 
   return found as ParamInfo;
+}
+
+/** One `params` entry, as create-device and update-device report it. */
+export interface ParamResultEntry {
+  id?: string;
+  name: string;
+  value?: unknown;
+  /** False only on a param nothing was written to */
+  ok?: boolean;
+  reason?: string;
+}
+
+/**
+ * Send one device-tool call and read back the `params` it reports.
+ * @param client - Connected MCP client
+ * @param tool - The tool to call (ppal-update-device or ppal-create-device)
+ * @param args - The tool arguments
+ * @returns One entry per param sent, and the warnings the call raised
+ */
+export async function callForParams(
+  client: Client,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<{ entries: ParamResultEntry[]; warnings: string[] }> {
+  const { data, warnings } = parseToolResultWithWarnings<{
+    params?: ParamResultEntry[];
+  }>(await client.callTool({ name: tool, arguments: args }));
+
+  return { entries: data.params ?? [], warnings };
+}
+
+/**
+ * Assert a two-param write answered with one entry each: the name that reached
+ * nothing as a skip, the one that landed with the value it reads as, and no
+ * warning.
+ * @param result - What callForParams returned
+ * @param missing - The name that was to reach nothing
+ * @param landed - The param that was written, and the value it should read as
+ */
+export function expectSkipThenValue(
+  result: { entries: ParamResultEntry[]; warnings: string[] },
+  missing: string,
+  landed: { name: string; value: unknown },
+): void {
+  expect(result.entries).toStrictEqual([
+    {
+      name: missing,
+      ok: false,
+      reason: expect.stringContaining("not found on"),
+    },
+    { id: expect.any(String), ...landed },
+  ]);
+  expect(result.warnings).toStrictEqual([]);
 }

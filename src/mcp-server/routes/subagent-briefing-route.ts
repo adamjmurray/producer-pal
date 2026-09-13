@@ -23,7 +23,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { BRIEFING_REQUEST_HEADER } from "#src/shared/config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";

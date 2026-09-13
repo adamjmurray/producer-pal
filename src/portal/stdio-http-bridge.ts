@@ -13,8 +13,8 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { CLIENT_TOOL_TIMEOUT_MS, VERSION } from "#src/shared/config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
-import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
 import {

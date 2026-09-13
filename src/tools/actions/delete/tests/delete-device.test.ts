@@ -36,7 +36,6 @@ describe("deleteObject device deletion", () => {
       id,
       deletedPath,
       type: "device",
-      deleted: true,
     });
     expect(parents.get(parentPath)?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -98,8 +97,8 @@ describe("deleteObject device deletion", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "device_1", deletedPath: "t0/d0", type: "device", deleted: true },
-      { id: "device_2", deletedPath: "t1/d1", type: "device", deleted: true },
+      { id: "device_1", deletedPath: "t0/d0", type: "device" },
+      { id: "device_2", deletedPath: "t1/d1", type: "device" },
     ]);
     expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -131,8 +130,8 @@ describe("deleteObject device deletion", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "device_0_0", deletedPath: "t0/d0", type: "device", deleted: true },
-      { id: "device_0_1", deletedPath: "t0/d1", type: "device", deleted: true },
+      { id: "device_0_0", deletedPath: "t0/d0", type: "device" },
+      { id: "device_0_1", deletedPath: "t0/d1", type: "device" },
     ]);
   });
 
@@ -174,11 +173,10 @@ describe("deleteObject device deletion", () => {
       id: "dupe_device",
       deletedPath: "t0/d1",
       type: "device",
-      deleted: true,
     });
   });
 
-  it("should skip a malformed device path while still deleting valid ones", () => {
+  it("reports a malformed device path while still deleting valid ones", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const { parents } = setupDeviceMocks(["good_device", "bad_device"], {
@@ -197,9 +195,14 @@ describe("deleteObject device deletion", () => {
           id: "good_device",
           deletedPath: "t0/d0",
           type: "device",
-          deleted: true,
         },
-        { id: "bad_device", type: "device", deleted: false },
+        {
+          id: "bad_device",
+          type: "device",
+          ok: false,
+          reason:
+            'no device index for id bad_device (Live path "invalid_path_without_devices")',
+        },
       ]),
     );
     expect(result).toHaveLength(2);
@@ -207,32 +210,20 @@ describe("deleteObject device deletion", () => {
       "delete_device",
       0,
     );
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'no device index for id bad_device (Live path "invalid_path_without_devices")',
-      ),
-    );
+    expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
-  it("should warn and skip when device path is malformed", () => {
+  it("refuses a lone device whose Live path is malformed", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const id = "device_0";
 
     setupDeviceMocks(id, "invalid_path_without_devices");
 
-    const result = deleteObject({ id: id, type: "device" });
-
-    expect(result).toStrictEqual({
-      id,
-      type: "device",
-      deleted: false,
-    });
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'no device index for id device_0 (Live path "invalid_path_without_devices")',
-      ),
+    expect(() => deleteObject({ id, type: "device" })).toThrow(
+      'no device index for id device_0 (Live path "invalid_path_without_devices")',
     );
+    expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
@@ -308,19 +299,16 @@ describe("deleteObject device deletion", () => {
             id: "c0_d0",
             deletedPath: "t2/d0/c0/d0",
             type: "device",
-            deleted: true,
           },
           {
             id: "c1_d0",
             deletedPath: "t2/d0/c1/d0",
             type: "device",
-            deleted: true,
           },
           {
             id: "c0_d1",
             deletedPath: "t2/d0/c0/d1",
             type: "device",
-            deleted: true,
           },
         ]),
       );
@@ -371,8 +359,8 @@ describe("deleteObject device deletion", () => {
         expect(result).toHaveLength(2);
         expect(result).toStrictEqual(
           expect.arrayContaining([
-            expect.objectContaining({ type: "device", deleted: true }),
-            expect.objectContaining({ type: "device", deleted: true }),
+            expect.objectContaining({ type: "device" }),
+            expect.objectContaining({ type: "device" }),
           ]),
         );
       }
@@ -415,7 +403,6 @@ describe("deleteObject device deletion", () => {
         id: "device_by_path",
         deletedPath: "t0/d1",
         type: "device",
-        deleted: true,
       });
       expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
         "delete_device",
@@ -434,8 +421,8 @@ describe("deleteObject device deletion", () => {
       // Results come back in path order, not the deletion order (which is
       // highest track index first).
       expect(result).toStrictEqual([
-        { id: "dev_0_0", deletedPath: "t0/d0", type: "device", deleted: true },
-        { id: "dev_1_1", deletedPath: "t1/d1", type: "device", deleted: true },
+        { id: "dev_0_0", deletedPath: "t0/d0", type: "device" },
+        { id: "dev_1_1", deletedPath: "t1/d1", type: "device" },
       ]);
     });
 
@@ -456,13 +443,11 @@ describe("deleteObject device deletion", () => {
           id: "dev_by_id",
           deletedPath: "t1/d1",
           type: "device",
-          deleted: true,
         },
         {
           id: "dev_by_path",
           deletedPath: "t0/d0",
           type: "device",
-          deleted: true,
         },
       ]);
     });
@@ -479,14 +464,13 @@ describe("deleteObject device deletion", () => {
         id: "nested_dev",
         deletedPath: "t1/d0/c2/d1",
         type: "device",
-        deleted: true,
       });
       expect(
         parents.get("live_set tracks 1 devices 0 chains 2")?.call,
       ).toHaveBeenCalledWith("delete_device", 1);
     });
 
-    it("should skip invalid paths and continue with valid ones", () => {
+    it("reports a path naming no device and continues with valid ones", () => {
       mockNonExistentObjects();
       setupDeviceMocks("valid_dev", String(livePath.track(0).device(0)));
 
@@ -497,9 +481,8 @@ describe("deleteObject device deletion", () => {
           id: "valid_dev",
           deletedPath: "t0/d0",
           type: "device",
-          deleted: true,
         },
-        { path: "t99/d99", type: "device", deleted: false },
+        { path: "t99/d99", type: "device", reason: "nothing to delete" },
       ]);
     });
 
@@ -510,7 +493,7 @@ describe("deleteObject device deletion", () => {
       expect(result).toStrictEqual({
         path: "t99/d99",
         type: "device",
-        deleted: false,
+        reason: "nothing to delete",
       });
     });
 
@@ -524,7 +507,6 @@ describe("deleteObject device deletion", () => {
         id: deviceId,
         deletedPath: "t1/d0/pC1/c0/d0",
         type: "device",
-        deleted: true,
       });
       // Should call delete_device on the chain containing the device
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
@@ -542,7 +524,6 @@ describe("deleteObject device deletion", () => {
         id: deviceId,
         deletedPath: "t1/d0/pC1/d0",
         type: "device",
-        deleted: true,
       });
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
     });

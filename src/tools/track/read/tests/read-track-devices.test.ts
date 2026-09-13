@@ -24,10 +24,10 @@ import {
 } from "./helpers/read-track-device-test-helpers.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   describe("devices", () => {
     it("returns empty devices array when track has no devices", () => {
       setupTrackMock({
@@ -37,7 +37,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["devices"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["devices"] });
 
       expect(result.devices).toStrictEqual([]);
       expect(result.instrument).toBeUndefined();
@@ -60,7 +60,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["devices"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["devices"] });
 
       expect(result.devices).toBeUndefined();
     });
@@ -84,7 +84,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      readTrack({ trackIndex: 0, include: ["drum-map"] });
+      readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
@@ -105,7 +105,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toBeUndefined();
     });
@@ -133,7 +133,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "session-clips", "arrangement-clips"],
       });
@@ -176,7 +176,7 @@ describe("readTrack", () => {
         "device1",
       );
 
-      const result = readTrack({ trackIndex: 0, include: ["devices"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["devices"] });
 
       expect(result.devices).toStrictEqual([
         {
@@ -191,7 +191,7 @@ describe("readTrack", () => {
     it("includes all device categories when explicitly requested", () => {
       setupDrumRackWithReverbMocks();
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ALL_DEVICE_INCLUDE_OPTIONS,
       });
@@ -233,7 +233,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices"],
       });
@@ -287,7 +287,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices"],
       });
@@ -331,7 +331,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices"],
       });

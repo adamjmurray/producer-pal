@@ -19,7 +19,7 @@
  * exception — naming no pitch is what makes it a test of the octave convention.
  */
 
-import { type ExpectedNote } from "../helpers/clip-scenario-helpers.ts";
+import { type ExpectedNote } from "../helpers/clip-note-assertions.ts";
 import {
   DRUMS_TRACK,
   LEAD_TRACK,

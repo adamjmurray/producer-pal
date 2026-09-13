@@ -8,7 +8,7 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
-import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
+import { assertNamesTarget } from "../path/path-assertions.ts";
 
 const TOOL_PLAYBACK = "ppal-playback";
 

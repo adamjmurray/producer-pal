@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { MAX_CODE_LENGTH, TAKE_LANE_NOTE } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
   aliasParam,
@@ -144,26 +145,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "audio clips only: false plays the file as rendered; omit and Live may time-stretch it to the tempo",
     }),
 
-    gainDb: z.coerce
-      .number()
-      .min(-70)
-      .max(24)
-      .optional()
-      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
-
-    pitchShift: z.coerce
-      .number()
-      .min(-48)
-      .max(48)
-      .optional()
-      .describe(
-        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
-      ),
-
-    warpMode: z
-      .enum(["beats", "tones", "texture", "repitch", "complex", "pro"])
-      .optional()
-      .describe("audio clip warp mode (ignored for MIDI)"),
+    ...audioClipParams(),
 
     // Carries the recommendation, not just the mechanism: without one the model
     // reads a neutral option, omits it, and hands back a clip the user has to

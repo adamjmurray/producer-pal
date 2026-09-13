@@ -20,10 +20,11 @@ bar|{start}x{times}@{step}
   `@<count>bar+n<fraction>` mixed (`@1bar+n/4`). Bare fractions (`@/4`), bare
   integers (`@1`), decimals (`@0.5`), and mixed numbers (`@1+1/2`) are invalid
   and raise a parser error — the `n` prefix marks a note value, bars use
-  `<count>bar`. Like the other duration sites, an `n`-prefixed bar step
-  (`@n1bar`, `@n/1bar`, `@n3/4bar`) raises the targeted "bar steps don't use the
-  `n` prefix — write @<count>bar" error, and a plural `@2bars` is accepted as a
-  tolerance alias of `@<count>bar`
+  `<count>bar`. Like the other duration sites, a bare-count `n`-prefixed bar
+  step (`@n1bar`, `@n4bar`) is an untaught input-tolerance alias of
+  `@<count>bar`; the FRACTION forms (`@n/1bar`, `@n3/4bar`) stay rejected with
+  the targeted "an n fraction and a bar count are different things" error. A
+  plural `@2bars` is accepted as a tolerance alias of `@<count>bar`
 
 The `@` symbol reads as "at intervals" and semantically connects to bar copy
 operations.

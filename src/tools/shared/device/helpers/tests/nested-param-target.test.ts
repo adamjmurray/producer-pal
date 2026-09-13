@@ -184,8 +184,8 @@ function deviceOf(target: NestedParamTarget): LiveAPI | null {
 }
 
 /**
- * Assert resolution skipped: it came back with a reason, said in both channels
- * — the param's own result entry and the warning.
+ * Assert resolution skipped: it came back with a reason, and warned nothing —
+ * the param's own result entry is where the reason is read.
  * @param target - The value returned by resolveNestedParamTarget
  * @param message - Substring the reason must contain
  */
@@ -193,7 +193,16 @@ function expectSkipped(target: NestedParamTarget, message: string): void {
   expect(target).toStrictEqual({
     reason: expect.stringContaining(message) as unknown as string,
   });
-  expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
+  expect(capturedWarnings()).toHaveLength(0);
+}
+
+/**
+ * The reason resolution skipped, for a test asserting more than one thing about it.
+ * @param target - The value returned by resolveNestedParamTarget
+ * @returns The reason, or "" when resolution did not skip
+ */
+function reasonOf(target: NestedParamTarget): string {
+  return "reason" in target ? target.reason : "";
 }
 
 /**
@@ -380,18 +389,16 @@ describe("resolveNestedParamTarget", () => {
       expectNoDeviceInserted(chain);
     });
 
-    it("names force:true and the non-destructive alternatives in the skip warning", () => {
+    it("names force:true and the non-destructive alternatives in the skip reason", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, ["ds-1"]);
       registerDevice("ds-1", "DrumSampler");
 
-      resolveSampleTarget("pC1/d0");
+      const reason = reasonOf(resolveSampleTarget("pC1/d0"));
 
-      const warning = capturedWarnings().join("\n");
-
-      expect(warning).toContain("force:true");
-      expect(warning).toContain("another pad");
-      expect(warning).toContain('ppal-duplicate type:"device"');
+      expect(reason).toContain("force:true");
+      expect(reason).toContain("another pad");
+      expect(reason).toContain('ppal-duplicate type:"device"');
     });
 
     it("replaces a non-Simpler instrument with a Simpler under force, and says so", () => {
@@ -487,13 +494,12 @@ describe("resolveNestedParamTarget", () => {
     // instrument nobody named.
     it("skips a stacked pad when no layer is named", () => {
       const first = registerStackedPad();
+      const target = resolveSampleTarget("pC1");
 
-      expectSkipped(resolveSampleTarget("pC1"), "it has 2 layers");
+      expectSkipped(target, "it has 2 layers");
       expectNoDeviceInserted(first);
       // The retries are param names relative to the rack, not pad paths.
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('"pC1/c0/sample", "pC1/c1/sample"'),
-      );
+      expect(reasonOf(target)).toContain('"pC1/c0/sample", "pC1/c1/sample"');
     });
 
     // A device index names no layer, so it settles nothing on a stacked pad.
@@ -513,15 +519,11 @@ describe("resolveNestedParamTarget", () => {
     // habit names the effect. Writing anyway would make the index look honored.
     it("skips when the device index is not the pad's instrument", () => {
       const chain = registerEffectThenSimpler();
+      const target = resolveSampleTarget("pC1/d0");
 
-      expectSkipped(
-        resolveSampleTarget("pC1/d0"),
-        "d0 is not its instrument, which is at d1",
-      );
+      expectSkipped(target, "d0 is not its instrument, which is at d1");
       expectNoDeviceInserted(chain);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('"pC1/sample"'),
-      );
+      expect(reasonOf(target)).toContain('"pC1/sample"');
     });
 
     it("keeps the named layer in the retry it suggests", () => {
@@ -559,7 +561,7 @@ describe("resolveNestedParamTarget", () => {
       expect(deviceOf(target)?.id).toBe("new-simpler");
     });
 
-    it("warns when the pad chain can't be resolved or created", () => {
+    it("says so when the pad chain can't be resolved or created", () => {
       registerRack([]);
 
       const target = resolveSampleTarget("pZ9/d0");
@@ -587,7 +589,7 @@ describe("resolveNestedParamTarget", () => {
       expect(rackMock.call).not.toHaveBeenCalledWith("insert_chain");
     });
 
-    it("warns when Simpler creation returns no id", () => {
+    it("says so when Simpler creation returns no id", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, [], {
         insert_device: () => ["id", undefined],
@@ -622,7 +624,7 @@ describe("resolveNestedParamTarget", () => {
       expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
-    it("warns when Simpler creation returns nothing at all", () => {
+    it("says so when Simpler creation returns nothing at all", () => {
       // insert_device returning undefined (not a tuple) must warn-skip, not
       // throw while indexing the missing result.
       registerRack(["chain-c1"]);
@@ -657,7 +659,7 @@ describe("resolveNestedParamTarget", () => {
       expect(deviceOf(target)?.id).toBe("existing-simpler");
     });
 
-    it("warns when the prefix resolves to a chain, not a device", () => {
+    it("says so when the prefix resolves to a chain, not a device", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, []);
 
@@ -666,7 +668,7 @@ describe("resolveNestedParamTarget", () => {
       expectSkipped(target, "resolves to a chain");
     });
 
-    it("warns when no device is found at the prefix", () => {
+    it("says so when no device is found at the prefix", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, []);
 

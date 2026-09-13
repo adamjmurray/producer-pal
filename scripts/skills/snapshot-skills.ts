@@ -23,7 +23,7 @@ import {
   CORPUS_MARKER,
   formatChanges,
   parseArgs,
-} from "./snapshot-helpers.ts";
+} from "./corpus-snapshot.ts";
 
 const PROJECT_ROOT = path.join(
   path.dirname(fileURLToPath(import.meta.url)),

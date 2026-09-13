@@ -15,7 +15,7 @@ import {
   asArrangementTrack,
   callNamesArrangementPosition,
   clipStarts,
-} from "../arrangement-helpers.ts";
+} from "../arrangement-readback.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;

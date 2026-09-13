@@ -6,7 +6,7 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 
 /**
  * Result of probing a device for its Simpler sample state. Callers branch on

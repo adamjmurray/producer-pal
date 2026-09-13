@@ -24,7 +24,7 @@ export const TEMPO_REFUSAL = `Live's tempo range is ${MIN_TEMPO}-${MAX_TEMPO} BP
 // The param counts from 1 and the `l<n>` path segment counts from 0, so a
 // caller who reads "use path" as a rename writes the wrong lane — and takeLane
 // 0 isn't a take lane at all. Lives here rather than beside the conversion in
-// take-lane-helpers.ts: that module reaches for the LiveAPI global, and the
+// take-lanes.ts: that module reaches for the LiveAPI global, and the
 // tool defs that carry this note are typechecked Node-side too.
 export const TAKE_LANE_NOTE =
   'Lanes count from 0 in a path: takeLane 1 is "l0", and takeLane 0 is the main lane.';

@@ -8,7 +8,9 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { expect } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -230,6 +232,34 @@ export function registerSimplerDevice(
       parameters: children(...paramIds),
     },
   });
+}
+
+/**
+ * The `params` entries one target's result came back with. updateDevice's return
+ * type covers a whole list of targets, so reading one target's params narrows it.
+ * @param result - What updateDevice returned
+ * @returns The entries, or [] when the result reported none
+ */
+export function paramsOf(result: unknown): ParamResult[] {
+  return (result as { params?: ParamResult[] }).params ?? [];
+}
+
+/**
+ * Assert the one param a call named came back refused, with the reason why and
+ * no warning — the entry is the whole report.
+ * @param result - What updateDevice returned
+ * @param name - The param name as the call spelled it
+ * @param reason - Substring the reason must contain
+ */
+export function expectParamRefused(
+  result: unknown,
+  name: string,
+  reason: string,
+): void {
+  expect(paramsOf(result)).toStrictEqual([
+    { name, ok: false, reason: expect.stringContaining(reason) },
+  ]);
+  expect(capturedWarnings()).toHaveLength(0);
 }
 
 /**

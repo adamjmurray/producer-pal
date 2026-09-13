@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   expectGetNotesExtendedCall,
   registerDrumRackTrack,
@@ -15,7 +15,7 @@ import {
 
 function setupAndReadClipWithStateFlags(
   flagValue: 0 | 1,
-): ReturnType<typeof readClip> {
+): ReturnType<typeof readOneClip> {
   setupMidiClipMock({
     trackIndex: 0,
     sceneIndex: 0,
@@ -32,10 +32,10 @@ function setupAndReadClipWithStateFlags(
     },
   });
 
-  return readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+  return readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 }
 
-describe("readClip", () => {
+describe("readOneClip", () => {
   // E2E test with real bar|beat notation
   it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
     registerDrumRackTrack();
@@ -93,7 +93,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing", "notes"],
@@ -136,7 +136,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
@@ -164,7 +164,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing"],
@@ -191,7 +191,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing"],
@@ -255,14 +255,14 @@ describe("readClip", () => {
     });
 
     // Test with '*' - should include everything
-    const resultWildcard = readClip({
+    const resultWildcard = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["*"],
     });
 
     // Test explicit list - should produce identical result
-    const resultExplicit = readClip({
+    const resultExplicit = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample", "notes", "color", "timing", "warp"],
@@ -311,7 +311,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing", "notes"],
@@ -345,7 +345,7 @@ describe("readClip", () => {
       methods: { get_notes_extended: () => JSON.stringify({}) },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["notes"],

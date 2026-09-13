@@ -504,7 +504,7 @@ describe("take lanes", () => {
     expect(after.takeLanes![0]!.clips[0]!.id).toBe(takeId);
   });
 
-  it("warns and skips deletion of a take-lane clip (no delete API)", async () => {
+  it("refuses deletion of a take-lane clip (no delete API)", async () => {
     await createOnLane({
       path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
@@ -514,17 +514,17 @@ describe("take lanes", () => {
     const before = await readTakeLanes(EMPTY_MIDI_TRACK);
     const clipId = before.takeLanes![0]!.clips[0]!.id;
 
-    const deleteResult = parseToolResultWithWarnings<{ deleted: boolean }>(
-      await ctx.client!.callTool({
-        name: "ppal-delete",
-        arguments: { id: clipId, type: "clip" },
-      }),
-    );
+    // The only target named, so nothing was deleted and the reason comes back
+    // as an error rather than as an entry.
+    const deleteResult = await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { id: clipId, type: "clip" },
+    });
 
-    expect(deleteResult.warnings.join(" ")).toContain(
+    expect(isToolError(deleteResult)).toBe(true);
+    expect(getToolErrorMessage(deleteResult)).toContain(
       "cannot delete take-lane clip",
     );
-    expect(deleteResult.data.deleted).toBe(false);
 
     // The clip is still on the lane afterward
     await sleep(100);

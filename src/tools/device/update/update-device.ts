@@ -4,21 +4,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import {
-  targetEntries,
   namedIdParam,
   namedPathParam,
-  validateSendPair,
-} from "#src/tools/shared/utils.ts";
-import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
-import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
-import { validateParamEntries } from "./helpers/param-entry-validation.ts";
-import { type UpdateTargetOptions } from "./helpers/update-device-property-helpers.ts";
-import { updateMultipleTargets } from "./helpers/update-device-target-helpers.ts";
-import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
+import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
+import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
+import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { targetCount } from "#src/tools/shared/validation/lists/target-lists.ts";
+import {
+  targetCount,
+  targetParamLabel,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -92,7 +95,7 @@ export function updateDevice(
     focus,
   }: UpdateDeviceArgs,
   _context: Partial<ToolContext> = {},
-): Record<string, unknown> | Record<string, unknown>[] | null {
+): WriteResult<Record<string, unknown>> | null {
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
   ids = namedIdParam(id, ids, "ids");
@@ -111,7 +114,7 @@ export function updateDevice(
     throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
   }
 
-  let result: Record<string, unknown> | Record<string, unknown>[] | null;
+  let result: WriteResult<Record<string, unknown>> | null;
 
   if (wrapInRack) {
     result = wrapDevicesInRack({ ids, path, toPath, name }) as Record<
@@ -124,14 +127,21 @@ export function updateDevice(
     // toPath is left out — it is one destination for the whole call, not a
     // per-device list.
     validateListLengths([
-      { param: "id and path", count: targetCount({ ids, path }) },
+      {
+        param: targetParamLabel({ ids, path }),
+        count: targetCount({ ids, path }),
+      },
       { param: "name", value: name },
       { param: "color", value: color },
     ]);
 
-    const items = targetItems(ids, path);
-    const parsedNames = parseNames(name, items.length, "device");
-    const parsedColors = parseColors(color, items.length, "device");
+    const items = namedTargets({ id: ids, path });
+    const { parsedNames, parsedColors } = pairLabels({
+      noun: "device",
+      count: items.length,
+      name,
+      color,
+    });
 
     const updateOptions: UpdateTargetOptions = {
       toPath,
@@ -164,8 +174,7 @@ export function updateDevice(
   }
 
   if (focus && result != null) {
-    const lastResult = Array.isArray(result) ? result.at(-1) : result;
-    const lastId = lastResult?.id as string | undefined;
+    const lastId = lastWrittenId(result);
 
     if (lastId) {
       focusSelect({ id: lastId, detailView: "device" });
@@ -175,39 +184,17 @@ export function updateDevice(
   return result;
 }
 
-/** One target the call named, and which param named it. */
-export interface TargetItem {
-  value: string;
-  kind: "id" | "path";
-}
-
 /**
- * The targets a call names, ids first.
- *
- * `id` and `path` name different devices and add up, as everywhere else. Each
- * entry remembers which param it came from, because a device is reached
- * differently by id than by path — the other tools can resolve a path to an id
- * and forget the difference, and a device path can't be.
- * @param ids - The `id` param, comma-separated
- * @param path - The `path` param, comma-separated
- * @returns One entry per target
+ * The id of the last target the call actually wrote, for focus — never a
+ * skipped one, whose id names something the call couldn't reach.
+ * @param result - What the call is about to return
+ * @returns That id, or undefined when nothing was written
  */
-export function targetItems(
-  ids: string | undefined,
-  path: string | undefined,
-): TargetItem[] {
-  return [
-    ...(ids == null
-      ? []
-      : targetEntries(ids, "id").map((value): TargetItem => ({
-          value,
-          kind: "id",
-        }))),
-    ...(path == null
-      ? []
-      : targetEntries(path, "path").map((value): TargetItem => ({
-          value,
-          kind: "path",
-        }))),
-  ];
+function lastWrittenId(
+  result: WriteResult<Record<string, unknown>>,
+): string | undefined {
+  const entries = Array.isArray(result) ? result : [result];
+  const written = entries.filter((entry) => entry.ok !== false);
+
+  return written.at(-1)?.id as string | undefined;
 }

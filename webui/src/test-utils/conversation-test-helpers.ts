@@ -10,7 +10,7 @@ import {
 import {
   createConversationStore,
   type SaveSnapshot,
-} from "#webui/lib/conversation-store";
+} from "#webui/lib/conversations/conversation-store";
 
 /**
  * Create a test ConversationRecord with sensible defaults.

@@ -10,7 +10,7 @@ import {
   setupReturnTrackNames,
   setupTrackMixerMocks,
 } from "./helpers/read-track-registry-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
 const RETURN_TRACKS = [
   { name: "Reverb", id: "return1" },
@@ -32,11 +32,11 @@ function expectSendsWithReverbAndSecond(
   expect(sends[1]).toStrictEqual({ gainDb: -6.0, ...second });
 }
 
-describe("readTrack - mixer properties", () => {
+describe("readOneTrack - mixer properties", () => {
   it("excludes mixer properties by default", () => {
     setupTrackMixerMocks();
 
-    const result = readTrack({ trackIndex: 0 });
+    const result = readOneTrack({ trackIndex: 0 });
 
     expect(result).not.toHaveProperty("gainDb");
     expect(result).not.toHaveProperty("pan");
@@ -52,7 +52,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", 0);
     // panningMode "stereo" is the default, omitted to save tokens
@@ -72,12 +72,30 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", -6.5);
     // panningMode "stereo" is the default, omitted to save tokens
     expect(result).not.toHaveProperty("panningMode");
     expect(result).toHaveProperty("pan", -0.3);
+  });
+
+  it("rounds pan and gain when Max serializes a tiny float32 as an exponent string", () => {
+    setupTrackMixerMocks({
+      volumeProperties: {
+        // Max serializes some float32 values as exponent-notation strings,
+        // not numbers — this must still round, not pass through as text.
+        display_value: "9.999999747378752e-05",
+      },
+      panningProperties: {
+        value: "9.999999747378752e-05",
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("pan", 0);
   });
 
   it("includes mixer properties for return tracks", () => {
@@ -96,7 +114,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       trackType: "return",
       include: ["mixer"],
@@ -122,7 +140,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackType: "master", include: ["mixer"] });
+    const result = readOneTrack({ trackType: "master", include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", 0);
     expect(result).toHaveProperty("pan", 0);
@@ -133,7 +151,7 @@ describe("readTrack - mixer properties", () => {
       mixerExists: false,
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).not.toHaveProperty("gainDb");
     expect(result).not.toHaveProperty("pan");
@@ -147,7 +165,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).not.toHaveProperty("gainDb");
     expect(result).toHaveProperty("pan", 0.25);
@@ -161,7 +179,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", -12);
     expect(result).not.toHaveProperty("pan");
@@ -179,7 +197,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("pan", "unavailable");
   });
@@ -194,7 +212,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["*"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["*"] });
 
     expect(result).toHaveProperty("gainDb", 2);
     expect(result).toHaveProperty("pan", -0.25);
@@ -214,7 +232,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", -3);
     expect(result).toHaveProperty("panningMode", "split");
@@ -237,7 +255,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", 0);
     expect(result).toHaveProperty("panningMode", "split");
@@ -253,7 +271,7 @@ describe("readTrack - mixer properties", () => {
       rightSplitExists: false,
     });
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("panningMode", "split");
     expect(result).not.toHaveProperty("leftPan");
@@ -266,7 +284,7 @@ describe("readTrack - mixer properties", () => {
       sendValues: [-12.5, -6.0],
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       include: ["mixer"],
       returnTracks: RETURN_TRACKS,
@@ -288,7 +306,7 @@ describe("readTrack - mixer properties", () => {
       sendValues: [-12.5, -6.0],
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 1,
       trackType: "return",
       include: ["mixer"],
@@ -312,7 +330,7 @@ describe("readTrack - mixer properties", () => {
       sendValues: [-12.5, -6.0],
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackType: "master",
       include: ["mixer"],
       returnTracks: RETURN_TRACKS,
@@ -330,7 +348,7 @@ describe("readTrack - mixer properties", () => {
       sendValues: [],
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       include: ["mixer"],
       returnTracks: RETURN_TRACKS.slice(0, 1),
@@ -346,7 +364,7 @@ describe("readTrack - mixer properties", () => {
     });
     setupReturnTrackNames(["FetchedReverb"]);
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       include: ["mixer"],
     });
@@ -371,7 +389,7 @@ describe("readTrack - mixer properties", () => {
     });
     setupReturnTrackNames(["Reverb"]);
 
-    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", -6.33);
     const sends = result.sends as Record<string, unknown>[];
@@ -387,7 +405,7 @@ describe("readTrack - mixer properties", () => {
       sendValues: [-12.5, -6.0],
     });
 
-    const result = readTrack({
+    const result = readOneTrack({
       trackIndex: 0,
       include: ["mixer"],
       returnTracks: RETURN_TRACKS.slice(0, 1),

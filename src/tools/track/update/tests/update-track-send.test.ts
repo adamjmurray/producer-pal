@@ -419,6 +419,29 @@ describe("updateTrack - send properties", () => {
       expect(warnings).toContain("is disabled and was not changed");
       expect(warnings).not.toContain("names one return more than once");
     });
+
+    it("announces a collision that lands on a later track but not the first", () => {
+      // A rack macro owns the colliding send on track 1 only, so the first
+      // track has nothing to name and the second one does.
+      registerMockObject("send_2", { properties: { is_enabled: 0 } });
+
+      updateTrack({
+        id: "123,456",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "B", gainDb: -9 },
+          { return: "B-Delay", gainDb: -12 },
+        ],
+      });
+
+      expect(
+        capturedWarnings().filter((warning) =>
+          warning.includes("names one return more than once"),
+        ),
+      ).toStrictEqual([
+        'sends names one return more than once: "B-Delay" ended up at -12 dB',
+      ]);
+    });
   });
 
   // The write used to land with the result saying nothing about it, so a

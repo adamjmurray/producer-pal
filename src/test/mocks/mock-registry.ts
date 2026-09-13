@@ -176,6 +176,14 @@ export function defaultMockCall(
     // every fractional one.
     case "str_for_value":
       return Number(Number(args[0]).toPrecision(6));
+    // Live returns ["id", N] from these on success. A blanket null here would
+    // put every uncovered test on the failure branch by accident.
+    case "create_scene":
+    case "insert_chain":
+    case "create_midi_clip":
+      return ["id", "999"];
+    case "guess_playback_length":
+      return 4;
     default:
       if (_simulateDeletes) {
         applyMockDelete(method, args, path);

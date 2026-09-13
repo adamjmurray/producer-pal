@@ -175,6 +175,23 @@ the underlying provider implementation is swappable):
 - `restoreChatHistory(chatHistory)` - Loads saved history into state without
   creating an AI client (lazy — avoids MCP connection until next send)
 
+### Image Attachments
+
+Users attach images to a message by pasting, dropping them on the editor, or
+picking them with the attach button (`useImageAttachments` +
+`utils/image-attachments.ts`; paste and drag are intercepted in the CAPTURE
+phase on a wrapper around the editor, so CodeMirror never inserts the file).
+They ride on `ChatMessage.images` as base64, reach the model as AI SDK image
+parts ahead of the text (`buildModelMessages`), render as thumbnails in the user
+bubble (`UserImages`), and persist with the conversation like any other message
+field. A message may be images with no text at all, so both the send path and
+the composer treat attachments as content.
+
+Anything over 1568 px on its longest side is scaled down to that in the browser
+(canvas redraw, re-encoded as the same type) before it's read to base64. GIFs
+are left alone so animation survives, and the 5 MB cap applies to what scaling
+produced — a 12 MB screenshot attaches fine.
+
 ### Message Queue
 
 Users can keep sending while the AI is responding. `use-message-queue.ts` is a
@@ -243,13 +260,15 @@ interface ConversationRecord {
 
 **Files**:
 
-| File                                              | Purpose                                                                       |
-| ------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `lib/conversation-db.ts`                          | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
-| `lib/conversation-db-helpers.ts`                  | DB open/upgrade, version mismatch handling, JSON export                       |
-| `hooks/chat/use-conversations.ts`                 | Orchestration hook (save/load/switch/new/delete/rename)                       |
-| `hooks/chat/helpers/use-conversations-helpers.ts` | Title derivation, URL hash, locked settings builders                          |
-| `components/chat/ConversationPanel.tsx`           | Slide-out sidebar panel with inline rename                                    |
+| File                                                           | Purpose                                                                       |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `lib/conversation-db.ts`                                       | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
+| `lib/conversation-db-open.ts`                                  | DB open/upgrade, version mismatch handling, JSON export                       |
+| `lib/conversations/`                                           | Live-conversation store + the delete/rename/sweep steps chat and voice share  |
+| `hooks/chat/use-conversations.ts`                              | Orchestration hook (save/load/switch/new/delete/rename)                       |
+| `hooks/chat/helpers/conversations/conversation-save-record.ts` | Title derivation, save/fork record builders, locked settings                  |
+| `hooks/chat/helpers/conversations/use-hash-navigation.ts`      | URL hash read/write and back/forward routing                                  |
+| `components/chat/ConversationPanel.tsx`                        | Slide-out sidebar panel with inline rename                                    |
 
 **Auto-save triggers** (wired in `App.tsx`):
 
@@ -401,7 +420,7 @@ briefings for why the blob belongs in the system prompt.
 `formatter.ts` transforms the stream into UI-friendly format:
 
 - Merges consecutive assistant messages into single UI messages
-- Converts to typed parts: `text`, `thought`, `tool`, `error`
+- Converts to typed parts: `text`, `image`, `thought`, `tool`, `error`
 - Matches tool results to tool calls by ID
 - Tracks original indices for retry functionality
 

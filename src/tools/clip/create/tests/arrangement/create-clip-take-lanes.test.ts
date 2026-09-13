@@ -9,7 +9,7 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,
@@ -24,7 +24,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
-import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/create-clip-prep-helpers.ts";
+import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */

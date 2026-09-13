@@ -16,7 +16,10 @@ import {
   pathError,
   splitCoord,
 } from "./helpers/object-path-lexer.ts";
-import { parseDeviceTail } from "./helpers/object-path-device-tail.ts";
+import {
+  DEVICE_TYPE_FORMS,
+  parseDeviceTail,
+} from "./helpers/object-path-device-tail.ts";
 import {
   arrangementPosition,
   type ArrangementPosition,
@@ -28,15 +31,37 @@ export type TrackSegment =
   | { kind: "return-track"; returnIndex: number }
   | { kind: "master-track" };
 
-/** A segment below a track root, down the device chain. */
+/** A kind of device, for a segment that addresses one by type. */
+export type DeviceTypeName = "instrument" | "midi-effect" | "audio-effect";
+
+/**
+ * A segment below a track root, down the device chain. `device-by-type` names
+ * a device by what it is (`inst`, `mfx0`, `afx1`) rather than by its position,
+ * counting only devices of that type; its index is 0 for an instrument, which
+ * a container holds at most one of.
+ */
 export type DeviceSegment =
   | { kind: "device"; index: number }
+  | { kind: "device-by-type"; deviceType: DeviceTypeName; index: number }
   | { kind: "chain"; index: number }
   | { kind: "return-chain"; index: number }
   | { kind: "drum-pad"; note: string };
 
+/**
+ * A device-chain segment that already names its target by position. Every
+ * resolver takes these: a `device-by-type` segment is substituted for the
+ * `d<n>` it resolves to before anything walks the path.
+ */
+export type CanonicalDeviceSegment = Exclude<
+  DeviceSegment,
+  { kind: "device-by-type" }
+>;
+
 /** A device-chain segment that indexes into a Live API collection. */
-export type IndexedSegment = Exclude<DeviceSegment, { kind: "drum-pad" }>;
+export type IndexedSegment = Exclude<
+  CanonicalDeviceSegment,
+  { kind: "drum-pad" }
+>;
 
 /** A path naming a place to create something rather than a thing that exists. */
 export type NewObjectSegment =
@@ -193,6 +218,13 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
   switch (segment.kind) {
     case "device":
       return `d${segment.index}`;
+
+    case "device-by-type": {
+      const form = DEVICE_TYPE_FORMS[segment.deviceType];
+
+      return form.indexed ? `${form.segment}${segment.index}` : form.segment;
+    }
+
     case "chain":
       return `c${segment.index}`;
     case "return-chain":
@@ -209,6 +241,17 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
  */
 export function liveApiCollection(segment: IndexedSegment): string {
   return LIVE_API_COLLECTION[segment.kind];
+}
+
+/**
+ * Whether a trailing segment names a device rather than a container. Both
+ * spellings count, so an insertion path ending in `afx0` names a position the
+ * same way one ending in `d2` does.
+ * @param segment - The last device-chain segment, or undefined for none
+ * @returns True when the segment names a device
+ */
+export function namesDevice(segment: DeviceSegment | undefined): boolean {
+  return segment?.kind === "device" || segment?.kind === "device-by-type";
 }
 
 // --- Helpers below main exports ---

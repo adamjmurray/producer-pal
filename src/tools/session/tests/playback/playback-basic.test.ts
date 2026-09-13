@@ -145,6 +145,25 @@ describe("transport", () => {
     expect(result).toStrictEqual({ playing: false });
   });
 
+  it("names loopStart, not loopEnd, when loopStart alone lands before 1|1", () => {
+    // Regression: a pickup bar ("1|1-n1/4") resolves to a negative position.
+    // With only loopStart named, the refusal used to report a made-up loopEnd
+    // and print 1|1 for it instead of naming the param the caller actually sent.
+    liveSet = setupPlaybackLiveSet({ is_playing: 0 });
+
+    playback({
+      action: "update-arrangement",
+      loopStart: "1|1-n1/4",
+    });
+
+    expectLoopNotWritten(liveSet);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringMatching(
+        /^loopStart .+ is before 1\|1 — leaving the loop as it was$/,
+      ),
+    );
+  });
+
   it("turns the loop on when only its bounds are named", () => {
     // Bounds with the loop off do nothing audible, so asking for a loop from
     // bar 3 to bar 7 means asking for a loop.
@@ -530,7 +549,7 @@ describe("transport", () => {
 
     expectLoopNotWritten(liveSet);
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("would start the loop before 1|1"),
+      expect.stringContaining("would set the loop start before 1|1"),
     );
     // Nothing slid, so there is no moved end to report — reporting one would
     // read as half the request landing.

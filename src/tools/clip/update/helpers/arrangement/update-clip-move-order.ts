@@ -25,7 +25,7 @@
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ClipMoves } from "./update-clip-arrangement-optimizer.ts";
 

@@ -584,6 +584,61 @@ describe("ppal-update-clip", () => {
     expect(parseToolResult<ReadClipResult>(verify).name).toBe("Named By Path");
   });
 
+  // A blank whole-call arg reads as unset too, so the move never happens — and
+  // no result entry could say the destination the caller sent went nowhere.
+  it("warns when a blank toPath is dropped", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s6`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, toPath: "", name: "Stayed Put" },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining("blank toPath ignored — leave it out instead"),
+    );
+
+    await sleep(100);
+
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: clipId },
+    });
+    const stayed = parseToolResult<ReadClipResult>(verify);
+
+    expect(stayed.path).toBe(path);
+    expect(stayed.name).toBe("Stayed Put");
+  });
+
+  // Every spelling the caller wrote, deprecated ones included, in one warning.
+  it("names every blank position and split arg at once", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s7`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: clipId,
+        toSlot: "",
+        arrangementStart: "",
+        arrangementLength: "",
+        arrangementSplit: "",
+        split: "",
+        name: "Left Alone",
+      },
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining(
+        "blank toSlot, arrangementStart, arrangementLength, " +
+          "arrangementSplit, split ignored — leave them out instead",
+      ),
+    );
+  });
+
   it("updates audio clip properties", async () => {
     // Setup: Create an audio track and audio clip
     const audioTrackResult = await ctx.client!.callTool({

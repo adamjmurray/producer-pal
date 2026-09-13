@@ -9,25 +9,24 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   findLocator,
   getLocatorId,
-} from "#src/tools/shared/locator/locator-helpers.ts";
-import { parseTimeSignature, validateTempo } from "#src/tools/shared/utils.ts";
-import {
-  applyScale,
-  applyTempo,
-  cleanupTempClip,
-  extendSongIfNeeded,
-} from "./helpers/update-live-set-helpers.ts";
+} from "#src/tools/shared/locator/locators.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
   deleteLocator,
   renameLocator,
   stopPlaybackIfNeeded,
   validateLocatorOperation,
   waitForPlayheadPosition,
-} from "./helpers/update-live-set-locator-helpers.ts";
+} from "./helpers/locator-updates.ts";
+import {
+  cleanupTempClip,
+  extendSongIfNeeded,
+} from "./helpers/song-extension.ts";
+import { applyScale, applyTempo } from "./helpers/tempo-and-scale-updates.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;
@@ -247,11 +246,10 @@ async function createLocator(
   context: UpdateLiveSetContext,
 ): Promise<Record<string, unknown>> {
   if (locatorTime == null) {
-    console.warn("locatorTime is required for create operation");
-
     return {
       operation: "skipped",
-      reason: "missing_locatorTime",
+      ok: false,
+      reason: "create needs locatorTime",
     };
   }
 
@@ -266,13 +264,9 @@ async function createLocator(
   const existing = findLocator(liveSet, { timeInBeats: targetBeats });
 
   if (existing) {
-    console.warn(
-      `Locator already exists at ${locatorTime} (id: ${getLocatorId(existing.index)}), skipping create`,
-    );
-
     return {
       operation: "skipped",
-      reason: "locator_exists",
+      reason: `a locator is already at ${locatorTime}`,
       time: locatorTime,
       existingId: getLocatorId(existing.index),
     };

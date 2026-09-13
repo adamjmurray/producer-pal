@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 

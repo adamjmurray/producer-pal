@@ -104,6 +104,49 @@ function setupKit(): void {
   }
 }
 
+const PAD_NOTES_8 = ["C1", "D1", "E1", "F1", "G1", "A1", "B1", "C2"];
+
+/**
+ * An 8-pad kit on a second track, so its build budget can be checked
+ * independently of the 4-pad kit above.
+ */
+function setupKit8(): void {
+  const padIds = Array.from(
+    { length: 128 },
+    (_, note) => `bigpadid${String(note)}`,
+  );
+  const chainIds = PAD_NOTES_8.map((_, i) => `bigkitchain${String(i)}`);
+
+  registerMockObject("track-2", {
+    path: livePath.track(2),
+    properties: { devices: children("bigkit") },
+  });
+  registerMockObject("bigkit", {
+    path: livePath.track(2).device(0),
+    properties: {
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      drum_pads: children(...padIds),
+      chains: children(...chainIds),
+    },
+  });
+
+  for (const [note, padId] of padIds.entries()) {
+    registerMockObject(padId, {
+      path: `${livePath.track(2).device(0).toString()} drum_pads ${String(note)}`,
+      properties: { note },
+    });
+  }
+
+  for (const [i, chainId] of chainIds.entries()) {
+    registerMockObject(chainId, {
+      path: livePath.track(2).device(0).chain(i),
+      properties: { in_note: FIRST_NOTE + i * 2, devices: children() },
+      methods: { insert_device: () => ["id", "newdev"] },
+    });
+  }
+}
+
 describe("createDevice build budget", () => {
   beforeEach(setupRack);
 
@@ -142,5 +185,36 @@ describe("createDevice build budget", () => {
     });
 
     expect(resolves("live_set tracks * devices *")).toBe(1);
+  });
+
+  // Order validation reads a drum rack's pad-relative paths too. Without its
+  // own per-rack memo, it rescanned every chain on the rack once per pad named
+  // (16 extra chain builds for this 4-pad kit), on top of what actually
+  // creating each device already costs.
+  it("reads a kit's chains once for order validation, not once per pad", () => {
+    setupKit();
+
+    createDevice({
+      deviceName: "Reverb",
+      path: PAD_NOTES.map((note) => `t1/d0/p${note}`).join(","),
+    });
+
+    // One rack-wide scan for validation (4 chains), on top of whatever the
+    // actual inserts already cost — not another 4 x 4 = 16 chain builds for
+    // validation alone, which is what a rescan per pad would add.
+    expect(resolves("id kitchain*")).toBe(21);
+  });
+
+  it("reads an 8-pad kit's chains once for order validation, not once per pad", () => {
+    setupKit8();
+
+    createDevice({
+      deviceName: "Reverb",
+      path: PAD_NOTES_8.map((note) => `t2/d0/p${note}`).join(","),
+    });
+
+    // Same shape as the 4-pad case, scaled up: one rack-wide scan of 8 chains
+    // for validation, not 8 x 8 = 64 chain builds for validation alone.
+    expect(resolves("id bigkitchain*")).toBe(76);
   });
 });

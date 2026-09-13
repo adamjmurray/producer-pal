@@ -37,11 +37,13 @@ import {
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
+  seedContext,
+} from "./helpers/context-scenario-setup.ts";
+import {
   assertContextWrite,
   assertNoContextWrite,
   assertNoUnconfirmedWrite,
-  seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-write-assertions.ts";
 
 /** Pre-existing documents, so "ask before replacing this" is the rule in force. */
 const EXISTING_PROJECT = "Working title: Nightshade. Deep house, 124 BPM.";

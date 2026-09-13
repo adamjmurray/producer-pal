@@ -7,7 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   applySpecializedActions,
   applySpecializedParamWrite,
@@ -220,7 +220,7 @@ describe("Simpler pseudo-params", () => {
       );
     });
 
-    it("warns and skips when writing a read-only param", () => {
+    it("reports a read-only param in its entry, without warning", () => {
       const device = registerSimpler();
 
       const handled = applySpecializedParamWrite(
@@ -230,12 +230,10 @@ describe("Simpler pseudo-params", () => {
       );
 
       expect(handled).toStrictEqual([
-        { name: "multiSampleMode", reason: "read-only" },
+        { name: "multiSampleMode", ok: false, reason: "read-only" },
       ]);
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("read-only"),
-      );
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 

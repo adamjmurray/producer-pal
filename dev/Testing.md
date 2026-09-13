@@ -27,7 +27,7 @@ step.
 
 - **Line limits**: whole test suites (`*.test.*`, `*.spec.*`, `*-test-cases.ts`)
   get 650 lines per file and 630 per function. Test helpers and fixtures use the
-  standard 325 / 115.
+  standard 375 / 115.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
   split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
@@ -149,11 +149,28 @@ approval.
 comment block per tree, and names the worst files (`--all` lists every file).
 The license header and lint directives don't count.
 
-`src/test/comment-limits.test.ts` ratchets those numbers: comment lines, longest
-block, and how many files hold a block of 8+ lines. The caps live in
-`src/test/helpers/comment-limits.ts`, and `--markdown` prints them beside the
-current counts. Lower a limit when a count falls; raising one needs user
-approval.
+`src/test/comment-limits.test.ts` ratchets two numbers, neither of which moves
+when files are split, merged or renamed:
+
+- **Comment density** per tree — comment lines per code line, capped to 3
+  decimals within 0.005 of the current number. Lower a cap when density falls;
+  raising one needs user approval.
+- **Block length** — no comment block over `MAX_BLOCK_LINES` (25), repo-wide.
+  Files that were already over it are listed in `LONG_BLOCK_ALLOWANCES`, each at
+  its exact longest block. That list only shrinks: shortening or moving a block
+  means updating its entry in the same commit, and new long blocks don't get an
+  entry.
+
+The caps live in `src/test/helpers/comment-limits.ts`, and `--markdown` prints
+them beside the current numbers.
+
+## Module names
+
+`src/test/meta/naming/module-name-limits.test.ts` ratchets how many non-test
+modules per tree end in a nothing word (`helpers`, `utils`, `misc`, `common`,
+`support`). The caps live in `src/test/helpers/module-name-limits.ts` and must
+match the current count exactly, so renaming a file means lowering the cap in
+the same commit. Test support files (`-test-helpers.ts`) don't count.
 
 ## Auditing coverage
 

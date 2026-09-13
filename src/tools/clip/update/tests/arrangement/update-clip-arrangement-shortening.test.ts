@@ -11,7 +11,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import {
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -177,6 +177,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       signature_denominator: 4,
       trackIndex,
     });
+
+    registerMockObject("temp-midi", { type: "Clip" });
 
     // Mock duplicate_clip_to_arrangement to return moved clip
     overrideCall(track, function (method: string) {

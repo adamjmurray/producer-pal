@@ -9,7 +9,8 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
+import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   pairValues,
   type PairLabels,

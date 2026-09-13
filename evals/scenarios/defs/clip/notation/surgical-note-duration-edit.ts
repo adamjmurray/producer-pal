@@ -28,13 +28,13 @@ import { argText } from "../../arg-text.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
   MSG_CONNECT,
-  readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import { readClipNotesFromTurn } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** A note matches its pre-edit twin when pitch is equal and start within this. */

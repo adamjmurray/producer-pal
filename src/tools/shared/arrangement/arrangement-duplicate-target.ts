@@ -9,9 +9,9 @@
  * arrangement position" primitive.
  */
 
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
-import { type TilingContext } from "./helpers/arrangement-tiling-helpers.ts";
+import { type TilingContext } from "./helpers/arrangement-tiling-clips.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,

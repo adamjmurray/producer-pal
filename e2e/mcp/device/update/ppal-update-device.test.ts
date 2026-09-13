@@ -12,11 +12,18 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  createTestDeviceAt,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
+import {
+  callForParams,
+  expectSkipThenValue,
+} from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -125,24 +132,15 @@ describe("ppal-update-device", () => {
   // own request to work out which entry vanished.
   it("reports a param name that matched nothing, beside one that landed", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
-    const updated = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          id: deviceId,
-          params: [
-            { name: "Nope", value: "1" },
-            { name: "Ratio", value: "4" },
-          ],
-        },
-      }),
-    );
+    const updated = await callForParams(ctx.client!, "ppal-update-device", {
+      id: deviceId,
+      params: [
+        { name: "Nope", value: "1" },
+        { name: "Ratio", value: "4" },
+      ],
+    });
 
-    expect(updated.data.params).toStrictEqual([
-      { name: "Nope", reason: expect.stringContaining("not found on") },
-      { id: expect.any(String), name: "Ratio", value: 4 },
-    ]);
-    expect(updated.warnings.join("\n")).toContain('param "Nope" not found');
+    expectSkipThenValue(updated, "Nope", { name: "Ratio", value: 4 });
   });
 
   it("updates multiple devices in batch", async () => {
@@ -160,19 +158,73 @@ describe("ppal-update-device", () => {
     expect(Array.isArray(batch)).toBe(true);
     expect(batch).toHaveLength(2);
 
-    // Test 2: Update non-existent device - should return empty with warning
+    // Test 2: the only target named isn't there, so the call is refused
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { id: "99999", name: "Won't Work" },
     });
-    const { data: nonExistent, warnings } =
-      parseToolResultWithWarnings<UpdateDeviceResult[]>(nonExistentResult);
 
-    // Should be empty array (device not found, no error thrown)
-    expect(Array.isArray(nonExistent)).toBe(true);
-    expect(nonExistent).toHaveLength(0);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("target not found");
+    expect(isToolError(nonExistentResult)).toBe(true);
+    expect(getToolErrorMessage(nonExistentResult)).toContain(
+      'id "99999" does not exist',
+    );
+  });
+
+  /**
+   * Update every target named and parse the entries, which must not warn: a
+   * target's own entry is where anything about it belongs.
+   * @param args - ppal-update-device arguments
+   * @returns One entry per target named
+   */
+  async function updateTargets(
+    args: Record<string, unknown>,
+  ): Promise<Array<UpdateDeviceResult | SkippedTargetResult>> {
+    return parseToolResult<Array<UpdateDeviceResult | SkippedTargetResult>>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: args,
+      }),
+    );
+  }
+
+  // Every target named gets an entry, in order, so a paired name list can't
+  // slide onto the wrong device when one of them is missing.
+  it("keeps a slot for a device it couldn't reach, and warns nowhere", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    const entries = await updateTargets({
+      id: `${deviceId},99999`,
+      name: "Reached,Nowhere",
+    });
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ id: deviceId }),
+      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
+    ]);
+
+    await sleep(100);
+    const device = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { id: deviceId },
+      }),
+    );
+
+    expect(device.name).toBe("Reached");
+  });
+
+  it("reports a path that names no device in its own slot", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    // One name for both targets, so only the one it reaches is renamed.
+    const entries = await updateTargets({
+      id: deviceId,
+      path: "t99/d99",
+      name: "Reached By Id",
+    });
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ id: deviceId }),
+      { path: "t99/d99", ok: false, reason: 'nothing at path "t99/d99"' },
+    ]);
   });
 
   it("wraps a device in a rack and manages macros and variations", async () => {
@@ -265,6 +317,21 @@ describe("ppal-update-device", () => {
     );
 
     expect(afterDelete.variations?.count).toBe(1);
+  });
+
+  it("names path, not id, when a path-only call's lists disagree", async () => {
+    const pathA = await createTestDeviceAt(ctx.client!, "Compressor", "t0");
+    const pathB = await createTestDeviceAt(ctx.client!, "Compressor", "t1");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${pathA},${pathB}`, name: "A,B,C" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "path names 2 entries but name names 3 entries.",
+    );
   });
 });
 

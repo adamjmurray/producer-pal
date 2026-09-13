@@ -264,10 +264,10 @@ Writable via `update-device`'s `params` arg:
   `sample` field (discovery view, e.g. scanning every pad in a drum rack); the
   full `include: ["params"]` set also includes it.
 - `gainDb` (float dB) — the loaded sample's gain, using the same linear↔dB
-  mapping as track/clip gain (`gain-utils`). Reads/writes only when a single
-  sample is loaded (warn-and-skip otherwise). A normal pseudo-param: appears in
-  `include: ["params"]`, **not** in the focused `include: ["sample"]` view.
-  Multi-sample state is conveyed by the read-only `multiSampleMode` param.
+  mapping as track/clip gain (`gain-conversion`). Reads/writes only when a
+  single sample is loaded (warn-and-skip otherwise). A normal pseudo-param:
+  appears in `include: ["params"]`, **not** in the focused `include: ["sample"]`
+  view. Multi-sample state is conveyed by the read-only `multiSampleMode` param.
 - `playbackMode` (enum: `"classic"` | `"one-shot"` | `"slicing"`) — maps to int
   0/1/2.
 - `slicingPlaybackMode` (enum: `"mono"` | `"poly"` | `"thru"`) — maps to int
@@ -388,7 +388,7 @@ Modulation matrix support:
 - **Source count: 13** (indices 0..12 valid). Index 13+ returns int sentinel
   `1`. **There is no `_list` property exposing source names** — the source
   index→name mapping is hard-coded from the Wavetable UI (verified 2026-05-22;
-  `MOD_SOURCES` in `wavetable-modulation-helpers.ts`):
+  `MOD_SOURCES` in `wavetable-modulation.ts`):
   `Amp, Env 2, Env 3, LFO 1, LFO 2, Vel, Key, PB, Press, Mod, Rand, Note PB, Slide`.
 - **`set_modulation_value(0, 0, 0.5)` then `get_modulation_value(0, 0)`
   round-trips correctly** (read back 0.5). Cleanup `set(.., 0)` clears the cell.
@@ -504,7 +504,7 @@ target).
 5. **Targets are auto-registered.** `setModulation` defensively calls
    `add_parameter_to_modulation_matrix` when the target name isn't already in
    the matrix, then resolves its index (`ensureModulationTarget` in
-   `wavetable-modulation-helpers.ts`). Callers don't need a separate
+   `wavetable-modulation.ts`). Callers don't need a separate
    `addModulationTarget` in the common case.
 6. **No "remove target" function documented.** Cleanup of an unused target row
    is unclear (set all cells to 0? leave it?). Decide policy at implementation —

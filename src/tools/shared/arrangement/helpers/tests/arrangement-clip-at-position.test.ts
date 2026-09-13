@@ -44,11 +44,17 @@ function at(
  * @param id - The clip's id
  * @param startTime - Where it starts, in Ableton beats
  * @param index - Its index in the track's arrangement clips
+ * @param endTime - Where it ends, in Ableton beats
  */
-function registerMainLaneClip(id: string, startTime: number, index = 0): void {
+function registerMainLaneClip(
+  id: string,
+  startTime: number,
+  index = 0,
+  endTime = startTime + 4,
+): void {
   registerMockObject(id, {
     path: livePath.track(0).arrangementClip(index),
-    properties: { start_time: startTime },
+    properties: { start_time: startTime, end_time: endTime },
   });
 }
 
@@ -60,7 +66,7 @@ function registerMainLaneClip(id: string, startTime: number, index = 0): void {
 function registerTakeLaneClip(id: string, startTime: number): void {
   registerMockObject(id, {
     path: livePath.track(0).takeLane(1).arrangementClip(0),
-    properties: { start_time: startTime },
+    properties: { start_time: startTime, end_time: startTime + 4 },
   });
   registerMockObject("lane_1", {
     path: livePath.track(0).takeLane(1),
@@ -130,9 +136,9 @@ describe("arrangementClipAtPosition", () => {
     ).toBeNull();
   });
 
-  // "starts at", not "covers": a clip running from 3|1 through bar 6 is not the
-  // clip at 5|1 (ADR-0037).
-  it("does not match a clip that only spans the position", () => {
+  // A path is an address, not a "starts at": a clip running from bar 3 through
+  // bar 6 is the clip at 5|1 (ADR-0037).
+  it("finds a clip that only spans the position, not starts there", () => {
     registerMockObject("clip_long", {
       path: livePath.track(0).arrangementClip(0),
       properties: { start_time: 8, end_time: 24 },
@@ -140,8 +146,39 @@ describe("arrangementClipAtPosition", () => {
     registerTrackClips("clip_long");
 
     expect(
-      arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME),
-    ).toBeNull();
+      arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,
+    ).toBe("clip_long");
+  });
+
+  // A clip's end is exclusive: back-to-back clips at the boundary resolve to
+  // the one starting there, never the one ending there.
+  it("resolves a boundary between two clips to the one starting there", () => {
+    registerMockObject("clip_before", {
+      path: livePath.track(0).arrangementClip(0),
+      properties: { start_time: 8, end_time: 16 },
+    });
+    registerMainLaneClip("clip_after", 16, 1);
+    registerTrackClips("clip_before", "clip_after");
+
+    expect(
+      arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,
+    ).toBe("clip_after");
+  });
+
+  it("finds a take-lane clip that only spans the position", () => {
+    registerMockObject("clip_take_long", {
+      path: livePath.track(0).takeLane(1).arrangementClip(0),
+      properties: { start_time: 8, end_time: 24 },
+    });
+    registerMockObject("lane_1", {
+      path: livePath.track(0).takeLane(1),
+      properties: { arrangement_clips: children("clip_take_long") },
+    });
+    registerTrackClips();
+
+    expect(
+      arrangementClipAtPosition(at(TAKE_LANE, "5|1"), PARAM_NAME)?.id,
+    ).toBe("clip_take_long");
   });
 
   // The lane is part of the address. Whether Live's own track-level

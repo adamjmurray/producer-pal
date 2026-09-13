@@ -11,7 +11,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
   inOneRequest,
@@ -42,9 +42,9 @@ const DRUM_CHORD_CLIP_PROPS = {
 };
 
 // Set up a standalone 4/4 MIDI clip holding DRUM_CHORD_NOTES in slot 0/0, then
-// read its notes. `readOverrides` tweaks the readClip args (e.g. drumMode).
+// read its notes. `readOverrides` tweaks the readOneClip args (e.g. drumMode).
 function readDrumChordNotes(
-  readOverrides: Partial<Parameters<typeof readClip>[0]> = {},
+  readOverrides: Partial<Parameters<typeof readOneClip>[0]> = {},
 ) {
   setupMidiClipMock({
     trackIndex: 0,
@@ -53,7 +53,7 @@ function readDrumChordNotes(
     clipProps: DRUM_CHORD_CLIP_PROPS,
   });
 
-  return readClip({
+  return readOneClip({
     trackIndex: 0,
     sceneIndex: 0,
     include: ["notes"],
@@ -61,7 +61,7 @@ function readDrumChordNotes(
   }).notes;
 }
 
-describe("readClip - include flag gating", () => {
+describe("readOneClip - include flag gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
@@ -78,7 +78,7 @@ describe("readClip - include flag gating", () => {
       type: "Clip",
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 4,
       sceneIndex: 5,
       suppressEmptyWarning: true,
@@ -106,7 +106,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const withColor = readClip({
+    const withColor = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["color"],
@@ -128,7 +128,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
     expect(result.color).toBeUndefined();
   });
@@ -149,7 +149,7 @@ describe("readClip - include flag gating", () => {
 
     setupNotesMock(clip, [createTestNote({ pitch: 60, startTime: 0 })]);
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["notes"],
@@ -177,7 +177,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample"],
@@ -208,7 +208,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing"],
@@ -233,7 +233,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
     expect(result.notes).toBeUndefined();
   });
@@ -258,7 +258,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["warp"],
@@ -285,7 +285,7 @@ describe("readClip - include flag gating", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample"],
@@ -313,7 +313,7 @@ describe("readClip - include flag gating", () => {
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    const result = readClip({ id: "id arr_clip", include: [] });
+    const result = readOneClip({ id: "id arr_clip", include: [] });
 
     expect(result.view).toBe("arrangement");
     expect(result.path).toBe("t2[3|1]"); // start_time 8 in 4/4
@@ -327,7 +327,7 @@ describe("readClip - include flag gating", () => {
  * @returns The formatted notes
  */
 function readChordNotesOnTrack(trackIndex: number): string | undefined {
-  return readClip({ trackIndex, sceneIndex: 0, include: ["notes"] }).notes;
+  return readOneClip({ trackIndex, sceneIndex: 0, include: ["notes"] }).notes;
 }
 
 /**
@@ -345,7 +345,7 @@ function registerMelodicTrack(trackIndex: number): void {
   });
 }
 
-describe("readClip - drum mode resolution", () => {
+describe("readOneClip - drum mode resolution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();

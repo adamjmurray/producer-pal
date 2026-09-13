@@ -69,19 +69,15 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
-    it("warns and skips a drum pad with no chains", () => {
-      const result = updateDevice({
-        id: "790",
-        mute: true,
-      });
-
-      // Live drops writes to an empty pad, so there is nothing to report.
-      expect(capturedWarnings()).toContain(
+    it("refuses a lone drum pad with no chains", () => {
+      // Live drops writes to an empty pad, so there is nothing to report and
+      // nothing was done.
+      expect(() => updateDevice({ id: "790", mute: true })).toThrow(
         "drum pad t0/d0/pC1 (id 790) has no chains, so there is " +
           "nothing to update — Live ignores writes to an empty pad",
       );
       expect(drumPad.set).not.toHaveBeenCalled();
-      expect(result).toStrictEqual([]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should set mute to false (unmute)", () => {
@@ -224,16 +220,23 @@ describe("updateDevice - Chain and DrumPad support", () => {
   describe("device-only properties on non-devices", () => {
     // collapsed — kept for potential future use (test removed)
 
-    it("should warn when params is used on a Chain", () => {
+    it("refuses each param in its own entry on a Chain", () => {
       const result = updateDevice({
         id: "456",
         params: [{ name: "789", value: "0.5" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        "'params' not applicable to Chain id 456",
-      );
-      expect(result).toStrictEqual({ id: "456" });
+      expect(result).toStrictEqual({
+        id: "456",
+        params: [
+          {
+            name: "789",
+            ok: false,
+            reason: "'params' not applicable to Chain id 456",
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("should not warn when params is an empty array on a Chain", () => {
@@ -337,14 +340,11 @@ describe("updateDevice - Chain and DrumPad support", () => {
   });
 
   describe("invalid types", () => {
-    it("should warn and skip for Track type", () => {
-      // Should not throw, just warn and return empty array (no valid targets)
-      const result = updateDevice({
-        id: "791",
-        name: "Test",
-      });
-
-      expect(result).toStrictEqual([]);
+    it("refuses a lone Track, which this tool can't write", () => {
+      expect(() => updateDevice({ id: "791", name: "Test" })).toThrow(
+        "cannot update Track objects: id 791",
+      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

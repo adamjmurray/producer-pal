@@ -55,7 +55,7 @@ can pass straight back into the next call, instead of scattering `trackIndex`,
 | create-scene, read-scene, read-live-set         | `sceneIndex` removed                                           | parse `path` (`s2`)                                                             |
 | create-device                                   | `deviceIndex` removed                                          | parse `path` (`t1/d2`)                                                          |
 | every clip result                               | `arrangementStart` removed                                     | the clip's `path` carries it: `t0[5\|1]`                                        |
-| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on `deleted`: read `deletedPath` when true, `path` when false            |
+| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on the key: `deletedPath` means removed, `path` means still there        |
 | `ppal-playback`                                 | `currentTime` removed                                          | it was never the playhead; read `startTime` for where the next play begins      |
 | `ppal-playback`                                 | `arrangementLoop: {start, end}` → `loop`/`loopStart`/`loopEnd` | read the three flat fields                                                      |
 | `ppal-playback`                                 | `sceneIndex`, `sceneName` → `scene: {id, path, name}`          | read `scene.name`; `scene.path` is an address you can spend                     |
@@ -72,14 +72,38 @@ branching on `type === "return"` or `type === "master"` gets `undefined`.
 `ppal-playback`'s `loop`, `loopStart` and `loopEnd` come back only when your
 call didn't name them. Don't read them unconditionally.
 
-The device tools' `params` can be **longer** than the number of params you
-wrote: a name that reached nothing comes back as `{name, reason}` with no
-`value`. Key off `value`, not the entry's presence.
+The device tools' `params` hold **one entry per param you sent**, in order. A
+param nothing was written to comes back as `{name, ok: false, reason}` with no
+`value`; one whose value Live changed on the way in (a clamp, the nearest step
+of a coarse ladder) carries the value it reads as plus a `reason`. Key off
+`value`, not the entry's presence.
 
 `ppal-delete` can return an array where it used to return a single object, since
 failures are now included instead of dropped. Its results are also in **request
 order** now, not internal deletion order, so you can pair results to targets by
 index.
+
+The read tools do the same: `ppal-read-clip`, `-track`, `-scene` and `-device`
+take comma-separated `id`/`path` lists, and a call naming two or more targets
+returns an array in request order, with a target that couldn't be read holding
+its slot as `{id or path, ok: false, reason}`. Naming one target still returns
+the object on its own.
+
+**Every write tool now answers the same way, and `ppal-delete` has no `deleted`
+field.** `ppal-update-track`, `-scene` and `-device` used to drop a target they
+couldn't reach and warn. They return an entry for every target named, in order,
+with a failed one holding its slot as `{id or path, ok: false, reason}`, so
+`update-track` with `path: "t0,t99"` is now a two-entry array. `ok` appears only
+on a skip, never on a success. On `ppal-delete`, `deleted: true` is gone
+(`deletedPath` already says the object was removed) and `deleted: false` is now
+either `ok: false` with a `reason`, or, for a target that was already gone,
+`reason: "nothing to delete"` with no `ok`. Check for `ok`, not `deleted`.
+
+**A call naming one target that can't be done now throws** instead of returning
+an empty array with a warning. `ppal-update-track path="t99"` is an error;
+deleting something already gone is not, since nothing was left to do.
+`ppal-update-live-set`'s locator result also carries prose in `reason` now, in
+place of slugs like `locator_not_found`.
 
 ### Three values read differently without the field changing
 
@@ -116,6 +140,7 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `trackIndex` + `trackType`                           | `path`: `t2`, `rt0`, `mt`                           |
 | `trackIndex: -1` on create-track                     | `path: "t+"` (append)                               |
 | `sceneIndex`                                         | `path: "s2"`                                        |
+| `count` on create-track / create-scene               | one path entry per object: `path: "t+,t+,t+"`       |
 | `slot: "1/0"`, `slots`, `toSlot`                     | `path` / `toPath`: `t1/s0`                          |
 | `arrangementStart: "5\|1"`                           | fused onto the path: `t1[5\|1]`                     |
 | `takeLane: "1"`                                      | `/l0` on the path                                   |
@@ -125,8 +150,26 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `inputRoutingTypeId` and the other three `*Id`       | drop the `Id` suffix                                |
 
 The last row is a plain rename: the surviving param already accepts a name or an
-id. Most of the rest are mechanical. **Two are not**, and a find-and-replace on
-them writes a call that quietly does the wrong thing.
+id. Most of the rest are mechanical. **Three are not**, and a find-and-replace
+on them writes a call that quietly does the wrong thing.
+
+### `count` becomes one path entry per object
+
+`ppal-create-track` and `ppal-create-scene` used to make several objects from
+one path plus a `count`. Now the path names each one, the way `ppal-create-clip`
+and `ppal-create-device` always have. `name` and `color` lists pair with it 1:1,
+and `count` sent alongside a path list is refused.
+
+```js
+// before: three tracks on the end
+{ path: "t+", count: 3, name: "Kick,Snare,Hat" }
+// after
+{ path: "t+,t+,t+", name: "Kick,Snare,Hat" }
+```
+
+Repeating an index inserts in list order, so `path: "t2,t2"` puts the first new
+track at `t2` and the second at `t3`. Each result reports where its object ended
+up, which is what `count` could never say once entries named different places.
 
 ### `takeLane` counts from 1; `l<n>` counts from 0
 

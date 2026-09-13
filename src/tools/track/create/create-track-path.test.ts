@@ -58,6 +58,79 @@ describe("createTrack by path", () => {
     expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
   });
 
+  it("appends one track per entry in a path list", () => {
+    registerMockObject("midi_track_-1", {});
+
+    expect(
+      createTrack({ path: "t+,t+,t+", name: "Kick,Snare,Hat" }),
+    ).toStrictEqual([
+      { id: "midi_track_-1", path: "t2" },
+      { id: "midi_track_-1", path: "t3" },
+      { id: "midi_track_-1", path: "t4" },
+    ]);
+  });
+
+  // The second entry names the same place as the first, and the first is
+  // already there by then, so it lands after it.
+  it("inserts two at one index in the order the list names them", () => {
+    registerMockObject("midi_track_0", {});
+    registerMockObject("midi_track_1", {});
+
+    expect(createTrack({ path: "t0,t0", name: "First,Second" })).toStrictEqual([
+      { id: "midi_track_0", path: "t0" },
+      { id: "midi_track_1", path: "t1" },
+    ]);
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_midi_track", 0);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_midi_track", 1);
+  });
+
+  // Every entry names a place in the Set as the caller read it, so a later
+  // insert pushes an earlier track along and the result says where it ended up.
+  it("reports where an earlier track ended up after a later insert", () => {
+    registerMockObject("midi_track_1", {});
+    registerMockObject("midi_track_0", {});
+
+    expect(createTrack({ path: "t1,t0" })).toStrictEqual([
+      { id: "midi_track_1", path: "t2" },
+      { id: "midi_track_0", path: "t0" },
+    ]);
+  });
+
+  it("mixes a return track into the list", () => {
+    registerMockObject("midi_track_-1", {});
+    registerMockObject("return_track_0", {});
+
+    expect(createTrack({ path: "t+,rt+", name: "Lead,Reverb" })).toStrictEqual([
+      { id: "midi_track_-1", path: "t2" },
+      { id: "return_track_0", path: "rt2" },
+    ]);
+  });
+
+  it("refuses count sent with a path list", () => {
+    expect(() => createTrack({ path: "t+,t+", count: 2 })).toThrow(
+      'count repeats one path, but path names 2. Drop count and let path name each track (e.g. path: "t+,t+,t+").',
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("still repeats a single path for count", () => {
+    registerMockObject("midi_track_2", {});
+    registerMockObject("midi_track_3", {});
+
+    expect(createTrack({ path: "t2", count: 2 })).toStrictEqual([
+      { id: "midi_track_2", path: "t2" },
+      { id: "midi_track_3", path: "t3" },
+    ]);
+  });
+
+  it("pairs a name list with the path list", () => {
+    registerMockObject("midi_track_-1", {});
+
+    expect(() => createTrack({ path: "t+,t+,t+", name: "Kick,Snare" })).toThrow(
+      "path names 3 tracks but name names 2 entries",
+    );
+  });
+
   it("refuses a return track at an index, since Live appends them", () => {
     expect(() => createTrack({ path: "rt1" })).toThrow(
       'invalid path "rt1" - Live adds return tracks at the end, so they have no index; use "rt+"',

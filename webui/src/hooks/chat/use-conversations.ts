@@ -16,23 +16,28 @@ import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk
 import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
+import { buildLockedSettings } from "#webui/hooks/chat/helpers/conversations/conversation-save-record";
+import { resolvePanelNotification } from "#webui/hooks/chat/helpers/conversations/panel-notification";
 import {
-  buildLockedSettings,
   getHashConversationId,
-  resolvePanelNotification,
   setLocationHash,
   useHashNavigation,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-hash-navigation";
 import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
 import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,
 } from "#webui/hooks/chat/helpers/use-sync-active-meta";
 import {
+  deleteOneConversation,
+  renameStoredConversation,
+  toggleStoredBookmark,
+} from "#webui/lib/conversations/conversation-edits";
+import {
   type ConversationStore,
   DEFAULT_META,
   createConversationStore,
-} from "#webui/lib/conversation-store";
+} from "#webui/lib/conversations/conversation-store";
 import {
   type ConversationLockedSettings,
   type PendingForkRef,
@@ -42,8 +47,6 @@ import {
   type ConversationSummary,
   listConversations,
   loadConversation,
-  renameConversation as dbRenameConversation,
-  setBookmark,
 } from "#webui/lib/conversation-db";
 
 interface UseConversationsProps {
@@ -343,83 +346,41 @@ export function useConversations({
     }
   }, [pendingForkRef]);
 
+  const clearLiveView = useCallback(() => {
+    clearConversation();
+    store.reset();
+  }, [clearConversation, store]);
+
   const deleteConversation = useCallback(
-    async (id: string) => {
-      // Take the conversation out of play before any async work. handleDelete
-      // calls stopResponse() first, which flips isAssistantResponding and — from
-      // a passive effect — fires one more autosave for this conversation after
-      // the drain below has already captured the queue. Marked deleted, that
-      // save never starts.
-      const isLive = id === store.activeId();
-      let undoMark: (() => void) | null = null;
-
-      if (isLive) {
-        dropPendingFork();
-        undoMark = store.markDeleted();
-      }
-
-      // Drain the saves already queued before removing the row, so one can't
-      // land afterward. drain() never rejects, so awaiting it here — outside
-      // the try below — can't strand the mark.
-      await store.drain();
-
-      try {
-        await undoDelete.deleteWithUndo(id);
-      } catch (error) {
-        // The row survived, so the conversation is live again — leaving it
-        // marked deleted would make a listed conversation unsaveable.
-        undoMark?.();
-        throw error;
-      }
-
-      // Ask again rather than trusting isLive: the user can switch conversations
-      // while the delete runs, and tearing the view down then would throw away
-      // the one they just opened. liveId, not activeId — a marked slot reports
-      // no active id, so the untouched case has to be recognized by id.
-      if (store.liveId() === id) {
-        clearConversation();
-        store.reset();
-      }
-
-      await refreshList();
-    },
-    [clearConversation, refreshList, undoDelete, dropPendingFork, store],
+    (id: string) =>
+      deleteOneConversation({
+        store,
+        id,
+        deleteWithUndo: undoDelete.deleteWithUndo,
+        refreshList,
+        beforeMark: dropPendingFork,
+        onLiveGone: clearLiveView,
+      }),
+    [clearLiveView, refreshList, undoDelete, dropPendingFork, store],
   );
 
   const { deleteAllConversations, deleteUnbookmarkedConversations } =
     useBulkDeletes({
       store,
-      clearConversation,
+      onLiveRowGone: clearLiveView,
       refreshList,
       dropPendingFork,
       dropUndoable: undoDelete.dropUndoable,
     });
 
   const renameConversation = useCallback(
-    async (id: string, title: string | null) => {
-      await dbRenameConversation(id, title);
-      store.patchActiveMeta(id, { title });
-
-      await refreshList();
-    },
+    (id: string, title: string | null) =>
+      renameStoredConversation(store, refreshList, id, title),
     [refreshList, store],
   );
 
   const toggleBookmark = useCallback(
-    async (id: string) => {
-      const conv = conversations.find((c) => c.id === id);
-
-      if (!conv) {
-        return;
-      }
-
-      const newValue = !conv.bookmarked;
-
-      await setBookmark(id, newValue);
-      store.patchActiveMeta(id, { bookmarked: newValue });
-
-      await refreshList();
-    },
+    (id: string) => toggleStoredBookmark(store, refreshList, conversations, id),
     [conversations, refreshList, store],
   );
 

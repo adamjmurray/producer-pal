@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
-import { type LocatorInfo } from "#src/tools/shared/locator/locator-helpers.ts";
+import { type LocatorInfo } from "#src/tools/shared/locator/locators.ts";
 import {
   masterTrackMockObject,
   setupLiveSetPathMappedMocks,

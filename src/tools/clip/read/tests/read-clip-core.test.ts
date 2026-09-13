@@ -11,7 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   createTestNote,
   expectGetNotesExtendedCall,
@@ -20,7 +20,7 @@ import {
   setupNotesMock,
 } from "./read-clip-test-helpers.ts";
 
-describe("readClip", () => {
+describe("readOneClip", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
@@ -69,7 +69,7 @@ describe("readClip", () => {
         },
       });
 
-      const result = readClip({
+      const result = readOneClip({
         trackIndex: 1,
         sceneIndex: 1,
         include: ["timing", "notes"],
@@ -96,7 +96,7 @@ describe("readClip", () => {
   it("reports an all-digit clip name as a string", () => {
     setupMidiClipMock({ clipProps: { name: 5678 } });
 
-    const result = readClip({ trackIndex: 1, sceneIndex: 1 });
+    const result = readOneClip({ trackIndex: 1, sceneIndex: 1 });
 
     expect(result.name).toBe("5678");
   });
@@ -118,7 +118,7 @@ describe("readClip", () => {
       createTestNote({ pitch: 64, startTime: 4 }), // bar 2, beat 2
     ]);
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing", "notes"],
@@ -154,7 +154,7 @@ describe("readClip", () => {
       createTestNote({ pitch: 64, startTime: 3.5 }), // bar 2, beat 2
     ]);
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["timing", "notes"],
@@ -186,7 +186,7 @@ describe("readClip", () => {
       createTestNote({ pitch: 64, startTime: 1 }),
     ]);
 
-    const result = readClip(
+    const result = readOneClip(
       {
         trackIndex: 0,
         sceneIndex: 0,
@@ -224,7 +224,7 @@ describe("readClip", () => {
       createTestNote({ pitch: 64, startTime: 5 }), // overhang, past the end
     ]);
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 1,
       sceneIndex: 1,
       include: ["notes"],
@@ -251,7 +251,7 @@ describe("readClip", () => {
       type: "Clip",
     });
 
-    const result = readClip({ trackIndex: 2, sceneIndex: 3 });
+    const result = readOneClip({ trackIndex: 2, sceneIndex: 3 });
 
     expect(result).toStrictEqual({
       id: null,
@@ -270,7 +270,7 @@ describe("readClip", () => {
   it("throws when track does not exist", () => {
     mockNonExistentObjects();
 
-    expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
+    expect(() => readOneClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
       'no track at "t99"',
     );
   });
@@ -283,7 +283,7 @@ describe("readClip", () => {
       type: "Track",
     });
 
-    expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
+    expect(() => readOneClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
       'no scene at "s99"',
     );
   });
@@ -317,7 +317,7 @@ describe("readClip", () => {
         warp_mode: 0, // Beats
       },
     });
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample", "timing", "warp"],
@@ -357,7 +357,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample"],
@@ -389,7 +389,7 @@ describe("readClip", () => {
       },
     });
 
-    return readClip({ trackIndex: 0, sceneIndex: 0, include: ["sample"] });
+    return readOneClip({ trackIndex: 0, sceneIndex: 0, include: ["sample"] });
   };
 
   it("does not include sampleFile for MIDI clips", () => {
@@ -421,7 +421,7 @@ describe("readClip", () => {
         warping: 1,
       },
     });
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["warp"],
@@ -447,7 +447,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       id: "id session_clip_id",
       include: ["timing"],
     });
@@ -484,7 +484,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       id: "id arrangement_clip_id",
       include: ["timing"],
     });
@@ -538,7 +538,7 @@ describe("readClip", () => {
       livePath.track(3).takeLane(0).arrangementClip(0),
     );
 
-    const result = readClip({ id: "id take_lane_clip_id" });
+    const result = readOneClip({ id: "id take_lane_clip_id" });
 
     // take_lanes 0 is the first take lane (the main lane is excluded from the
     // collection); start_time 0 is bar 1 beat 1
@@ -552,7 +552,7 @@ describe("readClip", () => {
       livePath.track(3).arrangementClip(0),
     );
 
-    const result = readClip({ id: "id main_lane_clip_id" });
+    const result = readOneClip({ id: "id main_lane_clip_id" });
 
     // The main lane has no segment of its own, so the track carries the position
     expect(result.path).toBe("t3[1|1]");
@@ -574,7 +574,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample"],
@@ -599,7 +599,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       slot: "2/3",
       include: ["timing"],
     });
@@ -612,8 +612,12 @@ describe("readClip", () => {
   // The message names path, not the deprecated slot: a caller who sent neither
   // can't see slot, so pointing at it is advice they can't act on.
   it("throws an error when neither id nor path are provided", () => {
-    expect(() => readClip({})).toThrow("id or path is required");
-    expect(() => readClip({ trackIndex: 1 })).toThrow("id or path is required");
-    expect(() => readClip({ sceneIndex: 1 })).toThrow("id or path is required");
+    expect(() => readOneClip({})).toThrow("id or path is required");
+    expect(() => readOneClip({ trackIndex: 1 })).toThrow(
+      "id or path is required",
+    );
+    expect(() => readOneClip({ sceneIndex: 1 })).toThrow(
+      "id or path is required",
+    );
   });
 });

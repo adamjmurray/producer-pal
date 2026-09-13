@@ -13,11 +13,14 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseBatchResult,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers";
 
@@ -173,6 +176,23 @@ describe("ppal-update-track", () => {
 
     // Return to stereo mode
     await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
+  });
+
+  it("reads back a tiny pan as a clean rounded number, not a noisy string", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![0]!.id;
+
+    // Live can serialize a value this small as an exponent-notation string
+    // (e.g. "9.999999747378752e-05" for 0.0001), and reads must still round it
+    // to a clean number rather than passing the noisy text through.
+    await updateTrack({ id: trackId, pan: 0.0001 });
+
+    const panTrack = await readTrackMixer(trackId);
+
+    expect(panTrack.pan).toBe(0);
+    expect(typeof panTrack.pan).toBe("number");
+
+    await updateTrack({ id: trackId, pan: 0 });
   });
 
   it("updates multiple tracks in batch", async () => {
@@ -484,6 +504,50 @@ describe("ppal-update-track", () => {
   });
 });
 
+describe("ppal-update-track over a list with a target it can't reach", () => {
+  it("keeps a slot for a path that names no track, and warns nowhere", async () => {
+    // parseToolResult fails the test if anything warned: the entry carries it.
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ path: "t0,t999", name: "ListSkip,Nowhere" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0" }),
+      { path: "t999", ok: false, reason: 'no track at path "t999"' },
+    ]);
+
+    // The name went to t0, not to whatever followed the miss.
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "t0" },
+      }),
+    );
+
+    expect(track.name).toBe("ListSkip");
+  });
+
+  it("reports a dead id in its own slot", async () => {
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ id: "99999,99998", mute: false }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
+      { id: "99998", ok: false, reason: 'id "99998" does not exist' },
+    ]);
+  });
+
+  it("throws when the one target it was given names no track", async () => {
+    const result = await updateTrack({ path: "t999", mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('no track at path "t999"');
+  });
+});
+
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
   returnTracks?: Array<{ id: string; name: string }>;
@@ -495,6 +559,7 @@ interface CreateTrackResult {
 
 interface UpdateTrackResult {
   id: string;
+  path?: string;
   gainDb?: number;
   pan?: number;
   leftPan?: number;

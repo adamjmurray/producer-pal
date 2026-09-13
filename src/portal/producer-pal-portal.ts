@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { logger } from "./file-logger.ts";
 import { parsePortalArgs } from "./portal-args.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";

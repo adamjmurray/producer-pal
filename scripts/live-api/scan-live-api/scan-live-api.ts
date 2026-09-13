@@ -24,7 +24,7 @@ import {
   parseInfo,
   scanPath,
   type ScanContext,
-} from "./helpers.ts";
+} from "./live-api-scan.ts";
 
 const DEFAULT_URL = "http://localhost:3350";
 const MAX_TRACKS = 8;

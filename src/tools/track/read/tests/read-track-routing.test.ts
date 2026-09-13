@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
 import { createRoutingMockProperties } from "./helpers/read-track-test-helpers.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
 function expectStandardOutputRouting(result: Record<string, unknown>): void {
   expect(result.availableOutputRoutingChannels).toStrictEqual([
@@ -18,7 +19,7 @@ function expectStandardOutputRouting(result: Record<string, unknown>): void {
   ]);
 }
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   describe("includeRoutings", () => {
     it("excludes routing properties by default", () => {
       setupTrackMock({
@@ -26,7 +27,7 @@ describe("readTrack", () => {
         properties: createRoutingMockProperties(),
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readOneTrack({ trackIndex: 0 });
 
       expect(result.availableInputRoutingChannels).toBeUndefined();
       expect(result.availableInputRoutingTypes).toBeUndefined();
@@ -46,7 +47,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["routings", "available-routings"],
       });
@@ -95,7 +96,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["routings", "available-routings"],
       });
@@ -133,7 +134,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["routings", "available-routings"],
       });
@@ -169,7 +170,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["routings", "available-routings"],
       });
@@ -193,7 +194,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: [
           "notes",

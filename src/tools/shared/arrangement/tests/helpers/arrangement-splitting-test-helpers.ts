@@ -344,6 +344,11 @@ export function overrideWithDuplicateCounter(
     }
 
     if (method === "create_midi_clip") {
+      registerMockObject("temp_1", {
+        path: livePath.track(0).arrangementClip(1),
+        type: "Clip",
+      });
+
       return ["id", "temp_1"];
     }
 

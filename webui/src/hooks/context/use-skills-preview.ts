@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { errorMessage } from "#src/shared/error-message";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation";
-import { loadEnabledTools } from "#webui/hooks/settings/settings-helpers";
+import { loadEnabledTools } from "#webui/hooks/settings/helpers/chat-settings-storage";
 import { disabledToolNames } from "#webui/lib/utils/enabled-tools";
 import { getConfigUrl, getSkillsPreviewUrl } from "#webui/utils/mcp-url";
 

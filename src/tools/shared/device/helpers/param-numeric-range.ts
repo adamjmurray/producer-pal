@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel, strForValue } from "./device-label-helpers.ts";
+import { parseLabel, strForValue } from "./param-label-parsing.ts";
 
 // Probes to find where a sentinel word ends. Each is one str_for_value call,
 // but the word sits on the endpoint alone in every case seen in Live, so the
@@ -109,7 +109,9 @@ export function readNumericRange(
 /**
  * The raw value to write when a string names the range's sentinel. Matching is
  * case- and space-insensitive so a label the model echoes back from a read
- * still lands.
+ * still lands. The sentinel's own leading word also matches on its own — a
+ * param reading "inf : 1" or "inf s" is reachable by "inf" alone, since a
+ * model naming the sentinel rarely spells out the rest of the label.
  * @param range - The parameter's numeric range
  * @param input - The requested value
  * @returns The sentinel's raw value, or null if the input doesn't name it
@@ -124,10 +126,11 @@ export function sentinelRawValue(
     return null;
   }
 
-  const matches =
-    input.trim().toLowerCase() === sentinel.label.trim().toLowerCase();
+  const wanted = input.trim().toLowerCase();
+  const label = sentinel.label.trim().toLowerCase();
+  const leadingWord = label.split(/\s+/)[0];
 
-  return matches ? sentinel.raw : null;
+  return wanted === label || wanted === leadingWord ? sentinel.raw : null;
 }
 
 /**

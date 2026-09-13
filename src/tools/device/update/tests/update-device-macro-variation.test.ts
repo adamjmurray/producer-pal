@@ -9,6 +9,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { updateMacroCount } from "../helpers/rack-macro-updates.ts";
 import { updateDevice } from "../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -257,5 +258,27 @@ describe("updateDevice - macroVariation", () => {
     );
     expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");
     expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+  });
+});
+describe("updateMacroCount", () => {
+  let nonRackDevice: RegisteredMockObject;
+
+  beforeEach(() => {
+    nonRackDevice = registerMockObject("non-rack", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { can_have_chains: 0 },
+    });
+  });
+
+  it("should warn and skip when device is not a rack", () => {
+    const deviceApi = LiveAPI.from(nonRackDevice.path);
+
+    updateMacroCount(deviceApi, 8);
+
+    expect(capturedWarnings()).toContain(
+      "macro count only available on rack devices; skipping t0/d0 (id non-rack)",
+    );
+    expect(nonRackDevice.call).not.toHaveBeenCalled();
   });
 });

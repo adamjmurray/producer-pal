@@ -14,7 +14,7 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
   description:
-    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state.',
+    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state. Selecting a clip or clip slot switches to its view (session/arrangement) unless view is given.',
 
   // read-only on purpose, even though selecting changes view state and can
   // show/hide/focus views. None of that touches the Live Set or its undo history,

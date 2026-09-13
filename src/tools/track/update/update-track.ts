@@ -10,45 +10,36 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
-import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
+import { stripReturnTrackLetter } from "../helpers/return-track-letter.ts";
 import {
   type TrackMixerApplied,
   applyMixerProperties,
-} from "./helpers/update-track-mixer-helpers.ts";
-import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
+} from "./helpers/track-mixer-updates.ts";
+import { applyRoutingProperties } from "./helpers/track-routing-updates.ts";
 import {
   applyTrackSends,
   resolveTrackSends,
-} from "./helpers/update-track-send-helpers.ts";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+} from "./helpers/track-send-updates.ts";
+import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
 import {
   type SendResult,
   warnSendCollisions,
-} from "#src/tools/shared/sends/send-list-helpers.ts";
+} from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
-import {
-  unwrapSingleResult,
-  validateSendPair,
-} from "#src/tools/shared/utils.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  targetCount,
-  targetIds,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
-import { trackIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+  targetObject,
+  writeFanOut,
+  type WriteResult,
+} from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 interface UpdateTrackArgs {
   id?: string;
@@ -95,7 +86,7 @@ interface UpdateTrackResult extends TrackMixerApplied {
 /**
  * Apply monitoring state to a track. Monitoring exists only on armable tracks,
  * so it is warn-and-skipped on non-armable tracks (return/master) — mirroring
- * the read-side `canBeArmed` guard in track-routing-helpers.ts.
+ * the read-side `canBeArmed` guard in track-routing.ts.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off)
  */
@@ -164,7 +155,7 @@ function applyMonitoringState(
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param args.sends - Optional [{return, gainDb}] list, to set several at once
  * @param _context - Internal context object (unused)
- * @returns Single track object or array of track objects
+ * @returns The track when one was named, otherwise one entry per target
  */
 export function updateTrack(
   {
@@ -196,12 +187,13 @@ export function updateTrack(
     sends,
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
-): UpdateTrackResult | UpdateTrackResult[] {
-  const named = { id, ids, path, paths };
-
-  if (targetCount(named) === 0) {
-    throw new Error("id or path is required");
-  }
+): WriteResult<UpdateTrackResult> {
+  const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
+    noun: "track",
+    targets: { id, ids, path, paths },
+    name,
+    color,
+  });
 
   validateSendPair(sendGainDb, sendReturn);
 
@@ -209,47 +201,12 @@ export function updateTrack(
   // lookup would repeat one warning down the list.
   const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
 
-  // Every list in the call is checked together, before any of them is split:
-  // once one is split nothing knows whether the others are lists at all.
-  validateListLengths([
-    { param: "id and path", count: targetCount(named) },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
-
-  const trackIds = targetIds(named, trackIdPerPath);
-
-  // Parse names/colors against the original id count so the positional mapping
-  // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
-  // mid-list — otherwise every later name/color shifts onto the wrong track.
-  const parsedNames = parseNames(name, trackIds.length, "track");
-  const parsedColors = parseColors(color, trackIds.length, "track");
-
-  const updatedTracks: UpdateTrackResult[] = [];
   // The collisions belong to the call, not to a track, so they are announced
-  // once — off the first track that actually wrote something to name.
+  // once — off the first track a collision actually landed on.
   let announcedCollisions = false;
 
-  for (let i = 0; i < trackIds.length; i++) {
-    const trackId = trackIds[i];
-
-    // A path that named no track already warned; it keeps its slot so later
-    // names/colors don't shift onto the wrong track.
-    if (trackId == null) {
-      continue;
-    }
-
-    // Validate one id at a time (skip invalid) so the loop index stays aligned
-    // to the original ids: a skipped id must not pull later names/colors forward
-    // onto the wrong track.
-    const [track] = validateIdTypes([trackId], "track", {
-      skipInvalid: true,
-    });
-
-    if (track == null) {
-      continue;
-    }
-
+  return writeFanOut(targets, (target, i) => {
+    const track = targetObject(target, "track", trackIdAtPath);
     const trackColor = getColorForIndex(color, i, parsedColors);
 
     const trackName = getNameForIndex(name, i, parsedNames);
@@ -302,19 +259,19 @@ export function updateTrack(
 
     const landed = applyTrackSends(track, resolvedSends.winners);
 
-    if (!announcedCollisions && landed.size > 0) {
-      warnSendCollisions(resolvedSends.collisions, landed);
-      announcedCollisions = true;
+    if (!announcedCollisions) {
+      announcedCollisions = warnSendCollisions(
+        resolvedSends.collisions,
+        landed,
+      );
     }
 
     // Optimistic except for the mixer and sends, read back off the track.
-    updatedTracks.push({
+    return {
       id: track.id,
       ...pathField(track),
       ...mixer,
       ...(landed.size > 0 ? { sends: [...landed.values()] } : {}),
-    });
-  }
-
-  return unwrapSingleResult(updatedTracks);
+    };
+  });
 }

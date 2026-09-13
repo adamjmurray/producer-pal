@@ -13,11 +13,12 @@
  * notes that re-interpret to the expansion.
  *
  * Covers pitch streams, the velocity/pitch zip, the no-@step duration-fold
- * (gallop), and pitch layering (multiple pitch voices stacking into chords). All
- * cases are overlap-safe (legato-touching or distinct pitches), so they
- * round-trip through Live's add_new_notes without truncation/deletion.
+ * (gallop), pitch layering (multiple pitch voices stacking into chords), and
+ * the bare-parens chord tolerance. All cases are overlap-safe (legato-touching
+ * or distinct pitches), so they round-trip through Live's add_new_notes
+ * without truncation/deletion.
  *
- * Uses: e2e-test-set — t8 is the empty MIDI track. Slots /0../5 (avoids /4, the
+ * Uses: e2e-test-set — t8 is the empty MIDI track. Slots /0../6 (avoids /4, the
  * 3/4 scene s4, so all cases stay in 4/4).
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -132,6 +133,22 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
       { pitch: 76, start: 2, duration: 1 },
       { pitch: 64, start: 3, duration: 1 },
       { pitch: 72, start: 3, duration: 1 },
+    ]);
+  });
+
+  it("accepts bare parens around a single chord (untaught tolerance)", async () => {
+    // (C3 Eb3 G3) with no surrounding [...] bracket parses the same as the
+    // plain chord form C3 Eb3 G3 (ADR-0018).
+    const { notation, events } = await createAndReadback(
+      `t${EMPTY_MIDI_TRACK}/s6`,
+      "n/4 (C3 Eb3 G3) 1|1",
+    );
+
+    expect(notation).not.toMatch(/[()[\]]/); // serialized paren/bracket-free
+    expectNotes(events, [
+      { pitch: 60, start: 0, duration: 1 },
+      { pitch: 63, start: 0, duration: 1 },
+      { pitch: 67, start: 0, duration: 1 },
     ]);
   });
 });

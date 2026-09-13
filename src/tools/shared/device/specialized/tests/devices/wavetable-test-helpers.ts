@@ -10,7 +10,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Shared mock data + builders for the Wavetable specs (wavetable.test.ts and
-// wavetable-modulation-helpers.test.ts).
+// wavetable-modulation.test.ts).
 
 export const OSC_CATEGORIES = ["Basic Shapes", "Bass", "Pads"];
 export const OSC1_WAVETABLES = ["Saw Dual 1", "Saw Dual 2", "Pulse"];

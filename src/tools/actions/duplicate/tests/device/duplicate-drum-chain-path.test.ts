@@ -11,12 +11,9 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
-vi.mock(
-  import("#src/tools/device/update/helpers/update-device-helpers.ts"),
-  () => ({
-    moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
-  }),
-);
+vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
+  moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
+}));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
@@ -27,7 +24,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 import {
   type DeviceMove,
   moveDeviceToPath as moveDeviceToPathMock,
-} from "#src/tools/device/update/helpers/update-device-helpers.ts";
+} from "#src/tools/device/update/helpers/move-device.ts";
 
 const DRUM_RACK = livePath.track(0).device(0);
 /** in_note per rack chain: C1 (36) layered twice, D1 (38) once. */

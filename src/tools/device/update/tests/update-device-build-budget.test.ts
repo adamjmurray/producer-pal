@@ -15,6 +15,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -157,11 +161,22 @@ describe("update-device drum spelling budget", () => {
   // Pad spelling is what results teach because it keeps naming the same chain
   // once a pad is layered. That is a correctness argument, not a speed one.
   // These numbers are a baseline to ratchet down.
+  //
+  // Wrapped in a request scope so the rack's chain scan memoizes across the
+  // three passes below — without a scope open, requestMemo recomputes every
+  // call, same as production outside a request.
   it("costs a rack chain scan to address a pad's layer", () => {
-    updateDevice({ path: "t1/d0/pC1/c0", name: "Kick" });
+    beginLiveApiScope();
 
-    // The rack has PAD_NOTES.length chains and each pass reads them all.
-    expect(resolves("id kitchain*")).toBe(PAD_NOTES.length * 3);
+    try {
+      updateDevice({ path: "t1/d0/pC1/c0", name: "Kick" });
+    } finally {
+      endLiveApiScope();
+    }
+
+    // The rack has PAD_NOTES.length chains, scanned once for the whole
+    // request rather than once per pass.
+    expect(resolves("id kitchain*")).toBe(PAD_NOTES.length);
     expect(resolves("live_set tracks * devices *")).toBe(3);
 
     // Never by path: a pad's layers are found among the rack's chains, so the

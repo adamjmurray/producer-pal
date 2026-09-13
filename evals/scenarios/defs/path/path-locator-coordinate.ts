@@ -28,8 +28,8 @@
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { asArrangementTrack, clipStarts } from "../arrangement-helpers.ts";
-import { assertCallResult } from "./path-scenario-helpers.ts";
+import { asArrangementTrack, clipStarts } from "../arrangement-readback.ts";
+import { assertCallResult } from "./path-assertions.ts";
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =
@@ -78,7 +78,7 @@ function assertLocatorCoordinate(options: {
     type: "custom",
     description: `${tool} turn ${turn}: ${param} names the ${locator} locator`,
     assert: (turns) => {
-      const call = getToolCalls(turns, turn).find((c) => c.name === tool);
+      const call = getToolCalls(turns, turn).findLast((c) => c.name === tool);
 
       if (call == null) {
         throw new Error(`no ${tool} call in turn ${turn}`);

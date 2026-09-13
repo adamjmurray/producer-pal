@@ -27,7 +27,7 @@
 
 import { argText } from "../arg-text.ts";
 import { getAllToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
+import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -37,7 +37,7 @@ import {
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
 
 const TOOL_CREATE_DEVICE = "ppal-create-device";
 const TOOL_UPDATE_DEVICE = "ppal-update-device";

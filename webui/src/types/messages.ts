@@ -21,6 +21,14 @@ export interface UITextPart {
   content: string;
 }
 
+/** An image the user attached, rendered as a thumbnail in the user bubble. */
+export interface UIImagePart {
+  type: "image";
+  mediaType: string;
+  /** Base64 image bytes WITHOUT the `data:` URL prefix. */
+  data: string;
+}
+
 export interface UIThoughtPart {
   type: "thought";
   content: string;
@@ -71,6 +79,7 @@ export interface UICompactionPart {
 
 export type UIPart =
   | UITextPart
+  | UIImagePart
   | UIThoughtPart
   | UIToolPart
   | UIStepUsagePart

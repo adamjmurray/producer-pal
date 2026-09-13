@@ -3,21 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-optimizer.ts";
 import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
@@ -27,22 +22,24 @@ import {
 import { trackMoveSkips } from "./helpers/arrangement/update-clip-move-skip.ts";
 import {
   planClipUpdate,
+  warnBlankArgs,
   type ClipUpdatePlan,
-} from "./helpers/update-clip-prep-helpers.ts";
+} from "./helpers/plan-clip-update.ts";
 import {
   refuseRegionWithDuplicateLoop,
   refuseUnreadableCall,
-} from "./helpers/update-clip-refusal-helpers.ts";
+} from "./helpers/update-clip-refusals.ts";
 import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
-} from "./helpers/update-clip-helpers.ts";
+} from "./helpers/process-single-clip-update.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,
   targetIds,
+  targetParamLabel,
   warnBlankTarget,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -138,6 +135,7 @@ export async function updateClip(
     args.quantizePitch,
     toPath,
     arrangementStart,
+    requestedIds.length,
   );
   refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
 
@@ -152,9 +150,10 @@ export async function updateClip(
     context,
   });
 
-  // Said here, not where the args are read: it claims what the call did, so a
-  // call refused above — or one whose paths found no clip — must not carry it.
+  // Said here, not where the args are read: they claim what the call did, so a
+  // call refused above — or one whose paths found no clip — must not carry them.
   warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
+  warnBlankArgs(args);
 
   const movedClipGroups = new Map<string, MoveGroup>();
   const updated = await runClipBatch({
@@ -196,8 +195,12 @@ async function runClipBatch({
 }: RunClipBatchArgs): Promise<ClipResult[]> {
   const { clips, moveOrder, destinationById } = plan;
   const { name, color } = args;
-  const parsedNames = parseNames(name, clips.length, "clip");
-  const parsedColors = parseColors(color, clips.length, "clip");
+  const { parsedNames, parsedColors } = pairLabels({
+    noun: "clip",
+    count: clips.length,
+    name,
+    color,
+  });
   const updatedClips: ClipResult[] = [];
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
@@ -328,7 +331,7 @@ function resolveClipTargets(
   >,
 ): Array<string | null> {
   validateListLengths([
-    { param: "id and path", count: targetCount(targets) },
+    { param: targetParamLabel(targets), count: targetCount(targets) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
     { param: "arrangementStart", value: values.arrangementStart },

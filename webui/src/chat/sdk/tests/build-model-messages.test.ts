@@ -381,3 +381,149 @@ describe("endsOnAssistantTurn", () => {
     expect(endsOnAssistantTurn([])).toBe(false);
   });
 });
+
+describe("buildModelMessages with attached images", () => {
+  const png = { mediaType: "image/png", data: "AAA" };
+  const jpeg = { mediaType: "image/jpeg", data: "BBB" };
+
+  it("sends images as image parts ahead of the text", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "match this groove", images: [png, jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            mediaType: "image/png",
+            data: { type: "data", data: "AAA" },
+          },
+          {
+            type: "file",
+            mediaType: "image/jpeg",
+            data: { type: "data", data: "BBB" },
+          },
+          { type: "text", text: "match this groove" },
+        ],
+      },
+    ]);
+  });
+
+  it("omits the text part when only images were sent", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [png] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            mediaType: "image/png",
+            data: { type: "data", data: "AAA" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("merges consecutive user turns when the first carries images", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "like this", images: [png] },
+      { role: "user", content: "but slower" },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            mediaType: "image/png",
+            data: { type: "data", data: "AAA" },
+          },
+          { type: "text", text: "like this\n\nbut slower" },
+        ],
+      },
+    ]);
+  });
+
+  it("merges consecutive user turns when the second carries images", () => {
+    const result = buildModelMessages([
+      {
+        role: "user",
+        content: "summary of earlier turns",
+        isCompactionSummary: true,
+      },
+      { role: "user", content: "like this", images: [jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            mediaType: "image/jpeg",
+            data: { type: "data", data: "BBB" },
+          },
+          { type: "text", text: "summary of earlier turns\n\nlike this" },
+        ],
+      },
+    ]);
+  });
+
+  it("keeps every image when both merged turns carry one", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [png] },
+      { role: "user", content: "and this", images: [jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            mediaType: "image/png",
+            data: { type: "data", data: "AAA" },
+          },
+          {
+            type: "file",
+            mediaType: "image/jpeg",
+            data: { type: "data", data: "BBB" },
+          },
+          { type: "text", text: "and this" },
+        ],
+      },
+    ]);
+  });
+
+  it("emits no text part when merged image turns have no words at all", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "", images: [png] },
+      { role: "user", content: "", images: [jpeg] },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            mediaType: "image/png",
+            data: { type: "data", data: "AAA" },
+          },
+          {
+            type: "file",
+            mediaType: "image/jpeg",
+            data: { type: "data", data: "BBB" },
+          },
+        ],
+      },
+    ]);
+  });
+});

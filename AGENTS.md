@@ -182,13 +182,15 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   changes under them. The grammar specs in `dev/specs/` have no test guarding
   them, so update them by hand when you change grammar syntax.
 
-- **File size limits** (blank and comment lines don't count): 325 lines per
+- **File size limits** (blank and comment lines don't count): 375 lines per
   source file, 650 for a whole test suite; 115 lines per function; `max-depth`
-  4; `complexity` 20. When a file gets close, extract cohesive helpers into
-  `{feature}-helpers.ts` beside it — don't compress code to squeak under the
-  limit. Once a directory has 2+ helper files, move them into `helpers/`. Split
-  test files as `{feature}-{area}.test.ts`, and give a feature its own `tests/`
-  directory once it has 3+ test files.
+  4; `complexity` 20. When a file gets close, split it by responsibility into
+  modules named for what they do (`audio-clip-warping.ts`, not
+  `update-clip-helpers.ts`) — never by line count, and never compressed to
+  squeak under the limit. A `-helpers` suffix says nothing about what's inside,
+  so don't add new files with one. Once a directory has 2+ support files, move
+  them into `helpers/`. Split test files as `{feature}-{area}.test.ts`, and give
+  a feature its own `tests/` directory once it has 3+ test files.
 
 - **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
   work, but the rule requiring a `-- reason` on every directive only sees the
@@ -294,8 +296,13 @@ them without asking:**
   silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
   `@ts-expect-error`, and v8-ignore comments.
-- `src/test/helpers/comment-limits.ts` — per-tree caps on comment lines and
-  comment-block length, enforced by `src/test/comment-limits.test.ts`.
+- `src/test/helpers/comment-limits.ts` — per-tree caps on comment density
+  (comment lines per code line), one repo-wide cap on comment-block length, and
+  the per-file allowances for blocks that were already over it. Enforced by
+  `src/test/comment-limits.test.ts`.
+- `src/test/helpers/module-name-limits.ts` — per-tree caps on modules named for
+  nothing (`-helpers`, `-utils`), enforced by
+  `src/test/meta/naming/module-name-limits.test.ts`.
 - `vitest.config.ts` (thresholds) — coverage.
 - `config/.jscpd*.json` (`threshold`) — code duplication.
 

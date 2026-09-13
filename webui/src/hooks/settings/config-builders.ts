@@ -6,7 +6,7 @@
 import {
   type SemanticEagerness,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 

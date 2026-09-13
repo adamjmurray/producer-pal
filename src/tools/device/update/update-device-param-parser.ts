@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
 import {
   recordedUnitSpelling,
   splitLeadingNumber,

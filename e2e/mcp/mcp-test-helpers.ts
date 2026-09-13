@@ -59,12 +59,12 @@ export function parseToolResult<T>(result: unknown): T {
 }
 
 /**
- * Parse a batch create/update result and assert its shape. Every batch tool
- * answers with an array whatever it operates on, so the scene and track suites
- * share this check before their own per-domain assertions.
- * @param result - Raw tool result from a batch call
- * @param count - Expected number of items in the batch
- * @returns The parsed batch items
+ * Parse a multi-target result and assert its shape. A batch write and a list
+ * read both answer with an array, so the suites share this check before their
+ * own per-domain assertions.
+ * @param result - Raw tool result from a call naming several targets
+ * @param count - Expected number of entries
+ * @returns The parsed entries
  */
 export function parseBatchResult<T>(result: unknown, count: number): T[] {
   const batch = parseToolResult<T[]>(result);
@@ -533,6 +533,17 @@ export async function serverHasCodeExec(client: Client): Promise<boolean> {
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================
+
+/**
+ * The entry a call leaves where it couldn't carry out the target named, on a
+ * read or a write. `ok` marks only these.
+ */
+export interface SkippedTargetResult {
+  id?: string;
+  path?: string;
+  ok: false;
+  reason: string;
+}
 
 /** Result from ppal-create-clip tool */
 export interface CreateClipResult {

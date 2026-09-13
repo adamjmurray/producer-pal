@@ -21,7 +21,7 @@
 // schema that gets published.
 
 import { type ZodType } from "zod";
-import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
+import { WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 import {
   describeWithTags,
   getSchemaTag,

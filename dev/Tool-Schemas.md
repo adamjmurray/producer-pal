@@ -51,10 +51,10 @@ list:
 
 - **Target lists** name objects or places (`id`, `path`, `toPath`,
   `arrangementStart`, `locator`). Split them with `targetEntries` from
-  `src/tools/shared/utils.ts`, which refuses a hole and refuses a list that
-  names nothing at all (`","`). Dropping a hole shifts every later pairing and
-  keeping it names nothing, so neither is guessed at. Nothing has run when the
-  check fires, so refusing costs the caller only a retry.
+  `src/tools/shared/helpers/target-entries.ts`, which refuses a hole and refuses
+  a list that names nothing at all (`","`). Dropping a hole shifts every later
+  pairing and keeping it names nothing, so neither is guessed at. Nothing has
+  run when the check fires, so refusing costs the caller only a retry.
 - **Value lists** are properties applied to targets (`name`, `color`). Split
   them with `splitList`, which refuses a hole for the same reason. `name: ""`
   alone is how you clear a value, for every target in the call.

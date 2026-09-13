@@ -13,7 +13,7 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(
-  import("#src/tools/shared/device/helpers/chain-mixer-helpers.ts"),
+  import("#src/tools/shared/device/helpers/chain-mixer.ts"),
   async (importOriginal) => ({
     ...(await importOriginal()),
     applyChainMixer: vi.fn(() => ({})),
@@ -26,8 +26,8 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/duplicate-chain-mixer-helpers.ts";
-import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import { copyChainMixerTo } from "#src/tools/actions/duplicate/helpers/device/copy-chain-mixer.ts";
+import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 const SOURCE_RACK = livePath.track(0).device(0);

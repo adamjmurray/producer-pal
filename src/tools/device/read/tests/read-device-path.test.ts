@@ -5,32 +5,27 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { readDevice } from "../read-device.ts";
+import { readOneDevice } from "../read-device.ts";
 import {
   setupBasicDeviceMock,
   setupChainMock,
 } from "./read-device-test-helpers.ts";
 
-describe("readDevice with path parameter", () => {
+describe("readOneDevice with path parameter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
   });
 
   it("should throw error when neither id nor path is provided", () => {
-    expect(() => readDevice({})).toThrow("Either id or path must be provided");
-  });
-
-  it("should throw error when both id and path are provided", () => {
-    expect(() => readDevice({ id: "device-123", path: "t1/d0" })).toThrow(
-      "Provide either id or path, not both",
-    );
+    expect(() => readOneDevice({})).toThrow("id or path is required");
   });
 
   // A permanent alias, not a migration: models reach for the prefixed spelling
@@ -43,7 +38,7 @@ describe("readDevice with path parameter", () => {
       type: 1,
     });
 
-    expect(readDevice({ deviceId: "device-456" })).toStrictEqual({
+    expect(readOneDevice({ deviceId: "device-456" })).toStrictEqual({
       path: "t1/d0",
       type: "instrument: Operator",
       id: "device-456",
@@ -63,7 +58,7 @@ describe("readDevice with path parameter", () => {
       type: 1,
     });
 
-    expect(readDevice({ id: "null", path: "t1/d0" })).toStrictEqual({
+    expect(readOneDevice({ id: "null", path: "t1/d0" })).toStrictEqual({
       path: "t1/d0",
       type: "instrument: Operator",
       id: "device-456",
@@ -78,7 +73,7 @@ describe("readDevice with path parameter", () => {
       class_display_name: "Operator",
       type: 1,
     });
-    const result = readDevice({ path: "t1/d0" });
+    const result = readOneDevice({ path: "t1/d0" });
 
     expect(result).toStrictEqual({
       id: "device-456",
@@ -90,14 +85,14 @@ describe("readDevice with path parameter", () => {
   it("should throw error for non-existent device by path", () => {
     mockNonExistentObjects();
 
-    expect(() => readDevice({ path: "t1/d0" })).toThrow(
-      "Device not found at path: live_set tracks 1 devices 0",
+    expect(() => readOneDevice({ path: "t1/d0" })).toThrow(
+      'nothing at path "t1/d0"',
     );
   });
 
   it("should read chain by path with id property", () => {
     setupChainMock({ id: "chain-789", name: "Chain 1" });
-    const result = readDevice({ path: "t1/d0/c0" });
+    const result = readOneDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-789",
@@ -114,7 +109,7 @@ describe("readDevice with path parameter", () => {
       name: "Colored Chain",
       color: 0xff5500,
     });
-    const result = readDevice({ path: "t1/d0/c0" });
+    const result = readOneDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-with-color",
@@ -128,7 +123,7 @@ describe("readDevice with path parameter", () => {
 
   it("should read chain with green color property", () => {
     setupChainMock({ id: "chain-123", name: "Test Chain", color: 0x00ff00 });
-    const result = readDevice({ path: "t1/d0/c0" });
+    const result = readOneDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-123",
@@ -164,7 +159,7 @@ describe("readDevice with path parameter", () => {
       deviceIds: ["device-in-chain"],
     });
 
-    const result = readDevice({ path: "t1/d0/c0" });
+    const result = readOneDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-with-devices",
@@ -183,7 +178,7 @@ describe("readDevice with path parameter", () => {
 
   it("should omit chokeGroup for regular chains (not DrumChain type)", () => {
     setupChainMock({ id: "chain-no-choke", name: "Regular Chain" });
-    const result = readDevice({ path: "t1/d0/c0" });
+    const result = readOneDevice({ path: "t1/d0/c0" });
 
     // Regular chains (type: "Chain") don't have chokeGroup - only DrumChain type does
     expect(result.type).toBe("Chain");
@@ -193,7 +188,7 @@ describe("readDevice with path parameter", () => {
   it("should throw error for non-existent chain by path", () => {
     mockNonExistentObjects();
 
-    expect(() => readDevice({ path: "t1/d0/c0" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/c0" })).toThrow(
       "Chain not found at path: t1/d0/c0",
     );
   });
@@ -205,7 +200,7 @@ describe("readDevice with path parameter", () => {
       name: "Return A",
       color: 0x0088ff,
     });
-    const result = readDevice({ path: "t1/d0/rc0" });
+    const result = readOneDevice({ path: "t1/d0/rc0" });
 
     expect(result).toStrictEqual({
       id: "return-chain-101",
@@ -219,7 +214,7 @@ describe("readDevice with path parameter", () => {
 
   it("should read muted chain by path with enriched properties", () => {
     setupChainMock({ id: "chain-muted", name: "Muted Chain", mute: 1 });
-    const result = readDevice({ path: "t1/d0/c0" });
+    const result = readOneDevice({ path: "t1/d0/c0" });
 
     expect(result).toStrictEqual({
       id: "chain-muted",
@@ -232,13 +227,11 @@ describe("readDevice with path parameter", () => {
   });
 
   it("should throw error for empty path (treated as no path)", () => {
-    expect(() => readDevice({ path: "" })).toThrow(
-      "Either id or path must be provided",
-    );
+    expect(() => readOneDevice({ path: "" })).toThrow("id or path is required");
   });
 
   it("should throw error for track-only path", () => {
-    expect(() => readDevice({ path: "t1" })).toThrow(
+    expect(() => readOneDevice({ path: "t1" })).toThrow(
       'invalid path "t1" - a track is not a device; add a device index (e.g. "t1/d0")',
     );
   });
@@ -250,7 +243,7 @@ describe("readDevice with path parameter", () => {
       class_display_name: "Reverb",
       type: 2,
     });
-    const result = readDevice({ path: "rt0/d0" });
+    const result = readOneDevice({ path: "rt0/d0" });
 
     expect(result).toStrictEqual({
       id: "return-device-123",
@@ -266,7 +259,7 @@ describe("readDevice with path parameter", () => {
       class_display_name: "Limiter",
       type: 2,
     });
-    const result = readDevice({ path: "mt/d0" });
+    const result = readOneDevice({ path: "mt/d0" });
 
     expect(result).toStrictEqual({
       id: "master-device-123",
@@ -278,8 +271,36 @@ describe("readDevice with path parameter", () => {
   it("should throw error when device not found at drum pad path", () => {
     mockNonExistentObjects();
 
-    expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
-      "Device not found at path: live_set tracks 1 devices 0",
+    expect(() => readOneDevice({ path: "t1/d0/pC3" })).toThrow(
+      'nothing at path "t1/d0/pC3"',
     );
+  });
+
+  // The instrument sits at d0 and the audio effect at d1, so "afx0" only lands
+  // on the right device if it counts within its own type.
+  it("reads the first audio effect, counted within its type", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: children("operator", "reverb") },
+    });
+    setupBasicDeviceMock({
+      id: "operator",
+      path: String(livePath.track(0).device(0)),
+      class_display_name: "Operator",
+      type: 1,
+    });
+    setupBasicDeviceMock({
+      id: "reverb",
+      path: String(livePath.track(0).device(1)),
+      class_display_name: "Reverb",
+      type: 2,
+    });
+
+    expect(readOneDevice({ path: "t0/afx0" })).toStrictEqual({
+      id: "reverb",
+      // A result never spells a device by type — d<n> is what comes back.
+      path: "t0/d1",
+      type: "audio-effect: Reverb",
+    });
   });
 });

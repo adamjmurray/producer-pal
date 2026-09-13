@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { targetEntries } from "#src/tools/shared/utils.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
 export interface ClipSlotPosition {
   trackIndex: number;

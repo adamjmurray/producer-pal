@@ -6,7 +6,7 @@
 import {
   type ActiveRefs,
   buildConversationSaveRecord,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/conversation-save-record";
 import {
   type PendingFork,
   type PendingForkRef,
@@ -14,7 +14,7 @@ import {
 import {
   type ConversationStore,
   type SaveSnapshot,
-} from "#webui/lib/conversation-store";
+} from "#webui/lib/conversations/conversation-store";
 import {
   type EnforceLimitResult,
   saveConversation,

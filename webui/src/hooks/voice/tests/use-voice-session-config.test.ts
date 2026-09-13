@@ -56,11 +56,11 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
 }));
 
 import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
-import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
+import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/helpers/voice-settings-storage";
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 

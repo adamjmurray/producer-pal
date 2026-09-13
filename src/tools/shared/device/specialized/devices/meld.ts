@@ -3,10 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  enumParam,
-  writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+import { enumParam, writeIntInRange } from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Meld (MeldDevice, class_name "InstrumentMeld"). Exposes its polyphony mode

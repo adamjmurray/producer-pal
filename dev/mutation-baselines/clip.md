@@ -36,30 +36,29 @@ Per-file scores after triage (files with remaining survivors; 12 more files hit
 | File                                 | Score  | Survived | Notes                                   |
 | ------------------------------------ | ------ | -------- | --------------------------------------- |
 | `update-clip-arrangement-optimizer`  | 90.32% | 6        | merge-group length boundary (bkt 2)     |
-| `update-clip-notes-helpers`          | 91.82% | 9        | redundant fast-path guards (bkt 2)      |
-| `create-clip-loop-helpers`           | 93.02% | 6        | loop-region default equivalents         |
+| `note-updates`                       | 91.82% | 9        | redundant fast-path guards (bkt 2)      |
+| `clip-data-preparation`              | 93.02% | 6        | loop-region default equivalents         |
 | `update-clip.ts`                     | 93.75% | 6        | toSlot dual-return + split integ.       |
-| `create-clip-audio-helpers`          | 95.45% | 1        | arrangementStart null-guard (bkt 2)     |
-| `update-clip-properties-helpers`     | 96.47% | 3        | setEndFirst redundant operands          |
-| `read-clip-helpers`                  | 97.30% | 2        | dead `=== ""` clause (bkt 2)            |
-| `code-exec-helpers`                  | 97.75% | 2        | view-branch guards (weak, need LiveAPI) |
+| `audio-clip-creation`                | 95.45% | 1        | arrangementStart null-guard (bkt 2)     |
+| `clip-properties-to-set`             | 96.47% | 3        | setEndFirst redundant operands          |
+| `clip-resolution`                    | 97.30% | 2        | dead `=== ""` clause (bkt 2)            |
+| `code-execution-context`             | 97.75% | 2        | view-branch guards (weak, need LiveAPI) |
 | `read-clip.ts`                       | 98.31% | 3        | `?? "barbeat"` fallthrough (bkt 2)      |
 | 7 more (`create-clip.ts`, timing, …) | 98–99% | 1 each   | isolated equivalents (bkt 2)            |
 
 The remaining 45 survivors are overwhelmingly **bucket 2 (equivalent)**. The
 recurring shapes:
 
-- **Redundant fast-path guards** (`update-clip-notes-helpers` L201/L309/L353):
-  an early `existingNotes.length === 0` / `preTransformString == null` short-
-  circuit duplicating a guard `applyTransforms` already performs internally, so
-  forcing it changes nothing observable.
+- **Redundant fast-path guards** (`note-updates` L201/L309/L353): an early
+  `existingNotes.length === 0` / `preTransformString == null` short- circuit
+  duplicating a guard `applyTransforms` already performs internally, so forcing
+  it changes nothing observable.
 - **Merge-group length boundaries** (`update-clip-arrangement-optimizer`):
   `>= 1` / `< 1` on group lengths the merge loop can only ever enter with ≥1
   element.
 - **Dual null-returns** (`update-clip.ts` `parseToSlotParam`, since moved to
-  `resolveMoveDestination` in `update-clip-session-helpers.ts`): the
-  `toSlot == null` early return and the `slots.length === 0` return converge on
-  the same `null`.
+  `resolveMoveDestination` in `move-destinations.ts`): the `toSlot == null`
+  early return and the `slots.length === 0` return converge on the same `null`.
 - **Never-nullish fallbacks / never-equal bounds** across create/read helpers:
   `?? "barbeat"` (both branches fall through `resolveNotation`), the
   `"arrangement" → ""` view string never surfaced in a result, `color` /
@@ -67,8 +66,8 @@ recurring shapes:
 
 The only weak-not-equivalent leftovers are the arrangement-splitting branch in
 `update-clip.ts` (L353) and the `buildCodeLocationContext` view guards
-(`code-exec-helpers` L221/L225) — reachable but low-value defensive paths left
-for a future integration pass.
+(`code-execution-context`) — reachable but low-value defensive paths left for a
+future integration pass.
 
 ## Gaps closed (clip)
 
@@ -77,13 +76,13 @@ Same `undefined`-valued-property gotcha as the device pass (see above): a
 `name: undefined`, which a `.name` → `toBeUndefined()` assertion cannot
 distinguish from an absent property. Fixed with `not.toHaveProperty("name")`.
 
-| Gap (now killed)                                                    | Test strengthened / added                          |
-| ------------------------------------------------------------------- | -------------------------------------------------- |
-| Loop/unlooped arrangement clip property math (43 mutants, 0 → 100%) | `arrangement-unlooped-helpers.test.ts`             |
-| `buildClipPropertiesToSet` boundary/loop-flag matrix                | `update-clip-properties.test.ts`                   |
-| Loop-region defaults + transform normalization (create)             | `create-clip-loop-helpers.test.ts`, `-transform`   |
-| Note transform / timing / audio helper conditionals + warns         | `update-clip-notes-helpers.test.ts`, `-timing`     |
-| read-clip warp-marker + notation-resolution branches                | `read-clip-coverage.test.ts`, `read-clip-helpers`  |
-| In-clip code-exec helper guards + deadline / scale-mask             | `code-exec-helpers-coverage.test.ts`, `scale-mask` |
-| create-clip name/color distribution + take-lane resolution          | `create-clip-*.test.ts` (basic/advanced/…)         |
-| Empty `clipName` must not write a `name` property                   | `create-clip-advanced.test.ts`                     |
+| Gap (now killed)                                                    | Test strengthened / added                               |
+| ------------------------------------------------------------------- | ------------------------------------------------------- |
+| Loop/unlooped arrangement clip property math (43 mutants, 0 → 100%) | `unlooped-lengthening.test.ts`                          |
+| `buildClipPropertiesToSet` boundary/loop-flag matrix                | `update-clip-properties.test.ts`                        |
+| Loop-region defaults + transform normalization (create)             | `clip-data-preparation.test.ts`, `-transform`           |
+| Note transform / timing / audio helper conditionals + warns         | `note-updates.test.ts`, `clip-beat-positions`           |
+| read-clip warp-marker + notation-resolution branches                | `read-clip-coverage.test.ts`, `clip-region-and-warp`    |
+| In-clip code-exec helper guards + deadline / scale-mask             | `code-execution-context-coverage.test.ts`, `scale-mask` |
+| create-clip name/color distribution + take-lane resolution          | `create-clip-*.test.ts` (basic/advanced/…)              |
+| Empty `clipName` must not write a `name` property                   | `create-clip-advanced.test.ts`                          |

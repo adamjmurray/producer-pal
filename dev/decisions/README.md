@@ -104,3 +104,6 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0037](0037-arrangement-time-is-part-of-the-path.md)     | Arrangement time is part of the path                                  |
 | [0038](0038-l-equals-names-the-lane-l-plus-made.md)      | `l=` names the lane the `l+` before it appended (reversed)            |
 | [0039](0039-the-arrangement-timeline-is-state.md)        | The arrangement timeline is state, the playhead is not                |
+| [0040](0040-duplicate-loop-does-not-take-a-region.md)    | `duplicateLoop` does not take a region                                |
+| [0041](0041-device-type-segments-are-input-only.md)      | `inst`/`mfx<n>`/`afx<n>` are input only; results keep `d<n>`          |
+| [0042](0042-a-skipped-target-keeps-its-slot.md)          | A skipped target keeps its slot: `ok: false` and a reason             |

@@ -3,33 +3,24 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
-import {
-  parseTimeSignature,
-  unwrapSingleResult,
-  validateTempo,
-} from "#src/tools/shared/utils.ts";
-import {
-  getColorForIndex,
-  parseColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
-  getNameForIndex,
-  parseNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import {
-  targetCount,
-  targetIds,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
-import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+  targetObject,
+  writeFanOut,
+  type WriteResult,
+} from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { sceneIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
-} from "./scene-helpers.ts";
+} from "./helpers/scene-tempo-signature.ts";
 
 interface UpdateSceneResult {
   id: string;
@@ -63,7 +54,7 @@ interface UpdateSceneArgs {
  * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
  * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
- * @returns Single scene object or array of scene objects
+ * @returns The scene when one was named, otherwise one entry per target
  */
 export function updateScene(
   {
@@ -78,30 +69,15 @@ export function updateScene(
     focus,
   }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
-): UpdateSceneResult | UpdateSceneResult[] {
-  const named = { id, ids, path, paths };
-
-  if (targetCount(named) === 0) {
-    throw new Error("id or path is required");
-  }
+): WriteResult<UpdateSceneResult> {
+  const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
+    noun: "scene",
+    targets: { id, ids, path, paths },
+    name,
+    color,
+  });
 
   validateTempo(tempo, -1);
-
-  // Every list in the call is checked together, before any of them is split:
-  // once one is split nothing knows whether the others are lists at all.
-  validateListLengths([
-    { param: "id and path", count: targetCount(named) },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
-
-  const sceneIds = targetIds(named, sceneIdPerPath);
-
-  // Parse names/colors against the original id count so the positional mapping
-  // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
-  // mid-list — otherwise every later name/color shifts onto the wrong scene.
-  const parsedNames = parseNames(name, sceneIds.length, "scene");
-  const parsedColors = parseColors(color, sceneIds.length, "scene");
 
   // Validate timeSignature format up front so a malformed value fails before
   // any scene is mutated, instead of throwing mid-loop after partial updates.
@@ -110,28 +86,11 @@ export function updateScene(
     parseTimeSignature(timeSignature);
   }
 
-  const updatedScenes: UpdateSceneResult[] = [];
+  // The scenes written, for focus — which follows the call, not a target.
+  const written: string[] = [];
 
-  for (let i = 0; i < sceneIds.length; i++) {
-    const sceneId = sceneIds[i];
-
-    // A path that named no scene already warned; it keeps its slot so later
-    // names/colors don't shift onto the wrong scene.
-    if (sceneId == null) {
-      continue;
-    }
-
-    // Validate one id at a time (skip invalid) so the loop index stays aligned
-    // to the original ids: a skipped id must not pull later names/colors forward
-    // onto the wrong scene.
-    const [scene] = validateIdTypes([sceneId], "scene", {
-      skipInvalid: true,
-    });
-
-    if (scene == null) {
-      continue;
-    }
-
+  const result = writeFanOut(targets, (target, i) => {
+    const scene = targetObject(target, "scene", sceneIdAtPath);
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);
 
@@ -147,19 +106,20 @@ export function updateScene(
 
     applyTempoProperty(scene, tempo);
     applyTimeSignatureProperty(scene, timeSignature);
+    written.push(scene.id);
 
     // Build optimistic result object
-    updatedScenes.push({
+    return {
       id: scene.id,
       ...pathField(scene),
-    });
+    };
+  });
+
+  const lastScene = written.at(-1);
+
+  if (focus && lastScene != null) {
+    focusSelect({ view: "session", id: lastScene });
   }
 
-  if (focus && updatedScenes.length > 0) {
-    const lastScene = updatedScenes.at(-1) as UpdateSceneResult;
-
-    focusSelect({ view: "session", id: lastScene.id });
-  }
-
-  return unwrapSingleResult(updatedScenes);
+  return result;
 }

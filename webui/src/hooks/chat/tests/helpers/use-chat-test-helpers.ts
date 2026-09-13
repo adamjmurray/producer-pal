@@ -4,8 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
-import { type TokenUsage } from "#webui/chat/sdk/types";
-import type * as StreamingHelpers from "#webui/hooks/chat/helpers/streaming-helpers";
+import {
+  type ChatImage,
+  type TokenUsage,
+  type UserMessage,
+  normalizeUserMessage,
+} from "#webui/chat/sdk/types";
+import type * as ConnectClient from "#webui/hooks/chat/helpers/streaming/connect-client";
+import type * as RunChatTurn from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -17,6 +23,7 @@ import { type UIMessage } from "#webui/types/messages";
 export interface TestMessage {
   role: "user" | "assistant";
   content: string;
+  images?: ChatImage[];
   isError?: boolean;
 }
 
@@ -45,14 +52,14 @@ export class MockChatClient implements ChatClient<TestMessage> {
 
   /**
    * Simulates sending a message and streaming responses
-   * @param message - User message to send
+   * @param message - User message to send (text, or text plus images)
    * @param signal - Abort signal
    * @param _overrides - Unused overrides parameter
    * @param shouldInterrupt - Optional interrupt callback (invoked for coverage)
    * @yields Chat history snapshots
    */
   async *sendMessage(
-    message: string,
+    message: UserMessage,
     signal: AbortSignal,
     _overrides?: unknown,
     shouldInterrupt?: () => boolean,
@@ -61,14 +68,20 @@ export class MockChatClient implements ChatClient<TestMessage> {
       throw new Error("AbortError");
     }
 
-    this.chatHistory.push({ role: "user", content: message });
+    const { text, images } = normalizeUserMessage(message);
+
+    this.chatHistory.push({
+      role: "user",
+      content: text,
+      ...(images?.length ? { images } : {}),
+    });
     yield [...this.chatHistory];
 
     shouldInterrupt?.();
 
     this.chatHistory.push({
       role: "assistant",
-      content: `Response to: ${message}`,
+      content: `Response to: ${text}`,
     });
     yield [...this.chatHistory];
   }
@@ -158,10 +171,19 @@ export function createMockAdapter(): ChatAdapter<
       return message.role === "user" ? message.content : undefined;
     }),
 
-    createUserMessage: vi.fn((text: string): TestMessage => ({
-      role: "user",
-      content: text,
-    })),
+    extractUserImages: vi.fn(
+      (message: TestMessage): ChatImage[] | undefined => {
+        return message.role === "user" ? message.images : undefined;
+      },
+    ),
+
+    createUserMessage: vi.fn(
+      (text: string, images?: ChatImage[]): TestMessage => ({
+        role: "user",
+        content: text,
+        ...(images?.length ? { images } : {}),
+      }),
+    ),
 
     createCompactionSummary: vi.fn((summary: string): TestMessage => ({
       role: "user",
@@ -224,10 +246,10 @@ export function trackingAdapter(
     clients.push(client);
 
     client.sendMessage = async function* (
-      message: string,
+      message: UserMessage,
       signal: AbortSignal,
     ) {
-      sent?.push(message);
+      sent?.push(normalizeUserMessage(message).text);
       signals?.push(signal);
       yield echoUserTurn(client, message);
 
@@ -249,14 +271,20 @@ export async function tick(): Promise<void> {
  * Record the user's message on a client's history and hand back the snapshot to
  * yield — the two lines every scripted stream opens with.
  * @param client - The mock client whose history the turn lands on
- * @param message - The user's message text
+ * @param message - The user's message (text, or text plus images)
  * @returns The history snapshot to yield
  */
 export function echoUserTurn(
   client: MockChatClient,
-  message: string,
+  message: UserMessage,
 ): TestMessage[] {
-  client.chatHistory.push({ role: "user", content: message });
+  const { text, images } = normalizeUserMessage(message);
+
+  client.chatHistory.push({
+    role: "user",
+    content: text,
+    ...(images?.length ? { images } : {}),
+  });
 
   return [...client.chatHistory];
 }
@@ -316,31 +344,22 @@ export function lockedSettings(
 }
 
 /**
- * Factory body for `vi.mock("#webui/hooks/chat/helpers/streaming-helpers", ...)`.
- * The real module is replaced with a pass-through `handleMessageStream` that
- * forwards every yielded chat history through the formatter so tests can
- * assert on the resulting `UIMessage[]` updates.
+ * Factory body for the `run-chat-turn` mock. Replaces `handleMessageStream`
+ * with a pass-through that forwards every yielded chat history through the
+ * formatter, so tests can assert on the resulting `UIMessage[]` updates. The
+ * rest stays real — the turn machinery itself is what these tests exercise.
  *
- * @returns The mocked streaming-helpers module exports
+ * @returns The mocked run-chat-turn module exports
  */
-export async function streamingHelpersMockBody(): Promise<
-  Partial<typeof StreamingHelpers>
+export async function runChatTurnMockBody(): Promise<
+  Partial<typeof RunChatTurn>
 > {
-  const actual = await vi.importActual<typeof StreamingHelpers>(
-    "#webui/hooks/chat/helpers/streaming-helpers",
+  const actual = await vi.importActual<typeof RunChatTurn>(
+    "#webui/hooks/chat/helpers/streaming/run-chat-turn",
   );
 
   return {
-    // Pure helpers (no streaming side effects) — keep the real implementations
-    // so client (re)init still resolves the locked provider/model correctly and
-    // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
-    beginTurn: actual.beginTurn,
-    resolveInitConnection: actual.resolveInitConnection,
-    resolveLockedNotation: actual.resolveLockedNotation,
-    resolveLockedSmallModelMode: actual.resolveLockedSmallModelMode,
-    recoverFromChatError: actual.recoverFromChatError,
-    runChatTurn: actual.runChatTurn,
-    connectClient: actual.connectClient,
+    ...actual,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));
@@ -348,9 +367,28 @@ export async function streamingHelpersMockBody(): Promise<
 
       return true;
     }),
+  };
+}
+
+/**
+ * Factory body for the `connect-client` mock. Stubs out the MCP check and lets
+ * per-message overrides through unfiltered; `connectClient` and
+ * `resolveInitConnection` stay real so client (re)init still resolves the
+ * locked provider/model correctly.
+ *
+ * @returns The mocked connect-client module exports
+ */
+export async function connectClientMockBody(): Promise<
+  Partial<typeof ConnectClient>
+> {
+  const actual = await vi.importActual<typeof ConnectClient>(
+    "#webui/hooks/chat/helpers/streaming/connect-client",
+  );
+
+  return {
+    ...actual,
     validateMcpConnection: vi.fn(),
     filterOverrides: vi.fn((overrides) => overrides),
-    showMissingApiKeyError: actual.showMissingApiKeyError,
   };
 }
 

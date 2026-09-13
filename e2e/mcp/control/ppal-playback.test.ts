@@ -285,6 +285,26 @@ describe("ppal-playback", () => {
     await playback({ action: "update-arrangement", loop: false });
   });
 
+  it("names loopStart, not loopEnd, when a pickup slides it before 1|1", async () => {
+    // Regression: a pickup bar resolves to a negative position, and only
+    // loopStart was named — the refusal used to blame loopEnd and print a
+    // value ("1|1") nothing in the call computed.
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: {
+        action: "play-arrangement",
+        loopStart: "1|1-n1/4",
+      },
+    });
+
+    const warnings = getToolWarnings(refused);
+
+    expect(warnings.some((w) => w.includes("loopStart"))).toBe(true);
+    expect(warnings.some((w) => w.includes("loopEnd"))).toBe(false);
+
+    await playback({ action: "stop" });
+  });
+
   it("refuses an inverted loop whole, leaving the loop off", async () => {
     await playback({
       action: "update-arrangement",

@@ -15,9 +15,9 @@
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { takeLanes } from "../arrangement-helpers.ts";
-import { MSG_CONNECT } from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertClipCreatedAtPath } from "./path-scenario-helpers.ts";
+import { takeLanes } from "../arrangement-readback.ts";
+import { MSG_CONNECT } from "../clip/helpers/clip-tool-constants.ts";
+import { assertClipCreatedAtPath } from "./path-assertions.ts";
 
 /** Bass is track 1 in basic-midi-4-track. */
 const BASS_TRACK_INDEX = 1;

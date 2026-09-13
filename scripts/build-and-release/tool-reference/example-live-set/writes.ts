@@ -78,8 +78,8 @@ export function trackMethods(trackIndex: number): Methods {
     create_take_lane: () => null,
     // delete_clip and delete_device are deliberately absent: an override here
     // shadows the registry's own delete handling, and ppal-delete verifies a
-    // delete landed by looking the id up again — so a no-op stub made the
-    // generated docs show delete reporting `deleted: false`.
+    // delete landed by looking the id up again — so a no-op stub made every
+    // delete example document itself failing.
     insert_device: (deviceName: unknown, position: unknown) =>
       createdDevice(String(livePath.track(trackIndex)), deviceName, position),
   };

@@ -10,11 +10,12 @@ import {
 import {
   evaluateExpression,
   evaluateTransformAST,
-} from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+} from "#src/notation/transform/helpers/transform-evaluation.ts";
 import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
-import { evaluateMathFunction } from "#src/notation/transform/helpers/functions/transform-functions-helpers.ts";
+import { evaluateMathFunction } from "#src/notation/transform/helpers/functions/shape-functions.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {
+  createEvalContext,
   createTestNote,
   createTestNotes,
   DEFAULT_CONTEXT,
@@ -118,11 +119,7 @@ describe("Transform Evaluator Error Handling", () => {
       expect(() => {
         evaluateExpression(
           { type: "variable", namespace: "note", name: "missing" },
-          0,
-          4,
-          4,
-          { start: 0, end: 4 },
-          {},
+          createEvalContext(),
         );
       }).toThrow('Variable "note.missing" is not available in this context');
     });
@@ -133,11 +130,7 @@ describe("Transform Evaluator Error Handling", () => {
           { type: "unknown_type" } as unknown as Parameters<
             typeof evaluateExpression
           >[0],
-          0,
-          4,
-          4,
-          { start: 0, end: 4 },
-          {},
+          createEvalContext(),
         );
       }).toThrow("Unknown expression node type: unknown_type");
     });
@@ -145,11 +138,7 @@ describe("Transform Evaluator Error Handling", () => {
     it("works correctly with valid variable reference", () => {
       const result = evaluateExpression(
         { type: "variable", namespace: "note", name: "pitch" },
-        0,
-        4,
-        4,
-        { start: 0, end: 4 },
-        { pitch: 60 },
+        createEvalContext({ noteProperties: { pitch: 60 } }),
       );
 
       expect(result).toBe(60);
@@ -159,11 +148,7 @@ describe("Transform Evaluator Error Handling", () => {
       expect(() => {
         evaluateExpression(
           { type: "variable", namespace: "audio", name: "gain" },
-          0,
-          4,
-          4,
-          { start: 0, end: 4 },
-          {},
+          createEvalContext(),
         );
       }).toThrow("Cannot use audio.gain variable in MIDI note context");
     });
@@ -210,12 +195,7 @@ describe("Transform Evaluator Error Handling", () => {
           [1], // Simple number period in beats
           false,
           false,
-          0,
-          4,
-          4,
-          { start: 0, end: 4 },
-          {},
-          evaluateExpression,
+          createEvalContext(),
         );
       }).toThrow("Unknown waveform function: unknown_waveform()");
     });
@@ -226,12 +206,7 @@ describe("Transform Evaluator Error Handling", () => {
         [1], // Simple number period in beats
         false,
         false,
-        0,
-        4,
-        4,
-        { start: 0, end: 4 },
-        {},
-        evaluateExpression,
+        createEvalContext(),
       );
 
       expect(typeof result).toBe("number");
@@ -245,18 +220,7 @@ describe("Transform Evaluator Error Handling", () => {
       [[1, 2, 3], "three arguments"],
     ])("rejects swing() with %s", (args) => {
       expect(() => {
-        evaluateFunction(
-          "swing",
-          args,
-          false,
-          false,
-          0,
-          4,
-          4,
-          { start: 0, end: 4 },
-          {},
-          evaluateExpression,
-        );
+        evaluateFunction("swing", args, false, false, createEvalContext());
       }).toThrow("Function swing() requires 1-2 arguments");
     });
 
@@ -264,16 +228,7 @@ describe("Transform Evaluator Error Handling", () => {
     // unhandled name only reaches the switch through a direct call.
     it("rejects an unknown math function name", () => {
       expect(() => {
-        evaluateMathFunction(
-          "sqrt",
-          [1],
-          0,
-          4,
-          4,
-          { start: 0, end: 4 },
-          {},
-          evaluateExpression,
-        );
+        evaluateMathFunction("sqrt", [1], createEvalContext());
       }).toThrow("Unknown math function: sqrt()");
     });
   });

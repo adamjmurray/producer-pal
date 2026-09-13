@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   setupAudioClipMock,
   setupMidiClipMock,
@@ -32,11 +32,11 @@ function setupAudioClipWithWarpMarkers(
   });
 }
 
-function readClipWithWarp(): ReturnType<typeof readClip> {
-  return readClip({ trackIndex: 0, sceneIndex: 0, include: ["warp"] });
+function readClipWithWarp(): ReturnType<typeof readOneClip> {
+  return readOneClip({ trackIndex: 0, sceneIndex: 0, include: ["warp"] });
 }
 
-describe("readClip - warp markers", () => {
+describe("readOneClip - warp markers", () => {
   it("reads warp markers with direct array format", () => {
     setupAudioClipWithWarpMarkers(
       JSON.stringify([
@@ -85,7 +85,7 @@ describe("readClip - warp markers", () => {
     setupAudioClipWithWarpMarkers(
       JSON.stringify([{ sample_time: 0, beat_time: 0 }]),
     );
-    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+    const result = readOneClip({ trackIndex: 0, sceneIndex: 0 });
 
     expect(result.warpMarkers).toBeUndefined();
   });
@@ -163,7 +163,7 @@ describe("readClip - warp markers", () => {
       },
     });
 
-    const result = readClip({
+    const result = readOneClip({
       trackIndex: 0,
       sceneIndex: 0,
       include: ["sample"],
@@ -210,7 +210,7 @@ describe("readClip - warp markers", () => {
   });
 });
 
-describe("readClip - unwarped audio clip timing", () => {
+describe("readOneClip - unwarped audio clip timing", () => {
   const SAMPLE_RATE = 48000;
 
   /**
@@ -269,7 +269,11 @@ describe("readClip - unwarped audio clip timing", () => {
     // would report 1.2 beats — half the clip.
     setupUnwarpedAudioClip({ sampleSeconds: 1.2, endMarker: 1.2 });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: ["*"] });
+    const result = readOneClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["*"],
+    });
 
     expect(result.warping).toBe(false);
     expect(result.end).toBe("1|3.4");
@@ -282,7 +286,11 @@ describe("readClip - unwarped audio clip timing", () => {
     // the file boundary, so the region is 1.5s = 3 beats at 120bpm.
     setupUnwarpedAudioClip({ sampleSeconds: 1.5, endMarker: 4 });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: ["*"] });
+    const result = readOneClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["*"],
+    });
 
     expect(result.end).toBe("1|4");
     // 3 beats in 4/4 is a dotted half
@@ -292,7 +300,11 @@ describe("readClip - unwarped audio clip timing", () => {
   it("scales the region with tempo, unlike a warped clip", () => {
     setupUnwarpedAudioClip({ tempo: 60, sampleSeconds: 1.2, endMarker: 1.2 });
 
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: ["*"] });
+    const result = readOneClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["*"],
+    });
 
     expect(result.end).toBe("1|2.2");
   });

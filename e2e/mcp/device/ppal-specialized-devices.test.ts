@@ -34,6 +34,7 @@ interface PseudoParam {
   id?: string;
   name: string;
   value?: unknown;
+  ok?: boolean;
   reason?: string;
   unit?: string;
   state?: string;
@@ -627,7 +628,7 @@ describe("specialized devices: Simpler", () => {
     // read-device omits an empty Simpler's sample too, so this entry is the
     // only thing anywhere that says the write never landed.
     expect(data.params).toStrictEqual([
-      { name: "sample", reason: "written, but no value reads back" },
+      { name: "sample", ok: false, reason: "written, but no value reads back" },
     ]);
     expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
   });

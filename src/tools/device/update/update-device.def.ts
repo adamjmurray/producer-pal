@@ -6,8 +6,8 @@
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
@@ -27,16 +27,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
-        "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
+        "comma-separated path(s) (e.g., 't1/d0', 't1/inst', 't1/d0/c0', 't1/d0/pC1')",
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
-
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
 
     toPath: param(z.coerce.string().optional(), {
       default:
@@ -52,13 +48,13 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one — the response reports what each param reads as afterward. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: the value it reads as afterward — with a reason if that isn't the value asked for — or `ok:false` and why nothing was written. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
       // Simpler and Drum Rack pads, so the how has to ship with the promise.
       smallModel:
-        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number). A value snaps to the nearest one the param accepts; the response reports what it reads as. Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/sample'}",
+        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number). A value snaps to the nearest one the param accepts. Every param comes back as one entry: the value it reads as, or `ok:false` and why nothing was written. Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/sample'}",
     }),
     // The escape hatch for the drum-pad instrument-swap guard
     // (nested-param-target.ts), and deliberately NOT taught in the skills: the
@@ -148,7 +144,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
     wrapInRack: param(z.boolean().optional(), {
-      default: "Wrap device(s) in a new rack (auto-detects type from device)",
+      default:
+        "Wrap device(s) in a new rack (auto-detects type from device); only one instrument at a time",
       smallModel: null,
     }),
   },

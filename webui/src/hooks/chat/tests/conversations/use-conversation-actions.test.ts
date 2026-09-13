@@ -140,6 +140,74 @@ describe("useConversationActions guards", () => {
     });
   });
 
+  it("handleRetry re-sends the original message's images", async () => {
+    const images = [{ mediaType: "image/png", data: "AAA" }];
+    const client = new MockChatClient();
+
+    client.chatHistory = [
+      { role: "user", content: "match this", images },
+      { role: "assistant", content: "reply" },
+    ];
+
+    const { result } = setup({ client, messages: [userMessage(0)] });
+
+    await act(async () => {
+      await result.current.handleRetry(0);
+    });
+
+    // The fork truncates to index 0, so the re-sent turn is the only one left.
+    expect(client.chatHistory).toContainEqual({
+      role: "user",
+      content: "match this",
+      images,
+    });
+  });
+
+  it("handleEdit keeps the original message's images", async () => {
+    const images = [{ mediaType: "image/webp", data: "BBB" }];
+    const client = new MockChatClient();
+
+    client.chatHistory = [
+      { role: "user", content: "match this", images },
+      { role: "assistant", content: "reply" },
+    ];
+
+    const { result } = setup({ client, messages: [userMessage(0)] });
+
+    await act(async () => {
+      await result.current.handleEdit(0, "match this, but slower");
+    });
+
+    expect(client.chatHistory).toContainEqual({
+      role: "user",
+      content: "match this, but slower",
+      images,
+    });
+  });
+
+  it("handleRetry re-sends an image-only message that has no text", async () => {
+    const images = [{ mediaType: "image/png", data: "AAA" }];
+    const client = new MockChatClient();
+
+    client.chatHistory = [{ role: "user", content: "", images }];
+
+    const { result, runWithChat } = setup({
+      client,
+      messages: [userMessage(0, "")],
+    });
+
+    await act(async () => {
+      await result.current.handleRetry(0);
+    });
+
+    expect(runWithChat).toHaveBeenCalled();
+    expect(client.chatHistory).toContainEqual({
+      role: "user",
+      content: "",
+      images,
+    });
+  });
+
   it("handleRetry bails when the raw entry yields no user message", async () => {
     // The raw history slot resolves to an assistant turn, so extractUserMessage
     // returns undefined and there is nothing to re-send.

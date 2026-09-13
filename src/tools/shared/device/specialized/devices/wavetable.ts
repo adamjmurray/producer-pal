@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
   enumParam,
   writeIntFromSet,
   writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import {
   type PseudoParam,
   type SpecializedDeviceSpec,
@@ -21,7 +21,7 @@ import {
   MOD_SOURCES,
   readModulations,
   setModulationAction,
-} from "./wavetable-modulation-helpers.ts";
+} from "./wavetable-modulation.ts";
 
 // Wavetable (WavetableDevice, class_name "InstrumentVector"). See
 // dev/specialized-devices/instruments.md.

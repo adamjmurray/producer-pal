@@ -12,7 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { createClip } from "../../create-clip.ts";
-import { processClipIteration } from "../../helpers/create-clip-helpers.ts";
+import { processClipIteration } from "../../helpers/clip-iteration.ts";
 import {
   setupArrangementClipMocks,
   setupAudioArrangementClipMocks,

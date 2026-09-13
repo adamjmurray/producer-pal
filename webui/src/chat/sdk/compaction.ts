@@ -67,7 +67,7 @@ export function renderTranscript(history: ChatMessage[]): string {
     }
 
     if (msg.role === "user") {
-      lines.push(`USER: ${msg.content}`);
+      lines.push(`USER: ${attachedImagesNote(msg)}${msg.content}`);
       continue;
     }
 
@@ -90,4 +90,21 @@ export function renderTranscript(history: ChatMessage[]): string {
   }
 
   return lines.join("\n");
+}
+
+/**
+ * Note a user message's attachments for the transcript. The images themselves
+ * can't go in plain text, so without this a "make it sound like this" turn
+ * summarizes as a request with nothing attached.
+ * @param msg - The user message
+ * @returns The bracketed note, or an empty string when nothing was attached
+ */
+function attachedImagesNote(msg: ChatMessage): string {
+  const count = msg.images?.length ?? 0;
+
+  if (count === 0) {
+    return "";
+  }
+
+  return `[${count} image${count === 1 ? "" : "s"} attached] `;
 }

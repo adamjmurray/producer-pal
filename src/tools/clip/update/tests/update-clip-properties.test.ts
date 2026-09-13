@@ -16,7 +16,7 @@ import {
   buildClipPropertiesToSet,
   type BuildClipPropertiesArgs,
   type ClipPropsToSet,
-} from "#src/tools/clip/update/helpers/update-clip-properties-helpers.ts";
+} from "#src/tools/clip/update/helpers/clip-properties-to-set.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 

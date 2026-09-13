@@ -35,6 +35,7 @@ export function ChatApp(props: ChatAppProps) {
     onOpenToolsSettings,
     onOpenConnectionSettings,
     onOpenContext,
+    onOpenInstructions,
   } = props;
 
   const {
@@ -72,6 +73,7 @@ export function ChatApp(props: ChatAppProps) {
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
       onOpenContext={onOpenContext}
+      onOpenInstructions={onOpenInstructions}
       onStop={chat.stopResponse}
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}

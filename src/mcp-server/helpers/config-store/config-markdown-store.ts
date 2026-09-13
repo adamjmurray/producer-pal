@@ -23,7 +23,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "../../node-for-max-logger.ts";
 
 // Detect Vitest so unit tests never read or clobber the developer's real

@@ -210,6 +210,99 @@ describe("conversation-db", () => {
     expect(loaded).toBeUndefined();
   });
 
+  it("renameConversation skips the write when the row is gone by the time the transaction reads it", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+    await deleteConversation(record.id);
+
+    const putSpy = vi.spyOn(IDBObjectStore.prototype, "put");
+
+    await renameConversation(record.id, "New title");
+
+    expect(putSpy).not.toHaveBeenCalled();
+    expect(await loadConversation(record.id)).toBeUndefined();
+    putSpy.mockRestore();
+  });
+
+  it("setBookmark skips the write when the row is gone by the time the transaction reads it", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+    await deleteConversation(record.id);
+
+    const putSpy = vi.spyOn(IDBObjectStore.prototype, "put");
+
+    await setBookmark(record.id, true);
+
+    expect(putSpy).not.toHaveBeenCalled();
+    expect(await loadConversation(record.id)).toBeUndefined();
+    putSpy.mockRestore();
+  });
+
+  it("deleteUnbookmarkedConversations keeps a row that reads as bookmarked inside the transaction", async () => {
+    const bookmarked = createRecord({ bookmarked: true });
+    const unbookmarked = createRecord();
+
+    await saveConversation(bookmarked);
+    await saveConversation(unbookmarked);
+
+    const deleteSpy = vi.spyOn(IDBObjectStore.prototype, "delete");
+
+    await deleteUnbookmarkedConversations();
+
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+    expect(deleteSpy).not.toHaveBeenCalledWith(bookmarked.id);
+    expect(await loadConversation(bookmarked.id)).toBeDefined();
+    expect(await loadConversation(unbookmarked.id)).toBeUndefined();
+    deleteSpy.mockRestore();
+  });
+
+  // The functions below used to read and write in separate transactions,
+  // leaving a window where a concurrent delete could land between them and
+  // write a deleted row back. Asserting a single `IDBDatabase.transaction`
+  // call proves the read and write are now one atomic unit — with two
+  // separate transactions, another operation's transaction could always be
+  // scheduled in the gap between them.
+
+  it("renameConversation reads and writes in a single transaction", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+
+    const spy = vi.spyOn(IDBDatabase.prototype, "transaction");
+
+    await renameConversation(record.id, "New title");
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("setBookmark reads and writes in a single transaction", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+
+    const spy = vi.spyOn(IDBDatabase.prototype, "transaction");
+
+    await setBookmark(record.id, true);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("deleteUnbookmarkedConversations reads and deletes in a single transaction", async () => {
+    await saveConversation(createRecord());
+    await saveConversation(createRecord({ bookmarked: true }));
+
+    const spy = vi.spyOn(IDBDatabase.prototype, "transaction");
+
+    await deleteUnbookmarkedConversations();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
   /**
    * Save a record, then strip the named fields from the stored entry to
    * simulate a legacy DB entry written by an older build.

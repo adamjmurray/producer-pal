@@ -7,7 +7,7 @@ import {
   VOICE_VOLUME_DEFAULT,
   VOICE_VOLUME_MAX,
   VOICE_VOLUME_MIN,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/voice-settings-storage";
 
 export interface VoiceVolumeSliderProps {
   volume: number;

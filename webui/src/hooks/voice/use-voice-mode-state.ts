@@ -18,7 +18,7 @@ import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings"
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { useGeminiVoiceSession } from "#webui/hooks/voice/gemini/use-gemini-voice-session";
-import { mergeVoiceHistory } from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
+import { mergeVoiceHistory } from "#webui/hooks/voice/helpers/voice-record";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoiceModeReporting } from "#webui/hooks/voice/use-voice-mode-reporting";
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";

@@ -13,7 +13,7 @@ import {
   TURN_DETECTION_SILENCE_MIN,
   TURN_DETECTION_THRESHOLD_MAX,
   TURN_DETECTION_THRESHOLD_MIN,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 const SELECT_CLASS =
   "w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded";

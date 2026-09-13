@@ -14,7 +14,7 @@ import { createClip } from "../create-clip.ts";
 import {
   buildClipProperties,
   buildClipResult,
-} from "../helpers/create-clip-result-helpers.ts";
+} from "../helpers/created-clip-result.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
@@ -400,7 +400,7 @@ describe("createClip - advanced features", () => {
       // second note (index 1) to beat 1 — separating the pair. create-clip must
       // NOT dedupe before transforming: it has to feed both notes into the
       // transform and dedupe AFTER, so both survive. This matches update-clip's
-      // transform-then-dedupe order (update-clip-notes-helpers.ts). Before the
+      // transform-then-dedupe order (note-updates.ts). Before the
       // fix, prepareClipData dropped one note pre-transform and only 1 reached
       // add_new_notes — a silent create/update parity divergence.
       const { clip } = setupSessionMocks({

@@ -9,10 +9,7 @@
 // a warning raised with no request at all rode along on the next one.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  END_OF_CHUNKS,
-  reassembleChunks,
-} from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS, reassembleChunks } from "#src/shared/mcp-responses.ts";
 import { warn } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-sleep.ts";
 import { installCapturingTask } from "./v8-protocol-test-helpers.ts";

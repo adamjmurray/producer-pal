@@ -45,6 +45,8 @@ Chat UI (`ui-test-helpers.ts`, IndexedDB-backed):
   rename, star/unstar, delete (all backed by assertions against IndexedDB).
 - `conversation-branching.spec.ts`, `assistant-markdown.spec.ts` — edit/retry
   forks and assistant markdown rendering.
+- `chat-image-attachments.spec.ts` — attaching an image to the composer with the
+  file picker, and removing it again.
 
 Subagents (`subagent/subagent-test-helpers.ts`, scripted-LLM-backed) — the only
 specs here that drive the chat path:

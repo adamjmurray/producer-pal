@@ -48,6 +48,63 @@ describe("createScene by path", () => {
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 2);
   });
 
+  it("appends one scene per entry in a path list", () => {
+    expect(createScene({ path: "s+,s+", name: "Intro,Verse" })).toStrictEqual([
+      { id: "live_set/scenes/2", path: "s2" },
+      { id: "live_set/scenes/3", path: "s3" },
+    ]);
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 2);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", 3);
+  });
+
+  // The second entry names the same place as the first, and the first is
+  // already there by then, so it lands after it.
+  it("inserts two at one index in the order the list names them", () => {
+    expect(createScene({ path: "s0,s0" })).toStrictEqual([
+      { id: "live_set/scenes/0", path: "s0" },
+      { id: "live_set/scenes/1", path: "s1" },
+    ]);
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 0);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", 1);
+  });
+
+  // The gap is filled once, by the entry that reaches past the end; the second
+  // entry lands right after it with nothing left to fill.
+  it("fills the gap once for a path list past the end", () => {
+    for (let i = 4; i <= 6; i++) {
+      registerMockObject(`live_set/scenes/${i}`, { path: livePath.scene(i) });
+    }
+
+    expect(createScene({ path: "s5,s5" })).toStrictEqual([
+      { id: "live_set/scenes/5", path: "s5" },
+      { id: "live_set/scenes/6", path: "s6" },
+    ]);
+    expect(liveSet.call).toHaveBeenCalledTimes(5);
+    expect(liveSet.call).toHaveBeenNthCalledWith(4, "create_scene", 5);
+    expect(liveSet.call).toHaveBeenNthCalledWith(5, "create_scene", 6);
+  });
+
+  it("refuses count sent with a path list", () => {
+    expect(() => createScene({ path: "s+,s+", count: 2 })).toThrow(
+      'count repeats one path, but path names 2. Drop count and let path name each scene (e.g. path: "s+,s+").',
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("still repeats a single path for count", () => {
+    expect(createScene({ path: "s+", count: 2 })).toStrictEqual([
+      { id: "live_set/scenes/2", path: "s2" },
+      { id: "live_set/scenes/3", path: "s3" },
+    ]);
+  });
+
+  it("pairs a name list with the path list", () => {
+    expect(() => createScene({ path: "s+,s+", name: "Intro" })).not.toThrow();
+    expect(() => createScene({ path: "s+,s+", name: "A,B,C" })).toThrow(
+      "path names 2 scenes but name names 3 entries",
+    );
+  });
+
   it("refuses a path that names no place for a scene", () => {
     expect(() => createScene({ path: "t0" })).toThrow(
       'invalid path "t0" - it names no place for a scene; expected "s+" or "s<index>"',
@@ -129,6 +186,13 @@ describe("createScene by path", () => {
         "selected_scene",
         "id live_set/scenes/2",
       );
+    });
+
+    it("refuses a path list, since capture makes one scene", () => {
+      expect(() => createScene({ path: "s1,s2", capture: true })).toThrow(
+        "capture makes one scene, but path names 2 places - send one",
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
     });
 
     it("refuses s0, which has no scene to insert after", () => {

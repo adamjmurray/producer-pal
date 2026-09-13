@@ -20,13 +20,13 @@ import { argText } from "../../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../../types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
-  clearClipSlots,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import { clearClipSlots } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";
@@ -75,7 +75,7 @@ function toTransformString(raw: unknown): string {
  * @returns The combined transform string (transforms then preTransforms)
  */
 function getWhereTransform(turns: EvalTurnResult[], turn: number): string {
-  const call = getToolCalls(turns, turn).find(
+  const call = getToolCalls(turns, turn).findLast(
     (c) => c.name === TOOL_UPDATE_CLIP,
   );
 

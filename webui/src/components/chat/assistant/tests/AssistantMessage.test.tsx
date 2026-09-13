@@ -477,5 +477,17 @@ describe("AssistantMessage", () => {
       // 1 group + 1 text + 1 individual tool
       expect(container!.children).toHaveLength(3);
     });
+
+    it("ignores an image part, which only a user bubble renders", () => {
+      const parts: UIPart[] = [
+        { type: "image", mediaType: "image/png", data: "AAA" },
+        { type: "text", content: "Done" },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.querySelector("img")).toBeNull();
+      expect(container.textContent).toContain("Done");
+    });
   });
 });

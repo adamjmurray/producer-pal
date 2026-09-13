@@ -130,7 +130,7 @@ And `npm run check:build` additionally validates:
 
 ### Key oxlint limits
 
-- **325 lines** max per source file (650 for test files), ignoring blanks and
+- **375 lines** max per source file (650 for test files), ignoring blanks and
   comments — prevents files from growing too large for agents to work with
   effectively
 - **115 lines** max per function — forces decomposition into smaller, testable

@@ -1,0 +1,353 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
+import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import {
+  takeLaneLabel,
+  type TakeLaneTarget,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+
+import { type ArrangementPosition } from "./create-clip-destinations.ts";
+import { processClipIteration } from "./clip-iteration.ts";
+import {
+  type ClipTransformInputs,
+  resolveClipTransform,
+} from "./clip-transform.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+
+export interface CreateClipsParams {
+  view: string;
+  clipSlots: ClipSlotPosition[];
+  arrangementPositions: ArrangementPosition[];
+  baseName: string | null;
+  parsedNames: ListEntries | null;
+  parsedColors: ListEntries | null;
+  nameStartIndex: number;
+  initialClipLength: number;
+  liveSet: LiveAPI;
+  startBeats: number | null;
+  endBeats: number | null;
+  firstStartBeats: number | null;
+  looping: boolean | null;
+  color: string | null;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+  /** The raw timeSignature argument, or null when the song's meter was used */
+  timeSignature: string | null;
+  notationString: string | null;
+  notes: MidiNote[];
+  transformString: string | null;
+  songTimeSigNumerator: number;
+  songTimeSigDenominator: number;
+  length: string | null;
+  sampleFile: string | null;
+  deadline: number | null | undefined;
+  code: string | null;
+  /** Take lane per arrangement destination; no entry means the main lane */
+  takeLanes: Map<string, LiveAPI>;
+  /** Every destination track, resolved once for the call */
+  tracks: Map<number, LiveAPI>;
+  /** Requested audio warp state, or null to keep Live's own choice */
+  warping: boolean | null;
+  /** Audio clip gain in decibels; omitted leaves it alone */
+  gainDb?: number | null;
+  /** Audio clip pitch shift in semitones; omitted leaves it alone */
+  pitchShift?: number | null;
+  /** Audio clip warp mode; omitted leaves it alone */
+  warpMode?: string | null;
+}
+
+/**
+ * Creates clips by iterating over positions for a single view
+ * @param params - All parameters for clip creation
+ * @returns Array of created clips
+ */
+export async function createClips(
+  params: CreateClipsParams,
+): Promise<object[]> {
+  const { view, clipSlots, arrangementPositions, deadline } = params;
+  const createdClips: object[] = [];
+  const count =
+    view === "session" ? clipSlots.length : arrangementPositions.length;
+
+  // Constant transform inputs for this view; read the scale mask once (it is a
+  // Live Set global). Per-clip context (index/count/position) is applied below.
+  const transformInputs: ClipTransformInputs = {
+    notes: params.notes,
+    clipLength: params.initialClipLength,
+    transformString: params.transformString,
+    isAudio: params.sampleFile != null,
+    endBeats: params.endBeats,
+    timeSigNumerator: params.timeSigNumerator,
+    timeSigDenominator: params.timeSigDenominator,
+    scaleMask:
+      params.transformString != null ? readLiveSetScaleMask() : undefined,
+  };
+
+  for (let i = 0; i < count; i++) {
+    if (isDeadlineExceeded(deadline ?? null)) {
+      console.warn(
+        `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
+      );
+      break;
+    }
+
+    await createClipAtIndex(params, transformInputs, i, createdClips);
+  }
+
+  return createdClips;
+}
+
+interface IterationPosition {
+  trackIndex: number;
+  sceneIndex: number | null;
+  arrangementStartBeats: number | null;
+  arrangementStart: string | null;
+  takeLane: TakeLaneTarget | null;
+}
+
+/**
+ * Create one clip at index `i`; warns instead of throwing so the loop carries on.
+ * @param params - All parameters for clip creation
+ * @param transformInputs - Constant transform inputs for this view
+ * @param i - 0-based iteration index within the view
+ * @param createdClips - Accumulator the created clip is pushed onto
+ */
+async function createClipAtIndex(
+  params: CreateClipsParams,
+  transformInputs: ClipTransformInputs,
+  i: number,
+  createdClips: object[],
+): Promise<void> {
+  const { view, baseName, parsedNames, parsedColors, nameStartIndex, code } =
+    params;
+
+  // clip.index/clip.count (transforms and code-exec) span the whole create
+  // batch, not just this view: a single call mixing clip slots and
+  // arrangement positions runs createClips once per view, so the global index
+  // is nameStartIndex + i (session view starts at 0, arrangement at
+  // clipSlots.length) and the count is the combined total. This mirrors the
+  // continuous indexing already used for names/colors below.
+  const globalIndex = nameStartIndex + i;
+  const totalCount =
+    params.clipSlots.length + params.arrangementPositions.length;
+
+  const clipName = getNameForIndex(
+    baseName ?? undefined,
+    globalIndex,
+    parsedNames,
+  );
+  const clipColor = getColorForIndex(
+    params.color ?? undefined,
+    globalIndex,
+    parsedColors,
+  );
+  const pos = resolveIterationPosition(params, i);
+  const position = clipPositionLabel(view, pos);
+
+  // Apply the transform with this clip's context (clipseq/clip.index/etc.).
+  // Falls back to the shared notes/length when there is no transform.
+  //
+  // The clip doesn't exist yet, so a transform warning can't name it by id the
+  // way update-clip does. The destination plus the ordinal (which is the
+  // clip.index the transform saw) says which one it was.
+  const {
+    notes: clipNotes,
+    clipLength,
+    transformedCount,
+  } = withClipWarningLabel(
+    `clip ${position}${ordinalSuffix(globalIndex, totalCount)}`,
+    () =>
+      resolveClipTransform(
+        transformInputs,
+        globalIndex,
+        totalCount,
+        pos.arrangementStartBeats,
+      ),
+  );
+
+  try {
+    // Live declines a create the track can't take without reporting anything,
+    // and afterwards there is nothing left to say why. The catch below words
+    // the refusal as this position's failure.
+    // Truthiness, not a null check: it is what picks the audio create below,
+    // and an empty sampleFile makes a MIDI clip.
+    const blocker = clipCopyBlocker(
+      !params.sampleFile,
+      pos.trackIndex,
+      params.tracks.get(pos.trackIndex),
+    );
+
+    if (blocker != null) {
+      throw new Error(blocker);
+    }
+
+    const clipResult = processClipIteration(
+      view,
+      pos.trackIndex,
+      pos.sceneIndex,
+      pos.arrangementStartBeats,
+      clipLength,
+      params.liveSet,
+      params.startBeats,
+      params.endBeats,
+      params.firstStartBeats,
+      params.looping,
+      clipName,
+      clipColor ?? null,
+      params.timeSigNumerator,
+      params.timeSigDenominator,
+      params.notationString,
+      clipNotes,
+      params.length,
+      params.sampleFile,
+      transformedCount,
+      // Take lanes apply only to arrangement clips (ignored for session view)
+      takeLaneFor(params.takeLanes, pos),
+      {
+        warping: params.warping,
+        gainDb: params.gainDb,
+        pitchShift: params.pitchShift,
+        warpMode: params.warpMode,
+      },
+      params.timeSignature,
+      params.tracks.get(pos.trackIndex) ?? null,
+    );
+
+    createdClips.push(clipResult);
+
+    // Apply code execution to the newly created clip
+    const clipId = code != null ? (clipResult as { id?: string }).id : null;
+
+    if (clipId != null && code != null) {
+      const noteCount = await applyCodeToSingleClip(
+        clipId,
+        code,
+        globalIndex,
+        totalCount,
+      );
+
+      if (noteCount != null) {
+        (clipResult as { noteCount?: number }).noteCount = noteCount;
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `Failed to create clip at ${position}: ${errorMessage(error)}`,
+    );
+  }
+}
+
+/**
+ * Which clip of the batch this is, for a call creating more than one.
+ * @param index - 0-based index of this clip across the whole create call
+ * @param count - Total clips the call creates
+ * @returns ` (3 of 5)`, or "" when the call creates a single clip
+ */
+function ordinalSuffix(index: number, count: number): string {
+  return count > 1 ? ` (${index + 1} of ${count})` : "";
+}
+
+/**
+ * Where a clip is being created, for warnings raised before it has an id.
+ * @param view - "session" or "arrangement"
+ * @param pos - The resolved position for this iteration
+ * @returns A destination like `t0/s1` or `t0/l1[5|1]`
+ */
+function clipPositionLabel(view: string, pos: IterationPosition): string {
+  if (view === "session") {
+    return slotPath(pos.trackIndex, pos.sceneIndex as number);
+  }
+
+  return `${arrangementPath(pos.trackIndex, pos.takeLane)}[${pos.arrangementStart}]`;
+}
+
+/**
+ * Resolve the track/scene or arrangement position for iteration index `i`.
+ * @param params - All parameters for clip creation
+ * @param i - 0-based iteration index within the view
+ * @returns Position info for this iteration
+ */
+function resolveIterationPosition(
+  params: CreateClipsParams,
+  i: number,
+): IterationPosition {
+  if (params.view === "session") {
+    const slot = params.clipSlots[i] as ClipSlotPosition;
+
+    return {
+      trackIndex: slot.trackIndex,
+      sceneIndex: slot.sceneIndex,
+      arrangementStartBeats: null,
+      arrangementStart: null,
+      takeLane: null,
+    };
+  }
+
+  const { trackIndex, arrangementStart, takeLane } = params
+    .arrangementPositions[i] as ArrangementPosition;
+
+  // Validate the standalone position first so a 0-indexed/zero-bar arrangement
+  // start gets the 1-indexing steer (matching the single-clip create path), not
+  // a silent pre-origin beat.
+  validateBarBeatPosition(arrangementStart);
+
+  return {
+    trackIndex,
+    sceneIndex: null,
+    arrangementStartBeats: barBeatToAbletonBeats(
+      arrangementStart,
+      params.songTimeSigNumerator,
+      params.songTimeSigDenominator,
+    ),
+    arrangementStart,
+    takeLane,
+  };
+}
+
+/**
+ * The take lane a position's clip goes on.
+ * @param lanes - Resolved take lanes, keyed by destination
+ * @param position - The position being created
+ * @returns The lane, or null for the main lane
+ */
+function takeLaneFor(
+  lanes: Map<string, LiveAPI>,
+  position: IterationPosition,
+): LiveAPI | null {
+  if (position.takeLane == null) {
+    return null;
+  }
+
+  const lane = lanes.get(takeLaneLabel(position));
+
+  // A destination whose lane didn't fit warned during resolution and has no
+  // entry. Fail this clip — the loop catches it and carries on — rather than
+  // falling back to the main lane, which would put the clip somewhere the
+  // caller didn't ask for.
+  if (lane == null) {
+    throw new Error(`take lane "${takeLaneLabel(position)}" was skipped`);
+  }
+
+  return lane;
+}

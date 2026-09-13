@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import { convertTimingParameters } from "#src/tools/clip/create/helpers/create-clip-helpers.ts";
+import { convertTimingParameters } from "#src/tools/clip/create/helpers/timing-parameters.ts";
 import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,

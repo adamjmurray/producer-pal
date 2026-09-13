@@ -10,7 +10,7 @@ import {
   loadProviderSettings,
   type ProviderSettings,
   type ProviderStateSetters,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/provider-settings";
 import { type Provider } from "#webui/types/settings";
 
 export interface ProviderConnections {

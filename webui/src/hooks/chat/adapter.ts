@@ -9,6 +9,7 @@ import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import {
   type ChatClientConfig,
+  type ChatImage,
   type ChatMessage,
   type SubagentConfigOverride,
 } from "#webui/chat/sdk/types";
@@ -16,7 +17,7 @@ import {
   resolveLockedNotation,
   resolveLockedSmallModelMode,
   resolveMaxToolSteps,
-} from "#webui/hooks/chat/helpers/streaming-helpers";
+} from "#webui/hooks/chat/helpers/streaming/locked-settings";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -342,8 +343,16 @@ export const chatAdapter: ChatAdapter<
     return message.role === "user" ? message.content.trim() : undefined;
   },
 
-  createUserMessage(text: string): ChatMessage {
-    return { role: "user", content: text };
+  extractUserImages(message: ChatMessage): ChatImage[] | undefined {
+    return message.role === "user" ? message.images : undefined;
+  },
+
+  createUserMessage(text: string, images?: ChatImage[]): ChatMessage {
+    return {
+      role: "user",
+      content: text,
+      ...(images?.length ? { images } : {}),
+    };
   },
 
   createCompactionSummary(summary: string): ChatMessage {

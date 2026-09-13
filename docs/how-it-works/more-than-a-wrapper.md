@@ -44,7 +44,7 @@ There's a wrinkle. Live snaps colors to a **fixed palette of about 70
 swatches**, so the color you ask for isn't always the color you get. A thin
 wrapper hands back a different number and leaves the AI confused. Producer Pal
 reads the color back after setting it, and when Live has quantized it, says so
-([`color-verification-helpers.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/color-verification-helpers.ts)):
+([`color-quantization.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/helpers/color-quantization.ts)):
 
 > Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live
 > uses a fixed color palette.
@@ -87,7 +87,7 @@ Asking for it gets you 10 or 11, whichever is nearer, rather than always down.
 and it doesn't clamp it. It silently _ignores_ you and leaves the knob where it
 was. So every parameter write is read back afterward, and one that didn't take
 says so
-([`param-write-helpers.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-write-helpers.ts)):
+([`param-writing.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-writing.ts)):
 
 > param "Drive" was not changed. It still reads "0.0 dB". Live ignores a value
 > outside the parameter's range.

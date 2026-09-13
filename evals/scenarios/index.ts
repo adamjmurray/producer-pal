@@ -32,7 +32,7 @@ import {
   type RunContext,
 } from "./helpers/trials/run-trials.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
-import { parseRepeatCount } from "./helpers/trials/trial-helpers.ts";
+import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
 import { loadScenarios, printList } from "./load-scenarios.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
 

@@ -13,7 +13,7 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_WARP_MODE_TEXTURE, WARP_MODE } from "#src/tools/constants.ts";
 import { toolDefReadScene } from "../read-scene.def.ts";
-import { readScene } from "../read-scene.ts";
+import { readOneScene } from "../read-scene.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Helper to create default Scene mock config
@@ -90,12 +90,12 @@ function setupSceneWithAudioClip(): void {
   });
 }
 
-describe("readScene", () => {
+describe("readOneScene", () => {
   it("returns scene information when a valid scene exists", () => {
     setupLiveSetTracks([]);
     setupScene("scene1", 0, defaultSceneConfig({ name: "Test Scene" }));
 
-    const result = readScene({ sceneIndex: 0 });
+    const result = readOneScene({ sceneIndex: 0 });
 
     expect(result).toStrictEqual({
       id: "scene1",
@@ -113,7 +113,7 @@ describe("readScene", () => {
       type: "Scene",
     });
 
-    expect(() => readScene({ sceneIndex: 99 })).toThrow(
+    expect(() => readOneScene({ sceneIndex: 99 })).toThrow(
       "sceneIndex 99 does not exist",
     );
   });
@@ -136,7 +136,7 @@ describe("readScene", () => {
       }),
     );
 
-    const result = readScene({ sceneIndex: 1 });
+    const result = readOneScene({ sceneIndex: 1 });
 
     expect(result).toStrictEqual({
       id: "scene2",
@@ -151,7 +151,7 @@ describe("readScene", () => {
     setupLiveSetTracks([]);
     setupScene("scene3", 2, defaultSceneConfig());
 
-    const result = readScene({ sceneIndex: 2 });
+    const result = readOneScene({ sceneIndex: 2 });
 
     expect(result).toStrictEqual({
       id: "scene3",
@@ -167,7 +167,7 @@ describe("readScene", () => {
     setupLiveSetTracks([]);
     setupScene("scene4", 0, defaultSceneConfig({ name: 5678 }));
 
-    const result = readScene({ sceneIndex: 0 });
+    const result = readOneScene({ sceneIndex: 0 });
 
     expect(result.name).toBe("5678");
   });
@@ -186,7 +186,7 @@ describe("readScene", () => {
       type: "Clip",
     });
 
-    const result = readScene({ sceneIndex: 0 });
+    const result = readOneScene({ sceneIndex: 0 });
 
     expect(result).toStrictEqual({
       id: "scene_0",
@@ -206,8 +206,8 @@ describe("readScene", () => {
       defaultSceneConfig({ name: "Colored", color: 65280 }),
     );
 
-    const withColor = readScene({ sceneIndex: 0, include: ["color"] });
-    const withoutColor = readScene({ sceneIndex: 0 });
+    const withColor = readOneScene({ sceneIndex: 0, include: ["color"] });
+    const withoutColor = readOneScene({ sceneIndex: 0 });
 
     expect(withColor.color).toBe("#00FF00");
     expect(withoutColor).not.toHaveProperty("color");
@@ -223,7 +223,7 @@ describe("readScene", () => {
       type: "Clip",
     });
 
-    const result = readScene({ sceneIndex: 0, include: ["clips"] });
+    const result = readOneScene({ sceneIndex: 0, include: ["clips"] });
 
     expect(result.clips).toHaveLength(1);
     expect(capturedWarnings()).not.toContainEqual(
@@ -237,7 +237,7 @@ describe("readScene", () => {
     setupSessionClip("clip_0_0", 0, 0);
     setupSessionClip("clip_1_0", 1, 0);
 
-    const result = readScene({
+    const result = readOneScene({
       sceneIndex: 0,
       include: ["clips", "notes"],
     });
@@ -272,7 +272,7 @@ describe("readScene", () => {
   it("passes warp through to nested clip reads", () => {
     setupSceneWithAudioClip();
 
-    const result = readScene({ sceneIndex: 0, include: ["clips", "warp"] });
+    const result = readOneScene({ sceneIndex: 0, include: ["clips", "warp"] });
 
     expect((result.clips as Record<string, unknown>[])[0]).toStrictEqual(
       expect.objectContaining({
@@ -287,7 +287,7 @@ describe("readScene", () => {
   it("omits warp from nested clip reads when it wasn't asked for", () => {
     setupSceneWithAudioClip();
 
-    const result = readScene({ sceneIndex: 0, include: ["clips"] });
+    const result = readOneScene({ sceneIndex: 0, include: ["clips"] });
 
     expect((result.clips as Record<string, unknown>[])[0]).not.toHaveProperty(
       "warping",
@@ -310,13 +310,13 @@ describe("readScene", () => {
     setupSessionClip("clip_1_0", 1, 0);
 
     // Test with '*' - should include everything
-    const resultWildcard = readScene({
+    const resultWildcard = readOneScene({
       sceneIndex: 0,
       include: ["*"],
     });
 
     // Test explicit list - should produce identical result
-    const resultExplicit = readScene({
+    const resultExplicit = readOneScene({
       sceneIndex: 0,
       include: ["clips", "notes", "sample", "color", "timing", "warp"],
     });
@@ -352,7 +352,7 @@ describe("readScene", () => {
         }),
       );
 
-      const result = readScene({ id: "123" });
+      const result = readOneScene({ id: "123" });
 
       expect(result).toStrictEqual({
         id: "123",
@@ -371,7 +371,7 @@ describe("readScene", () => {
       setupLiveSetTracks([]);
       setupScene("123", 5, defaultSceneConfig({ name: "Scene by ID" }));
 
-      expect(readScene({ sceneId: "123" })).toStrictEqual({
+      expect(readOneScene({ sceneId: "123" })).toStrictEqual({
         clipCount: 0,
         tempo: 120,
         timeSignature: "4/4",
@@ -395,7 +395,7 @@ describe("readScene", () => {
       setupSessionClip("clip_0_2", 0, 2);
       setupSessionClip("clip_1_2", 1, 2);
 
-      const result = readScene({
+      const result = readOneScene({
         id: "456",
         include: ["clips", "notes"],
       });
@@ -431,13 +431,13 @@ describe("readScene", () => {
       mockNonExistentObjects();
 
       expect(() => {
-        readScene({ id: "nonexistent" });
+        readOneScene({ id: "nonexistent" });
       }).toThrow('id "nonexistent" does not exist');
     });
 
     it("throws error when neither id nor sceneIndex provided", () => {
       expect(() => {
-        readScene({});
+        readOneScene({});
       }).toThrow("id or path is required");
     });
 
@@ -460,7 +460,7 @@ describe("readScene", () => {
       );
 
       // sceneId should take priority over sceneIndex
-      const result = readScene({ id: "789", sceneIndex: 3 });
+      const result = readOneScene({ id: "789", sceneIndex: 3 });
 
       // Should use scene with ID "789" (index 7) not sceneIndex 3
       expect(result.path).toBe("s7");

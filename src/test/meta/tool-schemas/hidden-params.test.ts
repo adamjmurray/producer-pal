@@ -176,6 +176,10 @@ describe("hidden params", () => {
       ["ppal-read-track", "trackId"],
       ["ppal-read-scene", "sceneId"],
       ["ppal-read-device", "deviceId"],
+      ["ppal-read-clip", "ids"],
+      ["ppal-read-track", "ids"],
+      ["ppal-read-scene", "ids"],
+      ["ppal-read-device", "ids"],
       ["ppal-update-track", "ids"],
       ["ppal-update-scene", "ids"],
       ["ppal-update-clip", "ids"],
@@ -212,6 +216,10 @@ describe("hidden params", () => {
   // well-founded guess `ids` is.
   it("publishes path and accepts paths as a fallback", () => {
     const aliases: Array<[string, string]> = [
+      ["ppal-read-clip", "paths"],
+      ["ppal-read-track", "paths"],
+      ["ppal-read-scene", "paths"],
+      ["ppal-read-device", "paths"],
       ["ppal-update-track", "paths"],
       ["ppal-update-scene", "paths"],
       ["ppal-update-clip", "paths"],
@@ -294,16 +302,19 @@ describe("hidden params", () => {
     }
   });
 
-  // A rename is safe to follow blindly; these two are not. `split` reads its
+  // A rename is safe to follow blindly; none of these are. `split` reads its
   // positions from the clip's start where `arrangementSplit` reads the song
-  // timeline, and `takeLane` counts from 1 where the `l<n>` segment counts from
-  // 0 — so a caller who keeps the value writes the wrong bar or the wrong lane.
-  // The note is the only part of the warning that says so.
+  // timeline, `takeLane` counts from 1 where the `l<n>` segment counts from 0,
+  // and `count` becomes a repeated path rather than a number, so a caller who
+  // keeps the value writes the wrong bar, the wrong lane, or a path that names
+  // nothing. The note is the only part of the warning that says so.
   it("tells a caller how the replacement reads the value, where it differs", () => {
     const notes: Array<[string, string, string]> = [
       ["ppal-update-clip", "split", "song timeline"],
       ["ppal-create-clip", "takeLane", "count from 0"],
       ["ppal-duplicate", "takeLane", "count from 0"],
+      ["ppal-create-track", "count", "repeat it once per track"],
+      ["ppal-create-scene", "count", "repeat it once per scene"],
     ];
 
     for (const [toolName, param, expected] of notes) {

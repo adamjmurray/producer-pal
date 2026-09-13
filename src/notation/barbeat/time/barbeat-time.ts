@@ -430,19 +430,24 @@ export function durationToAbletonBeats(
   // grammars; output stays `bar`. The mixed tail carries a SIGN (`([+-])n…`):
   // `1bar-n/16` is "almost a full bar". A leading sign group shifts the capture
   // indices read below.
+  // Bare-count `n<count>bar` (`n1bar`, `n4bar`) is an accepted alias of
+  // `<count>bar` (untaught tolerance, ADR-0018): unambiguous, so it is matched
+  // as its own alternative (group 9) rather than routed through the bar-count
+  // group, keeping the existing group numbering below untouched.
   const match = duration.match(
-    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))$/,
+    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?)|n(0|[1-9]\d*)bars?)$/,
   );
 
   if (!match) {
-    // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error
-    // models reach for. Give the targeted "did you mean <count>bar" steer rather than
-    // the generic format error. Mirrors the badBarDuration rule in both grammars.
-    const barNPrefix = duration.match(/^n(?:\d*\/)?(\d+)bars?$/);
+    // `n`-prefixed FRACTION bar duration (`n/1bar`, `n3/4bar`): a category error
+    // models reach for — the `n` sigil marks a note-value fraction, and a bar
+    // count can't be guessed from one. Mirrors the badBarDuration rule in both
+    // grammars.
+    const barNFraction = duration.match(/^n(\d*)\/(\d+)bars?$/);
 
-    if (barNPrefix) {
+    if (barNFraction) {
       throw new Error(
-        `"${duration}" is invalid: bar durations don't use the "n" prefix — write <count>bar (e.g. ${barNPrefix[1]}bar).`,
+        `"${duration}" is invalid: an n fraction and a bar count are different things — write n${barNFraction[1]}/${barNFraction[2]} for a note value, or <count>bar (e.g. 4bar) for bars, not combined.`,
       );
     }
 
@@ -451,7 +456,12 @@ export function durationToAbletonBeats(
     );
   }
 
-  const bars = match[1] != null ? Number.parseInt(match[1]) : 0;
+  const bars =
+    match[1] != null
+      ? Number.parseInt(match[1])
+      : match[9] != null
+        ? Number.parseInt(match[9])
+        : 0;
   const divisionByZero = `Invalid duration: division by zero in "${duration}"`;
   // Whole-note fraction → quarter notes (Ableton beats), so scale = 4. The tail
   // is absent for a pure `<count>bar` (fractionBeats stays 0).

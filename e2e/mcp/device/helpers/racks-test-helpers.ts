@@ -45,7 +45,10 @@ export interface DeviceInfo {
 export interface ParamEntryResult {
   name: string;
   value?: unknown;
-  /** Why the write landed nowhere, when it didn't */
+  /** False only on a param nothing was written to */
+  ok?: boolean;
+  /** Why the write landed nowhere, or why the value that landed isn't the one
+   * asked for */
   reason?: string;
 }
 

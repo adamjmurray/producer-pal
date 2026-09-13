@@ -15,7 +15,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -192,7 +192,11 @@ export function setupArrangementClipPath(
       create_midi_clip: () => {
         tempMidiCounter += 1;
 
-        return `id temp_midi_${String(tempMidiCounter)}`;
+        const tempId = `temp_midi_${String(tempMidiCounter)}`;
+
+        registerMockObject(tempId, { type: "Clip" });
+
+        return `id ${tempId}`;
       },
       delete_clip: () => null,
     },

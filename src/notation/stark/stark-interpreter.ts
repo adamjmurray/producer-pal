@@ -51,7 +51,7 @@ import {
   VELOCITY_SOFT_MIN,
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface StarkInterpretOptions {

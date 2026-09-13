@@ -387,7 +387,6 @@ describe("REST API Routes", () => {
         path: "s+",
         tempo: 100,
         capture: false,
-        count: 1,
       });
       expect(body.warnings).toBeUndefined();
     });

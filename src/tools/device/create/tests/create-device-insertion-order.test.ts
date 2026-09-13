@@ -12,7 +12,10 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  warn: vi.fn(),
+  warnOnce: vi.fn(),
+}));
 
 /** A track holding two devices, ready to take an insert at position 1. */
 function registerTrack(index: number, insertedId: string): void {
@@ -22,6 +25,41 @@ function registerTrack(index: number, insertedId: string): void {
     methods: { insert_device: () => ["id", insertedId] },
   });
   registerMockObject(insertedId, { path: livePath.track(index).device(1) });
+}
+
+/** in_note per rack chain: C1 (36) layered twice, D1 (38) once, so the rack's
+ * chain 2 and the pad's pC1/c1 are one chain. */
+const LAYERED_CHAIN_NOTES = [36, 38, 36];
+
+/** A drum rack on track 2 whose chains each already hold a device. */
+function registerLayeredRack(): void {
+  registerMockObject("track-2", {
+    path: livePath.track(2),
+    properties: { devices: children("drum-rack") },
+  });
+  registerMockObject("drum-rack", {
+    path: livePath.track(2).device(0),
+    type: "RackDevice",
+    properties: {
+      chains: children("chain-0", "chain-1", "chain-2"),
+      can_have_drum_pads: 1,
+    },
+  });
+
+  for (const [index, inNote] of LAYERED_CHAIN_NOTES.entries()) {
+    registerMockObject(`chain-${index}`, {
+      path: livePath.track(2).device(0).chain(index),
+      type: "DrumChain",
+      properties: { in_note: inNote, devices: children(`sampler-${index}`) },
+      methods: { insert_device: () => ["id", `added-${index}`] },
+    });
+
+    for (const id of [`sampler-${index}`, `added-${index}`]) {
+      registerMockObject(id, {
+        path: livePath.track(2).device(0).chain(index).device(0),
+      });
+    }
+  }
 }
 
 describe("createDevice insertion order", () => {
@@ -125,5 +163,50 @@ describe("createDevice insertion order", () => {
     expect(
       createDevice({ path: "s0,t0/d1", deviceName: "Utility" }),
     ).toStrictEqual({ id: "created-0", path: "t0/d1" });
+  });
+
+  // The track holds two devices, so d99 is past the end and the insert appends
+  // instead. An appended audio effect goes last and moves nothing, so the
+  // position named after it is still the position it named.
+  it("allows a position after an entry past the end of the chain", () => {
+    expect(
+      createDevice({ path: "t0/d99,t0/d0", deviceName: "Utility" }),
+    ).toStrictEqual([
+      { id: "created-0", path: "t0/d1" },
+      { id: "created-0", path: "t0/d1" },
+    ]);
+  });
+
+  // Same shape, but Live sorts an instrument ahead of the audio effects, so
+  // the append the past-the-end entry falls back to still shifts the chain.
+  it("refuses a position after a past-the-end entry Live re-sorts", () => {
+    expect(() =>
+      createDevice({ path: "t0/d99,t0/d0", deviceName: "Operator" }),
+    ).toThrow('path entry "t0/d0" is spelled through "t0"');
+  });
+});
+
+describe("createDevice insertion order — one chain, two spellings", () => {
+  beforeEach(registerLayeredRack);
+
+  // A pad numbers its own layers and the rack numbers every chain it holds, so
+  // pC1/c1 and c2 are two names for one chain. Comparing the names would let
+  // the second entry through, and the first insert has already moved it.
+  it("refuses a rack-relative entry naming the chain a pad entry filled", () => {
+    expect(() =>
+      createDevice({
+        path: "t2/d0/pC1/c1/d0,t2/d0/c2/d0",
+        deviceName: "Utility",
+      }),
+    ).toThrow('path entry "t2/d0/c2/d0" is spelled through "t2/d0/pC1/c1"');
+  });
+
+  it("allows two spellings that name genuinely different chains", () => {
+    expect(() =>
+      createDevice({
+        path: "t2/d0/pC1/c0/d0,t2/d0/c1/d0",
+        deviceName: "Utility",
+      }),
+    ).not.toThrow();
   });
 });

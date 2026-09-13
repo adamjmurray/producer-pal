@@ -7,7 +7,7 @@
 // that isn't one of the track's own children. See dev/Object-Paths.md.
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { type DeviceSegment } from "../object-path.ts";
+import { type DeviceSegment, type DeviceTypeName } from "../object-path.ts";
 import { pathError } from "./object-path-lexer.ts";
 
 const DEVICE = /^d(\d+)$/;
@@ -17,27 +17,82 @@ const DRUM_PAD = /^p(.+)$/;
 /** The drum rack pad that catches every note no other pad claims. */
 const CATCH_ALL_PAD = "*";
 
+/** How one device type is spelled in a path, and what to call it in prose. */
+export interface DeviceTypeForm {
+  /** The canonical segment spelling, e.g. "afx". */
+  segment: string;
+  /** The long spelling, also parsed but never rendered. */
+  long: string;
+  noun: string;
+  plural: string;
+  /** Whether the segment carries an index; an instrument doesn't. */
+  indexed: boolean;
+}
+
+/**
+ * How each device type is spelled and named, plus the long form also accepted.
+ * Long forms parse but are never rendered and never documented outside
+ * dev/Object-Paths.md. An instrument takes no index: a container holds one.
+ */
+export const DEVICE_TYPE_FORMS: Record<DeviceTypeName, DeviceTypeForm> = {
+  instrument: {
+    segment: "inst",
+    long: "instrument",
+    noun: "instrument",
+    plural: "instruments",
+    indexed: false,
+  },
+  "midi-effect": {
+    segment: "mfx",
+    long: "midifx",
+    noun: "MIDI effect",
+    plural: "MIDI effects",
+    indexed: true,
+  },
+  "audio-effect": {
+    segment: "afx",
+    long: "audiofx",
+    noun: "audio effect",
+    plural: "audio effects",
+    indexed: true,
+  },
+};
+
+/** Each device type's segment pattern, with the long form, built once. */
+const DEVICE_TYPE_PATTERNS = Object.entries(DEVICE_TYPE_FORMS).map(
+  ([deviceType, form]) => ({
+    deviceType: deviceType as DeviceTypeName,
+    form,
+    pattern: new RegExp(`^(?:${form.segment}|${form.long})(\\d*)$`),
+  }),
+);
+
 /** One step down a device chain: the track root, or a segment under it. */
 type DeviceTailStep = DeviceSegment["kind"] | "root";
 
 const DEVICE_KIND = "device";
-const A_DEVICE = `"d<index>"`;
+const DEVICE_BY_TYPE_KIND = "device-by-type";
+const A_DEVICE = `"d<index>", "inst", "mfx<index>", or "afx<index>"`;
+const A_PAD_CHILD = `"c<index>", ${A_DEVICE}`;
 
 // How to name each step, and what may follow it. Without these rules a path
 // like "t0/c0" or "t0/d0/d1" parses and then fails as a missing object, which
 // reads as "your rack is wrong" rather than "your path is".
+const AFTER_A_DEVICE = {
+  noun: "a device",
+  expected: `"c<index>", "rc<index>", or "p<note>"`,
+};
+
 const DEVICE_TAIL_RULES: Record<
   DeviceTailStep,
   { noun: string; expected: string }
 > = {
   root: { noun: "a track", expected: A_DEVICE },
-  device: {
-    noun: "a device",
-    expected: `"c<index>", "rc<index>", or "p<note>"`,
-  },
+  device: AFTER_A_DEVICE,
+  "device-by-type": AFTER_A_DEVICE,
   chain: { noun: "a chain", expected: A_DEVICE },
   "return-chain": { noun: "a return chain", expected: A_DEVICE },
-  "drum-pad": { noun: "a drum pad", expected: `"c<index>" or ${A_DEVICE}` },
+  "drum-pad": { noun: "a drum pad", expected: A_PAD_CHILD },
 };
 
 /**
@@ -68,6 +123,12 @@ function parseDeviceSegment(
 
   if (chain) {
     return { kind: "chain", index: Number(chain[1]) };
+  }
+
+  const byType = parseDeviceTypeSegment(segment, label, input);
+
+  if (byType) {
+    return byType;
   }
 
   const drumPad = DRUM_PAD.exec(segment);
@@ -144,11 +205,67 @@ function canFollow(
   kind: DeviceSegment["kind"],
   previous: DeviceTailStep,
 ): boolean {
-  if (kind === DEVICE_KIND) {
-    return previous !== DEVICE_KIND;
+  if (isDeviceStep(kind)) {
+    return !isDeviceStep(previous);
   }
 
   return (
-    previous === DEVICE_KIND || (kind === "chain" && previous === "drum-pad")
+    isDeviceStep(previous) || (kind === "chain" && previous === "drum-pad")
   );
+}
+
+/**
+ * Whether a step is a device, however it was addressed — by index or by type.
+ * @param step - A segment kind, or the root
+ * @returns True for both device spellings
+ */
+function isDeviceStep(step: DeviceTailStep): boolean {
+  return step === DEVICE_KIND || step === DEVICE_BY_TYPE_KIND;
+}
+
+/**
+ * Parses a segment that names a device by its type rather than its position.
+ * @param segment - The segment
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @returns The segment, or null when it names no device type
+ */
+function parseDeviceTypeSegment(
+  segment: string,
+  label: string,
+  input: string,
+): DeviceSegment | null {
+  for (const { deviceType, form, pattern } of DEVICE_TYPE_PATTERNS) {
+    const match = pattern.exec(segment);
+
+    if (!match) {
+      continue;
+    }
+
+    const digits = match[1] as string;
+
+    if (form.indexed && digits === "") {
+      throw pathError(
+        label,
+        input,
+        `"${segment}" needs an index; the first ${form.noun} is "${form.segment}0"`,
+      );
+    }
+
+    if (!form.indexed && digits !== "") {
+      throw pathError(
+        label,
+        input,
+        `"${segment}" takes no index; a container holds one ${form.noun}, so it is just "${form.segment}"`,
+      );
+    }
+
+    return {
+      kind: "device-by-type",
+      deviceType: deviceType,
+      index: digits === "" ? 0 : Number(digits),
+    };
+  }
+
+  return null;
 }

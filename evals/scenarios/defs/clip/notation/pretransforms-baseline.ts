@@ -32,13 +32,13 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
   MSG_CONNECT,
   READ_DRUM_NOTES,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 

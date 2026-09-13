@@ -8,7 +8,7 @@ import {
   handleQuantization,
   QUANTIZE_GRID,
   QUANTIZE_GRID_ALIASES,
-} from "#src/tools/clip/update/helpers/update-clip-notes-helpers.ts";
+} from "#src/tools/clip/update/helpers/note-updates.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type

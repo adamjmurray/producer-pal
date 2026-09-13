@@ -8,7 +8,7 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
@@ -324,6 +324,11 @@ export function createExpressApp(): Express {
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error(`Error handling MCP request: ${String(error)}`);
+      // Echoed to the caller below: it's the only signal an MCP client gets
+      // when this route breaks. That's only safe because nothing on this path
+      // touches the filesystem or user data today (mirrors the `expose` note
+      // in error-handler-middleware.ts) — never let a message here carry a
+      // path or user content.
       res.status(500).json(internalError(errorMessage(error)));
     }
   });

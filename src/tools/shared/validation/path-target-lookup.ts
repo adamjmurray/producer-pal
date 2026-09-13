@@ -6,22 +6,16 @@
 // Addressing tracks and scenes by where they are instead of by id, so a caller
 // that just read a Set can act on what it found without carrying ids around.
 //
-// On a tool taking a list, a path that names the wrong kind of thing, or
-// nothing at all, warns and contributes nothing — the same as an id that
-// doesn't resolve, so one bad entry costs its own object rather than the whole
-// batch. A read naming one object has nothing left to return, so it throws.
-//
-// A hole in the list itself ("t0,,t1") is neither: nothing can line up against
-// a list whose length is a guess, so it throws before anything runs, like a
-// hole in `id`.
+// A lookup reports a miss rather than raising it: on a tool taking a list the
+// miss becomes that target's result entry. A read naming one object has nothing
+// left to return, so it throws instead.
 
-import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  pathEntries,
-  trackSegmentPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+  existingId,
+  type IdLookup,
+} from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
+import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   isNewObjectPath,
   NEW_OBJECT_NOUNS,
@@ -31,33 +25,31 @@ import {
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
- * Resolves track path(s) to the ids of the tracks they name.
- * @param paths - Comma-separated track paths (e.g. "t0,rt1,mt")
- * @param label - Param name the paths came from, for warnings
- * @returns One track id per path entry, null where a path named none
+ * The id of the track one path names, or the reason it names none.
+ * @param entry - One track path (e.g. "t0", "rt1", "mt")
+ * @param label - Param name the path came from, for the reason
+ * @returns The track's id, or why there isn't one
  */
-export function trackIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (path, entry) =>
-    trackAtPath(path, entry, label),
-  );
+export function trackIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(trackAtPath(parseObjectPath(entry, label), entry, label), {
+    noun: "track",
+    label,
+    entry,
+  });
 }
 
 /**
- * Resolves scene path(s) to the ids of the scenes they name.
- * @param paths - Comma-separated scene paths (e.g. "s0,s3")
- * @param label - Param name the paths came from, for warnings
- * @returns One scene id per path entry, null where a path named none
+ * The id of the scene one path names, or the reason it names none.
+ * @param entry - One scene path (e.g. "s3")
+ * @param label - Param name the path came from, for the reason
+ * @returns The scene's id, or why there isn't one
  */
-export function sceneIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (path, entry) =>
-    sceneAtPath(path, entry, label),
-  );
+export function sceneIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(sceneAtPath(parseObjectPath(entry, label), entry, label), {
+    noun: "scene",
+    label,
+    entry,
+  });
 }
 
 /**
@@ -146,41 +138,6 @@ function existing(object: LiveAPI, entry: string, label: string): LiveAPI {
   }
 
   return object;
-}
-
-/**
- * Resolves each entry through a type-specific lookup, keeping one slot per
- * path so a caller pairing paths against another list keeps its positions.
- * @param paths - The raw path param
- * @param label - Param name the paths came from, for warnings
- * @param resolve - Turns a parsed path into the object it names, or throws
- * @returns One id per path entry, null where a path named none
- */
-function idPerPath(
-  paths: string,
-  label: string,
-  resolve: (path: ObjectPath, entry: string) => LiveAPI,
-): Array<string | null> {
-  const ids: Array<string | null> = [];
-
-  for (const entry of pathEntries(paths, label)) {
-    try {
-      const object = resolve(parseObjectPath(entry, label), entry);
-
-      if (object.exists()) {
-        ids.push(object.id);
-        continue;
-      }
-
-      console.warn(`nothing at ${label} "${entry}"`);
-    } catch (error) {
-      console.warn(errorMessage(error));
-    }
-
-    ids.push(null);
-  }
-
-  return ids;
 }
 
 /**

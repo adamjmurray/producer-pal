@@ -3,12 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import {
   requireCreatedClip,
   requireCreatedSessionClip,
-} from "#src/tools/clip/helpers/clip-result-helpers.ts";
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { rawNotesToNoteEvents, readAllClipNotes } from "./clip-notes.ts";
 

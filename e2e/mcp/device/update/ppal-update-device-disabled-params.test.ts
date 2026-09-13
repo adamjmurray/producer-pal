@@ -9,9 +9,10 @@
  * chain mixer and device parameters. See e2e/live-sets/racks-test-spec.md.
  *
  * Live accepts a `set` on a disabled parameter, reports success, and ignores
- * it — so these assert the write is refused with a warning rather than
- * silently doing nothing. Macro mappings can't be made through the Live API,
- * which is why they're baked into the Set.
+ * it — so these assert the write is refused and says so, rather than silently
+ * doing nothing: a device param in its own `params` entry, a chain's mixer in a
+ * warning, since its result has no per-parameter entry. Macro mappings can't be
+ * made through the Live API, which is why they're baked into the Set.
  *
  * Run with: npm run e2e:mcp -- ppal-update-device-disabled-params
  */
@@ -152,8 +153,10 @@ describe("update-device on macro-mapped parameters", () => {
   // written through `params` no-ops the same way, and that's the more common
   // case in factory racks.
   describe("device parameters", () => {
-    it("refuses a mapped device parameter", async () => {
-      const { warnings } = await callWithWarnings(
+    // A device param has an entry of its own to carry the refusal, where a
+    // chain's mixer has only the warning above.
+    it("refuses a mapped device parameter in its own entry", async () => {
+      const { data, warnings } = await callWithWarnings(
         ctx.client!,
         "ppal-update-device",
         {
@@ -162,13 +165,14 @@ describe("update-device on macro-mapped parameters", () => {
         },
       );
 
-      expect(
-        warnings.some(
-          (w) =>
-            w.includes('param "Volume"') &&
-            w.includes("is disabled and was not changed"),
-        ),
-      ).toBe(true);
+      expect(data.params).toStrictEqual([
+        {
+          name: "Volume",
+          ok: false,
+          reason: expect.stringContaining("is disabled and was not changed"),
+        },
+      ]);
+      expect(warnings).toStrictEqual([]);
     });
 
     it("writes an unmapped device parameter", async () => {

@@ -7,19 +7,25 @@ import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.ts";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
+import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
-import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import {
+  namedIdParam,
+  namedParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
+import {
+  readFanOut,
+  type ReadResult,
+} from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import {
   drumMapReadDepth,
   postProcessDrumMap,
-} from "./helpers/read-device-drum-map-helpers.ts";
+} from "./helpers/drum-map-post-processing.ts";
 import {
   buildDrumPadInfo,
   readDrumPadByPath,
-} from "./helpers/read-device-drum-pad-helpers.ts";
+} from "./helpers/drum-pad-reading.ts";
 import { type ReadOptions } from "./helpers/read-device-options.ts";
 
 // ============================================================================
@@ -29,11 +35,34 @@ import { type ReadOptions } from "./helpers/read-device-options.ts";
 interface ReadDeviceArgs {
   id?: string;
   /** Hidden alias for id */
+  ids?: string;
+  /** Hidden alias for id */
   deviceId?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   include?: string[];
   maxDepth?: number;
   paramSearch?: string;
+}
+
+/**
+ * Read information about the device(s), chain(s), or drum pad(s) a call names
+ * @param args - The parameters
+ * @param args.id - Comma-separated device or drum pad IDs to read
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Comma-separated device/chain/drum-pad paths
+ * @param args.paths - Hidden alias for path
+ * @param context - Internal context object (supplies the active notation)
+ * @returns One device, or one entry per target named
+ */
+export function readDevice(
+  args: ReadDeviceArgs,
+  context: Partial<ToolContext> = {},
+): ReadResult<Record<string, unknown>> {
+  return readFanOut(args, { object: "device", idAlias: "deviceId" }, (one) =>
+    readOneDevice(one, context),
+  );
 }
 
 /**
@@ -48,7 +77,7 @@ interface ReadDeviceArgs {
  * @param context - Internal context object (supplies the active notation)
  * @returns Device, chain, or drum pad information
  */
-export function readDevice(
+export function readOneDevice(
   {
     id,
     deviceId,
@@ -64,7 +93,9 @@ export function readDevice(
   deviceId = namedIdParam(id, deviceId, "deviceId");
   path = namedParam(path, "path");
 
-  validateExclusiveParams(deviceId, path, "id", "path");
+  if (deviceId == null && path == null) {
+    throw new Error("id or path is required");
+  }
 
   const includeAll = include.includes("*");
   const includeChains = includeAll || include.includes("chains");
@@ -124,25 +155,25 @@ function readDeviceTarget(
     return readDeviceById(deviceId, options);
   }
 
-  // readDevice's validateExclusiveParams already rejected "neither" (and "both"),
-  // so a missing deviceId means the path is present.
+  // readOneDevice already refused a call naming neither, so a missing deviceId
+  // means the path is present.
   const devicePath = path as string;
   const resolved = resolvePathToLiveApi(devicePath);
 
   switch (resolved.targetType) {
     case "device":
-      return readDeviceByLiveApiPath(resolved.liveApiPath, options);
+      return readDeviceByLiveApiPath(resolved.liveApiPath, devicePath, options);
 
     case "chain":
     case "return-chain":
-      return readChain(resolved.liveApiPath, devicePath, options);
+      return readChain(resolved.liveApiPath, resolved.path, options);
 
     case "drum-pad":
       return readDrumPadByPath(
         resolved.liveApiPath,
         resolved.drumPadNote as string,
         resolved.remainingSegments,
-        devicePath,
+        resolved.path,
         options,
       );
 
@@ -171,7 +202,7 @@ function readDeviceById(
   const device = LiveAPI.from(`id ${deviceId}`);
 
   if (!device.exists()) {
-    throw new Error(`Device with ID ${deviceId} not found`);
+    throw new Error(`id "${deviceId}" does not exist`);
   }
 
   // duplicate and delete both hand back pad ids, so reading one has to answer
@@ -187,17 +218,19 @@ function readDeviceById(
 /**
  * Read device by Live API path
  * @param liveApiPath - Live API canonical path
+ * @param path - The path as the caller wrote it, for the error
  * @param options - Read options
  * @returns Device information
  */
 function readDeviceByLiveApiPath(
   liveApiPath: string,
+  path: string,
   options: ReadOptions,
 ): Record<string, unknown> {
   const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
-    throw new Error(`Device not found at path: ${liveApiPath}`);
+    throw new Error(`nothing at path "${path}"`);
   }
 
   return readDeviceShared(device, options);

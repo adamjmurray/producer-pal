@@ -12,18 +12,20 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
-import { clipStateAssertion } from "../clip/helpers/clip-scenario-helpers.ts";
+import { clipStateAssertion } from "../clip/helpers/clip-note-assertions.ts";
 import {
   CONTEXT_LIVE_SET,
   LEAD_SLOT,
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
-  assertMemoryRead,
-  assertNoMemoryRead,
   seedContext,
   type SeedMemory,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-scenario-setup.ts";
+import {
+  assertMemoryRead,
+  assertNoMemoryRead,
+} from "./helpers/memory-assertions.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 

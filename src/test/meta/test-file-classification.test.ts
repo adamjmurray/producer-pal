@@ -88,10 +88,10 @@ interface OxlintOverride {
 
 describe("test file classification", () => {
   it("should give oxlint's relaxed line budget to exactly the test suites", () => {
-    // Helpers and fixtures keep the 325-line source budget on purpose: only a
+    // Helpers and fixtures keep the 375-line source budget on purpose: only a
     // whole suite has a reason to run long.
     const relaxed = oxlintOverridesWithRule("max-lines").filter(
-      (block) => (lineLimitOf(block) ?? 0) > 325,
+      (block) => (lineLimitOf(block) ?? 0) > 375,
     );
 
     expect(relaxed).toHaveLength(1);

@@ -21,7 +21,8 @@ import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
   type WrittenPseudoParam,
-} from "../helpers/device-display-helpers.ts";
+  skippedParam,
+} from "../helpers/param-reading.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
@@ -104,12 +105,10 @@ export function applySpecializedParamWrite(
   }
 
   if (!param.write) {
-    console.warn(`"${param.name}" is read-only`);
-
-    // Said twice on purpose, like the param-not-found reasons: the entry is
-    // where the caller reads what happened to this param, and the warning
-    // stays until every way a param write can fail has an entry of its own.
-    return [{ name: param.name, reason: "read-only" }];
+    // Named as the call spelled it, since matching is case-insensitive: that is
+    // what the caller has to match the entry on. The entry is where they read
+    // what happened to this param, so it warns nowhere.
+    return [skippedParam(key, "read-only")];
   }
 
   const { writeFailed } = param;
@@ -136,6 +135,20 @@ export function applySpecializedParamWrite(
       }),
     },
   ];
+}
+
+/**
+ * Whether a `params` key names a pseudo-param of this device. A pseudo-param is
+ * a device property, so it has no DeviceParameter and no id — a caller that
+ * needs to know which parameter a key reaches has to leave these out.
+ * @param device - LiveAPI device object
+ * @param key - Param name from the `params` input
+ * @returns True when the key is one of this device's pseudo-params
+ */
+export function isSpecializedParamKey(device: LiveAPI, key: string): boolean {
+  const spec = getSpecForDevice(device);
+
+  return spec?.params != null && findParam(spec.params, key) != null;
 }
 
 /**

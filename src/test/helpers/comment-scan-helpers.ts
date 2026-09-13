@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Measures comment volume in the non-test TypeScript sources. Shared by
+// Measures comments in the non-test TypeScript sources. Shared by
 // `npm run comment:stats` and src/test/comment-limits.test.ts so both report the
 // same numbers.
 //
@@ -33,8 +33,12 @@ export const COMMENT_TREES = [
 
 export type CommentTree = (typeof COMMENT_TREES)[number];
 
-/** A comment block this long or longer counts as a long block. */
-export const LONG_BLOCK_LINES = 8;
+/** One run of consecutive comment lines. */
+export interface CommentBlock {
+  /** 1-based line the run starts on. */
+  line: number;
+  lines: number;
+}
 
 /** Comment and code line counts for one source. */
 export interface CommentCounts {
@@ -44,6 +48,8 @@ export interface CommentCounts {
   longestBlock: number;
   /** 1-based line the longest block starts on, or 0 when there is none. */
   longestBlockLine: number;
+  /** Blocks longer than the scan's `maxBlockLines`, in file order. */
+  blocks: CommentBlock[];
 }
 
 /** Counts for one file, with its repo-relative path. */
@@ -61,79 +67,77 @@ const DIRECTIVE =
  * Count comment and code lines in a TypeScript source
  * @param source - File contents
  * @param fileName - Name used to pick the parser dialect (.tsx parses as TSX)
- * @returns Comment, code, and longest-block counts
+ * @param maxBlockLines - Report blocks longer than this; none by default
+ * @returns Comment and code counts, the longest block, and the long blocks
  */
 export function scanComments(
   source: string,
   fileName = "source.ts",
+  maxBlockLines = Number.POSITIVE_INFINITY,
 ): CommentCounts {
   const lines = source.split("\n");
   const kinds = classifyLines(source, lines, fileName);
-  let commentLines = 0;
-  let codeLines = 0;
-  let longestBlock = 0;
-  let longestBlockLine = 0;
-  let run = 0;
+  const blocks = commentBlocks(kinds);
+  const longest = blocks.reduce(
+    (best, block) => (block.lines > best.lines ? block : best),
+    { line: 0, lines: 0 },
+  );
 
-  for (const [i, kind] of kinds.entries()) {
-    if (kind === "code") {
-      codeLines++;
-    }
-
-    if (kind === "comment") {
-      commentLines++;
-      run++;
-
-      if (run > longestBlock) {
-        longestBlock = run;
-        longestBlockLine = i + 2 - run;
-      }
-    } else {
-      run = 0;
-    }
-  }
-
-  return { commentLines, codeLines, longestBlock, longestBlockLine };
+  return {
+    commentLines: kinds.filter((kind) => kind === "comment").length,
+    codeLines: kinds.filter((kind) => kind === "code").length,
+    longestBlock: longest.lines,
+    longestBlockLine: longest.line,
+    blocks: blocks.filter((block) => block.lines > maxBlockLines),
+  };
 }
 
 /**
  * Scan one file from disk
  * @param filePath - Absolute path to a .ts or .tsx file
+ * @param maxBlockLines - Report blocks longer than this; none by default
  * @returns Counts plus the file's repo-relative path
  */
-export function scanCommentFile(filePath: string): FileCommentStats {
+export function scanCommentFile(
+  filePath: string,
+  maxBlockLines?: number,
+): FileCommentStats {
   const source = fs.readFileSync(filePath, "utf8");
 
   return {
     file: path.relative(projectRoot, filePath),
-    ...scanComments(source, filePath),
+    ...scanComments(source, filePath, maxBlockLines),
   };
 }
 
 /**
  * Scan every non-test TypeScript source in a tree
  * @param tree - Tree name, resolved against the project root
+ * @param maxBlockLines - Report blocks longer than this; none by default
  * @returns One entry per file, in directory order
  */
-export function scanCommentTree(tree: CommentTree): FileCommentStats[] {
+export function scanCommentTree(
+  tree: CommentTree,
+  maxBlockLines?: number,
+): FileCommentStats[] {
   return findSourceFiles(path.join(projectRoot, tree), true)
     .filter((file) => TS_EXTENSIONS.has(path.extname(file)))
-    .map(scanCommentFile);
+    .map((file) => scanCommentFile(file, maxBlockLines));
 }
 
 /** Aggregate counts for a set of files. */
-export interface CommentSummary extends CommentCounts {
+export interface CommentSummary {
   files: number;
-  /** Files whose longest block reaches LONG_BLOCK_LINES. */
-  longBlockFiles: number;
-  /** Repo-relative path of the file holding the longest block. */
-  longestBlockFile: string;
+  commentLines: number;
+  codeLines: number;
+  /** The longest block any one of the files holds. */
+  longestBlock: number;
 }
 
 /**
  * Total a tree's per-file counts
  * @param stats - Per-file counts
- * @returns Summed counts, plus where the longest block lives
+ * @returns Summed counts and the longest block in the set
  */
 export function summarizeComments(stats: FileCommentStats[]): CommentSummary {
   const summary: CommentSummary = {
@@ -141,30 +145,60 @@ export function summarizeComments(stats: FileCommentStats[]): CommentSummary {
     commentLines: 0,
     codeLines: 0,
     longestBlock: 0,
-    longestBlockLine: 0,
-    longBlockFiles: 0,
-    longestBlockFile: "",
   };
 
   for (const entry of stats) {
     summary.commentLines += entry.commentLines;
     summary.codeLines += entry.codeLines;
-
-    if (entry.longestBlock >= LONG_BLOCK_LINES) {
-      summary.longBlockFiles++;
-    }
-
-    if (entry.longestBlock > summary.longestBlock) {
-      summary.longestBlock = entry.longestBlock;
-      summary.longestBlockLine = entry.longestBlockLine;
-      summary.longestBlockFile = entry.file;
-    }
+    summary.longestBlock = Math.max(summary.longestBlock, entry.longestBlock);
   }
 
   return summary;
 }
 
+/**
+ * Comment lines per code line, rounded to 3 decimals
+ * @param counts - Any comment and code line counts
+ * @returns The density, or 0 when there is no code
+ */
+export function commentDensity(counts: {
+  commentLines: number;
+  codeLines: number;
+}): number {
+  if (counts.codeLines === 0) {
+    return 0;
+  }
+
+  return Number((counts.commentLines / counts.codeLines).toFixed(3));
+}
+
 const TS_EXTENSIONS = new Set([".ts", ".tsx"]);
+
+/**
+ * Find every run of consecutive comment lines
+ * @param kinds - One kind per line
+ * @returns One entry per run, in file order
+ */
+function commentBlocks(kinds: LineKind[]): CommentBlock[] {
+  const blocks: CommentBlock[] = [];
+  let run = 0;
+
+  // The appended line is a sentinel: it closes a run that ends the file.
+  for (const [i, kind] of [...kinds, "blank" as LineKind].entries()) {
+    if (kind === "comment") {
+      run++;
+      continue;
+    }
+
+    if (run > 0) {
+      blocks.push({ line: i - run + 1, lines: run });
+    }
+
+    run = 0;
+  }
+
+  return blocks;
+}
 
 /**
  * Classify every line as blank, code, comment, or skipped

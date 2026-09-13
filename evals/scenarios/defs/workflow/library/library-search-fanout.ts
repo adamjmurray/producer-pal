@@ -14,7 +14,7 @@
  */
 
 import { getToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario-helpers.ts";
+import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,

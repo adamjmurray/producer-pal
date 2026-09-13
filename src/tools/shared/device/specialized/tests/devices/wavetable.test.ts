@@ -8,7 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it, type Mock } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedActions,
   applySpecializedParamWrite,
@@ -651,7 +651,7 @@ describe("Wavetable via read-device", () => {
   it("includes pseudo-params without the modulation scan when include is params", () => {
     registerReadableWavetable();
 
-    const result = readDevice({ id: "wt-1", include: ["params"] });
+    const result = readOneDevice({ id: "wt-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "filterRouting",
@@ -672,7 +672,7 @@ describe("Wavetable via read-device", () => {
   it("includes options and modulations when include contains options", () => {
     registerReadableWavetable({}, { is_parameter_modulatable: () => 1 });
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "wt-1",
       include: ["params", "options"],
     });

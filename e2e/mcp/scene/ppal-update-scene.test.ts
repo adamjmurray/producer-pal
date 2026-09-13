@@ -14,9 +14,12 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers";
 
@@ -31,7 +34,8 @@ describe("ppal-update-scene", () => {
     const created = parseToolResult<CreateSceneResult[]>(
       await ctx.client!.callTool({
         name: "ppal-create-scene",
-        arguments: { path: "s0", count: 2, name: "UpdateTest" },
+        // One path entry per scene: `count` is deprecated and warns.
+        arguments: { path: "s0,s0", name: "UpdateTest" },
       }),
     );
 
@@ -129,6 +133,46 @@ describe("ppal-update-scene", () => {
   });
 });
 
+describe("ppal-update-scene over a list with a target it can't reach", () => {
+  /**
+   * Call ppal-update-scene.
+   * @param args - The tool's arguments
+   * @returns The raw tool result
+   */
+  function updateScene(args: Record<string, unknown>): Promise<unknown> {
+    return ctx.client!.callTool({ name: "ppal-update-scene", arguments: args });
+  }
+
+  it("keeps a slot for a path that names no scene, and warns nowhere", async () => {
+    // parseBatchResult fails the test if anything warned: the entry carries it.
+    const entries = parseBatchResult<UpdateSceneResult | SkippedTargetResult>(
+      await updateScene({ path: "s0,s999", name: "ListSkip,Nowhere" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "s0" }),
+      { path: "s999", ok: false, reason: 'no scene at path "s999"' },
+    ]);
+
+    const scene = parseToolResult<ReadSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { path: "s0" },
+      }),
+    );
+
+    expect(scene.name).toBe("ListSkip");
+  });
+
+  it("throws when the one target it was given names no scene", async () => {
+    const result = await updateScene({ path: "s999", name: "Nowhere" });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('no scene at path "s999"');
+  });
+});
+
 interface CreateSceneResult {
   id: string;
   path: string;
@@ -136,6 +180,7 @@ interface CreateSceneResult {
 
 interface UpdateSceneResult {
   id: string;
+  path?: string;
 }
 
 interface ReadSceneResult {

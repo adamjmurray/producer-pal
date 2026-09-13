@@ -10,7 +10,7 @@ import {
   writeEnumByIndex,
   writeIntFromSet,
   writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import {
   type PseudoParam,
   type SpecializedDeviceSpec,

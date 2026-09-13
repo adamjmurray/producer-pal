@@ -7,7 +7,7 @@
 // (arrangement-splitting.ts), which only records what it cut and where.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 
 /** The span one clip occupied before it was cut, and the track it was on. */
 export interface SplitClipRange {

@@ -17,9 +17,9 @@ import { type EvalScenario } from "../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { trackNames } from "../live-set-helpers.ts";
-import { assertCallResult, assertPathArg } from "./path-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
+import { trackNames } from "../track-names.ts";
+import { assertCallResult, assertPathArg } from "./path-assertions.ts";
 
 const TOOL_CREATE_TRACK = "ppal-create-track";
 const TOOL_CREATE_SCENE = "ppal-create-scene";
