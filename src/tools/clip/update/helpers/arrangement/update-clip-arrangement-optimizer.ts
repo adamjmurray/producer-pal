@@ -185,21 +185,21 @@ function moveGroup(clip: LiveAPI, moves: ClipMoves): string | null {
 
   const trackIndex = survivorTrack(clip, moves.destinationById?.get(clip.id));
 
-  return trackIndex == null ? null : moveGroupKey(trackIndex, startBeats);
+  // Main lane only: survivorTrack drops every route onto or off a take lane.
+  return trackIndex == null
+    ? null
+    : moveGroupKey({ trackIndex, takeLane: null }, startBeats);
 }
 
 /**
  * The track a clip lands on, or null when it doesn't take part in the grouping.
  *
  * Skipped: session clips (they aren't moved via arrangement APIs), take-lane
- * SOURCES (the group key is track + position, which can't tell a take lane from
- * the main one, so a take-lane clip staying on its lane would wrongly mark a
- * main-lane clip below it a non-survivor), clips moving to a slot
- * (off the arrangement timeline entirely), clips moving ONTO a take lane
- * (re-created there one at a time, so the optimization has nothing to save),
- * and clips the destination won't take (wrong type, frozen) — a clip that never
- * lands overwrites nothing, so counting it only holds a sibling back for a
- * landing that never comes.
+ * SOURCES and clips moving ONTO a take lane (both re-created one at a time,
+ * outside the duplicate+move this plan models), clips moving to a slot (off the
+ * arrangement timeline entirely), and clips the destination won't take (wrong
+ * type, frozen) — a clip that never lands overwrites nothing, so counting it
+ * only holds a sibling back for a landing that never comes.
  * @param clip - Candidate clip
  * @param destination - Where the clip is moving, if the call named anywhere
  * @returns The destination track index, or null to skip the clip

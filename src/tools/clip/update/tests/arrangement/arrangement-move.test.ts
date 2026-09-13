@@ -47,7 +47,8 @@ function groupCount(
   trackIndex: number,
   startBeats: number,
 ): number | undefined {
-  return groups.get(moveGroupKey(trackIndex, startBeats))?.count;
+  return groups.get(moveGroupKey({ trackIndex, takeLane: null }, startBeats))
+    ?.count;
 }
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
@@ -316,8 +317,13 @@ describe("arrangement-move", () => {
       // Simulate previous moves onto the same lane at the same position
       const movedClipGroups = new Map<string, MoveGroup>([
         [
-          moveGroupKey(trackIndex, 64),
-          { trackIndex, count: 2, landed: new Set<string>(), deferred: [] },
+          moveGroupKey({ trackIndex, takeLane: null }, 64),
+          {
+            landing: { trackIndex, takeLane: null },
+            count: 2,
+            landed: new Set<string>(),
+            deferred: [],
+          },
         ],
       ]);
 
@@ -344,9 +350,10 @@ describe("arrangement-move", () => {
       );
       // Not counted either: nothing has landed on it yet.
       expect(groupCount(movedClipGroups, 0, 16)).toBe(0);
-      expect(movedClipGroups.get(moveGroupKey(0, 16))?.deferred).toHaveLength(
-        1,
-      );
+      expect(
+        movedClipGroups.get(moveGroupKey({ trackIndex: 0, takeLane: null }, 16))
+          ?.deferred,
+      ).toHaveLength(1);
       // The clip still gets its place in the response, in call order.
       expect(updatedClips).toStrictEqual([{ id: "200" }]);
     });
@@ -639,7 +646,7 @@ const MOVED = "moved-101";
 /** 17|1 in beats: clear of both clips, so neither move self-overlaps. */
 const TARGET_BEATS = 64;
 /** The track and position both clips are headed for. */
-const GROUP = moveGroupKey(0, TARGET_BEATS);
+const GROUP = moveGroupKey({ trackIndex: 0, takeLane: null }, TARGET_BEATS);
 
 /**
  * Two equal-length arrangement clips on one track, both about to be moved to
@@ -746,7 +753,7 @@ function groupHoldingOneClipBack(landed: string, clipExists = true) {
     [
       GROUP,
       {
-        trackIndex: 0,
+        landing: { trackIndex: 0, takeLane: null },
         count: 1,
         landed: new Set([landed]),
         deferred: [

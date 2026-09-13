@@ -175,8 +175,7 @@ function recreateOnTakeLane(
       clip,
       lane,
       targetBeats,
-      destTrackIndex,
-      laneIndex,
+      { trackIndex: destTrackIndex, takeLane: laneIndex },
       movedClipGroups,
       reasons,
     );
@@ -210,8 +209,7 @@ function promoteToMainLane(
       clip,
       LiveAPI.from(livePath.track(destTrackIndex)),
       targetBeats,
-      destTrackIndex,
-      null,
+      { trackIndex: destTrackIndex, takeLane: null },
       movedClipGroups,
       reasons,
     );
@@ -237,8 +235,7 @@ function promoteToMainLane(
  * @param clip - The arrangement clip being moved
  * @param destination - The TakeLane, or the Track for the main lane
  * @param targetBeats - Arrangement position to land at, in Ableton beats
- * @param destTrackIndex - The track the clip lands on, for the message
- * @param laneIndex - The lane it lands on, or null for the main lane
+ * @param landing - The track and lane the clip lands on
  * @param movedClipGroups - Tally of clips landing on each lane and position
  * @param reasons - What each clip has to say beyond its result
  * @returns The re-created clip, or null when it only partly landed (the clip's
@@ -248,11 +245,11 @@ function recreateForMove(
   clip: LiveAPI,
   destination: LiveAPI,
   targetBeats: number,
-  destTrackIndex: number,
-  laneIndex: number | null,
+  landing: ArrangementTrack,
   movedClipGroups: Map<string, MoveGroup>,
   reasons: ClipReasons,
 ): LiveAPI | null {
+  const landingPath = arrangementPath(landing.trackIndex, landing.takeLane);
   // Read before the clip is touched: the re-create is what changes it.
   const losses = recreatedClipLosses(clip);
 
@@ -269,19 +266,18 @@ function recreateForMove(
       noteClipReason(
         reasons,
         clip.id,
-        `re-created on ${arrangementPath(destTrackIndex, laneIndex)}` +
-          (losses ? ` (${losses})` : ""),
+        `re-created on ${landingPath}` + (losses ? ` (${losses})` : ""),
       );
     }
 
     return newClip;
   } catch (error) {
     if (error instanceof PartialRecreateError) {
-      tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
+      tallyMovedClip(movedClipGroups, landing, targetBeats);
       refuseClipWork(
         reasons,
         clip.id,
-        `not moved: an incomplete clip was left on ${arrangementPath(destTrackIndex, laneIndex)} (${error.message}); the original clip was kept`,
+        `not moved: an incomplete clip was left on ${landingPath} (${error.message}); the original clip was kept`,
       );
 
       return null;

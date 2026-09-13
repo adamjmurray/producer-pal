@@ -216,7 +216,7 @@ describe("computeOverwritePlan", () => {
       nonSurvivorIds: new Set(["41"]),
       survivorLengthsByGroup: new Map([
         [
-          moveGroupKey(0, 32),
+          moveGroupKey({ trackIndex: 0, takeLane: null }, 32),
           new Map([
             ["42", 8],
             ["43", 6],
@@ -243,7 +243,11 @@ describe("computeOverwritePlan", () => {
     const plan = computeOverwritePlan(clips, moves(32));
 
     expect(plan?.nonSurvivorIds).toStrictEqual(new Set(["61"]));
-    expect(plan?.survivorLengthsByGroup.get(moveGroupKey(0, 32))).toStrictEqual(
+    expect(
+      plan?.survivorLengthsByGroup.get(
+        moveGroupKey({ trackIndex: 0, takeLane: null }, 32),
+      ),
+    ).toStrictEqual(
       new Map([
         ["62", 40],
         ["63", 12],
@@ -263,7 +267,14 @@ describe("computeOverwritePlan", () => {
 
     expect(
       computeOverwritePlan(clips, moves(32))?.survivorLengthsByGroup,
-    ).toStrictEqual(new Map([[moveGroupKey(0, 32), new Map([["52", 8]])]]));
+    ).toStrictEqual(
+      new Map([
+        [
+          moveGroupKey({ trackIndex: 0, takeLane: null }, 32),
+          new Map([["52", 8]]),
+        ],
+      ]),
+    );
   });
 
   it("returns null when already in descending order (all survive)", () => {

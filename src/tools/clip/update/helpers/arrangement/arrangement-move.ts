@@ -35,7 +35,7 @@ import {
 interface HandleArrangementStartArgs {
   clip: LiveAPI;
   arrangementStartBeats: number | null;
-  /** Where to move the clip, or null to keep it on its own lane. */
+  /** Where to move the clip, or null for its own track's main lane. */
   destination: ArrangementTrack | null;
   movedClipGroups: Map<string, MoveGroup>;
   isMidiClip: boolean;
@@ -109,6 +109,12 @@ export function handleArrangementStartOperation({
 
   const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex));
   const destTrackIndex = destination?.trackIndex ?? sourceTrackIndex;
+  // Where the clip ends up: the named lane, or the main one — a move that names
+  // no take lane promotes a take-lane clip onto the main lane.
+  const landing = {
+    trackIndex: destTrackIndex,
+    takeLane: destination?.takeLane ?? null,
+  };
   // Omitting arrangementStart with a destination means "same place, other
   // lane", so read the clip's own start before anything moves it.
   const targetBeats =
@@ -121,7 +127,7 @@ export function handleArrangementStartOperation({
     deferNonSurvivorDeletion({
       clip,
       sourceTrack,
-      destTrackIndex,
+      landing,
       targetBeats,
       movedClipGroups,
       updatedClips,
@@ -149,12 +155,12 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // Counted against the track and position the placement wrote to — the pair
+  // Counted against the lane and position the placement wrote to — the pair
   // the "same position" warning names. Counted after the placement ran, never
   // before: a refusal above wrote nothing, while a placement that ran and then
   // failed still counts, because it cleared the target range before the copy
   // that never appeared.
-  tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
+  tallyMovedClip(movedClipGroups, landing, targetBeats);
 
   // Verify duplicate succeeded before deleting original
   if (!newClip.exists()) {
@@ -168,8 +174,8 @@ export function handleArrangementStartOperation({
   }
 
   // The copy is confirmed here, which is what releases any clip this call held
-  // back for this track and position.
-  recordLandedClip(movedClipGroups, destTrackIndex, targetBeats, clip.id);
+  // back for this lane and position.
+  recordLandedClip(movedClipGroups, landing, targetBeats, clip.id);
 
   // Clear the original to complete the move. For a self-overlapping move the
   // holding placement already trimmed it (or fully replaced it on a zero-offset

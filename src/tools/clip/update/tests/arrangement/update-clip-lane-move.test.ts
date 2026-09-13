@@ -50,16 +50,23 @@ const SOURCE_ID = "123";
 const DUPLICATED_ID = "456";
 /** Never registered, so it resolves to a clip that doesn't exist. */
 const PHANTOM_ID = "789";
-/** Every move in this file lands, or tries to land, on this one group. */
-const GROUP = moveGroupKey(DEST_TRACK, 32);
+/** Where a move with no take lane named lands. */
+const DEST_MAIN_LANE: ArrangementTrack = {
+  trackIndex: DEST_TRACK,
+  takeLane: null,
+};
 
 /**
- * What the tally counted for the group every move here aims at.
+ * What the tally counted for a lane at the position every move here aims at.
  * @param groups - The tally a batch of moves shared
+ * @param landing - The lane to read, defaulting to the destination's main one
  * @returns The count, or 0 when nothing was counted there
  */
-function landedCount(groups: Map<string, MoveGroup>): number {
-  return groups.get(GROUP)?.count ?? 0;
+function landedCount(
+  groups: Map<string, MoveGroup>,
+  landing: ArrangementTrack = DEST_MAIN_LANE,
+): number {
+  return groups.get(moveGroupKey(landing, 32))?.count ?? 0;
 }
 
 const TAKE_LANE_SOURCE = livePath
@@ -218,6 +225,15 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
 }
 
 /**
+ * A take lane on the destination track, as a move destination.
+ * @param laneIndex - 0-based lane index
+ * @returns The destination
+ */
+function takeLane(laneIndex: number): ArrangementTrack {
+  return { trackIndex: DEST_TRACK, takeLane: laneIndex };
+}
+
+/**
  * Register the world and run the move.
  * @param opts - What this test varies
  * @returns The clip id the operation resolved to
@@ -226,7 +242,7 @@ function runMove(opts: MoveOptions = {}): string | null {
   const {
     isMidi = 1,
     arrangementStartBeats = 32,
-    destination = { trackIndex: DEST_TRACK, takeLane: null },
+    destination = DEST_MAIN_LANE,
   } = opts;
 
   registerMoveWorld(opts);
@@ -374,7 +390,7 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
-    expect(landedCount(movedClipGroups)).toBe(1);
+    expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
   });
 
   // A non-empty file_path only means Live once saw a sample there, so the
@@ -489,6 +505,51 @@ describe("moving an arrangement clip to another lane", () => {
 
     expect(capturedWarnings()).toContainEqual(
       `2 clips on t${DEST_TRACK} moved to the same position - later clips will overwrite earlier ones`,
+    );
+  });
+
+  // A take lane is a lane of its own: two clips at one position on different
+  // lanes sit side by side, so there is no overwrite to warn about.
+  it("doesn't stack clips landing on different take lanes", () => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+
+    runMove({ destination: takeLane(0), movedClipGroups });
+    runMove({ destination: takeLane(1), movedClipGroups });
+    emitArrangementWarnings(movedClipGroups);
+
+    // Both landed — each on its own lane, so neither group holds a stack.
+    expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
+    expect(landedCount(movedClipGroups, takeLane(1))).toBe(1);
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("moved to the same position"),
+    );
+  });
+
+  it("doesn't stack a take-lane landing against a main-lane one", () => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+
+    runMove({ movedClipGroups });
+    runMove({ destination: takeLane(0), movedClipGroups });
+    emitArrangementWarnings(movedClipGroups);
+
+    expect(landedCount(movedClipGroups)).toBe(1);
+    expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("moved to the same position"),
+    );
+  });
+
+  // One lane, one position: these really do land on top of each other, and the
+  // warning names the lane so the caller knows which one.
+  it("warns for clips landing on one take lane at one position", () => {
+    const movedClipGroups = new Map<string, MoveGroup>();
+
+    runMove({ destination: takeLane(1), movedClipGroups });
+    runMove({ destination: takeLane(1), movedClipGroups });
+    emitArrangementWarnings(movedClipGroups);
+
+    expect(capturedWarnings()).toContainEqual(
+      `2 clips on t${DEST_TRACK}/l1 moved to the same position - later clips will overwrite earlier ones`,
     );
   });
 });

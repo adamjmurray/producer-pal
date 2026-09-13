@@ -25,7 +25,10 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  isTakeLaneClip,
+  type ArrangementTrack,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -40,7 +43,8 @@ interface DeferNonSurvivorArgs {
   clip: LiveAPI;
   /** The track the clip sits on, for the delete. */
   sourceTrack: LiveAPI;
-  destTrackIndex: number;
+  /** The track and lane it was headed for. */
+  landing: ArrangementTrack;
   targetBeats: number;
   movedClipGroups: Map<string, MoveGroup>;
   updatedClips: ClipResult[];
@@ -56,16 +60,16 @@ interface DeferNonSurvivorArgs {
  * @param args - Operation arguments
  * @param args.clip - The clip that is not being moved
  * @param args.sourceTrack - The track it sits on
- * @param args.destTrackIndex - The track it was headed for
+ * @param args.landing - The track and lane it was headed for
  * @param args.targetBeats - The position it was headed for, in beats
- * @param args.movedClipGroups - Tally of clips landing on each track and position
+ * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for the entry
  */
 export function deferNonSurvivorDeletion({
   clip,
   sourceTrack,
-  destTrackIndex,
+  landing,
   targetBeats,
   movedClipGroups,
   updatedClips,
@@ -78,7 +82,7 @@ export function deferNonSurvivorDeletion({
   );
 
   updatedClips.push(result);
-  deferClipDeletion(movedClipGroups, destTrackIndex, targetBeats, {
+  deferClipDeletion(movedClipGroups, landing, targetBeats, {
     clip,
     sourceTrack,
     result,
@@ -91,7 +95,7 @@ export function deferNonSurvivorDeletion({
  * A clip is cleared only when something long enough to bury it actually landed
  * on its group — then it is counted too, since the count is what the "same
  * position" warning says out loud. A clip nothing landed on top of stays.
- * @param movedClipGroups - Tally of clips landing on each track and position
+ * @param movedClipGroups - Tally of clips landing on each lane and position
  * @param plan - What the call was set to overwrite; absent when it planned none
  */
 export function flushDeferredDeletions(

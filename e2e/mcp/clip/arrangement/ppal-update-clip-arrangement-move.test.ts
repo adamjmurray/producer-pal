@@ -182,6 +182,57 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(second.id);
   });
 
+  // Take lanes are separate lanes: two clips at one position on different ones
+  // sit side by side, so the "same position" warning must not claim a stack.
+  it("doesn't warn about clips landing on different take lanes", async () => {
+    const first = await createClip("65|1", "Lane Zero");
+    const second = await createClip("69|1", "Lane One");
+
+    const { data, warnings } = await updateClip(
+      ctx.client!,
+      `${first.id},${second.id}`,
+      {
+        toPath: `t${CHILD_TRACK}/l0[85|1],t${CHILD_TRACK}/l1[85|1]`,
+      },
+    );
+    const entries = data as unknown as ReadClipResult[];
+    const landed = entries.map((entry) => entry.path);
+
+    // Both really did land, each on a lane of its own.
+    for (const path of landed) {
+      expect(path).toMatch(new RegExp(`^t${CHILD_TRACK}/l\\d+\\[85\\|1\\]$`));
+    }
+
+    expect(landed[0]).not.toBe(landed[1]);
+    expect(warnings.join(" ")).not.toContain("moved to the same position");
+  });
+
+  // One lane, one position: these really do overwrite each other, and the
+  // warning names the lane it happened on.
+  it("warns about clips landing on one take lane at one position", async () => {
+    const first = await createClip("77|1", "Stacked One");
+    const second = await createClip("89|1", "Stacked Two");
+
+    const { data, warnings } = await updateClip(
+      ctx.client!,
+      `${first.id},${second.id}`,
+      {
+        toPath: `t${CHILD_TRACK}/l2[93|1],t${CHILD_TRACK}/l2[93|1]`,
+      },
+    );
+    const entries = data as unknown as ReadClipResult[];
+
+    // Both moves ran, so the stack the warning names is real.
+    for (const entry of entries) {
+      expect(entry.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+    }
+
+    // The lane is named: before this, the warning was charged to the track.
+    expect(warnings.join(" ")).toMatch(
+      new RegExp(`2 clips on t${CHILD_TRACK}/l\\d+ moved to the same position`),
+    );
+  });
+
   // The planner runs the clip being landed on first, trusting its declared move
   // to clear the span. Live turns that move down on arrival, so the span never
   // comes free — and the move waiting on it has to be called off, or it runs
