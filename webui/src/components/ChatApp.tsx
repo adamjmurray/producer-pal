@@ -5,16 +5,12 @@
 
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
 import { type ModeAppProps } from "#webui/components/mode-context";
-import { useChatModeState } from "#webui/hooks/chat/use-chat-mode-state";
-import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
-import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
+import {
+  type ChatModeProps,
+  useChatModeState,
+} from "#webui/hooks/chat/use-chat-mode-state";
 
-interface ChatAppProps extends ModeAppProps {
-  mcpError: string | null;
-  mcpTools?: McpTool[] | null;
-  checkMcpConnection: () => Promise<void>;
-  remoteConfig: UseRemoteConfigReturn;
-}
+interface ChatAppProps extends ModeAppProps, ChatModeProps {}
 
 /**
  * Chat mode: text-based chat UI (any AI SDK provider). The chat-specific hook

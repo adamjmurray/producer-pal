@@ -6,6 +6,7 @@
 import { type MutableRef, useCallback } from "preact/hooks";
 import { formatUserContent } from "#webui/chat/helpers/message-formatting";
 import { type UserMessage, toSentMessage } from "#webui/chat/sdk/types";
+import { type ExecuteWithRetryArgs } from "#webui/hooks/chat/helpers/use-execute-with-retry";
 import { beginTurn } from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 import {
   type ChatAdapter,
@@ -35,13 +36,7 @@ interface ConversationActionsDeps<
     fn: (stillCurrent: () => boolean) => Promise<T>,
     userMessage?: TMessage,
   ) => Promise<T | undefined>;
-  executeWithRetry: (args: {
-    executeStream: () => AsyncIterable<TMessage[]>;
-    resumeStream: () => AsyncIterable<TMessage[]>;
-    getHistory: () => TMessage[];
-    stillCurrent: () => boolean;
-    stillLive: () => boolean;
-  }) => Promise<boolean>;
+  executeWithRetry: (args: ExecuteWithRetryArgs<TMessage>) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
   pendingForkRef?: PendingForkRef;

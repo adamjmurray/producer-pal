@@ -12,6 +12,7 @@ import {
 } from "#src/shared/notation";
 import { loadEnabledTools } from "#webui/hooks/settings/helpers/chat-settings-storage";
 import { disabledToolNames } from "#webui/lib/utils/enabled-tools";
+import { fetchJson, fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getConfigUrl, getSkillsPreviewUrl } from "#webui/utils/mcp-url";
 
 /** A notation + small-model-mode combination that selects a skills blob. */
@@ -219,22 +220,14 @@ async function fetchPreview(
   disabledTools: string | null,
   signal: AbortSignal,
 ): Promise<SkillsPreview> {
-  const response = await fetch(
+  const raw = await fetchJson<RawPreview>(
     getSkillsPreviewUrl(
       combination.notation,
       combination.smallModelMode,
       disabledTools,
     ),
-    { signal, cache: "no-store" },
+    { label: "Skills preview", signal },
   );
-
-  if (!response.ok) {
-    throw new Error(
-      `Skills preview failed (${response.status} ${response.statusText})`,
-    );
-  }
-
-  const raw = (await response.json()) as RawPreview;
   const skills = typeof raw.skills === "string" ? raw.skills : "";
 
   return {
@@ -257,25 +250,17 @@ async function fetchPreview(
 async function fetchCurrentMode(
   signal: AbortSignal,
 ): Promise<SkillsCombination | null> {
-  try {
-    const response = await fetch(getConfigUrl(), { signal, cache: "no-store" });
+  const config = await fetchJsonOrNull<{
+    notation?: unknown;
+    smallModelMode?: unknown;
+  }>(getConfigUrl(), signal);
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const config = (await response.json()) as {
-      notation?: unknown;
-      smallModelMode?: unknown;
-    };
-
-    return {
-      notation: isNotation(config.notation)
-        ? config.notation
-        : DEFAULT_NOTATION,
-      smallModelMode: Boolean(config.smallModelMode),
-    };
-  } catch {
+  if (config == null) {
     return null;
   }
+
+  return {
+    notation: isNotation(config.notation) ? config.notation : DEFAULT_NOTATION,
+    smallModelMode: Boolean(config.smallModelMode),
+  };
 }

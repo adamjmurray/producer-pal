@@ -5,6 +5,7 @@
 
 import { type Notation } from "#src/shared/notation";
 import { type ChatImage, type UserMessage } from "#webui/chat/sdk/types";
+import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -103,38 +104,6 @@ export interface ChatAdapter<
 
   /** Create a synthetic compaction summary message */
   createCompactionSummary: (summary: string) => TMessage;
-}
-
-/** Model/provider/behavior settings persisted with a conversation */
-export interface ConversationLockedSettings {
-  model: string | null;
-  provider: Provider | null;
-  thinking: string | null;
-  smallModelMode: boolean | null;
-  /**
-   * The resolved system instruction the conversation runs with. Locked like the
-   * other settings so continuing a restored chat keeps sending what it started
-   * with, even after the global override changes. Null for legacy records.
-   */
-  systemInstruction: string | null;
-  /**
-   * The notation the conversation runs with, sent per-request so it is this
-   * chat's notation rather than the device global. Hard-locked like the system
-   * instruction rather than re-read per init: notation decides how clip notes are
-   * PARSED, so a transcript written in one notation must keep being read in it —
-   * swapping mid-conversation would hand the model note strings it was never
-   * taught. Null for legacy records and for a chat that has yet to lock one.
-   */
-  notation: Notation | null;
-  /**
-   * The tool selection the conversation runs with. Locked for the mirror image
-   * of the notation reason: a transcript full of successful calls to a tool is
-   * itself an instruction to keep calling it, so withdrawing that tool
-   * mid-conversation invites a call the client can no longer route. Null for
-   * legacy records and for a chat that has yet to lock one; those reconnect on
-   * the current selection.
-   */
-  enabledTools: Record<string, boolean> | null;
 }
 
 /**

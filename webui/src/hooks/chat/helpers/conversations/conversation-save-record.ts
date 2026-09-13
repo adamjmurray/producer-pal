@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import {
   type ConversationLockedSettings,
-  type PendingFork,
-} from "#webui/hooks/chat/use-chat-types";
-import { type ActiveMeta } from "#webui/lib/conversations/conversation-store";
+  type ActiveMeta,
+} from "#webui/lib/conversations/conversation-store";
 import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branches";
 import {

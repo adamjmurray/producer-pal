@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useState } from "preact/hooks";
+import { fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getSettingsUrl } from "#webui/utils/mcp-url";
 
 export interface GlobalSettings {
@@ -72,23 +73,16 @@ export function useGlobalSettings(): UseGlobalSettingsReturn {
     const controller = new AbortController();
 
     void (async () => {
-      try {
-        const response = await fetch(getSettingsUrl(), {
-          cache: "no-store",
-          signal: controller.signal,
-        });
+      // Nothing came back (server down, or the effect aborted on unmount) —
+      // keep the default. A settings screen that can't reach the server can't
+      // save either, so there's nothing better to show.
+      const settings = await fetchJsonOrNull<Partial<GlobalSettings>>(
+        getSettingsUrl(),
+        controller.signal,
+      );
 
-        if (!response.ok) {
-          return;
-        }
-
-        const settings = (await response.json()) as Partial<GlobalSettings>;
-
+      if (settings) {
         setLocalAutoUpdateCheck(settings.autoUpdateCheck !== false);
-      } catch {
-        // Server not available or the effect aborted on unmount — keep the
-        // default. A settings screen that can't reach the server can't save
-        // either, so there's nothing better to show.
       }
     })();
 

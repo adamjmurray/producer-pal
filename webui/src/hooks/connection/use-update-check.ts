@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { type UpdateInfo } from "#src/shared/version-check";
 import { patchGlobalSettings } from "#webui/hooks/connection/use-global-settings";
+import { fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getUpdateUrl } from "#webui/utils/mcp-url";
 
 export interface UseUpdateCheckReturn {
@@ -38,24 +39,15 @@ export function useUpdateCheck(): UseUpdateCheckReturn {
     const controller = new AbortController();
 
     void (async () => {
-      try {
-        const response = await fetch(getUpdateUrl(), {
-          cache: "no-store",
-          signal: controller.signal,
-        });
+      // The badge is decoration — a failed read (including this effect's own
+      // abort on unmount) just doesn't show it.
+      const result = await fetchJsonOrNull<UpdateInfo | null>(
+        getUpdateUrl(),
+        controller.signal,
+      );
 
-        if (!response.ok) {
-          return;
-        }
-
-        const result = (await response.json()) as UpdateInfo | null;
-
-        if (result) {
-          setUpdate(result);
-        }
-      } catch {
-        // The update badge is decoration — a failed read (including this
-        // effect's own abort on unmount) just doesn't show it.
+      if (result) {
+        setUpdate(result);
       }
     })();
 

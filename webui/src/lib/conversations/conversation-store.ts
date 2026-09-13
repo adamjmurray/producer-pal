@@ -7,21 +7,36 @@ import { type Notation } from "#src/shared/notation";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
 
-/** Mutable metadata for the live conversation. Its id is tracked separately. */
-export interface ActiveMeta {
-  title: string | null;
-  createdAt: number | null;
-  bookmarked: boolean;
+/**
+ * Model/provider/behavior settings a conversation locks when it starts, and
+ * keeps sending even after the global settings move. Null means a legacy record
+ * or a chat that has yet to lock one; those reconnect on the current settings.
+ */
+export interface ConversationLockedSettings {
   model: string | null;
   provider: Provider | null;
   thinking: string | null;
   smallModelMode: boolean | null;
-  /** Resolved system instruction in effect (snapshotted onto the record). */
   systemInstruction: string | null;
-  /** Notation in effect (snapshotted onto the record so a restore keeps it). */
+  /**
+   * Notation decides how clip notes are PARSED, so a transcript written in one
+   * must keep being read in it — swapping mid-conversation would hand the model
+   * note strings it was never taught.
+   */
   notation: Notation | null;
-  /** Toolset the conversation last connected with (recorded, not enforced). */
+  /**
+   * The mirror image of the notation reason: a transcript full of successful
+   * calls to a tool is itself an instruction to keep calling it, so withdrawing
+   * that tool invites a call the client can no longer route.
+   */
   enabledTools: Record<string, boolean> | null;
+}
+
+/** Mutable metadata for the live conversation. Its id is tracked separately. */
+export interface ActiveMeta extends ConversationLockedSettings {
+  title: string | null;
+  createdAt: number | null;
+  bookmarked: boolean;
 }
 
 export const DEFAULT_META: ActiveMeta = {

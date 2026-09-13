@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { type ModeContext } from "#webui/components/mode-context";
+import { type ModeAppProps } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
@@ -21,12 +21,8 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
-import {
-  type McpStatus,
-  type McpTool,
-} from "#webui/hooks/connection/use-mcp-connection";
+import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
-import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import {
@@ -38,42 +34,36 @@ import {
   PRESETS_STORAGE_KEY,
 } from "#webui/hooks/settings/presets/preset-storage";
 import { useFirstSendGate } from "#webui/hooks/use-first-send-gate";
-import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
-import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { resolveSystemInstruction } from "#webui/lib/config";
 import {
   type BranchNavState,
   type BranchPoint,
   computeBranchPoints,
 } from "#webui/lib/conversation-branches";
-import {
-  type ConversationRecord,
-  listAllConversationSummaries,
-} from "#webui/lib/conversation-db";
+import { listAllConversationSummaries } from "#webui/lib/conversation-db";
 import { withLiveApiTool } from "#webui/lib/utils/enabled-tools";
-import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 import { getBaseUrl, resolveProviderApiKey } from "#webui/utils/provider-url";
 
-export interface UseChatModeStateParams {
-  settings: UseSettingsReturn;
-  display: PreferencesSettings;
-  viewState: ViewState;
-  setViewState: (partial: Partial<ViewState>) => void;
-  mcpStatus: McpStatus;
+/** What chat mode needs on top of the props every mode gets. */
+export interface ChatModeProps {
   mcpError: string | null;
   mcpTools?: McpTool[] | null;
   checkMcpConnection: () => Promise<void>;
   remoteConfig: UseRemoteConfigReturn;
-  totalToolsCount: number;
-  enabledToolsCount: number;
-  defaultToolsCount: number;
-  enabledToolsDiverge: boolean;
-  onForeignRecord: (record: ConversationRecord) => void;
-  clearViewingMode: () => void;
-  setModeContext: (ctx: ModeContext) => void;
-  undoDelete: UndoDeleteReturn;
 }
+
+/** Everything ChatApp holds, minus the modal openers it keeps to itself. */
+export type UseChatModeStateParams = Omit<
+  ModeAppProps,
+  | "onOpenSettings"
+  | "onOpenToolsSettings"
+  | "onOpenConnectionSettings"
+  | "onOpenContext"
+  | "onOpenInstructions"
+> &
+  ChatModeProps;
 
 /**
  * Composes the chat-mode hook graph (chat, conversation manager, transfer,

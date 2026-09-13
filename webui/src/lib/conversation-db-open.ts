@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { openDB, type IDBPDatabase } from "idb";
+import { downloadTextFile } from "#webui/utils/text-file-io";
 
 const DB_NAME = "producer-pal-conversations";
 const DB_VERSION = 1;
@@ -83,9 +84,10 @@ async function exportFromMismatchedDb(): Promise<void> {
       2,
     );
 
-    downloadJson(
-      json,
+    downloadTextFile(
       `producer-pal-conversations-${new Date().toISOString().slice(0, 10)}.json`,
+      json,
+      "application/json",
     );
   } finally {
     db.close();
@@ -131,20 +133,4 @@ function wrapIdbRequest<T>(request: IDBRequest<T>): Promise<T> {
     request.onerror = () => reject(request.error);
     /* v8 ignore stop */
   });
-}
-
-/**
- * Trigger a JSON file download in the browser.
- * @param json - JSON string content
- * @param filename - Download filename
- */
-function downloadJson(json: string, filename: string): void {
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }

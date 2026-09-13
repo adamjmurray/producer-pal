@@ -37,11 +37,9 @@ import {
   type ConversationStore,
   DEFAULT_META,
   createConversationStore,
-} from "#webui/lib/conversations/conversation-store";
-import {
   type ConversationLockedSettings,
-  type PendingForkRef,
-} from "#webui/hooks/chat/use-chat-types";
+} from "#webui/lib/conversations/conversation-store";
+import { type PendingForkRef } from "#webui/hooks/chat/use-chat-types";
 import {
   type ConversationRecord,
   type ConversationSummary,

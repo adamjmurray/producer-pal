@@ -15,8 +15,8 @@ import type * as RunChatTurn from "#webui/hooks/chat/helpers/streaming/run-chat-
 import {
   type ChatAdapter,
   type ChatClient,
-  type ConversationLockedSettings,
 } from "#webui/hooks/chat/use-chat-types";
+import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
 import { type UIMessage } from "#webui/types/messages";
 
 /** Test message type for mock chat client */

@@ -57,19 +57,12 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverLiveApiEnabled, setServerLiveApiEnabled] = useState(false);
   const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
   const [serverNotation, setServerNotation] = useState<Notation | null>(null);
-  // Two counters coordinate overlapping config operations:
-  //   configSeqRef       — monotonic allocator; every GET (mount, reconnect,
-  //                        focus) and every POST takes a unique, issue-ordered
-  //                        token from it at initiation.
-  //   latestConfigSeqRef — token of the operation that currently OWNS the
-  //                        displayed state. A POST claims ownership synchronously
-  //                        (it sets state optimistically); a GET claims it only
-  //                        when it actually applies a response. A GET that is
-  //                        aborted or non-OK allocates a token but never claims
-  //                        ownership, so it can't falsely supersede an in-flight
-  //                        POST's failure-revert, and a stale GET can't clobber
-  //                        fresher state. postConfigField skips its revert only
-  //                        when a newer op has genuinely taken ownership.
+  // Two counters coordinate overlapping config ops. configSeqRef hands every
+  // GET and POST a token at initiation; latestConfigSeqRef holds the token of
+  // whichever op OWNS the displayed state. A POST claims ownership at once (it
+  // sets state optimistically); a GET claims it only when it applies a
+  // response, so an aborted or non-OK GET can neither suppress a POST's revert
+  // nor clobber fresher state.
   const configSeqRef = useRef(0);
   const latestConfigSeqRef = useRef(0);
 
@@ -161,55 +154,49 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
     };
   }, [fetchConfig]);
 
-  const postSmallModelMode = useCallback(
-    (enabled: boolean) => {
-      setServerSmallModelMode(enabled);
+  // Show the new value first, then send it: a POST claims ownership the moment
+  // it is issued, so the revert below knows whether it still owns the state.
+  const postField = useCallback(
+    <T extends string | boolean>(
+      field: string,
+      value: T,
+      show: (value: T) => void,
+    ): Promise<void> => {
+      show(value);
       const seq = ++configSeqRef.current;
 
       latestConfigSeqRef.current = seq;
-      void postConfigField(
-        "smallModelMode",
-        enabled,
+
+      return postConfigField(
+        field,
+        value,
         fetchConfig,
         seq,
         latestConfigSeqRef,
       );
     },
     [fetchConfig],
+  );
+
+  const postSmallModelMode = useCallback(
+    (enabled: boolean) => {
+      void postField("smallModelMode", enabled, setServerSmallModelMode);
+    },
+    [postField],
   );
 
   const postLiveApiEnabled = useCallback(
     async (enabled: boolean) => {
-      setServerLiveApiEnabled(enabled);
-      const seq = ++configSeqRef.current;
-
-      latestConfigSeqRef.current = seq;
-      await postConfigField(
-        "liveApiEnabled",
-        enabled,
-        fetchConfig,
-        seq,
-        latestConfigSeqRef,
-      );
+      await postField("liveApiEnabled", enabled, setServerLiveApiEnabled);
     },
-    [fetchConfig],
+    [postField],
   );
 
   const postNotation = useCallback(
     (notation: Notation) => {
-      setServerNotation(notation);
-      const seq = ++configSeqRef.current;
-
-      latestConfigSeqRef.current = seq;
-      void postConfigField(
-        "notation",
-        notation,
-        fetchConfig,
-        seq,
-        latestConfigSeqRef,
-      );
+      void postField("notation", notation, setServerNotation);
     },
-    [fetchConfig],
+    [postField],
   );
 
   return {
@@ -224,18 +211,12 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
 }
 
 /**
- * POST a single config field and, on failure, refetch /config to revert
- * the caller's optimistic update. Failures are logged so they show up in
- * the devtools console — the chat UI has no toast surface yet, so this is
- * the most we can do without adding one. A non-OK HTTP response (e.g. 400
- * validation) is treated the same as a network error.
+ * POST one config field and, on failure, refetch /config to revert the caller's
+ * optimistic update. A non-OK response is treated like a network error, and
+ * both are only logged — the chat UI has no toast surface yet.
  *
- * The revert is skipped when a newer config op (a POST, or a GET that applied
- * a response) has taken ownership past `seq` — i.e. `latestSeqRef.current`
- * advanced. That newer op owns the authoritative state from here on; the older
- * POST's refetch would otherwise race it and could overwrite its value with
- * stale server state. A GET that was aborted or non-OK never takes ownership,
- * so it can't suppress this revert.
+ * The revert is skipped when a newer op has taken ownership past `seq`: that op
+ * owns the state now, and this refetch would race it back to stale values.
  *
  * @param field - Config field name
  * @param value - New value

@@ -11,12 +11,9 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { type ModeContext } from "#webui/components/mode-context";
+import { type ModeAppProps } from "#webui/components/mode-context";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
-import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
-import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
-import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { useGeminiVoiceSession } from "#webui/hooks/voice/gemini/use-gemini-voice-session";
 import { mergeVoiceHistory } from "#webui/hooks/voice/helpers/voice-record";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
@@ -32,23 +29,23 @@ import {
   realtimeProvider,
   resolveRealtimeModel,
 } from "#webui/lib/constants/models";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { type UseSettingsReturn } from "#webui/types/settings";
 import { isFirefox } from "#webui/utils/browser-detect";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 
-export interface UseVoiceModeStateParams {
-  settings: UseSettingsReturn;
-  display: PreferencesSettings;
-  viewState: ViewState;
-  setViewState: (partial: Partial<ViewState>) => void;
-  totalToolsCount: number;
-  enabledToolsCount: number;
-  onForeignRecord: (record: ConversationRecord) => void;
-  clearViewingMode: () => void;
-  setModeContext: (ctx: ModeContext) => void;
-  undoDelete: UndoDeleteReturn;
-}
+/** The shared mode props voice mode actually uses. */
+export type UseVoiceModeStateParams = Pick<
+  ModeAppProps,
+  | "settings"
+  | "display"
+  | "viewState"
+  | "setViewState"
+  | "totalToolsCount"
+  | "enabledToolsCount"
+  | "onForeignRecord"
+  | "clearViewingMode"
+  | "setModeContext"
+  | "undoDelete"
+>;
 
 /**
  * Composes the voice-mode hook graph (session, persistence, transfer) and
