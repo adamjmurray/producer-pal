@@ -98,7 +98,7 @@ export function extractPathWithinTrack(path: string, what: string): string {
 
 /**
  * The canonical spelling of a path, or the path unchanged when it doesn't
- * parse — the mover reports the bad one as it warns and skips.
+ * parse — the mover names the bad one in the reason it hands back.
  * @param path - The destination path as the caller wrote it
  * @returns The canonical spelling
  */

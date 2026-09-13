@@ -58,13 +58,17 @@ describe("duplicate device - a toPath entry that names nowhere", () => {
       toPath: "t2/d0,t99/d0/c0",
     });
 
-    // The good destination still reports its copy...
+    // The good destination still reports its copy, and the bad one keeps its
+    // slot, naming the path the caller sent rather than the shifted t100.
     expect(result).toStrictEqual([
       { id: "live_set/tracks/1/devices/0", path: "t1/d0" },
+      {
+        path: "t99/d0/c0",
+        ok: false,
+        reason:
+          't0/d0 (id device1) not copied — Track in path "t99/d0/c0" does not exist',
+      },
     ]);
-    // ...and the bad one names the path the caller sent, not the shifted t100.
-    expect(capturedWarnings()).toContain(
-      'device not moved: Track in path "t99/d0/c0" does not exist',
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

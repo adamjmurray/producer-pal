@@ -26,6 +26,8 @@ import {
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { copyPerDestination } from "./copy-per-destination.ts";
 
 /** A finished device copy: what it is, where it was sent, and what it landed in. */
 interface DeviceCopy {
@@ -36,32 +38,31 @@ interface DeviceCopy {
 }
 
 /**
- * Duplicates a device to one or more destination paths.
- * Supports comma-separated toPath for multiple destinations.
+ * Duplicates a device to one or more destination paths, one entry per
+ * destination. Supports comma-separated toPath for multiple destinations.
  * @param object - LiveAPI device object
  * @param toPath - Destination path(s), comma-separated for multiple
+ * @param source - The source device, as the caller named it
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
- * @returns Result object, or an array of them for multiple destinations
+ * @returns One entry per destination, in the order toPath named them
  */
 export function duplicateDeviceWithPaths(
   object: LiveAPI,
   toPath: string | undefined,
+  source: NamedTarget,
   labels: CopyLabels,
   count: number,
-): object | object[] {
+): object[] {
   // Reads a blank toPath as omitted the way clips do, and refuses one that
   // names nothing rather than quietly falling back to the default destination.
   const paths = pathEntries(toPath, "toPath");
 
   claimLabels(labels, Math.max(paths.length, 1));
 
-  if (paths.length <= 1) {
-    // A lone copy that was skipped has nothing to report but its warning.
-    return (
-      withDevicePath(
-        duplicateDevice(object, paths[0], labelName(labels, 0), count),
-      ) ?? []
+  if (count > 1) {
+    console.warn(
+      "count parameter ignored for device duplication (only single copy supported)",
     );
   }
 
@@ -71,15 +72,15 @@ export function duplicateDeviceWithPaths(
   // Take the id before anything moves; after the first copy the path is stale.
   const sourceId = object.id;
 
-  // Always an array here: one object back from a two-destination call would
-  // read as a one-destination call that worked.
-  return paths
-    .map((path, i) =>
-      withDevicePath(
-        duplicateDevice(LiveAPI.from(sourceId), path, labelName(labels, i), 1),
+  return copyPerDestination(paths, source, (destination, i) =>
+    withDevicePath(
+      duplicateDevice(
+        LiveAPI.from(sourceId),
+        destination,
+        labelName(labels, i),
       ),
-    )
-    .filter((result) => result != null);
+    ),
+  );
 }
 
 /**
@@ -91,17 +92,10 @@ export function duplicateDeviceWithPaths(
  * resolved while the temp track still shifted every later track index, so only
  * an id survives the cleanup. Rebuilt lazily — nothing but a drum-pad spelling
  * ever looks at it.
- * @param result - The copy's id, destination and landing container, or null
- *   when the copy was skipped
- * @returns The result with its path, or null
+ * @param result - The copy's id, destination and landing container
+ * @returns The result with its path
  */
-function withDevicePath(
-  result: DeviceCopy | null,
-): { id: string; path?: string } | null {
-  if (result == null) {
-    return null;
-  }
-
+function withDevicePath(result: DeviceCopy): { id: string; path?: string } {
   const { destination, containerId } = result;
 
   return {
@@ -128,31 +122,21 @@ function withDevicePath(
  * @param device - LiveAPI device object to duplicate
  * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param name - Optional name for the duplicated device
- * @param count - Number of duplicates (only 1 supported, warns if > 1)
- * @returns The new device and where it was sent, or null when the copy was
- *   skipped
+ * @returns The new device and where it was sent
+ * @throws Error when no copy was made
  */
 function duplicateDevice(
   device: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
-  count = 1,
-): DeviceCopy | null {
-  if (count > 1) {
-    console.warn(
-      "count parameter ignored for device duplication (only single copy supported)",
-    );
-  }
-
+): DeviceCopy {
   // A copy would be a second Producer Pal device fighting the first for the
   // same connection — and the track-duplication workaround below spawns one
   // before it ever reaches the destination.
   if (isProducerPalDevice(device)) {
-    console.warn(
-      `cannot duplicate the Producer Pal device ${targetLabel(device)}, skipping`,
+    throw new Error(
+      `cannot duplicate the Producer Pal device ${targetLabel(device)}`,
     );
-
-    return null;
   }
 
   // Read before the temp track exists: it shifts every later track index, so a
@@ -181,14 +165,13 @@ function duplicateDevice(
         sourceTrackIndex,
       );
 
-      // Skip rather than throw, so the other destinations of a comma-separated
-      // toPath still get their copies. Name the caller's toPath and the real
-      // source, not the adjusted path and the temp copy — the temp track
-      // shifted its track index, and the cleanup deletes it. Either way nothing
-      // survives: the copy is still on the temp track.
+      // Name the caller's toPath and the real source, not the adjusted path and
+      // the temp copy — the temp track shifted its track index, and the cleanup
+      // deletes it. Nothing survives a failure either way: the copy is still on
+      // the temp track.
       // Live confirms the device is in this container before the move reports
       // "moved", which is what makes the destination safe to name it by.
-      const { outcome, container } = moveDeviceToPath(
+      const { outcome, container, reason } = moveDeviceToPath(
         tempDevice,
         adjustedDestination,
         device,
@@ -197,24 +180,19 @@ function duplicateDevice(
       );
 
       if (outcome === "no-destination") {
-        console.warn(
+        throw new Error(
           `${sourceLabel} not copied — no destination at toPath "${destination}"`,
         );
-
-        return null;
       }
 
       if (outcome === "refused") {
-        console.warn(
+        throw new Error(
           `the copy of ${sourceLabel} could not be moved to "${destination}"`,
         );
-
-        return null;
       }
 
-      // A path that didn't resolve at all already warned why, naming this path.
       if (outcome === "unresolvable") {
-        return null;
+        throw new Error(`${sourceLabel} not copied — ${reason}`);
       }
 
       if (name) {

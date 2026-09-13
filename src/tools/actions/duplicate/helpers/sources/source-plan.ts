@@ -14,6 +14,10 @@ import {
   pairValues,
   type PairLabels,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  namedTargets,
+  type NamedTarget,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { targetIds } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   pathEntries,
@@ -27,6 +31,9 @@ import {
 /** One source's turn: which object to copy, and where its copies go. */
 export interface SourceShare {
   id: string;
+  /** The source as the caller named it, for an entry with no destination to
+   * name. */
+  named: NamedTarget;
   toPath: string | undefined;
   toSlot: string | undefined;
   /** This source's share of arrangementStart. */
@@ -71,31 +78,33 @@ export function planSources({
   arrangementStart,
   onArrangement,
 }: SourcePlanArgs): SourceShare[] {
-  const ids = sourceIds(type, id, path);
+  const sources = sourceTargets(type, id, path);
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split
   // downstream.
-  if (ids.length <= 1) {
-    return [{ id: ids[0] as string, toPath, toSlot, arrangementStart }];
+  if (sources.length <= 1) {
+    return [
+      { ...(sources[0] as SourceTarget), toPath, toSlot, arrangementStart },
+    ];
   }
 
   // toSlot only ever named a clip slot, so a call using it lands in the session
   // however the position params read — and shares its destinations out below.
   if (onArrangement && !pathNamesSomething(toSlot)) {
-    return arrangementShares(ids, toPath, arrangementStart);
+    return arrangementShares(sources, toPath, arrangementStart);
   }
 
   // toPath and toSlot can't both name a destination (resolveClipDestinations
   // refuses that), so at most one of these does any splitting.
-  const paths = shareDestinations(toPath, ids.length, "toPath");
-  const slots = shareDestinations(toSlot, ids.length, "toSlot");
+  const paths = shareDestinations(toPath, sources.length, "toPath");
+  const slots = shareDestinations(toSlot, sources.length, "toSlot");
   const shared = Math.min(paths.length, slots.length);
 
   // A source with no destination left has nowhere to copy to, so it drops out
   // rather than piling onto a slot another source already claimed.
-  return ids.slice(0, shared).map((sourceId, i) => ({
-    id: sourceId,
+  return sources.slice(0, shared).map((source, i) => ({
+    ...source,
     toPath: paths[i],
     toSlot: slots[i],
     arrangementStart,
@@ -137,32 +146,13 @@ export function resolveSourceClipDestinations(
   );
 }
 
-/**
- * Runs one source's copies at a time and concatenates them.
- *
- * A lone source keeps whatever shape its own branch chose — one object for one
- * copy, an array for a list — because that shape reports how many copies were
- * asked for, not how many landed.
- * @param sources - The shares to run, in order
- * @param copyOne - Makes one source's copies
- * @returns The copies, in source order
- */
-export function collectSources(
-  sources: SourceShare[],
-  copyOne: (source: SourceShare, index: number) => object | object[],
-): object | object[] {
-  if (sources.length === 1) {
-    return copyOne(sources[0] as SourceShare, 0);
-  }
-
-  return sources.flatMap((source, i) => {
-    const result = copyOne(source, i);
-
-    return Array.isArray(result) ? result : [result];
-  });
-}
-
 // --- Helpers below main exports ---
+
+/** A source the call named, once its id is known. */
+interface SourceTarget {
+  id: string;
+  named: NamedTarget;
+}
 
 /**
  * Shares an arrangement destination out across the sources: one entry covers
@@ -170,17 +160,17 @@ export function collectSources(
  * (ADR-0031). Both params that can carry the destination pair the same way, so
  * `toPath: "t0[1|1],t0[17|1]"` and `toPath: "t0"` with
  * `arrangementStart: "1|1,17|1"` put the same source at the same bar.
- * @param ids - The sources, in call order
+ * @param sources - The sources, in call order
  * @param toPath - Destination path(s)
  * @param arrangementStart - Position(s), already resolved to bar|beat
  * @returns One share per source the destinations reached
  */
 function arrangementShares(
-  ids: string[],
+  sources: SourceTarget[],
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): SourceShare[] {
-  const paths = perSource(pathEntries(toPath, "toPath"), ids.length, {
+  const paths = perSource(pathEntries(toPath, "toPath"), sources.length, {
     param: "toPath",
     noun: "destination",
     item: "source",
@@ -188,7 +178,7 @@ function arrangementShares(
   });
   const starts = perSource(
     targetEntries(arrangementStart, "arrangementStart"),
-    ids.length,
+    sources.length,
     {
       param: "arrangementStart",
       noun: "position",
@@ -198,8 +188,8 @@ function arrangementShares(
   );
   const shared = Math.min(paths.length, starts.length);
 
-  return ids.slice(0, shared).map((sourceId, i) => ({
-    id: sourceId,
+  return sources.slice(0, shared).map((source, i) => ({
+    ...source,
     toPath: paths[i],
     toSlot: undefined,
     arrangementStart: starts[i],
@@ -230,8 +220,9 @@ function perSource(
 }
 
 /**
- * The ids of the objects a call names, by id, by path, or both — they name
- * different objects, so they add up.
+ * The objects a call names, by id, by path, or both — they name different
+ * objects, so they add up. Each keeps the spelling the caller wrote, which is
+ * how an entry names a source that has no destination of its own.
  *
  * A path that names nothing refuses the call. `delete` keeps such a miss and
  * reports the object undeleted, but a duplicate leaves copies behind, and every
@@ -240,18 +231,17 @@ function perSource(
  * @param type - Object type to duplicate, which says how a path resolves
  * @param id - Source id(s), comma-separated for multiple
  * @param path - Source path(s), comma-separated for multiple
- * @returns One id per source, ids first, then the paths in order
+ * @returns One entry per source, ids first, then the paths in order
  */
-function sourceIds(
+function sourceTargets(
   type: string,
   id: string | undefined,
   path: string | undefined,
-): string[] {
+): SourceTarget[] {
+  const named = namedTargets({ id, path });
   const resolved = targetIds({ id, path }, idPerPathForType(type));
-  const paths = pathEntries(path, "path");
-  const idCount = resolved.length - paths.length;
   const missing = resolved.flatMap((entry, i) =>
-    entry == null ? [paths[i - idCount] as string] : [],
+    entry == null ? [(named[i] as NamedTarget).value] : [],
   );
 
   if (missing.length > 0) {
@@ -262,7 +252,10 @@ function sourceIds(
     );
   }
 
-  return resolved as string[];
+  return resolved.map((entry, i) => ({
+    id: entry as string,
+    named: named[i] as NamedTarget,
+  }));
 }
 
 /**

@@ -23,7 +23,8 @@ import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 /**
  * What a device move did. The caller words "no-destination" and "refused",
  * because only it knows the path the user asked for — a duplicate's is adjusted
- * for its temp track. "unresolvable" is worded here, where the reason is.
+ * for its temp track. "unresolvable" comes back with its reason, which only the
+ * resolution knows.
  */
 export type DeviceMoveOutcome =
   | "moved"
@@ -37,11 +38,15 @@ export interface DeviceMove {
   /** The container the device landed in, so a caller that has to name it
    * afterwards doesn't re-resolve toPath. Only a "moved" outcome has one. */
   container?: LiveAPI;
+  /** Why the path didn't resolve, spelled as the caller wrote it. Only an
+   * "unresolvable" outcome has one, and only its caller knows whether that
+   * belongs in a result entry or a warning. */
+  reason?: string;
 }
 
 /**
  * Move a device to a new location. Never throws: a toPath naming no place a
- * device can go warns and reports "unresolvable", so the other ids and
+ * device can go reports "unresolvable" and why, so the other ids and
  * destinations of the same call still get their work done.
  * @param device - LiveAPI device object
  * @param toPath - Target path
@@ -57,7 +62,7 @@ export interface DeviceMove {
  * @returns "moved" once the device is at the destination, "no-destination" when
  *   toPath names nothing, "refused" when Live wouldn't take it, or
  *   "unresolvable" when toPath doesn't resolve at all — with the container it
- *   landed in when it moved
+ *   landed in when it moved, or the reason it didn't resolve
  */
 export function moveDeviceToPath(
   device: LiveAPI,
@@ -68,8 +73,8 @@ export function moveDeviceToPath(
 ): DeviceMove {
   const destination = resolveMoveDestination(toPath, reportPath);
 
-  if (destination == null) {
-    return { outcome: "unresolvable" };
+  if ("reason" in destination) {
+    return { outcome: "unresolvable", reason: destination.reason };
   }
 
   const { container, position } = destination;
@@ -166,26 +171,25 @@ function isPastTheEnd(
 /**
  * Resolve where a move should land. Resolution throws for a path that names
  * nothing a device can go in — a missing track or device, a chain in a Drum
- * Rack, a device that isn't a rack — so catch it here and warn instead.
+ * Rack, a device that isn't a rack — so catch it here and hand the reason back.
  * @param toPath - Target path, as handed to the move
- * @param reportPath - How to spell it in the warning
- * @returns The destination, or null when the path didn't resolve
+ * @param reportPath - How to spell it back to the caller
+ * @returns The destination, or why the path didn't resolve
  */
 function resolveMoveDestination(
   toPath: string,
   reportPath: string,
-): InsertionPathResolution | null {
+): InsertionPathResolution | { reason: string } {
   try {
     // Every caller here got the path from a `toPath` param, so name it that.
     return resolveInsertionPath(toPath, "toPath");
   } catch (error) {
     const reason = errorMessage(error);
 
-    console.warn(
-      `device not moved: ${toPath === reportPath ? reason : reason.replaceAll(toPath, reportPath)}`,
-    );
-
-    return null;
+    return {
+      reason:
+        toPath === reportPath ? reason : reason.replaceAll(toPath, reportPath),
+    };
   }
 }
 

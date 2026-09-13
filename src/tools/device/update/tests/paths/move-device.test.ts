@@ -30,25 +30,24 @@ describe("moveDeviceToPath", () => {
   it("blames toPath, the param every caller took the path from", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toStrictEqual({
       outcome: "unresolvable",
-    });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        'device not moved: invalid toPath "x9/d0" - "x9" is not a track or scene',
+      reason: expect.stringContaining(
+        'invalid toPath "x9/d0" - "x9" is not a track or scene',
       ),
-    );
+    });
   });
 
-  it("warns and skips a path that names no place a device can go", () => {
-    // Resolution throws for these; a caller moving several ids at once would
-    // lose the whole batch over one bad destination.
+  // The caller decides whether that goes in a warning or a result entry, so
+  // nothing is said here.
+  it("hands back the reason a path names no place a device can go", () => {
     mockNonExistentObjects();
 
     expect(
       moveDeviceToPath(LiveAPI.from(device.path), "t99/d0/c0"),
-    ).toStrictEqual({ outcome: "unresolvable" });
-    expect(capturedWarnings()).toContain(
-      'device not moved: Track in path "t99/d0/c0" does not exist',
-    );
+    ).toStrictEqual({
+      outcome: "unresolvable",
+      reason: 'Track in path "t99/d0/c0" does not exist',
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("spells the destination the way the caller sent it", () => {
@@ -63,10 +62,10 @@ describe("moveDeviceToPath", () => {
         LiveAPI.from(device.path),
         "t99/d0/c0",
       ),
-    ).toStrictEqual({ outcome: "unresolvable" });
-    expect(capturedWarnings()).toContain(
-      'device not moved: Track in path "t99/d0/c0" does not exist',
-    );
+    ).toStrictEqual({
+      outcome: "unresolvable",
+      reason: 'Track in path "t99/d0/c0" does not exist',
+    });
   });
 
   it("reports a move once the device is at the destination", () => {

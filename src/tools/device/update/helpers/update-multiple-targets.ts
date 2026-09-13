@@ -327,11 +327,13 @@ function moveDeviceAndName(
   device: LiveAPI,
   toPath: string,
 ): WrittenContainer | undefined {
-  const { outcome, container } = moveDeviceToPath(device, toPath);
+  const { outcome, container, reason } = moveDeviceToPath(device, toPath);
 
-  // "unresolvable" said why itself. Either way the move is skipped and the
-  // rest of this update — and of the batch — carries on.
-  if (outcome === "no-destination") {
+  // The move is skipped either way, and the rest of this update — and of the
+  // batch — carries on.
+  if (outcome === "unresolvable") {
+    console.warn(`device not moved: ${reason}`);
+  } else if (outcome === "no-destination") {
     console.warn(`move target at path "${toPath}" does not exist`);
   } else if (outcome === "refused") {
     console.warn(`${targetLabel(device)} was not moved to "${toPath}"`);

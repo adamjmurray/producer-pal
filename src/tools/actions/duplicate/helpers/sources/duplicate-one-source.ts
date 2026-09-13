@@ -15,10 +15,10 @@ import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-position
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
 import { duplicateChainWithPaths } from "../device/duplicate-chain.ts";
 import { duplicateDeviceWithPaths } from "../device/duplicate-device.ts";
+import { copyPerDestination } from "../device/copy-per-destination.ts";
 import {
   duplicateDrumPad,
   resolveSourcePad,
-  type PadTarget,
 } from "../device/duplicate-drum-pad.ts";
 import {
   claimLabels,
@@ -27,7 +27,7 @@ import {
   type CopyLabels,
 } from "./copy-labels.ts";
 import { duplicateSceneToArrangementAtPositions } from "./scene-arrangement-positions.ts";
-import { collectSources, type SourceShare } from "./source-plan.ts";
+import { type SourceShare } from "./source-plan.ts";
 import { duplicateTrack } from "./duplicate-track.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
 
@@ -100,15 +100,15 @@ export async function duplicateOneSource(
  * @param sources - The shares to copy, in order
  * @param labels - The call's names and colors
  * @param count - The raw count param, which neither type uses
- * @returns Result object, or an array of them for multiple destinations
+ * @returns One entry per destination each source named, in source order
  */
 export function duplicateChainSources(
   type: string,
   sources: SourceShare[],
   labels: CopyLabels,
   count: number,
-): object | object[] {
-  return collectSources(sources, (source, i) =>
+): object[] {
+  return sources.flatMap((source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.
     runOneChainSource(type, source, labels, i === 0 ? count : 1),
@@ -123,14 +123,14 @@ export function duplicateChainSources(
  * @param source - The source's turn
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
- * @returns The copy or copies made for this source
+ * @returns One entry per destination this source named
  */
 function runOneChainSource(
   type: string,
   source: SourceShare,
   labels: CopyLabels,
   count: number,
-): object | object[] {
+): object[] {
   if (type === "drum-pad") {
     return duplicateDrumPadSource(source, labels, count);
   }
@@ -138,8 +138,20 @@ function runOneChainSource(
   const object = sourceObject(source, type);
 
   return type === "chain"
-    ? duplicateChainWithPaths(object, source.toPath, labels, count)
-    : duplicateDeviceWithPaths(object, source.toPath, labels, count);
+    ? duplicateChainWithPaths(
+        object,
+        source.toPath,
+        source.named,
+        labels,
+        count,
+      )
+    : duplicateDeviceWithPaths(
+        object,
+        source.toPath,
+        source.named,
+        labels,
+        count,
+      );
 }
 
 /**
@@ -155,46 +167,29 @@ function sourceObject(source: SourceShare, type: string): LiveAPI {
 }
 
 /**
- * Copies one source drum pad to the pads its share of toPath names.
+ * Copies one source drum pad to the pads its share of toPath names, one entry
+ * per pad.
+ *
+ * The source pad is read inside each destination's turn, so a source that can't
+ * be copied at all is reported on every destination's entry rather than costing
+ * the caller their slots.
  * @param source - The source's turn
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
- * @returns Result object, or an array of them for multiple destinations
+ * @returns One entry per destination, in the order toPath named them
  */
 function duplicateDrumPadSource(
   source: SourceShare,
   labels: CopyLabels,
   count: number,
-): object | object[] {
-  const sourcePad = resolveSourcePad(sourceObject(source, "drum-pad"));
-
-  return sourcePad == null
-    ? []
-    : duplicateDrumPadToPaths(sourcePad, source.toPath, labels, count);
-}
-
-/**
- * Copies a drum pad to one or more destination pads.
- * Supports comma-separated toPath for multiple destinations.
- * @param source - The pad to copy from
- * @param toPath - Destination pad path(s), comma-separated for multiple
- * @param labels - The call's names and colors
- * @param count - Number of copies (warns if > 1)
- * @returns Result object, or an array of them for multiple destinations
- */
-function duplicateDrumPadToPaths(
-  source: PadTarget,
-  toPath: string | undefined,
-  labels: CopyLabels,
-  count: number,
-): object | object[] {
+): object[] {
   if (count > 1) {
     console.warn(
       `count ${count} ignored: a drum pad copy goes to the pads toPath names`,
     );
   }
 
-  const paths = pathEntries(toPath, "toPath");
+  const paths = pathEntries(source.toPath, "toPath");
 
   // Unlike a device, a pad has no natural "next" slot to default to — the next
   // MIDI note is as likely to be occupied as empty — so the caller must say.
@@ -204,20 +199,14 @@ function duplicateDrumPadToPaths(
 
   claimLabels(labels, paths.length);
 
-  const results = paths
-    .map((destination, i) =>
-      duplicateDrumPad(source, destination, labelName(labels, i)),
-    )
-    .filter((result) => result != null);
-
-  // Collapse on what was asked for, not on what survived: one object back from
-  // a two-destination call would read as a one-destination call that worked.
-  if (paths.length > 1) {
-    return results;
-  }
-
-  // A lone copy that was skipped has nothing to report but its warning.
-  return results[0] ?? results;
+  return copyPerDestination(paths, source.named, (destination, i) =>
+    duplicateDrumPad(
+      resolveSourcePad(sourceObject(source, "drum-pad")),
+      // Never undefined: an empty toPath was refused above.
+      destination as string,
+      labelName(labels, i),
+    ),
+  );
 }
 
 /**

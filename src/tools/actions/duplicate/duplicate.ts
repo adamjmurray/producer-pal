@@ -189,9 +189,10 @@ export async function duplicate(
 
   const labels = copyLabels(name, color, sources.length);
 
-  // Both of these take comma-separated toPath for multiple destinations
+  // All three take comma-separated toPath for multiple destinations, and answer
+  // with one entry per destination named.
   if (type === "drum-pad" || type === "device" || type === "chain") {
-    return duplicateChainSources(type, sources, labels, count);
+    return oneOrAll(duplicateChainSources(type, sources, labels, count));
   }
 
   const createdObjects: object[] = [];

@@ -8,6 +8,7 @@
 // workaround to carry its devices across. Cross-rack is in scope — a device
 // move already crosses racks freely.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
@@ -22,6 +23,7 @@ import {
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   claimLabels,
   labelName,
@@ -33,21 +35,33 @@ import {
   withTempTrackCopy,
 } from "./temp-track-copy.ts";
 import { copyChainMixerTo } from "./copy-chain-mixer.ts";
+import { copyPerDestination } from "./copy-per-destination.ts";
+
+/** A chain copy: the new chain, and what didn't finish when something didn't. */
+interface ChainCopy {
+  id: string;
+  path?: string;
+  /** What the copy is missing, when the chain exists but isn't a full copy. */
+  reason?: string;
+}
 
 /**
- * Copy one chain to each destination rack a comma-separated toPath names.
+ * Copy one chain to each destination rack a comma-separated toPath names, one
+ * entry per destination.
  * @param chain - LiveAPI chain object to copy
  * @param toPath - Destination rack path(s), or omitted to append to its own rack
+ * @param source - The source chain, as the caller named it
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
- * @returns Result object, or an array of them for multiple destinations
+ * @returns One entry per destination, in the order toPath named them
  */
 export function duplicateChainWithPaths(
   chain: LiveAPI,
   toPath: string | undefined,
+  source: NamedTarget,
   labels: CopyLabels,
   count: number,
-): object | object[] {
+): object[] {
   const paths = pathEntries(toPath, "toPath");
 
   claimLabels(labels, Math.max(paths.length, 1));
@@ -58,20 +72,14 @@ export function duplicateChainWithPaths(
     );
   }
 
-  if (paths.length <= 1) {
-    return duplicateChain(chain, paths[0], labelName(labels, 0)) ?? [];
-  }
-
   // Read the source fresh per destination: a copy into the source's own rack
   // shifts nothing above it, but a LiveAPI object follows its path, and taking
   // the id first is what survives either way.
   const sourceId = chain.id;
 
-  return paths
-    .map((path, i) =>
-      duplicateChain(LiveAPI.from(sourceId), path, labelName(labels, i)),
-    )
-    .filter((result) => result != null);
+  return copyPerDestination(paths, source, (destination, i) =>
+    duplicateChain(LiveAPI.from(sourceId), destination, labelName(labels, i)),
+  );
 }
 
 /**
@@ -79,59 +87,61 @@ export function duplicateChainWithPaths(
  * @param chain - The source chain
  * @param toPath - Destination rack path, or undefined for the source's own rack
  * @param name - Name for the copy, or undefined to keep the source's
- * @returns The new chain's id and path, or null when the copy was skipped
+ * @returns The new chain's id and path
+ * @throws Error when no chain was created
  */
 function duplicateChain(
   chain: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
-): { id: string; path?: string } | null {
+): ChainCopy {
   // A return chain lives under `return_chains`, and no rack exposes a way to
-  // make one — insert_chain only ever appends a regular chain. Say so rather
+  // make one — insert_chain only ever appends a regular chain. Refuse rather
   // than quietly producing a normal chain the caller didn't ask for.
   if (/ return_chains \d+$/.test(chain.path)) {
-    console.warn(
+    throw new Error(
       `${targetLabel(chain)} is a rack return chain, which cannot be ` +
         "copied — the Live API has no way to create one, so they can only be " +
         "added in Live",
     );
-
-    return null;
   }
 
   const sourceRack = LiveAPI.from(chainRackPath(chain));
   const destinationRack = resolveDestinationRack(toPath, sourceRack);
-
-  if (destinationRack == null) {
-    return null;
-  }
-
   const created = insertChain(destinationRack);
+  let reason: string | undefined;
 
-  if (created == null) {
-    return null;
-  }
+  // The chain exists from here on, so whatever goes wrong is reported on its
+  // entry: rolling it back would cost the caller a chain they now have. Its
+  // path is read afterwards either way — in a Drum Rack the pad the copy
+  // reports is the one carryDrumPadNote put it on.
+  try {
+    created.set("name", name ?? chain.getProperty("name"));
 
-  created.set("name", name ?? chain.getProperty("name"));
+    const color = chain.getColor();
 
-  const color = chain.getColor();
-
-  if (color) {
-    created.setColor(color);
-  }
-
-  for (const flag of ["mute", "solo"] as const) {
-    const value = chain.getProperty(flag);
-
-    if (value === 1) {
-      created.set(flag, 1);
+    if (color) {
+      created.setColor(color);
     }
-  }
 
-  carryDrumPadNote(chain, created);
-  copyChainMixerTo(created, readChainMixer(chain), sourceRack, destinationRack);
-  copyChainDevices(chain, created);
-  warnIfMacrosLeftBehind(sourceRack);
+    for (const flag of ["mute", "solo"] as const) {
+      if (chain.getProperty(flag) === 1) {
+        created.set(flag, 1);
+      }
+    }
+
+    carryDrumPadNote(chain, created);
+    copyChainMixerTo(
+      created,
+      readChainMixer(chain),
+      sourceRack,
+      destinationRack,
+    );
+    copyChainDevices(chain, created);
+    warnIfMacrosLeftBehind(sourceRack);
+  } catch (error) {
+    reason = errorMessage(error);
+  }
 
   return {
     id: created.id,
@@ -141,6 +151,7 @@ function duplicateChain(
         ? undefined
         : { container: () => destinationRack, path: canonicalPath(toPath) },
     ),
+    ...(reason == null ? {} : { reason }),
   };
 }
 
@@ -184,12 +195,13 @@ function chainRackPath(chain: LiveAPI): string {
  * for Live to reject silently.
  * @param toPath - Destination rack path, or undefined for the source's own rack
  * @param sourceRack - The rack the source chain belongs to
- * @returns The destination rack, or null once the refusal has been warned
+ * @returns The destination rack
+ * @throws Error when the path names no rack a chain of this kind can go in
  */
 function resolveDestinationRack(
   toPath: string | undefined,
   sourceRack: LiveAPI,
-): LiveAPI | null {
+): LiveAPI {
   if (toPath == null) {
     return sourceRack;
   }
@@ -199,21 +211,17 @@ function resolveDestinationRack(
   // A chain goes into a rack, so a toPath naming anything else — a track, a
   // chain, a plain device — has no chain slot to offer.
   if (object == null) {
-    console.warn(`no destination rack at toPath "${toPath}"`);
-
-    return null;
+    throw new Error(`no destination rack at toPath "${toPath}"`);
   }
 
   const destinationClass = object.getProperty("class_name") as string;
   const sourceClass = sourceRack.getProperty("class_name") as string;
 
   if (destinationClass !== sourceClass) {
-    console.warn(
+    throw new Error(
       `cannot copy a chain from ${targetLabel(sourceRack)} (a ${sourceClass}) ` +
         `into "${toPath}" (a ${destinationClass}) — a rack only holds chains of its own kind`,
     );
-
-    return null;
   }
 
   return object;
@@ -254,20 +262,17 @@ function rackAtPath(toPath: string): LiveAPI | null {
 /**
  * Append an empty chain to a rack.
  * @param rack - The destination rack
- * @returns The new chain, or null once the failure has been warned
+ * @returns The new chain
+ * @throws Error when Live made no chain
  */
-function insertChain(rack: LiveAPI): LiveAPI | null {
+function insertChain(rack: LiveAPI): LiveAPI {
   // insert_chain returns ["id", chainId] on success, or 1 on failure.
   const result = rack.call("insert_chain");
 
   invalidateRackChains(rack);
 
   if (!Array.isArray(result) || result[0] !== "id") {
-    console.warn(
-      `could not create a chain in "${targetLabel(rack)}", skipping`,
-    );
-
-    return null;
+    throw new Error(`could not create a chain in "${targetLabel(rack)}"`);
   }
 
   return LiveAPI.from(String(result[1]));
@@ -282,6 +287,7 @@ function insertChain(rack: LiveAPI): LiveAPI | null {
  * the rest down into its place.
  * @param chain - The source chain
  * @param created - The new chain the devices are going into
+ * @throws Error when a device didn't make it across
  */
 function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
   const deviceCount = chain.getChildCount("devices");
@@ -295,12 +301,9 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
   const destinationChainPath = pathField(created).path;
 
   if (destinationChainPath == null) {
-    console.warn(
-      "the new chain has no addressable path, so its devices were " +
-        "not copied",
+    throw new Error(
+      "the new chain has no addressable path, so its devices were not copied",
     );
-
-    return;
   }
 
   withTempTrackCopy(chain.path, "chain", ({ tempPath, sourceTrackIndex }) => {
@@ -311,9 +314,12 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
 
     for (let index = 0; index < deviceCount; index++) {
       const tempDevice = LiveAPI.from(`${tempPath} devices 0`);
+      const failed = `${pathPrefix(chain)}/d${index} could not be copied into the new chain`;
 
+      // The source counted more devices than the temp copy holds, so there is
+      // nothing left to move. The chain keeps its entry, short a device.
       if (!tempDevice.exists()) {
-        break;
+        throw new Error(`${failed}: it is not on the temp track`);
       }
 
       // Append: the destination slot is whatever index the chain is up to,
@@ -322,7 +328,7 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
       // could name here is the temp track's, which is about to be deleted.
       // Report the unshifted path and the real source device for the same
       // reason.
-      const { outcome } = moveDeviceToPath(
+      const { outcome, reason } = moveDeviceToPath(
         tempDevice,
         `${adjusted}/d${index}`,
         null,
@@ -331,11 +337,7 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
       );
 
       if (outcome !== "moved") {
-        console.warn(
-          `${pathPrefix(chain)}/d${index} could not be copied into the new chain`,
-        );
-
-        break;
+        throw new Error(reason == null ? failed : `${failed}: ${reason}`);
       }
     }
   });
