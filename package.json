@@ -119,7 +119,7 @@
     "@ai-sdk/anthropic": "4.0.49",
     "@ai-sdk/google": "4.0.64",
     "@ai-sdk/mistral": "4.0.39",
-    "@ai-sdk/openai": "4.0.59",
+    "@ai-sdk/openai": "4.0.60",
     "@ai-sdk/openai-compatible": "3.0.44",
     "@ai-sdk/provider-utils": "5.0.36",
     "@codemirror/commands": "6.11.0",
