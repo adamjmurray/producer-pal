@@ -352,7 +352,10 @@ export interface WrittenParam {
  * these, never a param that landed.
  */
 export interface UnresolvedParam {
-  name: string;
+  /** The name the call sent, when it addressed the param by name. */
+  name?: string;
+  /** The id the call sent, when it addressed the param by id. */
+  id?: string;
   ok: false;
   reason: string;
 }
@@ -388,6 +391,16 @@ export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
  */
 export function skippedParam(name: string, reason: string): UnresolvedParam {
   return { name, ok: false, reason };
+}
+
+/**
+ * The entry for a param addressed by id that nothing was written to.
+ * @param id - The param id as the call spelled it
+ * @param reason - Why nothing was written
+ * @returns The skip entry
+ */
+export function skippedParamById(id: string, reason: string): UnresolvedParam {
+  return { id, ok: false, reason };
 }
 
 /** What create-device and update-device report for each param they wrote. */
@@ -429,7 +442,8 @@ const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
  */
 export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
   return outcomes.flatMap((entry): ParamResult[] => {
-    if ("id" in entry) {
+    // A skip can carry the id the caller sent; only a landed write has no `ok`.
+    if (!("ok" in entry) && "id" in entry) {
       return [
         writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value),
       ];

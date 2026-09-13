@@ -7,7 +7,10 @@
 // and spell the pad in the param name. Both spellings below reach the same pad
 // as that shortcut does, and say the same things about it.
 
-import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import {
+  type ParamEntry,
+  paramEntryKey,
+} from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamOutcome,
   type ParamResult,
@@ -44,11 +47,11 @@ export function applyChainSampleParams(
 
   return refreshParamValues(
     params.flatMap((entry) =>
-      type === "DrumChain" && isSampleParam(entry.name.trim())
+      type === "DrumChain" && isSampleParam(paramEntryKey(entry).key)
         ? writeChainSample(target, entry, force)
         : [
             skippedParam(
-              entry.name,
+              paramEntryKey(entry).key,
               notApplicableReason("params", type, target),
             ),
           ],
@@ -71,7 +74,7 @@ function writeChainSample(
   const resolved = resolveDrumChainSampleTarget(chain, force);
 
   if ("reason" in resolved) {
-    return [skippedParam(entry.name, resolved.reason)];
+    return [skippedParam(paramEntryKey(entry).key, resolved.reason)];
   }
 
   return setParamValues(resolved.device, [entry], force);

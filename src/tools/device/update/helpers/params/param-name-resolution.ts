@@ -81,7 +81,7 @@ export function ambiguousNameReason(
     )
     .join(", ");
 
-  return `names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. Write by id to pick one.`;
+  return `names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. Send {id, value} to pick one.`;
 }
 
 /** A param key that reached a parameter, or the reason it reached none. */
@@ -102,14 +102,18 @@ type ParamLookup = { param: LiveAPI } | { reason: string };
  * addressed. Naming where the param actually lives turns that into a one-step
  * correction; the path-prefixed form (`c0/d0/Volume`) is how one call reaches a
  * nested device's param on purpose.
- * @param key - The trimmed param name
+ * @param key - The trimmed param id, or a name that may be one
  * @param device - The device the call addressed
  * @returns The parameter, or the reason there is none
  */
 export function resolveParamById(key: string, device: LiveAPI): ParamLookup {
-  const object = /^\d+$/.test(key) ? LiveAPI.from(key) : null;
+  if (!/^\d+$/.test(key)) {
+    return { reason: `not found on ${targetLabel(device)}` };
+  }
 
-  if (object?.exists() && object.type === "DeviceParameter") {
+  const object = LiveAPI.from(key);
+
+  if (object.exists() && object.type === "DeviceParameter") {
     // A param hangs directly off its device, so the device's own canonical path
     // is the whole of its parent path.
     const ownerPath = object.path.replace(PARAMETER_TAIL, "");

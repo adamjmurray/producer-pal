@@ -12,7 +12,7 @@ import {
   paramsOf,
   registerMockObject,
   updateDevice,
-} from "../update-device-test-helpers.ts";
+} from "../../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - params by name", () => {
@@ -237,7 +237,7 @@ describe("updateDevice - a name that matches more than one param", () => {
         reason:
           "names 2 params on t0/d0 (id 123) — " +
           "id 94 (0.5 to 9), id 95 (0 % to 100 %) — so " +
-          "nothing was written. Write by id to pick one.",
+          "nothing was written. Send {id, value} to pick one.",
       },
     ]);
     expect(capturedWarnings()).toHaveLength(0);
@@ -312,7 +312,7 @@ describe("updateDevice - a name that matches more than one param", () => {
       result,
       "Dry/Wet",
       "names 2 params on t0/d0 (id 123) — id 94 (0 % to 100 %), " +
-        "id 95 (0 % to 100 %) — so nothing was written. Write by id to pick one.",
+        "id 95 (0 % to 100 %) — so nothing was written. Send {id, value} to pick one.",
     );
   });
 });
@@ -370,7 +370,7 @@ describe("updateDevice - two rack macros renamed the same", () => {
         reason:
           "names 2 params on t0/d0 (id 123) — " +
           "id m1 (0 to 127), id m2 (0 to 127) — so nothing was written. " +
-          "Write by id to pick one.",
+          "Send {id, value} to pick one.",
       },
     ]);
   });

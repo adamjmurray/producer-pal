@@ -106,7 +106,7 @@ export function updateDevice(
   }
 
   validateSendPair(sendGainDb, sendReturn);
-  validateParamEntries(params);
+  params = validateParamEntries(params);
 
   // One value for the whole call, so a per-target skip would repeat itself
   // down the list. Refused before any target is touched.

@@ -11,6 +11,7 @@ import {
 } from "../../mcp-test-helpers.ts";
 
 export interface ParamInfo {
+  id?: string;
   name: string;
   value?: number | string;
   min?: number;
@@ -51,7 +52,8 @@ export async function readParam(
 /** One `params` entry, as create-device and update-device report it. */
 export interface ParamResultEntry {
   id?: string;
-  name: string;
+  /** Absent on a skip for a param the call addressed by id. */
+  name?: string;
   value?: unknown;
   /** False only on a param nothing was written to */
   ok?: boolean;

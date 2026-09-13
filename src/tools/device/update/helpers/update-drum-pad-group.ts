@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import {
+  type ParamEntry,
+  paramEntryKey,
+} from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamResult,
   skippedParam,
@@ -166,12 +169,14 @@ function inRequestOrder(
 ): ParamResult[] {
   const sentAt = new Map(
     sent.map((entry, index): [string, number] => [
-      entry.name.trim().toLowerCase(),
+      paramEntryKey(entry).key.toLowerCase(),
       index,
     ]),
   );
   const position = (entry: ParamResult): number =>
-    sentAt.get(entry.name.trim().toLowerCase()) ?? sent.length;
+    sentAt.get(
+      (entry.name ?? ("id" in entry ? entry.id : null) ?? "").toLowerCase(),
+    ) ?? sent.length;
 
   return entries.toSorted((a, b) => position(a) - position(b));
 }
@@ -188,7 +193,7 @@ function createChainForSample(
   options: UpdateTargetOptions,
 ): LiveAPI[] {
   const wantsSample = (options.params ?? []).some((entry) =>
-    isSampleParam(entry.name.trim()),
+    isSampleParam(paramEntryKey(entry).key),
   );
 
   if (!wantsSample || pad == null) {
@@ -320,7 +325,9 @@ function dropAmbiguousSamples(
   chains: LiveAPI[],
 ): { options: UpdateTargetOptions; skipped: ParamResult[] } | null {
   const params = options.params ?? [];
-  const samples = params.filter((entry) => isSampleParam(entry.name.trim()));
+  const samples = params.filter((entry) =>
+    isSampleParam(paramEntryKey(entry).key),
+  );
 
   if (samples.length === 0) {
     return null;
@@ -337,6 +344,8 @@ function dropAmbiguousSamples(
       ...options,
       params: params.filter((entry) => !samples.includes(entry)),
     },
-    skipped: samples.map((entry) => skippedParam(entry.name, reason)),
+    skipped: samples.map((entry) =>
+      skippedParam(paramEntryKey(entry).key, reason),
+    ),
   };
 }

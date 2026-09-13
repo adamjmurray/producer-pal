@@ -190,7 +190,7 @@ describe("updateDevice", () => {
     it("should refuse an entry with an empty name", () => {
       expect(() =>
         updateDevice({ id: "123", params: [{ name: "  ", value: "0.5" }] }),
-      ).toThrow("params entry 1 has an empty name");
+      ).toThrow("params entry 1 has neither a name nor an id");
     });
 
     it("should refuse an entry with an empty value", () => {

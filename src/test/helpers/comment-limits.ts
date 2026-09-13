@@ -28,7 +28,7 @@ export const COMMENT_DENSITY_LIMITS: TreeLimits = {
   src: 0.535,
   scripts: 0.325,
   webui: 0.46,
-  evals: 0.49,
+  evals: 0.485,
   e2e: 0.585,
 };
 
@@ -50,7 +50,6 @@ export const MAX_BLOCK_LINES = 25;
  */
 export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "evals/schema-compat/probe-schema-compat-cli.ts": 27,
-  "evals/schema-compat/probe-schema-compat.ts": 26,
   "evals/scenarios/defs/clip/notation/arpeggio-bracket-idiom.ts": 27,
   "evals/scenarios/defs/clip/notation/pretransforms-slm.ts": 26,
   "evals/scenarios/defs/clip/transforms/note-ops-roll-and-merge.ts": 32,

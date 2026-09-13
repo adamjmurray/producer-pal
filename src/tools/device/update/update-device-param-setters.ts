@@ -4,10 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import {
+  type ParamEntry,
+  paramEntryKey,
+} from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamOutcome,
   skippedParam,
+  skippedParamById,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   isDrumPadSampleShortcut,
@@ -32,7 +36,7 @@ import { type ParamWriteOutcome } from "./helpers/params/param-write-verificatio
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 /**
- * Set parameter values from an array of {name, value} entries. Specialized-device
+ * Set parameter values from an array of {name | id, value} entries. Specialized-device
  * pseudo-params (e.g. `sample` for Simpler, `routingMode` for Roar) are
  * dispatched via the specialized-device registry before falling through to
  * DeviceParameter resolution.
@@ -41,7 +45,7 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * landed on, or the reason nothing was written. Nothing here warns — the param's
  * own entry is where the caller reads what happened to it.
  * @param device - LiveAPI device object to update
- * @param params - Array of {name, value} param entries
+ * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @returns One entry per param named, in order
  */
@@ -63,8 +67,15 @@ export function setParamValues(
 
   for (const entry of params) {
     // Malformed entries were refused up front, so both sides are non-empty.
-    const key = entry.name.trim();
+    const { key, byId } = paramEntryKey(entry);
     const rawValue = entry.value.trim();
+
+    // An id names one parameter outright, so it skips the name lookups — a
+    // param that happens to be named "1" can't shadow id 1.
+    if (byId) {
+      results.push(setParamById(device, key, rawValue, deviceName));
+      continue;
+    }
 
     // Isolate each param: a throw resolving one (e.g. a path-prefixed pad param
     // whose chain auto-create exceeds the cap) must not abort the rest of a
@@ -78,6 +89,37 @@ export function setParamValues(
   }
 
   return results;
+}
+
+/**
+ * Set one param addressed by id. A miss is reported under the id the caller
+ * sent, since that is all it has to match the entry on.
+ * @param device - LiveAPI device object to update
+ * @param id - The param id as the caller wrote it
+ * @param rawValue - Trimmed value
+ * @param deviceName - The device's class_display_name
+ * @returns The entry for this param
+ */
+function setParamById(
+  device: LiveAPI,
+  id: string,
+  rawValue: string,
+  deviceName: string | undefined,
+): ParamOutcome {
+  const lookup = resolveParamById(id, device);
+
+  if ("reason" in lookup) {
+    return skippedParamById(id, lookup.reason);
+  }
+
+  const outcome = setParamValue(
+    lookup.param,
+    normalizeParamValue(rawValue, deviceName, id),
+    rawValue,
+    deviceName,
+  );
+
+  return "id" in outcome ? outcome : skippedParamById(id, outcome.reason);
 }
 
 /**

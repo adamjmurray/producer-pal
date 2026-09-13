@@ -119,7 +119,7 @@ export function createDevice(
     throw new Error("path is required when creating a device");
   }
 
-  validateParamEntries(params);
+  params = validateParamEntries(params);
 
   validateListLengths([
     { param: "path", value: path },
