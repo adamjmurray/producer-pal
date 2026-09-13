@@ -17,24 +17,31 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
+  type CreateTrackResult,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 
 describe("ppal-create-track", () => {
   /**
-   * How many tracks the Set holds right now.
-   * @returns The track count
+   * The Set's tracks and return tracks, as read-live-set reports them.
+   * @returns The read result
    */
-  async function trackCount(): Promise<number> {
-    const set = parseToolResult<LiveSetResult>(
+  async function readSet(): Promise<LiveSetResult> {
+    return parseToolResult<LiveSetResult>(
       await ctx.client!.callTool({
         name: "ppal-read-live-set",
         arguments: { include: ["tracks"] },
       }),
     );
+  }
 
-    return set.tracks?.length ?? 0;
+  /**
+   * How many tracks the Set holds right now.
+   * @returns The track count
+   */
+  async function trackCount(): Promise<number> {
+    return (await readSet()).tracks?.length ?? 0;
   }
 
   /**
@@ -42,18 +49,40 @@ describe("ppal-create-track", () => {
    * @returns The track names, first to last
    */
   async function tracks(): Promise<{ id: string; name: string }[]> {
-    const set = parseToolResult<LiveSetResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-live-set",
-        arguments: { include: ["tracks"] },
-      }),
-    );
-
-    return (set.tracks ?? []).map(({ id, name }) => ({ id, name }));
+    return ((await readSet()).tracks ?? []).map(({ id, name }) => ({
+      id,
+      name,
+    }));
   }
 
   async function trackNames(): Promise<string[]> {
     return (await tracks()).map((track) => track.name);
+  }
+
+  /**
+   * The name Live gave the track at a path.
+   * @param path - The track's path
+   * @returns The name read back
+   */
+  async function nameAt(path: string): Promise<string> {
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path },
+      }),
+    );
+
+    return track.name;
+  }
+
+  /**
+   * The send letter Live will give the next return track.
+   * @returns The letter
+   */
+  async function nextReturnLetter(): Promise<string> {
+    return String.fromCharCode(
+      65 + ((await readSet()).returnTracks?.length ?? 0),
+    );
   }
 
   it("creates midi, audio, and return tracks", async () => {
@@ -132,6 +161,43 @@ describe("ppal-create-track", () => {
     expect(warnings).toStrictEqual([
       'WARNING: type "return" is deprecated and will be removed; use path "rt+" instead',
     ]);
+  });
+
+  it("reports the name Live lands on when it prefixes the send letter", async () => {
+    const letter = await nextReturnLetter();
+
+    // A bare name comes back with the send letter in front of it, so the entry
+    // says what the track is actually called.
+    const prefixed = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", name: "Delay" },
+      }),
+    );
+
+    expect(prefixed.name).toBe(`${letter}-Delay`);
+    expect(prefixed.reason).toBe(
+      "Live prefixes a return track's name with its send letter",
+    );
+
+    await sleep(100);
+    expect(await nameAt(prefixed.path!)).toBe(prefixed.name);
+
+    // A name already starting with the new return's own letter is stripped
+    // before the write, so it lands as asked and the entry says nothing.
+    const ownLetter = await nextReturnLetter();
+    const asAsked = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", name: `${ownLetter}-Tape` },
+      }),
+    );
+
+    expect(asAsked.name).toBeUndefined();
+    expect(asAsked.reason).toBeUndefined();
+
+    await sleep(100);
+    expect(await nameAt(asAsked.path!)).toBe(`${ownLetter}-Tape`);
   });
 
   it("creates tracks with custom properties", async () => {
@@ -403,11 +469,7 @@ describe("ppal-create-track", () => {
 
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
-}
-
-interface CreateTrackResult {
-  id: string;
-  path?: string;
+  returnTracks?: Array<{ id: string; name: string }>;
 }
 
 interface ReadTrackResult {

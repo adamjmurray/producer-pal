@@ -462,9 +462,48 @@ describe("updateTrack", () => {
     it("leaves a regular track's name alone", () => {
       const track = registerMockObject("trk1", { path: livePath.track(0) });
 
-      updateTrack({ id: "trk1", name: "A-Delay" });
+      const result = updateTrack({ id: "trk1", name: "A-Delay" });
 
       expect(track.set).toHaveBeenCalledWith("name", "A-Delay");
+      expect(result).toStrictEqual({ id: "trk1", path: "t0" });
+    });
+
+    it("reports the name Live landed on when it prefixed the letter", () => {
+      const returnTrack = registerMockObject("ret3", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = updateTrack({ id: "ret3", name: "B-Side" });
+
+      // "B-Side" isn't return C's own letter, so it stays and Live prefixes it.
+      expect(returnTrack.set).toHaveBeenCalledWith("name", "B-Side");
+      expect(result).toStrictEqual({
+        id: "ret3",
+        path: "rt2",
+        name: "C-B-Side",
+        reason: "Live prefixes a return track's name with its send letter",
+      });
+    });
+
+    it("says nothing when the name lands as asked", () => {
+      registerMockObject("ret1", { path: livePath.returnTrack(0) });
+
+      const result = updateTrack({ id: "ret1", name: "A-Delay" });
+
+      expect(result).toStrictEqual({ id: "ret1", path: "rt0" });
+    });
+
+    it("reports the letter a bare name comes back with", () => {
+      registerMockObject("ret1", { path: livePath.returnTrack(0) });
+
+      const result = updateTrack({ id: "ret1", name: "Tape" });
+
+      expect(result).toStrictEqual({
+        id: "ret1",
+        path: "rt0",
+        name: "A-Tape",
+        reason: "Live prefixes a return track's name with its send letter",
+      });
     });
   });
 

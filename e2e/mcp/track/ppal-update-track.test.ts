@@ -499,7 +499,7 @@ describe("ppal-update-track", () => {
   it("can never give a return track an all-digit name", async () => {
     // Checked here, rather than adding an all-digit-return-name send test:
     // Live prepends a return's own send letter to its name (see
-    // stripReturnTrackLetter) and re-asserts it even over an explicit rename,
+    // returnTrackRename) and re-asserts it even over an explicit rename,
     // so a return track's name can never read back as pure digits — the
     // numeric-name risk that hits locators, chains, and regular tracks
     // doesn't reach return-track sends at all.

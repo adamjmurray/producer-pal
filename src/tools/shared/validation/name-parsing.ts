@@ -53,6 +53,28 @@ export function getNameForIndex(
 }
 
 /**
+ * The send letter Live labels a return slot with.
+ * @param path - The slot's Live API path
+ * @param slotPattern - Regex capturing the slot index at the end of the path
+ * @returns The letter, or null when the path names no return slot or the slot
+ *   is past Z, where Live's label is unknown
+ */
+export function returnSlotLetter(
+  path: string,
+  slotPattern: RegExp,
+): string | null {
+  const match = slotPattern.exec(path);
+
+  if (match == null) {
+    return null;
+  }
+
+  const index = Number(match[1]);
+
+  return index > 25 ? null : String.fromCharCode(65 + index);
+}
+
+/**
  * Live prepends a return slot's send letter to its name, so writing back the
  * name a read tool reported ("A-Delay", "F Pedal") would double it. Strip a
  * leading letter when it matches the slot's own index.
@@ -68,20 +90,13 @@ export function stripReturnSlotLetter(
   slotPattern: RegExp,
   separator: string,
 ): string {
-  const match = slotPattern.exec(path);
+  const letter = returnSlotLetter(path, slotPattern);
 
-  if (match == null) {
+  if (letter == null) {
     return name;
   }
 
-  const index = Number(match[1]);
-
-  // Past Z we don't know what Live labels the slot, so leave the name alone.
-  if (index > 25) {
-    return name;
-  }
-
-  const prefix = `${String.fromCharCode(65 + index)}${separator}`;
+  const prefix = `${letter}${separator}`;
 
   return name.toUpperCase().startsWith(prefix)
     ? name.slice(prefix.length)

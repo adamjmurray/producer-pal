@@ -13,6 +13,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResultWithWarnings,
   type CreateClipResult,
   setupMcpTestContext,
@@ -62,6 +64,18 @@ describe("arrangement address resolves to the covering clip", () => {
 
     expect(atBoundary.id).toBe(second.id);
     expect(atBoundary.id).not.toBe(first.id);
+  });
+
+  it("says what it hit when a path carries a second coordinate", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}[5|1][3|1]` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'it hit an unexpected second "["',
+    );
   });
 
   it("finds a take-lane clip from a mid-clip position", async () => {

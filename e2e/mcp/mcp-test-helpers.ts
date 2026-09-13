@@ -569,6 +569,9 @@ export interface UpdateClipResult {
 export interface CreateTrackResult {
   id: string;
   path?: string;
+  /** The name Live landed on, only when it isn't the one asked for */
+  name?: string;
+  reason?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */

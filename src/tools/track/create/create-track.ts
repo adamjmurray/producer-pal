@@ -17,6 +17,7 @@ import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts"
 import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { returnTrackRename } from "../helpers/return-track-rename.ts";
 import {
   type CreateTrackTarget,
   resolveCreateTrackTargets,
@@ -37,6 +38,12 @@ interface CreateTrackArgs {
 interface CreatedTrackResult {
   id: string;
   path: string;
+  /**
+   * The name the track ended up with, when it isn't the one asked for. `reason`
+   * says why, and there is no `ok` — the track was made.
+   */
+  name?: string;
+  reason?: string;
 }
 
 /**
@@ -91,9 +98,13 @@ export function createTrack(
         : (insertions[nextInsertion++] as Insertion);
     const trackId = createSingleTrack(liveSet, target, insertion);
     const track = LiveAPI.from(`id ${trackId}`);
+    const rename = returnTrackRename(
+      track.path,
+      getNameForIndex(name, i, parsedNames),
+    );
 
     track.setAll({
-      name: getNameForIndex(name, i, parsedNames),
+      name: rename.write,
       color: getColorForIndex(color, i, parsedColors),
       mute,
       solo,
@@ -107,6 +118,7 @@ export function createTrack(
           ? { kind: "return-track", returnIndex: returnIndex++ }
           : { kind: "track", trackIndex: insertion.finalIndex },
       ),
+      ...rename.landed,
     });
   }
 

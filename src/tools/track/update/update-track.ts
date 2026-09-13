@@ -10,7 +10,7 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
-import { stripReturnTrackLetter } from "../helpers/return-track-letter.ts";
+import { returnTrackRename } from "../helpers/return-track-rename.ts";
 import {
   type PanningMode,
   type TrackMixerApplied,
@@ -86,6 +86,12 @@ interface UpdateTrackArgs {
 interface UpdateTrackResult extends TrackMixerApplied {
   id: string;
   path?: string;
+  /**
+   * The name the track ended up with, when it isn't the one asked for. `reason`
+   * says why, and there is no `ok` — the rename happened.
+   */
+  name?: string;
+  reason?: string;
   /** Every send the call wrote, read back off the track */
   sends?: SendResult[];
 }
@@ -229,11 +235,10 @@ export function updateTrack(
     const track = targetObject(target, "track", trackIdAtPath);
     const trackColor = getColorForIndex(color, i, parsedColors);
 
+    const rename = returnTrackRename(track.path, trackName);
+
     track.setAll({
-      name:
-        trackName == null
-          ? undefined
-          : stripReturnTrackLetter(track.path, trackName),
+      name: rename.write,
       color: trackColor,
       mute,
       solo,
@@ -294,6 +299,7 @@ export function updateTrack(
     return {
       id: track.id,
       ...pathField(track),
+      ...rename.landed,
       ...mixer,
       ...(changedSends.length > 0 ? { sends: changedSends } : {}),
     };
