@@ -16,10 +16,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
-  getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
+import { callForParams } from "../helpers/device-param-test-helpers.ts";
 
 interface ParamInfo {
   id: string;
@@ -48,26 +48,29 @@ async function readWidths(deviceId: string): Promise<ParamInfo[]> {
 }
 
 describe("a device with two params of the same name", () => {
-  it("skips the write and names both ids", async () => {
+  it("skips the write and names both ids in the param's entry", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Corpus", "t2");
     const before = await readWidths(deviceId);
 
     expect(before).toHaveLength(2);
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: { id: deviceId, params: [{ name: "Width", value: "50" }] },
-    });
-    const warning = getToolWarnings(result).find((text) =>
-      text.includes('param "Width" names 2 params'),
+    const { entries, warnings } = await callForParams(
+      ctx.client!,
+      "ppal-update-device",
+      { id: deviceId, params: [{ name: "Width", value: "50" }] },
     );
+    const [entry] = entries;
 
-    expect(warning, "no ambiguous-name warning").toBeDefined();
+    expect(entry?.name).toBe("Width");
+    expect(entry?.ok).toBe(false);
+    expect(entry?.reason).toContain("names 2 params");
+    expect(entry?.reason).toContain("Write by id to pick one");
 
     for (const param of before) {
-      expect(warning).toContain(`id ${param.id}`);
+      expect(entry?.reason).toContain(`id ${param.id}`);
     }
 
+    expect(warnings).toStrictEqual([]);
     // Neither param moved: the old behavior wrote the first match, clamping 50
     // into the bandwidth's 0.5-9 range.
     expect(await readWidths(deviceId)).toStrictEqual(before);

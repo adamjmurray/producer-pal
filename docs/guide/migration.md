@@ -72,9 +72,11 @@ branching on `type === "return"` or `type === "master"` gets `undefined`.
 `ppal-playback`'s `loop`, `loopStart` and `loopEnd` come back only when your
 call didn't name them. Don't read them unconditionally.
 
-The device tools' `params` can be **longer** than the number of params you
-wrote: a name that reached nothing comes back as `{name, reason}` with no
-`value`. Key off `value`, not the entry's presence.
+The device tools' `params` hold **one entry per param you sent**, in order. A
+param nothing was written to comes back as `{name, ok: false, reason}` with no
+`value`; one whose value Live changed on the way in (a clamp, the nearest step
+of a coarse ladder) carries the value it reads as plus a `reason`. Key off
+`value`, not the entry's presence.
 
 `ppal-delete` can return an array where it used to return a single object, since
 failures are now included instead of dropped. Its results are also in **request

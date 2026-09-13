@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import {
+  type ParamResult,
+  skippedParam,
+} from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
   ambiguousLayerReason,
   isSampleParam,
@@ -131,7 +135,10 @@ export function updateDrumPadGroup(
   const skipped = ambiguous?.skipped ?? [];
 
   if (skipped.length > 0) {
-    result.params = [...skipped, ...(mixer.params ?? [])];
+    result.params = inRequestOrder(options.params ?? [], [
+      ...skipped,
+      ...(mixer.params ?? []),
+    ]);
   }
 
   if (pad != null) {
@@ -143,6 +150,30 @@ export function updateDrumPadGroup(
   }
 
   return result;
+}
+
+/**
+ * The entries in the order the call sent its params. The ambiguous samples are
+ * taken out of the list before the rest are written, so the two sets come back
+ * separately; each entry is matched to its request by the name it was sent under.
+ * @param sent - The params list as the caller sent it
+ * @param entries - Every entry the write produced
+ * @returns The entries, in request order
+ */
+function inRequestOrder(
+  sent: ParamEntry[],
+  entries: ParamResult[],
+): ParamResult[] {
+  const sentAt = new Map(
+    sent.map((entry, index): [string, number] => [
+      entry.name.trim().toLowerCase(),
+      index,
+    ]),
+  );
+  const position = (entry: ParamResult): number =>
+    sentAt.get(entry.name.trim().toLowerCase()) ?? sent.length;
+
+  return entries.toSorted((a, b) => position(a) - position(b));
 }
 
 /**
@@ -301,13 +332,11 @@ function dropAmbiguousSamples(
     chains.map((_, index) => `${padPath}/c${index}`),
   );
 
-  console.warn(reason);
-
   return {
     options: {
       ...options,
       params: params.filter((entry) => !samples.includes(entry)),
     },
-    skipped: samples.map((entry) => ({ name: entry.name, reason })),
+    skipped: samples.map((entry) => skippedParam(entry.name, reason)),
   };
 }

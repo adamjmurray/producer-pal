@@ -13,6 +13,13 @@ export interface MixerApplied {
 }
 
 /**
+ * What one step of a param write produced, or why it produced nothing. A step
+ * that produced a value can still carry a reason: the value is there, but it is
+ * not the one asked for (a clamp, the nearest step of a coarse ladder).
+ */
+export type ParamStep<T> = { value: T; reason?: string } | { reason: string };
+
+/**
  * Whether a parameter accepts writes. Live disables a parameter when something
  * else owns it — almost always a rack macro mapped to it. Only a positive "no"
  * counts: an object that doesn't report `is_enabled` is treated as writable.
@@ -84,10 +91,10 @@ export function setParamAndReadBack(
 }
 
 /**
- * Write a raw value and check it landed. Live silently ignores a write it
- * doesn't like — most often one outside the parameter's raw range — leaving the
- * old value in place and reporting success, so without this the tool claims an
- * update that never happened.
+ * Write a raw value and check it landed, answering with the reason it didn't.
+ * Live silently ignores a write it doesn't like — most often one outside the
+ * parameter's raw range — leaving the old value in place and reporting success,
+ * so without this the tool claims an update that never happened.
  *
  * Compares display labels, not raw numbers. Live does not keep the number we
  * send: it rounds to six significant digits and stores that as a 32-bit float,
@@ -101,37 +108,33 @@ export function setParamAndReadBack(
  * display boundary — warning "was not changed" about a write that landed.
  * @param param - DeviceParameter LiveAPI object
  * @param rawValue - Raw value to write
- * @param label - How to name the parameter in the warning
- * @returns True when the value landed
+ * @returns Why the value didn't land, or null when it did
  */
 export function setParamValueAndVerify(
   param: LiveAPI,
   rawValue: number,
-  label: string,
-): boolean {
+): string | null {
   const expected = strForValue(param, rawValue);
 
   param.set("value", rawValue);
 
   const actual = strForValue(param, param.getProperty("value") as number);
 
-  if (actual === expected) {
-    return true;
-  }
-
-  console.warn(
-    `${label} was not changed — it still reads "${actual}". Live ignores a value outside the parameter's range.`,
-  );
-
-  return false;
+  return actual === expected
+    ? null
+    : `was not changed — it still reads "${actual}". Live ignores a value outside the parameter's range.`;
 }
 
+/** Why a write to a parameter something else owns lands nowhere. */
+export const PARAM_DISABLED_REASON =
+  "is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.";
+
 /**
- * Warn that a disabled parameter was skipped
+ * Warn that a disabled parameter was skipped. For the writes whose results have
+ * no per-parameter entry to carry the reason instead — a chain's own mixer, a
+ * track send.
  * @param label - How to name the parameter in the warning
  */
 export function warnParamDisabled(label: string): void {
-  console.warn(
-    `${label} is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.`,
-  );
+  console.warn(`${label} ${PARAM_DISABLED_REASON}`);
 }

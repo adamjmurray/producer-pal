@@ -102,6 +102,16 @@ target, so no entry exists yet to carry them.
 - **update-clip's per-target loop still drops and warns.** Its targets are
   re-ordered and its results re-assembled per clip, so it does not fit the
   helper yet. The move and arrangement helpers are in the same state.
+- **update-device's per-param drop paths became entries.** A `params` list
+  answers with one entry per param sent: a disabled param, an ambiguous name, an
+  unreadable value, a unit that can't be checked, a write Live ignored, a nested
+  path that resolved to nothing, a resolution that threw, a param a chain or pad
+  has no use for — each is `ok: false` with a reason on that param's own entry
+  now, and warns nowhere. A param whose value Live changed on the way in (a
+  clamp, the nearest step of a coarse ladder) reports the value it reads as plus
+  the reason, and no `ok`. A specialized pseudo-param whose `write` refuses the
+  value is the one left: it still reports no entry and warns, because that
+  contract is a boolean across every device spec.
 - **A type-addressed device path that names nothing still warns as well.**
   `t0/inst` on a track with no instrument substitutes a fallback index and warns
   once per request; the entry then says the path found nothing. Folding that

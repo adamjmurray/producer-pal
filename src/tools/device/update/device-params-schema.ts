@@ -25,9 +25,9 @@ export const paramEntrySchema = z.object({
 /**
  * Coerce a param field to a string, leaving nullish alone so it still fails
  * validation. An object or array can never name or value a param, but it must
- * still reach the setter as a string: the setter warns and skips one bad entry,
- * where a validation failure would reject the whole multi-param call. JSON
- * rather than String() so that warning names what arrived instead of reading
+ * still reach the setter as a string: the setter refuses one bad entry in its own
+ * result, where a validation failure would reject the whole multi-param call.
+ * JSON rather than String() so that entry names what arrived instead of reading
  * "[object Object]".
  * @param value - The raw field value
  * @returns The value as a string, or the value itself when nullish

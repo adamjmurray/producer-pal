@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseLabel } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
   type KnownParamUnit,
   canonicalUnit,
@@ -24,8 +24,6 @@ export interface WriteUnitContext {
   /** The param's display range, named by its trimmed ends. */
   minLabel: string;
   maxLabel: string;
-  /** How to name the parameter in a warning. */
-  label: string;
 }
 
 /**
@@ -42,9 +40,9 @@ export interface WriteUnitContext {
  * it's the documented way to write one, and the only way to reach a param whose
  * unit nobody has recorded.
  * @param ctx - The written value and what is known about the param's units
- * @returns The value in the param's own display scale, or null to refuse
+ * @returns The value in the param's own display scale, or the refusal
  */
-export function displayValueForWrite(ctx: WriteUnitContext): number | null {
+export function displayValueForWrite(ctx: WriteUnitContext): ParamStep<number> {
   const requested = parseLabel(ctx.writtenText).unit;
 
   if (requested != null) {
@@ -52,7 +50,9 @@ export function displayValueForWrite(ctx: WriteUnitContext): number | null {
     // sides: its display range was parsed through the same conversion the
     // input was.
     if (ctx.labelUnit != null) {
-      return requested === ctx.labelUnit ? ctx.inputValue : refuse(ctx);
+      return requested === ctx.labelUnit
+        ? { value: ctx.inputValue }
+        : refuse(ctx);
     }
 
     if (ctx.known == null) {
@@ -65,7 +65,9 @@ export function displayValueForWrite(ctx: WriteUnitContext): number | null {
     // own range.
     const { canonical, scale } = canonicalUnit(ctx.known.unit);
 
-    return requested === canonical ? ctx.inputValue / scale : refuse(ctx);
+    return requested === canonical
+      ? { value: ctx.inputValue / scale }
+      : refuse(ctx);
   }
 
   // parseLabel doesn't recognize every unit read-device records (Erosion's
@@ -75,29 +77,28 @@ export function displayValueForWrite(ctx: WriteUnitContext): number | null {
   const trailing = splitLeadingNumber(ctx.writtenText)?.trailing;
 
   if (!trailing) {
-    return ctx.inputValue;
+    return { value: ctx.inputValue };
   }
 
   return ctx.known != null &&
     trailing.toLowerCase() === ctx.known.unit.toLowerCase()
-    ? ctx.inputValue
+    ? { value: ctx.inputValue }
     : refuse(ctx);
 }
 
 /**
- * Warn that the written unit isn't the param's, and refuse the write. Says what
- * the param does measure whenever that is known, so the retry can be right.
+ * Refuse the write, saying the written unit isn't the param's. Says what the
+ * param does measure whenever that is known, so the retry can be right.
  * @param ctx - The written value and what is known about the param's units
- * @returns null, always — the caller returns this as the refusal
+ * @returns The refusal, which the caller returns as-is
  */
-function refuse(ctx: WriteUnitContext): null {
+function refuse(ctx: WriteUnitContext): { reason: string } {
   const actual = ctx.labelUnit ?? ctx.known?.unit;
 
-  console.warn(
-    actual == null
-      ? `${ctx.label} displays a plain number from ${ctx.minLabel} to ${ctx.maxLabel} and never says what it measures, so "${ctx.writtenText}" was not written — send the number on its own.`
-      : `${ctx.label} is measured in ${actual}, so "${ctx.writtenText}" was not written — send the value in ${actual}.`,
-  );
-
-  return null;
+  return {
+    reason:
+      actual == null
+        ? `displays a plain number from ${ctx.minLabel} to ${ctx.maxLabel} and never says what it measures, so "${ctx.writtenText}" was not written — send the number on its own`
+        : `is measured in ${actual}, so "${ctx.writtenText}" was not written — send the value in ${actual}`,
+  };
 }

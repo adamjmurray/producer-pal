@@ -102,53 +102,51 @@ describe("setParamValueAndVerify", () => {
     });
   }
 
-  it("stays silent when the value lands", () => {
+  it("gives no reason when the value lands", () => {
     const param = registerLabeledParam();
 
-    const landed = setParamValueAndVerify(paramApi(), 0.8, 'param "Drive"');
+    const refused = setParamValueAndVerify(paramApi(), 0.8);
 
-    expect(landed).toBe(true);
+    expect(refused).toBeNull();
     expect(param.set).toHaveBeenCalledWith("value", 0.8);
     expect(capturedWarnings()).toHaveLength(0);
   });
 
-  it("warns when Live ignores the write", () => {
+  it("says the write was ignored, without warning", () => {
     // Live drops a value outside the parameter's range without saying so.
     const param = registerLabeledParam();
 
     param.set.mockImplementation(() => undefined);
 
-    const landed = setParamValueAndVerify(paramApi(), 99, 'param "Drive"');
+    const refused = setParamValueAndVerify(paramApi(), 99);
 
-    expect(landed).toBe(false);
-    expect(capturedWarnings()).toContain(
-      'param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
+    expect(refused).toBe(
+      'was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
     );
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   // The next two guard the mock registry's default str_for_value, which has to
   // discriminate in both directions. A constant makes every write look like it
   // landed; an unrounded value makes every fractional write look ignored,
   // because the mock stores what Live stores and that is never what we wrote.
-  it("stays silent for a fractional write, without a str_for_value fixture", () => {
+  it("takes a fractional write, without a str_for_value fixture", () => {
     registerParam({ value: 0.5 });
 
-    const landed = setParamValueAndVerify(paramApi(), 0.1, 'param "Volume"');
+    const refused = setParamValueAndVerify(paramApi(), 0.1);
 
-    expect(landed).toBe(true);
-    expect(capturedWarnings()).toHaveLength(0);
+    expect(refused).toBeNull();
   });
 
-  it("warns when Live ignores the write, without a str_for_value fixture", () => {
+  it("reports an ignored write, without a str_for_value fixture", () => {
     const param = registerParam({ value: 0.5 });
 
     param.set.mockImplementation(() => undefined);
 
-    const landed = setParamValueAndVerify(paramApi(), 99, 'param "Volume"');
+    const refused = setParamValueAndVerify(paramApi(), 99);
 
-    expect(landed).toBe(false);
-    expect(capturedWarnings()).toContain(
-      'param "Volume" was not changed — it still reads "0.5". Live ignores a value outside the parameter\'s range.',
+    expect(refused).toBe(
+      'was not changed — it still reads "0.5". Live ignores a value outside the parameter\'s range.',
     );
   });
 
@@ -158,16 +156,16 @@ describe("setParamValueAndVerify", () => {
     // every fractional write.
     const param = registerLabeledParam();
 
-    setParamValueAndVerify(paramApi(), 0.1, 'param "Drive"');
+    const refused = setParamValueAndVerify(paramApi(), 0.1);
 
     expect(param.properties.value).not.toBe(0.1);
-    expect(capturedWarnings()).toHaveLength(0);
+    expect(refused).toBeNull();
   });
 
   // Measured on Live 12.4.3 at a real display boundary on a track's volume.
   // Predicting the stored value with Math.fround lands on the far side of the
   // boundary and warns about a write that went in exactly as asked.
-  it("stays silent for a write that lands right on a display boundary", () => {
+  it("takes a write that lands right on a display boundary", () => {
     registerMockObject("param-1", {
       path: paramPath,
       type: "DeviceParameter",
@@ -178,14 +176,9 @@ describe("setParamValueAndVerify", () => {
       },
     });
 
-    const landed = setParamValueAndVerify(
-      paramApi(),
-      0.7000124999999999,
-      'param "Volume"',
-    );
+    const refused = setParamValueAndVerify(paramApi(), 0.7000124999999999);
 
-    expect(landed).toBe(true);
-    expect(capturedWarnings()).toHaveLength(0);
+    expect(refused).toBeNull();
   });
 });
 

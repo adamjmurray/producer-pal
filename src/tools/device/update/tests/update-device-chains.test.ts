@@ -220,16 +220,23 @@ describe("updateDevice - Chain and DrumPad support", () => {
   describe("device-only properties on non-devices", () => {
     // collapsed — kept for potential future use (test removed)
 
-    it("should warn when params is used on a Chain", () => {
+    it("refuses each param in its own entry on a Chain", () => {
       const result = updateDevice({
         id: "456",
         params: [{ name: "789", value: "0.5" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        "'params' not applicable to Chain id 456",
-      );
-      expect(result).toStrictEqual({ id: "456" });
+      expect(result).toStrictEqual({
+        id: "456",
+        params: [
+          {
+            name: "789",
+            ok: false,
+            reason: "'params' not applicable to Chain id 456",
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("should not warn when params is an empty array on a Chain", () => {

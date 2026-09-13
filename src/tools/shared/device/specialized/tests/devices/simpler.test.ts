@@ -220,7 +220,7 @@ describe("Simpler pseudo-params", () => {
       );
     });
 
-    it("warns and skips when writing a read-only param", () => {
+    it("reports a read-only param in its entry, without warning", () => {
       const device = registerSimpler();
 
       const handled = applySpecializedParamWrite(
@@ -230,12 +230,10 @@ describe("Simpler pseudo-params", () => {
       );
 
       expect(handled).toStrictEqual([
-        { name: "multiSampleMode", reason: "read-only" },
+        { name: "multiSampleMode", ok: false, reason: "read-only" },
       ]);
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("read-only"),
-      );
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 

@@ -106,15 +106,19 @@ describe("ppal-update-device at the ends of a param's range", () => {
     await sleep(100);
 
     // Live drops an out-of-range write instead of clamping it, so an unclamped
-    // 9999 would leave the param untouched and still report success.
+    // 9999 would leave the param untouched and still report success. The value
+    // landed, so the entry reports it — with the reason it isn't the one asked
+    // for, and no warning.
     expect(data.params).toStrictEqual([
-      { id: expect.any(String), name: "Release", value: 1.2 },
+      {
+        id: expect.any(String),
+        name: "Release",
+        value: 1.2,
+        reason:
+          'only goes from 0.1 to 1.2 (or "A"), so 9999 was set to the nearest valid value',
+      },
     ]);
-    expect(warnings).toStrictEqual([
-      expect.stringContaining(
-        'only goes from 0.1 to 1.2 (or "A"), so 9999 was set to the nearest valid value.',
-      ),
-    ]);
+    expect(warnings).toStrictEqual([]);
   });
 });
 
@@ -200,7 +204,12 @@ interface ReadDeviceResult {
 }
 
 interface UpdateDeviceResult {
-  params?: Array<{ id: string; name: string; value?: number | string }>;
+  params?: Array<{
+    id: string;
+    name: string;
+    value?: number | string;
+    reason?: string;
+  }>;
 }
 
 interface CreateDeviceResult {

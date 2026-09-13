@@ -49,6 +49,15 @@ interface ReadDeviceResult {
   sample?: string;
 }
 
+interface UpdateDeviceResult {
+  params?: Array<{
+    name: string;
+    value?: unknown;
+    ok?: boolean;
+    reason?: string;
+  }>;
+}
+
 /**
  * Create a fresh empty MIDI track and return its index.
  * @returns The new track's index
@@ -246,8 +255,8 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     expect(before.type).toContain("Sampler");
 
     // Honoring the write means replacing the DrumSampler, losing its settings,
-    // so it warn-skips and names force:true as the way through.
-    const skipped = parseToolResultWithWarnings(
+    // so it skips and names force:true as the way through, in the param's entry.
+    const skipped = parseToolResultWithWarnings<UpdateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
@@ -256,9 +265,13 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
         },
       }),
     );
+    const skippedEntry = skipped.data.params?.[0];
 
-    expect(skipped.warnings.join("\n")).toContain("sample write SKIPPED");
-    expect(skipped.warnings.join("\n")).toContain("force:true");
+    expect(skippedEntry?.name).toBe("pE1/d0/sample");
+    expect(skippedEntry?.ok).toBe(false);
+    expect(skippedEntry?.reason).toContain("sample write SKIPPED");
+    expect(skippedEntry?.reason).toContain("force:true");
+    expect(skipped.warnings).toStrictEqual([]);
 
     await sleep(150);
 
@@ -314,7 +327,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     const beforeChainCount = await readContentCount(rack, "chains");
 
-    const { warnings } = parseToolResultWithWarnings(
+    const { data, warnings } = parseToolResultWithWarnings<UpdateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
@@ -324,9 +337,11 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
       }),
     );
 
-    expect(warnings.join("\n")).toContain(
+    expect(data.params?.[0]?.ok).toBe(false);
+    expect(data.params?.[0]?.reason).toContain(
       "could not resolve or create drum pad",
     );
+    expect(warnings).toStrictEqual([]);
 
     await sleep(150);
 

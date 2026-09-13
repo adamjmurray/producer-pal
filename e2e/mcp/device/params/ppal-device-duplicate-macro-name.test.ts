@@ -16,10 +16,10 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers.ts";
+import { callForParams } from "../helpers/device-param-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../helpers/racks-test-helpers.ts";
 
 /** The Instrument Rack whose Macro 1 and Macro 2 are both named "Drive". */
@@ -60,20 +60,22 @@ describe("a rack with two macros renamed the same", () => {
 
   it("writes neither when addressed by the name they share", async () => {
     const before = await readDrives();
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: { path: OUTER, params: [{ name: "Drive", value: "42" }] },
-    });
-    const warning = getToolWarnings(result).find((text) =>
-      text.includes('param "Drive" names 2 params'),
+    const { entries, warnings } = await callForParams(
+      ctx.client!,
+      "ppal-update-device",
+      { path: OUTER, params: [{ name: "Drive", value: "42" }] },
     );
+    const [entry] = entries;
 
-    expect(warning, "no ambiguous-name warning").toBeDefined();
+    expect(entry?.name).toBe("Drive");
+    expect(entry?.ok).toBe(false);
+    expect(entry?.reason).toContain("names 2 params");
 
     for (const param of before) {
-      expect(warning).toContain(`id ${param.id}`);
+      expect(entry?.reason).toContain(`id ${param.id}`);
     }
 
+    expect(warnings).toStrictEqual([]);
     expect(await readDrives()).toStrictEqual(before);
   });
 

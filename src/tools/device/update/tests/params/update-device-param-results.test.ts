@@ -8,6 +8,7 @@ import {
   type RegisteredMockObject,
   children,
   livePath,
+  paramsOf,
   registerDeviceWithParams,
   registerMockObject,
   registerSimplerDevice,
@@ -122,7 +123,7 @@ describe("updateDevice - written param values", () => {
       id: "dev1",
       path: "t0/d0",
       params: [
-        { name: "Nope", reason: "not found on t0/d0 (id dev1)" },
+        { name: "Nope", ok: false, reason: "not found on t0/d0 (id dev1)" },
         { id: "attack", name: "Attack", value: 10 },
       ],
     });
@@ -157,10 +158,26 @@ describe("updateDevice - written param values", () => {
       params: [
         {
           name: "pC1/d0/Cutoff",
+          ok: false,
           reason: "not found on t0/d0/c0/d0 (id pad-dev)",
         },
       ],
     });
+
+    // Named exactly as it arrived, spacing and all: that is what the caller has
+    // to match the entry on.
+    const spaced = updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/d0/ Cutoff", value: "50" }],
+    });
+
+    expect(paramsOf(spaced)).toStrictEqual([
+      {
+        name: "pC1/d0/ Cutoff",
+        ok: false,
+        reason: "not found on t0/d0/c0/d0 (id pad-dev)",
+      },
+    ]);
   });
 
   it("reports every param when none of them named anything", () => {
@@ -178,8 +195,12 @@ describe("updateDevice - written param values", () => {
       id: "dev1",
       path: "t0/d0",
       params: [
-        { name: "Nope", reason: "not found on t0/d0 (id dev1)" },
-        { name: "Also nope", reason: "not found on t0/d0 (id dev1)" },
+        { name: "Nope", ok: false, reason: "not found on t0/d0 (id dev1)" },
+        {
+          name: "Also nope",
+          ok: false,
+          reason: "not found on t0/d0 (id dev1)",
+        },
       ],
     });
   });
@@ -192,15 +213,24 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "Attack", value: "5000 ms" }],
     });
 
-    // The ladder tops out at 30 ms, and that is what the entry says.
+    // The ladder tops out at 30 ms, and that is what the entry says — plus why
+    // that isn't the value the call asked for.
     expect(result).toStrictEqual({
       id: "dev1",
       path: "t0/d0",
-      params: [{ id: "attack", name: "Attack", value: 30 }],
+      params: [
+        {
+          id: "attack",
+          name: "Attack",
+          value: 30,
+          reason:
+            "only goes from 0.01 ms to 30 ms, so 5000 was set to the nearest valid value",
+        },
+      ],
     });
   });
 
-  it("reports nothing for a write Live ignored", () => {
+  it("reports no value for a write Live ignored, and says so", () => {
     const param = registerLadderParam();
 
     // Live drops a value it doesn't like without saying so, leaving the old
@@ -212,7 +242,18 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "Attack", value: "12 ms" }],
     });
 
-    expect(result).toStrictEqual({ id: "dev1", path: "t0/d0" });
+    expect(result).toStrictEqual({
+      id: "dev1",
+      path: "t0/d0",
+      params: [
+        {
+          name: "Attack",
+          ok: false,
+          reason: expect.stringContaining("was not changed"),
+        },
+      ],
+    });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("reads params back after a macro variation recall overwrites them", () => {
@@ -365,7 +406,13 @@ describe("updateDevice - written param values", () => {
     expect(result).toStrictEqual({
       id: "simpler-1",
       path: "t0/d0",
-      params: [{ name: "sample", reason: "written, but no value reads back" }],
+      params: [
+        {
+          name: "sample",
+          ok: false,
+          reason: "written, but no value reads back",
+        },
+      ],
     });
   });
 
@@ -393,6 +440,7 @@ describe("updateDevice - written param values", () => {
       params: [
         {
           name: "sample",
+          ok: false,
           reason:
             'not loaded — check the path; "/Library/kick.aif" is still there',
         },
@@ -434,7 +482,7 @@ describe("updateDevice - written param values", () => {
     expect(result).toStrictEqual({
       id: "simpler-1",
       path: "t0/d0",
-      params: [{ name: "multiSampleMode", reason: "read-only" }],
+      params: [{ name: "multiSampleMode", ok: false, reason: "read-only" }],
     });
   });
 });

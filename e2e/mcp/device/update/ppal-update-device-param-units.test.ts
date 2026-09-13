@@ -18,6 +18,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createGlueCompressor,
+  expectParamRefused,
   writeParam,
 } from "./update-device-param-test-helpers";
 import {
@@ -56,10 +57,11 @@ describe("ppal-update-device param units", () => {
         "50 dB",
       );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining('is measured in %, so "50 dB" was not written'),
-      ]);
+      expectParamRefused(
+        { data, warnings },
+        "Dry/Wet",
+        'is measured in %, so "50 dB" was not written',
+      );
     });
   });
 
@@ -111,10 +113,11 @@ describe("ppal-update-device param units", () => {
         "50 %",
       );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining('is measured in s, so "50 %" was not written'),
-      ]);
+      expectParamRefused(
+        { data, warnings },
+        "Release",
+        'is measured in s, so "50 %" was not written',
+      );
     });
   });
 
@@ -178,10 +181,11 @@ describe("ppal-update-device param units", () => {
         "5 dB",
       );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining("never says what it measures"),
-      ]);
+      expectParamRefused(
+        { data, warnings },
+        "S/C EQ Q",
+        "never says what it measures",
+      );
     });
 
     it("writes that same param when the unit is left off", async () => {

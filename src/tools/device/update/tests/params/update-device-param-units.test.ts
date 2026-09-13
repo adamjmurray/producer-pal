@@ -7,12 +7,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   expectValueSet,
   livePath,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // The unit on a written value used to be parsed off and dropped, leaving only
 // the number: any unit wrote, and a value in seconds reached a bare-number
@@ -68,14 +68,16 @@ describe("updateDevice - param units", () => {
     });
 
     it("refuses a value in some other unit, naming the one it wants", () => {
-      updateDevice({
+      const result = updateDevice({
         id: "dev1",
         params: [{ name: "Amount", value: "20 dB" }],
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('is measured in %, so "20 dB" was not written'),
+      expectParamRefused(
+        result,
+        "Amount",
+        'is measured in %, so "20 dB" was not written',
       );
     });
   });
@@ -97,14 +99,16 @@ describe("updateDevice - param units", () => {
     // arrived as 500 on a param whose range is 0-100 — clamped to the top and
     // warned about as if 0.5 had been out of range.
     it("refuses a value carrying a unit, since it can't check one", () => {
-      updateDevice({
+      const result = updateDevice({
         id: "dev1",
         params: [{ name: "Amount", value: "0.5 s" }],
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("displays a plain number from 0 to 100"),
+      expectParamRefused(
+        result,
+        "Amount",
+        "displays a plain number from 0 to 100",
       );
     });
   });
@@ -152,15 +156,13 @@ describe("updateDevice - param units", () => {
     it("refuses semitones on a param displaying cents", () => {
       const param = registerParam((raw) => `${raw} ct`);
 
-      updateDevice({
+      const result = updateDevice({
         id: "dev1",
         params: [{ name: "Amount", value: "20 st" }],
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('is measured in cents, so "20 st"'),
-      );
+      expectParamRefused(result, "Amount", 'is measured in cents, so "20 st"');
     });
 
     it("writes a fractional semitone value", () => {
@@ -177,11 +179,16 @@ describe("updateDevice - param units", () => {
     it("refuses semitones on a param counting scale degrees", () => {
       const param = registerParam((raw) => `${raw} sd`);
 
-      updateDevice({ id: "dev1", params: [{ name: "Amount", value: "3 st" }] });
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "Amount", value: "3 st" }],
+      });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('is measured in scale degrees, so "3 st"'),
+      expectParamRefused(
+        result,
+        "Amount",
+        'is measured in scale degrees, so "3 st"',
       );
     });
   });

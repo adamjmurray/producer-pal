@@ -142,7 +142,7 @@ export function updateNonDeviceProperties(
 ): NonDeviceApplied {
   // A drum pad owns its sample, so a `sample` param addressed to the pad takes
   // the same route the rack's `pC1/sample` shortcut does. Everything else in
-  // `params` is still not applicable, and warns from in there.
+  // `params` is still not applicable, and says so in its own entry.
   const params = applyChainSampleParams(target, type, options);
 
   warnIfSet("actions", options.actions, type, target);

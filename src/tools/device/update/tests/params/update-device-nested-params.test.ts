@@ -10,6 +10,7 @@ import {
   children,
   expectValueSet,
   livePath,
+  paramsOf,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -125,7 +126,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
   });
 
-  it("warn-skips a param whose resolution throws and still applies later params", () => {
+  it("reports a param whose resolution throws and still applies later params", () => {
     // Drum rack with no chains. Addressing a far-out chain index (c20) forces
     // auto-creating past the cap, which throws. Each param is try-isolated, so
     // the bad one must not abort the following (good) param in the same call.
@@ -150,7 +151,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       methods: { str_for_value: (v: unknown) => `${Number(v)} %` },
     });
 
-    updateDevice({
+    const result = updateDevice({
       path: "t0/d0",
       params: [
         { name: "pC1/c20/sample", value: "/x.wav" }, // throws (exceeds chain cap)
@@ -158,9 +159,16 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       ],
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("failed to set param"),
-    );
+    // The throw becomes that param's own entry, the way a target that throws
+    // becomes the target's.
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "pC1/c20/sample",
+        ok: false,
+        reason: "Cannot auto-create 21 drum pad chains (max: 16)",
+      },
+      { id: "macro-param", name: "Macro 1", value: 0.5 },
+    ]);
     expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
   });
 
@@ -262,20 +270,25 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       },
     });
 
-    updateDevice({
+    const result = updateDevice({
       path: "t0/d0",
       params: [{ name: "c0/d0/Dry/Wet", value: "50" }],
     });
 
-    const warnings = capturedWarnings();
-
-    expect(warnings).toContainEqual(
+    // The deprecation is about the spelling, which no entry can carry, so it
+    // stays a warning even though the param's own entry says it resolved to
+    // nothing.
+    expect(capturedWarnings()).toStrictEqual([
       'params name "c0/d0/Dry/Wet" is deprecated and will be removed; ' +
         'use path "t0/d0/c0/d0" with name "Dry/Wet"',
-    );
-    expect(warnings).toContainEqual(
-      expect.stringContaining('no device at "t0/d0/c0/d0/Dry"'),
-    );
+    ]);
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "c0/d0/Dry/Wet",
+        ok: false,
+        reason: expect.stringContaining('no device at "t0/d0/c0/d0/Dry"'),
+      },
+    ]);
 
     // Proof the advice itself works: the suggested path and name reach the
     // same param directly.
@@ -292,22 +305,28 @@ describe("updateDevice - pad instrument guard", () => {
   it("skips a sample write onto a pad instrument and keeps the device", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
-    updateDevice({
+    const result = updateDevice({
       path: "t0/d0",
       params: [{ name: "pC1/sample", value: "/snare.wav" }],
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("sample write SKIPPED on pad t0/d0/pC1"),
-    );
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "pC1/sample",
+        ok: false,
+        reason: expect.stringContaining(
+          "sample write SKIPPED on pad t0/d0/pC1",
+        ),
+      },
+    ]);
     expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
     expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
   });
 
-  // The skip goes in the param's own entry, not only the warning: a params
-  // list that came back a name short is one the caller has to diff against its
-  // own request to read.
-  it("carries the skip reason in the param's result entry", () => {
+  // The skip is the param's own entry and nothing else: a params list that came
+  // back a name short is one the caller has to diff against its own request to
+  // read, and a warning saying the same thing twice spends its context window.
+  it("carries the skip reason in the param's result entry, and warns nowhere", () => {
     registerDrumRackWithDrumSamplerOnC1();
 
     const result = updateDevice({
@@ -321,12 +340,14 @@ describe("updateDevice - pad instrument guard", () => {
       params: [
         {
           name: "pC1/sample",
+          ok: false,
           reason: expect.stringContaining(
             "sample write SKIPPED on pad t0/d0/pC1",
           ) as unknown as string,
         },
       ],
     });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("swaps the instrument for a Simpler and loads the sample under force", () => {
@@ -521,9 +542,9 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     expect(result).toStrictEqual({
       id: "pad-36",
       path: "t0/d0/pC1",
-      params: [{ name: "sample", reason: SWAP_REASON }],
+      params: [{ name: "sample", ok: false, reason: SWAP_REASON }],
     });
-    expect(capturedWarnings()).toContain(SWAP_REASON);
+    expect(capturedWarnings()).toHaveLength(0);
     expect(chain?.call).not.toHaveBeenCalledWith("delete_device", 0);
   });
 
@@ -564,13 +585,32 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     expect(result).toStrictEqual({
       id: "pad-36",
       path: "t0/d0/pC1",
-      params: [{ name: "sample", reason }],
+      params: [{ name: "sample", ok: false, reason }],
     });
-    expect(capturedWarnings()).toContain(reason);
+    expect(capturedWarnings()).toHaveLength(0);
 
     for (const chain of chains) {
       expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
     }
+  });
+
+  // The samples are taken out of the list before the rest are written, so the
+  // two sets of entries come back from different places.
+  it("keeps the entries in the order the call sent them", () => {
+    registerPadRack(2);
+
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      params: [
+        { name: "Volume", value: "50" },
+        { name: "sample", value: KICK },
+      ],
+    });
+
+    expect(paramsOf(result).map((entry) => entry.name)).toStrictEqual([
+      "Volume",
+      "sample",
+    ]);
   });
 
   // A pad with no chain at all is where the rack's `pC1/sample` shortcut used
@@ -609,19 +649,24 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("still refuses every other param on a chain", () => {
+  it("still refuses every other param on a chain, in its own entry", () => {
     registerPadRack();
 
-    updateDevice({
+    const result = updateDevice({
       path: "t0/d0/pC1/c0",
       params: [{ name: "Volume", value: "50" }],
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "'params' not applicable to DrumChain t0/d0/pC1/c0",
-      ),
-    );
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "Volume",
+        ok: false,
+        reason: expect.stringContaining(
+          "'params' not applicable to DrumChain t0/d0/pC1/c0",
+        ),
+      },
+    ]);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -647,9 +692,9 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
     expect(result).toStrictEqual({
       id: "ds-1",
       path: "t0/d0/pC1/d0",
-      params: [{ name: "sample", reason }],
+      params: [{ name: "sample", ok: false, reason }],
     });
-    expect(capturedWarnings()).toContain(reason);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   // A device path names a device that is already there. Creating or replacing
@@ -671,7 +716,7 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
 
   // The pad call targets the pad's instrument, so it leaves an effect alone —
   // promising it would be replaced would be a lie.
-  it("leaves the destruction warning off a device that is not the instrument", () => {
+  it("leaves the destruction notice off a device that is not the instrument", () => {
     const [chain] = registerPadRack();
 
     (chain as RegisteredMockObject).properties.devices = children("arp-1");
@@ -688,12 +733,14 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
       'path:"t0/d0" with params:[{name:"pC1/c0/sample", ' +
       'value:"<the sample>"}].';
 
-    updateDevice({
+    const result = updateDevice({
       path: "t0/d0/pC1/d0",
       params: [{ name: "sample", value: KICK }],
     });
 
-    expect(capturedWarnings()).toContain(reason);
+    expect(paramsOf(result)).toStrictEqual([
+      { name: "sample", ok: false, reason },
+    ]);
   });
 
   it("says only that much for a device that is not on a pad", () => {
@@ -713,8 +760,8 @@ describe("updateDevice - a sample addressed by the device's own path", () => {
     ).toStrictEqual({
       id: "op-1",
       path: "t0/d0",
-      params: [{ name: "sample", reason }],
+      params: [{ name: "sample", ok: false, reason }],
     });
-    expect(capturedWarnings()).toContain(reason);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

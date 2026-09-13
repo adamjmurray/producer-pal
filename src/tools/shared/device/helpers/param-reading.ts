@@ -334,18 +334,26 @@ export function readParameter(
   return result;
 }
 
-/** A param a write landed on. Its value is read once, at the end of the call. */
+/**
+ * A param a write landed on. Its value is read once, at the end of the call.
+ * `reason` is there only when the value that landed isn't the one asked for — a
+ * clamp, or the nearest step of a coarse ladder. The value is still reported, so
+ * there is no `ok`.
+ */
 export interface WrittenParam {
   id: string;
   name: string;
+  reason?: string;
 }
 
 /**
- * A param the call named that has no value to report, named the way the call
- * spelled it. It has no id and no value, so `reason` says why.
+ * A param the call named that nothing was written to, named the way the call
+ * spelled it. It has no id and no value, so `reason` says why. `ok` marks only
+ * these, never a param that landed.
  */
 export interface UnresolvedParam {
   name: string;
+  ok: false;
   reason: string;
 }
 
@@ -370,6 +378,17 @@ export interface WrittenPseudoParam {
 
 /** One param the call named: what a write landed on, or why nothing did. */
 export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
+
+/**
+ * The entry for a param nothing was written to. Nothing warns as well: this is
+ * where the caller reads what happened to that param.
+ * @param name - The param name as the call spelled it
+ * @param reason - Why nothing was written
+ * @returns The skip entry
+ */
+export function skippedParam(name: string, reason: string): UnresolvedParam {
+  return { name, ok: false, reason };
+}
 
 /** What create-device and update-device report for each param they wrote. */
 export interface ParamValueResult extends WrittenParam {
@@ -411,7 +430,9 @@ const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
 export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
   return outcomes.flatMap((entry): ParamResult[] => {
     if ("id" in entry) {
-      return [{ ...entry, value: readParameter(LiveAPI.from(entry.id)).value }];
+      return [
+        writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value),
+      ];
     }
 
     // A pseudo-param brings its own read; the read itself is not reported. A
@@ -426,7 +447,7 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
       const value = entry.read();
 
       if (value === undefined) {
-        return [{ name: entry.name, reason: NO_VALUE_AFTER_WRITE }];
+        return [skippedParam(entry.name, NO_VALUE_AFTER_WRITE)];
       }
 
       // A device that ignored the write left the value it already had, and
@@ -435,9 +456,22 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
 
       return failed == null
         ? [{ name: entry.name, value }]
-        : [{ name: entry.name, reason: failed }];
+        : [skippedParam(entry.name, failed)];
     }
 
     return [entry];
   });
+}
+
+/**
+ * One written param's entry, with the value it reads as. The reason a value was
+ * changed on its way in comes after the value it changed to.
+ * @param entry - The param the write landed on
+ * @param value - What it reads as now
+ * @returns The result entry
+ */
+function writtenResult(entry: WrittenParam, value: unknown): ParamValueResult {
+  const { id, name, reason } = entry;
+
+  return reason == null ? { id, name, value } : { id, name, value, reason };
 }

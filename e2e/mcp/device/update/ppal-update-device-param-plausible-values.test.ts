@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createGlueCompressor,
+  expectParamRefused,
   writeParam,
 } from "./update-device-param-test-helpers";
 import { createTestDevice, setupMcpTestContext } from "../../mcp-test-helpers";
@@ -55,10 +56,7 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
         "peak",
       );
 
-      expect(data.params).toBeUndefined();
-      expect(warnings).toStrictEqual([
-        expect.stringContaining("Options: Off, On"),
-      ]);
+      expectParamRefused({ data, warnings }, "Device On", "Options: Off, On");
     });
   });
 

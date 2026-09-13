@@ -186,15 +186,12 @@ export function resolveDrumChainSampleTarget(
 export type NestedParamTarget = { device: LiveAPI } | { reason: string };
 
 /**
- * Say why a write landed nowhere, in both channels at once: the reason goes in
- * the param's own result entry, and the warning stays until every way a param
- * write can fail has an entry of its own.
+ * Say why a write landed nowhere. The caller puts this in the param's own result
+ * entry, which is where it is read — it warns nowhere.
  * @param reason - Why nothing was written
  * @returns The reason, as a resolution result
  */
 function skip(reason: string): NestedParamTarget {
-  console.warn(reason);
-
   return { reason };
 }
 

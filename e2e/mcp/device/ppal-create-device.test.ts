@@ -25,6 +25,10 @@ import {
   trackIndexFromPath,
 } from "../mcp-test-helpers";
 import { createLayeredPad } from "./drum/drum-pad-test-helpers.ts";
+import {
+  callForParams,
+  expectSkipThenValue,
+} from "./helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -320,25 +324,16 @@ describe("ppal-create-device", () => {
   // A params list that came back a name short leaves the caller diffing its
   // own request to work out which entry vanished.
   it("reports a param name that matched nothing, beside one that landed", async () => {
-    const created = parseToolResultWithWarnings<CreateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: {
-          deviceName: "Compressor",
-          path: "t0",
-          params: [
-            { name: "Nope", value: "1" },
-            { name: "Ratio", value: "4" },
-          ],
-        },
-      }),
-    );
+    const created = await callForParams(ctx.client!, "ppal-create-device", {
+      deviceName: "Compressor",
+      path: "t0",
+      params: [
+        { name: "Nope", value: "1" },
+        { name: "Ratio", value: "4" },
+      ],
+    });
 
-    expect(created.data.params).toStrictEqual([
-      { name: "Nope", reason: expect.stringContaining("not found on") },
-      { id: expect.any(String), name: "Ratio", value: 4 },
-    ]);
-    expect(created.warnings.join("\n")).toContain('param "Nope" not found');
+    expectSkipThenValue(created, "Nope", { name: "Ratio", value: 4 });
   });
 
   it("creates a device at position 0 in an empty rack chain", async () => {

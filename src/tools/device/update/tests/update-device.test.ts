@@ -166,7 +166,7 @@ describe("updateDevice", () => {
       });
     });
 
-    it("reports an id that reached no param, in the entry and a warning", () => {
+    it("reports an id that reached no param in its entry, and warns nowhere", () => {
       mockNonExistentObjects();
 
       const result = updateDevice({
@@ -174,14 +174,14 @@ describe("updateDevice", () => {
         params: [{ name: "999", value: "0.5" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        'param "999" not found on t0/d0 (id 123)',
-      );
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ name: "999", reason: "not found on t0/d0 (id 123)" }],
+        params: [
+          { name: "999", ok: false, reason: "not found on t0/d0 (id 123)" },
+        ],
       });
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     // A hole in the params list, the same shape a hole in a comma-separated
@@ -230,18 +230,25 @@ describe("updateDevice", () => {
       });
     });
 
-    it("should log error for invalid enum value", () => {
+    it("reports an invalid enum value in the param's entry", () => {
       const result = updateDevice({
         id: "123",
         params: [{ name: "791", value: "InvalidValue" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Warp Mode" (id 791): "InvalidValue" is not valid. ' +
-          "Options: Repitch, Fade, Jump",
-      );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          {
+            name: "791",
+            ok: false,
+            reason: '"InvalidValue" is not valid. Options: Repitch, Fade, Jump',
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
@@ -274,20 +281,27 @@ describe("updateDevice", () => {
       });
     });
 
-    it("warns when a numeric input matches no quantized label", () => {
-      // A bare index that isn't a label (value_items are words) must warn with
-      // the options, not silently binary-search a garbage raw value.
+    it("reports a numeric input that matches no quantized label", () => {
+      // A bare index that isn't a label (value_items are words) must come back
+      // with the options, not silently binary-search a garbage raw value.
       const result = updateDevice({
         id: "123",
         params: [{ name: "791", value: "1" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Warp Mode" (id 791): "1" is not valid. ' +
-          "Options: Repitch, Fade, Jump",
-      );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          {
+            name: "791",
+            ok: false,
+            reason: '"1" is not valid. Options: Repitch, Fade, Jump',
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -402,17 +416,26 @@ describe("updateDevice", () => {
       expect(panDir.set).toHaveBeenCalledWith("value", -0.5); // half left
     });
 
-    it("warns and skips a non-pan string instead of writing NaN", () => {
-      updateDevice({
+    it("reports a non-pan string instead of writing NaN", () => {
+      const result = updateDevice({
         id: "123",
         params: [{ name: "792", value: "hard-left" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        't0/d0 (id 123) param "Pan" (id 792): "hard-left" is not a valid pan ' +
-          'value (use -1 to 1, or "50L"/"50R"/"C")',
-      );
       expect(param792.set).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        params: [
+          {
+            name: "792",
+            ok: false,
+            reason:
+              '"hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
+          },
+        ],
+      });
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 

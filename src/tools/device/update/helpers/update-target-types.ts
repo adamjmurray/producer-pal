@@ -63,7 +63,21 @@ export function warnIfSet(
     return;
   }
 
-  console.warn(
-    `'${paramName}' not applicable to ${type} ${targetLabel(target)}`,
-  );
+  console.warn(notApplicableReason(paramName, type, target));
+}
+
+/**
+ * Why an argument this kind of object has no use for was not applied. A warning
+ * where the result has nothing to carry it, a reason where it does.
+ * @param paramName - Parameter name
+ * @param type - Live object type
+ * @param target - The object the write was aimed at
+ * @returns The reason
+ */
+export function notApplicableReason(
+  paramName: string,
+  type: string,
+  target: LiveAPI,
+): string {
+  return `'${paramName}' not applicable to ${type} ${targetLabel(target)}`;
 }

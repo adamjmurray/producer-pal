@@ -7,8 +7,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   expectValueSet,
   livePath,
+  paramsOf,
   registerDeviceWithParams,
   registerMockObject,
   registerSimplerDevice,
@@ -247,27 +249,33 @@ describe("updateDevice - param value conversion", () => {
       });
     });
 
-    it("should warn and not write when string input can't be interpreted", () => {
-      updateDevice({
+    it("reports and does not write a string input it can't interpret", () => {
+      const result = updateDevice({
         id: "dev1",
         params: [{ name: "Mode", value: "custom-value" }],
       });
 
       expect(param.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('could not interpret "custom-value"'),
-      );
+      expect(paramsOf(result)).toStrictEqual([
+        {
+          name: "Mode",
+          ok: false,
+          reason: expect.stringContaining('could not interpret "custom-value"'),
+        },
+      ]);
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
-    it("should warn and not write a unit with no number in front of it", () => {
+    it("reports and does not write a unit with no number in front of it", () => {
       // "-dB" once parsed to NaN, which fails every range check silently and
       // writes NaN (or walks a searched param to an end) reporting success.
-      updateDevice({ id: "dev1", params: [{ name: "Mode", value: "-dB" }] });
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "Mode", value: "-dB" }],
+      });
 
       expect(param.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('could not interpret "-dB"'),
-      );
+      expectParamRefused(result, "Mode", 'could not interpret "-dB"');
     });
   });
 
@@ -322,14 +330,14 @@ describe("updateDevice - param value conversion", () => {
         params: [{ name: "1", value: "5" }],
       });
 
-      expect(capturedWarnings()).toContain(
-        'param "1" not found on t0/d0 (id dev1)',
-      );
       expect(result).toStrictEqual({
         id: "dev1",
         path: "t0/d0",
-        params: [{ name: "1", reason: "not found on t0/d0 (id dev1)" }],
+        params: [
+          { name: "1", ok: false, reason: "not found on t0/d0 (id dev1)" },
+        ],
       });
+      expect(capturedWarnings()).toHaveLength(0);
       expect(liveSet.set).not.toHaveBeenCalled();
     });
 
@@ -351,22 +359,15 @@ describe("updateDevice - param value conversion", () => {
         params: [
           {
             name: "143",
+            ok: false,
             reason:
               "id 143 is on t10/d0, not t0/d0 (id dev1), so it was not written",
           },
         ],
       });
-    });
-
-    it("names where the param actually lives, so the call can be corrected", () => {
-      registerForeignParam();
-
-      updateDevice({ id: "dev1", params: [{ name: "143", value: "-12" }] });
-
-      expect(capturedWarnings()).toContain(
-        "param id 143 is on t10/d0, not t0/d0 (id dev1), " +
-          "so it was not written",
-      );
+      // Named where it actually lives, so the call can be corrected in one
+      // step — and said once, in the entry the caller reads.
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("keeps writing the device's own params in the same call", () => {
@@ -441,13 +442,17 @@ describe("updateDevice - param value conversion", () => {
       });
     });
 
-    it("should warn when note name is valid but out of MIDI range", () => {
+    it("reports a note name that is valid but out of MIDI range", () => {
       // C-3 is a valid note name but maps to MIDI note -12 (out of 0-127)
-      updateDevice({ id: "dev1", params: [{ name: "Pitch", value: "C-3" }] });
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "Pitch", value: "C-3" }],
+      });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('invalid note name "C-3"'),
-      );
+      expect(paramsOf(result)).toStrictEqual([
+        { name: "Pitch", ok: false, reason: 'invalid note name "C-3"' },
+      ]);
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -565,7 +570,7 @@ describe("updateDevice - param value conversion", () => {
   });
 
   describe("a param name that matches nothing", () => {
-    it("comes back as an entry saying so, and a warning", () => {
+    it("comes back as an entry saying so, and nothing else", () => {
       registerDeviceWithParams();
 
       const result = updateDevice({
@@ -573,19 +578,18 @@ describe("updateDevice - param value conversion", () => {
         params: [{ name: "NonExistentParam", value: "0.5" }],
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('"NonExistentParam" not found'),
-      );
       expect(result).toStrictEqual({
         id: "dev1",
         path: "t0/d0",
         params: [
           {
             name: "NonExistentParam",
+            ok: false,
             reason: "not found on t0/d0 (id dev1)",
           },
         ],
       });
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 });
@@ -608,7 +612,13 @@ describe("updateDevice - sample pseudo-param", () => {
     expect(result).toStrictEqual({
       id: "simpler-1",
       path: "t0/d0",
-      params: [{ name: "sample", reason: "written, but no value reads back" }],
+      params: [
+        {
+          name: "sample",
+          ok: false,
+          reason: "written, but no value reads back",
+        },
+      ],
     });
   });
 

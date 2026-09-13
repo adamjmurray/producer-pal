@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ParamNumericRange,
   displayAt,
 } from "#src/tools/shared/device/helpers/param-numeric-range.ts";
+import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 
 // Enough to pin a boundary to ~1e-9 of the raw range, far finer than the
 // resolution Live actually stores. Each search costs one str_for_value call per
@@ -21,15 +21,13 @@ const BINARY_SEARCH_ITERATIONS = 30;
  * @param param - LiveAPI parameter object
  * @param targetDisplay - Target value in display units
  * @param range - The parameter's numeric display range
- * @param label - How to name the parameter in a warning
- * @returns Raw value to set, or null if the range gives nothing to aim at
+ * @returns The raw value to set, or why the range gives nothing to aim at
  */
 export function findRawValueForDisplay(
   param: LiveAPI,
   targetDisplay: number,
   range: ParamNumericRange,
-  label: string,
-): number | null {
+): ParamStep<number> {
   const { rawMin, rawMax, minValue, maxValue } = range;
 
   // The raw range has room but every value in it displays the same number, so
@@ -39,22 +37,19 @@ export function findRawValueForDisplay(
   // point is not this case — it has exactly one value, and the linear branch
   // below lands on it.
   if (minValue === maxValue && rawMin !== rawMax) {
-    console.warn(
-      `${label} reads "${range.minLabel}" across its whole range, so there is no value to aim at and it was left alone.`,
-    );
-
-    return null;
+    return {
+      reason: `reads "${range.minLabel}" across its whole range, so there is no value to aim at and it was left alone`,
+    };
   }
 
   // Live drops a value outside the parameter's range instead of clamping it,
   // so both paths below keep to the range. Landing 14 dB from what was asked
   // for otherwise reads as success, so say so in the user's own units.
-  if (
+  const clamped =
     targetDisplay < Math.min(minValue, maxValue) ||
     targetDisplay > Math.max(minValue, maxValue)
-  ) {
-    warnOutOfRange(range, targetDisplay, label);
-  }
+      ? { reason: outOfRangeReason(range, targetDisplay) }
+      : null;
 
   // Linear mapping: display values match raw values — set directly
   const span = Math.abs(rawMax - rawMin);
@@ -64,7 +59,7 @@ export function findRawValueForDisplay(
     Math.abs(minValue - rawMin) < tolerance &&
     Math.abs(maxValue - rawMax) < tolerance
   ) {
-    return clamp(targetDisplay, rawMin, rawMax);
+    return { value: clamp(targetDisplay, rawMin, rawMax), ...clamped };
   }
 
   // Some params count down as the raw value rises (Multiband Dynamics' ratios
@@ -72,32 +67,32 @@ export function findRawValueForDisplay(
   // search handles both directions.
   const sign = maxValue < minValue ? -1 : 1;
 
-  return searchRawValueForDisplay(
-    param,
-    targetDisplay * sign,
-    rawMin,
-    rawMax,
-    sign,
-  );
+  return {
+    value: searchRawValueForDisplay(
+      param,
+      targetDisplay * sign,
+      rawMin,
+      rawMax,
+      sign,
+    ),
+    ...clamped,
+  };
 }
 
 /**
- * Warn that a target fell outside the range, in the parameter's own units.
+ * Say a target fell outside the range, in the parameter's own units.
  * @param range - The parameter's numeric display range
  * @param targetDisplay - Target value in display units
- * @param label - How to name the parameter in the warning
+ * @returns The reason the value that landed isn't the one asked for
  */
-function warnOutOfRange(
+function outOfRangeReason(
   range: ParamNumericRange,
   targetDisplay: number,
-  label: string,
-): void {
+): string {
   const { minLabel, maxLabel, sentinel } = range;
   const also = sentinel == null ? "" : ` (or "${sentinel.label}")`;
 
-  console.warn(
-    `${label} only goes from ${minLabel} to ${maxLabel}${also}, so ${targetDisplay} was set to the nearest valid value.`,
-  );
+  return `only goes from ${minLabel} to ${maxLabel}${also}, so ${targetDisplay} was set to the nearest valid value`;
 }
 
 /**

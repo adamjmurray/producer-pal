@@ -130,11 +130,21 @@ describe("applySpecializedParamWrite", () => {
     const outcome = applySpecializedParamWrite(device, "multiSampleMode", 0);
 
     expect(outcome).toStrictEqual([
-      { name: "multiSampleMode", reason: "read-only" },
+      { name: "multiSampleMode", ok: false, reason: "read-only" },
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("read-only"),
-    );
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  // Matching is case-insensitive, so the spec's own spelling would leave the
+  // caller matching the entry against something it never sent.
+  it("names a read-only pseudo-param the way the call spelled it", () => {
+    const device = registerDevice("Simpler", { multi_sample_mode: 1 });
+
+    expect(
+      applySpecializedParamWrite(device, "multisamplemode", 0),
+    ).toStrictEqual([
+      { name: "multisamplemode", ok: false, reason: "read-only" },
+    ]);
   });
 });
 

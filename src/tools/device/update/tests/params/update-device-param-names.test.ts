@@ -7,7 +7,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   livePath,
+  paramsOf,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -152,20 +154,24 @@ describe("updateDevice - params by name", () => {
     expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
   });
 
-  it("reports an unresolvable non-integer key in the entry and a warning", () => {
+  it("reports an unresolvable non-integer key in its entry, and warns nowhere", () => {
     const result = updateDevice({
       id: "123",
       params: [{ name: "Nonexistent", value: "0.5" }],
     });
 
-    expect(capturedWarnings()).toContain(
-      'param "Nonexistent" not found on t0/d0 (id 123)',
-    );
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/d0",
-      params: [{ name: "Nonexistent", reason: "not found on t0/d0 (id 123)" }],
+      params: [
+        {
+          name: "Nonexistent",
+          ok: false,
+          reason: "not found on t0/d0 (id 123)",
+        },
+      ],
     });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -219,13 +225,22 @@ describe("updateDevice - a name that matches more than one param", () => {
   });
 
   it("names the ids and ranges so the caller can pick one", () => {
-    updateDevice({ id: "123", params: [{ name: "Width", value: "5" }] });
+    const result = updateDevice({
+      id: "123",
+      params: [{ name: "Width", value: "5" }],
+    });
 
-    expect(capturedWarnings()).toContain(
-      'param "Width" names 2 params on t0/d0 (id 123) — ' +
-        "id 94 (0.5 to 9), id 95 (0 % to 100 %) — so " +
-        "nothing was written. Write by id to pick one.",
-    );
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "Width",
+        ok: false,
+        reason:
+          "names 2 params on t0/d0 (id 123) — " +
+          "id 94 (0.5 to 9), id 95 (0 % to 100 %) — so " +
+          "nothing was written. Write by id to pick one.",
+      },
+    ]);
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("still writes a param addressed by its id", () => {
@@ -262,6 +277,43 @@ describe("updateDevice - a name that matches more than one param", () => {
     });
 
     expect(dryWet.set).toHaveBeenCalledWith("value", 80);
+  });
+
+  // A slash-named param is resolved by name before the name is read as a path,
+  // so this ambiguity is a second code path with the same answer.
+  it("refuses a slash-named param two params answer to", () => {
+    for (const id of ["94", "95"]) {
+      const param = registerMockObject(id, {
+        path: livePath
+          .track(0)
+          .device(0)
+          .parameter(Number(id) - 93),
+        type: "DeviceParameter",
+        properties: {
+          name: "Dry/Wet",
+          original_name: "Dry/Wet",
+          is_quantized: 0,
+          value: 50,
+          min: 0,
+          max: 100,
+        },
+        methods: { str_for_value: (v: unknown) => `${String(v)} %` },
+      });
+
+      expect(param.set).not.toHaveBeenCalled();
+    }
+
+    const result = updateDevice({
+      id: "123",
+      params: [{ name: "Dry/Wet", value: "80" }],
+    });
+
+    expectParamRefused(
+      result,
+      "Dry/Wet",
+      "names 2 params on t0/d0 (id 123) — id 94 (0 % to 100 %), " +
+        "id 95 (0 % to 100 %) — so nothing was written. Write by id to pick one.",
+    );
   });
 });
 
@@ -304,15 +356,23 @@ describe("updateDevice - two rack macros renamed the same", () => {
   });
 
   it("writes neither when addressed by the name they share", () => {
-    updateDevice({ id: "123", params: [{ name: "Drive", value: "42" }] });
+    const result = updateDevice({
+      id: "123",
+      params: [{ name: "Drive", value: "42" }],
+    });
 
     expect(macro1.set).not.toHaveBeenCalled();
     expect(macro2.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
-      'param "Drive" names 2 params on t0/d0 (id 123) — ' +
-        "id m1 (0 to 127), id m2 (0 to 127) — so nothing was written. " +
-        "Write by id to pick one.",
-    );
+    expect(paramsOf(result)).toStrictEqual([
+      {
+        name: "Drive",
+        ok: false,
+        reason:
+          "names 2 params on t0/d0 (id 123) — " +
+          "id m1 (0 to 127), id m2 (0 to 127) — so nothing was written. " +
+          "Write by id to pick one.",
+      },
+    ]);
   });
 
   it("writes the one named by the name read-device reports", () => {
@@ -413,12 +473,19 @@ describe("updateDevice - enum values", () => {
       params: [{ name: "Device On", value: "peak" }],
     });
 
-    expect(capturedWarnings()).toContain(
-      't0/d1 (id 124) param "Device On" (id p-on): "peak" is not valid. ' +
-        "Options: Off, On",
-    );
     expect(deviceOn.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(result).toStrictEqual({ id: "124", path: "t0/d1" });
+    expect(result).toStrictEqual({
+      id: "124",
+      path: "t0/d1",
+      params: [
+        {
+          name: "Device On",
+          ok: false,
+          reason: '"peak" is not valid. Options: Off, On',
+        },
+      ],
+    });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 

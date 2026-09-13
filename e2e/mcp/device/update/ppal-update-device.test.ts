@@ -16,11 +16,14 @@ import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
+import {
+  callForParams,
+  expectSkipThenValue,
+} from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -129,24 +132,15 @@ describe("ppal-update-device", () => {
   // own request to work out which entry vanished.
   it("reports a param name that matched nothing, beside one that landed", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
-    const updated = parseToolResultWithWarnings<UpdateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          id: deviceId,
-          params: [
-            { name: "Nope", value: "1" },
-            { name: "Ratio", value: "4" },
-          ],
-        },
-      }),
-    );
+    const updated = await callForParams(ctx.client!, "ppal-update-device", {
+      id: deviceId,
+      params: [
+        { name: "Nope", value: "1" },
+        { name: "Ratio", value: "4" },
+      ],
+    });
 
-    expect(updated.data.params).toStrictEqual([
-      { name: "Nope", reason: expect.stringContaining("not found on") },
-      { id: expect.any(String), name: "Ratio", value: 4 },
-    ]);
-    expect(updated.warnings.join("\n")).toContain('param "Nope" not found');
+    expectSkipThenValue(updated, "Nope", { name: "Ratio", value: 4 });
   });
 
   it("updates multiple devices in batch", async () => {
