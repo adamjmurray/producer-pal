@@ -421,3 +421,115 @@ describe("updateDevice - enum values", () => {
     expect(result).toStrictEqual({ id: "124", path: "t0/d1" });
   });
 });
+
+// Values are read back once after every write in the call lands, keyed by the
+// param, so two entries reaching one param would report the last write's value
+// for both. The call is refused instead, before anything is written.
+describe("updateDevice - one param named twice", () => {
+  let paramThreshold: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("125", {
+      path: livePath.track(0).device(2),
+      type: "Device",
+      properties: { parameters: children("789", "p-macro-1") },
+    });
+
+    paramThreshold = registerMockObject("789", {
+      path: livePath.track(0).device(2).parameter(0),
+      type: "DeviceParameter",
+      properties: {
+        name: "Threshold",
+        original_name: "Threshold",
+        is_quantized: 0,
+        value: 0.5,
+        min: 0,
+        max: 1,
+      },
+    });
+
+    registerMockObject("p-macro-1", {
+      path: livePath.track(0).device(2).parameter(1),
+      type: "DeviceParameter",
+      properties: {
+        name: "Reverb",
+        original_name: "Macro 1",
+        is_quantized: 0,
+        value: 0.5,
+        min: 0,
+        max: 1,
+      },
+    });
+  });
+
+  it("refuses the same name twice", () => {
+    expect(() =>
+      updateDevice({
+        id: "125",
+        params: [
+          { name: "Threshold", value: "0.2" },
+          { name: "Threshold", value: "0.8" },
+        ],
+      }),
+    ).toThrow('params entry "Threshold" is set more than once');
+  });
+
+  it("refuses the same name in different case", () => {
+    expect(() =>
+      updateDevice({
+        id: "125",
+        params: [
+          { name: "Threshold", value: "0.2" },
+          { name: "threshold", value: "0.8" },
+        ],
+      }),
+    ).toThrow('params entry "threshold" is set more than once');
+  });
+
+  // Comparing the text can't see this one — the two spellings are the same
+  // param, so the refusal names both.
+  it("refuses a param named once by id and once by name", () => {
+    expect(() =>
+      updateDevice({
+        id: "125",
+        params: [
+          { name: "789", value: "0.2" },
+          { name: "Threshold", value: "0.8" },
+        ],
+      }),
+    ).toThrow(
+      'params entry "Threshold" is set more than once — "789" names the same param (id 789)',
+    );
+    expect(paramThreshold.set).not.toHaveBeenCalled();
+  });
+
+  // A rack macro answers to its own name and to the "name (original_name)"
+  // form read-device reports it by.
+  it("refuses a macro named by both of its spellings", () => {
+    expect(() =>
+      updateDevice({
+        id: "125",
+        params: [
+          { name: "Reverb", value: "0.2" },
+          { name: "Reverb (Macro 1)", value: "0.8" },
+        ],
+      }),
+    ).toThrow(
+      'params entry "Reverb (Macro 1)" is set more than once — "Reverb" names the same param (id p-macro-1)',
+    );
+  });
+
+  // An id that reaches no param of this device is written nowhere, so it is
+  // not the same param as anything else the call named.
+  it("allows an id that reaches nothing alongside a name", () => {
+    updateDevice({
+      id: "125",
+      params: [
+        { name: "999", value: "0.2" },
+        { name: "Threshold", value: "0.8" },
+      ],
+    });
+
+    expect(paramThreshold.set).toHaveBeenCalledWith("value", 0.8);
+  });
+});

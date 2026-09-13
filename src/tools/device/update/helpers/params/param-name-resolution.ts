@@ -20,9 +20,24 @@ const PARAMETER_TAIL = / parameters \d+$/;
  * @returns The matching params, in device order
  */
 export function resolveParamsByName(device: LiveAPI, name: string): LiveAPI[] {
+  return matchParamsByName(device.getChildren("parameters"), name);
+}
+
+/**
+ * The same match against parameters already read. A caller checking a whole
+ * params list reads the device's parameters once and matches every entry
+ * against them, instead of re-reading them per entry.
+ * @param parameters - The device's parameters
+ * @param name - Parameter name to find
+ * @returns The matching params, in device order
+ */
+export function matchParamsByName(
+  parameters: LiveAPI[],
+  name: string,
+): LiveAPI[] {
   const nameLower = name.toLowerCase();
 
-  return device.getChildren("parameters").filter((param) => {
+  return parameters.filter((param) => {
     const paramName = param.getName();
 
     if (paramName.toLowerCase() === nameLower) {

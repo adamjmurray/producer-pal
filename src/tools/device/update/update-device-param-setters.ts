@@ -48,6 +48,7 @@ import {
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { findRawValueForDisplay } from "./helpers/params/param-display-search.ts";
+import { refuseDuplicateParams } from "./helpers/params/param-entry-validation.ts";
 import {
   resolveParamById,
   resolveParamsByName,
@@ -71,6 +72,10 @@ export function setParamValues(
   params: ParamEntry[],
   force = false,
 ): ParamOutcome[] {
+  // Before the first write: two entries reaching one param can only report the
+  // last one's value for both, and the caller can retry with nothing to undo.
+  refuseDuplicateParams(device, params);
+
   const results: ParamOutcome[] = [];
   // Read once per device, not per param: it only names the device for the
   // recorded-unit lookup.

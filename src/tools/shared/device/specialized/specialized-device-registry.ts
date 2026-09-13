@@ -139,6 +139,20 @@ export function applySpecializedParamWrite(
 }
 
 /**
+ * Whether a `params` key names a pseudo-param of this device. A pseudo-param is
+ * a device property, so it has no DeviceParameter and no id — a caller that
+ * needs to know which parameter a key reaches has to leave these out.
+ * @param device - LiveAPI device object
+ * @param key - Param name from the `params` input
+ * @returns True when the key is one of this device's pseudo-params
+ */
+export function isSpecializedParamKey(device: LiveAPI, key: string): boolean {
+  const spec = getSpecForDevice(device);
+
+  return spec?.params != null && findParam(spec.params, key) != null;
+}
+
+/**
  * Read the specialized read-pseudo-params for a device (returned alongside
  * DeviceParameters in the `parameters` output).
  * @param device - LiveAPI device object
