@@ -16,11 +16,11 @@ import {
 import {
   NOTHING_WORD_FILE_LIMITS,
   NOTHING_WORDS,
-} from "#src/test/helpers/module-name-limits.ts";
+} from "#src/test/helpers/naming/module-name-limits.ts";
 
 // A ratchet on modules named for nothing. Test support files
 // (`-test-helpers.ts`) are a separate convention and don't count. The caps, and
-// the rule for changing them, live in helpers/module-name-limits.ts.
+// the rule for changing them, live in helpers/naming/module-name-limits.ts.
 
 const NOTHING_WORD_BASENAME = new RegExp(
   `(?:^|-)(?:${NOTHING_WORDS.join("|")})\\.tsx?$`,
@@ -63,7 +63,7 @@ describe("Module name limits", () => {
       if (limit > count) {
         expect.fail(
           `${tree} has ${count} nothing-word module names but the cap is ` +
-            `${limit}; lower it in src/test/helpers/module-name-limits.ts.`,
+            `${limit}; lower it in src/test/helpers/naming/module-name-limits.ts.`,
         );
       }
 

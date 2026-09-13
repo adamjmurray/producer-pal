@@ -300,9 +300,12 @@ them without asking:**
   (comment lines per code line), one repo-wide cap on comment-block length, and
   the per-file allowances for blocks that were already over it. Enforced by
   `src/test/comment-limits.test.ts`.
-- `src/test/helpers/module-name-limits.ts` — per-tree caps on modules named for
-  nothing (`-helpers`, `-utils`), enforced by
+- `src/test/helpers/naming/module-name-limits.ts` — per-tree caps on modules
+  named for nothing (`-helpers`, `-utils`), enforced by
   `src/test/meta/naming/module-name-limits.test.ts`.
+- `src/test/helpers/naming/main-export-limits.ts` — per-tree caps on modules
+  whose exported functions and classes share no word with the filename, enforced
+  by `src/test/meta/naming/main-export-limits.test.ts`.
 - `vitest.config.ts` (thresholds) — coverage.
 - `config/.jscpd*.json` (`threshold`) — code duplication.
 

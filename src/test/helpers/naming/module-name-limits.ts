@@ -11,7 +11,7 @@
 // limit needs the user's approval. A module is named for what it does; when a
 // support file is being renamed anyway, the name is the fix.
 
-import { type CommentTree } from "./comment-scan-helpers.ts";
+import { type CommentTree } from "../comment-scan-helpers.ts";
 
 /** Last hyphenated word of a basename that names nothing. */
 export const NOTHING_WORDS = ["helpers", "utils", "misc", "common", "support"];

@@ -168,9 +168,21 @@ them beside the current numbers.
 
 `src/test/meta/naming/module-name-limits.test.ts` ratchets how many non-test
 modules per tree end in a nothing word (`helpers`, `utils`, `misc`, `common`,
-`support`). The caps live in `src/test/helpers/module-name-limits.ts` and must
-match the current count exactly, so renaming a file means lowering the cap in
-the same commit. Test support files (`-test-helpers.ts`) don't count.
+`support`). The caps live in `src/test/helpers/naming/module-name-limits.ts` and
+must match the current count exactly, so renaming a file means lowering the cap
+in the same commit. Test support files (`-test-helpers.ts`) don't count.
+
+`src/test/meta/naming/main-export-limits.test.ts` ratchets the same way over
+modules whose exported functions and classes share no word with the filename;
+its caps live in `src/test/helpers/naming/main-export-limits.ts`. A module that
+exports neither (a constants table, a `.def.ts`, scenario data) has no main
+export and isn't counted.
+
+That rule is weaker than "the first exported function is the main one, named
+after the file": any export sharing any word counts, matched by prefix so
+`parse`/`parser` counts too. Checked literally, the convention flags most of the
+repo — modules named for a subject with several peer exports, and noun/verb
+pairs — so a strict ratchet would push renames onto correctly named files.
 
 ## Auditing coverage
 
