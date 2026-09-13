@@ -147,6 +147,57 @@ describe("ppal-delete", () => {
     expect(deleted.every((d) => d.ok === undefined)).toBe(true);
   });
 
+  // Deleting one object twice would shift a different track into the slot and
+  // remove that instead, so only the first mention deletes. The repeat keeps
+  // its own slot: N targets named, N entries back, in the order named.
+  it("keeps both slots when one track is named by id and by path", async () => {
+    const track = await createTrack({ name: "Named Twice" });
+    // parseToolResult fails the test if anything warned: the entries carry it.
+    const data = parseToolResult<DeleteResult[]>(
+      await del({ id: track.id, path: track.path, type: "track" }),
+    );
+
+    expect(data).toStrictEqual([
+      { id: track.id, deletedPath: track.path, type: "track" },
+      {
+        id: track.id,
+        path: track.path,
+        type: "track",
+        reason: `already named as id ${track.id} earlier in this call`,
+      },
+    ]);
+
+    await expectGone("ppal-read-track", { id: track.id });
+  });
+
+  // Named, another, named again: the repeat reports third, where it was named,
+  // so matching entries against the call by position pairs the right ones.
+  it("reports a repeated id at the slot it was named at", async () => {
+    const first = await createTrack({ name: "Repeat First" });
+    const second = await createTrack({ name: "Repeat Second" });
+    const data = parseToolResult<DeleteResult[]>(
+      await del({ id: `${first.id},${second.id},${first.id}`, type: "track" }),
+    );
+
+    expect(data.map((entry) => entry.id)).toStrictEqual([
+      first.id,
+      second.id,
+      first.id,
+    ]);
+    // The first mention did the delete, so it reads as a plain removal.
+    expect(data[0]?.deletedPath).toBe(first.path);
+    expect(data[0]?.reason).toBeUndefined();
+    // A repeat needed no work, so it carries a reason and no `ok`.
+    expect(data[2]).toStrictEqual({
+      id: first.id,
+      type: "track",
+      reason: `already named as id ${first.id} earlier in this call`,
+    });
+
+    await expectGone("ppal-read-track", { id: first.id });
+    await expectGone("ppal-read-track", { id: second.id });
+  });
+
   it("deletes a return track", async () => {
     const returnTrack = await createTrack({
       path: "rt+",

@@ -23,6 +23,10 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  namedEarlierReason,
+  type NamedTarget,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
   pairExact,
   pairValues,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
@@ -196,7 +200,6 @@ export function resolveRequestedClips(
   const destinationById = new Map<string, ClipPath>();
   const requestedIndexById = new Map<string, number>();
   const claimedBy = new Map<string, string>();
-  const seen = new Set<string>();
 
   for (const [index, id] of targets.ids.entries()) {
     // A path that named no clip already holds its slot with the reason.
@@ -212,17 +215,18 @@ export function resolveRequestedClips(
 
     // An id and a path can name the same clip, as can a repeated id. Updating
     // it twice compounds every operation — duplicateLoop would double it again.
-    if (seen.has(clip.id)) {
+    const earlier = requestedIndexById.get(clip.id);
+
+    if (earlier != null) {
       targets.unused.set(index, {
         id: clip.id,
         path: objectPathForApi(clip),
-        reason: "named earlier in this call; updated once",
+        reason: namedEarlierReason(targets.named[earlier] as NamedTarget),
       });
 
       continue;
     }
 
-    seen.add(clip.id);
     clips.push(clip);
     requestedIndexById.set(clip.id, index);
     noteRefusedDestination(reasons, clip.id, moves.refusals[index]);
@@ -234,7 +238,11 @@ export function resolveRequestedClips(
     });
   }
 
-  dropDestinationsHoldingBatchClips(destinationById, seen, reasons);
+  dropDestinationsHoldingBatchClips(
+    destinationById,
+    new Set(requestedIndexById.keys()),
+    reasons,
+  );
 
   return { clips, destinationById, requestedIndexById };
 }

@@ -24,21 +24,6 @@ describe("deleteObject", () => {
     liveSet = registerMockObject("live_set", { path: livePath.liveSet });
   });
 
-  // Deleting one object twice would shift onto and remove a different one, so
-  // the targets collapse to the object they resolve to.
-  it("deletes an object named by both id and path only once", () => {
-    setupTrackMocks({ track_1: String(livePath.track(0)) });
-
-    expect(
-      deleteObject({ id: "track_1", path: "t0", type: "track" }),
-    ).toStrictEqual({
-      id: "track_1",
-      deletedPath: "t0",
-      type: "track",
-    });
-    expect(liveSet.call).toHaveBeenCalledTimes(1);
-  });
-
   it("should delete a single track when type is 'track'", () => {
     setupTrackMocks({ track_2: String(livePath.track(1)) });
 

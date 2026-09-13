@@ -584,6 +584,33 @@ describe("ppal-update-clip", () => {
     expect(await readClipName(lastId)).toBe("c");
   });
 
+  // An id and a path can name one clip. Updating it twice would compound every
+  // operation, so the later mention keeps its slot and says where the work is.
+  it("keeps both slots when one clip is named by id and by path", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s26`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, path, name: "Named Twice" },
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<Array<ReadClipResult & { reason?: string }>>(
+        result,
+      );
+
+    expect(data).toHaveLength(2);
+    expect(data[0]?.id).toBe(clipId);
+    expect(data[0]?.reason).toBeUndefined();
+    // A repeat needed no work, so it carries a reason and no `ok`.
+    expect(data[1]).toStrictEqual({
+      id: clipId,
+      path,
+      reason: `already named as id ${clipId} earlier in this call`,
+    });
+    expect(warnings.join(" ")).not.toContain("earlier in this call");
+  });
+
   // One target and nothing done: there is no list for an entry to hold a place
   // in, so the reason comes back as the error.
   it("throws when the one path it names holds no clip", async () => {

@@ -262,7 +262,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "456",
         path: "t1/s1",
-        reason: "named earlier in this call; updated once",
+        reason: "already named as id 456 earlier in this call",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
@@ -288,7 +288,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "123",
         path: "t0/s0",
-        reason: "named earlier in this call; updated once",
+        reason: "already named as id 123 earlier in this call",
       },
     ]);
   });
@@ -312,7 +312,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "456",
         path: "t1/s1",
-        reason: "named earlier in this call; updated once",
+        reason: "already named as id 456 earlier in this call",
       },
     ]);
   });

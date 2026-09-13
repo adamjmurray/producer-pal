@@ -7,14 +7,15 @@
 // targets it won't.
 //
 // A target that isn't there needed no work — what was asked for has already
-// happened — so its entry says so and carries no `ok`. A target that is there
-// and this call can't remove is skipped, `ok: false`, with the reason a lone
-// target would have thrown.
+// happened — so its entry says so and carries no `ok`, as does one repeating an
+// object named earlier. A target that is there and this call can't remove is
+// skipped, `ok: false`, with the reason a lone target would have thrown.
 
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  namedEarlierReason,
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -30,15 +31,12 @@ export interface DeleteResult {
    * path names whatever slid into the slot.
    */
   deletedPath?: string;
-  /**
-   * The target's address when it is still there — it named nothing, the delete
-   * failed, or the target was a drum pad, which is cleared rather than removed.
-   */
+  /** The target's address when this entry removed nothing. */
   path?: string;
   type: string;
   /** Only on a target this call could not delete. */
   ok?: false;
-  /** Why it wasn't deleted, or why there was nothing to delete. */
+  /** Why it wasn't deleted, or why there was nothing left for it to delete. */
   reason?: string;
 }
 
@@ -93,23 +91,38 @@ export function resolveDeleteTargets(
   }
 
   const settled: IndexedDeleteResult[] = [];
-  // Keyed by what each target resolved to, so an object named twice — by two
-  // ids, or by an id and a path — is deleted once: a second positional delete
-  // would shift onto and remove a different object. The last spelling wins,
-  // which is also the position its entry comes back at.
-  const deletable = new Map<string, DeleteTarget>();
+  const deletable: DeleteTarget[] = [];
+  // The first target to name an object deletes it; deleting it again would
+  // shift another object into the slot and remove that instead. Keyed by what
+  // each target resolved to, so an id and a path naming one object are caught.
+  const firstNamedBy = new Map<string, NamedTarget>();
 
   for (const [requestIndex, named] of targets.entries()) {
     const { target, entry } = resolveTarget(named, type, requestIndex);
 
-    if (entry == null) {
-      deletable.set(target.object.id, target);
-    } else {
+    if (entry != null) {
       settled.push(entry);
+      continue;
     }
+
+    const earlier = firstNamedBy.get(target.object.id);
+
+    if (earlier != null) {
+      settled.push({
+        id: target.id,
+        ...requestAddress(target.requestPath),
+        type,
+        reason: namedEarlierReason(earlier),
+        requestIndex,
+      });
+      continue;
+    }
+
+    firstNamedBy.set(target.object.id, named);
+    deletable.push(target);
   }
 
-  return { deletable: [...deletable.values()], settled };
+  return { deletable, settled };
 }
 
 // --- Helpers below main exports ---
@@ -130,10 +143,8 @@ function resolveTarget(
     named.param === "id"
       ? { id: named.value }
       : resolvePathForType(type, named.value);
-  // A path is echoed back as the caller wrote it. An id target has none to
-  // report: the object it named is not where the call found it.
   const requestPath = named.param === "path" ? named.value : undefined;
-  const address = requestPath == null ? {} : { path: requestPath };
+  const address = requestAddress(requestPath);
 
   if (lookup.id == null) {
     return {
@@ -166,6 +177,17 @@ function resolveTarget(
   }
 
   return { target: { id, object, requestPath, requestIndex } };
+}
+
+/**
+ * The caller's own path as a spreadable field. A path is echoed back the way it
+ * was written; an id target has none to report, because the object it named is
+ * not where the call found it.
+ * @param requestPath - The path the caller wrote, when they wrote one
+ * @returns `{ path }`, or `{}` for a target named by id
+ */
+function requestAddress(requestPath: string | undefined): { path?: string } {
+  return requestPath == null ? {} : { path: requestPath };
 }
 
 /**

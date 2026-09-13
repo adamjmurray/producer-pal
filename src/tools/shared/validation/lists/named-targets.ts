@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The targets a call names, and the entry one that couldn't be done leaves in
-// its place. A skip is addressed by the param and spelling the caller wrote,
-// which is all they have to match it on.
+// The targets a call names, and the entries they leave in place of work not
+// done — a skip, or a repeat of an object named earlier. Each is addressed by
+// the param and spelling the caller wrote, which is all they have to match on.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
@@ -70,7 +70,33 @@ export function attemptTarget<T>(
  * @returns The skip entry
  */
 export function skipEntry(target: NamedTarget, reason: string): TargetSkip {
-  return target.param === "id"
-    ? { id: target.value, ok: false, reason }
-    : { path: target.value, ok: false, reason };
+  return { ...targetAddress(target), ok: false, reason };
+}
+
+/**
+ * How a repeat target says an earlier one named the same object, in that
+ * target's own spelling — what the caller matches the working entry on. One
+ * wording for every tool: the work happened at the entry this names, once.
+ * @param earlier - The target that named the object first
+ * @returns The reason, pointing at the entry that did the work
+ */
+export function namedEarlierReason(earlier: NamedTarget): string {
+  const address =
+    earlier.param === "id" ? `id ${earlier.value}` : `"${earlier.value}"`;
+
+  return `already named as ${address} earlier in this call`;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The address a skip reports under: the caller's own spelling, and nothing
+ * else. A skip may have resolved to no object at all, so it has no id to add.
+ * @param target - The target, as the caller named it
+ * @returns `{ id }` or `{ path }`
+ */
+function targetAddress(
+  target: NamedTarget,
+): { id: string; path?: undefined } | { id?: undefined; path: string } {
+  return target.param === "id" ? { id: target.value } : { path: target.value };
 }
