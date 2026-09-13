@@ -205,7 +205,7 @@ export function updateTrack(
 
   const updatedTracks: UpdateTrackResult[] = [];
   // The collisions belong to the call, not to a track, so they are announced
-  // once — off the first track that actually wrote something to name.
+  // once — off the first track a collision actually landed on.
   let announcedCollisions = false;
 
   for (let i = 0; i < trackIds.length; i++) {
@@ -280,9 +280,11 @@ export function updateTrack(
 
     const landed = applyTrackSends(track, resolvedSends.winners);
 
-    if (!announcedCollisions && landed.size > 0) {
-      warnSendCollisions(resolvedSends.collisions, landed);
-      announcedCollisions = true;
+    if (!announcedCollisions) {
+      announcedCollisions = warnSendCollisions(
+        resolvedSends.collisions,
+        landed,
+      );
     }
 
     // Optimistic except for the mixer and sends, read back off the track.

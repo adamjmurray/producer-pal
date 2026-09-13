@@ -145,11 +145,14 @@ export function dedupeSendsByReturn<T extends IndexedSend>(
  * @param landed - What each send that was written now reads, by its position.
  *   A collision missing from it is skipped — the write didn't land, so there is
  *   no final level to name, and the failure warned for itself.
+ * @returns Whether anything was announced
  */
 export function warnSendCollisions(
   collisions: SendCollision[],
   landed: Map<number, SendResult>,
-): void {
+): boolean {
+  let announced = false;
+
   for (const { index, overrodeScalar } of collisions) {
     const entry = landed.get(index);
 
@@ -164,5 +167,9 @@ export function warnSendCollisions(
         ? `sends overrides sendGainDb/sendReturn: ${held}`
         : `sends names one return more than once: ${held}`,
     );
+
+    announced = true;
   }
+
+  return announced;
 }
