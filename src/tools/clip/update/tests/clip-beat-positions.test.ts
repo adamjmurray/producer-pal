@@ -9,10 +9,17 @@ import {
   capturedWarnings,
   clearCapturedWarnings,
 } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "../helpers/entries/clip-reasons.ts";
 
 describe("clip-beat-positions", () => {
+  let reasons: ClipReasons;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    reasons = newClipReasons();
   });
 
   /**
@@ -23,6 +30,7 @@ describe("clip-beat-positions", () => {
    */
   const clipStub = (props: Record<string, number>): LiveAPI =>
     ({
+      id: "123",
       getProperty: vi.fn((prop: string) => props[prop] ?? 0),
     }) as unknown as LiveAPI;
 
@@ -44,11 +52,12 @@ describe("clip-beat-positions", () => {
       wasLooping: overrides.isLooping ?? true,
       beatsPerMarkerUnit: 1,
       markerClampSeconds: 0,
+      reasons,
       ...overrides,
     });
 
   describe("calculateBeatPositions", () => {
-    it("should warn when firstStart exceeds end_marker", () => {
+    it("reports firstStart past end_marker on the clip's entry", () => {
       const mockClip = clipStub({
         end_marker: 4, // 1 bar at 4/4
       });
@@ -58,12 +67,10 @@ describe("clip-beat-positions", () => {
         clip: mockClip,
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("firstStart ignored for clip"),
+      expect(reasons.said.get("123")?.join("; ")).toBe(
+        "firstStart ignored: past the clip's content end",
       );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("exceeds its content boundary"),
-      );
+      expect(capturedWarnings()).toHaveLength(0);
       expect(result.startMarkerBeats).toBeNull();
       expect(result.firstStartBeats).toBe(8); // Still calculated, just not applied
     });
@@ -126,9 +133,9 @@ describe("clip-beat-positions", () => {
     });
 
     it("treats firstStart AT the end_marker as out of bounds (strict <, not <=)", () => {
-      // firstStartBeats === end_marker: the strict `<` rejects it, warns, and
-      // leaves start_marker unset. `<=` would wrongly accept it and return the
-      // value with no warning.
+      // firstStartBeats === end_marker: the strict `<` rejects it, says so on
+      // the clip's entry, and leaves start_marker unset. `<=` would wrongly
+      // accept it and return the value with no reason.
       const mockClip = clipStub({ end_marker: 4 });
 
       const result = calcPositions({
@@ -138,8 +145,8 @@ describe("clip-beat-positions", () => {
 
       expect(result.firstStartBeats).toBe(4);
       expect(result.startMarkerBeats).toBeNull();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("firstStart ignored for clip"),
+      expect(reasons.said.get("123")?.join("; ")).toContain(
+        "firstStart ignored",
       );
     });
 

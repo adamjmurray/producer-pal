@@ -276,12 +276,14 @@ describe("ppal-update-clip loop toggle", () => {
       length: HALF,
     });
 
-    const { clip, warnings } = await updateAndRead(ctx.client!, clipId, {
+    const { clip, entry } = await updateAndRead(ctx.client!, clipId, {
       looping: true,
       warping: false,
     });
 
-    expect(warnings.join("\n")).toContain("warping: false ignored");
+    expect(entry.reason).toContain(
+      "warping ignored: looping forces warping on",
+    );
     expect(clip.looping).toBe(true);
     expect(clip.warping).toBe(true);
     expect(clip.length).toBe(HALF);

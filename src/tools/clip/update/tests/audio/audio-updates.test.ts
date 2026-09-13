@@ -9,6 +9,10 @@ import {
   setAudioParameters,
 } from "#src/tools/clip/update/helpers/audio-updates.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;
@@ -330,9 +334,11 @@ describe("applyAudioTransforms", () => {
 
 describe("handleWarpMarkerOperation", () => {
   let mockClip: MockClip;
+  let reasons: ClipReasons;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    reasons = newClipReasons();
     mockClip = {
       id: "123",
       call: vi.fn(),
@@ -341,59 +347,62 @@ describe("handleWarpMarkerOperation", () => {
     mockClip.call.mockReturnValue(true);
   });
 
-  it("should warn and skip when clip is not an audio clip", () => {
+  it("should skip when clip is not an audio clip", () => {
     mockClip.getProperty.mockReturnValue(null);
 
-    // Should not throw, just warn and return early
-    handleWarpMarkerOperation(mockClip, "add", 1.0, 44100);
+    // Should not throw, just report on the clip's entry and return early
+    handleWarpMarkerOperation(mockClip, reasons, "add", 1.0, 44100);
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when warpBeatTime is not provided", () => {
+  it("should skip when warpBeatTime is not provided", () => {
     mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
 
-    // Should not throw, just warn and return early
-    handleWarpMarkerOperation(mockClip, "add", undefined, 44100);
+    // Should not throw, just report on the clip's entry and return early
+    handleWarpMarkerOperation(mockClip, reasons, "add", undefined, 44100);
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("warns with the audio-clip message when the clip has no file", () => {
-    // Pins the actual warning text so a blanked string literal is caught.
+  it("reports the audio-clip reason on the clip's entry when it has no file", () => {
+    // Pins the actual reason text so a blanked string literal is caught.
     mockClip.getProperty.mockReturnValue(null);
 
-    handleWarpMarkerOperation(mockClip, "add", 1.0, 44100);
+    handleWarpMarkerOperation(mockClip, reasons, "add", 1.0, 44100);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("warp markers only available on audio clips"),
+    expect(reasons.said.get("123")?.join("; ")).toContain(
+      "warpOp ignored: warp markers need an audio clip",
+    );
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("warpOp ignored"),
     );
   });
 
   it("reads file_path specifically to detect an audio clip", () => {
     // Only "file_path" yields a path; any other key (e.g. the "" a
     // string-literal mutation would read) returns null → treated as non-audio,
-    // which would warn-and-skip instead of performing the operation.
+    // which would skip instead of performing the operation.
     mockClip.getProperty.mockImplementation((prop: string) =>
       prop === "file_path" ? "/path/to/audio.wav" : null,
     );
 
-    handleWarpMarkerOperation(mockClip, "remove", 4.0);
+    handleWarpMarkerOperation(mockClip, reasons, "remove", 4.0);
 
     expect(mockClip.call).toHaveBeenCalledWith("remove_warp_marker", 4.0);
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("warp markers only available"),
-    );
+    expect(reasons.said.size).toBe(0);
   });
 
-  it("warns with the warpBeatTime message when it is missing", () => {
+  it("reports the missing warpBeatTime on the clip's entry", () => {
+    // Pins the actual reason text so a blanked string literal is caught.
     mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
 
-    handleWarpMarkerOperation(mockClip, "add", undefined, 44100);
+    handleWarpMarkerOperation(mockClip, reasons, "add", undefined, 44100);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("warpBeatTime required for"),
+    expect(reasons.said.get("123")?.join("; ")).toBe(
+      "warpOp ignored: add needs warpBeatTime",
     );
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   describe("add operation", () => {
@@ -402,7 +411,7 @@ describe("handleWarpMarkerOperation", () => {
     });
 
     it("should add warp marker with sample time", () => {
-      handleWarpMarkerOperation(mockClip, "add", 4.0, 88200);
+      handleWarpMarkerOperation(mockClip, reasons, "add", 4.0, 88200);
 
       expect(mockClip.call).toHaveBeenCalledWith("add_warp_marker", {
         beat_time: 4.0,
@@ -411,7 +420,7 @@ describe("handleWarpMarkerOperation", () => {
     });
 
     it("should add warp marker without sample time", () => {
-      handleWarpMarkerOperation(mockClip, "add", 4.0, undefined);
+      handleWarpMarkerOperation(mockClip, reasons, "add", 4.0, undefined);
 
       expect(mockClip.call).toHaveBeenCalledWith("add_warp_marker", {
         beat_time: 4.0,
@@ -422,7 +431,7 @@ describe("handleWarpMarkerOperation", () => {
       // toHaveBeenCalledWith treats { beat_time } and { beat_time, sample_time:
       // undefined } as equal, so it can't catch the ternary being forced true.
       // Inspect the args object for the key's presence directly.
-      handleWarpMarkerOperation(mockClip, "add", 4.0, undefined);
+      handleWarpMarkerOperation(mockClip, reasons, "add", 4.0, undefined);
 
       const addCall = mockClip.call.mock.calls.find(
         (c: unknown[]) => c[0] === "add_warp_marker",
@@ -437,30 +446,52 @@ describe("handleWarpMarkerOperation", () => {
       mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
     });
 
-    it("should warn and skip when warpDistance is not provided", () => {
-      // Should not throw, just warn and return early
-      handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, undefined);
+    it("should skip when warpDistance is not provided", () => {
+      // Should not throw, just report on the clip's entry and return early
+      handleWarpMarkerOperation(
+        mockClip,
+        reasons,
+        "move",
+        4.0,
+        undefined,
+        undefined,
+      );
 
       expect(mockClip.call).not.toHaveBeenCalled();
     });
 
-    it("warns with the warpDistance message when it is missing", () => {
-      // Pins the actual warning text so a blanked string literal is caught.
-      handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, undefined);
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("warpDistance required for move"),
+    it("reports the missing warpDistance on the clip's entry", () => {
+      // Pins the actual reason text so a blanked string literal is caught.
+      handleWarpMarkerOperation(
+        mockClip,
+        reasons,
+        "move",
+        4.0,
+        undefined,
+        undefined,
       );
+
+      expect(reasons.said.get("123")?.join("; ")).toBe(
+        "warpOp ignored: move needs warpDistance",
+      );
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("should move warp marker by specified distance", () => {
-      handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, 0.5);
+      handleWarpMarkerOperation(mockClip, reasons, "move", 4.0, undefined, 0.5);
 
       expect(mockClip.call).toHaveBeenCalledWith("move_warp_marker", 4.0, 0.5);
     });
 
     it("should move warp marker with negative distance", () => {
-      handleWarpMarkerOperation(mockClip, "move", 8.0, undefined, -1.0);
+      handleWarpMarkerOperation(
+        mockClip,
+        reasons,
+        "move",
+        8.0,
+        undefined,
+        -1.0,
+      );
 
       expect(mockClip.call).toHaveBeenCalledWith("move_warp_marker", 8.0, -1.0);
     });
@@ -472,7 +503,7 @@ describe("handleWarpMarkerOperation", () => {
     });
 
     it("should remove warp marker at specified beat time", () => {
-      handleWarpMarkerOperation(mockClip, "remove", 4.0);
+      handleWarpMarkerOperation(mockClip, reasons, "remove", 4.0);
 
       expect(mockClip.call).toHaveBeenCalledWith("remove_warp_marker", 4.0);
     });

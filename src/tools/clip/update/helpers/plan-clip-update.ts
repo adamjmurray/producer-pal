@@ -29,7 +29,11 @@ import {
 } from "./arrangement/update-clip-arrangement-params.ts";
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
 import { refuseSplitWithMove } from "./update-clip-refusals.ts";
-import { refuseClipWork, type ClipReasons } from "./entries/clip-reasons.ts";
+import {
+  markClipLanded,
+  refuseClipWork,
+  type ClipReasons,
+} from "./entries/clip-reasons.ts";
 import { type ClipTargets } from "./entries/clip-targets.ts";
 import {
   moveDestinationParam,
@@ -369,7 +373,7 @@ function applySplittingIfNeeded({
     mode,
   );
 
-  return splitPieces(clips, slots, pieces);
+  return splitPieces(clips, slots, pieces, reasons);
 }
 
 /**
@@ -383,20 +387,31 @@ function applySplittingIfNeeded({
  * @param clips - The clips as the call named them, before the cuts
  * @param slots - The target each of those clips belongs to
  * @param pieces - The pieces each cut clip became, by the id it was cut at
+ * @param reasons - What each clip has to say beyond its result, added to
  * @returns The clips to update, and the target each belongs to
  */
 function splitPieces(
   clips: LiveAPI[],
   slots: number[],
   pieces: Map<string, LiveAPI[]>,
+  reasons: ClipReasons,
 ): { clips: LiveAPI[]; slots: number[] } {
   const afterSplit: LiveAPI[] = [];
   const slotsAfterSplit: number[] = [];
 
   for (const [index, clip] of clips.entries()) {
-    for (const piece of pieces.get(clip.id) ?? [clip]) {
+    const cut = pieces.get(clip.id);
+
+    for (const piece of cut ?? [clip]) {
       if (!piece.exists()) {
         continue;
+      }
+
+      // The cut is work that landed. Without this a piece whose every other
+      // param the clip ignored reads as a clip nothing happened to, and the
+      // pieces sharing one target would collapse into a single skip.
+      if (cut != null) {
+        markClipLanded(reasons, piece.id);
       }
 
       afterSplit.push(piece);

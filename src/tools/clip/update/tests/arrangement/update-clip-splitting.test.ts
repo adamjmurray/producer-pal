@@ -214,6 +214,27 @@ describe("updateClip - splitting smoke tests", () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
+  // The cut is work that landed, so each piece keeps its entry even when the
+  // only other param was one the clip could do nothing with. Without that every
+  // piece skips, they collapse onto the one target they share, and a lone
+  // target throws after the clip was already cut.
+  it("keeps every piece of a split whose other param the clip ignored", async () => {
+    setupClipSplittingMocks("clip_1", { looping: false });
+
+    const result = await updateClip(
+      { id: "clip_1", arrangementSplit: "2|1", firstStart: "1|2" },
+      {},
+    );
+    const results = Array.isArray(result) ? result : [result];
+
+    expect(results.length).toBeGreaterThan(1);
+
+    for (const entry of results) {
+      expect("ok" in entry).toBe(false);
+      expect(entry.reason).toBe("firstStart ignored: the clip is not looping");
+    }
+  });
+
   // A take-lane arrangement clip cannot be split via
   // duplicate_clip_to_arrangement. Nothing else was asked of it, so the lone
   // target's reason is the error.
@@ -289,7 +310,8 @@ describe("updateClip - splitting smoke tests", () => {
       id: "dup_2",
       noteCount: 0,
       path: "t0[2|1]",
-      reason: "Live refused the note read",
+      reason:
+        "transforms ignored: the clip has no notes; Live refused the note read",
     });
   });
 

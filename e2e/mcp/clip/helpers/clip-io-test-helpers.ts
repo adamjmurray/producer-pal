@@ -62,16 +62,20 @@ export async function updateClip(
  * @param client - The connected MCP client
  * @param id - Clip id
  * @param args - The rest of the ppal-update-clip arguments
- * @returns The clip as read back, and any warnings the update reported
+ * @returns The clip as read back, the update's own entry, and any warnings
  */
 export async function updateAndRead(
   client: Client,
   id: string,
   args: Record<string, unknown>,
-): Promise<{ clip: ReadClipResult; warnings: string[] }> {
-  const { warnings } = await updateClip(client, id, args);
+): Promise<{
+  clip: ReadClipResult;
+  entry: ReadClipResult;
+  warnings: string[];
+}> {
+  const { data, warnings } = await updateClip(client, id, args);
 
-  return { clip: await readClipFully(client, { id }), warnings };
+  return { clip: await readClipFully(client, { id }), entry: data, warnings };
 }
 
 /**

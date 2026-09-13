@@ -7,7 +7,6 @@ import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
@@ -17,7 +16,7 @@ import {
   readAllClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
 
 /**
  * Apply transforms to existing notes without merging new notes.
@@ -28,6 +27,7 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
  * before transforms runs. Either string may be omitted; bare `preTransforms: "v0"`
  * is how you clear a clip without rewriting it.
  * @param clip - The clip to update
+ * @param reasons - What each clip has to say beyond its result, added to
  * @param preTransformString - Transform expressions to apply first, or undefined
  * @param transformString - Transform expressions to apply second, or undefined
  * @param timeSigNumerator - Time signature numerator
@@ -37,6 +37,7 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
  */
 export function applyTransformsToExistingNotes(
   clip: LiveAPI,
+  reasons: ClipReasons,
   preTransformString: string | undefined,
   transformString: string | undefined,
   timeSigNumerator: number,
@@ -45,12 +46,22 @@ export function applyTransformsToExistingNotes(
 ): NoteUpdateResult {
   // Read the full [-length, 2*length] window so a pickup note (negative
   // start_time) is transformed too — otherwise `preTransforms: "v0"` reports
-  // "no notes to transform" and leaves the pickup orphaned (noteCount lies 0).
+  // the clip as having no notes and leaves the pickup orphaned (noteCount
+  // lies 0).
   const rawNotes = readAllClipNotes(clip);
 
+  // A no-op, not a refusal: there was nothing to transform, so the clip is
+  // already how the call asked for it and the entry keeps its noteCount.
   if (rawNotes.length === 0) {
-    console.warn(
-      `transforms ignored: clip ${targetLabel(clip)} has no notes to transform`,
+    const sent = [
+      preTransformString != null ? "preTransforms" : null,
+      transformString != null ? "transforms" : null,
+    ].filter((param) => param != null);
+
+    noteClipReason(
+      reasons,
+      clip.id,
+      `${sent.join("/")} ignored: the clip has no notes`,
     );
 
     return { noteCount: 0 };

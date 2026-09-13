@@ -11,6 +11,10 @@ import {
   handleNoteUpdates,
 } from "../../helpers/notes/note-updates.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "../../helpers/entries/clip-reasons.ts";
 
 // Minimal ClipContext for handleNoteUpdates (only used by transform variables,
 // which the tests below don't exercise beyond a bare delete).
@@ -54,8 +58,11 @@ function removeNoteCalls(clip: {
 }
 
 describe("note-updates", () => {
+  let reasons: ClipReasons;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    reasons = newClipReasons();
   });
 
   describe("handleNoteUpdates", () => {
@@ -68,6 +75,7 @@ describe("note-updates", () => {
 
       const result = handleNoteUpdates(
         mockClip as unknown as LiveAPI,
+        reasons,
         "1|1 C3", // new notes to merge
         undefined, // no post-transform
         "v0", // preTransform present, but no existing notes to match
@@ -91,6 +99,7 @@ describe("note-updates", () => {
 
       handleNoteUpdates(
         mockClip as unknown as LiveAPI,
+        reasons,
         "1|1 D3", // new note at Ableton beat 0
         undefined,
         undefined,
@@ -121,6 +130,7 @@ describe("note-updates", () => {
 
       return handleDuplicateLoopWithEdits({
         clip,
+        reasons,
         notationString: overrides.notationString,
         transformString: overrides.transformString,
         preTransformString: overrides.preTransformString,

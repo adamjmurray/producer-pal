@@ -111,7 +111,11 @@ target, so no entry exists yet to carry them.
   clip named twice holds its second slot as a normal entry saying the update
   already happened, and a clip that was written but not as asked keeps its entry
   with a `reason`: a throw partway, a move refused beside a name or a length
-  that landed, a re-create and what it cost, a take-lane leftover. The move and
+  that landed, a re-create and what it cost, a take-lane leftover. A param the
+  clip can't take — notes, preTransforms, duplicateLoop or quantize on an audio
+  clip, warp markers on a MIDI clip, firstStart on a clip that isn't looping or
+  past its content end, warping off while looping — is a reason on its entry
+  too, and a skip when it was all the call asked of the clip. The move and
   arrangement helpers report all of it on the clip's entry instead of warning,
   through a per-call collector keyed by the clip id the call found; a step that
   writes under a new id — a move re-creates the clip — hands its reasons back to

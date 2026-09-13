@@ -126,16 +126,16 @@ describe("updateClip - duplicateLoop", () => {
     });
   });
 
-  it("warns and skips audio clips without calling duplicate_loop", async () => {
+  it("refuses an audio clip without calling duplicate_loop", async () => {
     setupAudioClipMock(mocks.clip123);
 
-    const result = await updateClip({ id: "123", duplicateLoop: true });
+    // One target and nothing else asked of it, so the reason is the error.
+    await expect(
+      updateClip({ id: "123", duplicateLoop: true }),
+    ).rejects.toThrow("duplicateLoop ignored: the clip is audio");
 
     expect(mocks.clip123.call).not.toHaveBeenCalledWith("duplicate_loop");
-    expect(capturedWarnings()).toContain(
-      "duplicateLoop parameter ignored for audio clip t0/s0 (id 123)",
-    );
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("processes MIDI clips while skipping audio in a mixed batch", async () => {
@@ -149,7 +149,11 @@ describe("updateClip - duplicateLoop", () => {
     expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0", noteCount: 6, length: "2bar" },
-      { id: "456", path: "t1/s1" },
+      {
+        id: "456",
+        ok: false,
+        reason: "duplicateLoop ignored: the clip is audio",
+      },
     ]);
   });
 

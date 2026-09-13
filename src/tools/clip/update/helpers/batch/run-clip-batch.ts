@@ -19,6 +19,7 @@ import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
 import {
   appendReason,
   type ClipReasons,
+  clipIgnoredParams,
   clipLandedNothing,
   reportClipReasons,
 } from "../entries/clip-reasons.ts";
@@ -102,7 +103,6 @@ export async function runClipBatch({
     name,
     color,
   });
-  const askedAnythingElse = askedBeyondPosition(args);
   const updatedClips: ClipResult[] = [];
   // The clips can be processed out of call order, so each one's results are
   // kept at its own place and the response is put back together at the end.
@@ -178,7 +178,10 @@ export async function runClipBatch({
       reasons,
       targets,
       slot,
-      askedAnythingElse,
+      askedAnythingElse: askedBeyondPosition(
+        args,
+        clipIgnoredParams(reasons, clip.id),
+      ),
     });
 
     skips.settle(i, resultsPerClip[i]);
@@ -293,12 +296,20 @@ const CONTENT_PARAMS = [
 ] as const satisfies ReadonlyArray<keyof ClipUpdateArgs>;
 
 /**
- * Whether the call asked the clips for anything besides where they sit.
+ * Whether the call asked this clip for anything besides where it sits. A param
+ * the clip ignored doesn't count: it wrote nothing, so it can't be what keeps a
+ * refusal out of the skip.
  * @param args - The tool arguments as received
- * @returns True when any param that writes to the clip itself was sent
+ * @param ignored - The params that did nothing on this clip
+ * @returns True when any param that writes to the clip itself was sent and used
  */
-function askedBeyondPosition(args: ClipUpdateArgs): boolean {
-  return CONTENT_PARAMS.some((param) => args[param] != null);
+function askedBeyondPosition(
+  args: ClipUpdateArgs,
+  ignored: ReadonlySet<string>,
+): boolean {
+  return CONTENT_PARAMS.some(
+    (param) => args[param] != null && !ignored.has(param),
+  );
 }
 
 /**

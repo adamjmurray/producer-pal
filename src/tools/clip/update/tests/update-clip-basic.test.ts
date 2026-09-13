@@ -750,12 +750,11 @@ describe("updateClip - Basic operations", () => {
   it("should run warp marker operations when warpOp is provided", async () => {
     setupAudioClipMock(mocks.clip456, { file_path: "/audio/test.wav" });
 
-    await updateClip({ id: "456", warpOp: "add" });
-
     // handleWarpMarkerOperation runs only inside the warpOp != null guard; with
-    // no warpBeatTime it warns, proving the guarded block executed.
-    expect(capturedWarnings()).toContain(
-      "warpBeatTime required for add operation",
+    // no warpBeatTime it refuses the operation, proving the block executed. The
+    // clip was sent nothing else, so the reason comes back as the error.
+    await expect(updateClip({ id: "456", warpOp: "add" })).rejects.toThrow(
+      "warpOp ignored: add needs warpBeatTime",
     );
   });
 

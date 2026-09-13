@@ -12,10 +12,8 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
-import {
-  targetLabel,
-  targetLabelForId,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type ClipReasons, ignoreClipParams } from "./entries/clip-reasons.ts";
 
 interface BeatPositions {
   startBeats: number | null;
@@ -35,6 +33,8 @@ interface CalculateBeatPositionsArgs {
   wasLooping: boolean;
   beatsPerMarkerUnit: number;
   markerClampSeconds: number;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 interface TimeSignature {
@@ -44,10 +44,11 @@ interface TimeSignature {
 
 /**
  * Determine start_marker value with bounds checking
- * @param clipId - The clip being updated, for the warning
+ * @param clipId - The clip being updated, for the reason
  * @param firstStartBeats - First start position in beats
  * @param startBeats - Start position in beats
  * @param endMarker - Clip end marker (content boundary)
+ * @param reasons - What each clip has to say beyond its result, added to
  * @returns start_marker value or null if not applicable
  */
 function determineStartMarker(
@@ -55,14 +56,18 @@ function determineStartMarker(
   firstStartBeats: number | null,
   startBeats: number | null,
   endMarker: number,
+  reasons: ClipReasons,
 ): number | null {
   if (firstStartBeats != null) {
     if (firstStartBeats < endMarker) {
       return firstStartBeats;
     }
 
-    console.warn(
-      `firstStart ignored for clip ${targetLabelForId(clipId)} - exceeds its content boundary (${firstStartBeats} >= ${endMarker})`,
+    ignoreClipParams(
+      reasons,
+      clipId,
+      ["firstStart"],
+      "firstStart ignored: past the clip's content end",
     );
 
     return null;
@@ -88,6 +93,7 @@ function determineStartMarker(
  * @param args.wasLooping - Whether the clip looped before this update
  * @param args.beatsPerMarkerUnit - Beats per marker unit (see markerBeatsPerUnit)
  * @param args.markerClampSeconds - Sample duration to clamp markers to (see markerClampSeconds)
+ * @param args.reasons - What each clip has to say beyond its result
  * @returns Beat positions
  */
 export function calculateBeatPositions({
@@ -101,6 +107,7 @@ export function calculateBeatPositions({
   wasLooping,
   beatsPerMarkerUnit,
   markerClampSeconds,
+  reasons,
 }: CalculateBeatPositionsArgs): BeatPositions {
   let startBeats: number | null = null;
   let endBeats: number | null = null;
@@ -191,6 +198,7 @@ export function calculateBeatPositions({
     firstStartBeats,
     startBeats,
     endBeats ?? readMarker("end_marker"),
+    reasons,
   );
 
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };

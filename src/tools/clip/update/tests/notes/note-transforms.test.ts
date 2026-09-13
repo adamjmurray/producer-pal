@@ -12,6 +12,10 @@ import {
 } from "../../helpers/notes/note-transforms.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "../../helpers/entries/clip-reasons.ts";
 
 function createSessionClipMock(length = 8) {
   return {
@@ -34,8 +38,11 @@ function createSessionClipMock(length = 8) {
 }
 
 describe("note-transforms", () => {
+  let reasons: ClipReasons;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    reasons = newClipReasons();
   });
 
   describe("buildClipContext", () => {
@@ -200,6 +207,7 @@ describe("note-transforms", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         undefined,
         "velocity = 50",
         4,
@@ -250,6 +258,7 @@ describe("note-transforms", () => {
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         undefined,
         "velocity = 50",
         4,
@@ -268,6 +277,7 @@ describe("note-transforms", () => {
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         undefined,
         "ratchet(2)",
         4,
@@ -290,6 +300,7 @@ describe("note-transforms", () => {
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         "merge()",
         undefined,
         4,
@@ -316,6 +327,7 @@ describe("note-transforms", () => {
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         undefined,
         "pitch = 72", // collapse both onto pitch 72 at start 0
         4,
@@ -327,8 +339,9 @@ describe("note-transforms", () => {
       ]);
     });
 
-    it("should warn and return 0 when clip has no notes", () => {
+    it("reports an empty clip on its entry and returns 0", () => {
       const mockClip = {
+        id: "123",
         getProperty: vi.fn(() => 4),
         call: vi.fn((method: string) => {
           if (method === "get_notes_extended") {
@@ -341,6 +354,7 @@ describe("note-transforms", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         undefined,
         "velocity = 50",
         4,
@@ -348,11 +362,10 @@ describe("note-transforms", () => {
       );
 
       expect(result.noteCount).toBe(0);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "transforms ignored: clip id undefined has no notes to transform",
-        ),
+      expect(reasons.said.get("123")?.join("; ")).toBe(
+        "transforms ignored: the clip has no notes",
       );
+      expect(capturedWarnings()).toHaveLength(0);
       // Should NOT call remove_notes_extended or add_new_notes
       expect(mockClip.call).not.toHaveBeenCalledWith(
         "remove_notes_extended",
@@ -377,6 +390,7 @@ describe("note-transforms", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         undefined,
         "velocity = 50",
         4,
@@ -389,7 +403,7 @@ describe("note-transforms", () => {
     it("clears a pickup note before the clip start instead of orphaning it", () => {
       // Regression: preTransforms used to read only the playable region
       // [0, length], so a pickup at a negative start_time was invisible — `v0`
-      // reported "no notes to transform" and left the pickup orphaned while
+      // reported the clip as empty and left the pickup orphaned while
       // lying noteCount: 0. The read AND remove must use read-clip's
       // [-length, 2*length] window so the pickup is seen, transformed, removed.
       const pickup = rawNote(60, -0.5, 100); // half a beat before the start
@@ -418,13 +432,14 @@ describe("note-transforms", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        reasons,
         "v0", // preTransform deletes every matched note
         undefined,
         4,
         4,
       );
 
-      // The pickup was found and deleted, not skipped as "no notes to transform".
+      // The pickup was found and deleted, not skipped as an empty clip.
       expect(result.transformed).toBe(1);
       expect(result.noteCount).toBe(0);
       // Remove used the pickup-inclusive window (length 4 → [-4, 8)).

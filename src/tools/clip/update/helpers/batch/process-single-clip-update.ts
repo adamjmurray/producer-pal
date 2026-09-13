@@ -6,7 +6,6 @@
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   markerBeats,
   markerBeatsPerUnit,
@@ -29,7 +28,7 @@ import {
   handleQuantization,
 } from "../notes/note-updates.ts";
 import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
-import { type ClipReasons } from "../entries/clip-reasons.ts";
+import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -157,7 +156,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
       warping,
       looping,
     });
-    forceWarpForLooping(clip, looping, warping);
+    forceWarpForLooping(clip, reasons, looping, warping);
   } else {
     warnIgnoredParams(
       { gainDb, pitchShift, warpMode, warping },
@@ -170,10 +169,12 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   const wasLooping = (clip.getProperty("looping") as number) > 0;
   const isLooping = looping ?? wasLooping;
 
-  // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
-    console.warn(
-      `firstStart parameter ignored for non-looping clip ${targetLabel(clip)}`,
+    ignoreClipParams(
+      reasons,
+      clip.id,
+      ["firstStart"],
+      "firstStart ignored: the clip is not looping",
     );
   }
 
@@ -195,12 +196,15 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   if (isAudioClip) {
     handleAudioClipUpdate(clip, clipContext, params);
 
-    // Audio clips can't hold MIDI notes. Warn-and-skip rather than letting the
-    // note write throw (mirrors create-clip's guard) so a multi-clip batch
-    // keeps going. Transforms are still applied above by handleAudioClipUpdate.
+    // Audio clips can't hold MIDI notes. Say so on the clip's entry rather than
+    // letting the note write throw (mirrors create-clip's guard), so a
+    // multi-clip batch keeps going. Transforms still ran above.
     if (notationString != null) {
-      console.warn(
-        `notes parameter ignored for audio clip ${targetLabel(clip)}`,
+      ignoreClipParams(
+        reasons,
+        clip.id,
+        ["notes"],
+        "notes ignored: the clip is audio",
       );
     }
   }
@@ -214,7 +218,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   });
 
   // Handle quantization (after notes so newly merged notes get quantized)
-  handleQuantization(clip, {
+  handleQuantization(clip, reasons, {
     quantize,
     quantizeGrid,
     quantizePitch,
@@ -224,6 +228,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   if (warpOp != null) {
     handleWarpMarkerOperation(
       clip,
+      reasons,
       warpOp,
       warpBeatTime,
       warpSampleTime,
@@ -287,6 +292,7 @@ function writeClipProperties(
     length,
     firstStart,
     looping,
+    reasons,
   } = params;
   const markerScale = {
     beatsPerMarkerUnit: markerBeatsPerUnit(clip),
@@ -298,6 +304,7 @@ function writeClipProperties(
     start,
     length,
     firstStart,
+    reasons,
     timeSigNumerator,
     timeSigDenominator,
     clip,
@@ -339,8 +346,8 @@ function writeClipProperties(
  * double. duplicateLoop on a MIDI clip runs its own pipeline (preTransforms edit
  * the source, Live doubles the loop, then notes/transforms apply across the full
  * doubled clip). Audio clips take the normal path, where handleDuplicateLoop
- * warns-and-skips (no MIDI to double) and audio transforms were already applied
- * in handleAudioClipUpdate.
+ * refuses it on the clip's own entry (no MIDI to double) and audio transforms
+ * were already applied in handleAudioClipUpdate.
  * @param params - The full single-clip update params
  * @param resolved - Derived per-clip values not present on params
  * @param resolved.isAudioClip - Whether the clip is an audio clip
@@ -374,11 +381,13 @@ function resolveNoteResult(
     transformString,
     preTransformString,
     duplicateLoop,
+    reasons,
   } = params;
 
   if (duplicateLoop && !isAudioClip) {
     return handleDuplicateLoopWithEdits({
       clip,
+      reasons,
       notationString,
       transformString,
       preTransformString,
@@ -393,6 +402,7 @@ function resolveNoteResult(
   // Handle note updates (transforms already applied for audio clips above)
   const noteUpdateResult = handleNoteUpdates(
     clip,
+    reasons,
     isAudioClip ? undefined : notationString,
     isAudioClip ? undefined : transformString,
     isAudioClip ? undefined : preTransformString,
@@ -402,13 +412,14 @@ function resolveNoteResult(
     notation,
   );
 
-  return duplicateLoop ? handleDuplicateLoop(clip) : noteUpdateResult;
+  return duplicateLoop ? handleDuplicateLoop(clip, reasons) : noteUpdateResult;
 }
 
 /**
- * Apply audio-clip-only updates: transforms and the preTransforms warn. The
- * audio parameters ran earlier, before the region write — see the call site.
- * Audio clips have no MIDI notes, so preTransforms is unconditionally ignored.
+ * Apply audio-clip-only updates: the transforms, and the reason preTransforms
+ * leaves on the entry. The audio parameters ran earlier, before the region
+ * write — see the call site. Audio clips have no MIDI notes, so preTransforms
+ * is unconditionally ignored.
  * @param clip - The audio clip to update
  * @param clipContext - Clip-level context for transform variables, undefined when the call sends no transforms
  * @param params - The full update params (audio fields are consumed)
@@ -421,8 +432,11 @@ function handleAudioClipUpdate(
   applyAudioTransforms(clip, params.transformString, clipContext);
 
   if (params.preTransformString != null) {
-    console.warn(
-      `preTransforms parameter ignored for audio clip ${targetLabel(clip)}`,
+    ignoreClipParams(
+      params.reasons,
+      clip.id,
+      ["preTransforms"],
+      "preTransforms ignored: the clip is audio",
     );
   }
 }

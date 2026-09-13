@@ -5,7 +5,6 @@
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type AudioClipProperties,
   pitchShiftToCoarseFine,
@@ -16,7 +15,7 @@ import {
   dbToLiveGain,
   liveGainToDb,
 } from "#src/tools/shared/helpers/gain-conversion.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type ClipReasons, ignoreClipParams } from "./entries/clip-reasons.ts";
 
 interface AudioParams extends AudioClipProperties {
   /** Audio clip warping on/off */
@@ -42,7 +41,7 @@ export function setAudioParameters(
   setAudioClipProperties(clip, { gainDb, pitchShift, warpMode });
 
   // `looping: true` forces warping back on, so a `warping: false` alongside it
-  // is vetoed (forceWarpForLooping warns). Skip it here rather than let it run
+  // is vetoed (forceWarpForLooping reports it). Skip it here rather than run it
   // and be overridden: the unwarp resets end_marker to the whole sample, and
   // re-warping maps that back as beats — collapsing the clip's region on the
   // way through, even though the flag ends up where it started.
@@ -60,11 +59,13 @@ export function setAudioParameters(
  * has already started reading as beats.
  *
  * @param clip - The audio clip
+ * @param reasons - What each clip has to say beyond its result, added to
  * @param looping - Requested looping state
- * @param warping - Requested warp state, for the conflict warning
+ * @param warping - Requested warp state, for the conflict reason
  */
 export function forceWarpForLooping(
   clip: LiveAPI,
+  reasons: ClipReasons,
   looping: boolean | undefined,
   warping: boolean | undefined,
 ): void {
@@ -72,12 +73,15 @@ export function forceWarpForLooping(
     return;
   }
 
-  // Warn before the already-warped bail-out: setAudioParameters skips the
+  // Report before the already-warped bail-out: setAudioParameters skips the
   // vetoed unwarp entirely, so on a warped clip there is nothing left to do
   // here except say the flag was ignored.
   if (warping === false) {
-    console.warn(
-      `warping: false ignored for clip ${targetLabel(clip)} - looping: true forces warping on`,
+    ignoreClipParams(
+      reasons,
+      clip.id,
+      ["warping"],
+      "warping ignored: looping forces warping on",
     );
   }
 
@@ -145,6 +149,7 @@ export function applyAudioTransforms(
 /**
  * Handles warp marker operations on a clip
  * @param clip - The audio clip
+ * @param reasons - What each clip has to say beyond its result, added to
  * @param warpOp - Operation: add, move, or remove
  * @param warpBeatTime - Beat time for the warp marker
  * @param warpSampleTime - Sample time (for add operation)
@@ -152,6 +157,7 @@ export function applyAudioTransforms(
  */
 export function handleWarpMarkerOperation(
   clip: LiveAPI,
+  reasons: ClipReasons,
   warpOp: string,
   warpBeatTime: number | undefined,
   warpSampleTime?: number,
@@ -161,16 +167,14 @@ export function handleWarpMarkerOperation(
   const hasAudioFile = clip.getProperty("file_path") != null;
 
   if (!hasAudioFile) {
-    console.warn(
-      `warp markers only available on audio clips (clip ${targetLabel(clip)} is MIDI or empty)`,
-    );
+    ignoreWarpParams(clip, reasons, "warp markers need an audio clip");
 
     return;
   }
 
   // Validate required parameters per operation
   if (warpBeatTime == null) {
-    console.warn(`warpBeatTime required for ${warpOp} operation`);
+    ignoreWarpParams(clip, reasons, `${warpOp} needs warpBeatTime`);
 
     return;
   }
@@ -189,7 +193,7 @@ export function handleWarpMarkerOperation(
 
     case "move": {
       if (warpDistance == null) {
-        console.warn("warpDistance required for move operation");
+        ignoreWarpParams(clip, reasons, "move needs warpDistance");
 
         return;
       }
@@ -203,4 +207,25 @@ export function handleWarpMarkerOperation(
       break;
     }
   }
+}
+
+/**
+ * Say on the clip's entry that its warp marker operation did nothing. Every
+ * warp param goes with it: none of them wrote anything, so none can stand in
+ * for work that landed.
+ * @param clip - The clip the operation was for
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param why - What stopped it, completing "warpOp ignored: ..."
+ */
+function ignoreWarpParams(
+  clip: LiveAPI,
+  reasons: ClipReasons,
+  why: string,
+): void {
+  ignoreClipParams(
+    reasons,
+    clip.id,
+    ["warpOp", "warpBeatTime", "warpSampleTime", "warpDistance"],
+    `warpOp ignored: ${why}`,
+  );
 }

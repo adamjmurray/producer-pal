@@ -10,7 +10,8 @@
 //
 // A clip updated but not as asked keeps its entry and a reason; one the call
 // asked nothing else of and couldn't move at all keeps its slot as a skip —
-// `refuseClipWork` marks that kind.
+// `refuseClipWork` marks that kind, and `ignoreClipParams` marks a param that
+// did nothing, which is the same thing once that param stops counting as work.
 //
 // Keyed by the clip's id as the call found it, which is what the loop looks up.
 // A step writing under a new id (a move re-creates the clip) hands its reasons
@@ -26,14 +27,24 @@ export interface ClipReasons {
   refused: Set<string>;
   /** Clips something else the call asked for did land on. */
   landed: Set<string>;
+  /** Params that did nothing on a clip, by that clip's id. */
+  ignoredParams: Map<string, Set<string>>;
 }
+
+/** Shared empty answer for a clip that ignored nothing. */
+const NO_PARAMS: ReadonlySet<string> = new Set<string>();
 
 /**
  * The collector one call's clips report through.
  * @returns An empty collector
  */
 export function newClipReasons(): ClipReasons {
-  return { said: new Map(), refused: new Set(), landed: new Set() };
+  return {
+    said: new Map(),
+    refused: new Set(),
+    landed: new Set(),
+    ignoredParams: new Map(),
+  };
 }
 
 /**
@@ -77,6 +88,59 @@ export function markClipLanded(reasons: ClipReasons, clipId: string): void {
 }
 
 /**
+ * Note that params the call sent did nothing on this clip, and refuse the work
+ * they asked for. Naming them is what makes the refusal stick: the loop reads a
+ * param the call sent as work asked of the clip, so an ignored one has to stop
+ * counting or the clip looks like it was updated.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param params - The params that did nothing
+ * @param reason - What happened instead, as the clip's entry will read it
+ */
+export function ignoreClipParams(
+  reasons: ClipReasons,
+  clipId: string,
+  params: readonly string[],
+  reason: string,
+): void {
+  refuseClipWork(reasons, clipId, reason);
+
+  for (const param of params) {
+    ignoreOneParam(reasons, clipId, param);
+  }
+}
+
+/**
+ * Add one param to what a clip ignored.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param param - The param that did nothing
+ */
+function ignoreOneParam(
+  reasons: ClipReasons,
+  clipId: string,
+  param: string,
+): void {
+  const ignored = reasons.ignoredParams.get(clipId) ?? new Set<string>();
+
+  ignored.add(param);
+  reasons.ignoredParams.set(clipId, ignored);
+}
+
+/**
+ * The params that did nothing on one clip.
+ * @param reasons - What each clip has to say
+ * @param clipId - The clip, by the id the call found it at
+ * @returns The param names, empty when everything the call sent had its say
+ */
+export function clipIgnoredParams(
+  reasons: ClipReasons,
+  clipId: string,
+): ReadonlySet<string> {
+  return reasons.ignoredParams.get(clipId) ?? NO_PARAMS;
+}
+
+/**
  * Whether nothing the call asked of this clip happened.
  * @param reasons - What each clip has to say
  * @param clipId - The clip, by the id the call found it at
@@ -110,6 +174,12 @@ export function moveClipReasons(
   }
 
   reasons.said.delete(fromId);
+
+  for (const param of reasons.ignoredParams.get(fromId) ?? []) {
+    ignoreOneParam(reasons, toId, param);
+  }
+
+  reasons.ignoredParams.delete(fromId);
 
   // `landed` needs no move: the loop marks it against the clip the caller named.
   if (reasons.refused.delete(fromId)) {

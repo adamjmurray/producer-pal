@@ -16,7 +16,6 @@ import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts"
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   getClipNoteCount,
@@ -29,7 +28,7 @@ import {
   buildClipContext,
   hasNoteEdits,
 } from "./note-transforms.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
@@ -71,6 +70,7 @@ interface QuantizationOptions {
 /**
  * Handle note updates: overlay new notes onto existing notes (v0 deletes).
  * @param clip - The clip to update
+ * @param reasons - What each clip has to say beyond its result, added to
  * @param notationString - The notation string to apply
  * @param transformString - Transform expressions to apply AFTER merge
  * @param preTransformString - Transform expressions to apply to existing notes BEFORE merge
@@ -82,6 +82,7 @@ interface QuantizationOptions {
  */
 export function handleNoteUpdates(
   clip: LiveAPI,
+  reasons: ClipReasons,
   notationString: string | undefined,
   transformString: string | undefined,
   preTransformString: string | undefined,
@@ -102,6 +103,7 @@ export function handleNoteUpdates(
   if (notationString == null) {
     return applyTransformsToExistingNotes(
       clip,
+      reasons,
       preTransformString,
       transformString,
       timeSigNumerator,
@@ -218,19 +220,27 @@ function mergeNewNotes(
  * loop (looped clips move loop_end; unlooped clips duplicate the start/end range)
  * and copies the existing notes AND automation envelopes into the new half - the
  * envelope copy is something the manual length+notes path can't do. MIDI clips
- * only: audio clips warn-and-skip so a mixed comma-separated batch keeps going.
+ * only: an audio clip says so on its own entry, so a mixed comma-separated
+ * batch keeps going.
  *
  * Always reports the resulting length. A `length` arg selects the region to
  * double, so the clip ends up at twice that — not at the length the caller
  * asked for — and without this the result looks the same either way.
  * @param clip - The clip to double
+ * @param reasons - What each clip has to say beyond its result, added to
  * @returns Note update result with the post-duplicate note count and length, or
  *   null when skipped (audio clip)
  */
-export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
+export function handleDuplicateLoop(
+  clip: LiveAPI,
+  reasons: ClipReasons,
+): NoteUpdateResult | null {
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
-    console.warn(
-      `duplicateLoop parameter ignored for audio clip ${targetLabel(clip)}`,
+    ignoreClipParams(
+      reasons,
+      clip.id,
+      ["duplicateLoop"],
+      "duplicateLoop ignored: the clip is audio",
     );
 
     return null;
@@ -261,6 +271,7 @@ export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
  * (bar.*, clip.*) see the doubled length. Caller guarantees a MIDI clip.
  * @param params - The clip plus the edit strings and per-clip context indices
  * @param params.clip - The MIDI clip to double and edit
+ * @param params.reasons - What each clip has to say beyond its result, added to
  * @param params.notationString - New notes to merge after the double, or undefined
  * @param params.transformString - Transforms to apply after the double, or undefined
  * @param params.preTransformString - Transforms to apply before the double, or undefined
@@ -273,6 +284,7 @@ export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
  */
 export function handleDuplicateLoopWithEdits({
   clip,
+  reasons,
   notationString,
   transformString,
   preTransformString,
@@ -283,6 +295,7 @@ export function handleDuplicateLoopWithEdits({
   notation,
 }: {
   clip: LiveAPI;
+  reasons: ClipReasons;
   notationString: string | undefined;
   transformString: string | undefined;
   preTransformString: string | undefined;
@@ -306,6 +319,7 @@ export function handleDuplicateLoopWithEdits({
 
     preTransformed = applyTransformsToExistingNotes(
       clip,
+      reasons,
       preTransformString,
       undefined,
       timeSigNumerator,
@@ -315,7 +329,7 @@ export function handleDuplicateLoopWithEdits({
   }
 
   // Stage 2: native double (MIDI guaranteed by the caller).
-  const dupResult = handleDuplicateLoop(clip);
+  const dupResult = handleDuplicateLoop(clip, reasons);
 
   // Stage 3: merge notes + transforms across the doubled clip. Re-read from id
   // (duplicate_loop mutates in place) and rebuild context for the doubled length.
@@ -333,6 +347,7 @@ export function handleDuplicateLoopWithEdits({
   );
   const mergeResult = handleNoteUpdates(
     freshClip,
+    reasons,
     notationString,
     transformString,
     undefined,
@@ -407,6 +422,7 @@ function applyPreTransformsToExisting(
 /**
  * Handle quantization for MIDI clips
  * @param clip - The clip to quantize
+ * @param reasons - What each clip has to say beyond its result, added to
  * @param options - Quantization options
  * @param options.quantize - Quantization strength 0-1 (defaults to 1)
  * @param options.quantizeGrid - Note grid value (defaults to 1/16)
@@ -414,6 +430,7 @@ function applyPreTransformsToExisting(
  */
 export function handleQuantization(
   clip: LiveAPI,
+  reasons: ClipReasons,
   { quantize, quantizeGrid, quantizePitch }: QuantizationOptions,
 ): void {
   if (quantize == null && quantizeGrid == null && quantizePitch == null) {
@@ -423,8 +440,8 @@ export function handleQuantization(
   // Grid or pitch alone means "quantize fully"; strength defaults to 1
   const strength = quantize ?? 1;
 
-  // Warn and skip for audio clips. Grid or pitch alone triggers quantization,
-  // so name what the caller sent rather than a `quantize` they may not have.
+  // Skip for audio clips. Grid or pitch alone triggers quantization, so name
+  // what the caller sent rather than a `quantize` they may not have.
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
     const sent = [
       quantize != null ? "quantize" : null,
@@ -432,8 +449,11 @@ export function handleQuantization(
       quantizePitch != null ? "quantizePitch" : null,
     ].filter((param) => param != null);
 
-    console.warn(
-      `${sent.join("/")} ignored for audio clip ${targetLabel(clip)}: quantization is MIDI-only`,
+    ignoreClipParams(
+      reasons,
+      clip.id,
+      sent,
+      `${sent.join("/")} ignored: the clip is audio`,
     );
 
     return;

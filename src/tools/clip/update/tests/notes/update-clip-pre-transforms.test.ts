@@ -187,19 +187,21 @@ describe("updateClip - preTransforms", () => {
     expect(byPitch.get(62)).toBe(50);
   });
 
-  it("warns and ignores preTransforms on audio clips", async () => {
+  it("reports ignored preTransforms on an audio clip's own entry", async () => {
     setupAudioClipMock(mocks.clip123, { length: 8 });
 
-    await updateClip({
+    // gainDb lands, so the ignored preTransforms is a reason on a real entry.
+    const result = await updateClip({
       id: "123",
       preTransforms: "1|1-1|4: velocity = 0",
       gainDb: -6,
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "preTransforms parameter ignored for audio clip t0/s0 (id 123)",
-      ),
-    );
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      reason: "preTransforms ignored: the clip is audio",
+    });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

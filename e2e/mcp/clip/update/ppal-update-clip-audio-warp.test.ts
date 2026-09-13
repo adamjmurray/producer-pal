@@ -114,8 +114,8 @@ describe("ppal-update-clip audio warping", () => {
     expect(clip.length).toBe(expectedSampleLength(clip, song));
   });
 
-  it("warns that looping: true wins over warping: false", async () => {
-    // Only the warning and the two flags. ppal-update-clip-loop-toggle covers
+  it("reports that looping: true wins over warping: false", async () => {
+    // Only the reason and the two flags. ppal-update-clip-loop-toggle covers
     // what the skipped unwarp would have done to the region.
     const { created } = await createAndRead(ctx.client!, {
       path: SLOT_PATH,
@@ -123,12 +123,14 @@ describe("ppal-update-clip audio warping", () => {
       warping: true,
     });
 
-    const { clip, warnings } = await updateAndRead(ctx.client!, created.id, {
+    const { clip, entry } = await updateAndRead(ctx.client!, created.id, {
       looping: true,
       warping: false,
     });
 
-    expect(warnings.join("\n")).toContain("warping: false ignored");
+    expect(entry.reason).toContain(
+      "warping ignored: looping forces warping on",
+    );
     expect(clip.warping).toBe(true);
     expect(clip.looping).toBe(true);
   });
