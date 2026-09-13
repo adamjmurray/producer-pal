@@ -13,7 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 /**
  * Register a mock EQ Eight device and return its LiveAPI.
@@ -116,15 +116,16 @@ describe("EQ Eight pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("global_mode", 2);
     });
 
-    it("warns and skips an invalid globalMode", () => {
+    it("refuses an invalid globalMode", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "globalMode", "bogus");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "globalMode", "bogus"),
+        "globalMode",
+        "not a valid globalMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid globalMode"),
-      );
     });
 
     it("is case-insensitive on the param name", () => {
@@ -153,17 +154,16 @@ describe("EQ Eight pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("oversample", 0);
     });
 
-    it("warns naming oversample and skips uninterpretable input", () => {
+    it("refuses uninterpretable input, naming oversample", () => {
       const device = registerEqEight();
 
-      applySpecializedParamWrite(device, "oversample", "maybe");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "oversample", "maybe"),
+        "oversample",
+        '"maybe" is not a valid oversample (expected true/false)',
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          '"maybe" is not a valid oversample (expected true/false)',
-        ),
-      );
     });
   });
 });

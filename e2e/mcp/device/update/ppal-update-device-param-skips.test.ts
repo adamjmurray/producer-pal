@@ -22,6 +22,7 @@ import {
   writeParam,
 } from "./update-device-param-test-helpers";
 import {
+  createTestDevice,
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
@@ -92,5 +93,35 @@ describe("ppal-update-device on a param that lands nowhere", () => {
       },
     ]);
     expect(warnings).toStrictEqual([]);
+  });
+});
+
+// A specialized pseudo-param is a device property, not a DeviceParameter, so a
+// refusal takes its own path to the same entry. EQ Eight carries both shapes a
+// device spec checks most; an integer range is covered by
+// ppal-specialized-devices' pitchBendRange.
+describe("ppal-update-device on a pseudo-param the device refused", () => {
+  it("reports an enum label the device has no option for", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "EQ Eight", "t0");
+    const written = await writeParam(
+      ctx.client!,
+      deviceId,
+      "globalMode",
+      "quad",
+    );
+
+    expectParamRefused(written, "globalMode", "is not a valid globalMode");
+  });
+
+  it("reports a boolean it could not read as true or false", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "EQ Eight", "t0");
+    const written = await writeParam(
+      ctx.client!,
+      deviceId,
+      "oversample",
+      "sometimes",
+    );
+
+    expectParamRefused(written, "oversample", "expected true/false");
   });
 });

@@ -104,12 +104,15 @@ function readVoiceCount(device: LiveAPI): number | undefined {
 
 /**
  * Write the voice count by writing its catalog index to voice_count_index.
- * Warns and skips when the value is not in the allowed set.
+ * Refuses a value outside the allowed set.
  * @param device - LiveAPI device object
  * @param value - Incoming value (must be 4, 8, 16, 24, or 32)
- * @returns True when the value was written, false when it was skipped
+ * @returns Why the value was refused, or null when it was written
  */
-function writeVoiceCount(device: LiveAPI, value: string | number): boolean {
+function writeVoiceCount(
+  device: LiveAPI,
+  value: string | number,
+): string | null {
   return writeIntFromSet(
     device,
     "voice_count_index",

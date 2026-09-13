@@ -203,8 +203,8 @@ describe("specialized devices: Drift", () => {
       ),
     ).toBe(12);
 
-    // 13 is out of range (max 12). Live silently reverts, so we warn-and-skip
-    // rather than write — the value must stay at 12.
+    // 13 is out of range (max 12). Live silently reverts, so we refuse the
+    // write rather than send it — the value must stay at 12.
     const { data: refused, warnings } = parseToolResultWithWarnings<{
       params?: PseudoParam[];
     }>(
@@ -219,10 +219,16 @@ describe("specialized devices: Drift", () => {
 
     await sleep(100);
 
-    expect(warnings.some((w) => w.includes("pitchBendRange"))).toBe(true);
-    // A refused write reports no value: an entry would say 12 was what the
-    // call wrote.
-    expect(refused.params).toBeUndefined();
+    // The param keeps its slot and says why nothing was written, so no value
+    // reads back as if the call had put it there — and nothing warns.
+    expect(refused.params).toStrictEqual([
+      {
+        name: "pitchBendRange",
+        ok: false,
+        reason: 'pitchBendRange must be an integer 0-12 (got "13")',
+      },
+    ]);
+    expect(warnings).toStrictEqual([]);
     expect(
       paramValue(
         await readDevice(id, ["params"], "pitchBendRange"),

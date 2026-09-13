@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
@@ -122,16 +121,12 @@ function buildOscParams(
       const index = list.indexOf(String(value));
 
       if (index < 0) {
-        console.warn(
-          `"${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`,
-        );
-
-        return false;
+        return `"${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`;
       }
 
       device.set(categoryProp, index);
 
-      return true;
+      return null;
     },
   };
 
@@ -148,16 +143,12 @@ function buildOscParams(
       const index = list.indexOf(String(value));
 
       if (index < 0) {
-        console.warn(
-          `"${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`,
-        );
-
-        return false;
+        return `"${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`;
       }
 
       device.set(wavetableIndexProp, index);
 
-      return true;
+      return null;
     },
   };
 

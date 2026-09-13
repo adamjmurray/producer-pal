@@ -14,7 +14,7 @@ import {
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 /**
  * Register a mock Spectral Resonator device and return its LiveAPI.
@@ -154,15 +154,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("midi_gate", 1);
     });
 
-    it("warns and skips an invalid midiGate value", () => {
+    it("refuses an invalid midiGate value", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "midiGate", "maybe");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "midiGate", "maybe"),
+        "midiGate",
+        "midiGate",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("midiGate"),
-      );
     });
   });
 
@@ -193,37 +194,40 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 24);
     });
 
-    it("warns and skips when pitchBendRange is above range (25)", () => {
+    it("refuses when pitchBendRange is above range (25)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 25);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", 25),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
 
-    it("warns and skips when pitchBendRange is below range (-1)", () => {
+    it("refuses when pitchBendRange is below range (-1)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchBendRange", -1);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", -1),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
 
-    it("warns and skips when pitchBendRange is a non-integer", () => {
+    it("refuses when pitchBendRange is a non-integer", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 1.5);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", 1.5),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
   });
 
@@ -252,15 +256,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("mod_mode", 3);
     });
 
-    it("warns and skips an invalid modMode label", () => {
+    it("refuses an invalid modMode label", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "modMode", "Reverb");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "modMode", "Reverb"),
+        "modMode",
+        "not a valid modMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid modMode"),
-      );
     });
   });
 
@@ -281,15 +286,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("pitch_mode", 1);
     });
 
-    it("warns and skips an invalid pitchMode label", () => {
+    it("refuses an invalid pitchMode label", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchMode", "Cents");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchMode", "Cents"),
+        "pitchMode",
+        "not a valid pitchMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid pitchMode"),
-      );
     });
   });
 
@@ -318,15 +324,16 @@ describe("Spectral Resonator pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("polyphony", 3);
     });
 
-    it("warns and skips a count not in the set (e.g. 3)", () => {
+    it("refuses a count not in the set (e.g. 3)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "polyphony", 3);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "polyphony", 3),
+        "polyphony",
+        "polyphony",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("polyphony"),
-      );
     });
   });
 });

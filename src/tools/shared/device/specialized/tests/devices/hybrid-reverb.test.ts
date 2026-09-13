@@ -14,7 +14,7 @@ import {
   readSpecializedOptions,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 // Category list for testing: underscore-separated internal names.
 const MOCK_CATEGORY_LIST = [
@@ -114,30 +114,27 @@ describe("Hybrid Reverb pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("ir_category_index", 1);
     });
 
-    it("warns and skips for an invalid category", () => {
+    it("refuses an invalid category", () => {
       const device = registerHybridReverb();
 
-      expect(
+      expectWriteRefused(
         applySpecializedParamWrite(device, "irCategory", "Bogus Category"),
-      ).toStrictEqual([]);
+        "irCategory",
+        "not a valid irCategory",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid irCategory"),
-      );
     });
 
-    it("warning includes available categories with spaces", () => {
+    it("names the available categories with spaces in the reason", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irCategory", "Unknown");
-
-      // The whole catalog, comma-separated and de-underscored — this warning is
-      // the model's only listing of the valid category names.
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "Available: Early Reflections, Halls, Real Places",
-        ),
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "irCategory", "Unknown"),
+        "irCategory",
+        // The whole catalog, comma-separated and de-underscored — the reason is
+        // the model's only listing of the valid category names.
+        "Available: Early Reflections, Halls, Real Places",
       );
     });
   });
@@ -185,32 +182,30 @@ describe("Hybrid Reverb pseudo-params", () => {
       ]);
     });
 
-    it("warns and skips for an unknown file", () => {
+    it("refuses an unknown file", () => {
       const device = registerHybridReverb();
 
-      expect(
+      expectWriteRefused(
         applySpecializedParamWrite(device, "irFile", "Nonexistent File"),
-      ).toStrictEqual([]);
+        "irFile",
+        "not a valid irFile",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid irFile"),
-      );
     });
 
-    it("warns and skips when category is empty (sentinel only)", () => {
+    it("refuses when category is empty (sentinel only)", () => {
       const device = registerHybridReverb({
         ir_file_list: ["<empty>"],
       });
 
-      expect(
+      expectWriteRefused(
         applySpecializedParamWrite(device, "irFile", "Any File"),
-      ).toStrictEqual([]);
+        "irFile",
+        "no files",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("no files"),
-      );
     });
 
     it("sets the only file in a single-file category", () => {
@@ -262,17 +257,16 @@ describe("Hybrid Reverb pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("ir_attack_time", 1.5);
     });
 
-    it("warns and skips for a non-numeric string", () => {
+    it("refuses a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      expect(
+      expectWriteRefused(
         applySpecializedParamWrite(device, "irAttackTime", "abc"),
-      ).toStrictEqual([]);
+        "irAttackTime",
+        "irAttackTime",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("irAttackTime"),
-      );
     });
   });
 
@@ -294,15 +288,16 @@ describe("Hybrid Reverb pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("ir_decay_time", 3);
     });
 
-    it("warns and skips for a non-numeric string", () => {
+    it("refuses a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irDecayTime", "abc");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "irDecayTime", "abc"),
+        "irDecayTime",
+        "irDecayTime",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("irDecayTime"),
-      );
     });
   });
 
@@ -324,15 +319,16 @@ describe("Hybrid Reverb pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("ir_size_factor", 0.5);
     });
 
-    it("warns and skips for a non-numeric string", () => {
+    it("refuses a non-numeric string", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irSizeFactor", "abc");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "irSizeFactor", "abc"),
+        "irSizeFactor",
+        "irSizeFactor",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("irSizeFactor"),
-      );
     });
   });
 
@@ -371,17 +367,16 @@ describe("Hybrid Reverb pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("ir_time_shaping_on", 0);
     });
 
-    it("warns naming irTimeShapingOn and skips uninterpretable input", () => {
+    it("refuses uninterpretable input, naming irTimeShapingOn", () => {
       const device = registerHybridReverb();
 
-      applySpecializedParamWrite(device, "irTimeShapingOn", "maybe");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "irTimeShapingOn", "maybe"),
+        "irTimeShapingOn",
+        '"maybe" is not a valid irTimeShapingOn (expected true/false)',
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          '"maybe" is not a valid irTimeShapingOn (expected true/false)',
-        ),
-      );
     });
   });
 

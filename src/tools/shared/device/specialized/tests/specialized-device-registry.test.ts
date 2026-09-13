@@ -31,6 +31,7 @@ import {
 } from "../specialized-device-registry.ts";
 import { type InactiveWhenRule } from "../specialized-device-types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "./refused-write-assertions.ts";
 
 /**
  * Register a mock device with a given class_display_name.
@@ -110,18 +111,17 @@ describe("applySpecializedParamWrite", () => {
     expect((outcome![0] as WrittenPseudoParam).read()).toBe("single");
   });
 
-  it("reports no entry for a value the pseudo-param refused", () => {
+  it("reports a value the pseudo-param refused in that param's own entry", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    // "bogus" is not a routing mode: nothing was written, so nothing may say
-    // it reads as "single" — that would report the untouched value as written.
-    expect(
+    // "bogus" is not a routing mode: nothing was written, so the entry carries
+    // the reason, not the untouched value it would otherwise read as "single".
+    expectWriteRefused(
       applySpecializedParamWrite(device, "routingMode", "bogus"),
-    ).toStrictEqual([]);
-    expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid routingMode"),
+      "routingMode",
+      "not a valid routingMode",
     );
+    expect(device.set).not.toHaveBeenCalled();
   });
 
   it("reports a read-only pseudo-param as written by nothing", () => {

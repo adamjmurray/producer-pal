@@ -107,14 +107,14 @@ export function splitForAdvice(key: string): { path: string; name: string } {
  *
  * The pad is addressed as `pC1` (one layer) or `pC1/cN` (several); a `dN` is
  * accepted but must name the instrument the search found. Both a stacked pad
- * with no layer named and a `dN` that isn't the instrument skip and warn.
+ * with no layer named and a `dN` that isn't the instrument skip with a reason.
  *
  * | Pad instrument           | Behavior                                      |
  * | ------------------------ | --------------------------------------------- |
  * | none                     | create a Simpler                              |
  * | Simpler (single-sample)  | reuse it (caller's sample write replaces)     |
- * | Simpler (multi-sample)   | skip and warn; `force` swaps in a Simpler     |
- * | any other instrument     | skip and warn; `force` swaps in a Simpler     |
+ * | Simpler (multi-sample)   | skip; `force` swaps in a Simpler (and warns)  |
+ * | any other instrument     | skip; `force` swaps in a Simpler (and warns)  |
  *
  * @param rack - The device being created/updated (the path prefix is relative to it)
  * @param prefix - The path segments before the param name (e.g. "pC1")

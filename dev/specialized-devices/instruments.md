@@ -265,9 +265,10 @@ Writable via `update-device`'s `params` arg:
   full `include: ["params"]` set also includes it.
 - `gainDb` (float dB) — the loaded sample's gain, using the same linear↔dB
   mapping as track/clip gain (`gain-conversion`). Reads/writes only when a
-  single sample is loaded (warn-and-skip otherwise). A normal pseudo-param:
-  appears in `include: ["params"]`, **not** in the focused `include: ["sample"]`
-  view. Multi-sample state is conveyed by the read-only `multiSampleMode` param.
+  single sample is loaded (refused with a reason otherwise). A normal
+  pseudo-param: appears in `include: ["params"]`, **not** in the focused
+  `include: ["sample"]` view. Multi-sample state is conveyed by the read-only
+  `multiSampleMode` param.
 - `playbackMode` (enum: `"classic"` | `"one-shot"` | `"slicing"`) — maps to int
   0/1/2.
 - `slicingPlaybackMode` (enum: `"mono"` | `"poly"` | `"thru"`) — maps to int
@@ -306,8 +307,8 @@ Actions via `update-device`'s new `actions: string[]` arg:
 1. **Warp/crop actions operate on the active region** (`S Start` to
    `S Start + S Length`), not the whole sample. Skill instructions should make
    this clear so the LLM sets markers first when targeting a sub-region.
-2. **`sample` writes likely fail when `multiSampleMode = true`** — warn-and-skip
-   on failure.
+2. **`sample` writes likely fail when `multiSampleMode = true`** — refuse the
+   write with that reason.
 3. **`voices` is a discrete set, not a continuous range.** Use Zod literal union
    (`z.union([z.literal(1), z.literal(2), ...])`) so out-of-set values are
    rejected at schema level. Probe: setting 9/11/13/15/17-19/21-23/25-31 all

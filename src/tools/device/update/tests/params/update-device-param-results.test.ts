@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectParamRefused,
   livePath,
   paramsOf,
   registerDeviceWithParams,
@@ -379,7 +380,7 @@ describe("updateDevice - written param values", () => {
     });
   });
 
-  it("reports no entry for a pseudo-param value the device refused", () => {
+  it("reports a pseudo-param value the device refused in its own entry", () => {
     registerSimplerDevice();
 
     const result = updateDevice({
@@ -387,12 +388,20 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "retrigger", value: "sometimes" }],
     });
 
-    // Nothing was written, so nothing may report what `retrigger` reads as: an
-    // entry with no reason says the write landed.
-    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("is not a valid retrigger"),
-    );
+    // Nothing was written, so the entry carries the reason rather than what
+    // `retrigger` reads as: a value with no reason says the write landed.
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      params: [
+        {
+          name: "retrigger",
+          ok: false,
+          reason: '"sometimes" is not a valid retrigger (expected true/false)',
+        },
+      ],
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("reports a reason when a pseudo-param write leaves nothing to read", () => {
@@ -492,5 +501,68 @@ describe("updateDevice - written param values", () => {
       path: "t0/d0",
       params: [{ name: "multiSampleMode", ok: false, reason: "read-only" }],
     });
+  });
+});
+
+// A pseudo-param is a device property, so every kind of value a device spec
+// checks has its own refusal path. Each one lands in that param's own entry.
+describe("updateDevice - a pseudo-param value the device refused", () => {
+  /**
+   * Register a specialized device at t0/d0.
+   * @param displayName - The device's class_display_name
+   * @param properties - The class-level properties its pseudo-params read
+   */
+  function registerSpecialized(
+    displayName: string,
+    properties: Record<string, unknown>,
+  ): void {
+    registerMockObject("dev1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        class_display_name: displayName,
+        parameters: children(),
+        ...properties,
+      },
+    });
+  }
+
+  it("reports an enum label the device has no option for", () => {
+    registerSpecialized("Roar", { routing_mode_index: 0 });
+
+    expectParamRefused(
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "routingMode", value: "sideways" }],
+      }),
+      "routingMode",
+      '"sideways" is not a valid routingMode. Options: single, serial,',
+    );
+  });
+
+  it("reports a boolean it could not read as true or false", () => {
+    registerSpecialized("EQ Eight", { global_mode: 0, oversample: 0 });
+
+    expectParamRefused(
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "oversample", value: "sometimes" }],
+      }),
+      "oversample",
+      '"sometimes" is not a valid oversample (expected true/false)',
+    );
+  });
+
+  it("reports an integer outside the range the device takes", () => {
+    registerSpecialized("Drift", { pitch_bend_range: 2 });
+
+    expectParamRefused(
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "pitchBendRange", value: "13" }],
+      }),
+      "pitchBendRange",
+      'pitchBendRange must be an integer 0-12 (got "13")',
+    );
   });
 });

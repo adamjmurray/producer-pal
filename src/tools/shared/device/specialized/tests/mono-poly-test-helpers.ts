@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { applySpecializedParamWrite } from "../specialized-device-registry.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "./refused-write-assertions.ts";
 
 /**
  * Register the `write monoPoly` suite for a device that exposes the shared
@@ -43,15 +43,16 @@ export function registerMonoPolyWriteTests(
       expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
     });
 
-    it("warns and skips an invalid monoPoly label", () => {
+    it("refuses an invalid monoPoly label", () => {
       const device = registerDevice();
 
-      applySpecializedParamWrite(device, "monoPoly", "stereo");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "monoPoly", "stereo"),
+        "monoPoly",
+        "not a valid monoPoly",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid monoPoly"),
-      );
     });
   });
 }

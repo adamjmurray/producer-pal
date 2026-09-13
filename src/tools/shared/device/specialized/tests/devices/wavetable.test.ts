@@ -27,6 +27,7 @@ import {
   registerWavetable,
 } from "./wavetable-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 describe("Wavetable pseudo-params — read", () => {
   it("reads all three filterRouting values by index", () => {
@@ -114,15 +115,16 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("filter_routing", 2);
   });
 
-  it("warns and skips invalid filterRouting", () => {
+  it("refuses invalid filterRouting", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "filterRouting", "bogus");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "filterRouting", "bogus"),
+      "filterRouting",
+      "not a valid filterRouting",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid filterRouting"),
-    );
   });
 
   it("writes monoPoly poly to index 1", () => {
@@ -133,15 +135,16 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
   });
 
-  it("warns and skips invalid monoPoly", () => {
+  it("refuses invalid monoPoly", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "monoPoly", "stereo");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "monoPoly", "stereo"),
+      "monoPoly",
+      "not a valid monoPoly",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid monoPoly"),
-    );
   });
 
   it("writes polyVoices count as its catalog index", () => {
@@ -158,16 +161,17 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("poly_voices", 3);
   });
 
-  it("warns and skips polyVoices not in the catalog", () => {
+  it("refuses polyVoices not in the catalog", () => {
     const device = registerWavetable();
 
     // 10 is a plausible-looking count but not a valid Wavetable option.
-    applySpecializedParamWrite(device, "polyVoices", 10);
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "polyVoices", 10),
+      "polyVoices",
+      "polyVoices",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("polyVoices"),
-    );
   });
 
   it("writes unisonMode enum to index", () => {
@@ -178,15 +182,16 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("unison_mode", 4);
   });
 
-  it("warns and skips invalid unisonMode", () => {
+  it("refuses invalid unisonMode", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "unisonMode", "unknown");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "unisonMode", "unknown"),
+      "unisonMode",
+      "not a valid unisonMode",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid unisonMode"),
-    );
   });
 
   it("writes unisonVoiceCount as a raw count within range", () => {
@@ -197,18 +202,19 @@ describe("Wavetable pseudo-params — write", () => {
     expect(device.set).toHaveBeenCalledWith("unison_voice_count", 8);
   });
 
-  it("warns and skips non-integer unisonVoiceCount", () => {
+  it("refuses non-integer unisonVoiceCount", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "unisonVoiceCount", "abc");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "unisonVoiceCount", "abc"),
+      "unisonVoiceCount",
+      "unisonVoiceCount",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unisonVoiceCount"),
-    );
   });
 
-  it("maps osc engine labels to indices and warns on an invalid label", () => {
+  it("maps osc engine labels to indices and refuses an invalid label", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "osc1Engine", "Modern");
@@ -219,15 +225,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc1Engine", "Wavefold");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc1Engine", "Wavefold"),
+      "osc1Engine",
+      "osc1Engine",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc1Engine"),
-    );
   });
 
-  it("writes osc1Category by name and warns on invalid", () => {
+  it("writes osc1Category by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     expect(
@@ -241,17 +248,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "osc1Category", "Unknown"),
-    ).toStrictEqual([]);
+      "osc1Category",
+      "osc1Category",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc1Category"),
-    );
   });
 
-  it("writes osc2Category by name and warns on invalid", () => {
+  it("writes osc2Category by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "osc2Category", "Bass");
@@ -263,15 +269,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc2Category", "NoSuch");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc2Category", "NoSuch"),
+      "osc2Category",
+      "osc2Category",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc2Category"),
-    );
   });
 
-  it("writes osc1Wavetable by name and warns on invalid", () => {
+  it("writes osc1Wavetable by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     expect(
@@ -282,17 +289,16 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "osc1Wavetable", "No Wave"),
-    ).toStrictEqual([]);
+      "osc1Wavetable",
+      "osc1Wavetable",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc1Wavetable"),
-    );
   });
 
-  it("writes osc2Wavetable by name and warns on invalid", () => {
+  it("writes osc2Wavetable by name and refuses an invalid name", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "osc2Wavetable", "Triangle");
@@ -301,12 +307,13 @@ describe("Wavetable pseudo-params — write", () => {
 
     (device.set as Mock).mockClear();
 
-    applySpecializedParamWrite(device, "osc2Wavetable", "No Wave");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc2Wavetable", "No Wave"),
+      "osc2Wavetable",
+      "osc2Wavetable",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("osc2Wavetable"),
-    );
   });
 
   // The first entry in each list is a real choice, so the not-found guard must
@@ -334,18 +341,15 @@ describe("Wavetable pseudo-params — write", () => {
   it("lists the available categories and wavetables when a name is unknown", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Category", "Nope");
-    applySpecializedParamWrite(device, "osc1Wavetable", "Nope");
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `not a valid osc1Category. Available: ${OSC_CATEGORIES.join(", ")}`,
-      ),
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc1Category", "Nope"),
+      "osc1Category",
+      `not a valid osc1Category. Available: ${OSC_CATEGORIES.join(", ")}`,
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `not a valid osc1Wavetable. Available: ${OSC1_WAVETABLES.join(", ")}`,
-      ),
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "osc1Wavetable", "Nope"),
+      "osc1Wavetable",
+      `not a valid osc1Wavetable. Available: ${OSC1_WAVETABLES.join(", ")}`,
     );
   });
 });

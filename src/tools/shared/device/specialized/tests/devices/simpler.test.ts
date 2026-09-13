@@ -14,6 +14,7 @@ import {
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 interface SimplerProps {
   multiSampleMode?: number;
@@ -150,15 +151,16 @@ describe("Simpler pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("playback_mode", 1);
     });
 
-    it("warns on an invalid playbackMode", () => {
+    it("refuses an invalid playbackMode", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "playbackMode", "bogus");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "playbackMode", "bogus"),
+        "playbackMode",
+        "not a valid playbackMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid playbackMode"),
-      );
     });
 
     it("sets slicingPlaybackMode by label", () => {
@@ -177,17 +179,16 @@ describe("Simpler pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("retrigger", 1);
     });
 
-    it("warns naming retrigger and skips uninterpretable input", () => {
+    it("refuses uninterpretable input, naming retrigger", () => {
       const device = registerSimpler();
 
-      applySpecializedParamWrite(device, "retrigger", "sometimes");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "retrigger", "sometimes"),
+        "retrigger",
+        '"sometimes" is not a valid retrigger (expected true/false)',
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          '"sometimes" is not a valid retrigger (expected true/false)',
-        ),
-      );
     });
 
     it("sets gainDb on the loaded sample, converting dB to linear", () => {
@@ -209,15 +210,16 @@ describe("Simpler pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("voices", 12);
     });
 
-    it("warns on a voices value not in the allowed set", () => {
+    it("refuses a voices value not in the allowed set", () => {
       const device = registerSimpler();
 
-      expect(applySpecializedParamWrite(device, "voices", 9)).toStrictEqual([]);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "voices", 9),
+        "voices",
+        "voices must be one of",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("voices must be one of"),
-      );
     });
 
     it("reports a read-only param in its entry, without warning", () => {

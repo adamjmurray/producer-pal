@@ -162,9 +162,9 @@ target, so no entry exists yet to carry them.
   has no use for — each is `ok: false` with a reason on that param's own entry
   now, and warns nowhere. A param whose value Live changed on the way in (a
   clamp, the nearest step of a coarse ladder) reports the value it reads as plus
-  the reason, and no `ok`. A specialized pseudo-param whose `write` refuses the
-  value is the one left: it still reports no entry and warns, because that
-  contract is a boolean across every device spec.
+  the reason, and no `ok`. A specialized pseudo-param answers the same way: a
+  `PseudoParam.write` returns the reason it refused a value rather than a
+  boolean, so the refusal reaches the caller as that param's own entry.
 - **A type-addressed device path that names nothing reports once.** `t0/inst` on
   a track with no instrument substitutes a fallback index, and what the
   container does hold rides back on the resolution instead of a warning: the

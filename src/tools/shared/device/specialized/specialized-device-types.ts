@@ -42,13 +42,13 @@ export interface PseudoParam {
    */
   read: (device: LiveAPI) => unknown;
   /**
-   * Apply a new value. Follow update-tool conventions: warn-and-skip on
-   * invalid input rather than throwing. Return false for a value that was
-   * skipped — the `params` result reports a value only for a write that ran,
-   * so a refusal that returned true would report the unchanged value as if the
+   * Apply a new value. Answer with the reason an invalid value was refused
+   * rather than throwing; it becomes that param's own `ok: false` result entry.
+   * Null says the write ran — the `params` result reports a value only then, so
+   * a refusal that answered null would report the unchanged value as if the
    * write had landed.
    */
-  write?: (device: LiveAPI, value: string | number) => boolean;
+  write?: (device: LiveAPI, value: string | number) => string | null;
   /**
    * Why a write that ran did not land, or undefined when it did. Only for a
    * param a device takes whole or ignores — Simpler's `sample`, where a path

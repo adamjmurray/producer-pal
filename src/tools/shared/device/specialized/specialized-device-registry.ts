@@ -79,9 +79,8 @@ export function getSpecForDevice(
  * the key is not a pseudo-param, so the caller falls through to DeviceParameter
  * resolution. Otherwise the return is what the key contributes to the `params`
  * result: how to read the written value back (and, for a param a device can
- * silently ignore, how to tell that read-back from the value it replaced), why
- * nothing was written, or nothing at all when a refused write left no value to
- * report.
+ * silently ignore, how to tell that read-back from the value it replaced), or
+ * why nothing was written.
  * @param device - LiveAPI device object
  * @param key - Param name from the `params` input
  * @param value - Coerced value
@@ -116,11 +115,13 @@ export function applySpecializedParamWrite(
   // it has to be read before the write overwrites it.
   const before = writeFailed ? param.read(device) : undefined;
 
-  // A refused write names nothing, the way a DeviceParameter write Live
-  // ignored does: an entry is only ever a value that landed. Reporting one
-  // here would report the unchanged value as the value the call wrote.
-  if (!param.write(device, value)) {
-    return [];
+  // A refused write reports the reason in place of a value: reporting one here
+  // would report the unchanged value as the value the call wrote. Named as the
+  // call spelled it, like the read-only skip above.
+  const refused = param.write(device, value);
+
+  if (refused != null) {
+    return [skippedParam(key, refused)];
   }
 
   // Read at the end of the call, not here: a later write in the same call can

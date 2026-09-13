@@ -178,9 +178,7 @@ function setOneParam(
 
   // A specialized pseudo-param (e.g. Simpler's `sample`) is a device property
   // rather than a DeviceParameter, so it reports a name and a value but no id.
-  // Empty means a pseudo-param whose own `write` refused the value: the one
-  // param a call names that still answers with a warning and no entry, because
-  // that write contract is a boolean across every device spec.
+  // A value its own `write` refused comes back as that param's skip entry.
   const pseudoParam = applySpecializedParamWrite(device, key, inputValue);
 
   if (pseudoParam != null) {
