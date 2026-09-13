@@ -11,10 +11,9 @@
  * with short keys and defaults omitted, e.g.
  * `[{p:60,t:0,d:4,v:100},{p:62,t:1,d:1,v:90,vd:10,c:0.75}]`. Keys: `p` pitch,
  * `t` start, `d` duration, `v` velocity, `vd` velocity-deviation (omitted at 0),
- * `c` probability/chance (omitted at 1). interpret parses via a small Peggy
- * grammar (not eval) into the interpreter's internal `NoteEvent`; format
- * serializes back to the literal. Both are the MIDI JSON counterparts to
- * barbeat's interpret/format seams.
+ * `c` probability/chance (omitted at 1). interpret parses (not eval) into the
+ * interpreter's internal `NoteEvent`; format serializes back to the literal.
+ * Both are the MIDI JSON counterparts to barbeat's interpret/format seams.
  */
 
 import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
