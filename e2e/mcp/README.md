@@ -140,7 +140,7 @@ e2e/mcp/
 ├── control/               # Playback, select, and the Direct Live API tool
 ├── device/                # Device tools (create, read, update)
 ├── live-set/              # Live Set tools (read, update)
-├── operations/            # Cross-resource tools (delete, duplicate)
+├── operations/            # delete, duplicate, and the result shape every write tool shares
 ├── scene/                 # Scene tools (create, read, update)
 ├── track/                 # Track tools (create, read, update)
 └── workflow/              # Workflow tools (connect, memory)
@@ -166,3 +166,6 @@ Either stop triggering it (use the replacement param) or switch that call to
 
 Deprecated and alias params warn on every call, so setup code should always use
 the current param.
+
+`operations/warning-inventory.test.ts` lists every warning that survives, and
+the calls that must raise none — add or remove one there too.

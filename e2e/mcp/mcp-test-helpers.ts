@@ -367,6 +367,28 @@ export async function readDeviceCount(
 }
 
 /**
+ * The id Live currently gives the object at a path, read through the tool that
+ * owns it. Read it per test: Live reassigns ids every time it opens a Set, so
+ * an id written into a test file names a different object on the next run.
+ *
+ * @param client - Connected MCP client
+ * @param tool - The read tool for that kind of object, e.g. "ppal-read-track"
+ * @param path - Producer Pal path to the object
+ * @returns The object's id
+ */
+export async function readIdAtPath(
+  client: Client,
+  tool: string,
+  path: string,
+): Promise<string> {
+  const object = parseToolResult<{ id: string }>(
+    await client.callTool({ name: tool, arguments: { path } }),
+  );
+
+  return object.id;
+}
+
+/**
  * Creates a fresh MIDI track and waits for state to settle.
  * @param client - Connected MCP client
  * @returns The new track's index
