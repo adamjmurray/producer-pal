@@ -108,10 +108,21 @@ destination another clip in the call claimed, a take-lane leftover, a split a
 lane clip can't take) carries a `reason` beside its normal fields and no `ok`;
 those used to be warnings. A refused move with nothing else asked for that clip
 landed nothing, so it is `ok: false`. A clip named twice gets one entry per
-mention, the second saying the update already happened. `ppal-duplicate`
-likewise returns one entry per destination you named, with a destination no copy
-landed at holding its slot as `{path, ok: false, reason}` instead of dropping
-out of the array.
+mention, the second saying the update already happened. A `name` or `color` list
+pairs with the targets you named, so a skipped one keeps its place in the list
+instead of shifting the names after it onto the wrong clips, and every piece a
+split cuts a target into takes that target's name. `ppal-duplicate` likewise
+returns one entry per destination you named, with a destination no copy landed
+at holding its slot as `{path, ok: false, reason}` instead of dropping out of
+the array.
+
+That covers device, chain and drum-pad copies too. A destination that used to
+drop out of the array with a warning now keeps its slot as
+`{path, ok: false, reason}`, spelled the way you wrote it in `toPath`, and a
+source that can't be copied at all reports the same reason on every destination
+it was given. A copy that landed but isn't what you asked for (a chain short a
+device, a pad copy that layered onto chains already there) carries a `reason`
+and no `ok`.
 
 **A call naming one target that can't be done now throws** instead of returning
 an empty array with a warning. `ppal-update-track path="t99"` is an error, as is

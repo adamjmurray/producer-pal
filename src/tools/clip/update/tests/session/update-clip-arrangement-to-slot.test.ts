@@ -83,6 +83,8 @@ interface MoveOptions {
   scratchIncompleteCreate?: boolean;
   /** The scratch slot's own cleanup delete_clip throws (only meaningful with scratchIncompleteCreate). */
   scratchDeleteFails?: boolean;
+  /** Live refuses to delete the arrangement source after the move landed. */
+  sourceDeleteFails?: boolean;
 }
 
 /**
@@ -107,6 +109,7 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
     scratchCopyDeclines = false,
     scratchIncompleteCreate = false,
     scratchDeleteFails = false,
+    sourceDeleteFails = false,
   } = opts;
 
   mockNonExistentObjects();
@@ -139,6 +142,13 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
   registerMockObject(`track_${SOURCE_TRACK}`, {
     path: livePath.track(SOURCE_TRACK),
+    ...(sourceDeleteFails && {
+      methods: {
+        delete_clip: () => {
+          throw new Error("delete failed");
+        },
+      },
+    }),
   });
   registerMockObject(`track_${DEST_TRACK}`, {
     path: livePath.track(DEST_TRACK),
@@ -312,6 +322,36 @@ describe("handleArrangementToSlotMove", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expectMovedToDestination(updatedClips);
+  });
+
+  // The re-created clip is really in the slot, so it keeps the entry and the
+  // reason says the original is still in the arrangement as well.
+  it("reports the new clip when deleting the arrangement source fails", () => {
+    const updatedClips = runMove({ sourceDeleteFails: true });
+
+    expectMovedToDestination(updatedClips);
+    expect(movedReason()).toContain(
+      `the original at ${SOURCE} could not be deleted (delete failed); ` +
+        "delete it in Live",
+    );
+  });
+
+  // add_new_notes throws after Live created the clip, so the destination holds
+  // a partial clip rather than nothing. Nothing was there to lose, so the
+  // reason says only what is there now and that the source was kept.
+  it("reports an incomplete clip left in an empty destination", () => {
+    const updatedClips = runMove({ destHasClip: 0, incompleteCreate: true });
+
+    const reason = movedReason();
+
+    expect(reason).toContain(
+      `create at t${DEST_TRACK}/s${DEST_SCENE} started but didn't finish`,
+    );
+    expect(reason).toContain("an incomplete clip is there now");
+    expect(reason).toContain("source clip in the arrangement is untouched");
+    expect(reason).not.toContain("can't be recovered");
+    expect(updatedClips).toHaveLength(1);
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 
   it("carries the source's name and color", () => {

@@ -12,6 +12,7 @@ import {
   type RegisteredMockObject,
   clearMockRegistry,
   lookupMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -176,6 +177,41 @@ describe("updateClip - splitting smoke tests", () => {
     const resultIds = results.map((r) => r.id);
 
     expect(resultIds).not.toContain("0");
+  });
+
+  // A split answers with several clips under one target, so every piece takes
+  // the name that target asked for — never the next target's.
+  it("gives every piece of a split its own target's name", async () => {
+    setupClipSplittingMocks("clip_1");
+    mockNonExistentObjects();
+
+    await updateClip(
+      { id: "clip_1", path: "t9/s9", arrangementSplit: "2|1", name: "a,b" },
+      {},
+    );
+
+    expect(lookupMockObject("clip_1")?.set).toHaveBeenCalledWith("name", "a");
+    expect(lookupMockObject("dup_2")?.set).toHaveBeenCalledWith("name", "a");
+  });
+
+  // Beside one target a comma-bearing value is that target's name, commas and
+  // all — the same reading update-track gives a lone target — so every piece
+  // takes it whole rather than one entry each.
+  it("gives every piece a one-target name list whole", async () => {
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    setupClipSplittingMocks("clip_1");
+
+    await updateClip(
+      { id: "clip_1", arrangementSplit: "2|1", name: "a,b,c" },
+      {},
+    );
+
+    for (const id of ["clip_1", "dup_2"]) {
+      expect(lookupMockObject(id)?.set).toHaveBeenCalledWith("name", "a,b,c");
+    }
+
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
   // A take-lane arrangement clip cannot be split via

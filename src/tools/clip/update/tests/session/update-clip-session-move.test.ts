@@ -48,6 +48,7 @@ const OCCUPANT_ID = "789";
  * @param opts.clipIsMidi - Whether the source clip is MIDI
  * @param opts.destIsMidi - Whether the destination track takes MIDI
  * @param opts.destIsFrozen - Whether the destination track is frozen
+ * @param opts.deleteFails - Whether Live refuses to delete the copied-out source
  * @returns Object with mockClip, updatedClips, what the clip had to say, and
  *   the source clip slot mock
  */
@@ -62,6 +63,7 @@ function runSessionMove(opts: {
   clipIsMidi?: number;
   destIsMidi?: number;
   destIsFrozen?: number;
+  deleteFails?: boolean;
 }) {
   const {
     trackIndex = 0,
@@ -74,6 +76,7 @@ function runSessionMove(opts: {
     clipIsMidi = 1,
     destIsMidi = 1,
     destIsFrozen = 0,
+    deleteFails = false,
   } = opts;
 
   mockNonExistentObjects();
@@ -106,6 +109,13 @@ function runSessionMove(opts: {
         duplicate_clip_to: () => {
           if (copyLands) {
             registerMockObject(COPY_ID, { path: destClipPath });
+          }
+
+          return null;
+        },
+        delete_clip: () => {
+          if (deleteFails) {
+            throw new Error("delete failed");
           }
 
           return null;
@@ -191,6 +201,23 @@ describe("handleClipSlotMove", () => {
       noteCount: 5,
       path: "t1/s2",
     });
+  });
+
+  // Live refusing the delete leaves the clip in both slots. The copy is really
+  // there, so it keeps the entry and the reason says where the original still
+  // sits — letting the throw out would lose the copy from the result.
+  it("reports the copy that landed when deleting the source fails", () => {
+    const { updatedClips, reasons } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
+      deleteFails: true,
+    });
+
+    expect(updatedClips).toStrictEqual([{ id: COPY_ID, path: "t1/s2" }]);
+    expect(reasonFor(reasons)).toBe(
+      "the original at t0/s0 could not be deleted (delete failed); " +
+        "delete it in Live",
+    );
   });
 
   it("reports a clip whose slot position is unknown on its own entry", () => {

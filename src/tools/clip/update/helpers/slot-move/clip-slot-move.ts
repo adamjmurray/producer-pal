@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -147,7 +148,12 @@ export function handleClipSlotMove({
     );
   }
 
-  sourceClipSlot.call("delete_clip");
+  deleteMovedSource({
+    reasons,
+    clipId: clip.id,
+    source: slotPath(srcTrackIndex, srcSceneIndex),
+    deleteSource: () => sourceClipSlot.call("delete_clip"),
+  });
   updatedClips.push(
     buildClipResultObject(newClip.id, noteResult, objectPathForApi(newClip)),
   );
@@ -239,7 +245,12 @@ export function handleArrangementToSlotMove({
   if (isTakeLaneClip(clip)) {
     noteClipReason(reasons, clip.id, emptyTakeLaneClip(clip));
   } else {
-    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
+    deleteMovedSource({
+      reasons,
+      clipId: clip.id,
+      source: targetLabel(clip),
+      deleteSource: () => sourceTrack.call("delete_clip", toLiveApiId(clip.id)),
+    });
   }
 
   updatedClips.push(
@@ -248,6 +259,44 @@ export function handleArrangementToSlotMove({
 }
 
 // --- Helpers below main exports ---
+
+interface DeleteSourceArgs {
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
+  /** The clip, by the id the call found it at. */
+  clipId: string;
+  /** Where the source clip still sits, as the reason names it. */
+  source: string;
+  /** Removes the source clip from Live. */
+  deleteSource: () => void;
+}
+
+/**
+ * Delete the clip the move copied out of, saying so on its entry when Live
+ * refuses. The copy exists whatever the delete does, so letting the throw out
+ * would cost the caller a clip that is really there.
+ * @param args - The clip, where it sits, and how to delete it
+ * @param args.reasons - What each clip has to say beyond its result, added to
+ * @param args.clipId - The clip, by the id the call found it at
+ * @param args.source - Where the source clip still sits
+ * @param args.deleteSource - Removes the source clip from Live
+ */
+function deleteMovedSource({
+  reasons,
+  clipId,
+  source,
+  deleteSource,
+}: DeleteSourceArgs): void {
+  try {
+    deleteSource();
+  } catch (error) {
+    noteClipReason(
+      reasons,
+      clipId,
+      `the original at ${source} could not be deleted (${errorMessage(error)}); delete it in Live`,
+    );
+  }
+}
 
 /**
  * Says why an arrangement clip can't move into a slot, or null when it can.

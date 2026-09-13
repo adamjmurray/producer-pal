@@ -93,9 +93,12 @@ export async function runClipBatch({
 }: RunClipBatchArgs): Promise<Map<number, ClipResult[]>> {
   const { clips, moveOrder, destinationById } = plan;
   const { name, color } = args;
+  // Paired against the targets named, not the clips that resolved: name[k] has
+  // to land on target k even when an earlier target found no clip, and the
+  // pieces of a split all take the name of the target they were cut from.
   const { parsedNames, parsedColors } = pairLabels({
     noun: "clip",
-    count: clips.length,
+    count: targets.named.length,
     name,
     color,
   });
@@ -121,6 +124,7 @@ export async function runClipBatch({
 
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
+    const slot = plan.slots[i] as number;
 
     if (stopBatch({ deadline, plan, targets, clips, order: moveOrder, step })) {
       break;
@@ -135,8 +139,8 @@ export async function runClipBatch({
       notationString: args.notes,
       transformString: args.transforms,
       preTransformString: args.preTransforms,
-      name: getNameForIndex(name, i, parsedNames),
-      color: getColorForIndex(color, i, parsedColors),
+      name: getNameForIndex(name, slot, parsedNames),
+      color: getColorForIndex(color, slot, parsedColors),
       timeSignature: args.timeSignature,
       start: args.start,
       length: args.length,
@@ -173,7 +177,7 @@ export async function runClipBatch({
       failure,
       reasons,
       targets,
-      slot: plan.slots[i] as number,
+      slot,
       askedAnythingElse,
     });
 

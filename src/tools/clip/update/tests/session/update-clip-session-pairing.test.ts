@@ -135,6 +135,54 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     ]);
   });
 
+  // The name and color lists pair with the targets named, not with the clips
+  // that resolved: sliding them up past a skip renames the wrong clips.
+  it("keeps each name and color on the target named at its own position", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+    mockNonExistentObjects();
+
+    const result = await updateClip({
+      path: "t0/s0,t9/s9,t1/s1",
+      name: "a,b,c",
+      color: "#FF0000,#00FF00,#0000FF",
+    });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "a");
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "c");
+    expect(mocks.clip456.set).toHaveBeenCalledWith("color", 255);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { id: "456", path: "t1/s1" },
+    ]);
+  });
+
+  // One clip left after the skips is still a list of targets, so the list has
+  // to be split rather than written whole as that clip's name.
+  it("does not write the whole name list onto the one clip that resolved", async () => {
+    setupMidiClipMock(mocks.clip456);
+    mockNonExistentObjects();
+
+    await updateClip({ path: "t9/s9,t1/s1,t9/s8", name: "a,b,c" });
+
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "b");
+  });
+
+  // A call naming one target takes a comma-bearing value whole — a name can
+  // have commas in it — and only two lists of two or more that disagree are
+  // refused. update-track and update-scene read a lone target the same way.
+  it("takes a name list whole when the call names one target", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    const result = await updateClip({ id: "123", name: "a,b,c" });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "a,b,c");
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
   it("does not claim a destination went unused when its clip was dropped", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();

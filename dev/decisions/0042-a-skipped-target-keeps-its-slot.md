@@ -102,19 +102,21 @@ target, so no entry exists yet to carry them.
 - **update-clip answers per target named, not per clip reached.** Its targets
   resolve up front, the plan carries which target each clip (and each piece a
   split cut it into) belongs to, and the results are assembled back into call
-  order. A target whose path or id found no clip, or that the deadline never
-  reached, holds its slot as a skip; so does one whose only requested work — a
-  move, a position, a split — was refused outright, since where the clip still
-  sits is nothing the caller asked about. A clip named twice holds its second
-  slot as a normal entry saying the update already happened, and a clip that was
-  written but not as asked keeps its entry with a `reason`: a throw partway, a
-  move refused beside a name or a length that landed, a re-create and what it
-  cost, a take-lane leftover. The move and arrangement helpers report all of it
-  on the clip's entry instead of warning, through a per-call collector keyed by
-  the clip id the call found; a step that writes under a new id — a move
-  re-creates the clip — hands its reasons back to the id the caller named. One
-  target never answers with no entries: a split whose pieces the rescan can't
-  find says so too.
+  order. The `name` and `color` lists pair by that target's place too, so a skip
+  doesn't slide the names after it onto the wrong clips and every piece of a
+  split takes the name its own target asked for. A target whose path or id found
+  no clip, or that the deadline never reached, holds its slot as a skip; so does
+  one whose only requested work — a move, a position, a split — was refused
+  outright, since where the clip still sits is nothing the caller asked about. A
+  clip named twice holds its second slot as a normal entry saying the update
+  already happened, and a clip that was written but not as asked keeps its entry
+  with a `reason`: a throw partway, a move refused beside a name or a length
+  that landed, a re-create and what it cost, a take-lane leftover. The move and
+  arrangement helpers report all of it on the clip's entry instead of warning,
+  through a per-call collector keyed by the clip id the call found; a step that
+  writes under a new id — a move re-creates the clip — hands its reasons back to
+  the id the caller named. One target never answers with no entries: a split
+  whose pieces the rescan can't find says so too.
 - **duplicate answers per destination named.** A destination no copy landed at
   keeps its slot as `{path, ok: false, reason}` — a missing clip slot, a track
   that won't take the clip, a copy Live declined, a take lane past the cap, a
@@ -125,6 +127,20 @@ target, so no entry exists yet to carry them.
   copy that landed there would report it, so it pastes back into `toPath`. The
   deadline warning still names what it never reached, and counts only copies
   that exist.
+- **A device, chain or drum-pad copy also answers per destination**, addressed
+  by the caller's own spelling of that `toPath` entry. It names a rack or a pad
+  rather than a clip, and the caller has only what they wrote to match it on.
+  Where nothing named a destination — a chain or device appending to its own
+  rack — the entry is addressed by the source's `id` or `path` instead. A
+  destination that used to drop out with a warning (no rack there, a rack of the
+  wrong kind, a path naming something that isn't a pad, a pad copied onto
+  itself, a destination Live wouldn't take the copy at) is that entry's `reason`
+  now. So is a source no destination could be copied from, such as a return
+  chain: it is reported on every destination it was given, and a lone one
+  throws. A copy that landed incomplete keeps its entry with a `reason` rather
+  than being rolled back — a chain whose devices didn't all cross, a pad copy
+  that layered onto chains already there. `count`, which none of these types
+  uses, is still a warning: it is about the call, not a destination.
 - **update-device's per-param drop paths became entries.** A `params` list
   answers with one entry per param sent: a disabled param, an ambiguous name, an
   unreadable value, a unit that can't be checked, a write Live ignored, a nested

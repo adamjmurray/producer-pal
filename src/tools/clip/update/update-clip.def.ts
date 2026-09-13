@@ -41,11 +41,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
 
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated one per clip, in order",
+      default:
+        "name for all, or comma-separated one per target named, in order",
       smallModel: "clip name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per clip, in order",
+      default:
+        "#RRGGBB for all, or comma-separated one per target named, in order",
       smallModel: "#RRGGBB",
     }),
     timeSignature: z.string().optional().describe("N/D (4/4)"),

@@ -42,6 +42,22 @@ const readNotes = (clipId: string): Promise<string> =>
   readClipNotes(ctx, clipId);
 
 /**
+ * Read back one clip's name.
+ * @param clipId - The clip to read
+ * @returns Its name
+ */
+async function readClipName(
+  clipId: string,
+): Promise<string | null | undefined> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { id: clipId },
+  });
+
+  return parseToolResult<ReadClipResult>(result).name;
+}
+
+/**
  * Create a 1-bar clip holding off-grid notes for a quantization test.
  * @param sceneIndex - Session scene index on the empty MIDI track
  * @param notes - Off-grid bar|beat notation
@@ -531,6 +547,41 @@ describe("ppal-update-clip", () => {
       reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
     });
     expect(warnings.join(" ")).not.toContain("no clip at path");
+  });
+
+  // The name list pairs with the targets named, so the skip in the middle must
+  // not slide the names after it onto the wrong clips.
+  it("keeps each name on the target named at its own position", async () => {
+    // The later scene first: creating its clip auto-creates s24, so the middle
+    // target names a slot that exists and holds nothing.
+    const lastId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s25`, {
+      notes: "D3 1|1",
+    });
+    const firstId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s23`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s23,t${EMPTY_MIDI_TRACK}/s24,t${EMPTY_MIDI_TRACK}/s25`,
+        name: "a,b,c",
+      },
+    });
+    const data =
+      parseToolResult<Array<ReadClipResult | SkippedTargetResult>>(result);
+
+    expect(data).toHaveLength(3);
+    expect(data[1]).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}/s24`,
+      ok: false,
+      reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s24"`,
+    });
+
+    await sleep(100);
+
+    expect(await readClipName(firstId)).toBe("a");
+    expect(await readClipName(lastId)).toBe("c");
   });
 
   // One target and nothing done: there is no list for an entry to hold a place
