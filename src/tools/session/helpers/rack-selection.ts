@@ -58,6 +58,10 @@ export function resolveRackTarget(
 
   const resolved = resolvePathToLiveApi(path);
 
+  if (resolved.namesNothing != null) {
+    throw new Error(`no chain at "${path}": ${resolved.namesNothing}`);
+  }
+
   if (resolved.targetType === "drum-pad") {
     return drumPadTarget(resolved, path);
   }

@@ -13,6 +13,7 @@ import {
   findDrumPadByNote,
   invalidateRackChains,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   buildDrumPadPath,
   extractDevicePath,
@@ -143,6 +144,10 @@ function refuseRackWithoutPads(rack: LiveAPI): void {
  */
 function resolvePadTarget(path: string, label: string): PadTarget {
   const resolved = resolvePathToLiveApi(path, label);
+
+  if (resolved.namesNothing != null) {
+    throw new Error(nothingAtPath(path, resolved.namesNothing, label));
+  }
 
   // A trailing chain or device segment names something inside the pad, and
   // copy_pad only ever copies a whole pad. Resolution stops at the first pad,

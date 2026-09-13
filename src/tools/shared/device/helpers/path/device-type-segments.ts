@@ -11,7 +11,6 @@
 // Runs on every device path, so the no-type-segment case must read nothing.
 // See dev/Object-Paths.md.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -54,38 +53,37 @@ interface NoSuchDevice {
 export interface DeviceTypeResolution {
   /** The segments, with every type-addressed one replaced by its position. */
   segments: CanonicalDeviceSegment[];
-  /** False when a segment named no device — the path now resolves to nothing. */
-  resolved: boolean;
+  /** What the container does hold, when a segment named no device — the path
+   * now resolves to nothing, and this is what its miss should say. Absent when
+   * every segment resolved. */
+  namesNothing?: string;
 }
 
 /**
  * Replaces every type-addressed device segment with the position it names.
- * Warns and substitutes an unoccupied index when there is no such device, so
- * the caller warn-skips like any other path that names nothing.
+ * Substitutes an unoccupied index when there is no such device, so the path
+ * resolves to nothing like any other path that names nothing — and hands back
+ * why, for the caller to report on the target it belongs to.
  * @param root - The path's track root
  * @param segments - The device-chain segments below the root, as parsed
- * @param input - The path as the caller spelled it, for warnings
- * @param label - Param name the path came from, for warnings
- * @returns The segments by position, and whether they all resolved
+ * @returns The segments by position, and why one of them named nothing
  */
 export function resolveDeviceTypeSegments(
   root: TrackSegment,
   segments: DeviceSegment[],
-  input: string,
-  label = "path",
 ): DeviceTypeResolution {
   if (segments.every(isCanonical)) {
-    return { segments, resolved: true };
+    return { segments };
   }
 
   const canonical: CanonicalDeviceSegment[] = [];
   const spelled: DeviceSegment[] = [];
-  let resolved = true;
+  let namesNothing: string | undefined;
 
   for (const segment of segments) {
     if (isCanonical(segment)) {
       canonical.push(segment);
-    } else if (resolved) {
+    } else if (namesNothing == null) {
       const found = pickDevice(
         root,
         canonical,
@@ -93,8 +91,11 @@ export function resolveDeviceTypeSegments(
         spelling(root, spelled),
       );
 
-      resolved = typeof found === "number";
-      canonical.push({ kind: "device", index: indexOf(found, input, label) });
+      if (typeof found !== "number") {
+        namesNothing = found.reason;
+      }
+
+      canonical.push({ kind: "device", index: indexOf(found) });
     } else {
       // The path already names nothing, so the rest only has to stay canonical.
       canonical.push({ kind: "device", index: 0 });
@@ -103,7 +104,10 @@ export function resolveDeviceTypeSegments(
     spelled.push(segment);
   }
 
-  return { segments: canonical, resolved };
+  return {
+    segments: canonical,
+    ...(namesNothing == null ? {} : { namesNothing }),
+  };
 }
 
 // --- Helpers below main exports ---
@@ -120,29 +124,12 @@ function isCanonical(
 }
 
 /**
- * The device index a pick landed on, warning first when it landed on nothing.
+ * The device index a pick landed on, or the unoccupied one standing in for it.
  * @param found - The index, or why there was no such device
- * @param input - The path as the caller spelled it
- * @param label - Param name the path came from
  * @returns The index to substitute
  */
-function indexOf(
-  found: number | NoSuchDevice,
-  input: string,
-  label: string,
-): number {
-  if (typeof found === "number") {
-    return found;
-  }
-
-  const message = `${label} "${input}" names nothing: ${found.reason}`;
-
-  // Keyed by the message rather than by the failure: one path is canonicalized
-  // more than once per call (the insertion-order check, then the insert), and
-  // each distinct path still gets its own warning.
-  console.warnOnce(message, message);
-
-  return found.fallback;
+function indexOf(found: number | NoSuchDevice): number {
+  return typeof found === "number" ? found : found.fallback;
 }
 
 /**
@@ -150,7 +137,7 @@ function indexOf(
  * @param root - The path's track root
  * @param prefix - The canonical segments above this one
  * @param segment - The type-addressed segment
- * @param where - How the caller spelled the container, for warnings
+ * @param where - How the caller spelled the container, for the reason
  * @returns The device's index in the container's full device list, or why none
  */
 function pickDevice(

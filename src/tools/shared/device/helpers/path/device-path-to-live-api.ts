@@ -29,6 +29,9 @@ export interface ResolvedPath {
   targetType: TargetType;
   drumPadNote?: string;
   remainingSegments: string[];
+  /** What the container does hold, when a type segment (`inst`, `afx1`) named
+   * no device. The path resolves to nothing, and this is why. */
+  namesNothing?: string;
 }
 
 /**
@@ -57,15 +60,14 @@ export function resolveDevicePath(
   const { root, segments } = requireDevicePath(path, label);
   // A segment naming a device by type becomes the position it resolves to, so
   // the walk below only ever indexes.
-  const { segments: canonical, resolved } = resolveDeviceTypeSegments(
+  const { segments: canonical, namesNothing } = resolveDeviceTypeSegments(
     root,
     segments,
-    formatObjectPath(path),
-    label,
   );
   const spelled = formatObjectPath(
-    resolved ? { kind: "device", root, segments: canonical } : path,
+    namesNothing == null ? { kind: "device", root, segments: canonical } : path,
   );
+  const miss = namesNothing == null ? {} : { namesNothing };
 
   let liveApiPath = trackSegmentPath(root).toString();
   let targetType: TargetType = "device";
@@ -80,6 +82,7 @@ export function resolveDevicePath(
         targetType: "drum-pad",
         drumPadNote: segment.note,
         remainingSegments: canonical.slice(index + 1).map(formatDeviceSegment),
+        ...miss,
       };
     }
 
@@ -91,5 +94,29 @@ export function resolveDevicePath(
     }
   }
 
-  return { path: spelled, liveApiPath, targetType, remainingSegments: [] };
+  return {
+    path: spelled,
+    liveApiPath,
+    targetType,
+    remainingSegments: [],
+    ...miss,
+  };
+}
+
+/**
+ * What a path that found nothing reports, with why when a type segment is the
+ * reason it did.
+ * @param path - The path as the caller wrote it
+ * @param reason - What the container does hold, from a resolution's namesNothing
+ * @param label - Param name the path came from
+ * @returns The miss, for the entry or error that carries it
+ */
+export function nothingAtPath(
+  path: string,
+  reason?: string,
+  label = "path",
+): string {
+  const why = reason == null ? "" : `: ${reason}`;
+
+  return `nothing at ${label} "${path}"${why}`;
 }

@@ -75,27 +75,30 @@ function registerContainer(
 /**
  * Canonicalize a path the way the device tools do, through the real parse.
  * @param path - A device path
- * @param label - Param name the path came from
  * @returns The resolution
  */
-function resolve(path: string, label = "path"): DeviceTypeResolution {
+function resolve(path: string): DeviceTypeResolution {
   const parsed = parseObjectPath(path);
 
   if (parsed.kind !== "device") {
     throw new Error(`"${path}" is not a device path`);
   }
 
-  return resolveDeviceTypeSegments(parsed.root, parsed.segments, path, label);
+  return resolveDeviceTypeSegments(parsed.root, parsed.segments);
 }
 
 /**
- * The one warning a failed resolution raised.
- * @returns The warning text
+ * Why a path named nothing, with nothing warned about it — the miss belongs to
+ * the target the caller reports on, not to a warning beside it.
+ * @param path - A device path
+ * @returns The reason
  */
-function warning(): string {
-  expect(capturedWarnings()).toHaveLength(1);
+function missed(path: string): string | undefined {
+  const { namesNothing } = resolve(path);
 
-  return capturedWarnings()[0] as string;
+  expect(capturedWarnings()).toStrictEqual([]);
+
+  return namesNothing;
 }
 
 describe("resolveDeviceTypeSegments", () => {
@@ -111,15 +114,11 @@ describe("resolveDeviceTypeSegments", () => {
 
     beginLiveApiBuildStats();
 
-    const result = resolveDeviceTypeSegments(
-      parsed.root,
-      parsed.segments,
-      "t0/d1/c0/d2",
-    );
+    const result = resolveDeviceTypeSegments(parsed.root, parsed.segments);
 
     // The fast path runs on every device path, so it must not touch Live.
     expect(liveApiBuildStats().resolved).toBe(0);
-    expect(result.resolved).toBe(true);
+    expect(result.namesNothing).toBeUndefined();
     expect(result.segments).toBe(parsed.segments as DeviceSegment[]);
   });
 
@@ -185,56 +184,45 @@ describe("resolveDeviceTypeSegments", () => {
     ]);
   });
 
-  it("warns and names an index nothing occupies when there is no instrument", () => {
+  it("names an index nothing occupies when there is no instrument", () => {
     registerContainer("track-0", [AFX], { path: livePath.track(0) });
 
-    const result = resolve("t0/inst");
-
-    expect(warning()).toBe(
-      'path "t0/inst" names nothing: t0 has no instrument',
-    );
     // One past the last device, so every consumer resolves it to nothing.
-    expect(result).toStrictEqual({ segments: d(1), resolved: false });
+    expect(resolve("t0/inst")).toStrictEqual({
+      segments: d(1),
+      namesNothing: "t0 has no instrument",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns with what the container does hold when an index is past the end", () => {
+  it("says what the container does hold when an index is past the end", () => {
     registerContainer("track-0", [INST, AFX], { path: livePath.track(0) });
 
-    expect(resolve("t0/afx1").resolved).toBe(false);
-    expect(warning()).toBe(
-      'path "t0/afx1" names nothing: t0 has 1 audio effect (afx0)',
-    );
+    expect(missed("t0/afx1")).toBe("t0 has 1 audio effect (afx0)");
   });
 
   it("gives a range when the container holds more than one", () => {
     registerContainer("track-0", [AFX, AFX], { path: livePath.track(0) });
 
-    resolve("t0/afx2");
-
-    expect(warning()).toBe(
-      'path "t0/afx2" names nothing: t0 has 2 audio effects (afx0-afx1)',
-    );
+    expect(missed("t0/afx2")).toBe("t0 has 2 audio effects (afx0-afx1)");
   });
 
   it("says there are none of that type at all", () => {
     registerContainer("track-0", [INST], { path: livePath.track(0) });
 
-    resolve("t0/mfx0");
-
-    expect(warning()).toBe(
-      'path "t0/mfx0" names nothing: t0 has no MIDI effects',
-    );
+    expect(missed("t0/mfx0")).toBe("t0 has no MIDI effects");
   });
 
   it("says what return and main tracks hold, before counting anything", () => {
     registerContainer("return-0", [AFX], { path: livePath.returnTrack(0) });
     registerContainer("main", [AFX], { path: livePath.masterTrack() });
 
-    expect(resolve("rt0/inst").resolved).toBe(false);
-    expect(warning()).toBe(
-      'path "rt0/inst" names nothing: return and main tracks hold only audio effects',
+    expect(missed("rt0/inst")).toBe(
+      "return and main tracks hold only audio effects",
     );
-    expect(resolve("mt/mfx0").resolved).toBe(false);
+    expect(missed("mt/mfx0")).toBe(
+      "return and main tracks hold only audio effects",
+    );
     expect(resolve("rt0/afx0").segments).toStrictEqual(d(0));
   });
 
@@ -243,40 +231,24 @@ describe("resolveDeviceTypeSegments", () => {
 
     expect(resolve("t9/inst")).toStrictEqual({
       segments: d(0),
-      resolved: false,
+      namesNothing: "t9 does not exist",
     });
-    expect(warning()).toBe('path "t9/inst" names nothing: t9 does not exist');
   });
 
   it("spells a missing container the way the call did", () => {
     mockNonExistentObjects();
-    resolve("t0/d3/c0/afx0");
 
-    expect(warning()).toBe(
-      'path "t0/d3/c0/afx0" names nothing: t0/d3/c0 does not exist',
-    );
+    expect(missed("t0/d3/c0/afx0")).toBe("t0/d3/c0 does not exist");
   });
 
-  it("reports the param the path came from", () => {
-    registerContainer("track-0", [AFX], { path: livePath.track(0) });
-    resolve("t0/inst", "toPath");
-
-    expect(warning()).toBe(
-      'toPath "t0/inst" names nothing: t0 has no instrument',
-    );
-  });
-
-  it("warns once for the path, not once per unresolvable segment", () => {
+  it("reports once for the path, not once per unresolvable segment", () => {
     registerContainer("track-0", [AFX], { path: livePath.track(0) });
 
     // The whole path already names nothing, so the segments below the miss have
     // nothing left to say — and nothing to resolve against either.
     expect(resolve("t0/inst/c0/afx0")).toStrictEqual({
       segments: [...d(1), { kind: "chain", index: 0 }, ...d(0)],
-      resolved: false,
+      namesNothing: "t0 has no instrument",
     });
-    expect(warning()).toBe(
-      'path "t0/inst/c0/afx0" names nothing: t0 has no instrument',
-    );
   });
 });

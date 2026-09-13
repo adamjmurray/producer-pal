@@ -15,7 +15,10 @@ import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
-import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import {
+  nothingAtPath,
+  type ResolvedPath,
+} from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type IdLookup,
@@ -81,7 +84,16 @@ function idAtPathForType(type: string): IdAtPath {
  * @returns The object's id, or why there isn't one
  */
 function chainIdAtPath(entry: string, type: string): IdLookup {
-  return resolvePathToId(resolvePathToLiveApi(entry), entry, type);
+  const resolved = resolvePathToLiveApi(entry);
+
+  // A type segment that named no device leaves an index nothing occupies, so
+  // the place stands empty exactly like an out-of-range `d<n>` — but say what
+  // the container does hold, which the bare miss below can't.
+  if (resolved.namesNothing != null) {
+    return nothingThere(nothingAtPath(entry, resolved.namesNothing));
+  }
+
+  return resolvePathToId(resolved, entry, type);
 }
 
 /**

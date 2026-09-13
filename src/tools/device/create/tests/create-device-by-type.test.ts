@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   registerMockObject,
@@ -71,7 +72,11 @@ describe("createDevice by device type", () => {
   it("refuses an insert at a type segment that names nothing", () => {
     expect(() =>
       createDevice({ path: "t0/afx1", deviceName: "Compressor" }),
-    ).toThrow('path "t0/afx1" names no device to insert at');
+    ).toThrow(
+      'path "t0/afx1" names no device to insert at: t0 has 1 audio effect (afx0)',
+    );
+    // The error says what the track holds, so nothing warns it as well.
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(track.call).not.toHaveBeenCalled();
   });
 });

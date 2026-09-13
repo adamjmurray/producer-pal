@@ -9,6 +9,7 @@ import {
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import {
   namedIdParam,
@@ -160,6 +161,12 @@ function readDeviceTarget(
   const devicePath = path as string;
   const resolved = resolvePathToLiveApi(devicePath);
 
+  // A type segment that named no device says what the container holds instead,
+  // whatever the substituted position would have resolved to.
+  if (resolved.namesNothing != null) {
+    throw new Error(nothingAtPath(devicePath, resolved.namesNothing));
+  }
+
   switch (resolved.targetType) {
     case "device":
       return readDeviceByLiveApiPath(resolved.liveApiPath, devicePath, options);
@@ -230,7 +237,7 @@ function readDeviceByLiveApiPath(
   const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
-    throw new Error(`nothing at path "${path}"`);
+    throw new Error(nothingAtPath(path));
   }
 
   return readDeviceShared(device, options);

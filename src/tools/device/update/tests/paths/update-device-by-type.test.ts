@@ -67,20 +67,34 @@ describe("updateDevice by device type", () => {
     expect(effect.set).not.toHaveBeenCalled();
   });
 
-  it("writes nothing when the container has no instrument", () => {
+  it("writes nothing when the container has no instrument, and says why once", () => {
     // The substituted index is one past the last device, so nothing is there.
     mockNonExistentObjects();
 
     const { effect } = registerTrack(false);
 
+    // The miss carries its own reason, so there is nothing left to warn about.
     expect(() => updateDevice({ path: "t0/inst", name: "Renamed" })).toThrow(
-      'nothing at path "t0/inst"',
+      'nothing at path "t0/inst": t0 has no instrument',
     );
-    // The substitution says why the path found nothing to aim at; it is about
-    // the spelling, not about a target that was reached.
-    expect(capturedWarnings()).toContainEqual(
-      'path "t0/inst" names nothing: t0 has no instrument',
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(effect.set).not.toHaveBeenCalled();
+  });
+
+  it("keeps the slot of a listed target whose type segment names nothing", () => {
+    mockNonExistentObjects();
+    registerTrack(false);
+
+    expect(
+      updateDevice({ path: "t0/inst,t0/afx0", name: "Renamed" }),
+    ).toStrictEqual([
+      {
+        path: "t0/inst",
+        ok: false,
+        reason: 'nothing at path "t0/inst": t0 has no instrument',
+      },
+      { id: "afx", path: "t0/d0" },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

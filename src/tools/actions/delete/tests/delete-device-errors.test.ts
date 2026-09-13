@@ -46,6 +46,37 @@ describe("deleteObject device path error cases", () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
+  // "afx0" on a track with no audio effects lands one past the last device,
+  // which is the same nothing an out-of-range "d<n>" lands on — so it reads as
+  // a delete already done, not as a target this call refused.
+  it("reports a type segment that names nothing as nothing to delete", () => {
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: children("device_0") },
+    });
+    registerMockObject("device_0", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { type: 1 },
+    });
+
+    expect(deleteObject({ path: "t0/afx0", type: "device" })).toStrictEqual({
+      path: "t0/afx0",
+      type: "device",
+      reason: "nothing to delete",
+    });
+    // Listed beside another target, the same miss keeps its own slot.
+    expect(
+      deleteObject({ path: "t0/afx0,t0/mfx0", type: "device" }),
+    ).toStrictEqual([
+      { path: "t0/afx0", type: "device", reason: "nothing to delete" },
+      { path: "t0/mfx0", type: "device", reason: "nothing to delete" },
+    ]);
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
   it("refuses a device delete whose path resolves to a chain", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 

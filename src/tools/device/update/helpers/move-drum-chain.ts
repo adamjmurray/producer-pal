@@ -10,6 +10,7 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { findDrumPadByNote } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -123,6 +124,12 @@ function warnIfDestinationOccupied(
  */
 function targetPadNote(toPath: string, drumRackPath: string): string | null {
   const resolved = resolvePadPath(toPath);
+
+  if (resolved?.namesNothing != null) {
+    console.warn(nothingAtPath(toPath, resolved.namesNothing, "toPath"));
+
+    return null;
+  }
 
   if (resolved?.drumPadNote == null) {
     console.warn(`toPath "${toPath}" is not a drum pad path`);

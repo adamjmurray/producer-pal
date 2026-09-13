@@ -224,8 +224,10 @@ function createDeviceAtPath(
   const { container, position, containerPath, namesNothing } =
     resolveInsertionPath(path);
 
-  if (namesNothing) {
-    throw new Error(`path "${path}" names no device to insert at`);
+  if (namesNothing != null) {
+    throw new Error(
+      `path "${path}" names no device to insert at: ${namesNothing}`,
+    );
   }
 
   if (!container?.exists()) {

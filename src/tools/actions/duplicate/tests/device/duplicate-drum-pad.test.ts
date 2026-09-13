@@ -304,6 +304,20 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
+  it("says what the track holds when a toPath type segment names nothing", async () => {
+    const rack = registerCopyReadyRack();
+
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: children("rack") },
+    });
+
+    await expect(copyC1ToD1({ toPath: "t0/afx0/pD1" })).rejects.toThrow(
+      'nothing at toPath "t0/afx0/pD1": t0 has no audio effects',
+    );
+    expectNoCopy(rack);
+  });
+
   it("refuses a path that names no pad at all", async () => {
     const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 

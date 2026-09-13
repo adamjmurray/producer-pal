@@ -97,6 +97,45 @@ describe("select path param", () => {
     expect(result.selectedDevice?.path).toBe("t1/inst");
   });
 
+  // The refusal says what the track does hold, and is the only thing said
+  // about it.
+  it("refuses a device path whose type segment names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    mockNonExistentObjects();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: ["id", "device_at_path"] },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(1)) + " devices 0",
+      type: "Device",
+      properties: { type: 2 },
+    });
+
+    expect(() => select({ path: "t1/inst" })).toThrow(
+      'no device at "t1/inst": t1 has no instrument',
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("refuses a chain path whose type segment names nothing", () => {
+    mockNonExistentObjects();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: ["id", "device_at_path"] },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(1)) + " devices 0",
+      type: "Device",
+      properties: { type: 2 },
+    });
+
+    expect(() => select({ path: "t1/inst/c0" })).toThrow(
+      'no chain at "t1/inst/c0": t1 has no instrument',
+    );
+  });
+
   it("selects a bare track", () => {
     registerMockObject("track_2", {
       path: livePath.track(2),

@@ -73,9 +73,10 @@ instrument. A rack counts as one device of its own type, so `t0/inst` on a track
 holding a Drum Rack is the rack, never something inside it. Return and main
 tracks hold only audio effects, so `inst` and `mfx<n>` never resolve there.
 Nothing to resolve — no instrument, an index past the last effect of that type —
-warns about the spelling, and the target reports that the path named nothing.
-`instrument`, `midifx<n>` and `audiofx<n>` also parse: tolerated, and
-deliberately documented nowhere but here.
+is reported once, on the target: the miss says what the container does hold
+(`nothing at path "t2/afx2": t2 has 2 audio effects (afx0-afx1)`). `instrument`,
+`midifx<n>` and `audiofx<n>` also parse: tolerated, and deliberately documented
+nowhere but here.
 
 **Input only — a result never emits one.** Spelling `afx<n>` off a Live path
 needs a device-list read on the per-object hot path, where `d<n>` comes free

@@ -14,6 +14,7 @@ import {
 } from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { deviceHasInstrument } from "#src/tools/shared/device/helpers/chain-info.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   type InsertionPathResolution,
   resolveInsertionPath,
@@ -182,15 +183,37 @@ function resolveMoveDestination(
 ): InsertionPathResolution | { reason: string } {
   try {
     // Every caller here got the path from a `toPath` param, so name it that.
-    return resolveInsertionPath(toPath, "toPath");
-  } catch (error) {
-    const reason = errorMessage(error);
+    const destination = resolveInsertionPath(toPath, "toPath");
 
-    return {
-      reason:
-        toPath === reportPath ? reason : reason.replaceAll(toPath, reportPath),
-    };
+    return destination.namesNothing == null
+      ? destination
+      : spelledForCaller(
+          nothingAtPath(toPath, destination.namesNothing, "toPath"),
+          toPath,
+          reportPath,
+        );
+  } catch (error) {
+    return spelledForCaller(errorMessage(error), toPath, reportPath);
   }
+}
+
+/**
+ * A reason worded for the path the caller wrote, which a duplication's temp
+ * track shifted out from under the move.
+ * @param reason - Why the destination didn't resolve
+ * @param toPath - The path the move was aimed at
+ * @param reportPath - How to spell it back to the caller
+ * @returns The reason, respelled
+ */
+function spelledForCaller(
+  reason: string,
+  toPath: string,
+  reportPath: string,
+): { reason: string } {
+  return {
+    reason:
+      toPath === reportPath ? reason : reason.replaceAll(toPath, reportPath),
+  };
 }
 
 /**

@@ -34,6 +34,20 @@ describe("moveDrumChainToPath", () => {
     });
   });
 
+  it("warns what the track holds when toPath names nothing by type", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: children("drumrack-id") },
+    });
+
+    moveDrumChainToPath(LiveAPI.from(chain.path), "t0/afx0/pD1", false);
+
+    expect(capturedWarnings()).toStrictEqual([
+      'nothing at toPath "t0/afx0/pD1": t0 has no audio effects',
+    ]);
+    expect(chain.set).not.toHaveBeenCalled();
+  });
+
   it("should warn and skip when toPath has out-of-range note", () => {
     const chainApi = LiveAPI.from(chain.path);
 

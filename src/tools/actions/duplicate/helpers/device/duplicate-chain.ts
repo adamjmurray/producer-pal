@@ -12,6 +12,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -237,8 +238,17 @@ function resolveDestinationRack(
  * @returns The rack, or null when the path reaches something else
  */
 function rackAtPath(toPath: string): LiveAPI | null {
-  const { liveApiPath, targetType, drumPadNote, remainingSegments } =
-    resolvePathToLiveApi(canonicalPath(toPath));
+  const {
+    liveApiPath,
+    targetType,
+    drumPadNote,
+    remainingSegments,
+    namesNothing,
+  } = resolvePathToLiveApi(canonicalPath(toPath));
+
+  if (namesNothing != null) {
+    throw new Error(nothingAtPath(toPath, namesNothing, "toPath"));
+  }
 
   if (targetType === "drum-pad" && drumPadNote != null) {
     const resolved = resolveDrumPadFromPath(

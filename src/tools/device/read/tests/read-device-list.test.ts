@@ -6,9 +6,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
+  registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
 import { setupBasicDeviceMock } from "./read-device-test-helpers.ts";
@@ -96,6 +98,23 @@ describe("readDevice over a list of targets", () => {
         path: "t9/d0",
         ok: false,
         reason: 'nothing at path "t9/d0"',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps the slot of a type segment that names nothing, and says why", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: children("device-1") },
+    });
+
+    expect(readDevice({ path: "t1/d0,t1/afx0" })).toStrictEqual([
+      device1,
+      {
+        path: "t1/afx0",
+        ok: false,
+        reason: 'nothing at path "t1/afx0": t1 has no audio effects',
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);

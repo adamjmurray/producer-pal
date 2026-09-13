@@ -72,3 +72,29 @@ describe("duplicate device - a toPath entry that names nowhere", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 });
+
+// A type segment that names no device names no source either. Every source has
+// to be known before anything is copied, so the call is refused — and the miss
+// that refused it says what the track does hold.
+describe("duplicate device - a source path that names nothing by type", () => {
+  it("refuses the call, saying what the track holds", async () => {
+    mockNonExistentObjects();
+
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: ["id", "device1"] },
+    });
+    registerMockObject("device1", {
+      path: livePath.track(0).device(0),
+      type: "PluginDevice",
+      properties: { type: 2 },
+    });
+
+    await expect(
+      duplicate({ type: "device", path: "t0/inst" }),
+    ).rejects.toThrow('nothing to duplicate at path "t0/inst"');
+    expect(capturedWarnings()).toStrictEqual([
+      'nothing at path "t0/inst": t0 has no instrument',
+    ]);
+  });
+});

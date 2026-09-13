@@ -63,14 +63,14 @@ describe("resolveInsertionPath by device type", () => {
   // Nothing to insert into, so create-device reports the container missing —
   // and the container it names is the one the call wrote, not the substituted
   // index, which names nothing.
-  it("reports no container when the type segment names nothing", () => {
+  it("reports no container, and why, when the type segment names nothing", () => {
     registerTrack(false);
 
     expect(resolveInsertionPath("t0/inst/c0")).toStrictEqual({
       container: null,
       position: null,
       containerPath: "t0/inst/c0",
-      namesNothing: true,
+      namesNothing: "t0 has no instrument",
     });
   });
 });

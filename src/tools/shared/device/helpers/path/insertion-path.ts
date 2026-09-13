@@ -49,9 +49,9 @@ const TRAILING_POSITION = new RegExp(
 export interface InsertionPathResolution {
   container: LiveAPI | null;
   position: number | null;
-  /** True when a type-addressed segment (`inst`, `afx1`) named no device.
-   * The container may well exist; the warning already said what is there. */
-  namesNothing?: boolean;
+  /** What the container does hold, when a type-addressed segment (`inst`,
+   * `afx1`) named no device. The container may well exist. */
+  namesNothing?: string;
   /** How the call spelled the container, so a result can hand back the
    * caller's own spelling of a drum chain rather than the rack-relative one. */
   containerPath: string;
@@ -84,22 +84,21 @@ export function resolveInsertionPath(
   );
   // A trailing `inst`/`mfx<n>`/`afx<n>` is a position like `d<n>`, so it has to
   // become one before the position is read off it.
-  const { segments: canonical, resolved } = resolveDeviceTypeSegments(
+  const { segments: canonical, namesNothing } = resolveDeviceTypeSegments(
     root,
     segments,
-    path,
-    label,
   );
+  const resolved = namesNothing == null;
   const last = canonical.at(-1);
   const above = containerSegments(canonical);
-  // Unresolved means a type-addressed segment named no device, so a canonical
-  // spelling would name the wrong thing — echo what the call wrote instead.
+  // A type-addressed segment that named no device makes a canonical spelling
+  // name the wrong thing — echo what the call wrote instead.
   const spelled = resolved ? above : containerSegments(segments);
 
   return {
     container: resolved ? resolveContainer(root, above, path) : null,
     position: last?.kind === "device" ? last.index : null,
-    ...(resolved ? {} : { namesNothing: true }),
+    ...(resolved ? {} : { namesNothing }),
     containerPath: formatObjectPath({
       kind: "device",
       root,

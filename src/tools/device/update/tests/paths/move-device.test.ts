@@ -5,7 +5,10 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import {
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "#src/tools/constants.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -46,6 +49,26 @@ describe("moveDeviceToPath", () => {
     ).toStrictEqual({
       outcome: "unresolvable",
       reason: 'Track in path "t99/d0/c0" does not exist',
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("hands back what a destination holds when a type segment names nothing", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: children("effect-1") },
+    });
+    registerMockObject("effect-1", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+      properties: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
+    });
+
+    expect(
+      moveDeviceToPath(LiveAPI.from(device.path), "t1/inst"),
+    ).toStrictEqual({
+      outcome: "unresolvable",
+      reason: 'nothing at toPath "t1/inst": t1 has no instrument',
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });

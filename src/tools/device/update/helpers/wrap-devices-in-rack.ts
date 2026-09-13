@@ -11,6 +11,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   type InsertionPathResolution,
   resolveInsertionPath,
@@ -222,7 +223,17 @@ function resolveDevices(items: NamedTarget[]): ResolvedDevice[] {
  */
 function rackDestination(toPath: string): InsertionPathResolution | null {
   try {
-    return resolveInsertionPath(toPath, "toPath");
+    const destination = resolveInsertionPath(toPath, "toPath");
+
+    if (destination.namesNothing != null) {
+      console.warn(
+        `wrapInRack: ${nothingAtPath(toPath, destination.namesNothing, "toPath")}`,
+      );
+
+      return null;
+    }
+
+    return destination;
   } catch (error) {
     console.warn(`wrapInRack: ${errorMessage(error)}`);
 
@@ -237,6 +248,10 @@ function rackDestination(toPath: string): InsertionPathResolution | null {
  */
 function resolveDeviceFromPath(path: string): LiveAPI | null {
   const resolved = resolveInsertionPath(path);
+
+  if (resolved.namesNothing != null) {
+    throw new Error(nothingAtPath(path, resolved.namesNothing));
+  }
 
   if (!resolved.container) {
     return null;

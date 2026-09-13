@@ -13,6 +13,7 @@ import {
   drumPadPath,
   resolveDrumPadGroup,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   insertionContainerPath,
   resolveDrumPadFromPath,
@@ -81,9 +82,7 @@ export function updateMultipleTargets(
 
     if (!resolved) {
       throw new Error(
-        param === "id"
-          ? `id "${value}" does not exist`
-          : `nothing at path "${value}"`,
+        param === "id" ? `id "${value}" does not exist` : nothingAtPath(value),
       );
     }
 
@@ -165,6 +164,12 @@ function resolvePathToTargetSafe(path: string): ResolvedTarget | null {
  */
 function resolvePathToTarget(path: string): ResolvedTarget | null {
   const resolved = resolvePathToLiveApi(path);
+
+  // A type segment that named no device says what the container holds instead
+  // of the bare miss the substituted position would report.
+  if (resolved.namesNothing != null) {
+    throw new Error(nothingAtPath(path, resolved.namesNothing));
+  }
 
   switch (resolved.targetType) {
     case "device": // fallthrough

@@ -147,14 +147,12 @@ function insertionTarget(
 
   // A type-addressed segment has to become a position before one is read off
   // it. One that names nothing has no target to check the order against.
-  const { segments: canonical, resolved } = resolveDeviceTypeSegments(
+  const { segments: canonical, namesNothing } = resolveDeviceTypeSegments(
     parsed.root,
     parsed.segments,
-    path,
-    "path",
   );
 
-  if (!resolved) {
+  if (namesNothing != null) {
     return null;
   }
 

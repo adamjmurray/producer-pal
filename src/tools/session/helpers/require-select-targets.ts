@@ -152,6 +152,10 @@ function requireClipSlot({
 function requireDevice(devicePath: string): LiveAPI | undefined {
   const resolved = resolvePathToLiveApi(devicePath);
 
+  if (resolved.namesNothing != null) {
+    throw new Error(`no device at "${devicePath}": ${resolved.namesNothing}`);
+  }
+
   if (resolved.targetType !== "device") {
     return undefined;
   }

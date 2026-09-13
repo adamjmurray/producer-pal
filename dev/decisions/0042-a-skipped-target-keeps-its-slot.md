@@ -165,8 +165,11 @@ target, so no entry exists yet to carry them.
   the reason, and no `ok`. A specialized pseudo-param whose `write` refuses the
   value is the one left: it still reports no entry and warns, because that
   contract is a boolean across every device spec.
-- **A type-addressed device path that names nothing still warns as well.**
-  `t0/inst` on a track with no instrument substitutes a fallback index and warns
-  once per request; the entry then says the path found nothing. Folding that
-  warning into the entry's reason belongs with the device-by-type work
-  (ADR-0041).
+- **A type-addressed device path that names nothing reports once.** `t0/inst` on
+  a track with no instrument substitutes a fallback index, and what the
+  container does hold rides back on the resolution instead of a warning: the
+  target's own report carries it
+  (`nothing at path "t0/inst": t0 has no instrument`), whether that is an
+  entry's reason or a single-target error. The fallback index lands one past the
+  last device, so `delete` reads it as the empty place an out-of-range `d<n>`
+  names: `nothing to delete`, and no `ok`.

@@ -303,4 +303,27 @@ describe("readOneDevice with path parameter", () => {
       type: "audio-effect: Reverb",
     });
   });
+
+  // The miss carries what the track does hold, so nothing warns about the same
+  // target beside it.
+  it("says what the track holds when a type segment names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    mockNonExistentObjects();
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: children("operator") },
+    });
+    setupBasicDeviceMock({
+      id: "operator",
+      path: String(livePath.track(0).device(0)),
+      class_display_name: "Operator",
+      type: 1,
+    });
+
+    expect(() => readOneDevice({ path: "t0/afx0" })).toThrow(
+      'nothing at path "t0/afx0": t0 has no audio effects',
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
 });

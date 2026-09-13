@@ -472,6 +472,18 @@ describe("duplicate - chain", () => {
     ).rejects.toThrow("no destination rack at toPath");
   });
 
+  it("says what the track holds when a toPath type segment names nothing", async () => {
+    setupRack();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: children() },
+    });
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t1/inst" }),
+    ).rejects.toThrow('nothing at toPath "t1/inst": t1 has no instrument');
+  });
+
   it("refuses a toPath naming a device that is not there", async () => {
     setupRack();
     mockNonExistentObjects();
