@@ -5,6 +5,7 @@
 
 import {
   formatDeviceSegment,
+  formatObjectPath,
   liveApiCollection,
   parseObjectPath,
   type ObjectPath,
@@ -14,11 +15,16 @@ import {
   trackSegmentPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { warnRackRelativeDrumChainSpelling } from "./device-drumpad-navigation.ts";
+import { resolveDeviceTypeSegments } from "./device-type-segments.ts";
 import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 
 export interface ResolvedPath {
+  /** The path by position, for a result: `t0/d0/pC1/inst` becomes
+   * `t0/d0/pC1/d0`. Left as written when a type segment named nothing, so an
+   * error quotes what the caller wrote rather than a fallback index. */
+  path: string;
   liveApiPath: string;
   targetType: TargetType;
   drumPadNote?: string;
@@ -49,19 +55,31 @@ export function resolveDevicePath(
   label = "path",
 ): ResolvedPath {
   const { root, segments } = requireDevicePath(path, label);
+  // A segment naming a device by type becomes the position it resolves to, so
+  // the walk below only ever indexes.
+  const { segments: canonical, resolved } = resolveDeviceTypeSegments(
+    root,
+    segments,
+    formatObjectPath(path),
+    label,
+  );
+  const spelled = formatObjectPath(
+    resolved ? { kind: "device", root, segments: canonical } : path,
+  );
 
   let liveApiPath = trackSegmentPath(root).toString();
   let targetType: TargetType = "device";
 
-  for (const [index, segment] of segments.entries()) {
+  for (const [index, segment] of canonical.entries()) {
     // Live indexes drum pads by MIDI note, so everything past one only resolves
     // against a live rack — hand the caller the tail to walk itself.
     if (segment.kind === "drum-pad") {
       return {
+        path: spelled,
         liveApiPath,
         targetType: "drum-pad",
         drumPadNote: segment.note,
-        remainingSegments: segments.slice(index + 1).map(formatDeviceSegment),
+        remainingSegments: canonical.slice(index + 1).map(formatDeviceSegment),
       };
     }
 
@@ -73,5 +91,5 @@ export function resolveDevicePath(
     }
   }
 
-  return { liveApiPath, targetType, remainingSegments: [] };
+  return { path: spelled, liveApiPath, targetType, remainingSegments: [] };
 }

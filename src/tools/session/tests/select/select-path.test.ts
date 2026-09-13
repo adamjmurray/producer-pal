@@ -73,6 +73,30 @@ describe("select path param", () => {
     expect(result.selectedDevice?.path).toBe("t1/d0");
   });
 
+  // A trailing `inst` is a device, not something inside a rack, so select
+  // reaches for the device rather than a rack target.
+  it("selects a device named by type", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: ["id", "device_at_path"] },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(1)) + " devices 0",
+      type: "Device",
+      properties: { type: 1 },
+    });
+    const songView = setupSongViewMock();
+
+    const result = select({ path: "t1/inst" });
+
+    expect(songView.call).toHaveBeenCalledWith(
+      "select_device",
+      "id device_at_path",
+    );
+    // select echoes the spelling the call reached the device by.
+    expect(result.selectedDevice?.path).toBe("t1/inst");
+  });
+
   it("selects a bare track", () => {
     registerMockObject("track_2", {
       path: livePath.track(2),

@@ -7,6 +7,7 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolveDevicePath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { resolveDeviceTypeSegments } from "#src/tools/shared/device/helpers/path/device-type-segments.ts";
 import { liveApiAtDevicePath } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import {
   requireDeviceContainer,
@@ -16,6 +17,7 @@ import {
 import {
   formatObjectPath,
   parseObjectPath,
+  type CanonicalDeviceSegment,
   type DeviceSegment,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
@@ -143,10 +145,22 @@ function insertionTarget(
     return null;
   }
 
-  const last = parsed.segments.at(-1);
+  // A type-addressed segment has to become a position before one is read off
+  // it. One that names nothing has no target to check the order against.
+  const { segments: canonical, resolved } = resolveDeviceTypeSegments(
+    parsed.root,
+    parsed.segments,
+    path,
+    "path",
+  );
+
+  if (!resolved) {
+    return null;
+  }
+
+  const last = canonical.at(-1);
   const position = last?.kind === "device" ? last.index : null;
-  const segments =
-    position == null ? parsed.segments : parsed.segments.slice(0, -1);
+  const segments = position == null ? canonical : canonical.slice(0, -1);
   const container = { kind: "device", root: parsed.root, segments } as const;
   const live = peekContainer(parsed.root, segments, chainsMemo);
 
@@ -169,7 +183,7 @@ function insertionTarget(
  */
 function peekContainer(
   root: TrackSegment,
-  segments: DeviceSegment[],
+  segments: CanonicalDeviceSegment[],
   chainsMemo: Map<string, LiveAPI[]>,
 ): LiveAPI | null {
   if (segments.length === 0) {

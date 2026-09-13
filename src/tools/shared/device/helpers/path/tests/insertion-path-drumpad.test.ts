@@ -13,7 +13,7 @@ import {
 import {
   resolveDrumPadFromPath,
   resolveInsertionPath,
-} from "./insertion-path.ts";
+} from "../insertion-path.ts";
 
 // Type for chain properties
 interface ChainProperties {

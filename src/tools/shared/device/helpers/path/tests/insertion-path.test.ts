@@ -16,7 +16,7 @@ import {
   buildDrumPadPath,
   resolvePathToLiveApi,
   resolveInsertionPath,
-} from "./insertion-path.ts";
+} from "../insertion-path.ts";
 
 interface MockLiveApiContext {
   _path?: string;
@@ -234,6 +234,7 @@ describe("insertion-path", () => {
     describe("device paths", () => {
       it("resolves regular track device", () => {
         expect(resolvePathToLiveApi("t1/d0")).toStrictEqual({
+          path: "t1/d0",
           liveApiPath: "live_set tracks 1 devices 0",
           targetType: "device",
           remainingSegments: [],
@@ -242,6 +243,7 @@ describe("insertion-path", () => {
 
       it("resolves return track device", () => {
         expect(resolvePathToLiveApi("rt0/d0")).toStrictEqual({
+          path: "rt0/d0",
           liveApiPath: "live_set return_tracks 0 devices 0",
           targetType: "device",
           remainingSegments: [],
@@ -250,6 +252,7 @@ describe("insertion-path", () => {
 
       it("resolves master track device", () => {
         expect(resolvePathToLiveApi("mt/d0")).toStrictEqual({
+          path: "mt/d0",
           liveApiPath: "live_set master_track devices 0",
           targetType: "device",
           remainingSegments: [],
@@ -258,6 +261,7 @@ describe("insertion-path", () => {
 
       it("resolves nested device in chain", () => {
         expect(resolvePathToLiveApi("t1/d0/c0/d1")).toStrictEqual({
+          path: "t1/d0/c0/d1",
           liveApiPath: "live_set tracks 1 devices 0 chains 0 devices 1",
           targetType: "device",
           remainingSegments: [],
@@ -266,6 +270,7 @@ describe("insertion-path", () => {
 
       it("resolves deeply nested device", () => {
         expect(resolvePathToLiveApi("t2/d0/c1/d2/c3/d4")).toStrictEqual({
+          path: "t2/d0/c1/d2/c3/d4",
           liveApiPath:
             "live_set tracks 2 devices 0 chains 1 devices 2 chains 3 devices 4",
           targetType: "device",
@@ -277,6 +282,7 @@ describe("insertion-path", () => {
     describe("chain paths", () => {
       it("resolves chain path", () => {
         expect(resolvePathToLiveApi("t1/d0/c0")).toStrictEqual({
+          path: "t1/d0/c0",
           liveApiPath: "live_set tracks 1 devices 0 chains 0",
           targetType: "chain",
           remainingSegments: [],
@@ -285,6 +291,7 @@ describe("insertion-path", () => {
 
       it("resolves nested chain path", () => {
         expect(resolvePathToLiveApi("t1/d0/c0/d1/c2")).toStrictEqual({
+          path: "t1/d0/c0/d1/c2",
           liveApiPath:
             "live_set tracks 1 devices 0 chains 0 devices 1 chains 2",
           targetType: "chain",
@@ -294,6 +301,7 @@ describe("insertion-path", () => {
 
       it("resolves master track chain", () => {
         expect(resolvePathToLiveApi("mt/d0/c0")).toStrictEqual({
+          path: "mt/d0/c0",
           liveApiPath: "live_set master_track devices 0 chains 0",
           targetType: "chain",
           remainingSegments: [],
@@ -304,6 +312,7 @@ describe("insertion-path", () => {
     describe("return chain paths", () => {
       it("resolves return chain in rack", () => {
         expect(resolvePathToLiveApi("t1/d0/rc0")).toStrictEqual({
+          path: "t1/d0/rc0",
           liveApiPath: "live_set tracks 1 devices 0 return_chains 0",
           targetType: "return-chain",
           remainingSegments: [],
@@ -312,6 +321,7 @@ describe("insertion-path", () => {
 
       it("resolves device in return chain", () => {
         expect(resolvePathToLiveApi("t1/d0/rc0/d1")).toStrictEqual({
+          path: "t1/d0/rc0/d1",
           liveApiPath: "live_set tracks 1 devices 0 return_chains 0 devices 1",
           targetType: "device",
           remainingSegments: [],
@@ -320,6 +330,7 @@ describe("insertion-path", () => {
 
       it("resolves return chain in return track rack", () => {
         expect(resolvePathToLiveApi("rt0/d0/rc1")).toStrictEqual({
+          path: "rt0/d0/rc1",
           liveApiPath: "live_set return_tracks 0 devices 0 return_chains 1",
           targetType: "return-chain",
           remainingSegments: [],
@@ -330,6 +341,7 @@ describe("insertion-path", () => {
     describe("drum pad paths", () => {
       it("resolves drum pad path", () => {
         expect(resolvePathToLiveApi("t1/d0/pC1")).toStrictEqual({
+          path: "t1/d0/pC1",
           liveApiPath: "live_set tracks 1 devices 0",
           targetType: "drum-pad",
           drumPadNote: "C1",
@@ -339,6 +351,7 @@ describe("insertion-path", () => {
 
       it("resolves drum pad with chain index", () => {
         expect(resolvePathToLiveApi("t1/d0/pC1/c0")).toStrictEqual({
+          path: "t1/d0/pC1/c0",
           liveApiPath: "live_set tracks 1 devices 0",
           targetType: "drum-pad",
           drumPadNote: "C1",
@@ -348,6 +361,7 @@ describe("insertion-path", () => {
 
       it("resolves drum pad with chain and device", () => {
         expect(resolvePathToLiveApi("t1/d0/pC1/c0/d0")).toStrictEqual({
+          path: "t1/d0/pC1/c0/d0",
           liveApiPath: "live_set tracks 1 devices 0",
           targetType: "drum-pad",
           drumPadNote: "C1",
@@ -357,6 +371,7 @@ describe("insertion-path", () => {
 
       it("resolves drum pad with sharp note", () => {
         expect(resolvePathToLiveApi("t1/d0/pF#2")).toStrictEqual({
+          path: "t1/d0/pF#2",
           liveApiPath: "live_set tracks 1 devices 0",
           targetType: "drum-pad",
           drumPadNote: "F#2",
@@ -366,6 +381,7 @@ describe("insertion-path", () => {
 
       it("resolves drum pad with flat note", () => {
         expect(resolvePathToLiveApi("t2/d1/pBb0")).toStrictEqual({
+          path: "t2/d1/pBb0",
           liveApiPath: "live_set tracks 2 devices 1",
           targetType: "drum-pad",
           drumPadNote: "Bb0",

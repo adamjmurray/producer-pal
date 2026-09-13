@@ -35,6 +35,7 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 path     := ( root ( "/" segment )* )? coord?
 root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
 segment  := "s"<n> | "l"<n> | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
+           | "inst" | "mfx"<n> | "afx"<n>
 coord    := "[" position "]"
 position := <bar|beat> | "loc:" <locator>
 ```
@@ -63,6 +64,25 @@ chains, return chains, and drum pads, and each of those holds devices. A drum
 pad also takes a `c<n>`, picking among the chains that share its note. So
 `t0/c0` and `t0/d0/d1` are rejected.
 
+**A device can also be addressed by type.** `inst` is the container's
+instrument, `mfx<n>` its n-th MIDI effect, `afx<n>` its n-th audio effect —
+0-based and counted within that type, because Live keeps a device list sorted
+MIDI effects → instrument → audio effects. These sit anywhere a `d<n>` may and
+nest by the same rules. `inst` takes no index: a container holds at most one
+instrument. A rack counts as one device of its own type, so `t0/inst` on a track
+holding a Drum Rack is the rack, never something inside it. Return and main
+tracks hold only audio effects, so `inst` and `mfx<n>` never resolve there.
+Nothing to resolve — no instrument, an index past the last effect of that type —
+warns and skips like any other path that names nothing. `instrument`,
+`midifx<n>` and `audiofx<n>` also parse: tolerated, and deliberately documented
+nowhere but here.
+
+**Input only — a result never emits one.** Spelling `afx<n>` off a Live path
+needs a device-list read on the per-object hot path, where `d<n>` comes free
+from string manipulation. Making them canonical is a separate decision that
+needs a measurement
+([ADR-0041](decisions/0041-device-type-segments-are-input-only.md)).
+
 | Path           | Names                             | Live API                               |
 | -------------- | --------------------------------- | -------------------------------------- |
 | `t0`           | regular track, or its arrangement | `tracks 0`                             |
@@ -75,6 +95,9 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
+| `t0/inst`      | the track's instrument            | the `devices N` whose `type` is 1      |
+| `t0/mfx0`      | its first MIDI effect             | the first `devices N` with `type` 4    |
+| `t0/afx1`      | its second audio effect           | the second `devices N` with `type` 2   |
 | `t0/d0/c1`     | rack chain                        | `... chains 1`                         |
 | `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                  |
 | `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                     |

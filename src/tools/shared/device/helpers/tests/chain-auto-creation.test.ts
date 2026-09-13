@@ -77,7 +77,10 @@ function resolveContainer(path: string): LiveAPI {
 
   return resolveContainerWithAutoCreate(
     root,
-    segments.filter((segment) => segment.kind !== "drum-pad"),
+    segments.filter(
+      (segment) =>
+        segment.kind !== "drum-pad" && segment.kind !== "device-by-type",
+    ),
     path,
   );
 }

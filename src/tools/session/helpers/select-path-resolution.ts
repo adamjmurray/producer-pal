@@ -11,6 +11,7 @@ import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   formatObjectPath,
   isNewObjectPath,
+  namesDevice,
   NEW_OBJECT_NOUNS,
   parseObjectPath,
   type ObjectPath,
@@ -327,7 +328,7 @@ function deviceChainTarget(
   const formatted = formatObjectPath(path);
   const last = path.segments.at(-1);
 
-  return last == null || last.kind === "device"
+  return last == null || namesDevice(last)
     ? { devicePath: formatted, devicePathParam: "path" }
     : { rackTargetPath: formatted };
 }

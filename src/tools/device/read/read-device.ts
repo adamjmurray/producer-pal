@@ -166,14 +166,14 @@ function readDeviceTarget(
 
     case "chain":
     case "return-chain":
-      return readChain(resolved.liveApiPath, devicePath, options);
+      return readChain(resolved.liveApiPath, resolved.path, options);
 
     case "drum-pad":
       return readDrumPadByPath(
         resolved.liveApiPath,
         resolved.drumPadNote as string,
         resolved.remainingSegments,
-        devicePath,
+        resolved.path,
         options,
       );
 

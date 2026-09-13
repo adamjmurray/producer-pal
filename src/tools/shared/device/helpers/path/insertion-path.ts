@@ -11,14 +11,18 @@ import {
   requireDeviceContainer,
   trackSegmentPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { DEVICE_TYPE_FORMS } from "#src/tools/shared/validation/helpers/object-path-device-tail.ts";
 import {
   formatObjectPath,
+  namesDevice,
   parseObjectPath,
+  type CanonicalDeviceSegment,
   type DeviceSegment,
   type IndexedSegment,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { resolveDevicePath } from "./device-path-to-live-api.ts";
+import { resolveDeviceTypeSegments } from "./device-type-segments.ts";
 import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 // Re-export all functions for backwards compatibility
@@ -32,12 +36,22 @@ export {
   resolveDrumPadFromPath,
 } from "./device-drumpad-navigation.ts";
 
-/** A trailing device position, for a path the grammar couldn't parse. */
-const TRAILING_POSITION = /\/d\d+$/;
+/**
+ * A trailing device position, for a path the grammar couldn't parse. Spelled
+ * from the grammar's own device forms so it can't fall behind them.
+ */
+const TRAILING_POSITION = new RegExp(
+  `/(?:d\\d+|(?:${Object.values(DEVICE_TYPE_FORMS)
+    .flatMap((form) => [form.segment, form.long])
+    .join("|")})\\d*)$`,
+);
 
 export interface InsertionPathResolution {
   container: LiveAPI | null;
   position: number | null;
+  /** True when a type-addressed segment (`inst`, `afx1`) named no device.
+   * The container may well exist; the warning already said what is there. */
+  namesNothing?: boolean;
   /** How the call spelled the container, so a result can hand back the
    * caller's own spelling of a drum chain rather than the rack-relative one. */
   containerPath: string;
@@ -68,13 +82,29 @@ export function resolveInsertionPath(
     parseObjectPath(path, label),
     label,
   );
-  const last = segments.at(-1);
-  const above = containerSegments(segments);
+  // A trailing `inst`/`mfx<n>`/`afx<n>` is a position like `d<n>`, so it has to
+  // become one before the position is read off it.
+  const { segments: canonical, resolved } = resolveDeviceTypeSegments(
+    root,
+    segments,
+    path,
+    label,
+  );
+  const last = canonical.at(-1);
+  const above = containerSegments(canonical);
+  // Unresolved means a type-addressed segment named no device, so a canonical
+  // spelling would name the wrong thing — echo what the call wrote instead.
+  const spelled = resolved ? above : containerSegments(segments);
 
   return {
-    container: resolveContainer(root, above, path),
+    container: resolved ? resolveContainer(root, above, path) : null,
     position: last?.kind === "device" ? last.index : null,
-    containerPath: formatObjectPath({ kind: "device", root, segments: above }),
+    ...(resolved ? {} : { namesNothing: true }),
+    containerPath: formatObjectPath({
+      kind: "device",
+      root,
+      segments: spelled,
+    }),
   };
 }
 
@@ -111,12 +141,12 @@ export function insertionContainerPath(path: string, label = "path"): string {
 // --- Helpers below main exports ---
 
 /**
- * The segments naming the container, dropping a trailing `d<n>` position.
+ * The segments naming the container, dropping a trailing device position.
  * @param segments - Device-chain segments below the root
  * @returns The container's segments
  */
-function containerSegments(segments: DeviceSegment[]): DeviceSegment[] {
-  return segments.at(-1)?.kind === "device" ? segments.slice(0, -1) : segments;
+function containerSegments<T extends DeviceSegment>(segments: T[]): T[] {
+  return namesDevice(segments.at(-1)) ? segments.slice(0, -1) : segments;
 }
 
 /**
@@ -129,7 +159,7 @@ function containerSegments(segments: DeviceSegment[]): DeviceSegment[] {
  */
 function resolveContainer(
   root: TrackSegment,
-  segments: DeviceSegment[],
+  segments: CanonicalDeviceSegment[],
   path: string,
 ): LiveAPI | null {
   const indexed: IndexedSegment[] = [];
@@ -159,7 +189,7 @@ function resolveContainer(
  */
 function resolveDrumPadContainer(
   root: TrackSegment,
-  segments: DeviceSegment[],
+  segments: CanonicalDeviceSegment[],
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
   const rack = liveApiAtDevicePath(resolved.liveApiPath);

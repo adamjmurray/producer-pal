@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
   mockNonExistentObjects,
@@ -273,5 +274,33 @@ describe("readOneDevice with path parameter", () => {
     expect(() => readOneDevice({ path: "t1/d0/pC3" })).toThrow(
       'nothing at path "t1/d0/pC3"',
     );
+  });
+
+  // The instrument sits at d0 and the audio effect at d1, so "afx0" only lands
+  // on the right device if it counts within its own type.
+  it("reads the first audio effect, counted within its type", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      properties: { devices: children("operator", "reverb") },
+    });
+    setupBasicDeviceMock({
+      id: "operator",
+      path: String(livePath.track(0).device(0)),
+      class_display_name: "Operator",
+      type: 1,
+    });
+    setupBasicDeviceMock({
+      id: "reverb",
+      path: String(livePath.track(0).device(1)),
+      class_display_name: "Reverb",
+      type: 2,
+    });
+
+    expect(readOneDevice({ path: "t0/afx0" })).toStrictEqual({
+      id: "reverb",
+      // A result never spells a device by type — d<n> is what comes back.
+      path: "t0/d1",
+      type: "audio-effect: Reverb",
+    });
   });
 });

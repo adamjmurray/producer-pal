@@ -27,6 +27,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=main, \`d\`=device,
 - \`t0/d0/rc0/d0\` = first device in rack's return chain
 - \`t0/d0/pC1/d0\` = first device in Drum Rack's C1 pad
 - \`t0/d0/pC1\` = the whole C1 pad; \`t0/d0/pC1/c1\` = one layer of it, when a pad stacks several chains
+- \`t0/inst\` = the track's instrument, wherever it sits in the chain
+- \`t0/afx0\` / \`t0/mfx0\` = first audio / MIDI effect, counting only that type. Works under any container: \`t0/d0/pC1/inst\`
 
 A \`drumMap\` always comes with \`drumRackPath\`, the rack that owns those pads — build pad paths from it (\`<drumRackPath>/p<note>\`), not from the track's device list, because the kit is often nested inside another rack.
 

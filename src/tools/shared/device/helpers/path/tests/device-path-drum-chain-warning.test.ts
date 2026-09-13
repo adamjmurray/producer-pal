@@ -12,8 +12,8 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { resolveInsertionPath } from "./insertion-path.ts";
-import { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
+import { resolveInsertionPath } from "../insertion-path.ts";
+import { resolvePathToLiveApi } from "../device-path-to-live-api.ts";
 
 /** A rack with one drum chain, on pad C1 (note 36). */
 function registerDrumRack(): void {

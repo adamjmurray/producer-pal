@@ -31,7 +31,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
       .string()
       .optional()
       .describe(
-        "path(s) to read, comma-separated (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')",
+        "path(s) to read, comma-separated (e.g., 't1/d0', 't1/inst', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')",
       ),
 
     include: param(

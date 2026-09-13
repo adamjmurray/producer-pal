@@ -221,7 +221,12 @@ function createDeviceAtPath(
   deviceName: string,
   path: string,
 ): CreateDeviceResult & { device: LiveAPI } {
-  const { container, position, containerPath } = resolveInsertionPath(path);
+  const { container, position, containerPath, namesNothing } =
+    resolveInsertionPath(path);
+
+  if (namesNothing) {
+    throw new Error(`path "${path}" names no device to insert at`);
+  }
 
   if (!container?.exists()) {
     throw new Error(`container at path "${path}" does not exist`);

@@ -30,7 +30,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
-        "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
+        "comma-separated path(s) (e.g., 't1/d0', 't1/inst', 't1/d0/c0', 't1/d0/pC1')",
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
 

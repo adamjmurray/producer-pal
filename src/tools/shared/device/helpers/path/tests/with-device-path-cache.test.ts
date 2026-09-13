@@ -14,7 +14,7 @@ import {
   liveApiAtDevicePath,
   invalidateDevicePathCache,
   withDevicePathCache,
-} from "./with-device-path-cache.ts";
+} from "../with-device-path-cache.ts";
 
 describe("withDevicePathCache", () => {
   const trackPath = livePath.track(0).toString();

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { insertionContainerPath } from "./insertion-path.ts";
+import { insertionContainerPath } from "../insertion-path.ts";
 
 describe("insertionContainerPath", () => {
   it.each([

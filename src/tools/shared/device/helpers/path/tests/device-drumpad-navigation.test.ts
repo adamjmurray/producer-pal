@@ -26,7 +26,7 @@ import {
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
   warnRackRelativeDrumChainSpelling,
-} from "./device-drumpad-navigation.ts";
+} from "../device-drumpad-navigation.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
 

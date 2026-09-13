@@ -105,3 +105,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0038](0038-l-equals-names-the-lane-l-plus-made.md)      | `l=` names the lane the `l+` before it appended (reversed)            |
 | [0039](0039-the-arrangement-timeline-is-state.md)        | The arrangement timeline is state, the playhead is not                |
 | [0040](0040-duplicate-loop-does-not-take-a-region.md)    | `duplicateLoop` does not take a region                                |
+| [0041](0041-device-type-segments-are-input-only.md)      | `inst`/`mfx<n>`/`afx<n>` are input only; results keep `d<n>`          |

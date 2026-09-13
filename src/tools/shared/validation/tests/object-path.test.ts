@@ -9,8 +9,25 @@ import {
   formatDeviceSegment,
   formatObjectPath,
   liveApiCollection,
+  namesDevice,
   parseObjectPath,
+  type DeviceSegment,
 } from "../object-path.ts";
+
+/**
+ * The device-chain segments a path parses to.
+ * @param path - A device path
+ * @returns Its segments below the root
+ */
+function segmentsOf(path: string): DeviceSegment[] {
+  const parsed = parseObjectPath(path);
+
+  if (parsed.kind !== "device") {
+    throw new Error(`"${path}" is not a device path`);
+  }
+
+  return parsed.segments;
+}
 
 describe("parseObjectPath", () => {
   it("reads every root", () => {
@@ -285,7 +302,7 @@ describe("parseObjectPath", () => {
       ["t0/d0/rc0/rc1", /"rc1" can't follow a return chain/],
       [
         "t0/d0/pC1/rc0",
-        /"rc0" can't follow a drum pad; expected "c<index>" or "d<index>"/,
+        /"rc0" can't follow a drum pad; expected "c<index>", "d<index>", "inst"/,
       ],
     ];
 
@@ -459,6 +476,30 @@ describe("formatDeviceSegment", () => {
     expect(formatDeviceSegment({ kind: "return-chain", index: 1 })).toBe("rc1");
     expect(formatDeviceSegment({ kind: "drum-pad", note: "C1" })).toBe("pC1");
   });
+
+  it("drops the index only for an instrument", () => {
+    expect(
+      formatDeviceSegment({
+        kind: "device-by-type",
+        deviceType: "instrument",
+        index: 0,
+      }),
+    ).toBe("inst");
+    expect(
+      formatDeviceSegment({
+        kind: "device-by-type",
+        deviceType: "midi-effect",
+        index: 2,
+      }),
+    ).toBe("mfx2");
+    expect(
+      formatDeviceSegment({
+        kind: "device-by-type",
+        deviceType: "audio-effect",
+        index: 3,
+      }),
+    ).toBe("afx3");
+  });
 });
 
 describe("liveApiCollection", () => {
@@ -468,5 +509,117 @@ describe("liveApiCollection", () => {
     expect(liveApiCollection({ kind: "return-chain", index: 0 })).toBe(
       "return_chains",
     );
+  });
+});
+
+describe("parseObjectPath, devices by type", () => {
+  it("reads the short spellings", () => {
+    expect(segmentsOf("t0/inst")).toStrictEqual([
+      { kind: "device-by-type", deviceType: "instrument", index: 0 },
+    ]);
+    expect(segmentsOf("t0/mfx0")).toStrictEqual([
+      { kind: "device-by-type", deviceType: "midi-effect", index: 0 },
+    ]);
+    expect(segmentsOf("t0/afx1")).toStrictEqual([
+      { kind: "device-by-type", deviceType: "audio-effect", index: 1 },
+    ]);
+  });
+
+  it("reads the long spellings the same way", () => {
+    expect(segmentsOf("t0/instrument")).toStrictEqual(segmentsOf("t0/inst"));
+    expect(segmentsOf("t0/midifx2")).toStrictEqual(segmentsOf("t0/mfx2"));
+    expect(segmentsOf("t0/audiofx3")).toStrictEqual(segmentsOf("t0/afx3"));
+  });
+
+  it("renders back as the short spelling, whichever was written", () => {
+    const cases: Array<[string, string]> = [
+      ["t0/inst", "t0/inst"],
+      ["t0/instrument", "t0/inst"],
+      ["t0/mfx0", "t0/mfx0"],
+      ["t0/midifx12", "t0/mfx12"],
+      ["t0/afx1", "t0/afx1"],
+      ["t0/audiofx1", "t0/afx1"],
+      ["t0/d0/pC1/c1/afx0", "t0/d0/pC1/c1/afx0"],
+      ["rt2/afx0", "rt2/afx0"],
+      ["mt/afx1", "mt/afx1"],
+    ];
+
+    for (const [input, canonical] of cases) {
+      expect(formatObjectPath(parseObjectPath(input))).toBe(canonical);
+    }
+  });
+
+  it("takes a device by type anywhere a d<index> may sit", () => {
+    const accepted = [
+      "t0/inst",
+      "t0/mfx0",
+      "t0/afx1",
+      "t0/d0/c0/inst",
+      "t0/d0/rc0/afx0",
+      "t0/d0/pC1/inst",
+      "t0/d0/pC1/c1/afx0",
+      "t0/inst/c0/afx0",
+      "rt0/afx0",
+      "mt/afx1",
+    ];
+
+    for (const path of accepted) {
+      expect(() => parseObjectPath(path)).not.toThrow();
+    }
+  });
+
+  it("rejects an index on inst: a container holds one instrument", () => {
+    expect(() => parseObjectPath("t0/inst0")).toThrow(
+      '"inst0" takes no index; a container holds one instrument, so it is just "inst"',
+    );
+    expect(() => parseObjectPath("t0/instrument1")).toThrow(
+      '"instrument1" takes no index',
+    );
+  });
+
+  it("rejects an effect with no index, naming the first one", () => {
+    expect(() => parseObjectPath("t0/afx")).toThrow(
+      '"afx" needs an index; the first audio effect is "afx0"',
+    );
+    expect(() => parseObjectPath("t0/mfx")).toThrow(
+      '"mfx" needs an index; the first MIDI effect is "mfx0"',
+    );
+    expect(() => parseObjectPath("t0/audiofx")).toThrow(
+      '"audiofx" needs an index; the first audio effect is "afx0"',
+    );
+  });
+
+  it("nests like d<index>: not under another device", () => {
+    expect(() => parseObjectPath("t0/inst/inst")).toThrow(
+      `"inst" can't follow a device`,
+    );
+    expect(() => parseObjectPath("t0/d0/afx0")).toThrow(
+      `"afx0" can't follow a device`,
+    );
+    expect(() => parseObjectPath("t0/afx0/d1")).toThrow(
+      `"d1" can't follow a device`,
+    );
+  });
+
+  it("offers the new forms wherever a device may go", () => {
+    expect(() => parseObjectPath("t0/c0")).toThrow(
+      `expected "d<index>", "inst", "mfx<index>", or "afx<index>"`,
+    );
+  });
+});
+
+describe("namesDevice", () => {
+  it("counts both device spellings and nothing else", () => {
+    expect(namesDevice({ kind: "device", index: 1 })).toBe(true);
+    expect(
+      namesDevice({
+        kind: "device-by-type",
+        deviceType: "audio-effect",
+        index: 0,
+      }),
+    ).toBe(true);
+    expect(namesDevice({ kind: "chain", index: 0 })).toBe(false);
+    expect(namesDevice({ kind: "drum-pad", note: "C1" })).toBe(false);
+    expect(namesDevice(undefined)).toBe(false);
   });
 });
