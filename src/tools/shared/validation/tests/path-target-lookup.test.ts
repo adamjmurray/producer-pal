@@ -6,24 +6,47 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  capturedWarnings,
-  clearCapturedWarnings,
-} from "#src/shared/max/v8-warning-capture.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { sceneIdPerPath, trackIdPerPath } from "../path-target-lookup.ts";
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { sceneIdAtPath, trackIdAtPath } from "../path-target-lookup.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
-describe("trackIdPerPath", () => {
+describe("trackIdAtPath", () => {
   beforeEach(() => {
-    clearCapturedWarnings();
     registerMockObject("t0", { path: livePath.track(0) });
   });
 
-  it("names the track at each path, in order", () => {
-    registerMockObject("rt0", { path: livePath.returnTrack(0) });
-    registerMockObject("mt", { path: livePath.masterTrack() });
+  it.each([
+    ["t0", livePath.track(0)],
+    ["rt0", livePath.returnTrack(0)],
+    ["mt", livePath.masterTrack()],
+  ])("names the track at %s", (path, livePathForTrack) => {
+    registerMockObject(path, { path: livePathForTrack });
 
-    expect(trackIdPerPath("t0, rt0, mt")).toStrictEqual(["t0", "rt0", "mt"]);
+    expect(trackIdAtPath(path)).toStrictEqual({ id: path });
+  });
+
+  // An addressable place with no track in it: the caller decides what that
+  // costs, so it is reported rather than raised.
+  it("reports an empty place, with the noun it was looking for", () => {
+    mockNonExistentObjects();
+
+    expect(trackIdAtPath("t9")).toStrictEqual({
+      id: null,
+      reason: 'no track at path "t9"',
+      empty: true,
+    });
+  });
+
+  it("names the param the path came from", () => {
+    mockNonExistentObjects();
+
+    expect(trackIdAtPath("t9", "toPath")).toStrictEqual({
+      id: null,
+      reason: 'no track at toPath "t9"',
+      empty: true,
+    });
   });
 
   // Every kind a path can name gets its own noun, so the model is told what it
@@ -34,46 +57,33 @@ describe("trackIdPerPath", () => {
     ["t0/l0", "a take lane"],
     ["t0/d1", "a device"],
     ["t0[5|1]", "an arrangement clip"],
-  ])("says %s names %s, not a track", (path, noun) => {
-    expect(trackIdPerPath(path)).toStrictEqual([null]);
-    expect(capturedWarnings()).toContain(
+    // A "+" root would otherwise be described by the default arm as "a track",
+    // making the message read "names a track, not a track".
+    ["s+", "a new scene"],
+  ])("throws that %s names %s, not a track", (path, noun) => {
+    expect(() => trackIdAtPath(path)).toThrow(
       `invalid path "${path}" - names ${noun}, not a track; expected "t<index>", "rt<index>", or "mt"`,
-    );
-  });
-
-  it("keeps a bad entry's place so the good ones stay put", () => {
-    expect(trackIdPerPath("s1,t0")).toStrictEqual([null, "t0"]);
-  });
-
-  it("refuses a hole in the list", () => {
-    // Nothing can line up against a list whose length is a guess, so this is
-    // refused before anything runs — the same as a hole in `id`.
-    expect(() => trackIdPerPath("t0,,t1")).toThrow(/empty entry/);
-  });
-
-  it("ignores one trailing comma", () => {
-    expect(trackIdPerPath("t0,")).toStrictEqual(["t0"]);
-  });
-  // A "+" root would otherwise be described by the default arm as "a track",
-  // making the message read "names a track, not a track".
-  it("says a path names something to create, not a track", () => {
-    expect(trackIdPerPath("s+")).toStrictEqual([null]);
-    expect(capturedWarnings()).toContain(
-      'invalid path "s+" - names a new scene, not a track; expected "t<index>", "rt<index>", or "mt"',
     );
   });
 });
 
-describe("sceneIdPerPath", () => {
+describe("sceneIdAtPath", () => {
   beforeEach(() => {
-    clearCapturedWarnings();
     registerMockObject("s0", { path: livePath.scene(0) });
   });
 
-  it("names the scene at each path, in order", () => {
-    registerMockObject("s2", { path: livePath.scene(2) });
+  it("names the scene a path holds", () => {
+    expect(sceneIdAtPath("s0")).toStrictEqual({ id: "s0" });
+  });
 
-    expect(sceneIdPerPath("s0,s2")).toStrictEqual(["s0", "s2"]);
+  it("reports an empty place", () => {
+    mockNonExistentObjects();
+
+    expect(sceneIdAtPath("s9")).toStrictEqual({
+      id: null,
+      reason: 'no scene at path "s9"',
+      empty: true,
+    });
   });
 
   it.each([
@@ -81,9 +91,8 @@ describe("sceneIdPerPath", () => {
     ["rt1", "a track"],
     ["mt", "a track"],
     ["t0/s1", "a clip slot"],
-  ])("says %s names %s, not a scene", (path, noun) => {
-    expect(sceneIdPerPath(path)).toStrictEqual([null]);
-    expect(capturedWarnings()).toContain(
+  ])("throws that %s names %s, not a scene", (path, noun) => {
+    expect(() => sceneIdAtPath(path)).toThrow(
       `invalid path "${path}" - names ${noun}, not a scene; expected "s<index>"`,
     );
   });

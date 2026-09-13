@@ -17,7 +17,7 @@ export const objectPaths = `## Addressing Tracks and Scenes
 
 A \`path\` names an object by where it is, counting from 0: \`t0\` is the first track, \`s0\` the first scene, \`rt0\` the first return track, \`mt\` the main track. Reads report a \`path\` beside every \`id\` and the write tools take one, so what you just read is what you address next — no re-reading an object to learn its id.
 
-Reads take a comma-separated list too: \`path: "t0,t2"\` returns one entry per target in order, and a target that can't be read is \`ok: false\` with a \`reason\`. One target returns the object, not an array.
+Reads take a comma-separated list too: \`path: "t0,t2"\` returns one entry per target in order, and a target the call couldn't carry out is \`ok: false\` with a \`reason\` — reads and writes alike. One target returns the object, not an array, and errors instead of reporting.
 
 **A number the user says is 1-based — subtract one.** Their "scene 1" is \`s0\`, their "scene 3" is \`s2\`, their "track 3" is \`t2\`. Live labels scenes from 1 too, so the scene shown as "3" is also \`s2\`. Never pass their number straight through.
 

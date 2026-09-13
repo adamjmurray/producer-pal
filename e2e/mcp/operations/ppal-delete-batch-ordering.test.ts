@@ -40,7 +40,8 @@ const ctx = setupMcpTestContext();
 interface DeleteResult {
   id: string;
   type: string;
-  deleted: boolean;
+  ok?: false;
+  reason?: string;
 }
 
 interface ArrangementClipsResult {
@@ -81,7 +82,11 @@ describe("ppal-delete batch ordering", () => {
       3,
     );
 
-    expect(deleted.map((d) => d.deleted)).toStrictEqual([true, true, true]);
+    expect(deleted.map((d) => d.ok)).toStrictEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect(deleted.map((d) => d.id)).toStrictEqual(ids.slice(0, 3));
 
     await sleep(150);
@@ -112,7 +117,11 @@ describe("ppal-delete batch ordering", () => {
     });
     const deleted = parseBatchResult<DeleteResult>(result, 3);
 
-    expect(deleted.map((d) => d.deleted)).toStrictEqual([true, true, true]);
+    expect(deleted.map((d) => d.ok)).toStrictEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect(getToolWarnings(result)).toStrictEqual([]);
 
     await sleep(250);

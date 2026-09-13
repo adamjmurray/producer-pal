@@ -55,7 +55,7 @@ can pass straight back into the next call, instead of scattering `trackIndex`,
 | create-scene, read-scene, read-live-set         | `sceneIndex` removed                                           | parse `path` (`s2`)                                                             |
 | create-device                                   | `deviceIndex` removed                                          | parse `path` (`t1/d2`)                                                          |
 | every clip result                               | `arrangementStart` removed                                     | the clip's `path` carries it: `t0[5\|1]`                                        |
-| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on `deleted`: read `deletedPath` when true, `path` when false            |
+| `ppal-delete`                                   | a successful delete reports `deletedPath`, not `path`          | branch on the key: `deletedPath` means removed, `path` means still there        |
 | `ppal-playback`                                 | `currentTime` removed                                          | it was never the playhead; read `startTime` for where the next play begins      |
 | `ppal-playback`                                 | `arrangementLoop: {start, end}` → `loop`/`loopStart`/`loopEnd` | read the three flat fields                                                      |
 | `ppal-playback`                                 | `sceneIndex`, `sceneName` → `scene: {id, path, name}`          | read `scene.name`; `scene.path` is an address you can spend                     |
@@ -86,6 +86,22 @@ take comma-separated `id`/`path` lists, and a call naming two or more targets
 returns an array in request order, with a target that couldn't be read holding
 its slot as `{id or path, ok: false, reason}`. Naming one target still returns
 the object on its own.
+
+**Every write tool now answers the same way, and `ppal-delete` has no `deleted`
+field.** `ppal-update-track`, `-scene` and `-device` used to drop a target they
+couldn't reach and warn. They return an entry for every target named, in order,
+with a failed one holding its slot as `{id or path, ok: false, reason}`, so
+`update-track` with `path: "t0,t99"` is now a two-entry array. `ok` appears only
+on a skip, never on a success. On `ppal-delete`, `deleted: true` is gone
+(`deletedPath` already says the object was removed) and `deleted: false` is now
+either `ok: false` with a `reason`, or, for a target that was already gone,
+`reason: "nothing to delete"` with no `ok`. Check for `ok`, not `deleted`.
+
+**A call naming one target that can't be done now throws** instead of returning
+an empty array with a warning. `ppal-update-track path="t99"` is an error;
+deleting something already gone is not, since nothing was left to do.
+`ppal-update-live-set`'s locator result also carries prose in `reason` now, in
+place of slugs like `locator_not_found`.
 
 ### Three values read differently without the field changing
 

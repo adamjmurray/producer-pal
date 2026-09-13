@@ -106,3 +106,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0039](0039-the-arrangement-timeline-is-state.md)        | The arrangement timeline is state, the playhead is not                |
 | [0040](0040-duplicate-loop-does-not-take-a-region.md)    | `duplicateLoop` does not take a region                                |
 | [0041](0041-device-type-segments-are-input-only.md)      | `inst`/`mfx<n>`/`afx<n>` are input only; results keep `d<n>`          |
+| [0042](0042-a-skipped-target-keeps-its-slot.md)          | A skipped target keeps its slot: `ok: false` and a reason             |

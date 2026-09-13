@@ -73,9 +73,9 @@ instrument. A rack counts as one device of its own type, so `t0/inst` on a track
 holding a Drum Rack is the rack, never something inside it. Return and main
 tracks hold only audio effects, so `inst` and `mfx<n>` never resolve there.
 Nothing to resolve — no instrument, an index past the last effect of that type —
-warns and skips like any other path that names nothing. `instrument`,
-`midifx<n>` and `audiofx<n>` also parse: tolerated, and deliberately documented
-nowhere but here.
+warns about the spelling, and the target reports that the path named nothing.
+`instrument`, `midifx<n>` and `audiofx<n>` also parse: tolerated, and
+deliberately documented nowhere but here.
 
 **Input only — a result never emits one.** Spelling `afx<n>` off a Live path
 needs a device-list read on the per-object hot path, where `d<n>` comes free
@@ -186,8 +186,8 @@ addressing a specific clip refuses it. Both partials work as destinations.
 
 `t0[5|1]` resolves to the clip **covering** `5|1`, even if it started earlier —
 a clip running from 3|1 through bar 6 is at `[5|1]`. When no clip covers the
-position, the path resolves to nothing and the call warns and skips like any
-other target that isn't there (ADR-0035).
+position, the path resolves to nothing and the target is reported like any other
+that isn't there (ADR-0042).
 
 ### Which lists pair and which broadcast
 
@@ -234,9 +234,9 @@ user to delete. MIDI really empties — the notes go. Audio can't: a clip's samp
 can't be swapped, and writing a silent clip over it fails too, because an
 arrangement clip's extent can't be stretched from the LOM (`end_marker` and
 `loop_end` accept the write, `end_time` doesn't follow). So an audio take is
-only muted. Everything else that needs the original gone (`arrangementSplit`,
-`arrangementLength`, `ppal-delete`) still warns and skips. Deleting and comping
-stay in Live's UI.
+only muted. Everything else that needs the original gone still refuses it:
+`arrangementSplit` and `arrangementLength` warn and skip, and `ppal-delete`
+reports the clip `ok: false`. Deleting and comping stay in Live's UI.
 
 ## Tolerance
 
@@ -306,7 +306,9 @@ names a different track, so it addresses nothing worth calling again. `path`
 means the target outlived the call — a drum pad, whose 128 slots are permanent,
 so a delete clears its chains and leaves the slot. The rack then reads exactly
 as it would for a pad that was never filled; see
-[ADR-0034](decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md).
+[ADR-0034](decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md). There is
+no `deleted` flag: the key is the answer, and a target the call couldn't delete
+says so as a skip.
 
 | Object                 | Result                        |
 | ---------------------- | ----------------------------- |
@@ -420,6 +422,15 @@ list making the same point several times over only gets told once.
 
 A path param takes a comma-separated list (`paths` is accepted as a plural
 spelling wherever `path` is).
+
+**Every target named gets an entry, in the order named.** A target the call
+couldn't carry out keeps its slot as `{ id | path, ok: false, reason }`, under
+the param that named it and spelled as the caller wrote it — reads and writes
+alike. `ok` is on skips only, and a skip is never also a warning. One target is
+unwrapped and throws instead, having nothing to report. A target that needed no
+work (a `delete` of something already gone) is not a skip: its normal entry
+carries a `reason` and no `ok`. See
+[ADR-0042](decisions/0042-a-skipped-target-keeps-its-slot.md).
 
 **Creating tracks and scenes reads the list in the caller's coordinates.** Every
 entry names a place in the Set as the caller read it, so `t+,t+,t+` appends

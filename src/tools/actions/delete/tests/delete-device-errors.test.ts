@@ -12,7 +12,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { deleteObject } from "../delete.ts";
 
 describe("deleteObject device path error cases", () => {
-  it("should warn when device path through drum pad does not exist", () => {
+  it("reports a device path through a drum pad that holds nothing", () => {
     const consoleSpy = vi.spyOn(console, "warn");
     const drumRackPath = livePath.track(0).device(0);
     const chainId = "chain-1";
@@ -41,14 +41,12 @@ describe("deleteObject device path error cases", () => {
     expect(result).toStrictEqual({
       path: "t0/d0/pC1/c0/d0",
       type: "device",
-      deleted: false,
+      reason: "nothing to delete",
     });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'device at path "t0/d0/pC1/c0/d0" does not exist',
-    );
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it("should warn when device type requested but path resolves to chain", () => {
+  it("refuses a device delete whose path resolves to a chain", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 
     registerMockObject("device_0", {
@@ -63,38 +61,24 @@ describe("deleteObject device path error cases", () => {
     });
 
     // Path t0/d0/c0 resolves to chain, not device
-    const result = deleteObject({ path: "t0/d0/c0", type: "device" });
-
-    expect(result).toStrictEqual({
-      path: "t0/d0/c0",
-      type: "device",
-      deleted: false,
-    });
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(() => deleteObject({ path: "t0/d0/c0", type: "device" })).toThrow(
       'path "t0/d0/c0" resolves to chain, not device',
     );
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when path resolution throws an error", () => {
+  it("refuses a malformed path with the message it raised", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 
     // Path with invalid format that causes resolvePathToLiveApi to throw
     // "t0/p" is invalid because drum pad notation requires a note (like "pC1")
-    const result = deleteObject({ path: "t0/d0/p", type: "device" });
-
-    expect(result).toStrictEqual({
-      path: "t0/d0/p",
-      type: "device",
-      deleted: false,
-    });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'invalid path "t0/d0/p" - "p" is not a device, chain, or drum pad',
-      ),
+    expect(() => deleteObject({ path: "t0/d0/p", type: "device" })).toThrow(
+      'invalid path "t0/d0/p" - "p" is not a device, chain, or drum pad',
     );
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when device path has no parent segment", () => {
+  it("refuses a device whose Live path has no parent segment", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 
     // A device path that begins with "devices N" has nothing before the last
@@ -104,19 +88,13 @@ describe("deleteObject device path error cases", () => {
       type: "Device",
     });
 
-    const result = deleteObject({ id: "orphan-device", type: "device" });
-
-    expect(result).toStrictEqual({
-      id: "orphan-device",
-      type: "device",
-      deleted: false,
-    });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'no parent path for device id orphan-device (Live path "devices 0"), skipping',
+    expect(() => deleteObject({ id: "orphan-device", type: "device" })).toThrow(
+      'no parent path for device id orphan-device (Live path "devices 0")',
     );
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it("should warn when direct device path does not exist", () => {
+  it("reports a direct device path that holds nothing", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 
     // Register as non-existent (id "0" makes exists() return false)
@@ -127,10 +105,8 @@ describe("deleteObject device path error cases", () => {
     expect(result).toStrictEqual({
       path: "t0/d0",
       type: "device",
-      deleted: false,
+      reason: "nothing to delete",
     });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'device at path "t0/d0" does not exist',
-    );
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 });

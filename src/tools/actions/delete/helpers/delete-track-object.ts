@@ -6,7 +6,6 @@
 // Deleting a track, where the Live call depends on which kind of track it is.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -15,22 +14,18 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
  * @param id - The object ID
  * @param object - The object to delete
  * @param confirmDeleted - Checks the object is actually gone afterwards
- * @returns true if the track is gone, false if skipped or Live refused
+ * @returns null if the track is gone, else why it wasn't deleted
  */
 export function deleteTrackObject(
   id: string,
   object: LiveAPI,
-  confirmDeleted: (type: string, id: string) => boolean,
-): boolean {
+  confirmDeleted: (type: string, id: string) => string | null,
+): string | null {
   // The main track is always there; Live has no call to remove it. Say that,
   // rather than falling through to the "no track index" message below, which
   // reads like something went wrong inside us.
   if (object.path === String(livePath.masterTrack())) {
-    console.warn(
-      `Live has no way to delete the main track ${targetLabel(object)}, skipping`,
-    );
-
-    return false;
+    return `Live has no way to delete the main track ${targetLabel(object)}`;
   }
 
   // Check for return track first
@@ -49,21 +44,13 @@ export function deleteTrackObject(
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
 
   if (Number.isNaN(trackIndex)) {
-    console.warn(
-      `no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
-    );
-
-    return false;
+    return `no track index for ${targetLabel(object)} (Live path "${object.path}")`;
   }
 
   const hostTrackIndex = getHostTrackIndex();
 
   if (trackIndex === hostTrackIndex) {
-    console.warn(
-      `cannot delete track ${targetLabel(object)}, which hosts the Producer Pal device, skipping`,
-    );
-
-    return false;
+    return `cannot delete track ${targetLabel(object)}, which hosts the Producer Pal device`;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);

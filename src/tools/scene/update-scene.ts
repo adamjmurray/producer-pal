@@ -6,14 +6,17 @@
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
-import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+import {
+  targetObject,
+  writeFanOut,
+  type WriteResult,
+} from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { sceneIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
@@ -51,7 +54,7 @@ interface UpdateSceneArgs {
  * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
  * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
- * @returns Single scene object or array of scene objects
+ * @returns The scene when one was named, otherwise one entry per target
  */
 export function updateScene(
   {
@@ -66,15 +69,10 @@ export function updateScene(
     focus,
   }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
-): UpdateSceneResult | UpdateSceneResult[] {
-  const {
-    ids: sceneIds,
-    parsedNames,
-    parsedColors,
-  } = resolveLabeledTargets({
+): WriteResult<UpdateSceneResult> {
+  const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
     noun: "scene",
     targets: { id, ids, path, paths },
-    idPerPath: sceneIdPerPath,
     name,
     color,
   });
@@ -88,28 +86,11 @@ export function updateScene(
     parseTimeSignature(timeSignature);
   }
 
-  const updatedScenes: UpdateSceneResult[] = [];
+  // The scenes written, for focus — which follows the call, not a target.
+  const written: string[] = [];
 
-  for (let i = 0; i < sceneIds.length; i++) {
-    const sceneId = sceneIds[i];
-
-    // A path that named no scene already warned; it keeps its slot so later
-    // names/colors don't shift onto the wrong scene.
-    if (sceneId == null) {
-      continue;
-    }
-
-    // Validate one id at a time (skip invalid) so the loop index stays aligned
-    // to the original ids: a skipped id must not pull later names/colors forward
-    // onto the wrong scene.
-    const [scene] = validateIdTypes([sceneId], "scene", {
-      skipInvalid: true,
-    });
-
-    if (scene == null) {
-      continue;
-    }
-
+  const result = writeFanOut(targets, (target, i) => {
+    const scene = targetObject(target, "scene", sceneIdAtPath);
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);
 
@@ -125,19 +106,20 @@ export function updateScene(
 
     applyTempoProperty(scene, tempo);
     applyTimeSignatureProperty(scene, timeSignature);
+    written.push(scene.id);
 
     // Build optimistic result object
-    updatedScenes.push({
+    return {
       id: scene.id,
       ...pathField(scene),
-    });
+    };
+  });
+
+  const lastScene = written.at(-1);
+
+  if (focus && lastScene != null) {
+    focusSelect({ view: "session", id: lastScene });
   }
 
-  if (focus && updatedScenes.length > 0) {
-    const lastScene = updatedScenes.at(-1) as UpdateSceneResult;
-
-    focusSelect({ view: "session", id: lastScene.id });
-  }
-
-  return unwrapSingleResult(updatedScenes);
+  return result;
 }

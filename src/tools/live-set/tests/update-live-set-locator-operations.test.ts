@@ -111,15 +111,15 @@ describe("updateLiveSet - locator operations", () => {
 
       // Should NOT call set_or_delete_cue (would delete existing locator)
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
+      // The locator asked for is already there, so the create needed no work:
+      // the entry says why and carries no `ok`.
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "locator_exists",
+        reason: "a locator is already at 5|1",
         time: "5|1",
         existingId: "locator-0",
       });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Locator already exists at 5|1"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should skip if locatorTime is missing for create", async () => {
@@ -129,11 +129,10 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "missing_locatorTime",
+        ok: false,
+        reason: "create needs locatorTime",
       });
-      expect(capturedWarnings()).toContain(
-        "locatorTime is required for create operation",
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 
@@ -283,11 +282,10 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "missing_identifier",
+        ok: false,
+        reason: "delete needs locatorId, locatorTime, or locatorName",
       });
-      expect(capturedWarnings()).toContain(
-        "delete requires locatorId, locatorTime, or locatorName",
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should skip if locator ID not found", async () => {
@@ -299,12 +297,10 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "locator_not_found",
+        reason: 'nothing to delete: no locator with id "locator-99"',
         id: "locator-99",
       });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Locator not found: locator-99"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should skip if no locator at specified time", async () => {
@@ -316,12 +312,10 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "locator_not_found",
+        reason: "nothing to delete: no locator at 100|1",
         time: "100|1",
       });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("No locator found at position: 100|1"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("does not delete every nameless locator when locatorName is empty", async () => {
@@ -343,7 +337,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "no_locators_found",
+        reason: 'nothing to delete: no locator named ""',
         name: "",
       });
     });
@@ -357,12 +351,10 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "no_locators_found",
+        reason: 'nothing to delete: no locator named "NonExistent"',
         name: "NonExistent",
       });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("No locators found with name: NonExistent"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 
@@ -416,11 +408,10 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "missing_locatorName",
+        ok: false,
+        reason: "rename needs locatorName",
       });
-      expect(capturedWarnings()).toContain(
-        "locatorName is required for rename operation",
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should skip if no identifier provided for rename", async () => {
@@ -431,11 +422,10 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "missing_identifier",
+        ok: false,
+        reason: "rename needs locatorId or locatorTime",
       });
-      expect(capturedWarnings()).toContain(
-        "rename requires locatorId or locatorTime",
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should skip if locator ID not found for rename", async () => {
@@ -447,12 +437,11 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "locator_not_found",
+        ok: false,
+        reason: 'no locator with id "locator-99"',
         id: "locator-99",
       });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("locator not found: locator-99"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should skip if no locator found at specified time for rename", async () => {
@@ -464,12 +453,11 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: "locator_not_found",
+        ok: false,
+        reason: "no locator at 100|1",
         time: "100|1",
       });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("no locator found at position: 100|1"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

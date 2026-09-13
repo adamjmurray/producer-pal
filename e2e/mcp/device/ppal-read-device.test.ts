@@ -15,7 +15,7 @@ import {
   parseAliasedToolResult,
   parseBatchResult,
   parseToolResult,
-  type ReadMissResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -251,7 +251,7 @@ describe("ppal-read-device over a list of targets", () => {
   it("keeps a slot for a device that isn't there and reads the rest", async () => {
     // t8 is the empty track, so t8/d0 names nothing. The reason carries the
     // Live API path, which says which object was missing.
-    const entries = parseBatchResult<ReadDeviceResult | ReadMissResult>(
+    const entries = parseBatchResult<ReadDeviceResult | SkippedTargetResult>(
       await readDevices({ path: "t3/d1,t8/d0,t1/d0" }),
       3,
     );

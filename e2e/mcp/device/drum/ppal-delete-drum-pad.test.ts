@@ -33,7 +33,8 @@ interface DrumPadInfo {
 interface DeleteResult {
   id: string;
   type: string;
-  deleted: boolean;
+  ok?: false;
+  reason?: string;
 }
 
 describe("ppal-delete drum-pad", () => {
@@ -70,7 +71,7 @@ describe("ppal-delete drum-pad", () => {
       }),
     );
 
-    expect(deleted.deleted).toBe(true);
+    expect(deleted.ok).toBeUndefined();
 
     await sleep(150);
 

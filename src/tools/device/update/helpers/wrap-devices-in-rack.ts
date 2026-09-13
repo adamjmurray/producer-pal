@@ -17,7 +17,10 @@ import {
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
-import { type TargetItem, targetItems } from "../update-device.ts";
+import {
+  namedTargets,
+  type NamedTarget,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   pathField,
   targetLabel,
@@ -62,7 +65,7 @@ export function wrapDevicesInRack({
   toPath,
   name,
 }: WrapDevicesOptions): WrapResult | null {
-  const devices = resolveDevices(targetItems(ids, path));
+  const devices = resolveDevices(namedTargets({ id: ids, path }));
 
   if (devices.length === 0) {
     console.warn("wrapInRack: no devices found");
@@ -81,7 +84,7 @@ export function wrapDevicesInRack({
     // Live allows one instrument per track, so a second move onto the staging
     // track would silently do nothing — refuse before anything is staged.
     if (devices.length > 1) {
-      const named = devices.map((d) => `${d.kind} "${d.value}"`).join(", ");
+      const named = devices.map((d) => `${d.param} "${d.value}"`).join(", ");
 
       throw new Error(
         `wrapInRack can wrap only one instrument at a time; ` +
@@ -166,24 +169,24 @@ export function wrapDevicesInRack({
 }
 
 /** A device the call named, alongside the param and spelling that named it. */
-interface ResolvedDevice extends TargetItem {
+interface ResolvedDevice extends NamedTarget {
   device: LiveAPI;
 }
 
 /**
  * Resolve the devices a call named to LiveAPI objects
  * @param items - The targets, each tagged with the param it came from
- * @returns Array of resolved devices, each still carrying its own kind/value
+ * @returns Array of resolved devices, each still carrying its own param/value
  */
-function resolveDevices(items: TargetItem[]): ResolvedDevice[] {
+function resolveDevices(items: NamedTarget[]): ResolvedDevice[] {
   const devices: ResolvedDevice[] = [];
 
   for (const item of items) {
-    const { value, kind } = item;
+    const { value, param } = item;
 
     try {
       const device =
-        kind === "id" ? LiveAPI.from(value) : resolveDeviceFromPath(value);
+        param === "id" ? LiveAPI.from(value) : resolveDeviceFromPath(value);
 
       if (!device?.exists()) {
         console.warn(`wrapInRack: device not found at "${value}"`);

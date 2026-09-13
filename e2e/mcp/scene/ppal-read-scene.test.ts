@@ -17,7 +17,7 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
-  type ReadMissResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -194,7 +194,7 @@ describe("ppal-read-scene over a list of targets", () => {
   });
 
   it("keeps a slot for a scene past the end and reads the rest", async () => {
-    const entries = parseBatchResult<ReadSceneResult | ReadMissResult>(
+    const entries = parseBatchResult<ReadSceneResult | SkippedTargetResult>(
       await readScenes({ path: "s0,s999,s1" }),
       3,
     );

@@ -4,46 +4,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Reading every object a call names, the way the write tools act on every one.
-//
 // `id` and `path` add up, ids first. One target reads exactly as it always did,
-// throw included — a call that can do nothing has nothing to report. Two or
-// more get one entry each, and a target that can't be read keeps its slot as a
-// miss so the entries still line up with what the caller asked for.
+// throw included — a call that can do nothing has nothing to report.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import {
   namedIdParam,
   namedPathParam,
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  attemptTarget,
+  namedTargets,
+  type NamedTarget,
+  type TargetSkip,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   warnBlankTarget,
   type TargetParams,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 
-/** One object a read names, and which param named it. */
-interface ReadTarget {
-  param: "id" | "path";
-  /** The entry as the caller wrote it */
-  value: string;
-}
-
-/**
- * A target a list read couldn't read. `ok` marks only these — a hit says so by
- * being one, and read results nest inside a Live Set read, where a key per hit
- * is paid for again and again.
- */
-interface ReadMiss {
-  id?: string;
-  path?: string;
-  ok: false;
-  reason: string;
-}
-
 /** What a read tool returns: one object, or one entry per target named. */
-export type ReadResult<T> = T | Array<T | ReadMiss>;
+export type ReadResult<T> = T | Array<T | TargetSkip>;
 
 /** What a read tool has to say about itself to fan out. */
 interface FanOutOptions {
@@ -76,7 +57,7 @@ export function readFanOut<A extends TargetParams, T>(
   // Every target param is read once, here, so a value that names nothing says
   // so once rather than once more inside each target's own read.
   const call = foldTargets(args, options.idAlias, alias);
-  const targets = readTargets(call);
+  const targets = namedTargets(call);
   const first = targets[0];
 
   if (targets.length < 2) {
@@ -89,7 +70,9 @@ export function readFanOut<A extends TargetParams, T>(
 
   refuseOneTargetParams(args, options, targets.length);
 
-  const entries = targets.map((target) => readEntry(call, target, readOne));
+  const entries = targets.map((target) =>
+    attemptTarget(target, () => readOne(withTarget(call, target), true)),
+  );
 
   warnBlank(args, options, alias, entries.length);
 
@@ -154,22 +137,6 @@ function warnBlank(
 }
 
 /**
- * The targets a call names, ids first, each as the caller wrote it. Splitting
- * refuses a list with a hole in it before anything is read.
- * @param args - The call's target params, already folded
- * @returns One entry per target named, empty when neither param named one
- */
-function readTargets(args: TargetParams): ReadTarget[] {
-  const ids = targetEntries(args.id, "id");
-  const paths = pathEntries(args.path);
-
-  return [
-    ...ids.map((value): ReadTarget => ({ param: "id", value })),
-    ...paths.map((value): ReadTarget => ({ param: "path", value })),
-  ];
-}
-
-/**
  * Folds every spelling of a target onto `id` and `path`: the plural aliases and
  * the tool's own id spelling, each read once. Left where they were they would
  * ride along into every per-target read and quietly name a target there.
@@ -194,29 +161,6 @@ function foldTargets<A extends TargetParams>(
 }
 
 /**
- * Reads one target of a list, turning a failure into the entry that says so.
- * @param args - The call's args
- * @param target - The target to read
- * @param readOne - Reads one target
- * @returns The object, or the miss entry standing in for it
- */
-function readEntry<A extends TargetParams, T>(
-  args: A,
-  target: ReadTarget,
-  readOne: (args: A, listed: boolean) => T,
-): T | ReadMiss {
-  try {
-    return readOne(withTarget(args, target), true);
-  } catch (error) {
-    const reason = errorMessage(error);
-
-    return target.param === "id"
-      ? { id: target.value, ok: false, reason }
-      : { path: target.value, ok: false, reason };
-  }
-}
-
-/**
  * The call's args aimed at one target: the param that named it carries just
  * that entry, and the other one is gone, so the single-target read sees the
  * same call it would have got on its own.
@@ -224,7 +168,7 @@ function readEntry<A extends TargetParams, T>(
  * @param target - The target to aim them at
  * @returns The args for that one read
  */
-function withTarget<A extends TargetParams>(args: A, target: ReadTarget): A {
+function withTarget<A extends TargetParams>(args: A, target: NamedTarget): A {
   return {
     ...args,
     id: target.param === "id" ? target.value : undefined,

@@ -601,12 +601,12 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
   it("still says an empty pad ignores a write that names no sample", () => {
     const rack = registerUnbuiltPadChain();
 
-    expect(updateDevice({ path: "t0/d0/pC1", gainDb: -6 })).toStrictEqual([]);
-    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
-    expect(capturedWarnings()).toContain(
+    expect(() => updateDevice({ path: "t0/d0/pC1", gainDb: -6 })).toThrow(
       "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
         "to update — Live ignores writes to an empty pad",
     );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("still refuses every other param on a chain", () => {

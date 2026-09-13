@@ -19,7 +19,7 @@ import {
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
-  type ReadMissResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 import { arrangementStartOf } from "./helpers/arrangement-start-test-helpers.ts";
@@ -336,7 +336,7 @@ describe("ppal-read-clip over a list of targets", () => {
   it("keeps a slot for an empty clip slot and reads the rest", async () => {
     // t8 holds no clips. A lone read of an empty slot warns instead; in a list
     // the entry carries it, and parseBatchResult throws on any warning.
-    const entries = parseBatchResult<ReadClipResult | ReadMissResult>(
+    const entries = parseBatchResult<ReadClipResult | SkippedTargetResult>(
       await readClips({ path: "t0/s0,t8/s0,t1/s0" }),
       3,
     );

@@ -108,11 +108,10 @@ export async function deleteLocator(
 ): Promise<Record<string, unknown>> {
   // Validate that at least one identifier is provided
   if (locatorId == null && locatorTime == null && locatorName == null) {
-    console.warn("delete requires locatorId, locatorTime, or locatorName");
-
     return {
       operation: "skipped",
-      reason: "missing_identifier",
+      ok: false,
+      reason: "delete needs locatorId, locatorTime, or locatorName",
     };
   }
 
@@ -121,13 +120,9 @@ export async function deleteLocator(
     const matches = findLocatorsByName(liveSet, locatorName);
 
     if (matches.length === 0) {
-      console.warn(
-        `No locators found with name: ${locatorName}, skipping delete`,
-      );
-
       return {
         operation: "skipped",
-        reason: "no_locators_found",
+        reason: `nothing to delete: no locator named "${locatorName}"`,
         name: locatorName,
       };
     }
@@ -157,11 +152,9 @@ export async function deleteLocator(
     const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      console.warn(`Locator not found: ${locatorId}, skipping delete`);
-
       return {
         operation: "skipped",
-        reason: "locator_not_found",
+        reason: `nothing to delete: no locator with id "${locatorId}"`,
         id: locatorId,
       };
     }
@@ -178,13 +171,9 @@ export async function deleteLocator(
     const found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      console.warn(
-        `No locator found at position: ${locatorTime}, skipping delete`,
-      );
-
       return {
         operation: "skipped",
-        reason: "locator_not_found",
+        reason: `nothing to delete: no locator at ${locatorTime}`,
         time: locatorTime,
       };
     }
@@ -225,20 +214,18 @@ export function renameLocator(
   }: RenameLocatorOptions,
 ): Record<string, unknown> {
   if (locatorName == null) {
-    console.warn("locatorName is required for rename operation");
-
     return {
       operation: "skipped",
-      reason: "missing_locatorName",
+      ok: false,
+      reason: "rename needs locatorName",
     };
   }
 
   if (locatorId == null && locatorTime == null) {
-    console.warn("rename requires locatorId or locatorTime");
-
     return {
       operation: "skipped",
-      reason: "missing_identifier",
+      ok: false,
+      reason: "rename needs locatorId or locatorTime",
     };
   }
 
@@ -248,11 +235,10 @@ export function renameLocator(
     found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      console.warn(`locator not found: ${locatorId}`);
-
       return {
         operation: "skipped",
-        reason: "locator_not_found",
+        ok: false,
+        reason: `no locator with id "${locatorId}"`,
         id: locatorId,
       };
     }
@@ -268,11 +254,10 @@ export function renameLocator(
     found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      console.warn(`no locator found at position: ${locatorTime}`);
-
       return {
         operation: "skipped",
-        reason: "locator_not_found",
+        ok: false,
+        reason: `no locator at ${locatorTime}`,
         time: locatorTime,
       };
     }

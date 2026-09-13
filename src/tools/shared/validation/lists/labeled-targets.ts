@@ -13,13 +13,19 @@ import {
 } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
-  type IdPerPath,
+  namedTargets,
+  type NamedTarget,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
   type TargetParams,
   targetCount,
-  targetIds,
   targetParamLabel,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { parseNames } from "#src/tools/shared/validation/name-parsing.ts";
+import {
+  namedIdParam,
+  namedPathParam,
+} from "#src/tools/shared/helpers/param-presence.ts";
 
 /** The name and color lists a call paired against what it acts on. */
 export interface PairedLabels {
@@ -28,8 +34,8 @@ export interface PairedLabels {
 }
 
 export interface LabeledTargets extends PairedLabels {
-  /** One id per target, null where a path named nothing. */
-  ids: Array<string | null>;
+  /** The targets, in the order the call named them. */
+  targets: NamedTarget[];
 }
 
 interface PairLabelsArgs {
@@ -46,7 +52,6 @@ interface NewTargetsArgs extends PairLabelsArgs {
 interface LabeledTargetsArgs {
   noun: string;
   targets: TargetParams;
-  idPerPath: IdPerPath;
   name?: string;
   color?: string;
   extraLists?: ListArg[];
@@ -58,16 +63,14 @@ interface LabeledTargetsArgs {
  * @param args - The preamble parameters
  * @param args.noun - What the call acts on, singular ("track")
  * @param args.targets - The call's id/ids and path/paths params
- * @param args.idPerPath - Resolves the path list for this kind of object
  * @param args.name - The raw name param
  * @param args.color - The raw color param
  * @param args.extraLists - Further per-target lists, in the order to report them
- * @returns The ids the call named, and its name and color lists
+ * @returns The targets the call named, and its name and color lists
  */
 export function resolveLabeledTargets({
   noun,
   targets,
-  idPerPath,
   name,
   color,
   extraLists = [],
@@ -85,11 +88,14 @@ export function resolveLabeledTargets({
     ...extraLists,
   ]);
 
-  const ids = targetIds(targets, idPerPath);
+  const named = namedTargets(foldedTargets(targets));
 
-  // Paired against the id count, not the ids that resolve, so name[k]/color[k]
-  // still lands on ids[k] when an invalid id is skipped mid-list.
-  return { ids, ...pairLabels({ noun, count: ids.length, name, color }) };
+  // Paired against the targets named, not the ones that resolve, so name[k] and
+  // color[k] still land on target k when an earlier one is skipped.
+  return {
+    targets: named,
+    ...pairLabels({ noun, count: named.length, name, color }),
+  };
 }
 
 /**
@@ -137,5 +143,20 @@ export function pairLabels({
   return {
     parsedNames: parseNames(name, count, noun),
     parsedColors: parseColors(color, count, noun),
+  };
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Both plural aliases folded onto `id` and `path`, so each target is read once
+ * under the name the rest of the call uses.
+ * @param targets - The call's id/ids and path/paths params
+ * @returns The same targets, named by the canonical params
+ */
+function foldedTargets(targets: TargetParams): TargetParams {
+  return {
+    id: namedIdParam(targets.id, targets.ids, "ids"),
+    path: namedPathParam(targets.path, targets.paths),
   };
 }

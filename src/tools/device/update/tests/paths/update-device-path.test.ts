@@ -151,12 +151,12 @@ describe("updateDevice with path parameter", () => {
 
     // collapsed — kept for potential future use (test removed)
 
-    it("should return empty array for non-existent device by path", () => {
+    it("throws for a non-existent device by path", () => {
       mockNonExistentObjects();
 
-      const result = updateDevice({ path: "t5/d0", name: "Test" });
-
-      expect(result).toStrictEqual([]);
+      expect(() => updateDevice({ path: "t5/d0", name: "Test" })).toThrow(
+        'nothing at path "t5/d0"',
+      );
     });
 
     it("should update device by path on return track", () => {
@@ -217,12 +217,12 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 
-    it("should return empty array for non-existent chain by path", () => {
+    it("throws for a non-existent chain by path", () => {
       mockNonExistentObjects();
 
-      const result = updateDevice({ path: "t5/d0/c0", name: "Test" });
-
-      expect(result).toStrictEqual([]);
+      expect(() => updateDevice({ path: "t5/d0/c0", name: "Test" })).toThrow(
+        'nothing at path "t5/d0/c0"',
+      );
     });
 
     it("should update return chain by path", () => {
@@ -382,15 +382,15 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "pad-36" });
     });
 
-    it("should return empty array for non-existent drum chain by path", () => {
+    it("throws for a non-existent drum chain by path", () => {
       setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "t1/d0/pC3", mute: true });
-
-      expect(result).toStrictEqual([]);
+      expect(() => updateDevice({ path: "t1/d0/pC3", mute: true })).toThrow(
+        'nothing at path "t1/d0/pC3"',
+      );
     });
 
     it("should update drum chain by path (pNOTE/index)", () => {
@@ -420,15 +420,15 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/pC1/c0" });
     });
 
-    it("should return empty array for invalid chain index", () => {
+    it("throws for an invalid chain index", () => {
       setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36, name: "Kick" } },
       });
 
-      const result = updateDevice({ path: "t1/d0/pC1/c5", name: "Test" });
-
-      expect(result).toStrictEqual([]);
+      expect(() =>
+        updateDevice({ path: "t1/d0/pC1/c5", name: "Test" }),
+      ).toThrow('nothing at path "t1/d0/pC1/c5"');
     });
 
     it("should update device inside drum chain by path", () => {
@@ -452,7 +452,7 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "device-1" });
     });
 
-    it("should return empty array for invalid device index in drum chain", () => {
+    it("throws for an invalid device index in a drum chain", () => {
       setupDrumPadMocks({
         chainIds: ["chain-36"],
         chainProperties: {
@@ -460,9 +460,9 @@ describe("updateDevice with path parameter", () => {
         },
       });
 
-      const result = updateDevice({ path: "t1/d0/pC1/c0/d5", name: "Test" });
-
-      expect(result).toStrictEqual([]);
+      expect(() =>
+        updateDevice({ path: "t1/d0/pC1/c0/d5", name: "Test" }),
+      ).toThrow('nothing at path "t1/d0/pC1/c0/d5"');
     });
   });
 
@@ -473,21 +473,39 @@ describe("updateDevice with path parameter", () => {
       );
     });
 
-    it("should return empty array for track-only path (invalid)", () => {
-      const result = updateDevice({ path: "t1", name: "Test" });
-
-      expect(result).toStrictEqual([]);
+    it("throws for a track-only path (invalid)", () => {
+      expect(() => updateDevice({ path: "t1", name: "Test" })).toThrow(
+        /invalid path "t1" - a track is not/,
+      );
     });
 
-    it("should warn and skip a malformed path that fails to resolve", () => {
-      // "zzz" is not a valid path segment, so resolvePathToLiveApi throws; the
-      // safe resolver catches it, warns, and drops the item instead of aborting.
-      const result = updateDevice({ path: "zzz", name: "Test" });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining('invalid path "zzz"'),
+    it("throws a malformed path's own message", () => {
+      // "zzz" is not a valid path segment, so resolution throws — and that
+      // message is what the caller needs, rather than a generic miss.
+      expect(() => updateDevice({ path: "zzz", name: "Test" })).toThrow(
+        /invalid path "zzz"/,
       );
-      expect(result).toStrictEqual([]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("reports a malformed entry of a list in its own slot", () => {
+      const device = registerMockObject("device-456", {
+        path: livePath.track(1).device(0),
+        type: "Device",
+      });
+
+      const result = updateDevice({ path: "zzz,t1/d0", name: "A,B" });
+
+      expect(device.set).toHaveBeenCalledWith("name", "B");
+      expect(result).toStrictEqual([
+        {
+          path: "zzz",
+          ok: false,
+          reason: expect.stringContaining('invalid path "zzz"'),
+        },
+        { id: "device-456", path: "t1/d0" },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 
@@ -539,19 +557,26 @@ describe("updateDevice with path parameter", () => {
       ]);
     });
 
-    it("should skip non-existent paths and continue with valid ones", () => {
+    it("reports a non-existent path in its slot and continues", () => {
       const result = updateDevice({
         path: "t0/d0, t1/d1, t1/d0",
         name: "Updated",
       });
 
-      expectBothDevicesRenamed(result, "Updated");
+      expect(result).toStrictEqual([
+        { id: "device-100", path: "t0/d0" },
+        { path: "t1/d1", ok: false, reason: 'nothing at path "t1/d1"' },
+        { id: "device-200", path: "t1/d0" },
+      ]);
     });
 
-    it("should return empty array when all paths are invalid", () => {
+    it("reports every path when none of them names a device", () => {
       const result = updateDevice({ path: "t5/d0, t6/d0", name: "Updated" });
 
-      expect(result).toStrictEqual([]);
+      expect(result).toStrictEqual([
+        { path: "t5/d0", ok: false, reason: 'nothing at path "t5/d0"' },
+        { path: "t6/d0", ok: false, reason: 'nothing at path "t6/d0"' },
+      ]);
     });
 
     it("should return single object when only one path provided", () => {
@@ -560,13 +585,17 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual({ id: "device-100", path: "t0/d0" });
     });
 
-    it("should return single object when only one path valid out of many", () => {
+    it("keeps a slot for every path when only one of them lands", () => {
       const result = updateDevice({
         path: "t0/d0, t5/d0, t6/d0",
         name: "Updated",
       });
 
-      expect(result).toStrictEqual({ id: "device-100", path: "t0/d0" });
+      expect(result).toStrictEqual([
+        { id: "device-100", path: "t0/d0" },
+        { path: "t5/d0", ok: false, reason: 'nothing at path "t5/d0"' },
+        { path: "t6/d0", ok: false, reason: 'nothing at path "t6/d0"' },
+      ]);
     });
 
     it("should handle whitespace in comma-separated paths", () => {
@@ -578,14 +607,24 @@ describe("updateDevice with path parameter", () => {
       expectBothDevicesRenamed(result, "Trimmed");
     });
 
-    it("should skip invalid path formats gracefully", () => {
+    it("reports an invalid path format and writes the rest", () => {
       const result = updateDevice({
         path: "t0, t0/d0, t1/d0",
         name: "Updated",
       });
 
-      // "t0" is invalid (no device index), but "t0/d0" and "t1/d0" should work
-      expectBothDevicesRenamed(result, "Updated");
+      // "t0" is invalid (no device index), but "t0/d0" and "t1/d0" still work
+      expect(device100.set).toHaveBeenCalledWith("name", "Updated");
+      expect(device200.set).toHaveBeenCalledWith("name", "Updated");
+      expect(result).toStrictEqual([
+        {
+          path: "t0",
+          ok: false,
+          reason: expect.stringContaining('invalid path "t0" - a track is not'),
+        },
+        { id: "device-100", path: "t0/d0" },
+        { id: "device-200", path: "t1/d0" },
+      ]);
     });
   });
 

@@ -68,14 +68,14 @@ export interface DrumPadUpdateResult extends NonDeviceApplied {
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
- * @returns The pad's id and path, and the ids of the chains written to, or null
- *   for a pad with no chains, which Live ignores every write to
+ * @returns The pad's id and path, and the ids of the chains written to
+ * @throws Error for a pad with no chains, which Live ignores every write to
  */
 export function updateDrumPadGroup(
   group: DrumPadGroup,
   padPath: string,
   options: UpdateTargetOptions,
-): DrumPadUpdateResult | null {
+): DrumPadUpdateResult {
   const { pad } = group;
   const padLabel = pathTargetLabel(pad, padPath);
   // A sample write makes the pad's chain, exactly as the rack's `pC1/sample`
@@ -90,12 +90,10 @@ export function updateDrumPadGroup(
   // read-back stays 0 — so there is nothing here to write, and saying the
   // write landed would be a lie.
   if (chains.length === 0) {
-    console.warn(
+    throw new Error(
       `drum pad ${padLabel} has no chains, so there is nothing ` +
         `to update — Live ignores writes to an empty pad`,
     );
-
-    return null;
   }
 
   const layered =

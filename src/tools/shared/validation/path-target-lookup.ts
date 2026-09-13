@@ -6,14 +6,14 @@
 // Addressing tracks and scenes by where they are instead of by id, so a caller
 // that just read a Set can act on what it found without carrying ids around.
 //
-// On a tool taking a list, a path that names the wrong kind of thing warns and
-// contributes nothing. A read naming one object has nothing left to return, so
-// it throws instead.
+// A lookup reports a miss rather than raising it: on a tool taking a list the
+// miss becomes that target's result entry. A read naming one object has nothing
+// left to return, so it throws instead.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   existingId,
-  idPerPath,
+  type IdLookup,
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
@@ -25,41 +25,31 @@ import {
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
- * Resolves track path(s) to the ids of the tracks they name.
- * @param paths - Comma-separated track paths (e.g. "t0,rt1,mt")
- * @param label - Param name the paths came from, for warnings
- * @returns One track id per path entry, null where a path named none
+ * The id of the track one path names, or the reason it names none.
+ * @param entry - One track path (e.g. "t0", "rt1", "mt")
+ * @param label - Param name the path came from, for the reason
+ * @returns The track's id, or why there isn't one
  */
-export function trackIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (entry) =>
-    existingId(trackAtPath(parseObjectPath(entry, label), entry, label), {
-      noun: "track",
-      label,
-      entry,
-    }),
-  );
+export function trackIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(trackAtPath(parseObjectPath(entry, label), entry, label), {
+    noun: "track",
+    label,
+    entry,
+  });
 }
 
 /**
- * Resolves scene path(s) to the ids of the scenes they name.
- * @param paths - Comma-separated scene paths (e.g. "s0,s3")
- * @param label - Param name the paths came from, for warnings
- * @returns One scene id per path entry, null where a path named none
+ * The id of the scene one path names, or the reason it names none.
+ * @param entry - One scene path (e.g. "s3")
+ * @param label - Param name the path came from, for the reason
+ * @returns The scene's id, or why there isn't one
  */
-export function sceneIdPerPath(
-  paths: string,
-  label = "path",
-): Array<string | null> {
-  return idPerPath(paths, label, (entry) =>
-    existingId(sceneAtPath(parseObjectPath(entry, label), entry, label), {
-      noun: "scene",
-      label,
-      entry,
-    }),
-  );
+export function sceneIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(sceneAtPath(parseObjectPath(entry, label), entry, label), {
+    noun: "scene",
+    label,
+    entry,
+  });
 }
 
 /**

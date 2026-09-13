@@ -18,6 +18,7 @@ import {
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
 
@@ -163,19 +164,73 @@ describe("ppal-update-device", () => {
     expect(Array.isArray(batch)).toBe(true);
     expect(batch).toHaveLength(2);
 
-    // Test 2: Update non-existent device - should return empty with warning
+    // Test 2: the only target named isn't there, so the call is refused
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { id: "99999", name: "Won't Work" },
     });
-    const { data: nonExistent, warnings } =
-      parseToolResultWithWarnings<UpdateDeviceResult[]>(nonExistentResult);
 
-    // Should be empty array (device not found, no error thrown)
-    expect(Array.isArray(nonExistent)).toBe(true);
-    expect(nonExistent).toHaveLength(0);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("target not found");
+    expect(isToolError(nonExistentResult)).toBe(true);
+    expect(getToolErrorMessage(nonExistentResult)).toContain(
+      'id "99999" does not exist',
+    );
+  });
+
+  /**
+   * Update every target named and parse the entries, which must not warn: a
+   * target's own entry is where anything about it belongs.
+   * @param args - ppal-update-device arguments
+   * @returns One entry per target named
+   */
+  async function updateTargets(
+    args: Record<string, unknown>,
+  ): Promise<Array<UpdateDeviceResult | SkippedTargetResult>> {
+    return parseToolResult<Array<UpdateDeviceResult | SkippedTargetResult>>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: args,
+      }),
+    );
+  }
+
+  // Every target named gets an entry, in order, so a paired name list can't
+  // slide onto the wrong device when one of them is missing.
+  it("keeps a slot for a device it couldn't reach, and warns nowhere", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    const entries = await updateTargets({
+      id: `${deviceId},99999`,
+      name: "Reached,Nowhere",
+    });
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ id: deviceId }),
+      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
+    ]);
+
+    await sleep(100);
+    const device = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { id: deviceId },
+      }),
+    );
+
+    expect(device.name).toBe("Reached");
+  });
+
+  it("reports a path that names no device in its own slot", async () => {
+    const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+    // One name for both targets, so only the one it reaches is renamed.
+    const entries = await updateTargets({
+      id: deviceId,
+      path: "t99/d99",
+      name: "Reached By Id",
+    });
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ id: deviceId }),
+      { path: "t99/d99", ok: false, reason: 'nothing at path "t99/d99"' },
+    ]);
   });
 
   it("wraps a device in a rack and manages macros and variations", async () => {

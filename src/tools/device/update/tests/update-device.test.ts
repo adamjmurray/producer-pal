@@ -62,7 +62,7 @@ describe("updateDevice", () => {
     ]);
   });
 
-  it("should skip non-existent devices with warning", () => {
+  it("reports a dead id in its own slot and writes the rest", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
@@ -70,14 +70,16 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(capturedWarnings()).toContain('target not found at id "999"');
     expect(result).toStrictEqual([
       { id: "123", path: "t0/d0" },
+      { id: "999", ok: false, reason: 'id "999" does not exist' },
       { id: "456", path: "t0/d1" },
     ]);
+    // The entries carry it, so nothing warns about a target twice.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should return empty array when all devices are invalid", () => {
+  it("reports every target when none of them is there", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
@@ -85,7 +87,18 @@ describe("updateDevice", () => {
       name: "Test",
     });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "998", ok: false, reason: 'id "998" does not exist' },
+      { id: "999", ok: false, reason: 'id "999" does not exist' },
+    ]);
+  });
+
+  it("throws when the one id it was given isn't there", () => {
+    mockNonExistentObjects();
+
+    expect(() => updateDevice({ id: "999", name: "Test" })).toThrow(
+      'id "999" does not exist',
+    );
   });
 
   it("should handle 'id ' prefixed device IDs", () => {
@@ -704,19 +717,32 @@ describe("updateDevice", () => {
   });
 
   describe("type validation", () => {
-    it("should warn and skip an object that is not a device, chain, or pad", () => {
+    it("refuses an object that is not a device, chain, or pad", () => {
       registerMockObject("999", {
         path: livePath.track(3),
         type: "Track",
       });
 
-      const result = updateDevice({ id: "999", name: "Nope" });
-
-      expect(capturedWarnings()).toContain(
+      // Nothing can be written to it, so the lone target is refused and the
+      // reason is the error rather than a warning.
+      expect(() => updateDevice({ id: "999", name: "Nope" })).toThrow(
         "cannot update Track objects: t3 (id 999)",
       );
-      // Nothing is written to an unsupported object, and it drops from results.
-      expect(result).toStrictEqual([]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("keeps its slot when a writable target was named too", () => {
+      registerMockObject("999", { path: livePath.track(3), type: "Track" });
+
+      expect(updateDevice({ id: "999,123", name: "Nope" })).toStrictEqual([
+        {
+          id: "999",
+          ok: false,
+          reason: "cannot update Track objects: t3 (id 999)",
+        },
+        { id: "123", path: "t0/d0" },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

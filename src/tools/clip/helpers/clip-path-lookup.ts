@@ -14,6 +14,7 @@ import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers
 import { requireClipSourcePath } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import {
   existingId,
+  type IdLookup,
   idPerPath,
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
@@ -43,9 +44,17 @@ export function clipIdPerPath(
   paths: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, label, (entry) =>
-    existingId(clipAtPath(entry, label), { noun: "clip", label, entry }),
-  );
+  return idPerPath(paths, label, (entry) => clipIdAtPath(entry, label));
+}
+
+/**
+ * The id of the clip one location holds, or the reason it holds none.
+ * @param entry - One clip path, a slot or an arrangement position
+ * @param label - Param name the path came from, for the reason
+ * @returns The clip's id, or why there isn't one
+ */
+export function clipIdAtPath(entry: string, label = "path"): IdLookup {
+  return existingId(clipAtPath(entry, label), { noun: "clip", label, entry });
 }
 
 // --- Helpers below main exports ---

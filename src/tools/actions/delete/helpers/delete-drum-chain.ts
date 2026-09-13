@@ -7,7 +7,6 @@
 // borrows a pad's: park the chain on a pad nothing else uses, then clear that
 // pad. Only a Drum Rack with pads of its own has one to borrow.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   drumPadIdsByNote,
   invalidateRackChains,
@@ -19,33 +18,30 @@ const CHAIN_TAIL = / chains \d+$/;
 
 /**
  * Delete one drum rack chain by parking it on an unused pad and clearing that
- * pad. Never throws: anything the technique can't reach warns and skips.
+ * pad. Never throws: anything the technique can't reach comes back as the
+ * reason it didn't happen.
  * @param id - The chain's object ID
  * @param chain - The chain to delete
- * @returns true if the chain is gone, false if skipped or Live refused
+ * @returns null if the chain is gone, else why it wasn't deleted
  */
-export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
+export function deleteDrumChain(id: string, chain: LiveAPI): string | null {
   if (chain.type !== "DrumChain" || !CHAIN_TAIL.test(chain.path)) {
-    console.warn(
+    return (
       `chain ${targetLabel(chain)} is not on a drum pad. Live has no way to delete ` +
-        `a rack chain, and only a drum pad's chains can be removed.`,
+      `a rack chain, and only a drum pad's chains can be removed.`
     );
-
-    return false;
   }
 
   const rack = LiveAPI.from(chain.path.replace(CHAIN_TAIL, ""));
   const scratchPad = findUnusedPad(rack);
 
   if (scratchPad == null) {
-    console.warn(
+    return (
       `chain ${targetLabel(chain)} needs a free drum pad to move to, and its ` +
-        `Drum Rack has none — a rack nested in a drum pad has no pads at all. ` +
-        `Live offers no other way to remove it; delete its devices to empty ` +
-        `the pad, or move it with update-device's toPath.`,
+      `Drum Rack has none — a rack nested in a drum pad has no pads at all. ` +
+      `Live offers no other way to remove it; delete its devices to empty ` +
+      `the pad, or move it with update-device's toPath.`
     );
-
-    return false;
   }
 
   const originalInNote = chain.getProperty("in_note") as number;
@@ -59,18 +55,14 @@ export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
   const survivor = LiveAPI.from(id);
 
   if (!survivor.exists()) {
-    return true;
+    return null;
   }
 
   // Leaving it parked would silently move the chain to a pad the user never
   // named, so put it back where it was.
   survivor.set("in_note", originalInNote);
 
-  console.warn(
-    `Live did not remove chain ${targetLabel(survivor)}, so it was left as is`,
-  );
-
-  return false;
+  return `Live did not remove chain ${targetLabel(survivor)}, so it was left as is`;
 }
 
 /**

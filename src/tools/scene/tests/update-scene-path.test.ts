@@ -55,17 +55,34 @@ describe("updateScene by path", () => {
     // The skipped entry keeps its slot, so "Second" lands on s1 rather than
     // sliding forward onto it.
     expect(scene1.set).toHaveBeenCalledWith("name", "Second");
-    expect(result).toStrictEqual({ id: "456", path: "s1" });
-    expect(capturedWarnings()).toContain(
-      'invalid path "t0" - names a track, not a scene; expected "s<index>"',
-    );
+    expect(result).toStrictEqual([
+      {
+        path: "t0",
+        ok: false,
+        reason:
+          'invalid path "t0" - names a track, not a scene; expected "s<index>"',
+      },
+      { id: "456", path: "s1" },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("says when a path names a scene that isn't there", () => {
+  it("reports a path naming no scene, in its own slot", () => {
     mockNonExistentObjects();
 
-    expect(updateScene({ path: "s9", name: "Nowhere" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('no scene at path "s9"');
+    expect(updateScene({ path: "s0,s9", name: "One,Two" })).toStrictEqual([
+      { id: "123", path: "s0" },
+      { path: "s9", ok: false, reason: 'no scene at path "s9"' },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("throws when the one path it was given names no scene", () => {
+    mockNonExistentObjects();
+
+    expect(() => updateScene({ path: "s9", name: "Nowhere" })).toThrow(
+      'no scene at path "s9"',
+    );
   });
 
   it("still asks for a target when neither id nor path is given", () => {

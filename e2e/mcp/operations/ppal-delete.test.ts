@@ -15,9 +15,10 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   extractToolResultText,
+  getToolErrorMessage,
+  isToolError,
   parseAliasedToolResult,
   parseToolResult,
-  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -129,7 +130,8 @@ describe("ppal-delete", () => {
 
     expect(deleted.id).toBe(track.id);
     expect(deleted.type).toBe("track");
-    expect(deleted.deleted).toBe(true);
+    // `ok` is on skips only, so a delete that landed carries none.
+    expect(deleted.ok).toBeUndefined();
 
     await expectGone("ppal-read-track", { id: track.id });
   });
@@ -142,7 +144,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted).toHaveLength(2);
-    expect(deleted.every((d) => d.deleted)).toBe(true);
+    expect(deleted.every((d) => d.ok === undefined)).toBe(true);
   });
 
   it("deletes a return track", async () => {
@@ -154,7 +156,8 @@ describe("ppal-delete", () => {
       await del({ id: returnTrack.id, type: "track" }),
     );
 
-    expect(deleted.deleted).toBe(true);
+    // The index depends on how many return tracks the Set already had.
+    expect(deleted.deletedPath).toMatch(/^rt\d+$/);
   });
 
   /**
@@ -174,29 +177,29 @@ describe("ppal-delete", () => {
   const readHostTrack = () => readTrack({ path: "t11" });
 
   /**
-   * Assert a delete result refused the host track and left it in place.
+   * Assert a delete result refused the host track and left it in place. The
+   * reason rides on the host's own entry, so nothing warns.
    * @param result - The host's entry in the delete result
-   * @param warnings - Warnings the call raised
    * @param hostId - The host track's id
    */
   async function expectHostSurvived(
     result: DeleteResult | undefined,
-    warnings: string[],
     hostId: string,
   ): Promise<void> {
     expect(result?.id).toBe(hostId);
-    expect(result?.deleted).toBe(false);
-    expect(warnings.join(" ").toLowerCase()).toContain("producer pal");
+    expect(result?.ok).toBe(false);
+    expect(result?.reason?.toLowerCase()).toContain("producer pal");
     expect((await readTrack({ id: hostId })).id).toBe(hostId);
   }
 
   it("refuses to delete the track hosting Producer Pal", async () => {
     const hostTrack = await readHostTrack();
-    const { data, warnings } = parseToolResultWithWarnings<DeleteResult>(
-      await del({ id: hostTrack.id, type: "track" }),
-    );
+    // The only target named, so nothing was deleted and the reason is an error.
+    const result = await del({ id: hostTrack.id, type: "track" });
 
-    await expectHostSurvived(data, warnings, hostTrack.id);
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result).toLowerCase()).toContain("producer pal");
+    expect((await readTrack({ id: hostTrack.id })).id).toBe(hostTrack.id);
   });
 
   // Deleting a track above the host renumbers the host mid-call, so the guard's
@@ -209,17 +212,18 @@ describe("ppal-delete", () => {
     const hostTrack = await readHostTrack();
     // Above the host, so deleting it renumbers the host.
     const above = await createTrack({ path: "t0", name: "Above Host" });
-    const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
+    // Named beside another target, so the refusal is an entry rather than an
+    // error — and it is the entry, not a warning, that carries the reason.
+    const data = parseToolResult<DeleteResult[]>(
       await del({ id: `${above.id},${hostTrack.id}`, type: "track" }),
     );
-    // Deletes run highest-index-first, so the results are not in argument
-    // order. Match by id.
+    // Matched by id rather than position: what this pins is the guard, and the
+    // entries' order is covered by ppal-delete-batch-ordering.
     const deletedAbove = data.find((result) => result.id === above.id);
 
-    expect(deletedAbove?.deleted).toBe(true);
+    expect(deletedAbove?.ok).toBeUndefined();
     await expectHostSurvived(
       data.find((result) => result.id === hostTrack.id),
-      warnings,
       hostTrack.id,
     );
   });
@@ -231,7 +235,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted.type).toBe("scene");
-    expect(deleted.deleted).toBe(true);
+    expect(deleted.ok).toBeUndefined();
 
     const scene1 = await createScene({ path: "s0", name: "Multi Scene 1" });
     const scene2 = await createScene({ path: "s1", name: "Multi Scene 2" });
@@ -240,7 +244,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deletedScenes).toHaveLength(2);
-    expect(deletedScenes.every((d) => d.deleted)).toBe(true);
+    expect(deletedScenes.every((d) => d.ok === undefined)).toBe(true);
   });
 
   it("deletes a clip by id", async () => {
@@ -250,7 +254,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted.type).toBe("clip");
-    expect(deleted.deleted).toBe(true);
+    expect(deleted.ok).toBeUndefined();
 
     await expectGone("ppal-read-clip", { id: clip.id });
   });
@@ -287,7 +291,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted).toHaveLength(2);
-    expect(deleted.every((d) => d.deleted)).toBe(true);
+    expect(deleted.every((d) => d.ok === undefined)).toBe(true);
   });
 
   it("deletes a device by id", async () => {
@@ -301,7 +305,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted.type).toBe("device");
-    expect(deleted.deleted).toBe(true);
+    expect(deleted.ok).toBeUndefined();
 
     await expectGone("ppal-read-device", { id: deviceId });
   });
@@ -320,7 +324,7 @@ describe("ppal-delete", () => {
       await del({ path: created.path, type: "device" }),
     );
 
-    expect(deleted.deleted).toBe(true);
+    expect(deleted.ok).toBeUndefined();
   });
 
   it("deletes several devices in one call", async () => {
@@ -335,31 +339,31 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted).toHaveLength(2);
-    expect(deleted.every((d) => d.deleted)).toBe(true);
+    expect(deleted.every((d) => d.ok === undefined)).toBe(true);
   });
 
-  it("reports a path that names nothing, rather than an empty result", async () => {
-    // An empty result reads as "nothing to do", and a model that skims past
-    // the warning then reports the delete as done.
-    const { data, warnings } = parseToolResultWithWarnings<DeleteResult>(
+  // Nothing is there to remove, so the delete it asked for has already
+  // happened: the entry says so, carries no `ok`, and nothing warns.
+  it("reports a path that names nothing as nothing to delete", async () => {
+    const data = parseToolResult<DeleteResult>(
       await del({ path: "t99/d99", type: "device" }),
     );
 
     expect(data).toStrictEqual({
       path: "t99/d99",
       type: "device",
-      deleted: false,
+      reason: "nothing to delete",
     });
-    expect(warnings.join(" ")).toContain("t99/d99");
   });
 
-  it("reports a miss alongside the deletes in the same call", async () => {
+  it("reports an id that isn't there alongside the deletes", async () => {
     const deviceId = await createTestDevice(
       ctx.client!,
       "Compressor",
       `t${RACKS_TRACK}`,
     );
-    const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
+    // parseToolResult fails the test if anything warned: the entries carry it.
+    const data = parseToolResult<DeleteResult[]>(
       await del({ id: `${deviceId},99999`, type: "device" }),
     );
 
@@ -372,11 +376,45 @@ describe("ppal-delete", () => {
           new RegExp(`^t${RACKS_TRACK}/d\\d+$`),
         ),
         type: "device",
-        deleted: true,
       },
-      { id: "99999", type: "device", deleted: false },
+      { id: "99999", type: "device", reason: "nothing to delete" },
     ]);
-    expect(warnings.join(" ")).toContain("99999");
+  });
+
+  // A wrong-kind target is a skip, not a no-op: the object is there, and this
+  // call can't remove it as the type it named.
+  it("keeps a wrong-type target's slot, with no warning", async () => {
+    // The scene comes first: creating one at s0 shifts every slot below it, so
+    // a clip made before it would no longer be where it was created.
+    const scene = await createScene({ path: "s0", name: "Wrong Type" });
+    const clip = await createClip(`t${EMPTY_MIDI_TRACK}/s3`);
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/s3`);
+
+    const data = parseToolResult<DeleteResult[]>(
+      await del({ id: `${clip.id},${scene.id}`, type: "clip" }),
+    );
+
+    expect(data[0]).toStrictEqual({
+      // The address the clip itself reported, not an assumed slot.
+      deletedPath: clip.path,
+      id: clip.id,
+      type: "clip",
+    });
+    expect(data[1]).toStrictEqual({
+      id: scene.id,
+      type: "clip",
+      ok: false,
+      reason: expect.stringContaining("is not a clip"),
+    });
+  });
+
+  it("refuses a lone target of the wrong type", async () => {
+    const scene = await createScene({ path: "s0", name: "Lone Wrong Type" });
+    const result = await del({ id: scene.id, type: "clip" });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("is not a clip");
   });
 
   // Live has no way to remove a drum pad — the 128 slots are permanent — so a
@@ -392,7 +430,7 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted.type).toBe("drum-pad");
-    expect(deleted.deleted).toBe(true);
+    expect(deleted.ok).toBeUndefined();
     // The slot outlives the call, so the address comes back under `path`.
     expect(deleted.path).toBe("t0/d0/pC1");
     expect(deleted.deletedPath).toBeUndefined();
@@ -434,7 +472,10 @@ interface DeleteResult {
   /** The target's address when it is still there. */
   path?: string;
   type: string;
-  deleted: boolean;
+  /** Only on a target this call could not delete. */
+  ok?: false;
+  /** Why it wasn't deleted, or why there was nothing to delete. */
+  reason?: string;
 }
 
 interface DrumRackRead {
@@ -463,4 +504,6 @@ interface CreateSceneResult {
 
 interface CreateClipResult {
   id: string;
+  /** Where the clip landed, e.g. "t8/s3" */
+  path?: string;
 }

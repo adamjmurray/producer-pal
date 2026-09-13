@@ -114,22 +114,29 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("should log warning when track ID doesn't exist", () => {
+  it("throws when the one track ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateTrack({ id: "nonexistent" });
-
-    expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(() => updateTrack({ id: "nonexistent" })).toThrow(
+      'id "nonexistent" does not exist',
+    );
   });
 
-  it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
+  it("reports a dead id in its own slot and updates the rest", () => {
     mockNonExistentObjects();
 
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123", path: "t0" });
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
+    ]);
+    // The entry carries it, so the response doesn't say it twice.
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(track123.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -146,6 +153,11 @@ describe("updateTrack", () => {
     });
 
     expect(result).toStrictEqual([
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
       { id: "123", path: "t0" },
       { id: "456", path: "t1" },
     ]);
@@ -153,7 +165,6 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(track456.set).toHaveBeenCalledWith("name", "C");
     expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it

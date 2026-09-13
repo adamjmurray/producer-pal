@@ -27,16 +27,19 @@ import {
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
-import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import { trackIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+import {
+  targetObject,
+  writeFanOut,
+  type WriteResult,
+} from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 interface UpdateTrackArgs {
   id?: string;
@@ -152,7 +155,7 @@ function applyMonitoringState(
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param args.sends - Optional [{return, gainDb}] list, to set several at once
  * @param _context - Internal context object (unused)
- * @returns Single track object or array of track objects
+ * @returns The track when one was named, otherwise one entry per target
  */
 export function updateTrack(
   {
@@ -184,15 +187,10 @@ export function updateTrack(
     sends,
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
-): UpdateTrackResult | UpdateTrackResult[] {
-  const {
-    ids: trackIds,
-    parsedNames,
-    parsedColors,
-  } = resolveLabeledTargets({
+): WriteResult<UpdateTrackResult> {
+  const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
     noun: "track",
     targets: { id, ids, path, paths },
-    idPerPath: trackIdPerPath,
     name,
     color,
   });
@@ -203,31 +201,12 @@ export function updateTrack(
   // lookup would repeat one warning down the list.
   const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
 
-  const updatedTracks: UpdateTrackResult[] = [];
   // The collisions belong to the call, not to a track, so they are announced
   // once — off the first track a collision actually landed on.
   let announcedCollisions = false;
 
-  for (let i = 0; i < trackIds.length; i++) {
-    const trackId = trackIds[i];
-
-    // A path that named no track already warned; it keeps its slot so later
-    // names/colors don't shift onto the wrong track.
-    if (trackId == null) {
-      continue;
-    }
-
-    // Validate one id at a time (skip invalid) so the loop index stays aligned
-    // to the original ids: a skipped id must not pull later names/colors forward
-    // onto the wrong track.
-    const [track] = validateIdTypes([trackId], "track", {
-      skipInvalid: true,
-    });
-
-    if (track == null) {
-      continue;
-    }
-
+  return writeFanOut(targets, (target, i) => {
+    const track = targetObject(target, "track", trackIdAtPath);
     const trackColor = getColorForIndex(color, i, parsedColors);
 
     const trackName = getNameForIndex(name, i, parsedNames);
@@ -288,13 +267,11 @@ export function updateTrack(
     }
 
     // Optimistic except for the mixer and sends, read back off the track.
-    updatedTracks.push({
+    return {
       id: track.id,
       ...pathField(track),
       ...mixer,
       ...(landed.size > 0 ? { sends: [...landed.values()] } : {}),
-    });
-  }
-
-  return unwrapSingleResult(updatedTracks);
+    };
+  });
 }

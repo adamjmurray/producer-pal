@@ -17,7 +17,7 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
-  type ReadMissResult,
+  type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -305,7 +305,7 @@ describe("ppal-read-track over a list of targets", () => {
   });
 
   it("keeps a slot for a track that isn't there and reads the rest", async () => {
-    const entries = parseBatchResult<ReadTrackResult | ReadMissResult>(
+    const entries = parseBatchResult<ReadTrackResult | SkippedTargetResult>(
       await readTracks({ path: "t0,t999,t4" }),
       3,
     );

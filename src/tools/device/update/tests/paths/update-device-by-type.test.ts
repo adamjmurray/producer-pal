@@ -67,15 +67,17 @@ describe("updateDevice by device type", () => {
     expect(effect.set).not.toHaveBeenCalled();
   });
 
-  it("warns and writes nothing when the container has no instrument", () => {
+  it("writes nothing when the container has no instrument", () => {
     // The substituted index is one past the last device, so nothing is there.
     mockNonExistentObjects();
 
     const { effect } = registerTrack(false);
 
-    expect(updateDevice({ path: "t0/inst", name: "Renamed" })).toStrictEqual(
-      [],
+    expect(() => updateDevice({ path: "t0/inst", name: "Renamed" })).toThrow(
+      'nothing at path "t0/inst"',
     );
+    // The substitution says why the path found nothing to aim at; it is about
+    // the spelling, not about a target that was reached.
     expect(capturedWarnings()).toContainEqual(
       'path "t0/inst" names nothing: t0 has no instrument',
     );

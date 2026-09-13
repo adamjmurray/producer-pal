@@ -15,7 +15,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -31,7 +33,8 @@ const ctx = setupMcpTestContext();
 interface DeleteResult {
   id: string;
   type: string;
-  deleted: boolean;
+  ok?: false;
+  reason?: string;
 }
 
 describe("ppal-delete drum rack chain", () => {
@@ -46,7 +49,7 @@ describe("ppal-delete drum rack chain", () => {
       }),
     );
 
-    expect(result.deleted).toBe(true);
+    expect(result.ok).toBeUndefined();
 
     await sleep(200);
 
@@ -68,7 +71,7 @@ describe("ppal-delete drum rack chain", () => {
       }),
     );
 
-    expect(result.deleted).toBe(true);
+    expect(result.ok).toBeUndefined();
 
     await sleep(200);
 
@@ -86,16 +89,15 @@ describe("ppal-delete drum rack chain", () => {
   it("refuses a bare pad path, pointing at the whole-pad delete", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
 
-    const warnings = getToolWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-delete",
-        arguments: { type: "chain", path: `${rackPath}/pD1` },
-      }),
-    );
+    // The only target named, so the reason is the error rather than an entry.
+    const result = await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { type: "chain", path: `${rackPath}/pD1` },
+    });
 
-    expect(warnings).toContainEqual(
-      expect.stringContaining('use type="drum-pad"'),
-    );
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('use type="drum-pad"');
+    expect(getToolWarnings(result)).toStrictEqual([]);
 
     await sleep(200);
 
@@ -115,16 +117,14 @@ describe("ppal-delete drum rack chain", () => {
 
     await sleep(200);
 
-    const warnings = getToolWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-delete",
-        arguments: { type: "chain", path: `${rackPath}/c0` },
-      }),
-    );
+    const result = await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { type: "chain", path: `${rackPath}/c0` },
+    });
 
-    expect(warnings).toContainEqual(
-      expect.stringContaining("is not on a drum pad"),
-    );
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("is not on a drum pad");
+    expect(getToolWarnings(result)).toStrictEqual([]);
 
     await sleep(200);
 

@@ -534,8 +534,11 @@ export async function serverHasCodeExec(client: Client): Promise<boolean> {
 // Shared Result Interfaces
 // ============================================================================
 
-/** The entry a list read leaves where it couldn't read the target named. */
-export interface ReadMissResult {
+/**
+ * The entry a call leaves where it couldn't carry out the target named, on a
+ * read or a write. `ok` marks only these.
+ */
+export interface SkippedTargetResult {
   id?: string;
   path?: string;
   ok: false;

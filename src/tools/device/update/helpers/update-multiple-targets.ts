@@ -19,18 +19,19 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
-import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  writeFanOut,
+  type WriteResult,
+} from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type WrittenContainer,
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-// Type-only, and it has to stay that way: update-device.ts imports
-// updateMultipleTargets from here, so a value import would be a runtime cycle.
-import { type TargetItem } from "../update-device.ts";
 import { moveDeviceToPath } from "./move-device.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
 import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
@@ -64,24 +65,26 @@ const OWN_SEGMENT = /\/[^/]+$/;
  * @param updateOptions - Options to pass to updateTarget
  * @param parsedNames - Comma-separated names array, or null
  * @param parsedColors - Comma-separated colors array, or null
- * @returns Single result or array of results
+ * @returns The result when one target was named, otherwise one entry per target
  */
 export function updateMultipleTargets(
-  items: TargetItem[],
+  items: NamedTarget[],
   updateOptions: UpdateTargetOptions,
   parsedNames: ListEntries | null,
   parsedColors: ListEntries | null,
-): Record<string, unknown> | Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-
-  for (let i = 0; i < items.length; i++) {
-    const { value, kind } = items[i] as TargetItem;
+): WriteResult<Record<string, unknown>> {
+  return writeFanOut(items, ({ param, value }, i) => {
+    // Resolution throws for a path that names nothing a target can sit in, and
+    // that message is the target's reason — so it is not caught here.
     const resolved =
-      kind === "id" ? resolveIdToTarget(value) : resolvePathToTargetSafe(value);
+      param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
 
     if (!resolved) {
-      console.warn(`target not found at ${kind} "${value}"`);
-      continue;
+      throw new Error(
+        param === "id"
+          ? `id "${value}" does not exist`
+          : `nothing at path "${value}"`,
+      );
     }
 
     const options: UpdateTargetOptions = {
@@ -96,15 +99,11 @@ export function updateMultipleTargets(
         : updateTarget(
             resolved.target,
             options,
-            kind === "path" ? value : undefined,
+            param === "path" ? value : undefined,
           );
 
-    if (result) {
-      results.push(result as Record<string, unknown>);
-    }
-  }
-
-  return unwrapSingleResult(results);
+    return result as Record<string, unknown>;
+  });
 }
 
 // --- Helpers below main exports ---
@@ -229,20 +228,19 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
  * @param target - Live API object to update
  * @param options - Update options
  * @param writtenPath - The path the call named the target by, if it named one
- * @returns Result with ID and any params written, or null if update failed
+ * @returns Result with ID and any params written
+ * @throws Error when this kind of object can't be written to
  */
 function updateTarget(
   target: LiveAPI,
   options: UpdateTargetOptions,
   writtenPath?: string,
-): UpdateTargetResult | null {
+): UpdateTargetResult {
   const type = target.type;
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
-    console.warn(`cannot update ${type} objects: ${targetLabel(target)}`);
-
-    return null;
+    throw new Error(`cannot update ${type} objects: ${targetLabel(target)}`);
   }
 
   // Handle move operation first (before other updates)
