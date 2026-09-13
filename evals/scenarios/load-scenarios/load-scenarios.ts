@@ -102,10 +102,11 @@ import {
   updateLiveSet,
   writeTrustEchoedResult,
   writeTrustSilentResult,
-} from "./defs/index.ts";
-import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
-import { envLabel, type RunEnv } from "./run-env/run-env.ts";
-import { type EvalScenario } from "./types.ts";
+} from "../defs/index.ts";
+import { shouldSkipScenario } from "../helpers/json-results/skip-scenario.ts";
+import { envLabel, type RunEnv } from "../run-env/run-env.ts";
+import { type EvalScenario } from "../types.ts";
+import { SCENARIO_TAGS } from "./scenario-tags.ts";
 
 /**
  * All registered scenarios
@@ -215,40 +216,75 @@ const allScenarios: EvalScenario[] = [
 export interface LoadScenariosOptions {
   /** Filter to specific test/scenario IDs */
   testIds?: string[];
+  /** Filter to scenarios carrying ANY of these tags */
+  tags?: string[];
 }
 
 /**
- * Load and filter scenarios
+ * Load and filter scenarios. Ids and tags compose: give both and a scenario has
+ * to match both.
  *
  * @param options - Filter options
  * @returns Filtered list of scenarios
  */
 export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
-  const testIds = options?.testIds;
+  const testIds = options?.testIds ?? [];
+  const tags = options?.tags ?? [];
+  let scenarios = [...allScenarios];
 
-  if (!testIds || testIds.length === 0) {
-    return [...allScenarios];
+  if (testIds.length > 0) {
+    warnUnknownIds(testIds);
+    scenarios = scenarios.filter((s) => testIds.includes(s.id));
   }
 
-  const scenarios = allScenarios.filter((s) => testIds.includes(s.id));
+  if (tags.length > 0) {
+    scenarios = scenarios.filter((s) => s.tags.some((t) => tags.includes(t)));
+  }
 
   if (scenarios.length === 0) {
-    const available = allScenarios.map((s) => s.id).join(", ");
-
     throw new Error(
-      `Test(s) not found: ${testIds.join(", ")}. Available: ${available}`,
+      `No scenarios match ${describeFilter(testIds, tags)}. ` +
+        `Run -l to list scenarios, --list-tags to list tags.`,
     );
   }
 
-  // Warn about any IDs that weren't found
-  const foundIds = new Set(scenarios.map((s) => s.id));
-  const notFound = testIds.filter((id) => !foundIds.has(id));
+  return scenarios;
+}
 
-  if (notFound.length > 0) {
-    console.warn(`Warning: Test(s) not found: ${notFound.join(", ")}`);
+/**
+ * Warn about requested ids no scenario has — a typo otherwise runs a shorter
+ * suite in silence.
+ *
+ * @param testIds - The requested scenario ids
+ */
+function warnUnknownIds(testIds: string[]): void {
+  const known = new Set(allScenarios.map((s) => s.id));
+  const unknown = testIds.filter((id) => !known.has(id));
+
+  if (unknown.length > 0) {
+    console.warn(`Warning: Test(s) not found: ${unknown.join(", ")}`);
+  }
+}
+
+/**
+ * Describe the active filter for the "nothing matched" error.
+ *
+ * @param testIds - The requested scenario ids
+ * @param tags - The requested tags
+ * @returns A human-readable description of what was asked for
+ */
+function describeFilter(testIds: string[], tags: string[]): string {
+  const parts: string[] = [];
+
+  if (testIds.length > 0) {
+    parts.push(`test(s) ${testIds.join(", ")}`);
   }
 
-  return scenarios;
+  if (tags.length > 0) {
+    parts.push(`tag(s) ${tags.join(", ")}`);
+  }
+
+  return parts.join(" and ");
 }
 
 /**
@@ -265,17 +301,19 @@ export function listScenarioIds(): string[] {
  *
  * @param env - Optional run environment; when given, each scenario carries the
  *   reason that environment would skip it (null when it would run)
- * @returns Array of {id, kind, requires, skipReason} objects
+ * @returns Array of {id, kind, tags, requires, skipReason} objects
  */
 export function listScenarioSummaries(env?: RunEnv): Array<{
   id: string;
   kind: "regression" | "capability";
+  tags: string[];
   requires: string[];
   skipReason: string | null;
 }> {
   return allScenarios.map((s) => ({
     id: s.id,
     kind: s.kind ?? "regression",
+    tags: s.tags,
     requires: requirementLabels(s),
     skipReason: env == null ? null : shouldSkipScenario(s, env),
   }));
@@ -332,8 +370,8 @@ export function printList(env?: RunEnv): void {
 
   const summaries = listScenarioSummaries(env);
 
-  for (const { id, kind, requires, skipReason } of summaries) {
-    const kindLabel = styleText("gray", `[${kind}]`);
+  for (const { id, kind, tags, requires, skipReason } of summaries) {
+    const metaLabel = styleText("gray", `[${kind}] [${tags.join(" ")}]`);
     const requiresLabel =
       requires.length > 0
         ? " " + styleText("yellow", `(requires: ${requires.join(", ")})`)
@@ -341,7 +379,7 @@ export function printList(env?: RunEnv): void {
     const skipLabel =
       skipReason == null ? "" : " " + styleText("red", `SKIP: ${skipReason}`);
 
-    console.log(`  - ${id} ${kindLabel}${requiresLabel}${skipLabel}`);
+    console.log(`  - ${id} ${metaLabel}${requiresLabel}${skipLabel}`);
   }
 
   if (env == null) {
@@ -349,6 +387,27 @@ export function printList(env?: RunEnv): void {
   }
 
   printGradedCounts(summaries, env);
+}
+
+/**
+ * Print every scenario tag with how many scenarios carry it — the answer to
+ * "what can I pass to --tag?" without reading the whole scenario list.
+ */
+export function printTags(): void {
+  const summaries = listScenarioSummaries();
+  const width = Math.max(...SCENARIO_TAGS.map((tag) => tag.length));
+
+  console.log("Scenario tags:");
+
+  for (const tag of SCENARIO_TAGS) {
+    const count = summaries.filter((s) => s.tags.includes(tag)).length;
+
+    console.log(`  - ${tag.padEnd(width)}  ${count}`);
+  }
+
+  console.log(
+    `\n${summaries.length} scenarios total (a scenario may carry more than one tag)`,
+  );
 }
 
 /**

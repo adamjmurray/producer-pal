@@ -48,6 +48,7 @@ const HATS = 44;
 
 export const transformRandomBakedOrReplayed: EvalScenario = {
   id: "transform-random-baked-or-replayed",
+  tags: ["transforms"],
   description:
     "Tell baked random velocities apart from Live's per-playback spread",
   kind: "capability",

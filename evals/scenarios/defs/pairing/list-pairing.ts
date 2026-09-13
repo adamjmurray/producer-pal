@@ -152,6 +152,7 @@ function assertArrangementBars(
 
 export const colorListPairing: EvalScenario = {
   id: "color-list-pairing",
+  tags: ["pairing"],
   description: "Six clips alternating two colors, without relying on cycling",
   kind: "regression",
   liveSet: "basic-midi-4-track",
@@ -175,6 +176,7 @@ export const colorListPairing: EvalScenario = {
 
 export const arrangementDestinationPairing: EvalScenario = {
   id: "arrangement-destination-pairing",
+  tags: ["pairing"],
   description:
     "Clips alternating across two arrangement tracks, without relying on cycling",
   kind: "regression",
@@ -198,6 +200,7 @@ export const arrangementDestinationPairing: EvalScenario = {
 
 export const duplicateDestinationPairing: EvalScenario = {
   id: "duplicate-destination-pairing",
+  tags: ["pairing"],
   description:
     "Copies alternating across two arrangement tracks, without relying on cycling",
   kind: "regression",

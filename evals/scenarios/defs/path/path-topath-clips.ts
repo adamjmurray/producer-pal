@@ -97,6 +97,7 @@ function assertArrangementLayout(): EvalAssertion {
 
 export const pathToPathClipDestinations: EvalScenario = {
   id: "path-topath-clips",
+  tags: ["paths"],
   description: "One toPath across session slot, arrangement, and take lane",
   kind: "capability",
   liveSet: "basic-midi-4-track",

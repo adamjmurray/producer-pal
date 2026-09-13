@@ -68,6 +68,7 @@ function assertSceneSelected(): EvalAssertion {
 
 export const sceneUpdateAndSelect: EvalScenario = {
   id: "scene-update-and-select",
+  tags: ["workflow"],
   description: "Rename and recolor a scene, then navigate to it",
   kind: "regression",
   liveSet: "basic-midi-4-track",

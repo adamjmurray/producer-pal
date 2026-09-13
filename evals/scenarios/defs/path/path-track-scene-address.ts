@@ -41,6 +41,7 @@ function resultPath(result: Record<string, unknown>): string {
 
 export const pathTrackSceneAddress: EvalScenario = {
   id: "path-track-scene-address",
+  tags: ["paths"],
   description: "Reach a return track, the main track, and the end of the Set",
   kind: "capability",
   liveSet: "basic-midi-4-track",

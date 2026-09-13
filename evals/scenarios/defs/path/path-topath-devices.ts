@@ -82,6 +82,7 @@ function assertPadCreated(): EvalAssertion {
 
 export const pathToPathDeviceAndPad: EvalScenario = {
   id: "path-topath-devices",
+  tags: ["paths"],
   description: "toPath for a device slot and a drum pad destination",
   kind: "capability",
   liveSet: "basic-midi-4-track",

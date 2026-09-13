@@ -123,6 +123,7 @@ function recordDurationReach(turn: number): EvalAssertion {
  */
 export const durationReachForQuarter: EvalScenario = {
   id: "duration-reach-for-quarter",
+  tags: ["notation", "transforms"],
   description:
     "`make it a quarter note` → n/4 (absolute), not bare 1/4 (a 16th in 4/4)",
   kind: "capability",

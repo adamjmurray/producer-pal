@@ -118,6 +118,7 @@ function assertNoReadBack(): EvalAssertion {
 export const writeTrustSilentResult: EvalScenario = {
   ...TRUST_SCENARIO,
   id: "write-trust-silent-result",
+  tags: ["results"],
   description: "Accept a rename whose result says nothing about the name",
 
   messages: [
@@ -150,6 +151,7 @@ export const writeTrustSilentResult: EvalScenario = {
 export const writeTrustEchoedResult: EvalScenario = {
   ...TRUST_SCENARIO,
   id: "write-trust-echoed-result",
+  tags: ["results"],
   description: "Accept a gain change whose result echoes the gain",
 
   messages: ["Connect to Ableton Live", `Set the Bass track to ${NEW_DB} dB.`],

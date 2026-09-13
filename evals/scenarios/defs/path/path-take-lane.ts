@@ -75,6 +75,7 @@ function assertClipOnFirstLane(): EvalAssertion {
 
 export const pathTakeLaneFirst: EvalScenario = {
   id: "path-take-lane-first",
+  tags: ["paths"],
   description: "Place an arrangement clip on the FIRST take lane (t1/l0)",
   kind: "capability",
   liveSet: "basic-midi-4-track",

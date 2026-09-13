@@ -19,6 +19,7 @@ const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const melodyTransforms: EvalScenario = {
   id: "melody-transforms",
+  tags: ["transforms"],
   description: "Extend a melody and apply per-section pitch transposition",
   kind: "capability",
   requires: { transforms: true },

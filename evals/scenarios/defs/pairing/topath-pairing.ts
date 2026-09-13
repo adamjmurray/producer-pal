@@ -32,6 +32,7 @@ const DESTINATION_SLOTS = ["t2/s0", "t2/s1"];
 
 export const pathToPathPairing: EvalScenario = {
   id: "path-topath-pairing",
+  tags: ["pairing", "paths"],
   description: "update-clip pairs toPath 1:1 with the clips, without cycling",
   kind: "capability",
   liveSet: "basic-midi-4-track",

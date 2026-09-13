@@ -35,6 +35,7 @@ const JAMIE_COLLAB = "jamie-collab-deadline";
 
 export const contextMemoryUpdateNotDuplicate: EvalScenario = {
   id: "context-memory-update-not-duplicate",
+  tags: ["context"],
   description:
     "Reuses an existing memory name to update, instead of duplicating",
   kind: "regression",
@@ -87,6 +88,7 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
 
 export const contextMemoryDelete: EvalScenario = {
   id: "context-memory-delete",
+  tags: ["context"],
   description: "Deletes a memory the user says is finished with",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

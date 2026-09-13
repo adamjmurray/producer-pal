@@ -75,6 +75,7 @@ function contextFollowScenario(spec: ContextFollowSpec): EvalScenario {
     id: spec.id,
     description: spec.description,
     kind: "capability",
+    tags: ["context"],
     liveSet: CONTEXT_LIVE_SET,
     reuseLiveSet: true,
     ...(spec.config == null ? {} : { config: spec.config }),
@@ -171,6 +172,7 @@ function isOffbeat8th(startTime: number): boolean {
 
 export const contextMemoryRecall: EvalScenario = {
   id: "context-memory-recall",
+  tags: ["context"],
   description: "Loads the one relevant memory by name, then applies its rule",
   kind: "capability",
   liveSet: CONTEXT_LIVE_SET,
@@ -208,6 +210,7 @@ export const contextMemoryRecall: EvalScenario = {
 
 export const contextMemoryNoSpuriousRecall: EvalScenario = {
   id: "context-memory-no-spurious-recall",
+  tags: ["context"],
   description: "Leaves irrelevant memory bodies unloaded",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

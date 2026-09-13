@@ -175,6 +175,7 @@ function buildSlmScenario(spec: {
     id: spec.id,
     description: spec.description,
     kind: "capability",
+    tags: ["transforms"],
     liveSet: LIVE_SET,
 
     messages: [MSG_CONNECT, READ_DRUM_NOTES, spec.editInstruction],

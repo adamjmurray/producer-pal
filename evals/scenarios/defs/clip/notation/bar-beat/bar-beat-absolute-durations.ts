@@ -119,6 +119,7 @@ function createClipAssertionHead(): EvalAssertion[] {
  */
 export const barBeatTriplets: EvalScenario = {
   id: "bar-beat-triplets",
+  tags: ["notation"],
   description:
     "Triplet durations (n/12, n/6) — most likely failure mode for absolute notation",
   kind: "capability",
@@ -159,6 +160,7 @@ export const barBeatTriplets: EvalScenario = {
  */
 export const barBeatMeterFill: EvalScenario = {
   id: "bar-beat-meter-fill",
+  tags: ["notation"],
   description:
     "Bar-filling note duration in 5/4 and 6/8 (n5/4, n3/4) — quarter-counting test",
   kind: "capability",
@@ -204,6 +206,7 @@ export const barBeatMeterFill: EvalScenario = {
  */
 export const barBeatCompoundFeelPulse: EvalScenario = {
   id: "bar-beat-compound-feel-pulse",
+  tags: ["notation"],
   description:
     "Compound felt pulse (dotted-quarter beat) in 6/8 and 12/8 — 2 and 4 kicks at eighths 1,4,(7,10)",
   kind: "capability",
@@ -245,6 +248,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
  */
 export const barBeatAbsoluteDurationUniformity: EvalScenario = {
   id: "bar-beat-absolute-duration-uniformity",
+  tags: ["notation"],
   description:
     "Same `n` fraction across meters — quarter notes filling 4/4, 6/8, 5/4",
   kind: "capability",

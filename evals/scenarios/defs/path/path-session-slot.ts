@@ -30,6 +30,7 @@ const TRANSPOSED_PATH = "t1/s2";
 
 export const pathSessionSlot: EvalScenario = {
   id: "path-session-slot",
+  tags: ["paths"],
   description: "Build a session clip slot path (t2/s1, not 1/2)",
   kind: "regression",
   liveSet: "basic-midi-4-track",

@@ -54,6 +54,7 @@ function makeResult(
     scenario: {
       id: "test-scenario",
       description: "A test scenario",
+      tags: ["workflow"],
       liveSet: "test",
       messages: ["Connect to Ableton"],
       assertions: [],
@@ -188,6 +189,7 @@ describe("toJsonResult", () => {
       scenario: {
         id: "advisory-scenario",
         description: "Judge is advisory",
+        tags: ["workflow"],
         liveSet: "test",
         messages: ["Connect to Ableton"],
         assertions: [],

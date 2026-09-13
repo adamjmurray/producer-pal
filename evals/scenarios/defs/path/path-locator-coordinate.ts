@@ -122,6 +122,7 @@ function assertBassClipsAt(expected: string[]): EvalAssertion {
 
 export const pathLocatorCoordinate: EvalScenario = {
   id: "path-locator-coordinate",
+  tags: ["paths"],
   description: "Use loc:<name> as the song position inside a path",
   kind: "capability",
   liveSet: LIVE_SET,

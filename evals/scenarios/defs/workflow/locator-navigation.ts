@@ -191,6 +191,7 @@ function assertDuplicatedToLocator(turn: number): EvalAssertion {
 
 export const locatorNavigation: EvalScenario = {
   id: "locator-navigation",
+  tags: ["workflow"],
   description: "Navigate the arrangement by section name, not by bar number",
   kind: "capability",
   liveSet: LIVE_SET,

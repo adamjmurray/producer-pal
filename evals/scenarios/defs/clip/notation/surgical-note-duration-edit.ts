@@ -208,6 +208,7 @@ function assertShortenOutcome(
 
 export const surgicalNoteDurationEdit: EvalScenario = {
   id: "surgical-note-duration-edit",
+  tags: ["notation"],
   description:
     "Shorten two existing notes' durations without rewriting the whole clip",
   kind: "capability",

@@ -42,6 +42,7 @@ const CHORDS_OFF_BY_ONE = "t2/s6";
 
 export const pathSpokenSceneNumber: EvalScenario = {
   id: "path-spoken-scene-number",
+  tags: ["paths"],
   description: "Turn a spoken scene number into a 0-based path (scene 3 -> s2)",
   kind: "capability",
   liveSet: "basic-midi-4-track",

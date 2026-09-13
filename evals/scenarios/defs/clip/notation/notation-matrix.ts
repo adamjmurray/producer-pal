@@ -107,6 +107,7 @@ export function notationNeutralScenarios(
     id: `${spec.baseId}-${notation}`,
     description: `${spec.description} (${notation})`,
     kind: "capability",
+    tags: ["notation"],
     liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
     config: { notation },
     messages: [MSG_CONNECT, spec.prompt],

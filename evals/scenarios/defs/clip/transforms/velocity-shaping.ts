@@ -178,6 +178,7 @@ function assertReRandomizingSnare(): EvalAssertion {
 
 export const velocityShaping: EvalScenario = {
   id: "velocity-shaping",
+  tags: ["transforms"],
   description: "Write drum velocities by hand: per-note crescendo, then vA-B",
   kind: "capability",
   requires: { transforms: true },

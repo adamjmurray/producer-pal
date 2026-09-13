@@ -29,6 +29,7 @@ const TOOL_DUPLICATE = "ppal-duplicate";
 
 export const duplicate: EvalScenario = {
   id: "duplicate",
+  tags: ["clips"],
   description:
     "Create content, duplicate track, and duplicate clip to arrangement",
   kind: "regression",
@@ -251,6 +252,7 @@ function secondHalfMirrorsFirst(events: NoteEvent[]): boolean {
  */
 export const duplicateLoop: EvalScenario = {
   id: "duplicate-loop",
+  tags: ["clips"],
   description:
     "Double a MIDI clip with duplicateLoop (native Clip.duplicate_loop)",
   kind: "capability",

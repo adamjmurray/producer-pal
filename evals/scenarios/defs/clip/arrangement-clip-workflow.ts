@@ -98,6 +98,7 @@ function assertSplitInSongTime(turn: number): EvalAssertion {
 
 export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
+  tags: ["clips"],
   description:
     "Create arrangement clip, duplicate, and cut at song-timeline positions",
   kind: "regression",

@@ -178,6 +178,7 @@ function rewriteAssertionHead(): EvalAssertion[] {
  */
 export const pretransformsMelodyReplaceBaseline: EvalScenario = {
   id: "pretransforms-melody-replace-baseline",
+  tags: ["transforms"],
   description:
     "Baseline: how the model rewrites a melody clip without preTransforms",
   kind: "capability",
@@ -207,6 +208,7 @@ export const pretransformsMelodyReplaceBaseline: EvalScenario = {
  */
 export const pretransformsHatFillsBaseline: EvalScenario = {
   id: "pretransforms-hat-fills-baseline",
+  tags: ["transforms"],
   description:
     "Baseline: clear-and-rewrite a sub-region (bar-2 hats) without preTransforms",
   kind: "capability",
@@ -234,6 +236,7 @@ export const pretransformsHatFillsBaseline: EvalScenario = {
  */
 export const pretransformsSnareSwapBaseline: EvalScenario = {
   id: "pretransforms-snare-swap-baseline",
+  tags: ["transforms"],
   description:
     "Baseline: swap snare pattern across whole clip without preTransforms",
   kind: "capability",

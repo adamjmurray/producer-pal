@@ -115,6 +115,7 @@ function getSelector(transforms: string): string {
 
 export const whereTransforms: EvalScenario = {
   id: "where-transforms",
+  tags: ["transforms"],
   description: "Select notes by value with where() predicates",
   kind: "capability",
   requires: { transforms: true },

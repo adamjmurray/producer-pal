@@ -53,6 +53,7 @@ const EXISTING_GLOBAL = [
 
 export const contextWritePreserves: EvalScenario = {
   id: "context-write-preserves",
+  tags: ["context"],
   description: "Adding a fact to project or global context keeps the rest",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

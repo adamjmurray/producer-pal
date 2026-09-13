@@ -28,6 +28,7 @@ const CLIP_NAME = "Verse Lead";
 
 export const pathArrangementAddress: EvalScenario = {
   id: "path-arrangement-address",
+  tags: ["paths"],
   description: "Act on an arrangement clip by the id or path it reports",
   kind: "capability",
   liveSet: "basic-midi-4-track",

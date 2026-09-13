@@ -141,6 +141,7 @@ function recordLfoReach(turn: number): EvalAssertion {
  */
 export const syncedLfoMeterInvariance: EvalScenario = {
   id: "synced-lfo-meter-invariance",
+  tags: ["notation", "transforms"],
   description:
     "synced LFO → sin(n/4, sync) note-value period, not the removed Nt syntax",
   kind: "capability",

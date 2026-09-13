@@ -52,6 +52,7 @@ const EXISTING_GLOBAL =
 
 export const contextWriteLayerProject: EvalScenario = {
   id: "context-write-layer-project",
+  tags: ["context"],
   description:
     "Routes a this-Live-Set fact to project context, after confirming",
   kind: "regression",
@@ -100,6 +101,7 @@ export const contextWriteLayerProject: EvalScenario = {
 
 export const contextWriteLayerGlobal: EvalScenario = {
   id: "context-write-layer-global",
+  tags: ["context"],
   description: "Routes an always-applies preference to global context",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
@@ -135,6 +137,7 @@ export const contextWriteLayerGlobal: EvalScenario = {
 
 export const contextWriteLayerMemory: EvalScenario = {
   id: "context-write-layer-memory",
+  tags: ["context"],
   description: "Routes a situational user fact to memory, without being asked",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

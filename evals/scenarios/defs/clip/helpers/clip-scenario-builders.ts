@@ -62,6 +62,9 @@ export function createClipScenario(config: {
     id: config.id,
     description: config.description,
     kind: "capability",
+    // Every caller is a notation scenario — this builder is the notation
+    // family's scaffolding.
+    tags: ["notation"],
     ...(config.requires && { requires: config.requires }),
     liveSet: config.liveSet ?? LEAD_LIVE_SET,
     messages: [MSG_CONNECT, ...config.messages],

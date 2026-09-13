@@ -13,6 +13,7 @@ import { assertNamesTarget } from "../path/path-assertions.ts";
 
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
+  tags: ["workflow"],
   description: "Update Live Set global properties and delete a track",
   kind: "regression",
   liveSet: "basic-midi-4-track",

@@ -14,6 +14,7 @@ const TOOL_PLAYBACK = "ppal-playback";
 
 export const sceneAndPlayback: EvalScenario = {
   id: "scene-and-playback",
+  tags: ["workflow"],
   description: "Create scene with tempo, play and stop",
   kind: "regression",
   liveSet: "basic-midi-4-track",

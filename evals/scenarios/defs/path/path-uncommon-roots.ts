@@ -39,6 +39,7 @@ function selectedTrackPath(result: Record<string, unknown>): string {
 
 export const pathUncommonRoots: EvalScenario = {
   id: "path-uncommon-roots",
+  tags: ["paths"],
   description: "Navigate to a return track, the main track, and a drum pad",
   kind: "capability",
   liveSet: "basic-midi-4-track",

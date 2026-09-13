@@ -67,6 +67,7 @@ function assertLearnedFromTheWarning(turn: number): EvalAssertion {
 
 export const pathArrangementStartsAt: EvalScenario = {
   id: "path-arrangement-starts-at",
+  tags: ["paths"],
   description: "Recover when a coordinate names a bar the clip only covers",
   kind: "capability",
   liveSet: "basic-midi-4-track",

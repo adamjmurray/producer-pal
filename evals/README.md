@@ -90,26 +90,28 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                   | Description                                       |
-| ---------------------- | ------------------------------------------------- |
-| `-m, --model <model>`  | Model to test (required, repeatable)              |
-| `-t, --test <id>`      | Run specific scenario by ID (repeatable)          |
-| `-a, --all`            | Run all scenarios                                 |
-| `--small-model`        | Enable small-model mode (basic skills + schemas)  |
-| `--json`               | JSON tool-result output (default: compact)        |
-| `--tools <list>`       | Tool subset, comma-separated (default: all)       |
-| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`) |
-| `-j, --judge <model>`  | Judge model (default: `gemini-3-flash-preview`)   |
-| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)   |
-| `--skip-judge`         | Skip the LLM-as-judge step (checks only)          |
-| `--skip-reflection`    | Skip the self-reflection turn after a failure     |
-| `--no-seed-connect`    | Let the model run the opening connect turn        |
-| `-q, --quiet`          | Suppress detailed AI and judge responses          |
-| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)         |
-| `-u, --usage`          | Show token usage per turn                         |
-| `--no-save`            | Skip writing JSON result files to disk            |
-| `-b, --base-url <url>` | Base URL for the `local` provider                 |
-| `-l, --list`           | List available scenarios                          |
+| Flag                   | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `-m, --model <model>`  | Model to test (required, repeatable)               |
+| `-t, --test <id>`      | Run specific scenario by ID (repeatable)           |
+| `--tag <name>`         | Run scenarios by tag (repeatable, comma-separated) |
+| `-a, --all`            | Run all scenarios                                  |
+| `--small-model`        | Enable small-model mode (basic skills + schemas)   |
+| `--json`               | JSON tool-result output (default: compact)         |
+| `--tools <list>`       | Tool subset, comma-separated (default: all)        |
+| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
+| `-j, --judge <model>`  | Judge model (default: `gemini-3-flash-preview`)    |
+| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)    |
+| `--skip-judge`         | Skip the LLM-as-judge step (checks only)           |
+| `--skip-reflection`    | Skip the self-reflection turn after a failure      |
+| `--no-seed-connect`    | Let the model run the opening connect turn         |
+| `-q, --quiet`          | Suppress detailed AI and judge responses           |
+| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)          |
+| `-u, --usage`          | Show token usage per turn                          |
+| `--no-save`            | Skip writing JSON result files to disk             |
+| `-b, --base-url <url>` | Base URL for the `local` provider                  |
+| `-l, --list`           | List available scenarios                           |
+| `--list-tags`          | List scenario tags with their counts               |
 
 ### Model format
 
@@ -152,6 +154,15 @@ scripts/eval -t connect-to-ableton \
 
 # Compare subscription CLIs against each other (requires `codex` and `claude`)
 scripts/eval -t connect-to-ableton -m codex-code/terra -m claude-code/sonnet
+
+# Run one family instead of the whole suite
+scripts/eval --tag notation -m gemini-3-flash-preview
+
+# Two families at once (repeat the flag or comma-separate)
+scripts/eval --tag paths,clips -m gemini-3-flash-preview
+
+# Narrow a family to named scenarios (both filters must match)
+scripts/eval --tag paths -t path-session-slot -m gemini-3-flash-preview
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
@@ -318,15 +329,19 @@ it as "of what a small model was given", never as comparable to a default score.
 
 ### Scenarios
 
-List available scenarios:
+List available scenarios, and the tags you can run a subset by:
 
 ```bash
-scripts/eval -l
+scripts/eval -l           # every scenario, with its kind and tags
+scripts/eval --list-tags  # every tag, with how many scenarios carry it
 ```
 
-Run `scripts/eval -l` for the current list. Scenarios are tagged as
-**regression** (should always pass) or **capability** (improvement targets, may
-have low pass rates).
+Each scenario is **regression** (should always pass) or **capability**
+(improvement target, may have low pass rates), and carries one or more subset
+tags — `notation`, `transforms`, `paths`, `context`, `clips`, `devices`,
+`workflow`, `pairing`, `results`. A whole-suite run costs hours, so `--tag` is
+how most runs are scoped; `-t` and `--tag` together narrow to scenarios matching
+both.
 
 ### The seeded connect turn
 
@@ -515,6 +530,7 @@ export const myScenario: EvalScenario = {
   id: "my-scenario",
   description: "What this tests",
   kind: "regression",
+  tags: ["workflow"], // one or more; see SCENARIO_TAGS
   liveSet: "basic-midi-4-track", // from evals/live-sets/
   messages: ["Connect to Ableton Live", "Do something specific"],
   assertions: [
@@ -532,7 +548,7 @@ export const myScenario: EvalScenario = {
 ```
 
 Register new scenarios in `evals/scenarios/defs/index.ts` and
-`evals/scenarios/load-scenarios.ts`.
+`evals/scenarios/load-scenarios/load-scenarios.ts`.
 
 ### Design guidelines
 
@@ -558,8 +574,12 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
   same mistake one level down, which is why `response_contains` never gates.
 - **Keep messages unambiguous.** Vague prompts create flaky evals. If a scenario
   fails at 0%, suspect the prompt before the model.
-- **Regression vs capability:** Tag scenarios as `kind: "regression"` when they
-  should always pass (use these to catch regressions). Tag as
+- **Tag it with the family it belongs to.** `tags` is what lets someone run your
+  scenario without naming it — a new tag goes in `SCENARIO_TAGS`
+  (`evals/scenarios/load-scenarios/scenario-tags.ts`) first, and a scenario gets
+  a second tag only when it really grades both families.
+- **Regression vs capability:** Mark scenarios `kind: "regression"` when they
+  should always pass (use these to catch regressions). Mark them
   `kind: "capability"` for aspirational tests that target difficult tasks —
   these start with low pass rates and graduate to regression once stable.
 - **Use `-r N` to diagnose flakiness.** If a regression eval fails

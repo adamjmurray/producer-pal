@@ -41,6 +41,7 @@ function resultPath(result: Record<string, unknown>): string {
 
 export const pathInsertPosition: EvalScenario = {
   id: "path-insert-position",
+  tags: ["paths"],
   description: "Insert a track and a scene at a position, shifting the rest",
   kind: "capability",
   liveSet: "basic-midi-4-track",

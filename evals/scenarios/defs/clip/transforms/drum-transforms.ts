@@ -54,6 +54,7 @@ const SNARE = /E1/;
 
 export const drumTransforms: EvalScenario = {
   id: "drum-transforms",
+  tags: ["transforms"],
   description: "Apply velocity transforms to drum clip notes",
   kind: "capability",
   requires: { transforms: true },

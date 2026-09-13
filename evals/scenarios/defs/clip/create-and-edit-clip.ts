@@ -14,6 +14,7 @@ const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const createAndEditClip: EvalScenario = {
   id: "create-and-edit-clip",
+  tags: ["clips"],
   description: "Create a drum clip, add notes, and quantize",
   kind: "regression",
   liveSet: "basic-midi-4-track",

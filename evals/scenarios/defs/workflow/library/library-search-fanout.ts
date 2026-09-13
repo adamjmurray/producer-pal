@@ -110,6 +110,7 @@ function assertFannedOut(): EvalAssertion {
 
 export const librarySearchFanout: EvalScenario = {
   id: "library-search-fanout",
+  tags: ["workflow"],
   description:
     "Reach for ppal-library's searches fan-out when one request names several sounds",
   // Whether a model picks the fan-out is judgment, not instruction.

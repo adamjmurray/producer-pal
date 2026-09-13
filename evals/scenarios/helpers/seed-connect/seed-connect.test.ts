@@ -39,6 +39,7 @@ function scenario(
   return {
     id: "test",
     description: "test",
+    tags: ["workflow"],
     liveSet: "basic-midi-4-track",
     messages,
     assertions: [],

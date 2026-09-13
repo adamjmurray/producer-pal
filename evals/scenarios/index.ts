@@ -33,7 +33,12 @@ import {
 } from "./helpers/trials/run-trials.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
 import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
-import { loadScenarios, printList } from "./load-scenarios.ts";
+import {
+  loadScenarios,
+  printList,
+  printTags,
+} from "./load-scenarios/load-scenarios.ts";
+import { parseTagArgs } from "./load-scenarios/scenario-tags.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
 
 collapseStdoutNewlines();
@@ -42,6 +47,8 @@ export type { ModelSpec, ModelSpec as JudgeOverride };
 
 interface CliOptions {
   test: string[];
+  /** Tag filter (repeatable; each value may be a comma list). */
+  tag: string[];
   model: string[];
   /** Enable small-model mode (basic skills tier + reduced param schemas). */
   smallModel?: boolean;
@@ -54,6 +61,7 @@ interface CliOptions {
   judge?: string;
   repeat?: string;
   list?: boolean;
+  listTags?: boolean;
   listModels?: string | boolean;
   all?: boolean;
   /** Run the ordering canary subset from evals/canary-scenarios.txt. */
@@ -116,6 +124,12 @@ program
     [],
   )
   .option(
+    "--tag <name>",
+    "Run scenarios carrying any of these tags (repeatable, comma-separated)",
+    collectValues,
+    [],
+  )
+  .option(
     "-m, --model <provider/model>",
     "Model(s) to test (e.g., gemini-3.6-flash, local/qwen3-8b)",
     collectValues,
@@ -146,6 +160,7 @@ program
     "Run each scenario N times to detect flaky results",
   )
   .option("-l, --list", "List available scenarios")
+  .option("--list-tags", "List scenario tags with their counts, then exit")
   .option(
     "--list-models [provider]",
     "List models for a provider (omit to list providers), then exit",
@@ -190,6 +205,12 @@ program
       );
     }
 
+    if (options.listTags) {
+      printTags();
+
+      return;
+    }
+
     if (options.list) {
       printList(buildRunEnv(options));
 
@@ -215,22 +236,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     );
   }
 
-  if (options.canary) {
-    if (options.all || options.test.length > 0) {
-      program.error("--canary cannot be combined with --all or --test");
-    }
-
-    options.test = readCanaryScenarios();
-    console.log(`Canary: ${options.test.length} scenarios`);
-  }
-
-  if (!options.all && options.test.length === 0) {
-    program.error("must specify -t, --test <id>, -a, --all, or --canary");
-  }
-
-  if (options.all && options.test.length > 0) {
-    program.error("--all and --test cannot be used together");
-  }
+  const tags = resolveSelection(options);
 
   const modelSpecs = options.model.map((model) =>
     parseModelArgOrExit(program, model),
@@ -255,6 +261,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   try {
     const scenarios = loadScenarios({
       testIds: options.all ? undefined : options.test,
+      tags,
     });
 
     if (scenarios.length === 0) {
@@ -301,6 +308,47 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       error instanceof Error ? error.message : String(error),
     );
     process.exit(1);
+  }
+}
+
+/**
+ * Settle which scenarios the run asked for. `--canary` expands to its id list;
+ * `-t` and `--tag` narrow (both given, a scenario has to match both); `-a` takes
+ * everything and refuses to be narrowed.
+ *
+ * @param options - CLI options, mutated in place when --canary supplies the ids
+ * @returns The requested tags (empty when none)
+ */
+function resolveSelection(options: CliOptions): string[] {
+  const narrowed = options.test.length > 0 || options.tag.length > 0;
+
+  if (options.canary) {
+    if (options.all || narrowed) {
+      program.error("--canary cannot be combined with --all, --test or --tag");
+    }
+
+    options.test = readCanaryScenarios();
+    console.log(`Canary: ${options.test.length} scenarios`);
+
+    return [];
+  }
+
+  if (options.all && narrowed) {
+    program.error("--all cannot be combined with --test or --tag");
+  }
+
+  if (!options.all && !narrowed) {
+    program.error(
+      "must specify -t, --test <id>, --tag <name>, -a, --all, or --canary",
+    );
+  }
+
+  try {
+    return parseTagArgs(options.tag);
+  } catch (error) {
+    program.error(error instanceof Error ? error.message : String(error));
+
+    return [];
   }
 }
 

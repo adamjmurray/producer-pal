@@ -162,6 +162,7 @@ function assertKickLoaded(): EvalAssertion {
 
 export const drumPadForceGuard: EvalScenario = {
   id: "drum-pad-force-guard",
+  tags: ["devices"],
   description:
     "A pad's DrumSampler is only replaced once the user agrees, then the sample loads",
   kind: "capability",

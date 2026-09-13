@@ -207,6 +207,7 @@ function assertLayeredOntoPad(turn: number): EvalAssertion {
 
 export const rackPadOps: EvalScenario = {
   id: "rack-pad-ops",
+  tags: ["devices"],
   description:
     "Drum pad chain fader, a pad copy that carries it, and removing one layer",
   kind: "capability",

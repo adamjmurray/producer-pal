@@ -202,6 +202,7 @@ function recordClearSyntax(turn: number): EvalAssertion {
  */
 export const rangeClearBoundaries: EvalScenario = {
   id: "range-clear-boundaries",
+  tags: ["notation", "transforms"],
   description:
     "Clear a whole bar and a half bar without deleting the boundary note",
   kind: "capability",

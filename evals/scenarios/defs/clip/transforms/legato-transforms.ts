@@ -18,6 +18,7 @@ const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const legatoTransforms: EvalScenario = {
   id: "legato-transforms",
+  tags: ["transforms"],
   description: "Add octaves, humanize timing, and apply legato with tolerance",
   kind: "capability",
   requires: { transforms: true },

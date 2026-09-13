@@ -18,6 +18,7 @@ const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const swingAndQuantize: EvalScenario = {
   id: "swing-and-quantize",
+  tags: ["transforms"],
   description: "Apply swing and quantize to existing MIDI clips",
   kind: "capability",
   requires: { transforms: true },

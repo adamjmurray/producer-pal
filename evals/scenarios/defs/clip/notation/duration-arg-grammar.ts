@@ -102,6 +102,7 @@ function assertLengthArg(
  */
 export const durationArgGrammar: EvalScenario = {
   id: "duration-arg-grammar",
+  tags: ["notation"],
   description:
     "Clip lengths use the duration-arg grammar: 1bar+n/4 (6/8), 4bar, n/4",
   kind: "capability",
