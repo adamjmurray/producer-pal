@@ -47,7 +47,11 @@ export function focusIfRequested(
     return;
   }
 
-  const lastObject = createdObjects.at(-1) as { id?: string } | undefined;
+  // A destination that got no copy has an entry but no id, so the last thing
+  // worth selecting is the last entry that names an object.
+  const lastObject = createdObjects.findLast(
+    (created) => (created as { id?: string }).id != null,
+  ) as { id?: string } | undefined;
   const lastId = lastObject?.id;
 
   if (type === "clip" && lastId) {

@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import {
   buildClipResultObject,
@@ -14,10 +13,14 @@ import {
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
-  objectPathForApi,
-  targetLabel,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+  markClipLanded,
+  moveClipReasons,
+  noteClipReason,
+  refuseClipWork,
+  type ClipReasons,
+} from "../entries/clip-reasons.ts";
 import {
   deferNonSurvivorDeletion,
   removeMovedSource,
@@ -39,6 +42,8 @@ interface HandleArrangementStartArgs {
   context: TilingContext;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
   isNonSurvivor?: boolean;
 }
 
@@ -59,6 +64,7 @@ interface HandleArrangementStartArgs {
  * @param args.context - Context with silenceWavPath for audio clip operations
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for the result entry
+ * @param args.reasons - What each clip has to say beyond its result
  * @param args.isNonSurvivor - When true, leave the clip alone: a later, longer
  *   clip in this call is headed for the same place, and clearing it waits on
  *   that landing (see update-clip-deferred-deletion.ts)
@@ -73,14 +79,17 @@ export function handleArrangementStartOperation({
   context,
   updatedClips,
   noteResult,
+  reasons,
   isNonSurvivor,
 }: HandleArrangementStartArgs): string | null {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
-    console.warn(
-      `arrangementStart parameter ignored for session clip ${targetLabel(clip)}`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "arrangementStart ignored: this is a session clip",
     );
 
     return clip.id;
@@ -89,8 +98,10 @@ export function handleArrangementStartOperation({
   const sourceTrackIndex = clip.trackIndex;
 
   if (sourceTrackIndex == null) {
-    console.warn(
-      `could not determine trackIndex for clip ${targetLabel(clip)}`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "not moved: could not determine its track",
     );
 
     return clip.id;
@@ -128,11 +139,12 @@ export function handleArrangementStartOperation({
     isMidiClip,
     context,
     movedClipGroups,
+    reasons,
   });
 
-  // Null covers two cases, both already warned: refused before anything was
-  // touched (nothing to tally), or a partial re-create that tallied itself
-  // before returning here. Either way the source is left alone.
+  // Null covers two cases, both already on the clip's entry: refused before
+  // anything was touched (nothing to tally), or a partial re-create that tallied
+  // itself before returning here. Either way the source is left alone.
   if (newClip == null) {
     return clip.id;
   }
@@ -146,8 +158,10 @@ export function handleArrangementStartOperation({
 
   // Verify duplicate succeeded before deleting original
   if (!newClip.exists()) {
-    console.warn(
-      `failed to duplicate clip ${targetLabel(clip)} - original preserved`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "not moved: Live made no copy at the destination, so the original was kept",
     );
 
     return clip.id;
@@ -161,7 +175,11 @@ export function handleArrangementStartOperation({
   // holding placement already trimmed it (or fully replaced it on a zero-offset
   // move), so guard with exists() — leaving a single clip at the new position.
   if (clip.exists()) {
-    removeMovedSource(clip, sourceTrack);
+    const leftover = removeMovedSource(clip, sourceTrack);
+
+    if (leftover != null) {
+      noteClipReason(reasons, clip.id, leftover);
+    }
   }
 
   // Return the new clip ID
@@ -179,6 +197,8 @@ interface HandleArrangementOperationsArgs {
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
   isNonSurvivor?: boolean;
 }
 
@@ -194,6 +214,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.noteResult - Note update result for result
+ * @param args.reasons - What each clip has to say beyond its result
  * @param args.isNonSurvivor - When true, clip is left for the deferred clear
  */
 export function handleArrangementOperations({
@@ -206,6 +227,7 @@ export function handleArrangementOperations({
   context,
   updatedClips,
   noteResult,
+  reasons,
   isNonSurvivor,
 }: HandleArrangementOperationsArgs): void {
   // Move FIRST so lengthening uses the new position
@@ -224,6 +246,7 @@ export function handleArrangementOperations({
       context: context as TilingContext,
       updatedClips,
       noteResult,
+      reasons,
       isNonSurvivor,
     });
 
@@ -245,11 +268,17 @@ export function handleArrangementOperations({
       isAudioClip,
       arrangementLengthBeats,
       context,
+      reasons,
     });
 
+    // The resize runs on the clip the move left behind, which has a new id when
+    // the move landed. What it says belongs to the clip the caller named.
+    moveClipReasons(reasons, currentClip.id, clip.id);
     finalNoteResult = recountNotesAfterLengthChange(finalClipId, noteResult);
 
     if (results.length > 0) {
+      // The resize landed, so a move refused beside it keeps a real entry.
+      markClipLanded(reasons, clip.id);
       // The length helpers return ids only, and their first entry is always the
       // clip the notes were written to (any tiles follow it), so the note stats
       // go there. Each tile starts somewhere else, so each is asked its own

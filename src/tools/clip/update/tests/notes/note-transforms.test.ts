@@ -9,7 +9,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
-} from "../../helpers/note-transforms.ts";
+} from "../../helpers/notes/note-transforms.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 

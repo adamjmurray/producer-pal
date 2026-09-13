@@ -22,6 +22,7 @@ import {
   type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../../mcp-test-helpers";
 import {
@@ -464,12 +465,14 @@ describe("ppal-update-clip", () => {
     const { data, warnings } = parseToolResultWithWarnings<{
       id: string;
       slot?: string;
+      reason?: string;
     }>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(warnings.join(" ")).toContain(
-      "names an arrangement lane, so session clip",
+    expect(data.reason).toContain(
+      'not moved: toPath "t7" names an arrangement lane and this is a session clip',
     );
+    expect(warnings.join(" ")).not.toContain("not moved");
 
     await sleep(100);
 
@@ -490,11 +493,58 @@ describe("ppal-update-clip", () => {
       name: "ppal-update-clip",
       arguments: { path: "t0/s0,t1/s0", toPath: "t0/d0" },
     });
-    const warnings = getToolWarnings(result).join(" ");
+    const { data, warnings } = parseToolResultWithWarnings<unknown>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(warnings).toContain("device paths hold no clips");
-    expect(warnings).not.toContain("destination for");
+    // The one destination covers both clips, so both entries say why nothing
+    // moved — nothing warns, and the count was never the problem.
+    expect(JSON.stringify(data)).toContain("device paths hold no clips");
+    expect(warnings.join(" ")).not.toContain("destination for");
+    expect(warnings.join(" ")).not.toContain("device paths hold no clips");
+  });
+
+  // N targets named, N entries back: the miss holds its slot so the caller can
+  // pair the entries against the paths it sent, and nothing warns about it.
+  it("keeps the slot of a path that holds no clip", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s20`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s20,t${EMPTY_MIDI_TRACK}/s21`,
+        name: "Half Named",
+      },
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<Array<ReadClipResult | SkippedTargetResult>>(
+        result,
+      );
+    const [updated, missed] = data as [ReadClipResult, SkippedTargetResult];
+
+    expect(data).toHaveLength(2);
+    expect(updated.id).toBe(clipId);
+    expect(missed).toStrictEqual({
+      path: `t${EMPTY_MIDI_TRACK}/s21`,
+      ok: false,
+      reason: `no clip at path "t${EMPTY_MIDI_TRACK}/s21"`,
+    });
+    expect(warnings.join(" ")).not.toContain("no clip at path");
+  });
+
+  // One target and nothing done: there is no list for an entry to hold a place
+  // in, so the reason comes back as the error.
+  it("throws when the one path it names holds no clip", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s22`, name: "Nobody Home" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `no clip at path "t${EMPTY_MIDI_TRACK}/s22"`,
+    );
   });
 
   // Naming fewer destinations than clips is refused before anything runs, so

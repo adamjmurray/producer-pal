@@ -99,9 +99,32 @@ target, so no entry exists yet to carry them.
   thing — which is what lets `delete` tell "nothing is there" (a no-op) from
   "that isn't a track" (a skip). The warn-and-null list lookup stays for the
   tools whose per-target loops are not yet converted.
-- **update-clip's per-target loop still drops and warns.** Its targets are
-  re-ordered and its results re-assembled per clip, so it does not fit the
-  helper yet. The move and arrangement helpers are in the same state.
+- **update-clip answers per target named, not per clip reached.** Its targets
+  resolve up front, the plan carries which target each clip (and each piece a
+  split cut it into) belongs to, and the results are assembled back into call
+  order. A target whose path or id found no clip, or that the deadline never
+  reached, holds its slot as a skip; so does one whose only requested work — a
+  move, a position, a split — was refused outright, since where the clip still
+  sits is nothing the caller asked about. A clip named twice holds its second
+  slot as a normal entry saying the update already happened, and a clip that was
+  written but not as asked keeps its entry with a `reason`: a throw partway, a
+  move refused beside a name or a length that landed, a re-create and what it
+  cost, a take-lane leftover. The move and arrangement helpers report all of it
+  on the clip's entry instead of warning, through a per-call collector keyed by
+  the clip id the call found; a step that writes under a new id — a move
+  re-creates the clip — hands its reasons back to the id the caller named. One
+  target never answers with no entries: a split whose pieces the rescan can't
+  find says so too.
+- **duplicate answers per destination named.** A destination no copy landed at
+  keeps its slot as `{path, ok: false, reason}` — a missing clip slot, a track
+  that won't take the clip, a copy Live declined, a take lane past the cap, a
+  re-create that failed, a destination the deadline never reached, one the plan
+  dropped because a clip slot can't take an arrangement copy. A copy that landed
+  incomplete is a clip entry with a `reason`, not a skip: it exists, so losing
+  it from the result would cost the caller a clip. The path is spelled the way a
+  copy that landed there would report it, so it pastes back into `toPath`. The
+  deadline warning still names what it never reached, and counts only copies
+  that exist.
 - **update-device's per-param drop paths became entries.** A `params` list
   answers with one entry per param sent: a disabled param, an ambiguous name, an
   unreadable value, a unit that can't be checked, a write Live ignored, a nested

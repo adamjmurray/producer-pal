@@ -28,28 +28,36 @@ describe("updateClip - refuses one toPath place for several clips", () => {
   });
 
   // Neither id resolves to a real clip, so a call that gets past the refusal
-  // just returns an empty result - these ids only exist to prove the refusal
-  // did NOT fire.
+  // answers with a skip per id - these ids only exist to prove the refusal did
+  // NOT fire.
+
+  /** The entry an id that resolves to this file's device stub leaves behind. */
+  const notAClip = (id: string) => ({
+    id,
+    ok: false,
+    reason: `id ${id} is not a clip (found Device)`,
+  });
 
   // A bare coordinate names no lane, so each clip keeps its own - it broadcasts
   // instead of refusing.
   it("does not refuse a bare position shared by several ids", async () => {
     await expect(
       updateClip({ id: "1,2", toPath: "[5|1]" }),
-    ).resolves.toStrictEqual([]);
+    ).resolves.toStrictEqual([notAClip("1"), notAClip("2")]);
   });
 
-  // One id: nothing to share, so the lane destination is fine.
+  // One id: nothing to share, so the lane destination is fine. One target that
+  // got nothing done throws instead of answering with a list.
   it("does not refuse a lane destination for a single id", async () => {
-    await expect(
-      updateClip({ id: "1", toPath: "t0[5|1]" }),
-    ).resolves.toStrictEqual([]);
+    await expect(updateClip({ id: "1", toPath: "t0[5|1]" })).rejects.toThrow(
+      "id 1 is not a clip (found Device)",
+    );
   });
 
   // N destinations for N ids already pair 1:1; nothing here is shared.
   it("does not refuse one destination per id", async () => {
     await expect(
       updateClip({ id: "1,2", toPath: "t0[5|1],t1[9|1]" }),
-    ).resolves.toStrictEqual([]);
+    ).resolves.toStrictEqual([notAClip("1"), notAClip("2")]);
   });
 });

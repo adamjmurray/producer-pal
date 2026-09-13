@@ -14,12 +14,18 @@ import {
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   emitArrangementWarnings,
   moveGroupKey,
   type MoveGroup,
 } from "../../helpers/arrangement/update-clip-move-groups.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "../../helpers/entries/clip-reasons.ts";
+import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
 
 // Wraps the real recreateClip so most tests get its actual behavior; one test
 // below overrides it to return a clip that doesn't exist, a shape Live's own
@@ -40,13 +46,6 @@ const DEST_TRACK = 5;
 /** Never registered, so it stands for a track index the caller mistyped. */
 const MISSING_TRACK = 99;
 const SOURCE_ID = "123";
-/**
- * How a warning names the source clip: both spellings, per ADR-0009. It starts
- * at 8 Ableton beats, which the song's 4/4 spells as bar 3 beat 1.
- */
-const SOURCE = `t${SOURCE_TRACK}[3|1] (id ${SOURCE_ID})`;
-/** Same, for the tests whose source sits on a take lane. */
-const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0[3|1] (id ${SOURCE_ID})`;
 const DUPLICATED_ID = "456";
 /** Never registered, so it resolves to a clip that doesn't exist. */
 const PHANTOM_ID = "789";
@@ -68,6 +67,10 @@ const TAKE_LANE_SOURCE = livePath
   .arrangementClip(0);
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
+
+/** What the source clip had to say about the move the last runMove ran. */
+let reasons: ClipReasons = newClipReasons();
+const movedReason = (): string => joinedClipReason(reasons, SOURCE_ID);
 
 /** Gives a source clip something for add_new_notes to actually write. */
 const NOTES = [
@@ -135,11 +138,10 @@ interface MoveOptions {
 }
 
 /**
- * Register a source clip and a destination track, then run the move.
+ * Register a source clip and a destination track, for a move about to run.
  * @param opts - What this test varies
- * @returns The clip id the operation resolved to
  */
-function runMove(opts: MoveOptions = {}): string | null {
+function registerMoveWorld(opts: MoveOptions = {}): void {
   const {
     sourcePath = livePath.track(SOURCE_TRACK).arrangementClip(0),
     isMidi = 1,
@@ -147,8 +149,6 @@ function runMove(opts: MoveOptions = {}): string | null {
     hasEnvelopes = 0,
     initialLanes = 0,
     destHasMidiInput = 1,
-    arrangementStartBeats = 32,
-    destination = { trackIndex: DEST_TRACK, takeLane: null },
     hasNotes = false,
   } = opts;
 
@@ -214,6 +214,22 @@ function runMove(opts: MoveOptions = {}): string | null {
 
     return ["id", DUPLICATED_ID];
   };
+}
+
+/**
+ * Register the world and run the move.
+ * @param opts - What this test varies
+ * @returns The clip id the operation resolved to
+ */
+function runMove(opts: MoveOptions = {}): string | null {
+  const {
+    isMidi = 1,
+    arrangementStartBeats = 32,
+    destination = { trackIndex: DEST_TRACK, takeLane: null },
+  } = opts;
+
+  registerMoveWorld(opts);
+  reasons = newClipReasons();
 
   return handleArrangementStartOperation({
     clip: LiveAPI.from(`id ${SOURCE_ID}`),
@@ -224,8 +240,41 @@ function runMove(opts: MoveOptions = {}): string | null {
     context: mockContext,
     updatedClips: [],
     noteResult: null,
+    reasons,
   });
 }
+
+// Through updateClip itself, because the bug was in the seam: the resize runs on
+// the clip the move re-created, so its reason was filed under an id the loop
+// never looks up, and the entry lost it.
+describe("a lane move whose resize can't run", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("keeps both reasons on the moved clip's entry", async () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      type: "Song",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerMoveWorld();
+
+    const result = (await updateClip({
+      id: SOURCE_ID,
+      toPath: `t${DEST_TRACK}/l0`,
+      arrangementLength: "2bar",
+    })) as { id: string; reason?: string };
+
+    // The clip moved, so its entry is real — and it carries what the move and
+    // the refused resize each had to say.
+    expect(result.id).not.toBe(SOURCE_ID);
+    expect(result.reason).toBe(
+      `re-created on t${DEST_TRACK}/l0; ` +
+        "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
+    );
+  });
+});
 
 describe("moving an arrangement clip to another lane", () => {
   beforeEach(() => {
@@ -273,9 +322,7 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK).takeLane(0))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 32, 8);
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE} was re-created on t${DEST_TRACK}/l0`,
-    );
+    expect(movedReason()).toBe(`re-created on t${DEST_TRACK}/l0`);
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
@@ -293,14 +340,10 @@ describe("moving an arrangement clip to another lane", () => {
       clipCreationFails: true,
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE} was not moved: Live created no clip at t${DEST_TRACK}/l0`,
-      ),
+    expect(movedReason()).toContain(
+      `not moved: Live created no clip at t${DEST_TRACK}/l0`,
     );
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("was re-created"),
-    );
+    expect(movedReason()).not.toContain("re-created on");
     expect(result).toBe(SOURCE_ID);
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
@@ -321,10 +364,8 @@ describe("moving an arrangement clip to another lane", () => {
       movedClipGroups,
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE} left an incomplete clip on t${DEST_TRACK}/l0 (notes failed); the original clip was kept`,
-      ),
+    expect(movedReason()).toContain(
+      `not moved: an incomplete clip was left on t${DEST_TRACK}/l0 (notes failed); the original clip was kept`,
     );
     // The source is kept, not deleted: the failure could have been in the
     // color write, after the notes had already landed on the broken clip.
@@ -349,13 +390,9 @@ describe("moving an arrangement clip to another lane", () => {
       initialLanes: 1,
     });
 
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("was re-created"),
-    );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `failed to duplicate clip ${SOURCE} - original preserved`,
-      ),
+    expect(movedReason()).not.toContain("re-created on");
+    expect(movedReason()).toContain(
+      "not moved: Live made no copy at the destination, so the original was kept",
     );
     expect(result).toBe(SOURCE_ID);
   });
@@ -369,8 +406,8 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
     ).toHaveBeenCalledWith("create_take_lane");
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE} was re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
+    expect(movedReason()).toBe(
+      `re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
     );
   });
 
@@ -394,9 +431,7 @@ describe("moving an arrangement clip to another lane", () => {
     const movedClipGroups = new Map<string, MoveGroup>();
     const result = runMove({ ...opts, movedClipGroups });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`clip ${SOURCE} was not moved: ${expected}`),
-    );
+    expect(movedReason()).toContain(`not moved: ${expected}`);
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
@@ -433,10 +468,8 @@ describe("moving an arrangement clip to another lane", () => {
     const movedClipGroups = new Map<string, MoveGroup>();
     const result = runMove({ duplicateFails: true, movedClipGroups });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `failed to duplicate clip ${SOURCE} - original preserved`,
-      ),
+    expect(movedReason()).toContain(
+      "not moved: Live made no copy at the destination, so the original was kept",
     );
     // The source is kept, since no copy landed to replace it.
     expect(result).toBe(SOURCE_ID);
@@ -478,9 +511,7 @@ describe("moving a clip off a take lane", () => {
       expect.anything(),
       expect.anything(),
     );
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE_ON_LANE} was re-created on t${DEST_TRACK}`,
-    );
+    expect(movedReason()).toContain(`re-created on t${DEST_TRACK}`);
     expect(result).not.toBe(SOURCE_ID);
   });
 
@@ -492,14 +523,10 @@ describe("moving a clip off a take lane", () => {
       clipCreationFails: true,
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE_ON_LANE} was not moved: Live created no clip at t${DEST_TRACK}`,
-      ),
+    expect(movedReason()).toContain(
+      `not moved: Live created no clip at t${DEST_TRACK}`,
     );
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("was re-created"),
-    );
+    expect(movedReason()).not.toContain("re-created on");
     expect(result).toBe(SOURCE_ID);
   });
 
@@ -513,10 +540,8 @@ describe("moving a clip off a take lane", () => {
       hasNotes: true,
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE_ON_LANE} left an incomplete clip on t${DEST_TRACK} (notes failed); the original clip was kept`,
-      ),
+    expect(movedReason()).toContain(
+      `not moved: an incomplete clip was left on t${DEST_TRACK} (notes failed); the original clip was kept`,
     );
     expect(result).toBe(SOURCE_ID);
 
@@ -553,11 +578,7 @@ describe("moving a clip off a take lane", () => {
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE_ON_LANE} was emptied instead of deleted`,
-      ),
-    );
+    expect(movedReason()).toContain("emptied instead of deleted");
   });
 
   // An audio take can't be emptied at all, so it is only muted and marked.
@@ -573,10 +594,6 @@ describe("moving a clip off a take lane", () => {
 
     expect(source?.set).toHaveBeenCalledWith("name", "(moved) Verse");
     expect(source?.set).toHaveBeenCalledWith("muted", 1);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE_ON_LANE} was muted instead of deleted`,
-      ),
-    );
+    expect(movedReason()).toContain("muted instead of deleted");
   });
 });

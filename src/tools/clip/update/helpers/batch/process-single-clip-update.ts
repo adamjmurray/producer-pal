@@ -21,22 +21,23 @@ import {
   forceWarpForLooping,
   setAudioParameters,
   handleWarpMarkerOperation,
-} from "./audio-updates.ts";
+} from "../audio-updates.ts";
 import {
   handleDuplicateLoop,
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
   handleQuantization,
-} from "./note-updates.ts";
-import { buildClipPropertiesToSet } from "./clip-properties-to-set.ts";
-import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
-import { handlePositionOperations } from "./move/position-operations.ts";
+} from "../notes/note-updates.ts";
+import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
+import { type ClipReasons } from "../entries/clip-reasons.ts";
+import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
+import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
-} from "./clip-beat-positions.ts";
-import { buildClipContext, hasNoteEdits } from "./note-transforms.ts";
+} from "../clip-beat-positions.ts";
+import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
 
 interface ClipResult {
   id: string;
@@ -84,39 +85,15 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   movedClipGroups: Map<string, MoveGroup>;
+  /** What each clip has to say beyond its result, for the clip's own entry. */
+  reasons: ClipReasons;
 }
 
 /**
- * Process a single clip update
- * @param params - Parameters object containing all update parameters
- * @param params.clip - The clip to update
- * @param params.notationString - Musical notation string
- * @param params.transformString - Transform expressions to apply after merge
- * @param params.preTransformString - Transform expressions to apply to existing notes before merge
- * @param params.name - Clip name
- * @param params.color - Clip color
- * @param params.timeSignature - Time signature
- * @param params.start - Start position
- * @param params.length - Clip length
- * @param params.firstStart - First start position
- * @param params.looping - Looping enabled
- * @param params.duplicateLoop - Double the loop via native Clip.duplicate_loop
- * @param params.gainDb - Gain in decibels
- * @param params.pitchShift - Pitch shift amount
- * @param params.warpMode - Warp mode
- * @param params.warping - Warping enabled
- * @param params.warpOp - Warp operation type
- * @param params.warpBeatTime - Warp beat time
- * @param params.warpSampleTime - Warp sample time
- * @param params.warpDistance - Warp distance
- * @param params.quantize - Quantization strength 0-1
- * @param params.quantizeGrid - Note grid for quantization
- * @param params.quantizePitch - Limit quantization to specific pitch
- * @param params.arrangementLengthBeats - Arrangement length in beats
- * @param params.arrangementStartBeats - Arrangement start in beats
- * @param params.context - Context object
- * @param params.updatedClips - Array to collect updated clips
- * @param params.movedClipGroups - Tally of clips landing on each lane and position
+ * Process a single clip update: its audio params, properties, notes, and then
+ * wherever the call sends it.
+ * @param params - Every value one clip's update reads, and the collectors it
+ *   writes to — see {@link ProcessSingleClipUpdateParams}
  */
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
@@ -158,6 +135,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     context,
     updatedClips,
     movedClipGroups,
+    reasons,
   } = params;
 
   const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
@@ -266,6 +244,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     context,
     updatedClips,
     noteResult,
+    reasons,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
 }

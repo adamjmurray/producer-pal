@@ -29,6 +29,7 @@ import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { appendReason } from "../entries/clip-reasons.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-optimizer.ts";
 import {
   deferClipDeletion,
@@ -122,7 +123,11 @@ export function flushDeferredDeletions(
       // The landing may already have cleared the range this clip sat in, in
       // which case there is nothing left to delete.
       if (clip.exists()) {
-        removeMovedSource(clip, sourceTrack);
+        const leftover = removeMovedSource(clip, sourceTrack);
+
+        if (leftover != null) {
+          appendReason(result, leftover);
+        }
       }
     }
   }
@@ -134,13 +139,19 @@ export function flushDeferredDeletions(
  * leaves a placeholder the user has to delete by hand.
  * @param clip - The source clip
  * @param sourceTrack - The track it sits on
+ * @returns What a take lane kept, for the clip's entry to report, or null
  */
-export function removeMovedSource(clip: LiveAPI, sourceTrack: LiveAPI): void {
+export function removeMovedSource(
+  clip: LiveAPI,
+  sourceTrack: LiveAPI,
+): string | null {
   if (isTakeLaneClip(clip)) {
-    emptyTakeLaneClip(clip);
-  } else {
-    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
+    return emptyTakeLaneClip(clip);
   }
+
+  sourceTrack.call("delete_clip", toLiveApiId(clip.id));
+
+  return null;
 }
 
 /**

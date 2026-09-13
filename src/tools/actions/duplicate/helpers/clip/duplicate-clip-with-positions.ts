@@ -26,6 +26,7 @@ import {
   canRecreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import { entriesPerDestination, refusedCopy } from "./copy-entries.ts";
 import {
   labelDuplicateDestinations,
   noBudgetForCopies,
@@ -115,16 +116,11 @@ async function duplicateClipToArrangementPositions(
 ): Promise<object[]> {
   // The alias folds on after resolution, because an omitted toPath means the
   // source clip's own track — which only exists as a destination once resolved.
-  const requested = applyTakeLaneAlias(
-    resolveDestinationTargets(object, destinations.arrangementTargets),
-    takeLane,
+  const resolved = resolveDestinationTargets(
+    object,
+    destinations.arrangementTargets,
   );
-
-  // Only reachable once every named destination was skipped: an omitted toPath
-  // resolves to the source's own track. Nowhere left to copy to.
-  if (requested.every((target) => target == null)) {
-    return [];
-  }
+  const requested = applyTakeLaneAlias(resolved.destinations, takeLane);
 
   const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
     resolveSongPositions(arrangementStart, destinations.arrangementPositions);
@@ -134,10 +130,25 @@ async function duplicateClipToArrangementPositions(
     targets: targetTracks,
     positions: targetPositions,
     requestIndices,
+    requestedTargets,
+    requestedPositions,
   } = planCopies(requested, positionsInBeats);
 
+  const perDestination = {
+    requestIndices,
+    copies,
+    refusals: resolved.refusals,
+    positions: requestedPositions,
+    arrangementTargets: destinations.arrangementTargets,
+    arrangementRefusals: destinations.arrangementRefusals,
+    resolvedTargets: requestedTargets,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  };
+
   // Nothing below can undo a lane, so check the budget before making any: out
-  // of time here means permanent empty lanes and not one clip on them.
+  // of time here means permanent empty lanes and not one clip on them. Every
+  // destination still answers, so a lone one comes back as the error.
   if (
     noBudgetForCopies(
       targetTracks,
@@ -147,14 +158,14 @@ async function duplicateClipToArrangementPositions(
       context.deadline,
     )
   ) {
-    return [];
+    return entriesPerDestination({ ...perDestination, results: [] });
   }
 
   const tracks = destinationTracks(targetTracks);
 
   // Lanes are permanent (Live has no delete), so resolve every one up front:
   // a capacity error partway through would strand the lanes already created.
-  const lanes = resolveDuplicateTakeLanes(
+  const { lanes, refusals: laneRefusals } = resolveDuplicateTakeLanes(
     object,
     targetTracks,
     takeLaneName,
@@ -169,18 +180,92 @@ async function duplicateClipToArrangementPositions(
     arrangementLength,
     lanes,
   );
+  // Both re-create routes rebuild the clip from its sample, so a source without
+  // one can't take either. Read once: every destination's entry says it.
+  const noSample = canRecreateClip(object)
+    ? null
+    : "it's an audio clip with no sample file; drag it in Live's UI";
 
   claimLabels(labels, copies);
 
+  const results = await makeCopies({
+    copy: {
+      tracks,
+      lanes,
+      laneRefusals,
+      canPromote,
+      noSample,
+      object,
+      id,
+      labels,
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context,
+    },
+    targetTracks,
+    targetPositions,
+    requestIndices,
+    labelled,
+  });
+
+  return entriesPerDestination({ ...perDestination, results });
+}
+
+/** What every copy in one call shares. */
+interface SharedCopyOptions {
+  tracks: Map<number, LiveAPI>;
+  lanes: Map<string, ResolvedDuplicateLane>;
+  laneRefusals: Map<string, string>;
+  canPromote: boolean;
+  noSample: string | null;
+  object: LiveAPI;
+  id: string;
+  labels: CopyLabels;
+  arrangementLength: string | undefined;
+  songTimeSigNumerator: number;
+  songTimeSigDenominator: number;
+  context: Partial<ToolContext>;
+}
+
+interface MakeCopiesArgs {
+  copy: SharedCopyOptions;
+  targetTracks: ArrangementTrack[];
+  targetPositions: number[];
+  /** The requested destination each copy belongs to */
+  requestIndices: number[];
+  /** Each copy's destination, labelled for a deadline warning */
+  labelled: UnreachedDestination[];
+}
+
+/**
+ * Make the copies, in an order that keeps the source clip whole for as long as
+ * possible, and report what each destination got.
+ * @param args - What every copy shares, and the destinations to make them at
+ * @param args.copy - What every copy in this call shares
+ * @param args.targetTracks - Destination per copy
+ * @param args.targetPositions - Start position per copy, in Ableton beats
+ * @param args.requestIndices - The requested destination each copy belongs to
+ * @param args.labelled - Each copy's destination, labelled for a warning
+ * @returns One entry per copy attempted, null where the deadline stopped it
+ */
+async function makeCopies({
+  copy,
+  targetTracks,
+  targetPositions,
+  requestIndices,
+  labelled,
+}: MakeCopiesArgs): Promise<(object | null)[]> {
+  const { songTimeSigNumerator, songTimeSigDenominator, context } = copy;
   // Results keep the order the destinations were asked for, even though the
   // copies are made in another one.
   const order = sourceLastOrder(
-    object,
+    copy.object,
     targetTracks,
     targetPositions,
     copySpanBeats(
-      object,
-      arrangementLength,
+      copy.object,
+      copy.arrangementLength,
       songTimeSigNumerator,
       songTimeSigDenominator,
     ),
@@ -211,30 +296,31 @@ async function duplicateClipToArrangementPositions(
       break;
     }
 
-    const result = await duplicateOneCopy({
-      tracks,
+    const attempt = await duplicateOneCopy({
+      ...copy,
       target: targetTracks[i] as ArrangementTrack,
       startBeats: targetPositions[i] as number,
-      lanes,
-      canPromote,
-      object,
-      id,
-      name: labelName(labels, requestIndex),
-      color: labelColor(labels, requestIndex),
-      arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      context,
+      name: labelName(copy.labels, requestIndex),
+      color: labelColor(copy.labels, requestIndex),
     });
 
-    if (result != null) {
-      results[i] = result;
-    } else {
-      skipped.push(labelled[i] as UnreachedDestination);
+    if (attempt.copy != null) {
+      results[i] = attempt.copy;
+
+      continue;
     }
+
+    // The destination keeps its place in the result, saying no copy landed on
+    // it — and the deadline warning still counts it as one the call gave up on.
+    results[i] = refusedCopy(
+      labelled[i] as UnreachedDestination,
+      { songTimeSigNumerator, songTimeSigDenominator },
+      attempt.refused,
+    );
+    skipped.push(labelled[i] as UnreachedDestination);
   }
 
-  return results.filter((result) => result != null);
+  return results;
 }
 
 /**
@@ -325,12 +411,10 @@ function warnRecreatedCopyLimits(
       `clip ${targetLabel(object)} was promoted to the main lane by re-creating it` +
         (losses ? ` (${losses})` : ""),
     );
-  } else if (promotes) {
-    console.warn(
-      `promoting to the main lane re-creates the clip, so audio clip ${targetLabel(object)} with no sample file can't be promoted off its take lane; drag it in Live's UI`,
-    );
   }
 
+  // A source with no sample can't be promoted at all; each destination's own
+  // entry says so, so nothing is warned here.
   return canPromote;
 }
 

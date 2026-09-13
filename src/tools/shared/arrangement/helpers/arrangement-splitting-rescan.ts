@@ -20,11 +20,12 @@ export interface SplitClipRange {
  * Re-scan tracks to replace stale clip objects with fresh ones.
  * @param splitClipRanges - Map of original clip IDs to their ranges
  * @param clips - Array to update with fresh clips
+ * @returns The pieces each cut clip became, by the id it was cut at
  */
 export function rescanSplitClips(
   splitClipRanges: Map<string, SplitClipRange>,
   clips: LiveAPI[],
-): void {
+): Map<string, LiveAPI[]> {
   const freshByOldId = freshClipsByOldId(splitClipRanges);
 
   // Kept in the original range order: a splice can insert a clip whose id is
@@ -37,6 +38,8 @@ export function rescanSplitClips(
       clips.splice(staleIndex, 1, ...(freshByOldId.get(oldClipId) ?? []));
     }
   }
+
+  return freshByOldId;
 }
 
 /**

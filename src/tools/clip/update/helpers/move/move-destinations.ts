@@ -21,15 +21,18 @@ import {
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   pairExact,
   pairValues,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
+  objectPathForApi,
   targetLabel,
   targetLabelForId,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
+import { refuseTarget, type ClipTargets } from "../entries/clip-targets.ts";
 
 /**
  * The param the caller used to name a destination, so a warning names one they
@@ -42,10 +45,16 @@ export function moveDestinationParam(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
 ): "toPath" | "toSlot" {
-  // Silent: resolveMoveDestinations already warned about anything it dropped.
+  // Silent: resolveMoveDestinations already reported anything it dropped.
   return !paramNamesSomething(rawToPath) && pathNamesSomething(rawToSlot)
     ? "toSlot"
     : "toPath";
+}
+
+/** One destination entry, or why the call could make nothing of it. */
+interface DestinationEntry extends ClipDestinationPath {
+  /** Why this entry names nowhere to go, when it names nowhere. */
+  refused?: string;
 }
 
 /** Where the clips in one call move: the lane, the position, or both. */
@@ -57,12 +66,17 @@ export interface MoveDestinations {
    * carried none — that clip keeps the start it has.
    */
   positions: Array<string | null>;
+  /**
+   * Why the entry at this clip's position named nowhere to go, per clip. The
+   * clip's own entry in the result carries it.
+   */
+  refusals: Array<string | null>;
 }
 
 /**
  * Resolves where each clip in the batch moves, from toPath or the deprecated
- * toSlot. Warns and returns nulls for anything update-clip can't do, so the
- * rest of the update still runs.
+ * toSlot. An entry update-clip can't do reports why, so the rest of the update
+ * still runs and the clip's own entry says its move didn't.
  *
  * An entry may name a lane (`t2`), a position (`[5|1]`), or both — the halves
  * are split apart here, so a bare coordinate keeps its turn in the list with no
@@ -74,7 +88,7 @@ export interface MoveDestinations {
  * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3", "t2[5|1]", "[5|1]")
  * @param rawToSlot - Deprecated destination slot(s) (trackIndex/sceneIndex)
  * @param clipCount - How many clips the call named, before any are dropped
- * @returns One lane and one position per named clip
+ * @returns One lane, one position and one refusal per named clip
  */
 export function resolveMoveDestinations(
   rawToPath: string | undefined,
@@ -84,6 +98,7 @@ export function resolveMoveDestinations(
   const none = {
     destinations: Array.from({ length: clipCount }, () => null),
     positions: Array.from({ length: clipCount }, () => null),
+    refusals: Array.from({ length: clipCount }, () => null),
   };
   // A warning, not a refusal: the rest of the update (name, color, length)
   // still lands, and nothing was created that the caller would have to clean up
@@ -108,11 +123,11 @@ export function resolveMoveDestinations(
   }
 
   // A bad destination is one param out of many on a batch update, and the
-  // tool's rule is warn-and-skip so the notes still land. Neither param can be
+  // tool's rule is to do the rest so the notes still land. Neither param can be
   // empty here: the guard above drops a toSlot that names nothing, and toPath
   // refuses one when it splits its entries.
   try {
-    const entries: Array<ClipDestinationPath | null> =
+    const entries: Array<DestinationEntry | null> =
       toSlot != null
         ? parseSlotList(toSlot, "toSlot").map((slot) => ({
             lane: { kind: "slot" as const, ...slot },
@@ -141,8 +156,11 @@ export function resolveMoveDestinations(
     return {
       destinations: paired.map((entry) => entry?.lane ?? null),
       positions: paired.map((entry) => entry?.position ?? null),
+      refusals: paired.map((entry) => entry?.refused ?? null),
     };
   } catch (error) {
+    // The list as a whole couldn't be read, so no clip has a destination to
+    // report against.
     console.warn(`clip not moved: ${errorMessage(error)}`);
   }
 
@@ -164,31 +182,29 @@ interface RequestedClips {
  * doesn't resolve has to take its own destination with it. Pairing the
  * survivors by position instead slides every later clip onto the wrong slot,
  * and a move overwrites whatever it lands on.
- * @param requestedIds - Ids in call order, null where a path named no clip
- * @param destinations - One destination per requested entry
+ * @param targets - The targets the call named and the ids they found
+ * @param moves - One destination and one refusal per requested entry
+ * @param reasons - What each clip has to say beyond its result, added to
  * @returns The clips to update, plus their destinations and call positions keyed by clip id
  */
 export function resolveRequestedClips(
-  requestedIds: Array<string | null>,
-  destinations: Array<ClipPath | null>,
+  targets: ClipTargets,
+  moves: MoveDestinations,
+  reasons: ClipReasons,
 ): RequestedClips {
   const clips: LiveAPI[] = [];
   const destinationById = new Map<string, ClipPath>();
   const requestedIndexById = new Map<string, number>();
   const claimedBy = new Map<string, string>();
   const seen = new Set<string>();
-  let repeats = 0;
 
-  for (const [index, id] of requestedIds.entries()) {
+  for (const [index, id] of targets.ids.entries()) {
+    // A path that named no clip already holds its slot with the reason.
     if (id == null) {
       continue;
     }
 
-    // One id at a time so the "does not exist" warnings stay in one place and
-    // the survivor keeps the position it was named at.
-    const clip = validateIdTypes([id], "clip", {
-      skipInvalid: true,
-    })[0];
+    const clip = namedClip(id, targets, index);
 
     if (clip == null) {
       continue;
@@ -197,29 +213,78 @@ export function resolveRequestedClips(
     // An id and a path can name the same clip, as can a repeated id. Updating
     // it twice compounds every operation — duplicateLoop would double it again.
     if (seen.has(clip.id)) {
-      repeats++;
+      targets.unused.set(index, {
+        id: clip.id,
+        path: objectPathForApi(clip),
+        reason: "named earlier in this call; updated once",
+      });
+
       continue;
     }
 
     seen.add(clip.id);
     clips.push(clip);
     requestedIndexById.set(clip.id, index);
+    noteRefusedDestination(reasons, clip.id, moves.refusals[index]);
 
-    claimDestination(clip.id, destinations[index], {
+    claimDestination(clip.id, moves.destinations[index], {
       destinationById,
       claimedBy,
+      reasons,
     });
   }
 
-  if (repeats > 0) {
-    console.warn(
-      `id/path named ${repeats} clip(s) more than once; each clip was updated once`,
-    );
-  }
-
-  dropDestinationsHoldingBatchClips(destinationById, seen);
+  dropDestinationsHoldingBatchClips(destinationById, seen, reasons);
 
   return { clips, destinationById, requestedIndexById };
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The clip one id names, or null with the target's slot holding the reason.
+ * @param id - The id the call named
+ * @param targets - The targets the call named
+ * @param slot - The target's place in the call
+ * @returns The clip, or null when the id names none
+ */
+function namedClip(
+  id: string,
+  targets: ClipTargets,
+  slot: number,
+): LiveAPI | null {
+  try {
+    return validateIdType(id, "clip");
+  } catch (error) {
+    refuseTarget(targets.unused, targets.named, slot, errorMessage(error));
+
+    return null;
+  }
+}
+
+/**
+ * Carry a destination the call couldn't read onto the clip it was meant for.
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param clipId - The clip that is not moving
+ * @param refused - Why its destination named nowhere, when it named nowhere
+ */
+function noteRefusedDestination(
+  reasons: ClipReasons,
+  clipId: string,
+  refused: string | null | undefined,
+): void {
+  if (refused != null) {
+    refuseClipWork(reasons, clipId, refused);
+  }
+}
+
+/**
+ * Whether the call named one destination that leaves the lane to the clip.
+ * @param entries - The parsed destinations, in order
+ * @returns True for a single bare `[5|1]`
+ */
+function namesNoLane(entries: Array<DestinationEntry | null>): boolean {
+  return entries.length === 1 && entries[0]?.lane == null;
 }
 
 /**
@@ -232,23 +297,15 @@ export function resolveRequestedClips(
  * other, the "moved to the same position" warning already says so.
  * @param clipId - The clip being given a destination
  * @param destination - Where the call named it to go, if anywhere
- * @param batch - Destinations by clip id, and the clip claiming each slot, both added to
+ * @param batch - Destinations by clip id, the clip claiming each slot, and what the clips have to say
  */
-/**
- * Whether the call named one destination that leaves the lane to the clip.
- * @param entries - The parsed destinations, in order
- * @returns True for a single bare `[5|1]`
- */
-function namesNoLane(entries: Array<ClipDestinationPath | null>): boolean {
-  return entries.length === 1 && entries[0]?.lane == null;
-}
-
 function claimDestination(
   clipId: string,
   destination: ClipPath | null | undefined,
   batch: {
     destinationById: Map<string, ClipPath>;
     claimedBy: Map<string, string>;
+    reasons: ClipReasons;
   },
 ): void {
   if (destination == null) {
@@ -265,8 +322,10 @@ function claimDestination(
   const claimant = batch.claimedBy.get(slot);
 
   if (claimant != null) {
-    console.warn(
-      `clip ${targetLabelForId(clipId)} was not moved: clip ${targetLabelForId(claimant)} is already moving to ${slot}; name one slot per clip`,
+    refuseClipWork(
+      batch.reasons,
+      clipId,
+      `not moved: clip ${targetLabelForId(claimant)} is already moving to ${slot}; name one slot per clip`,
     );
 
     return;
@@ -291,10 +350,12 @@ function claimDestination(
  * the ones with no such order.
  * @param destinationById - Destinations by clip id, pruned in place
  * @param batchIds - Ids of every clip this call updates
+ * @param reasons - What each clip has to say beyond its result, added to
  */
 function dropDestinationsHoldingBatchClips(
   destinationById: Map<string, ClipPath>,
   batchIds: Set<string>,
+  reasons: ClipReasons,
 ): void {
   for (const [clipId, destination] of destinationById) {
     if (destination.kind !== "slot") {
@@ -315,8 +376,10 @@ function dropDestinationsHoldingBatchClips(
       continue;
     }
 
-    console.warn(
-      `clip ${targetLabelForId(clipId)} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
+    refuseClipWork(
+      reasons,
+      clipId,
+      `not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
         `${targetLabel(occupant)}, which this call also updates; move that clip out in its own call first`,
     );
     destinationById.delete(clipId);
@@ -324,29 +387,31 @@ function dropDestinationsHoldingBatchClips(
 }
 
 /**
- * Reads the destinations off a toPath, warning about each entry that names
- * something update-clip can't move a clip to.
+ * Reads the destinations off a toPath, keeping the reason with each entry that
+ * names something update-clip can't move a clip to.
  * @param toPath - Destination path(s), comma-separated
- * @returns One destination per entry, null where the entry names nowhere to go
+ * @returns One destination per entry, carrying a refusal where the entry names nowhere to go
  */
-function pathDestinations(toPath: string): Array<ClipDestinationPath | null> {
+function pathDestinations(toPath: string): Array<DestinationEntry | null> {
   // pathEntries refuses a toPath that names nothing, so every entry here is real.
   const entries = pathEntries(toPath, "toPath");
 
   // Per entry, so a typo costs its own move and not the whole batch. An entry
   // that names the wrong kind of place already worked this way; one that
   // doesn't parse at all used to discard every destination beside it.
-  const parsed = entries.map((entry) => {
+  const parsed = entries.map((entry): DestinationEntry => {
     try {
       return requireClipDestinationPath(
         parseObjectPath(entry, "toPath"),
         "toPath",
       );
     } catch (error) {
-      console.warn(`clip not moved: ${errorMessage(error)}`);
+      return {
+        lane: null,
+        position: null,
+        refused: `not moved: ${errorMessage(error)}`,
+      };
     }
-
-    return null;
   });
 
   return resolveDestinationPositions(parsed, {

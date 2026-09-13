@@ -5,7 +5,6 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneClip,
   takeLaneLabel,
@@ -18,7 +17,12 @@ import {
   recreateClip,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+
+/** What one copy attempt produced: the clip (with a reason when it isn't quite
+ * what was asked for), or why there is none. */
+export type CopyAttempt =
+  | { copy: object; refused?: undefined }
+  | { copy?: undefined; refused: string };
 
 /**
  * One object per destination track, shared by every copy in the call. Copying
@@ -41,6 +45,8 @@ export interface CopyOptions {
   target: ArrangementTrack;
   startBeats: number;
   lanes: Map<string, ResolvedDuplicateLane>;
+  /** Why a lane destination got no lane, by {@link takeLaneLabel}. */
+  laneRefusals: Map<string, string>;
   /** Whether a take-lane source may be re-created on the main lane. */
   canPromote: boolean;
   object: LiveAPI;
@@ -48,6 +54,11 @@ export interface CopyOptions {
   name: string | undefined;
   color: string | undefined;
   arrangementLength: string | undefined;
+  /**
+   * Why a copy this call has to re-create can't be made at all — an audio
+   * source with no sample file — or null when it can.
+   */
+  noSample: string | null;
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   context: Partial<ToolContext>;
@@ -58,19 +69,24 @@ export interface CopyOptions {
 /**
  * Makes one arrangement copy, on a take lane or the main lane.
  * @param options - Everything the copy needs
- * @returns The created clip info, or null when the copy was skipped
+ * @returns The created clip, or why this destination got none
  */
 export async function duplicateOneCopy(
   options: CopyOptions,
-): Promise<object | null> {
+): Promise<CopyAttempt> {
   const { target, startBeats, lanes, object, id, tracks } = options;
 
   if (target.takeLane != null) {
-    const resolved = lanes.get(takeLaneLabel(target));
+    const label = takeLaneLabel(target);
+    const resolved = lanes.get(label);
 
-    // A rejected source (audio with no sample) warned once during lane resolution.
     if (resolved == null) {
-      return null;
+      return {
+        refused:
+          options.noSample ??
+          options.laneRefusals.get(label) ??
+          "no take lane was resolved for this destination",
+      };
     }
 
     return recreateCopy(options, resolved.lane, "take-lane");
@@ -78,11 +94,14 @@ export async function duplicateOneCopy(
 
   // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
   // silently no-ops on a take-lane source id (see take-lanes.ts header),
-  // so re-create it here instead. A source with nothing to rebuild from warned
-  // once in the caller.
+  // so re-create it here instead.
   if (isTakeLaneClip(object)) {
     if (!options.canPromote) {
-      return null;
+      return {
+        refused:
+          options.noSample ??
+          "promoting off a take lane re-creates the clip, which this source can't be",
+      };
     }
 
     return recreateCopy(
@@ -109,48 +128,50 @@ export async function duplicateOneCopy(
 }
 
 /**
- * Re-creates one copy, warning and skipping if Live refuses it so the rest of a
- * multi-position call still lands.
+ * Re-creates one copy, reporting a refusal on the destination's own entry so the
+ * rest of a multi-position call still lands.
  *
  * A failure after the clip was created still leaves a real, partial clip at
- * the destination ({@link PartialRecreateError}), which gets its own message:
- * saying the create "failed" would be wrong when something is actually there.
- * Unlike the move path this feeds into no delete, so there's no "original was
- * kept" half to add — the source was never at risk.
+ * the destination ({@link PartialRecreateError}), which says so: reporting the
+ * create as "failed" would be wrong when something is actually there. Unlike
+ * the move path this feeds into no delete, so there's no "original was kept"
+ * half to add — the source was never at risk.
  * @param options - Everything the copy needs
  * @param destination - The TakeLane, or the Track for a promoted copy
- * @param kind - What to call this copy in the warning
- * @returns The created clip info, or null when Live refused it or the copy
- *   only partly landed (either way, already warned)
+ * @param kind - What to call this copy in the reason
+ * @returns The created clip, or why this destination got none
  */
 function recreateCopy(
   options: CopyOptions,
   destination: LiveAPI,
   kind: "take-lane" | "promoted",
-): object | null {
+): CopyAttempt {
   try {
-    return getMinimalClipInfo(
-      recreateClip(
-        options.object,
-        destination,
-        options.startBeats,
-        options.name,
-        options.color,
+    return {
+      copy: getMinimalClipInfo(
+        recreateClip(
+          options.object,
+          destination,
+          options.startBeats,
+          options.name,
+          options.color,
+        ),
       ),
-    );
+    };
   } catch (error) {
+    // A real clip is there, so it is reported — with what it cost. Calling it a
+    // refusal would lose a clip the caller has to know about.
     if (error instanceof PartialRecreateError) {
-      console.warn(
-        `clip ${targetLabel(options.object)} left an incomplete ${kind} copy at beat ${options.startBeats} (${error.message})`,
-      );
-
-      return null;
+      return {
+        copy: {
+          ...getMinimalClipInfo(error.partialClip),
+          reason: `the ${kind} copy is incomplete (${error.message})`,
+        },
+      };
     }
 
-    console.warn(
-      `failed to create ${kind} copy of clip ${targetLabel(options.object)} at beat ${options.startBeats}: ${errorMessage(error)}`,
-    );
-
-    return null;
+    return {
+      refused: `the ${kind} copy failed: ${errorMessage(error)}`,
+    };
   }
 }

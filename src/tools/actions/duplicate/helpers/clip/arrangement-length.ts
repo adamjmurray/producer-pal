@@ -18,7 +18,6 @@ import {
   holdingAreaStartOnTrack,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
@@ -139,12 +138,10 @@ export async function createClipsForLength(
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
-    // phantom clip, matching the no-length path and the arrangement-tiling guards.
+    // phantom clip, matching the no-length path and the arrangement-tiling
+    // guards. The empty list is what the caller reports on the destination's
+    // own entry.
     if (!newClip.exists()) {
-      console.warn(
-        `Failed to duplicate clip ${targetLabel(sourceClip)} to arrangement at ${arrangementStartBeats}, skipping`,
-      );
-
       return duplicatedClips;
     }
 

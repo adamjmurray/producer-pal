@@ -3,21 +3,25 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  refuseClipWork,
+  type ClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-length-changes.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
   arrangementLengthBeats: number;
   context: ArrangementContext;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 /**
@@ -27,6 +31,7 @@ interface HandleArrangementLengthOperationArgs {
  * @param args.isAudioClip - Whether the clip is an audio clip
  * @param args.arrangementLengthBeats - Target length in beats
  * @param args.context - Tool execution context
+ * @param args.reasons - What each clip has to say beyond its result
  * @returns Array of clip result objects to add to updatedClips
  */
 export function handleArrangementLengthOperation({
@@ -34,25 +39,30 @@ export function handleArrangementLengthOperation({
   isAudioClip,
   arrangementLengthBeats,
   context,
+  reasons,
 }: HandleArrangementLengthOperationArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (!isArrangementClip) {
-    console.warn(
-      `arrangementLength parameter ignored for session clip ${targetLabel(clip)}`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "arrangementLength ignored: this is a session clip",
     );
 
     return updatedClips;
   }
 
   // The lengthening path uses duplicate_clip_to_arrangement (Track-only) and
-  // the shortening path uses a temp clip overlay that targets the main lane,
-  // so neither works on take-lane clips. Warn and skip.
+  // the shortening path uses a temp clip overlay that targets the main lane, so
+  // neither works on take-lane clips. The clip's own entry says so.
   if (isTakeLaneClip(clip)) {
-    console.warn(
-      `arrangementLength parameter ignored for take-lane clip ${targetLabel(clip)}; adjust it in Live's UI`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
     );
 
     return updatedClips;

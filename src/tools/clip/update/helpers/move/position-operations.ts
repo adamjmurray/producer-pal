@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ClipResult,
   type NoteUpdateResult,
@@ -14,7 +13,11 @@ import {
   takeLaneFromPath,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  noteClipReason,
+  refuseClipWork,
+  type ClipReasons,
+} from "../entries/clip-reasons.ts";
 import { handleArrangementOperations } from "../arrangement/arrangement-move.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
 import {
@@ -35,6 +38,8 @@ interface HandlePositionOperationsArgs {
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
   isNonSurvivor: boolean;
 }
 
@@ -55,8 +60,10 @@ export function handlePositionOperations(
     // places at once. Arrangement destinations are the opposite: they combine
     // with arrangementStart, which says where on the destination lane to land.
     if (arrangementStartBeats != null || arrangementLengthBeats != null) {
-      console.warn(
-        `${destinationParam} ignored when arrangement parameters are specified`,
+      noteClipReason(
+        args.reasons,
+        clip.id,
+        `${destinationParam} ignored: a clip slot is off the arrangement timeline the other position params name`,
       );
     } else {
       const move =
@@ -73,6 +80,7 @@ export function handlePositionOperations(
         destinationTracks: args.destinationTracks,
         updatedClips: args.updatedClips,
         noteResult: args.noteResult,
+        reasons: args.reasons,
       });
 
       return;
@@ -84,11 +92,17 @@ export function handlePositionOperations(
     isAudioClip: args.isAudioClip,
     arrangementStartBeats,
     arrangementLengthBeats,
-    destination: arrangementDestination(clip, destination, destinationParam),
+    destination: arrangementDestination(
+      clip,
+      destination,
+      destinationParam,
+      args.reasons,
+    ),
     movedClipGroups: args.movedClipGroups,
     context: args.context,
     updatedClips: args.updatedClips,
     noteResult: args.noteResult,
+    reasons: args.reasons,
     isNonSurvivor: args.isNonSurvivor,
   });
 }
@@ -98,25 +112,29 @@ export function handlePositionOperations(
  *
  * A session clip can't move onto a lane: the arrangement move is copy-then-
  * delete through `duplicate_clip_to_arrangement`, which takes an arrangement
- * source only. Warn and leave the clip in its slot.
+ * source only. Say so on the clip's entry and leave it in its slot.
  * @param clip - The clip being moved
  * @param destination - Where the call named it to go, if anywhere
- * @param destinationParam - The param the caller used, for the warning
+ * @param destinationParam - The param the caller used, for the reason
+ * @param reasons - What each clip has to say beyond its result, added to
  * @returns The destination track and lane, or null
  */
 function arrangementDestination(
   clip: LiveAPI,
   destination: ClipPath | null | undefined,
   destinationParam: "toPath" | "toSlot",
+  reasons: ClipReasons,
 ): ArrangementTrack | null {
   if (destination == null || destination.kind === "slot") {
     return null;
   }
 
   if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
-    console.warn(
-      `${destinationParam} "${formatObjectPath(destination)}" names an arrangement lane, so session clip ` +
-        `${targetLabel(clip)} was not moved; name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      `not moved: ${destinationParam} "${formatObjectPath(destination)}" names an arrangement lane and this is a session clip; ` +
+        `name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
     );
 
     return null;

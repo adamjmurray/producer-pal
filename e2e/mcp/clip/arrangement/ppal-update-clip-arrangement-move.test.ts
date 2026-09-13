@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   parseToolResultWithWarnings,
+  type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
@@ -87,13 +88,11 @@ describe("arrangement clip moved to another lane", () => {
   it("re-creates the clip on a take lane", async () => {
     const source = await createClip("17|1", "On A Lane");
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${CHILD_TRACK}/l0`,
     });
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was re-created on t${CHILD_TRACK}/l`,
-    );
+    expect(moved.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
     expect(moved.path).toMatch(
       new RegExp(`^t${CHILD_TRACK}/l\\d+\\[17\\|1\\]$`),
     );
@@ -115,7 +114,7 @@ describe("arrangement clip moved to another lane", () => {
       source.id,
       { toPath: `t${AUDIO_TRACK}[25|1]` },
       [
-        `clip ${source.path} (id ${source.id}) was not moved: track t${AUDIO_TRACK} (id `,
+        `not moved: track t${AUDIO_TRACK} (id `,
         ") is audio; a MIDI clip needs a MIDI track",
       ],
     );
@@ -145,7 +144,7 @@ describe("arrangement clip moved to another lane", () => {
       ctx.client!,
       source.id,
       { toPath: `t${AUDIO_TRACK}/l0` },
-      `clip ${source.path} (id ${source.id}) was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
+      "not moved: it's an audio clip with no sample file; drag it in Live's UI",
     );
 
     expect(
@@ -161,18 +160,17 @@ describe("arrangement clip moved to another lane", () => {
 
     // A destination each: a coordinate in toPath is the clip's own position,
     // so one of them covers one clip and leaves the other unaimed.
-    const { warnings } = await updateClip(
+    const { data, warnings } = await updateClip(
       ctx.client!,
       `${first.id},${second.id}`,
       { toPath: `t${AUDIO_TRACK}[57|1],t${AUDIO_TRACK}[57|1]` },
     );
+    const entries = data as unknown as ReadClipResult[];
 
     // Both of them, not just one: a single refusal leaves a lone landing,
     // which wouldn't have warned about a stack even before the count was true.
-    for (const clip of [first, second]) {
-      expect(warnings.join(" ")).toContain(
-        `clip ${clip.path} (id ${clip.id}) was not moved: track t${AUDIO_TRACK} (id `,
-      );
+    for (const entry of entries) {
+      expect(entry.reason).toContain(`not moved: track t${AUDIO_TRACK} (id `);
     }
 
     expect(warnings.join(" ")).not.toContain("moved to the same position");
@@ -192,17 +190,18 @@ describe("arrangement clip moved to another lane", () => {
     const mover = await createClip("73|1", "Waiting Mover");
     const blocker = await createClip("74|1", "Refused Blocker");
 
-    const { warnings } = await updateClip(
+    const { data } = await updateClip(
       ctx.client!,
       `${mover.id},${blocker.id}`,
       { toPath: `t${EMPTY_MIDI_TRACK}[74|1],t${MISSING_TRACK}[81|1]` },
     );
+    const [moverEntry, blockerEntry] = data as unknown as ReadClipResult[];
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${blocker.path} (id ${blocker.id}) was not moved: track t${MISSING_TRACK} does not exist`,
+    expect(blockerEntry?.reason).toContain(
+      `not moved: track t${MISSING_TRACK} does not exist`,
     );
-    expect(warnings.join(" ")).toContain(
-      `clip ${mover.path} (id ${mover.id}) was not moved: it would land on clip ${blocker.path} (id ${blocker.id}), which Live wouldn't move`,
+    expect(moverEntry?.reason).toContain(
+      `not moved: it would land on clip ${blocker.path} (id ${blocker.id}), which Live wouldn't move`,
     );
 
     // Both still where they started. Before this, the mover landed on 74|1 and
@@ -264,13 +263,11 @@ describe("arrangement clip moved to another lane", () => {
   it("marks an audio leftover only once when it is moved again", async () => {
     const source = await createAudioClip("13|1", "Audio Twice");
 
-    const { warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: first } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[17|1]`,
     });
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was muted instead of deleted`,
-    );
+    expect(first.reason).toContain("muted instead of deleted");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[21|1]`,
@@ -291,13 +288,11 @@ describe("arrangement clip moved to another lane", () => {
   it("moves an audio take off its lane, leaving the take muted", async () => {
     const source = await createAudioClip("5|1", "Audio Take");
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[9|1]`,
     });
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was muted instead of deleted`,
-    );
+    expect(moved.reason).toContain("muted instead of deleted");
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
 

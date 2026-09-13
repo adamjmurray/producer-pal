@@ -31,8 +31,13 @@ const ctx = setupMcpTestContext();
 
 /** A clip result carrying the path the tool reported. */
 interface MovedClip {
-  id: string;
+  /** Absent on a destination that got no copy: the entry is a skip */
+  id?: string;
   path?: string;
+  /** Set only on a skip */
+  ok?: false;
+  /** Why the move didn't happen, on the clip's own entry */
+  reason?: string;
 }
 
 describe("moving a row of arrangement clips", () => {
@@ -104,17 +109,15 @@ describe("moving a row of arrangement clips", () => {
     const row = await createRow(["401|1", "405|1"], "Swap");
     const [first, second] = row as [CreateClipResult, CreateClipResult];
 
-    const { warnings } = await moveClips(
-      row,
-      ["405|1", "401|1"].map(destination),
-    );
+    const { data } = await moveClips(row, ["405|1", "401|1"].map(destination));
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${first.path} (id ${first.id}) was not moved: it would land on clip ` +
+    // Each clip's own entry says which move the call gave up on.
+    expect(data[0]?.reason).toContain(
+      `not moved: it would land on clip ` +
         `${second.path} (id ${second.id}), which this call can't move out of the way first`,
     );
-    expect(warnings.join(" ")).toContain(
-      `clip ${second.path} (id ${second.id}) was not moved: it would land on clip ` +
+    expect(data[1]?.reason).toContain(
+      `not moved: it would land on clip ` +
         `${first.path} (id ${first.id}), which this call can't move out of the way first`,
     );
 
@@ -127,23 +130,27 @@ describe("moving a row of arrangement clips", () => {
     ).toBe(second.id);
   });
 
-  // One destination for two clips leaves the second one with nowhere to go, so
-  // it sits in the span the first one is moving into. The move used to run and
-  // delete it, then report it as updated.
+  // A clip the call sends nowhere — here by a toPath entry that names nothing —
+  // sits in the span another clip is moving into. That move used to run and
+  // delete it, then report it as updated. (One destination for two clips is
+  // refused up front instead, so the second entry is what sends a clip nowhere.)
   it("refuses a move onto a clip the call sends nowhere, and keeps it", async () => {
     const [first, second] = (await createRow(["601|1", "605|1"], "Static")) as [
       CreateClipResult,
       CreateClipResult,
     ];
 
-    const { warnings } = await moveClips(
+    const { data } = await moveClips(
       [second, first],
-      [destination("601|1")],
+      [destination("601|1"), "not-a-real-path"],
     );
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${second.path} (id ${second.id}) was not moved: it would land on clip ` +
+    expect(data[0]?.reason).toContain(
+      `not moved: it would land on clip ` +
         `${first.path} (id ${first.id}), which this call leaves where it is`,
+    );
+    expect(data[1]?.reason).toContain(
+      'not moved: invalid toPath "not-a-real-path"',
     );
 
     // Both still where they started, with the ids they started with.

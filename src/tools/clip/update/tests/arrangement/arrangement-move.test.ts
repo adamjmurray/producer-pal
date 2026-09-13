@@ -24,6 +24,16 @@ import {
   type MoveGroup,
 } from "../../helpers/arrangement/update-clip-move-groups.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "../../helpers/entries/clip-reasons.ts";
+import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
+
+/** What the clips had to say about the last operation run here. */
+let reasons: ClipReasons = newClipReasons();
+const clipReason = (clipId: string): string =>
+  joinedClipReason(reasons, clipId);
 
 /**
  * How many clips the tally counted on one lane at one position.
@@ -78,6 +88,8 @@ function runStartOperation(
   movedClipGroups = new Map<string, MoveGroup>(),
   destination: ArrangementTrack | null = null,
 ) {
+  reasons = newClipReasons();
+
   return handleArrangementStartOperation({
     clip,
     arrangementStartBeats,
@@ -87,6 +99,7 @@ function runStartOperation(
     context: mockContext,
     updatedClips: [],
     noteResult: null,
+    reasons,
   });
 }
 
@@ -96,21 +109,21 @@ describe("arrangement-move", () => {
   });
 
   describe("handleArrangementStartOperation", () => {
-    it("should warn and return original ID for session clips", () => {
+    it("reports arrangementStart on a session clip's own entry", () => {
       const result = runStartOperation(clipStub("123", 0), 16);
 
-      expect(capturedWarnings()).toContain(
-        "arrangementStart parameter ignored for session clip id 123",
+      expect(clipReason("123")).toBe(
+        "arrangementStart ignored: this is a session clip",
       );
       expect(result).toBe("123");
     });
 
-    it("should warn and return original clip id when trackIndex is null for arrangement clips", () => {
-      // Should not throw, just warn and return original clip id
+    it("reports an unknown track on the clip's own entry", () => {
+      // Should not throw, just report it and return the original clip id
       const result = runStartOperation(clipStub("456", 1, null), 16);
 
-      expect(capturedWarnings()).toContain(
-        "could not determine trackIndex for clip id 456",
+      expect(clipReason("456")).toBe(
+        "not moved: could not determine its track",
       );
       expect(result).toBe("456");
     });
@@ -205,16 +218,11 @@ describe("arrangement-move", () => {
 
       const movedClipGroups = new Map<string, MoveGroup>();
 
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 4,
-        destination: null,
+      const result = runStartOperation(
+        mockClip as unknown as LiveAPI,
+        4,
         movedClipGroups,
-        isMidiClip: true,
-        context: mockContext,
-        updatedClips: [],
-        noteResult: null,
-      });
+      );
 
       // Holding round-trip: copy source to holding (120), place full copy at 4.
       expect(trackMock.call).toHaveBeenCalledWith(
@@ -257,21 +265,15 @@ describe("arrangement-move", () => {
       };
 
       const movedClipGroups = new Map<string, MoveGroup>();
-
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 8,
-        destination: null,
+      const result = runStartOperation(
+        mockClip as unknown as LiveAPI,
+        8,
         movedClipGroups,
-        isMidiClip: true,
-        context: mockContext,
-        updatedClips: [],
-        noteResult: null,
-      });
+      );
 
-      // Should warn about failure and return original clip ID
-      expect(capturedWarnings()).toContain(
-        "failed to duplicate clip id 100 - original preserved",
+      // Should report the failure on the clip's entry and return its id
+      expect(clipReason("100")).toBe(
+        "not moved: Live made no copy at the destination, so the original was kept",
       );
       expect(result).toBe("100");
       // Should NOT call delete_clip since duplication failed
@@ -319,16 +321,7 @@ describe("arrangement-move", () => {
         ],
       ]);
 
-      handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 64,
-        destination: null,
-        movedClipGroups,
-        isMidiClip: true,
-        context: mockContext,
-        updatedClips: [],
-        noteResult: null,
-      });
+      runStartOperation(mockClip as unknown as LiveAPI, 64, movedClipGroups);
 
       expect(groupCount(movedClipGroups, trackIndex, 64)).toBe(3);
     });
@@ -385,16 +378,7 @@ describe("arrangement-move", () => {
         exists: () => false,
       };
 
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 16,
-        destination: null,
-        movedClipGroups: new Map(),
-        isMidiClip: true,
-        context: mockContext,
-        updatedClips: [],
-        noteResult: null,
-      });
+      const result = runStartOperation(mockClip as unknown as LiveAPI, 16);
 
       // safeToMove(false) || clip.exists()(false) === false → no delete.
       expect(trackMock.call).not.toHaveBeenCalledWith(
@@ -446,6 +430,7 @@ describe("arrangement-move", () => {
         context: mockContext,
         updatedClips,
         noteResult: null,
+        reasons: newClipReasons(),
       });
 
       // isAudioClip:true → isMidiClip must be false (4th arg).
@@ -487,6 +472,7 @@ describe("arrangement-move", () => {
         context: mockContext,
         updatedClips,
         noteResult: null,
+        reasons: newClipReasons(),
         isNonSurvivor: true,
       });
 
@@ -537,11 +523,13 @@ describe("a clip held back for an overwrite", () => {
     expect(deletedIds(track)).toStrictEqual([]);
     expect(result).toStrictEqual([
       { id: FIRST, path: "t0[1|1]", deleted: false },
-      { id: SECOND, path: "t0[5|1]" },
+      {
+        id: SECOND,
+        ok: false,
+        reason:
+          "not moved: Live made no copy at the destination, so the original was kept",
+      },
     ]);
-    expect(capturedWarnings()).toContain(
-      `failed to duplicate clip t0[5|1] (id ${SECOND}) - original preserved`,
-    );
     // Nothing landed, so nothing stacked.
     expect(capturedWarnings().join(" ")).not.toContain(
       "moved to the same position",
@@ -852,6 +840,7 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
     context: mockContext,
     updatedClips,
     noteResult: null,
+    reasons: newClipReasons(),
     isNonSurvivor: opts.isNonSurvivor,
   });
 

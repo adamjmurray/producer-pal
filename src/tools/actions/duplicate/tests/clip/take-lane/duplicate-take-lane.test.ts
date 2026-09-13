@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "../duplicate-mocks-test-helpers.ts";
+import "../../duplicate-mocks-test-helpers.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
@@ -197,23 +197,22 @@ describe("duplicate take lane", () => {
 
   // An audio clip is rebuilt from its sample, so one without a file_path has
   // nothing to rebuild from.
-  it("skips an audio source with no sample file, with a warning", async () => {
+  // One lane destination and no sample to rebuild from: the reason comes back
+  // as the error, since there is no list for an entry to hold a place in.
+  it("refuses a lane copy of an audio source with no sample file", async () => {
     registerLiveSet();
     registerArrangementSource(false);
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "5|1",
-      takeLane: 1,
-    });
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("has no sample file to rebuild it from"),
-    );
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        arrangementStart: "5|1",
+        takeLane: 1,
+      }),
+    ).rejects.toThrow("it's an audio clip with no sample file");
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
-    expect(result).toStrictEqual([]);
   });
 
   // Warn-and-skip: the lane destination is the only one that can't be served.
@@ -236,20 +235,21 @@ describe("duplicate take lane", () => {
       arrangementStart: "1|1,5|1",
     });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("has no sample file to rebuild it from"),
-    );
     expect(mainTrack.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id src_clip",
       0,
     );
     expect(laneTrack.call).not.toHaveBeenCalledWith("create_take_lane");
-    // One result, not zero: only the lane copy was skipped.
-    expect(result).toStrictEqual({
-      id: livePath.track(2).arrangementClip(0),
-      path: "t2[1|1]",
-    });
+    // The lane destination keeps its slot, saying why it got no copy.
+    expect(result).toStrictEqual([
+      { id: livePath.track(2).arrangementClip(0), path: "t2[1|1]" },
+      {
+        path: "t1/l0[5|1]",
+        ok: false,
+        reason: "it's an audio clip with no sample file; drag it in Live's UI",
+      },
+    ]);
   });
 
   it("warns and ignores takeLaneName when no destination names a lane", async () => {
@@ -335,20 +335,17 @@ describe("duplicate take lane", () => {
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 0, clipCreationFails: true });
 
-    const created = (await duplicate({
-      type: "clip",
-      id: "src_clip",
-      toPath: "t0/l0",
-      arrangementStart: "1|1",
-    })) as object[];
-
-    expect(created).toStrictEqual([]);
-    // The wrapped warning carries the inner "created no clip" throw (from the
+    // The reason carries the inner "created no clip" throw (from the
     // not-a-clip guard), not some other downstream error.
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "failed to create take-lane copy of clip t0[1|1] (id src_clip) at beat 0: Live created no clip at t0/l0",
-      ),
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t0/l0",
+        arrangementStart: "1|1",
+      }),
+    ).rejects.toThrow(
+      "the take-lane copy failed: Live created no clip at t0/l0",
     );
   });
 
@@ -385,12 +382,13 @@ describe("duplicate take lane", () => {
       arrangementStart: "1|1, 2|1, 3|1",
     })) as object[];
 
-    expect(created).toHaveLength(2);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "failed to create take-lane copy of clip t0[1|1] (id src_clip) at beat 4",
-      ),
-    );
+    // Three destinations, three entries: the middle one says no copy landed.
+    expect(created).toHaveLength(3);
+    expect(created[1]).toStrictEqual({
+      path: "t0/l0[2|1]",
+      ok: false,
+      reason: "the take-lane copy failed: Live created no clip at t0/l0",
+    });
   });
 
   it("re-creates over an existing clip on a populated lane (replace, like the main lane)", async () => {
@@ -562,15 +560,19 @@ describe("duplicate take lane", () => {
 
     registerTakeLaneTrack({ trackIndex: 2, initialLanes: MAX_TAKE_LANES });
 
-    await duplicate({
+    const result = (await duplicate({
       type: "clip",
       id: "src_clip",
       toPath: `t1/l0, t2/l${MAX_TAKE_LANES}`,
       arrangementStart: "5|1",
-    });
+    })) as Array<{ ok?: false; reason?: string }>;
 
     expect(ok.call).toHaveBeenCalledWith("create_take_lane");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    // The lane past the cap says so on its own entry, not in a warning.
+    expect(result[1]?.reason).toBe(
+      `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
       expect.stringContaining(`skipping "t2/l${MAX_TAKE_LANES}"`),
     );
   });
@@ -582,18 +584,18 @@ describe("duplicate take lane", () => {
 
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
 
-    await duplicate({
+    const result = (await duplicate({
       type: "clip",
       id: "src_clip",
       toPath: `t1/l${MAX_TAKE_LANES - 1},t1/l${MAX_TAKE_LANES}`,
       arrangementStart: "1|1,5|1",
-    });
+    })) as Array<{ ok?: false; reason?: string }>;
 
     expect(
       lookupMockObject(undefined, livePath.track(1).takeLane(7))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`skipping "t1/l${MAX_TAKE_LANES}"`),
+    expect(result[1]?.reason).toContain(
+      `take lane "l${MAX_TAKE_LANES}" is out of range`,
     );
   });
 
@@ -699,24 +701,18 @@ describe("duplicate take lane", () => {
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 0, postCreateFails: true });
 
+    // The incomplete clip is real, so it is reported as a copy — with what it
+    // cost. Calling it a refusal would lose a clip the caller has to know about.
     const created = (await duplicate({
       type: "clip",
       id: "src_clip",
       toPath: "t0/l0",
       arrangementStart: "1|1",
-    })) as object[];
+    })) as { id?: string; reason?: string };
 
-    // The incomplete clip isn't reported as a landed copy: it's real, but not
-    // what was asked for, so it stays out of the result the same way a full
-    // refusal does.
-    expect(created).toStrictEqual([]);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "clip t0[1|1] (id src_clip) left an incomplete take-lane copy at beat 0 (notes failed)",
-      ),
-    );
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining("failed to create"),
+    expect(created.id).toBeDefined();
+    expect(created.reason).toBe(
+      "the take-lane copy is incomplete (notes failed)",
     );
   });
 });

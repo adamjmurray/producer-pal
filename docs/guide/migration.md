@@ -99,9 +99,24 @@ on a skip, never on a success. On `ppal-delete`, `deleted: true` is gone
 either `ok: false` with a `reason`, or, for a target that was already gone,
 `reason: "nothing to delete"` with no `ok`. Check for `ok`, not `deleted`.
 
+**`ppal-update-clip` and `ppal-duplicate` answer the same way.** update-clip
+returns an entry for every id or path you named, in order: one whose path held
+no clip, whose id doesn't exist, or whose update failed partway holds its slot
+as `{id or path, ok: false, reason}`, so `path: "t0/s0,t0/s99"` is a two-entry
+array. A clip that was updated but not as asked (a move Live turned down, a
+destination another clip in the call claimed, a take-lane leftover, a split a
+lane clip can't take) carries a `reason` beside its normal fields and no `ok`;
+those used to be warnings. A refused move with nothing else asked for that clip
+landed nothing, so it is `ok: false`. A clip named twice gets one entry per
+mention, the second saying the update already happened. `ppal-duplicate`
+likewise returns one entry per destination you named, with a destination no copy
+landed at holding its slot as `{path, ok: false, reason}` instead of dropping
+out of the array.
+
 **A call naming one target that can't be done now throws** instead of returning
-an empty array with a warning. `ppal-update-track path="t99"` is an error;
-deleting something already gone is not, since nothing was left to do.
+an empty array with a warning. `ppal-update-track path="t99"` is an error, as is
+an update-clip or duplicate call whose one target got nothing done; deleting
+something already gone is not, since nothing was left to do.
 `ppal-update-live-set`'s locator result also carries prose in `reason` now, in
 place of slugs like `locator_not_found`.
 

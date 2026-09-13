@@ -9,7 +9,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
-} from "../../helpers/note-updates.ts";
+} from "../../helpers/notes/note-updates.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 
 // Minimal ClipContext for handleNoteUpdates (only used by transform variables,

@@ -248,19 +248,28 @@ export type FittingTakeLaneTarget<T extends ArrangementTrack> = T & {
   takeLane: TakeLaneTarget;
 };
 
+/** The take-lane destinations that fit, and why each of the rest doesn't. */
+export interface FittingTakeLanes<T extends ArrangementTrack> {
+  fitting: FittingTakeLaneTarget<T>[];
+  /** Why each dropped lane doesn't fit, by {@link takeLaneLabel}. */
+  dropped: Map<string, string>;
+}
+
 /**
- * Picks the take-lane destinations that fit, warning once per lane dropped.
+ * Picks the take-lane destinations that fit, and says why the rest don't.
  *
  * A destination that doesn't fit is dropped rather than failing the call, so
  * the destinations alongside it — main lane included — still land. Resolving
- * auto-creates lanes up to the index, so only that index has to fit.
+ * auto-creates lanes up to the index, so only that index has to fit. The reason
+ * is handed back rather than warned: a caller with an entry per destination puts
+ * it there instead.
  * @param targets - Every destination in the call, in resolve order
- * @returns The take-lane destinations that fit, in the order given
+ * @returns The destinations that fit, and the reason each dropped lane didn't
  */
 export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
   targets: T[],
-): FittingTakeLaneTarget<T>[] {
-  const dropped = new Set<string>();
+): FittingTakeLanes<T> {
+  const dropped = new Map<string, string>();
   const fitting: FittingTakeLaneTarget<T>[] = [];
 
   for (const target of targets) {
@@ -277,15 +286,14 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
     }
 
     if (takeLane + 1 > MAX_TAKE_LANES) {
-      dropped.add(key);
-      console.warn(`skipping "${key}" — ` + takeLaneCapacityMessage(takeLane));
+      dropped.set(key, takeLaneCapacityMessage(takeLane));
       continue;
     }
 
     fitting.push({ ...target, takeLane });
   }
 
-  return fitting;
+  return { fitting, dropped };
 }
 
 /**

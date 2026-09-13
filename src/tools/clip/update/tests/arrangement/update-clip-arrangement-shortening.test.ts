@@ -21,7 +21,6 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Standard properties for a 4-bar arrangement MIDI clip (beats 0-16). */
 const FOUR_BAR_CLIP_PROPS = {
@@ -92,7 +91,8 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
-  it("should emit warning and ignore for session clips", async () => {
+  // Nothing else was asked of it, so the lone target's reason is the error.
+  it("refuses an arrangementLength aimed at a session clip", async () => {
     const track = registerMockObject("track-0-session-noop", {
       path: livePath.track(0),
       type: "Track",
@@ -105,18 +105,33 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       signature_denominator: 4,
     });
 
+    await expect(
+      updateClip({ id: "123", arrangementLength: "2bar" }),
+    ).rejects.toThrow("arrangementLength ignored: this is a session clip");
+    expect(track.call).not.toHaveBeenCalled();
+  });
+
+  // With a name to write, the name lands, so the clip keeps a real entry and
+  // carries the reason on it.
+  it("reports it on the entry when something else the call asked for lands", async () => {
+    setupMidiClipMock(defaultMocks.clip123, {
+      is_arrangement_clip: 0, // Session clip
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+    });
+
     const result = await updateClip({
       id: "123",
       arrangementLength: "2bar",
+      name: "Renamed Anyway",
     });
 
-    expect(capturedWarnings()).toContain(
-      "arrangementLength parameter ignored for session clip t0/s0 (id 123)",
-    );
-
-    expect(track.call).not.toHaveBeenCalled();
-
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      reason: "arrangementLength ignored: this is a session clip",
+    });
   });
 
   it("should handle zero length with clear error", async () => {

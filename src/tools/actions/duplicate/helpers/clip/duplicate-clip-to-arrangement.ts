@@ -4,15 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
+import { type CopyAttempt } from "./duplicate-one-copy.ts";
 import {
   createClipsForLength,
   parseArrangementLength,
@@ -31,7 +30,8 @@ import {
  * @param context - Context object with silenceWavPath
  * @param sourceClip - The clip, when the caller already resolved it
  * @param tracks - The destination tracks, keyed by index
- * @returns Clip info, or the destination track's path with a clips array
+ * @returns The copy — one clip, or the destination track's path with the tiled
+ *   clips under it — or why the destination got none
  */
 export async function duplicateClipToArrangement(
   clipId: string,
@@ -45,7 +45,7 @@ export async function duplicateClipToArrangement(
   context: Partial<ToolContext & TilingContext> = {},
   sourceClip: LiveAPI | null = null,
   tracks: Map<number, LiveAPI> = new Map(),
-): Promise<MinimalClipInfo | { path: string; clips: MinimalClipInfo[] }> {
+): Promise<CopyAttempt> {
   // Support "id {id}" (such as returned by childIds()) and id values directly.
   // A source hoisted across the copies of one call stays good: Live's
   // arrangement duplicate never destroys its own source — measured on 12.4.3,
@@ -113,20 +113,22 @@ export async function duplicateClipToArrangement(
     if (newClip.exists()) {
       newClip.setAll({ name, color });
       duplicatedClips.push(getMinimalClipInfo(newClip));
-    } else {
-      console.warn(
-        `Failed to duplicate clip ${targetLabel(clip)} to arrangement at ${arrangementStartBeats}, skipping`,
-      );
     }
   }
 
-  // Return single clip info directly, or the track the tiled copies share
-  if (duplicatedClips.length === 1) {
-    return duplicatedClips[0] as MinimalClipInfo;
+  // Nothing landed: Live declines a duplicate it can't do without raising, and
+  // the tiling helpers report what they couldn't place.
+  if (duplicatedClips.length === 0) {
+    return { refused: "Live made no copy there" };
   }
 
+  // One clip directly, or the track the tiled copies share
+  const [single] = duplicatedClips;
+
   return {
-    path: arrangementPath(trackIndex),
-    clips: duplicatedClips,
+    copy:
+      duplicatedClips.length === 1 && single != null
+        ? single
+        : { path: arrangementPath(trackIndex), clips: duplicatedClips },
   };
 }

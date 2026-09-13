@@ -50,14 +50,12 @@ describe("arrangement clip moved into a session slot", () => {
     // own color is what the copy has to match, not the one asked for.
     const before = await readClipFully(ctx.client!, { id: source.id });
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${EMPTY_MIDI_TRACK}/s1`,
     });
 
     expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
-    expect(warnings.join(" ")).toContain(
-      `arrangement clip ${source.path} (id ${source.id}) was re-created at t${EMPTY_MIDI_TRACK}/s1`,
-    );
+    expect(moved.reason).toContain(`re-created at t${EMPTY_MIDI_TRACK}/s1`);
 
     const clip = await readClipFully(ctx.client!, {
       path: `t${EMPTY_MIDI_TRACK}/s1`,
@@ -218,7 +216,7 @@ describe("arrangement clip moved into a session slot", () => {
       source.id,
       { toPath: `t${AUDIO_TRACK}/s3` },
       [
-        `clip ${source.path} (id ${source.id}) was not moved: track t${AUDIO_TRACK} (id `,
+        `not moved: track t${AUDIO_TRACK} (id `,
         ") is audio; a MIDI clip needs a MIDI track",
       ],
     );

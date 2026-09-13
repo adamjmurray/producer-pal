@@ -16,12 +16,19 @@ import {
   canRecreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
 export interface ResolvedDuplicateLane {
   lane: LiveAPI;
   laneIndex: number;
+}
+
+/** The lanes a call resolved, and why each one it couldn't wasn't usable. */
+export interface DuplicateTakeLanes {
+  /** Lanes keyed by {@link takeLaneLabel}. */
+  lanes: Map<string, ResolvedDuplicateLane>;
+  /** Why each lane destination got none, by the same key. */
+  refusals: Map<string, string>;
 }
 
 /**
@@ -30,45 +37,43 @@ export interface ResolvedDuplicateLane {
  *
  * Lanes are permanent (Live has no delete), so every destination's capacity is
  * checked before any lane is created — a cap error partway through would strand
- * the lanes already made. A destination that doesn't fit is warned and dropped
- * so the copies around it still run.
+ * the lanes already made. A destination that gets no lane is left out, and its
+ * own entry in the result says no copy landed there.
  * @param sourceClip - The clip being duplicated
  * @param targets - Destinations, in copy order
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param tracks - The destination tracks, keyed by index
- * @returns Lanes keyed by {@link takeLaneLabel}
+ * @returns The lanes, and why each destination that got none didn't
  */
 export function resolveDuplicateTakeLanes(
   sourceClip: LiveAPI,
   targets: ArrangementTrack[],
   takeLaneName: string | undefined,
   tracks: Map<number, LiveAPI> = new Map(),
-): Map<string, ResolvedDuplicateLane> {
+): DuplicateTakeLanes {
   const laneTargets = targets.filter((target) => target.takeLane != null);
+  const lanes = new Map<string, ResolvedDuplicateLane>();
 
   if (laneTargets.length === 0) {
     if (paramNamesSomething(takeLaneName)) {
       console.warn("takeLaneName ignored: no destination names a take lane");
     }
 
-    return new Map();
+    return { lanes, refusals: new Map() };
   }
 
   // An audio clip is rebuilt from its sample, so one that has lost its file (or
-  // never had one) can't go on a lane at all.
+  // never had one) can't go on a lane at all. Each lane destination's entry says
+  // so; the caller holds the reason.
   if (!canRecreateClip(sourceClip)) {
-    console.warn(
-      `audio clip ${targetLabel(sourceClip)} has no sample file to rebuild it from, so it was not duplicated to a take lane`,
-    );
-
-    return new Map();
+    return { lanes, refusals: new Map() };
   }
 
-  const lanes = new Map<string, ResolvedDuplicateLane>();
   const losses = recreatedClipLosses(sourceClip);
+  const { fitting, dropped } = takeLaneTargetsThatFit(laneTargets);
 
   // Resolve once per destination rather than once per copy.
-  for (const destination of takeLaneTargetsThatFit(laneTargets)) {
+  for (const destination of fitting) {
     const { trackIndex, takeLane: target } = destination;
     const key = takeLaneLabel(destination);
 
@@ -90,5 +95,5 @@ export function resolveDuplicateTakeLanes(
     );
   }
 
-  return lanes;
+  return { lanes, refusals: dropped };
 }

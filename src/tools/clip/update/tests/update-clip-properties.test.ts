@@ -78,7 +78,7 @@ describe("updateClip - Properties and ID handling", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
-  it("should skip invalid clip IDs in comma-separated list and update valid ones", async () => {
+  it("keeps an invalid clip ID's slot and updates the valid ones", async () => {
     mockNonExistentObjects();
     setupMidiClipMock(mocks.clip123, {
       signature_numerator: 4,
@@ -90,8 +90,15 @@ describe("updateClip - Properties and ID handling", () => {
       name: "Test",
     });
 
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Test");
   });
 

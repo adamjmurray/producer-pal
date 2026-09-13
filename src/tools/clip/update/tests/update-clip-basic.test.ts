@@ -17,7 +17,7 @@ import {
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { type BlankArgs } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
-import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/process-single-clip-update.ts";
+import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import * as sessionHelpers from "#src/tools/clip/update/helpers/move/position-operations.ts";
 import {
   mockMergeNoteTracking,
@@ -28,6 +28,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
+import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -162,13 +163,15 @@ describe("updateClip - Basic operations", () => {
 
   // Same reason: "path names the clips" is false when it named none, and the
   // no-clip warning already says what went wrong.
-  it("says nothing when the path it names holds no clip", async () => {
+  // One target, nothing done: there is no list for an entry to hold a place in,
+  // so the reason goes back as the error (ADR-0042).
+  it("throws when the one path it names holds no clip", async () => {
     mockNonExistentObjects();
 
-    const result = await updateClip({ id: "   ", path: "t9/s9" });
-
-    expect(capturedWarnings()).toStrictEqual(['no clip at path "t9/s9"']);
-    expect(result).toStrictEqual([]);
+    await expect(updateClip({ id: "   ", path: "t9/s9" })).rejects.toThrow(
+      'no clip at path "t9/s9"',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // The whole-call args are the other half of it: a blank one is dropped too,
@@ -266,16 +269,13 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 }); // Existing C3 + new D3
   });
 
-  it("should log warning when clip ID doesn't exist", async () => {
+  it("throws when the one clip ID it names doesn't exist", async () => {
     mockNonExistentObjects();
 
-    const result = await updateClip({
-      id: "nonexistent",
-      notes: "1|1 60",
-    });
-
-    expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    await expect(
+      updateClip({ id: "nonexistent", notes: "1|1 60" }),
+    ).rejects.toThrow('id "nonexistent" does not exist');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // Saves a read-then-update round trip: a caller that knows where the clip is
@@ -310,14 +310,19 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "789", path: "t2[5|1]" });
   });
 
-  it("should warn and skip a path with no clip, keeping the rest", async () => {
+  // The miss keeps its slot, so the caller can pair the entries against the
+  // paths it sent — and nothing warns about it.
+  it("keeps the slot of a path with no clip, updating the rest", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
 
     const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
 
-    expect(capturedWarnings()).toContain('no clip at path "t9/s9"');
-    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
+    expect(result).toStrictEqual([
+      { path: "t9/s9", ok: false, reason: 'no clip at path "t9/s9"' },
+      { id: "456", path: "t1/s1" },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should update a single session clip by ID", async () => {
@@ -703,17 +708,31 @@ describe("updateClip - Basic operations", () => {
       expect(selectSpy).not.toHaveBeenCalled();
     });
 
-    it("should NOT select or throw when focus is set but nothing was updated", async () => {
+    it("should NOT select when focus is set but nothing was updated", async () => {
       mockNonExistentObjects();
       const selectSpy = vi
         .spyOn(selectModule, "select")
         .mockReturnValue({} as never);
 
-      // updatedClips.length is 0; the > 0 guard must stay false (kills >= 0,
-      // which would read updatedClips.at(-1).id on an empty array and throw).
-      const result = await updateClip({ id: "nonexistent", focus: true });
+      // Every entry is a skip, so there is no clip to select: the filter must
+      // stay (kills one that keeps skips, which would select a target).
+      const result = await updateClip({
+        id: "nonexistent,also-nonexistent",
+        focus: true,
+      });
 
-      expect(result).toStrictEqual([]);
+      expect(result).toStrictEqual([
+        {
+          id: "nonexistent",
+          ok: false,
+          reason: 'id "nonexistent" does not exist',
+        },
+        {
+          id: "also-nonexistent",
+          ok: false,
+          reason: 'id "also-nonexistent" does not exist',
+        },
+      ]);
       expect(selectSpy).not.toHaveBeenCalled();
     });
   });
@@ -808,6 +827,7 @@ describe("updateClip - Basic operations", () => {
       clipCount: 1,
       destinationParam: "toPath",
       context: {},
+      reasons: newClipReasons(),
       updatedClips: [],
       movedClipGroups: new Map(),
       nonSurvivorClipIds: new Set(["123"]),

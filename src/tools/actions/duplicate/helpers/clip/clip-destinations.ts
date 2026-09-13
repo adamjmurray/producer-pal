@@ -23,10 +23,13 @@ import {
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   namedHiddenPath,
+  slotPath,
   type ClipPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { skippedCopy } from "../minimal-clip-info.ts";
 import {
   parseSlotList,
   type ClipSlotPosition,
@@ -58,6 +61,11 @@ export interface ClipDestinations {
    * arrangementTargets. Empty when the positions came from arrangementStart.
    */
   arrangementPositions: (string | null)[];
+  /**
+   * The entry each destination this call can't use in the arrangement keeps,
+   * aligned with arrangementTargets: it names no copy, so it says why.
+   */
+  arrangementRefusals: (TargetSkip | null)[];
 }
 
 /**
@@ -225,6 +233,7 @@ function legacySlotDestinations(
     slots,
     arrangementTargets: [],
     arrangementPositions: [],
+    arrangementRefusals: [],
   };
 }
 
@@ -251,14 +260,24 @@ function arrangementDestinations(
   const fromPath = entries.some((entry) => entry.position != null);
   const slots: ClipSlotPosition[] = [];
   const arrangementTargets: (DuplicateArrangementTarget | null)[] = [];
+  const arrangementRefusals: (TargetSkip | null)[] = [];
   const arrangementPositions = entries.map((entry) => entry.position);
 
   for (const { lane, position } of entries) {
+    arrangementRefusals.push(null);
+
     if (lane == null) {
       arrangementTargets.push({ trackIndex: null, takeLane: null });
     } else if (lane.kind === "slot") {
+      const slot = slotPath(lane.trackIndex, lane.sceneIndex);
+
       slots.push({ trackIndex: lane.trackIndex, sceneIndex: lane.sceneIndex });
       arrangementTargets.push(null);
+      arrangementRefusals[arrangementRefusals.length - 1] = skippedCopy(
+        slot,
+        "a clip slot can't take an arrangement copy; " +
+          `name a track's arrangement instead, as "t${lane.trackIndex}[5|1]"`,
+      );
     } else {
       if (fromPath && position == null) {
         throw noPositionError(lane);
@@ -277,6 +296,7 @@ function arrangementDestinations(
       slots: [],
       arrangementTargets,
       arrangementPositions,
+      arrangementRefusals,
     };
   }
 
@@ -299,21 +319,17 @@ function arrangementDestinations(
       slots,
       arrangementTargets: [],
       arrangementPositions: [],
+      arrangementRefusals: [],
     };
   }
 
-  console.warn(
-    `toPath "${named}" ignored — ` +
-      (fromPath
-        ? "the other toPath entries name arrangement positions"
-        : "arrangementStart makes this an arrangement duplicate"),
-  );
-
+  // Each slot entry says so on its own entry in the result; nothing warns.
   return {
     destination: "arrangement",
     slots: [],
     arrangementTargets,
     arrangementPositions,
+    arrangementRefusals,
   };
 }
 
@@ -360,5 +376,6 @@ function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
     slots,
     arrangementTargets: [],
     arrangementPositions: [],
+    arrangementRefusals: [],
   };
 }

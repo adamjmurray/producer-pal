@@ -79,28 +79,49 @@ describe("updateClip - deadline exceeded", () => {
       { timeoutMs: 1 },
     );
 
-    // No clips should be updated
-    expect(result).toStrictEqual([]);
+    // No clips were updated, and each one says so in its own entry.
+    expect(result).toStrictEqual([
+      {
+        id: "123",
+        ok: false,
+        reason:
+          "not updated: the request ran out of time; re-run for this clip",
+      },
+      {
+        id: "456",
+        ok: false,
+        reason:
+          "not updated: the request ran out of time; re-run for this clip",
+      },
+    ]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
     );
   });
 
-  it("names the clips a cut-short batch did not reach", async () => {
+  it("gives every clip a cut-short batch did not reach its own entry", async () => {
     setupTwoMidiClips(mocks);
 
     vi.mocked(isDeadlineExceeded)
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);
 
-    await updateClip({ id: "123, 456", name: "Updated" }, { timeoutMs: 100 });
-
-    // A bare count doesn't say which id to re-run.
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Not updated: t1/s1 (id 456). Re-run for those clips.",
-      ),
+    const result = await updateClip(
+      { id: "123, 456", name: "Updated" },
+      { timeoutMs: 100 },
     );
+
+    // A bare count doesn't say which id to re-run; the entry does, in the slot
+    // the caller named it at.
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      {
+        id: "456",
+        ok: false,
+        reason:
+          "not updated: the request ran out of time; re-run for this clip",
+      },
+    ]);
   });
 
   it("should process some clips before deadline is exceeded", async () => {
@@ -116,8 +137,16 @@ describe("updateClip - deadline exceeded", () => {
       { timeoutMs: 100 },
     );
 
-    // Only first clip should be updated (unwrapSingleResult returns single object)
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    // Only the first clip was updated; the second holds its slot.
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      {
+        id: "456",
+        ok: false,
+        reason:
+          "not updated: the request ran out of time; re-run for this clip",
+      },
+    ]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
     );

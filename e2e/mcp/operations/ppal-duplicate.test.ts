@@ -22,6 +22,7 @@ import {
   isToolError,
   type ReadClipResult,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers.ts";
 import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
@@ -599,6 +600,49 @@ describe("ppal-duplicate", () => {
     expect(parseToolResult<ReadClipResult>(readEarly).arrangementLength).toBe(
       "2bar",
     );
+  });
+
+  // N destinations named, N entries back: the slot that can't take a copy keeps
+  // its place, so the caller can pair the entries against the toPath it sent.
+  it("keeps the slot of a clip destination that holds no slot", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s11`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+    const source = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    // Scene 99 doesn't exist, so neither does its slot on any track.
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        toPath: `t${RACKS_TRACK}/s11,t${RACKS_TRACK}/s99`,
+      },
+    });
+    const { data, warnings } =
+      parseToolResultWithWarnings<
+        Array<DuplicateClipResult | SkippedTargetResult>
+      >(result);
+    const [landed, refused] = data as [
+      DuplicateClipResult,
+      SkippedTargetResult,
+    ];
+
+    expect(data).toHaveLength(2);
+    expect(landed.path).toBe(`t${RACKS_TRACK}/s11`);
+    expect(refused).toStrictEqual({
+      path: `t${RACKS_TRACK}/s99`,
+      ok: false,
+      reason: "no clip slot there",
+    });
+    expect(warnings.join(" ")).not.toContain("not duplicated");
   });
 
   it("still honors the deprecated toSlot, and says so", async () => {

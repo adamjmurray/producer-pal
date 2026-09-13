@@ -435,6 +435,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
  * @param clips - Array to update with fresh clips after splitting
  * @param _context - Internal context object
  * @param mode - Whether positions are song-timeline or clip-relative
+ * @returns The pieces each cut clip became, by the id it was cut at
  */
 export function performSplitting(
   arrangementClips: LiveAPI[],
@@ -442,7 +443,7 @@ export function performSplitting(
   clips: LiveAPI[],
   _context: SplittingContext,
   mode: SplitMode,
-): void {
+): Map<string, LiveAPI[]> {
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
   const usedPoints = new Set<number>();
@@ -511,5 +512,5 @@ export function performSplitting(
     warnUnusedSplitPoints(splitPoints, usedPoints, mode);
   }
 
-  rescanSplitClips(splitClipRanges, clips);
+  return rescanSplitClips(splitClipRanges, clips);
 }

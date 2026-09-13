@@ -589,6 +589,8 @@ export interface ReadClipResult {
   arrangementLength?: string;
   /** Only on a clip a move was set to overwrite: whether it was cleared */
   deleted?: boolean;
+  /** Why the update didn't go as asked, when something landed anyway */
+  reason?: string;
   noteCount?: number;
   notes?: string;
   // Audio clip properties

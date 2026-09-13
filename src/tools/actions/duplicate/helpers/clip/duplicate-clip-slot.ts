@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   clipCopyBlocker,
   copyClipToSlot,
@@ -20,8 +19,9 @@ import {
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
+  skippedCopy,
 } from "../minimal-clip-info.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 
 /** The source objects every copy in one call shares. */
 export interface SlotCopySource {
@@ -84,7 +84,7 @@ export function resolveSlotCopySource(
  * @param name - Optional name for the duplicated clip
  * @param color - Optional color for the duplicated clip
  * @param shared - Source objects the caller already resolved for this call
- * @returns Minimal clip info object, or null when Live made no copy
+ * @returns The new clip, or the entry saying no copy landed there
  */
 export function duplicateClipSlot(
   sourceTrackIndex: number,
@@ -97,22 +97,19 @@ export function duplicateClipSlot(
     sourceTrackIndex,
     sourceSceneIndex,
   ),
-): MinimalClipInfo | null {
+): MinimalClipInfo | TargetSkip {
   const { sourceClipSlot, sourceClip, tracks } = shared;
+  const destination = slotPath(toTrackIndex, toSceneIndex);
 
   // Get destination clip slot
   const destClipSlot = LiveAPI.from(
     livePath.track(toTrackIndex).clipSlot(toSceneIndex),
   );
 
-  // Skip rather than throw, so the other slots of a comma-separated toPath keep
-  // the copies they already made.
+  // An entry rather than a throw, so the other slots of a comma-separated
+  // toPath keep the copies they already made.
   if (!destClipSlot.exists()) {
-    console.warn(
-      `clip ${targetLabel(sourceClip)} was not duplicated: no clip slot at ${slotPath(toTrackIndex, toSceneIndex)}`,
-    );
-
-    return null;
+    return skippedCopy(destination, "no clip slot there");
   }
 
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
@@ -125,11 +122,7 @@ export function duplicateClipSlot(
   );
 
   if (blocker != null) {
-    console.warn(
-      `clip ${targetLabel(sourceClip)} was not duplicated: ${blocker}`,
-    );
-
-    return null;
+    return skippedCopy(destination, blocker);
   }
 
   // Compares the destination's clip before and after, so a declined copy can't
@@ -137,11 +130,7 @@ export function duplicateClipSlot(
   const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
 
   if (newClip == null) {
-    console.warn(
-      `clip ${targetLabel(sourceClip)} was not duplicated: no clip landed at ${slotPath(toTrackIndex, toSceneIndex)}`,
-    );
-
-    return null;
+    return skippedCopy(destination, "Live made no copy there");
   }
 
   newClip.setAll({ name, color });
@@ -181,19 +170,16 @@ export function duplicateClipToSlots(
     slots.map((slot) => slot.trackIndex),
   );
 
-  // A copy Live declined warns and reports nothing, so the results only list
-  // the copies that exist.
-  return slots
-    .map((slot, i) =>
-      duplicateClipSlot(
-        trackIndex,
-        sourceSceneIndex,
-        slot.trackIndex,
-        slot.sceneIndex,
-        labelName(labels, i),
-        labelColor(labels, i),
-        shared,
-      ),
-    )
-    .filter((clipInfo) => clipInfo != null);
+  // One entry per slot named, whether or not a copy landed in it.
+  return slots.map((slot, i) =>
+    duplicateClipSlot(
+      trackIndex,
+      sourceSceneIndex,
+      slot.trackIndex,
+      slot.sceneIndex,
+      labelName(labels, i),
+      labelColor(labels, i),
+      shared,
+    ),
+  );
 }

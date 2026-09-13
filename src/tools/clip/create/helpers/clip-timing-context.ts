@@ -147,7 +147,13 @@ export function resolveCreateClipTakeLanes(
   // Lanes are permanent (Live has no delete), so pick the whole call's
   // destinations before creating a lane on any of it — otherwise a cap failure
   // on the last destination strands empty lanes on all the earlier ones.
-  const fitting = takeLaneTargetsThatFit(arrangementPositions);
+  const { fitting, dropped } = takeLaneTargetsThatFit(arrangementPositions);
+
+  // create-clip has no entry for a clip it never made, so a lane that doesn't
+  // fit is said out loud here.
+  for (const [label, reason] of dropped) {
+    console.warn(`skipping "${label}" — ${reason}`);
+  }
 
   // Resolve once per destination rather than once per clip.
   for (const position of fitting) {

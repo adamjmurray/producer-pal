@@ -29,28 +29,36 @@ import {
 } from "./arrangement/update-clip-arrangement-params.ts";
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
 import { refuseSplitWithMove } from "./update-clip-refusals.ts";
+import { refuseClipWork, type ClipReasons } from "./entries/clip-reasons.ts";
+import { type ClipTargets } from "./entries/clip-targets.ts";
 import {
   moveDestinationParam,
   resolveMoveDestinations,
   resolveRequestedClips,
 } from "./move/move-destinations.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ClipUpdatePlanArgs {
-  /** Ids in call order, null where a path named no clip */
-  requestedIds: Array<string | null>;
+  /** The targets the call named, and the ids they found */
+  targets: ClipTargets;
   toPath?: string;
   toSlot?: string;
   arrangementStart?: string;
   arrangementLength?: string;
   arrangementSplit?: string;
   split?: string;
+  /** What each clip has to say beyond its result, added to */
+  reasons: ClipReasons;
   context: Partial<ToolContext>;
 }
 
 export interface ClipUpdatePlan {
   /** The clips to update, after any splitting, in the order the call named them */
   clips: LiveAPI[];
+  /**
+   * The target each clip belongs to, by its place in the call. A split clip's
+   * pieces all belong to the target that named the clip they came from.
+   */
+  slots: number[];
   /**
    * Positions in `clips`, in the order to process them. A move clears its
    * destination before the copy lands, so a clip another clip is moving on top
@@ -68,6 +76,12 @@ export interface ClipUpdatePlan {
   /** Whether each clip's move was expected to free the span it sits on. */
   vacates: boolean[];
   /**
+   * Positions whose moves the plan already refused, so the executor's own
+   * re-decide neither reports them twice nor sweeps on from them: whatever
+   * waits on a clip the plan blocked was blocked with it.
+   */
+  refusedMoves: Set<number>;
+  /**
    * Call off a clip's move and resize before its turn comes, for a destination
    * Live turned down after this plan was made. Both halves go, for the reason
    * the plan-time refusal drops both.
@@ -80,24 +94,26 @@ export interface ClipUpdatePlan {
  * reading of, resolve the ids, split them if asked, and pair each one with
  * where it's headed.
  * @param args - The target and position params as the tool received them
- * @param args.requestedIds - Ids in call order
+ * @param args.targets - The targets the call named
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination slot(s)
  * @param args.arrangementStart - Bar|beat position(s)
  * @param args.arrangementLength - Arrangement span duration(s)
  * @param args.arrangementSplit - Song-timeline split positions
  * @param args.split - Deprecated clip-relative split positions
+ * @param args.reasons - What each clip has to say beyond its result
  * @param args.context - Per-request context
  * @returns The clips and the per-clip values the update loop reads
  */
 export function planClipUpdate({
-  requestedIds,
+  targets,
   toPath,
   toSlot,
   arrangementStart,
   arrangementLength,
   arrangementSplit,
   split,
+  reasons,
   context,
 }: ClipUpdatePlanArgs): ClipUpdatePlan {
   // Before the first Live read, so a call there is no reading of changes
@@ -122,35 +138,44 @@ export function planClipUpdate({
   // Paired against what the caller named, not against the clips that resolve:
   // an id that names nothing has to take its position with it, or every later
   // clip slides onto the wrong bar.
-  const moves = resolveMoveDestinations(toPath, toSlot, requestedIds.length);
+  const moves = resolveMoveDestinations(toPath, toSlot, targets.ids.length);
   const { startBeats, lengthBeats } = parseArrangementParams(
     arrangementStart,
     arrangementLength,
-    requestedIds.length,
+    targets.ids.length,
     moves.positions,
   );
   const { clips, destinationById, requestedIndexById } = resolveRequestedClips(
-    requestedIds,
-    moves.destinations,
+    targets,
+    moves,
+    reasons,
   );
   const startBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(startBeats, requestedIndexById.get(clip.id));
   const lengthBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(lengthBeats, requestedIndexById.get(clip.id));
-  const splitClips = applySplittingIfNeeded(
+  const { clips: splitClips, slots } = applySplittingIfNeeded({
     clips,
+    slots: clips.map((clip) => requestedIndexById.get(clip.id) as number),
     arrangementSplit,
     split,
+    reasons,
     context,
-  );
+  });
   const { order, blockedIds, dependencies, vacates } = orderArrangementMoves(
     splitClips,
     { startBeatsFor, lengthBeatsFor, destinationById },
+    reasons,
   );
   // Starts with what the plan refused, and grows as the executor gives up on a
   // destination Live turns down — same set, so both refusals drop a move the
   // same way.
   const refusedIds = new Set(blockedIds);
+  const refusedMoves = new Set(
+    splitClips.flatMap((clip, index) =>
+      refusedIds.has(clip.id) ? [index] : [],
+    ),
+  );
 
   // A refused move must not reach Live by either route, so drop the lane too.
   const refuseMove = (clipId: string): void => {
@@ -173,6 +198,7 @@ export function planClipUpdate({
 
   return {
     clips: splitClips,
+    slots,
     moveOrder: order,
     destinationById,
     destinationParam: moveDestinationParam(toPath, toSlot),
@@ -190,12 +216,16 @@ export function planClipUpdate({
     lengthBeatsFor: lengthBeatsForMove,
     dependencies,
     vacates,
+    refusedMoves,
     refuseMove,
   };
 }
 
 /** The whole-call args a blank value drops. */
-export type BlankArgs = Omit<ClipUpdatePlanArgs, "requestedIds" | "context">;
+export type BlankArgs = Omit<
+  ClipUpdatePlanArgs,
+  "targets" | "reasons" | "context"
+>;
 
 /** Reported in this order, whatever order the call listed them in. */
 const DROPPED_WHEN_BLANK = [
@@ -260,24 +290,39 @@ function resolveSongLocators(
   };
 }
 
+interface SplitRequestArgs {
+  clips: LiveAPI[];
+  /** The target each clip belongs to, in clip order */
+  slots: number[];
+  arrangementSplit: string | undefined;
+  split: string | undefined;
+  reasons: ClipReasons;
+  context: Partial<ToolContext>;
+}
+
 /**
  * Apply splitting to arrangement clips if a split param is provided
- * @param clips - Validated clip LiveAPI objects
- * @param arrangementSplit - Comma-separated song-timeline split positions
- * @param split - Deprecated clip-relative split positions
- * @param context - Tool execution context
- * @returns Filtered clips (non-existent removed after splitting)
+ * @param request - The clips, the targets they belong to, and the split params
+ * @param request.clips - Validated clip LiveAPI objects
+ * @param request.slots - The target each clip belongs to, in clip order
+ * @param request.arrangementSplit - Comma-separated song-timeline split positions
+ * @param request.split - Deprecated clip-relative split positions
+ * @param request.reasons - What each clip has to say beyond its result
+ * @param request.context - Tool execution context
+ * @returns The clips to update after splitting, and the target each belongs to
  */
-function applySplittingIfNeeded(
-  clips: LiveAPI[],
-  arrangementSplit: string | undefined,
-  split: string | undefined,
-  context: Partial<ToolContext>,
-): LiveAPI[] {
+function applySplittingIfNeeded({
+  clips,
+  slots,
+  arrangementSplit,
+  split,
+  reasons,
+  context,
+}: SplitRequestArgs): { clips: LiveAPI[]; slots: number[] } {
   const request = resolveSplitRequest(arrangementSplit, split);
 
   if (request == null) {
-    return clips;
+    return { clips, slots };
   }
 
   const { value, mode } = request;
@@ -288,11 +333,13 @@ function applySplittingIfNeeded(
     }
 
     // performSplitting uses duplicate_clip_to_arrangement (Track-only) which
-    // can't target take lanes. Warn-and-skip rather than silently misroute
-    // the split onto the main lane.
+    // can't target take lanes. The clip's own entry says it wasn't cut, rather
+    // than the split silently landing on the main lane.
     if (isTakeLaneClip(clip)) {
-      console.warn(
-        `${mode.param} ignored for take-lane clip ${targetLabel(clip)}; split it in Live's UI`,
+      refuseClipWork(
+        reasons,
+        clip.id,
+        `${mode.param} ignored for a take-lane clip; split it in Live's UI`,
       );
 
       return false;
@@ -307,13 +354,57 @@ function applySplittingIfNeeded(
     mode,
   );
 
-  if (splitPoints != null) {
-    performSplitting(arrangementClips, splitPoints, clips, context, mode);
-
-    return clips.filter((clip) => clip.exists());
+  if (splitPoints == null) {
+    return { clips, slots };
   }
 
-  return clips;
+  // The pieces come from what the split reports, not from the array it also
+  // replaces the cut clips in — a copy, so the list below is still the clips as
+  // the call named them.
+  const pieces = performSplitting(
+    arrangementClips,
+    splitPoints,
+    [...clips],
+    context,
+    mode,
+  );
+
+  return splitPieces(clips, slots, pieces);
+}
+
+/**
+ * The clips after a split, each piece keeping the target that named the clip it
+ * was cut from.
+ *
+ * Built from what the split reported rather than from the clips array it also
+ * replaced the cut clips in: the pieces of one clip are indistinguishable from
+ * their neighbours once they are in the array, and each one has to answer under
+ * the target that asked for it.
+ * @param clips - The clips as the call named them, before the cuts
+ * @param slots - The target each of those clips belongs to
+ * @param pieces - The pieces each cut clip became, by the id it was cut at
+ * @returns The clips to update, and the target each belongs to
+ */
+function splitPieces(
+  clips: LiveAPI[],
+  slots: number[],
+  pieces: Map<string, LiveAPI[]>,
+): { clips: LiveAPI[]; slots: number[] } {
+  const afterSplit: LiveAPI[] = [];
+  const slotsAfterSplit: number[] = [];
+
+  for (const [index, clip] of clips.entries()) {
+    for (const piece of pieces.get(clip.id) ?? [clip]) {
+      if (!piece.exists()) {
+        continue;
+      }
+
+      afterSplit.push(piece);
+      slotsAfterSplit.push(slots[index] as number);
+    }
+  }
+
+  return { clips: afterSplit, slots: slotsAfterSplit };
 }
 
 /**

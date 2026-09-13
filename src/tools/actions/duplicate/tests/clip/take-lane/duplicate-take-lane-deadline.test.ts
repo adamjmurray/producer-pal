@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import "../duplicate-mocks-test-helpers.ts";
+import "../../duplicate-mocks-test-helpers.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
@@ -77,11 +77,16 @@ describe("duplicate to a take lane, cut short", () => {
       { deadline: 1000 },
     );
 
-    // The one copy that fit landed on the lane the warning goes on to name.
-    expect(result).toStrictEqual({
-      id: "tl_clip_1",
-      path: "t1/l0[1|1]",
-    });
+    // The one copy that fit landed on the lane the warning goes on to name; the
+    // destination it never reached keeps its slot.
+    expect(result).toStrictEqual([
+      { id: "tl_clip_1", path: "t1/l0[1|1]" },
+      {
+        path: "t1/l0[5|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+    ]);
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 2. " +
         "Not duplicated: t1/l0 5|1. Re-run for those positions.",
@@ -106,16 +111,46 @@ describe("duplicate to a take lane, cut short", () => {
       { deadline: 1000 },
     );
 
-    // One copy for three destinations: the first was refused, the third never
-    // reached, and both are named. A lone result comes back unwrapped.
-    expect(result).toStrictEqual({
-      id: "tl_clip_10",
-      path: "t1/l0[5|1]",
-    });
+    // One copy for three destinations: the first was refused, the third was
+    // never reached, and both keep their slots.
+    expect(result).toStrictEqual([
+      {
+        path: `t1/l${MAX_TAKE_LANES}[1|1]`,
+        ok: false,
+        reason: `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      },
+      { id: "tl_clip_10", path: "t1/l0[5|1]" },
+      {
+        path: "t1/l1[9|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+    ]);
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 3. " +
         `Not duplicated: t1/l${MAX_TAKE_LANES} 1|1, t1/l1 9|1. Re-run for those positions.`,
     );
+  });
+
+  // One destination and no budget: nothing was made and there is no list for an
+  // entry to hold a place in, so the reason comes back as the error.
+  it("throws when the one destination it had no budget for got nothing", async () => {
+    registerSource(0);
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    now = 2000;
+
+    await expect(
+      duplicate(
+        {
+          type: "clip",
+          id: "src_clip",
+          toPath: "t1/l0",
+          arrangementStart: "1|1",
+        },
+        { deadline: 1000 },
+      ),
+    ).rejects.toThrow("the request ran out of time");
   });
 
   it("creates no lane at all when the budget is already gone", async () => {
@@ -138,7 +173,18 @@ describe("duplicate to a take lane, cut short", () => {
     );
 
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      {
+        path: "t1/l0[1|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+      {
+        path: "t1/l1[1|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+    ]);
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 0 of 2. " +
         "Not duplicated: t1/l0 1|1, t1/l1 1|1. Re-run for those positions.",

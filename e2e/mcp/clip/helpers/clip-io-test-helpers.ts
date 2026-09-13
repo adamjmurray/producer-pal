@@ -8,6 +8,8 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -98,28 +100,35 @@ export async function arrangementClipAt(
 }
 
 /**
- * Update a clip that must be refused: the warning says why, and the clip comes
- * back unchanged, so the caller can go on to check it is still where it was.
+ * Move one clip, with nothing else asked of it, where the move must be refused.
+ * Nothing landed and there is no list for an entry to hold a place in, so the
+ * reason comes back as the error — and the clip is left where it was.
  * @param client - The connected MCP client
  * @param id - The clip that must stay put
  * @param args - The rest of the ppal-update-clip arguments
- * @param warning - Text the refusal warning must contain; every string of an
- *   array must appear, for a message with a Live-assigned id in the middle
+ * @param reason - Text the error must contain; every string of an array must
+ *   appear, for a message with a Live-assigned id in the middle
  */
 export async function expectRefusedUpdate(
   client: Client,
   id: string,
   args: Record<string, unknown>,
-  warning: string | string[],
+  reason: string | string[],
 ): Promise<void> {
-  const { data: kept, warnings } = await updateClip(client, id, args);
-  const joined = warnings.join(" ");
+  const result = await client.callTool({
+    name: "ppal-update-clip",
+    arguments: { id, ...args },
+  });
 
-  for (const part of typeof warning === "string" ? [warning] : warning) {
-    expect(joined).toContain(part);
+  await sleep(100);
+
+  expect(isToolError(result)).toBe(true);
+
+  const message = getToolErrorMessage(result);
+
+  for (const part of typeof reason === "string" ? [reason] : reason) {
+    expect(message).toContain(part);
   }
-
-  expect(kept.id).toBe(id);
 }
 
 /**
@@ -136,13 +145,9 @@ export async function moveOffTakeLane(
   source: Pick<ReadClipResult, "id" | "path">,
   toPath: string,
 ): Promise<ReadClipResult> {
-  const { data: moved, warnings } = await updateClip(client, source.id, {
-    toPath,
-  });
+  const { data: moved } = await updateClip(client, source.id, { toPath });
 
-  expect(warnings.join(" ")).toContain(
-    `clip ${source.path} (id ${source.id}) was emptied instead of deleted`,
-  );
+  expect(moved.reason).toContain("emptied instead of deleted");
 
   return readClipFully(client, { id: moved.id });
 }

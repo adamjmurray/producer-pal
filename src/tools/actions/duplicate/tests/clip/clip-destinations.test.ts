@@ -10,7 +10,7 @@ import {
   resolveClipDestinations,
   warnInapplicableClipParams,
   warnUnusedDestination,
-} from "./clip-destinations.ts";
+} from "#src/tools/actions/duplicate/helpers/clip/clip-destinations.ts";
 
 /**
  * The resolved shape for a session destination.
@@ -23,6 +23,7 @@ function sessionResult(slots: ClipDestinations["slots"]): ClipDestinations {
     slots,
     arrangementTargets: [],
     arrangementPositions: [],
+    arrangementRefusals: [],
   };
 }
 
@@ -30,17 +31,38 @@ function sessionResult(slots: ClipDestinations["slots"]): ClipDestinations {
  * The resolved shape for an arrangement destination.
  * @param arrangementTargets - The tracks and lanes the copies go to
  * @param arrangementPositions - The position each target's own path named
+ * @param arrangementRefusals - The entry each unusable destination keeps
  * @returns A ClipDestinations to compare against
  */
 function arrangementResult(
   arrangementTargets: ClipDestinations["arrangementTargets"],
   arrangementPositions: ClipDestinations["arrangementPositions"],
+  arrangementRefusals: ClipDestinations["arrangementRefusals"] = arrangementTargets.map(
+    () => null,
+  ),
 ): ClipDestinations {
   return {
     destination: "arrangement",
     slots: [],
     arrangementTargets,
     arrangementPositions,
+    arrangementRefusals,
+  };
+}
+
+/**
+ * The entry a clip slot named in an arrangement toPath contributes.
+ * @param trackIndex - The slot's track
+ * @param sceneIndex - The slot's scene
+ * @returns The skip entry to compare against
+ */
+function slotRefusal(trackIndex: number, sceneIndex: number) {
+  return {
+    path: `t${trackIndex}/s${sceneIndex}`,
+    ok: false as const,
+    reason:
+      "a clip slot can't take an arrangement copy; " +
+      `name a track's arrangement instead, as "t${trackIndex}[5|1]"`,
   };
 }
 
@@ -144,6 +166,8 @@ describe("resolveClipDestinations", () => {
     // The dropped slot stays in the list as a null. Name and color are counted
     // per requested destination, so removing it would hand the track the first
     // name — and a two-entry list collapsing to one stops splitting at all.
+    // The slot keeps its place with the entry it will contribute: nothing warns,
+    // because that entry says it.
     it("drops the clip slots when toPath also names a track", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
@@ -153,9 +177,10 @@ describe("resolveClipDestinations", () => {
         arrangementResult(
           [null, { trackIndex: 3, takeLane: null }],
           [null, null],
+          [slotRefusal(2, 1), null],
         ),
       );
-      expect(warnSpy).toHaveBeenCalledWith(
+      expect(warnSpy).not.toHaveBeenCalledWith(
         expect.stringContaining('toPath "t2/s1" ignored'),
       );
     });
@@ -175,6 +200,7 @@ describe("resolveClipDestinations", () => {
             { trackIndex: 3, takeLane: 0 },
           ],
           [null, null, null],
+          [slotRefusal(2, 1), null, null],
         ),
       );
     });

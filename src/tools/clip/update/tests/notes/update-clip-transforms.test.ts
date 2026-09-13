@@ -112,15 +112,18 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
-  it("warns and continues when a transform string is malformed", async () => {
-    await updateClip({
+  // The throw lands in the clip's own slot, so the caller can tell which of the
+  // three it was — and the other two still come back.
+  it("keeps going when a transform string is malformed, refusing each clip", async () => {
+    const result = (await updateClip({
       id: "123, 456, 789",
       transforms: "!!!bad!!!",
-    });
+    })) as Array<{ id?: string; ok?: false; reason?: string }>;
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to update clip t0/s0 (id 123)"),
-    );
+    expect(result[0]?.id).toBe("123");
+    expect(result[0]?.ok).toBe(false);
+    expect(result[0]?.reason).toContain("transform syntax error");
+    expect(result).toHaveLength(3);
   });
 });
 

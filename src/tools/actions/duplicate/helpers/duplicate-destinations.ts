@@ -21,7 +21,6 @@ import {
   warnUnusedArrangementParams,
   warnUnusedDestination,
 } from "./clip/clip-destinations.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
 
@@ -108,6 +107,14 @@ export function inferDestination(
   return "session";
 }
 
+/** Where a clip's copies go, and why any named destination can't take one. */
+export interface ResolvedDestinations {
+  /** One entry per request: the destination, or null where it can't be used. */
+  destinations: (ArrangementTrack | null)[];
+  /** Why each unusable destination can't be used, aligned with the requests. */
+  refusals: (string | null)[];
+}
+
 /**
  * Resolves the tracks a clip is duplicated onto in the arrangement, marking the
  * ones it can't be copied to. A destination is skipped rather than fatal, so one
@@ -123,12 +130,13 @@ export function inferDestination(
  * clip is already on it.
  * @param sourceClip - The clip being duplicated
  * @param targets - Requested destinations, or empty for the source's own track
- * @returns One entry per request: the destination, or null where it can't be used
+ * @returns One entry per request: the destination, or null where it can't be
+ *   used, plus why each unusable one can't be — for that destination's own entry
  */
 export function resolveDestinationTargets(
   sourceClip: LiveAPI,
   targets: (DuplicateArrangementTarget | null)[],
-): (ArrangementTrack | null)[] {
+): ResolvedDestinations {
   const ownTrack = (): ArrangementTrack => {
     const sourceTrackIndex = sourceClip.trackIndex;
 
@@ -142,12 +150,14 @@ export function resolveDestinationTargets(
   };
 
   if (targets.length === 0) {
-    return [ownTrack()];
+    return { destinations: [ownTrack()], refusals: [null] };
   }
 
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
+  const refusals: (string | null)[] = [];
+  const destinations = targets.map((target) => {
+    refusals.push(null);
 
-  return targets.map((target) => {
     if (target == null) {
       return null;
     }
@@ -156,44 +166,41 @@ export function resolveDestinationTargets(
       return { ...target, ...ownTrack() };
     }
 
-    return canCopyClipToTrack(sourceClip, target.trackIndex, clipIsMidi)
-      ? { ...target, trackIndex: target.trackIndex }
-      : null;
+    const blocker = copyBlockedToTrack(target.trackIndex, clipIsMidi);
+
+    if (blocker == null) {
+      return { ...target, trackIndex: target.trackIndex };
+    }
+
+    refusals[refusals.length - 1] = blocker;
+
+    return null;
   });
+
+  return { destinations, refusals };
 }
 
 /**
- * Whether a clip can be copied to a track, warning about why not.
- * @param clip - The clip being copied, for the warning
+ * Why a clip can't be copied to a track, or null when it can.
+ *
+ * Live refuses a wrong-type or frozen destination without saying why. Asking
+ * first names the reason on that destination's own entry; without it the copy
+ * just fails downstream with a position and no cause.
  * @param trackIndex - Destination track index
  * @param clipIsMidi - Whether the clip being copied is MIDI
- * @returns True when the copy can be made
+ * @returns The reason, or null when the copy can be made
  */
-function canCopyClipToTrack(
-  clip: LiveAPI,
+function copyBlockedToTrack(
   trackIndex: number,
   clipIsMidi: boolean,
-): boolean {
+): string | null {
   const track = LiveAPI.from(livePath.track(trackIndex));
 
   if (!track.exists()) {
-    console.warn(`no track at toPath "t${trackIndex}"`);
-
-    return false;
+    return `no track at toPath "t${trackIndex}"`;
   }
 
-  // Live refuses a wrong-type or frozen destination without saying why. Asking
-  // first names the reason and drops the destination cleanly; without it the
-  // copy just fails downstream with a position and no cause.
-  const blocker = clipCopyBlocker(clipIsMidi, trackIndex, track);
-
-  if (blocker != null) {
-    console.warn(`clip ${targetLabel(clip)} was not duplicated: ${blocker}`);
-
-    return false;
-  }
-
-  return true;
+  return clipCopyBlocker(clipIsMidi, trackIndex, track);
 }
 
 interface DestinationParams {

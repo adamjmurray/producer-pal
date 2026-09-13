@@ -30,6 +30,12 @@ export interface ClipResult {
   /** The length the clip ended up at, when the call moved it off the arg. */
   length?: string;
   /**
+   * Why the update didn't go as asked, when something landed anyway: a move
+   * Live turned down, a param this clip has no use for, a leftover on a take
+   * lane. Anything about a clip the call named belongs here (ADR-0042).
+   */
+  reason?: string;
+  /**
    * Only when another clip in the same call was set to land on this one: true
    * when this clip is gone (`path` is its address from before the call), false
    * when it is still there. A placement that failed can destroy it anyway — it

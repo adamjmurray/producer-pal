@@ -275,28 +275,33 @@ describe("takeLaneLabel", () => {
 
 describe("takeLaneTargetsThatFit", () => {
   it("keeps the destinations alongside one that does not fit", () => {
-    const fitting = takeLaneTargetsThatFit([
+    const { fitting, dropped } = takeLaneTargetsThatFit([
       { trackIndex: 0, takeLane: MAX_TAKE_LANES },
       { trackIndex: 1, takeLane: 0 },
     ]);
 
     expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: 0 }]);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('skipping "t0/l8"'),
+    // Handed back rather than warned: a caller with an entry per destination
+    // puts it there.
+    expect(dropped.get("t0/l8")).toBe(
+      'take lane "l8" is out of range: a track has "l0" through "l7"',
     );
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
-  it("warns once for a repeated destination that does not fit", () => {
-    const fitting = takeLaneTargetsThatFit([
+  it("reports a repeated destination that does not fit once", () => {
+    const { fitting, dropped } = takeLaneTargetsThatFit([
       { trackIndex: 0, takeLane: MAX_TAKE_LANES },
       { trackIndex: 0, takeLane: MAX_TAKE_LANES },
     ]);
 
     expect(fitting).toStrictEqual([]);
-    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
-    );
+    expect([...dropped]).toStrictEqual([
+      [
+        "t0/l8",
+        'take lane "l8" is out of range: a track has "l0" through "l7"',
+      ],
+    ]);
   });
 
   // Lane 7 is the last one MAX_TAKE_LANES allows, so it fits.
@@ -306,12 +311,14 @@ describe("takeLaneTargetsThatFit", () => {
       { trackIndex: 0, takeLane: MAX_TAKE_LANES - 1 },
     ];
 
-    expect(takeLaneTargetsThatFit(targets)).toStrictEqual(targets);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(takeLaneTargetsThatFit(targets)).toStrictEqual({
+      fitting: targets,
+      dropped: new Map(),
+    });
   });
 
   it("keeps a repeated lane and drops main-lane destinations", () => {
-    const fitting = takeLaneTargetsThatFit([
+    const { fitting, dropped } = takeLaneTargetsThatFit([
       { trackIndex: 0, takeLane: 7 },
       { trackIndex: 1, takeLane: 7 },
       { trackIndex: 0, takeLane: 7 },
@@ -323,6 +330,6 @@ describe("takeLaneTargetsThatFit", () => {
       { trackIndex: 1, takeLane: 7 },
       { trackIndex: 0, takeLane: 7 },
     ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(dropped.size).toBe(0);
   });
 });

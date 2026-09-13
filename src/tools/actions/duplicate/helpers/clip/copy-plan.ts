@@ -122,6 +122,12 @@ interface CopyPlan {
   positions: number[];
   /** Per copy, its place in the requested list — the name and color it takes. */
   requestIndices: number[];
+  /**
+   * Where every requested copy was headed, including the ones that can't be
+   * made: a destination with no copy still reports the place it aimed at.
+   */
+  requestedTargets: (ArrangementTrack | null)[];
+  requestedPositions: (number | null)[];
 }
 
 /**
@@ -172,5 +178,7 @@ export function planCopies(
     targets: requestIndices.map((i) => targets[i] as ArrangementTrack),
     positions: requestIndices.map((i) => positions[i] as number),
     requestIndices,
+    requestedTargets: targets,
+    requestedPositions: positions,
   };
 }

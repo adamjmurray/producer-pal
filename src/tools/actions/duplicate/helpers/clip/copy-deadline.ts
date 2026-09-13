@@ -67,7 +67,7 @@ interface StopMidFanOutArgs {
   skipped: UnreachedDestination[];
   /** Destinations the loop never got to */
   unreached: UnreachedDestination[];
-  /** One entry per destination, null where no copy landed */
+  /** One entry per destination so far: a copy, a skip, or null when unreached */
   results: (object | null)[];
   /** How many destinations were asked for */
   total: number;
@@ -94,9 +94,9 @@ export function stopMidFanOut(options: StopMidFanOutArgs): boolean {
   return stopForDeadline(deadline, () =>
     unreachedPositionsWarning(
       [...skipped, ...unreached],
-      // Copies that actually landed, not iterations: one can be skipped and the
-      // tally has to match what exists.
-      results.filter((result) => result != null).length,
+      // Copies that actually landed, not entries: a destination that was
+      // refused has an entry of its own, and the tally has to match what exists.
+      results.filter((result) => result != null && !("ok" in result)).length,
       total,
       songTimeSigNumerator,
       songTimeSigDenominator,

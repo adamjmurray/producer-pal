@@ -14,7 +14,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "../duplicate-mocks-test-helpers.ts";
+import "../../duplicate-mocks-test-helpers.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
@@ -122,13 +122,17 @@ describe("promoting a take-lane clip", () => {
       arrangementStart: "1|1,2|1,3|1,4|1",
     });
 
-    const promoteWarnings = vi
-      .mocked(consoleMock.warn)
-      .mock.calls.filter(([message]) =>
-        String(message).includes("can't be promoted off its take lane"),
-      );
-
-    expect(promoteWarnings).toHaveLength(1);
-    expect(result).toStrictEqual([]);
+    // Nothing warns: every destination still keeps its slot, each saying why it
+    // got no copy.
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("can't be promoted off its take lane"),
+    );
+    expect(result).toStrictEqual(
+      ["1|1", "2|1", "3|1", "4|1"].map((position) => ({
+        path: `t0[${position}]`,
+        ok: false,
+        reason: "it's an audio clip with no sample file; drag it in Live's UI",
+      })),
+    );
   });
 });

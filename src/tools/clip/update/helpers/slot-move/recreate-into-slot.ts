@@ -16,6 +16,7 @@ import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
 
 /** What trying to build the replacement clip found. */
 type RecreateAttempt =
@@ -33,9 +34,10 @@ interface ScratchSlot {
  * is at risk there, so there's no fallback to weigh.
  * @param clip - The arrangement clip being moved
  * @param destClipSlot - The empty destination
- * @param destPath - The destination, formatted for a warning
+ * @param destPath - The destination, formatted for the clip's entry
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
+ * @param reasons - What each clip has to say beyond its result
  * @returns The new clip, or null when the move failed (already reported)
  */
 export function recreateIntoEmptySlot(
@@ -44,6 +46,7 @@ export function recreateIntoEmptySlot(
   destPath: string,
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
+  reasons: ClipReasons,
 ): LiveAPI | null {
   const attempt = attemptRecreate(clip, destClipSlot);
 
@@ -51,7 +54,7 @@ export function recreateIntoEmptySlot(
     return attempt.clip;
   }
 
-  reportMoveFailure(clip, attempt, destPath, "n/a", destPath);
+  reportMoveFailure(reasons, clip, attempt, destPath, "n/a", destPath);
   keepClip(clip, updatedClips, noteResult);
 
   return null;
@@ -69,9 +72,10 @@ export function recreateIntoEmptySlot(
  * @param clip - The arrangement clip being moved
  * @param toSlot - Destination slot position
  * @param destClipSlot - The occupied destination
- * @param destPath - The destination, formatted for a warning
+ * @param destPath - The destination, formatted for the clip's entry
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
+ * @param reasons - What each clip has to say beyond its result
  * @returns The new clip, or null when the move failed (already reported)
  */
 export function recreateIntoOccupiedSlot(
@@ -81,6 +85,7 @@ export function recreateIntoOccupiedSlot(
   destPath: string,
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
+  reasons: ClipReasons,
 ): LiveAPI | null {
   const scratch = findScratchSlot(toSlot);
 
@@ -91,6 +96,7 @@ export function recreateIntoOccupiedSlot(
       destPath,
       updatedClips,
       noteResult,
+      reasons,
     );
   }
 
@@ -101,6 +107,7 @@ export function recreateIntoOccupiedSlot(
     destPath,
     updatedClips,
     noteResult,
+    reasons,
   );
 }
 
@@ -167,9 +174,10 @@ function findScratchSlot(toSlot: ClipSlotPosition): ScratchSlot | null {
  * @param clip - The arrangement clip being moved
  * @param scratch - The empty slot to build the replacement in
  * @param destClipSlot - The occupied destination
- * @param destPath - The destination, formatted for a warning
+ * @param destPath - The destination, formatted for the clip's entry
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
+ * @param reasons - What each clip has to say beyond its result
  * @returns The new clip, or null when the move failed (already reported)
  */
 function recreateViaScratchSlot(
@@ -179,6 +187,7 @@ function recreateViaScratchSlot(
   destPath: string,
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
+  reasons: ClipReasons,
 ): LiveAPI | null {
   const attempt = attemptRecreate(clip, scratch.slot);
 
@@ -200,6 +209,7 @@ function recreateViaScratchSlot(
     }
 
     reportMoveFailure(
+      reasons,
       clip,
       attempt,
       scratch.path,
@@ -217,8 +227,10 @@ function recreateViaScratchSlot(
   scratch.slot.call("delete_clip");
 
   if (newClip == null) {
-    console.warn(
-      `clip ${targetLabel(clip)} was not moved: the copy onto ${destPath} did not land. The clip there and the source clip are both untouched.`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      `not moved: the copy onto ${destPath} did not land. The clip there and the source clip are both untouched.`,
     );
     keepClip(clip, updatedClips, noteResult);
 
@@ -239,9 +251,10 @@ function recreateViaScratchSlot(
  * loses the occupant.
  * @param clip - The arrangement clip being moved
  * @param destClipSlot - The occupied destination
- * @param destPath - The destination, formatted for a warning
+ * @param destPath - The destination, formatted for the clip's entry
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
+ * @param reasons - What each clip has to say beyond its result
  * @returns The new clip, or null when the move failed (already reported)
  */
 function recreateOverOccupant(
@@ -250,6 +263,7 @@ function recreateOverOccupant(
   destPath: string,
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
+  reasons: ClipReasons,
 ): LiveAPI | null {
   destClipSlot.call("delete_clip");
 
@@ -263,25 +277,27 @@ function recreateOverOccupant(
     return attempt.clip;
   }
 
-  reportMoveFailure(clip, attempt, destPath, "lost", destPath);
+  reportMoveFailure(reasons, clip, attempt, destPath, "lost", destPath);
   keepClip(clip, updatedClips, noteResult);
 
   return null;
 }
 
 /**
- * Warn about a failed recreate, naming exactly what's true afterward: whether
- * the destination's occupant survived, was lost, or was never touched;
- * whether the attempt left an incomplete clip behind; and whether that
- * incomplete clip was already cleaned up.
+ * Say on the clip's own entry that the recreate failed, naming exactly what's
+ * true afterward: whether the destination's occupant survived, was lost, or was
+ * never touched; whether the attempt left an incomplete clip behind; and
+ * whether that incomplete clip was already cleaned up.
+ * @param reasons - What each clip has to say beyond its result, added to
  * @param clip - The arrangement clip being moved
  * @param attempt - The failed attempt
  * @param attemptPath - Where the create was tried
  * @param occupant - Whether the destination's occupant is lost, preserved, or never had one
- * @param destPath - The destination, formatted for a warning
+ * @param destPath - The destination, formatted for the clip's entry
  * @param wasCleared - Whether an incomplete clip left behind was already deleted
  */
 function reportMoveFailure(
+  reasons: ClipReasons,
   clip: LiveAPI,
   attempt: { incomplete: boolean; error: unknown },
   attemptPath: string,
@@ -303,7 +319,9 @@ function reportMoveFailure(
         ? ` The clip at ${destPath} was not touched.`
         : "";
 
-  console.warn(
-    `clip ${targetLabel(clip)} was not moved: ${outcome}.${occupantNote} The source clip in the arrangement is untouched.`,
+  refuseClipWork(
+    reasons,
+    clip.id,
+    `not moved: ${outcome}.${occupantNote} The source clip in the arrangement is untouched.`,
   );
 }

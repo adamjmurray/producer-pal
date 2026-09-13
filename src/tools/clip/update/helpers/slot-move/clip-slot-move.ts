@@ -29,6 +29,11 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
+  noteClipReason,
+  refuseClipWork,
+  type ClipReasons,
+} from "../entries/clip-reasons.ts";
+import {
   recreateIntoEmptySlot,
   recreateIntoOccupiedSlot,
 } from "./recreate-into-slot.ts";
@@ -40,6 +45,8 @@ interface SlotMoveArgs {
   destinationTracks?: Map<number, LiveAPI>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 /**
@@ -50,6 +57,7 @@ interface SlotMoveArgs {
  * @param args.destinationTracks - Destination tracks the batch already resolved
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
+ * @param args.reasons - What each clip has to say beyond its result
  */
 export function handleClipSlotMove({
   clip,
@@ -57,14 +65,13 @@ export function handleClipSlotMove({
   destinationTracks,
   updatedClips,
   noteResult,
+  reasons,
 }: SlotMoveArgs): void {
   const srcTrackIndex = clip.trackIndex;
   const srcSceneIndex = clip.sceneIndex;
 
   if (srcTrackIndex == null || srcSceneIndex == null) {
-    console.warn(
-      `could not determine slot position for clip ${targetLabel(clip)}`,
-    );
+    refuseClipWork(reasons, clip.id, "not moved: could not determine its slot");
     keepClip(clip, updatedClips, noteResult);
 
     return;
@@ -80,7 +87,13 @@ export function handleClipSlotMove({
     return;
   }
 
-  const destClipSlot = destinationSlot(clip, toSlot, updatedClips, noteResult);
+  const destClipSlot = destinationSlot({
+    clip,
+    toSlot,
+    updatedClips,
+    noteResult,
+    reasons,
+  });
 
   if (destClipSlot == null) {
     return;
@@ -97,7 +110,7 @@ export function handleClipSlotMove({
   );
 
   if (blocker != null) {
-    console.warn(`clip ${targetLabel(clip)} was not moved: ${blocker}`);
+    refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
     keepClip(clip, updatedClips, noteResult);
 
     return;
@@ -118,8 +131,10 @@ export function handleClipSlotMove({
   const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
 
   if (newClip == null) {
-    console.warn(
-      `clip ${targetLabel(clip)} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+    refuseClipWork(
+      reasons,
+      clip.id,
+      `not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
     );
     keepClip(clip, updatedClips, noteResult);
 
@@ -152,23 +167,31 @@ export function handleClipSlotMove({
  * @param args.toSlot - Destination slot position
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
+ * @param args.reasons - What each clip has to say beyond its result
  */
 export function handleArrangementToSlotMove({
   clip,
   toSlot,
   updatedClips,
   noteResult,
+  reasons,
 }: SlotMoveArgs): void {
   const blocker = arrangementToSlotBlocker(clip, toSlot);
 
   if (blocker != null) {
-    console.warn(`clip ${targetLabel(clip)} was not moved: ${blocker}`);
+    refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
     keepClip(clip, updatedClips, noteResult);
 
     return;
   }
 
-  const destClipSlot = destinationSlot(clip, toSlot, updatedClips, noteResult);
+  const destClipSlot = destinationSlot({
+    clip,
+    toSlot,
+    updatedClips,
+    noteResult,
+    reasons,
+  });
 
   if (destClipSlot == null) {
     return;
@@ -192,6 +215,7 @@ export function handleArrangementToSlotMove({
         destPath,
         updatedClips,
         noteResult,
+        reasons,
       )
     : recreateIntoEmptySlot(
         clip,
@@ -199,19 +223,21 @@ export function handleArrangementToSlotMove({
         destPath,
         updatedClips,
         noteResult,
+        reasons,
       );
 
   if (newClip == null) {
     return;
   }
 
-  console.warn(
-    `arrangement clip ${targetLabel(clip)} was re-created at ${destPath}` +
-      (losses ? ` (${losses})` : ""),
+  noteClipReason(
+    reasons,
+    clip.id,
+    `re-created at ${destPath}` + (losses ? ` (${losses})` : ""),
   );
 
   if (isTakeLaneClip(clip)) {
-    emptyTakeLaneClip(clip);
+    noteClipReason(reasons, clip.id, emptyTakeLaneClip(clip));
   } else {
     sourceTrack.call("delete_clip", toLiveApiId(clip.id));
   }
@@ -283,19 +309,22 @@ function destinationTrack(
 
 /**
  * The destination slot, or null when it doesn't exist — in which case the clip
- * is left where it is and reported unmoved.
- * @param clip - The clip being moved
- * @param toSlot - Destination slot position
- * @param updatedClips - Array to collect results
- * @param noteResult - Note update result for result
+ * is left where it is and its entry says it didn't move.
+ * @param args - The clip, the destination, and the call's collectors
+ * @param args.clip - The clip being moved
+ * @param args.toSlot - Destination slot position
+ * @param args.updatedClips - Array to collect results
+ * @param args.noteResult - Note update result for result
+ * @param args.reasons - What each clip has to say beyond its result
  * @returns The destination ClipSlot, or null
  */
-function destinationSlot(
-  clip: LiveAPI,
-  toSlot: ClipSlotPosition,
-  updatedClips: ClipResult[],
-  noteResult: NoteUpdateResult | null,
-): LiveAPI | null {
+function destinationSlot({
+  clip,
+  toSlot,
+  updatedClips,
+  noteResult,
+  reasons,
+}: Omit<SlotMoveArgs, "destinationTracks">): LiveAPI | null {
   const destClipSlot = LiveAPI.from(
     livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex),
   );
@@ -304,8 +333,10 @@ function destinationSlot(
     return destClipSlot;
   }
 
-  console.warn(
-    `clip ${targetLabel(clip)} was not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
+  refuseClipWork(
+    reasons,
+    clip.id,
+    `not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
   );
   keepClip(clip, updatedClips, noteResult);
 

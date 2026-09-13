@@ -6,6 +6,7 @@
 // The clip shape every duplicate result reports a copy with.
 
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface MinimalClipInfo {
@@ -15,6 +16,8 @@ export interface MinimalClipInfo {
   path?: string;
   noteCount?: number;
   transformed?: number;
+  /** Why the copy isn't quite what was asked for, when it isn't. */
+  reason?: string;
 }
 
 /**
@@ -47,4 +50,15 @@ export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
   }
 
   return { id: clip.id, path: slotPath(trackIndex, sceneIndex) };
+}
+
+/**
+ * The entry a destination no copy landed at keeps in the result, so a call
+ * naming N destinations still answers with N entries (ADR-0042).
+ * @param path - The destination, as the path a copy there would report
+ * @param reason - Why no copy landed, in the words a single one would throw
+ * @returns The skip entry
+ */
+export function skippedCopy(path: string, reason: string): TargetSkip {
+  return { path, ok: false, reason };
 }

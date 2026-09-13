@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type ClipReasons } from "./entries/clip-reasons.ts";
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -494,4 +495,15 @@ export function stubSplitRescan(freshClipId: string): void {
 
     return origGet ? origGet(prop) : [0];
   });
+}
+
+/**
+ * What one clip's own entry will say about its update, for a test driving a
+ * helper that collects the reasons out of band.
+ * @param reasons - What each clip had to say
+ * @param clipId - The clip
+ * @returns Its reasons, joined the way the entry reads them
+ */
+export function joinedClipReason(reasons: ClipReasons, clipId: string): string {
+  return (reasons.said.get(clipId) ?? []).join("; ");
 }

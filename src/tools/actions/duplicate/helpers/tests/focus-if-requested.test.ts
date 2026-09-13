@@ -49,6 +49,20 @@ describe("focus-if-requested", () => {
       });
     });
 
+    // A destination that got no copy has an entry but no id, so the last entry
+    // isn't always something to select.
+    it("selects the last copy, not a destination that got none", () => {
+      focusIfRequested(true, "arrangement", "clip", [
+        { id: "clip1" },
+        { path: "t2[5|1]", ok: false, reason: "Live made no copy there" },
+      ]);
+
+      expect(selectMock.get()).toHaveBeenCalledWith({
+        id: "clip1",
+        detailView: "clip",
+      });
+    });
+
     it("selects scene in session view when type is scene", () => {
       focusIfRequested(true, undefined, "scene", [{ id: "scene1" }]);
 

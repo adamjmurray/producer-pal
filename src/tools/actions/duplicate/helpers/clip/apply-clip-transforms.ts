@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { collectClipResults } from "./overwritten-copies.ts";
@@ -36,8 +37,17 @@ export async function applyTransformsToDuplicatedClips(
   }
 
   const ids = clipResults.map((clip) => clip.id).join(",");
-  const updateResult = await updateClip({ ids, transforms, code }, context);
-  const updated = Array.isArray(updateResult) ? updateResult : [updateResult];
+  const updated = await updateCopies(ids, transforms, code, context);
+
+  if (!Array.isArray(updated)) {
+    // The copies are made and reported; only the edit didn't run, so each one
+    // carries the reason rather than the whole duplicate failing.
+    for (const clip of clipResults) {
+      clip.reason = updated;
+    }
+
+    return;
+  }
 
   const statsById = new Map(
     updated.map((result) => [
@@ -56,5 +66,37 @@ export async function applyTransformsToDuplicatedClips(
     if (stats?.transformed != null) {
       clip.transformed = stats.transformed;
     }
+
+    // A copy the update couldn't edit has a reason of its own to carry.
+    if (stats?.reason != null) {
+      clip.reason = stats.reason;
+    }
+  }
+}
+
+/**
+ * Run the edit over the copies, putting a refusal on their entries instead of
+ * letting it escape.
+ *
+ * A lone copy whose update can't be done throws rather than answering with an
+ * entry, and that throw would lose the copies this call already made.
+ * @param ids - The copies to edit
+ * @param transforms - Transform expressions, if any
+ * @param code - Code to run, if any
+ * @param context - Tool execution context
+ * @returns One entry per copy, or the reason none could be edited
+ */
+async function updateCopies(
+  ids: string,
+  transforms: string | undefined,
+  code: string | undefined,
+  context: Partial<ToolContext>,
+): Promise<object[] | string> {
+  try {
+    const result = await updateClip({ ids, transforms, code }, context);
+
+    return Array.isArray(result) ? result : [result];
+  } catch (error) {
+    return `the copy was made, but the edit wasn't: ${errorMessage(error)}`;
   }
 }

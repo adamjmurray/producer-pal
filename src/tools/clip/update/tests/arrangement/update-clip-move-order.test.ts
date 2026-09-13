@@ -12,7 +12,15 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-arrangement-optimizer.ts";
-import { orderArrangementMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-move-order.ts";
+import {
+  type ArrangementMoveOrder,
+  orderArrangementMoves,
+} from "#src/tools/clip/update/helpers/arrangement/update-clip-move-order.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { joinedClipReason } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
@@ -76,6 +84,27 @@ function moves(
   };
 }
 
+/** What the clips had to say about the last ordering run here. */
+let reasons: ClipReasons = newClipReasons();
+
+/**
+ * Order a call's moves, keeping what each clip had to say about its own.
+ * @param clips - The clips to update, in call order
+ * @param clipMoves - Where each clip is headed
+ * @returns The processing order and the refused moves
+ */
+function orderMoves(
+  clips: LiveAPI[],
+  clipMoves: ClipMoves,
+): ArrangementMoveOrder {
+  reasons = newClipReasons();
+
+  return orderArrangementMoves(clips, clipMoves, reasons);
+}
+
+const clipReason = (clipId: string): string =>
+  joinedClipReason(reasons, clipId);
+
 /**
  * Register a row of clips on one track and hand back their LiveAPI handles.
  * @param row - The clips, in call order
@@ -101,7 +130,7 @@ describe("orderArrangementMoves", () => {
   it("runs a row shifted later back-to-front", () => {
     const clips = registerRow(row);
 
-    const { order, blockedIds } = orderArrangementMoves(
+    const { order, blockedIds } = orderMoves(
       clips,
       moves({ "113": 16, "114": 32, "115": 48 }),
     );
@@ -117,7 +146,7 @@ describe("orderArrangementMoves", () => {
       { id: "115", start: 48, end: 64 },
     ]);
 
-    const { order, blockedIds } = orderArrangementMoves(
+    const { order, blockedIds } = orderMoves(
       clips,
       moves({ "113": 0, "114": 16, "115": 32 }),
     );
@@ -132,21 +161,14 @@ describe("orderArrangementMoves", () => {
       { id: "114", start: 16, end: 32 },
     ]);
 
-    const { blockedIds } = orderArrangementMoves(
-      clips,
-      moves({ "113": 16, "114": 0 }),
-    );
+    const { blockedIds } = orderMoves(clips, moves({ "113": 16, "114": 0 }));
 
     expect(blockedIds).toStrictEqual(new Set(["113", "114"]));
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[1|1] (id 113) was not moved: it would land on clip t0[5|1] (id 114)",
-      ),
+    expect(clipReason("113")).toContain(
+      "not moved: it would land on clip t0[5|1] (id 114)",
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[5|1] (id 114) was not moved: it would land on clip t0[1|1] (id 113)",
-      ),
+    expect(clipReason("114")).toContain(
+      "not moved: it would land on clip t0[1|1] (id 113)",
     );
   });
 
@@ -158,7 +180,7 @@ describe("orderArrangementMoves", () => {
       { id: "115", start: 32, end: 48 },
     ]);
 
-    const { blockedIds } = orderArrangementMoves(
+    const { blockedIds } = orderMoves(
       clips,
       moves({ "113": 16, "114": 0, "115": 0 }),
     );
@@ -169,7 +191,7 @@ describe("orderArrangementMoves", () => {
   it("keeps call order for clips landing on one position", () => {
     const clips = registerRow(row);
 
-    const { order, blockedIds } = orderArrangementMoves(
+    const { order, blockedIds } = orderMoves(
       clips,
       moves({ "113": 64, "114": 64, "115": 64 }),
     );
@@ -183,10 +205,7 @@ describe("orderArrangementMoves", () => {
   it("keeps call order when a clip lands on the clip it stacks with", () => {
     const clips = registerRow(row);
 
-    const { order } = orderArrangementMoves(
-      clips,
-      moves({ "113": 16, "114": 16 }),
-    );
+    const { order } = orderMoves(clips, moves({ "113": 16, "114": 16 }));
 
     expect(order).toStrictEqual([0, 1, 2]);
   });
@@ -206,10 +225,7 @@ describe("orderArrangementMoves", () => {
       LiveAPI.from("id 400"),
     ];
 
-    const { order } = orderArrangementMoves(
-      clips,
-      moves({ "113": 16, "400": 48 }),
-    );
+    const { order } = orderMoves(clips, moves({ "113": 16, "400": 48 }));
 
     expect(order).toStrictEqual([0, 1]);
   });
@@ -223,19 +239,14 @@ describe("orderArrangementMoves", () => {
       { id: "114", start: 16, end: 32 },
     ]);
 
-    const { order, blockedIds } = orderArrangementMoves(
-      clips,
-      moves({ "115": 16 }),
-    );
+    const { order, blockedIds } = orderMoves(clips, moves({ "115": 16 }));
 
     expect(order).toStrictEqual([1, 0]);
     expect(blockedIds).toStrictEqual(new Set(["115"]));
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[9|1] (id 115) was not moved: it would land on clip t0[5|1] (id 114), " +
-          "which this call leaves where it is; move that clip out of the way too, " +
-          "or use separate calls",
-      ),
+    expect(clipReason("115")).toBe(
+      "not moved: it would land on clip t0[5|1] (id 114), " +
+        "which this call leaves where it is; move that clip out of the way too, " +
+        "or use separate calls",
     );
   });
 
@@ -250,7 +261,7 @@ describe("orderArrangementMoves", () => {
       ["113", { kind: "track", trackIndex: 0 }],
     ]);
 
-    const { blockedIds } = orderArrangementMoves(
+    const { blockedIds } = orderMoves(
       clips,
       moves({ "113": 16 }, destinations),
     );
@@ -271,7 +282,7 @@ describe("orderArrangementMoves", () => {
       ["113", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
     ]);
 
-    const { order, blockedIds } = orderArrangementMoves(
+    const { order, blockedIds } = orderMoves(
       clips,
       moves({ "114": 0 }, destinations),
     );
@@ -289,7 +300,7 @@ describe("orderArrangementMoves", () => {
       ["113", { kind: "take-lane", trackIndex: 0, laneIndex: 0 }],
     ]);
 
-    const { order, blockedIds } = orderArrangementMoves(
+    const { order, blockedIds } = orderMoves(
       clips,
       moves({ "114": 0 }, destinations),
     );
@@ -307,7 +318,7 @@ describe("orderArrangementMoves", () => {
       ["114", { kind: "track", trackIndex: 1 }],
     ]);
 
-    const { order } = orderArrangementMoves(
+    const { order } = orderMoves(
       clips,
       moves({ "113": 16, "114": 32 }, destinations),
     );
@@ -326,10 +337,7 @@ describe("orderArrangementMoves", () => {
       ["113", { kind: "track", trackIndex: 1 }],
     ]);
 
-    const { order } = orderArrangementMoves(
-      clips,
-      moves({ "114": 32 }, destinations),
-    );
+    const { order } = orderMoves(clips, moves({ "114": 32 }, destinations));
 
     expect(order).toStrictEqual([1, 0]);
   });
@@ -340,10 +348,7 @@ describe("orderArrangementMoves", () => {
       ["113", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
     ]);
 
-    const { order } = orderArrangementMoves(
-      clips,
-      moves({ "113": 16 }, destinations),
-    );
+    const { order } = orderMoves(clips, moves({ "113": 16 }, destinations));
 
     expect(order).toStrictEqual([0, 1, 2]);
   });
@@ -354,7 +359,7 @@ describe("orderArrangementMoves", () => {
   it("still orders a row shifted later when the call also resizes it", () => {
     const clips = registerRow(row);
 
-    const { order } = orderArrangementMoves(
+    const { order } = orderMoves(
       clips,
       moves({ "113": 16, "114": 32, "115": 48 }, undefined, {
         "113": 16,
@@ -371,7 +376,7 @@ describe("orderArrangementMoves", () => {
 
     // 113 stays at 1|1 but grows to 8 bars, which tiles over 114 at 5|1 — and
     // 114 is going nowhere, so nothing can clear that span first.
-    const { blockedIds } = orderArrangementMoves(
+    const { blockedIds } = orderMoves(
       clips,
       moves({}, undefined, {
         "113": 32,
@@ -379,11 +384,9 @@ describe("orderArrangementMoves", () => {
     );
 
     expect(blockedIds).toStrictEqual(new Set(["113"]));
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[1|1] (id 113) was not moved or resized: it would land on " +
-          "clip t0[5|1] (id 114), which this call leaves where it is",
-      ),
+    expect(clipReason("113")).toContain(
+      "not moved or resized: it would land on " +
+        "clip t0[5|1] (id 114), which this call leaves where it is",
     );
   });
 
@@ -396,7 +399,7 @@ describe("orderArrangementMoves", () => {
     // update-clip warns the slot is ignored and tiles the clip where it is, so
     // the span it clears still runs over 114 — and the slot doesn't free 113's
     // own span either, so 114 has nothing to wait behind.
-    const { blockedIds } = orderArrangementMoves(
+    const { blockedIds } = orderMoves(
       clips,
       moves({}, destinations, { "113": 32 }),
     );
@@ -410,20 +413,14 @@ describe("orderArrangementMoves", () => {
       { id: "114", start: 16, end: 32 },
     ]);
 
-    const { blockedIds } = orderArrangementMoves(
+    const { blockedIds } = orderMoves(
       clips,
       moves({ "113": 16, "114": 0 }, undefined, { "113": 32 }),
     );
 
     expect(blockedIds).toStrictEqual(new Set(["113", "114"]));
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[1|1] (id 113) was not moved or resized:",
-      ),
-    );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("clip t0[5|1] (id 114) was not moved:"),
-    );
+    expect(clipReason("113")).toContain("not moved or resized:");
+    expect(clipReason("114")).toContain("not moved:");
   });
 
   it("ignores a session clip in the batch", () => {
@@ -437,10 +434,7 @@ describe("orderArrangementMoves", () => {
       LiveAPI.from("id 200"),
     ];
 
-    const { order } = orderArrangementMoves(
-      clips,
-      moves({ "114": 16, "200": 16 }),
-    );
+    const { order } = orderMoves(clips, moves({ "114": 16, "200": 16 }));
 
     expect(order).toStrictEqual([0, 1]);
   });
@@ -461,10 +455,7 @@ describe("orderArrangementMoves", () => {
       LiveAPI.from("id 300"),
     ];
 
-    const { order } = orderArrangementMoves(
-      clips,
-      moves({ "113": 16, "300": 48 }),
-    );
+    const { order } = orderMoves(clips, moves({ "113": 16, "300": 48 }));
 
     expect(order).toStrictEqual([0, 1]);
   });
@@ -473,7 +464,7 @@ describe("orderArrangementMoves", () => {
     const clips = registerRow(row);
     const spies = clips.map((clip) => vi.spyOn(clip, "getProperty"));
 
-    const { order } = orderArrangementMoves(clips, moves({}));
+    const { order } = orderMoves(clips, moves({}));
 
     expect(order).toStrictEqual([0, 1, 2]);
 
@@ -615,17 +606,24 @@ describe("updateClip - moving a row of arrangement clips", () => {
     });
 
     expect(movedTo()).toStrictEqual([]);
-    // Each clip is reported where it still is.
+    // Each clip is reported where it still is, with its own entry saying why.
+    // Nothing else was asked of either clip, so each target keeps a skip.
     expect(result).toStrictEqual([
-      { id: "113", path: "t0[1|1]" },
-      { id: "114", path: "t0[5|1]" },
+      {
+        id: "113",
+        ok: false,
+        reason:
+          "not moved: it would land on clip t0[5|1] (id 114), " +
+          "which this call can't move out of the way first; move them in separate calls",
+      },
+      {
+        id: "114",
+        ok: false,
+        reason:
+          "not moved: it would land on clip t0[1|1] (id 113), " +
+          "which this call can't move out of the way first; move them in separate calls",
+      },
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[1|1] (id 113) was not moved: it would land on clip t0[5|1] (id 114), " +
-          "which this call can't move out of the way first",
-      ),
-    );
   });
 
   // The first id's toPath doesn't parse, so that clip goes nowhere — and the
@@ -638,8 +636,20 @@ describe("updateClip - moving a row of arrangement clips", () => {
 
     expect(movedTo()).toStrictEqual([]);
     expect(result).toStrictEqual([
-      { id: "113", path: "t0[1|1]" },
-      { id: "114", path: "t0[5|1]" },
+      {
+        id: "113",
+        ok: false,
+        reason:
+          'not moved: invalid toPath "not-a-real-path" - "not-a-real-path" is not ' +
+          'a track or scene; expected "t<index>", "rt<index>", "mt", or "s<index>"',
+      },
+      {
+        id: "114",
+        ok: false,
+        reason:
+          "not moved: it would land on clip t0[1|1] (id 113), which this call " +
+          "leaves where it is; move that clip out of the way too, or use separate calls",
+      },
     ]);
   });
 
@@ -657,12 +667,14 @@ describe("updateClip - moving a row of arrangement clips", () => {
   });
 
   it("refuses a swap written as arrangementStart too", async () => {
-    await updateClip({ id: "113,114", arrangementStart: "5|1,1|1" });
+    const result = (await updateClip({
+      id: "113,114",
+      arrangementStart: "5|1,1|1",
+    })) as Array<{ reason?: string }>;
 
     expect(movedTo()).toStrictEqual([]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("was not moved"),
-    );
+    expect(result[0]?.reason).toContain("not moved:");
+    expect(result[1]?.reason).toContain("not moved:");
   });
 });
 
@@ -737,14 +749,20 @@ describe("updateClip - a move Live turns down at write time", () => {
 
     expect(movedTo()).toStrictEqual([]);
     expect(result).toStrictEqual([
-      { id: "113", path: "t0[1|1]" },
-      { id: "114", path: "t0[5|1]" },
+      {
+        id: "113",
+        ok: false,
+        reason:
+          "not moved: it would land on clip t0[5|1] (id 114), which Live wouldn't " +
+          "move; move that clip first, or use separate calls",
+      },
+      {
+        id: "114",
+        ok: false,
+        reason:
+          "not moved: track t1 (id track-1) is audio; a MIDI clip needs a MIDI track",
+      },
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[1|1] (id 113) was not moved: it would land on clip t0[5|1] (id 114), which Live wouldn't move",
-      ),
-    );
   });
 
   // A clip called off here didn't vacate either, so whatever was waiting on it
@@ -763,15 +781,27 @@ describe("updateClip - a move Live turns down at write time", () => {
 
     expect(movedTo()).toStrictEqual([]);
     expect(result).toStrictEqual([
-      { id: "113", path: "t0[1|1]" },
-      { id: "114", path: "t0[5|1]" },
-      { id: "115", path: "t0[9|1]" },
+      {
+        id: "113",
+        ok: false,
+        reason:
+          "not moved: it would land on clip t0[5|1] (id 114), whose own move this " +
+          "call gave up on; move that clip first, or use separate calls",
+      },
+      {
+        id: "114",
+        ok: false,
+        reason:
+          "not moved: it would land on clip t0[9|1] (id 115), which Live wouldn't " +
+          "move; move that clip first, or use separate calls",
+      },
+      {
+        id: "115",
+        ok: false,
+        reason:
+          "not moved: track t1 (id track-1) is audio; a MIDI clip needs a MIDI track",
+      },
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "clip t0[1|1] (id 113) was not moved: it would land on clip t0[5|1] (id 114), whose own move this call gave up on",
-      ),
-    );
   });
 
   // The resize clears the span it tiles across just as the move clears its

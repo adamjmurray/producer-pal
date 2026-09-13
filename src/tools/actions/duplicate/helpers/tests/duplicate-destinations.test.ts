@@ -95,9 +95,10 @@ describe("resolveDestinationTargets", () => {
   }
 
   it("falls back to the source clip's own track when no track is named", () => {
-    expect(resolveDestinationTargets(sourceClip(3), [])).toStrictEqual([
-      mainLane(3),
-    ]);
+    expect(resolveDestinationTargets(sourceClip(3), [])).toStrictEqual({
+      destinations: [mainLane(3)],
+      refusals: [null],
+    });
   });
 
   it("throws when the source clip has no track index and none was named", () => {
@@ -114,7 +115,10 @@ describe("resolveDestinationTargets", () => {
 
     expect(
       resolveDestinationTargets(clip, [mainLane(7), mainLane(8)]),
-    ).toStrictEqual([mainLane(7), mainLane(8)]);
+    ).toStrictEqual({
+      destinations: [mainLane(7), mainLane(8)],
+      refusals: [null, null],
+    });
   });
 
   it("marks a toPath entry naming a track that does not exist", () => {
@@ -122,10 +126,12 @@ describe("resolveDestinationTargets", () => {
 
     mockNonExistentObjects();
 
-    expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual([
-      null,
-    ]);
-    expect(capturedWarnings()).toContain('no track at toPath "t99"');
+    // Reported on that destination's own entry, not warned.
+    expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual({
+      destinations: [null],
+      refusals: ['no track at toPath "t99"'],
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("marks a track a MIDI clip can't go to", () => {
@@ -135,12 +141,12 @@ describe("resolveDestinationTargets", () => {
 
     destTrack(5, false);
 
-    expect(resolveDestinationTargets(clip, [mainLane(5)])).toStrictEqual([
-      null,
-    ]);
-    expect(capturedWarnings()).toContain(
-      "clip t3[1|1] (id src_clip) was not duplicated: track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
-    );
+    expect(resolveDestinationTargets(clip, [mainLane(5)])).toStrictEqual({
+      destinations: [null],
+      refusals: [
+        "track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
+      ],
+    });
   });
 
   it("marks a frozen track, which Live refuses the copy to", () => {
@@ -150,12 +156,10 @@ describe("resolveDestinationTargets", () => {
 
     destTrack(6, true, true);
 
-    expect(resolveDestinationTargets(clip, [mainLane(6)])).toStrictEqual([
-      null,
-    ]);
-    expect(capturedWarnings()).toContain(
-      "clip t3[1|1] (id src_clip) was not duplicated: track t6 (id dest_track_6) is frozen; unfreeze it first",
-    );
+    expect(resolveDestinationTargets(clip, [mainLane(6)])).toStrictEqual({
+      destinations: [null],
+      refusals: ["track t6 (id dest_track_6) is frozen; unfreeze it first"],
+    });
   });
 
   it("marks a track an audio clip can't go to", () => {
@@ -163,12 +167,12 @@ describe("resolveDestinationTargets", () => {
 
     destTrack(8, true);
 
-    expect(resolveDestinationTargets(clip, [mainLane(8)])).toStrictEqual([
-      null,
-    ]);
-    expect(capturedWarnings()).toContain(
-      "clip t4[1|1] (id src_clip) was not duplicated: track t8 (id dest_track_8) is MIDI; an audio clip needs an audio track",
-    );
+    expect(resolveDestinationTargets(clip, [mainLane(8)])).toStrictEqual({
+      destinations: [null],
+      refusals: [
+        "track t8 (id dest_track_8) is MIDI; an audio clip needs an audio track",
+      ],
+    });
   });
 
   it("keeps the tracks that work when one of them doesn't", () => {
@@ -181,9 +185,12 @@ describe("resolveDestinationTargets", () => {
     // The gap stays: name and color are counted per requested destination.
     expect(
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
-    ).toStrictEqual([mainLane(7), null]);
-    expect(capturedWarnings()).toContain(
-      "clip t3[1|1] (id src_clip) was not duplicated: track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
-    );
+    ).toStrictEqual({
+      destinations: [mainLane(7), null],
+      refusals: [
+        null,
+        "track t5 (id dest_track_5) is audio; a MIDI clip needs a MIDI track",
+      ],
+    });
   });
 });
