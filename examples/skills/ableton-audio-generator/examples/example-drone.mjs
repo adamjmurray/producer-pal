@@ -16,7 +16,16 @@ import { resolve } from "node:path";
 import { declick, normalize, writeWav } from "../lib/audio-io.mjs";
 import { parseArgs } from "../lib/cli.mjs";
 
-const { opt, num, int } = parseArgs();
+const USAGE = `Usage: node examples/example-drone.mjs [options]
+
+  --out <dir>        output directory (default ./drones)
+  --len <seconds>    length, 0.5–600 (default 20)
+  --root <hz>        fundamental, 20–2000 (default 55 = A1)
+  --partials <n>     harmonics, 1–64 (default 8)
+  --drift <0-1>      depth of the slow amplitude motion (default 0.4)
+  --sr <rate>        sample rate, 8000–192000 (default 48000)
+  --help, -h         show this help`;
+const { opt, num, int } = parseArgs(USAGE);
 const OUT = resolve(opt("--out", "./drones"));
 const LEN = num("--len", 20, 0.5, 600); // seconds
 const ROOT = num("--root", 55, 20, 2000); // Hz; 55 = A1

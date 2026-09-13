@@ -15,7 +15,15 @@ import { resolve } from "node:path";
 import { normalize, writeWav } from "../lib/audio-io.mjs";
 import { parseArgs } from "../lib/cli.mjs";
 
-const { opt, int, fail } = parseArgs();
+const USAGE = `Usage: node examples/example-wavetable.mjs [options]
+
+  --out <dir>          output directory (default ./wavetables)
+  --type <name>        saw | square | pwm | fold | formant (default saw)
+  --frames <n>         frames in the table, 1–1024 (default 16)
+  --frame-size <n>     samples per frame, 4–16384 (default 1024)
+  --sr <rate>          sample rate, 8000–192000 (default 48000)
+  --help, -h           show this help`;
+const { opt, int, fail } = parseArgs(USAGE);
 const OUT = resolve(opt("--out", "./wavetables"));
 const TYPE = opt("--type", "saw");
 const FRAMES = int("--frames", 16, 1, 1024);

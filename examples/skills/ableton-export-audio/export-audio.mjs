@@ -105,7 +105,22 @@ const opt = (name, def) => {
 };
 const flag = (name) => argv.includes(name); // valueless on/off switch
 
+const USAGE = `Usage: node export-audio.mjs [options]
+
+  --track <name>     track to render (default: Main, the whole mix)
+  --session <scene>  render that track's Session clip in this scene (0-based)
+  --with-returns     include return and main effects (default: dry)
+  --out <dir>        move the files here (default: leave them in a temp dir)
+  --help, -h         show this help
+
+Prints {"audio": "<path.mp3>", "created": [...]} on stdout. macOS only:
+drives Live's Export dialog, so Live must be running and frontmost.`;
+
 async function main() {
+  if (flag("--help") || flag("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const track = opt("--track", "Main"); // "Main" = full mix, or a track name
   const outDir = opt("--out"); // omit → leave the files in the temp dir
   const scene = opt("--session"); // omit → render the arrangement as it stands
