@@ -232,7 +232,9 @@ takes, and every other one the call sent is reported on the lane's entry rather
 than refusing the call. A whole call is refused up front when its lanes would
 put a track over the cap — lanes can't be deleted, so a half-run list would
 strand the ones it made. `ppal-read-track` takes a lane path too, answering with
-the lane and, with the `arrangement-clips` include, its clips.
+the lane and, with the `arrangement-clips` include, its clips. Both tools take a
+lane's `id` as well, so the id either one reports goes straight back as a
+target.
 
 **Writes to and from a lane re-create the clip**, because Live's arrangement
 duplicate handles neither direction: `TakeLane` has no duplicate API, and

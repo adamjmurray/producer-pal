@@ -104,6 +104,17 @@ export function assertTrackTakesLanes(
 }
 
 /**
+ * The take lane an id names, for a tool that takes a lane's own id as a target.
+ * @param id - An id, as the caller wrote it
+ * @returns The lane, or null when the id names something else
+ */
+export function takeLaneById(id: string): LiveAPI | null {
+  const lane = LiveAPI.from(id);
+
+  return lane.type === "TakeLane" ? lane : null;
+}
+
+/**
  * Read the take lane a clip path names.
  * @param path - A parsed clip path
  * @returns The lane target, or null for the main lane

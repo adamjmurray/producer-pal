@@ -48,6 +48,11 @@ warning.
 delete it asked for has already happened, so a lone one is satisfied rather than
 refused — only a lone `ok: false` throws.
 
+**A target the call could only half serve keeps its normal entry too.** Some
+params landed and some did not, so the entry is the one a full hit would have
+plus a `reason` naming what did not land. `ok: false` is for the other case:
+nothing the call asked of that target landed.
+
 **A read miss stays `ok: false` even so.** A read can't be satisfied by an
 absent object: there is nothing to report about it, where a delete's goal is
 exactly that absence.
@@ -121,6 +126,11 @@ target, so no entry exists yet to carry them.
   writes under a new id — a move re-creates the clip — hands its reasons back to
   the id the caller named. One target never answers with no entries: a split
   whose pieces the rescan can't find says so too.
+- **A take lane reports the params it has no use for.** `ppal-update-track`
+  writes a lane's name and nothing else, so everything else the call sent is a
+  `reason` on the lane's own entry, which otherwise reads like any other hit.
+  `ok: false` only when the lane was neither created nor named, so nothing the
+  call asked of it landed.
 - **duplicate answers per destination named.** A destination no copy landed at
   keeps its slot as `{path, ok: false, reason}` — a missing clip slot, a track
   that won't take the clip, a copy Live declined, a take lane past the cap, a

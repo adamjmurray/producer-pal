@@ -23,7 +23,9 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     id: z.coerce
       .string()
       .optional()
-      .describe("track ID(s) to read, comma-separated for multiple"),
+      .describe(
+        "track or take lane ID(s) to read, comma-separated for multiple",
+      ),
 
     ...addressingAliases({ idAlias: "trackId" }),
     path: z.coerce

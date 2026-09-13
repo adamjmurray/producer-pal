@@ -173,6 +173,71 @@ describe("updateTrack take lane targets", () => {
     ]);
   });
 
+  it("names a lane by the id it reported, with the same entry back", () => {
+    registerTakeLaneTrack({ initialLanes: 2 });
+
+    const byPath = updateTrack({ path: "t0/l1", name: "Renamed" });
+    const byId = updateTrack({ id: lane(1)!.id, name: "Renamed" });
+
+    expect(byId).toStrictEqual(byPath);
+    expect(byId).toStrictEqual({
+      id: lane(1)!.id,
+      path: "t0/l1",
+      name: "Renamed",
+    });
+  });
+
+  it("takes a lane id beside track ids and lane paths, in one list", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerMockObject("t1", {
+      path: livePath.track(1),
+      properties: { is_foldable: 0 },
+    });
+
+    const existing = lane(0)!.id;
+    const result = updateTrack({
+      id: `${existing},t1`,
+      path: "t0/l+",
+      name: "First,Track,Third",
+    });
+
+    expect(result).toStrictEqual([
+      { id: existing, path: "t0/l0", name: "First" },
+      { id: "t1", path: "t1" },
+      { id: lane(1)!.id, path: "t0/l1", name: "Third", created: true },
+    ]);
+  });
+
+  it("says which params a lane named by id had no use for", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    const result = updateTrack({ id: lane(0)!.id, color: "#FF0000" });
+
+    expect(lane(0)?.set).not.toHaveBeenCalledWith("color", expect.anything());
+    expect(result).toStrictEqual({
+      id: lane(0)!.id,
+      path: "t0/l0",
+      name: "Lane",
+      ok: false,
+      reason: "a take lane takes only name; ignored color",
+    });
+  });
+
+  it("counts a lane named by id against the cap without adding to it", () => {
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
+
+    const result = updateTrack({
+      id: lane(MAX_TAKE_LANES - 1)!.id,
+      name: "Last",
+    });
+
+    expect(result).toStrictEqual({
+      id: lane(MAX_TAKE_LANES - 1)!.id,
+      path: `t0/l${MAX_TAKE_LANES - 1}`,
+      name: "Last",
+    });
+  });
+
   it("refuses the whole call when the lanes would pass the cap", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
 

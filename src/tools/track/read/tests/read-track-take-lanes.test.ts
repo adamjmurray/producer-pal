@@ -198,7 +198,7 @@ describe("readOneTrack take lanes", () => {
   });
 });
 
-describe("readTrack on a take lane path", () => {
+describe("readTrack on a take lane target", () => {
   it("reads the lane itself, with no clips until they are asked for", () => {
     registerTrackWithTakeLanes();
 
@@ -234,6 +234,61 @@ describe("readTrack on a take lane path", () => {
       id: "lane2",
       path: "t2/l1",
       name: "Take B",
+    });
+  });
+
+  it("reads the lane an id names, the same as its path does", () => {
+    registerTrackWithTakeLanes();
+
+    const byPath = readOneTrack({ path: "t2/l0" });
+    const byId = readOneTrack({ id: "lane1" });
+
+    expect(byId).toStrictEqual(byPath);
+    expect(byId).toStrictEqual({ id: "lane1", path: "t2/l0", name: "Take A" });
+  });
+
+  it("reads a lane id's clips with the arrangement-clips include", () => {
+    registerTrackWithTakeLanes();
+
+    const result = readOneTrack({
+      id: "lane2",
+      include: ["arrangement-clips"],
+    });
+
+    expect(result).toStrictEqual(
+      readOneTrack({ path: "t2/l1", include: ["arrangement-clips"] }),
+    );
+    expect((result.clips as Array<{ id: string }>).map((c) => c.id)) //
+      .toStrictEqual(["clip_b1", "clip_b2"]);
+  });
+
+  it("reads a lane id under the legacy trackId spelling", () => {
+    registerTrackWithTakeLanes();
+
+    expect(readOneTrack({ trackId: "lane1" })).toStrictEqual({
+      id: "lane1",
+      path: "t2/l0",
+      name: "Take A",
+    });
+  });
+
+  it("mixes a lane id with track and lane paths, one entry each", () => {
+    registerTrackWithTakeLanes();
+
+    const result = readTrack({ id: "lane2", path: "t2,t2/l0" }) as Array<
+      Record<string, unknown>
+    >;
+
+    expect(result[0]).toStrictEqual({
+      id: "lane2",
+      path: "t2/l1",
+      name: "Take B",
+    });
+    expect(result[1]!.id).toBe("track3");
+    expect(result[2]).toStrictEqual({
+      id: "lane1",
+      path: "t2/l0",
+      name: "Take A",
     });
   });
 

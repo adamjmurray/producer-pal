@@ -24,7 +24,9 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     id: z.coerce
       .string()
       .optional()
-      .describe("track ID(s) to update, comma-separated for multiple"),
+      .describe(
+        "track or take lane ID(s) to update, comma-separated for multiple",
+      ),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {

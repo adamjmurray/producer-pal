@@ -112,7 +112,7 @@ export function readTrack(
 }
 
 /**
- * Read comprehensive information about one track, or the take lane a path names
+ * Read comprehensive information about one track, or the take lane a call names
  * @param args - The parameters
  * @param context - Internal context object (supplies the active notation)
  * @returns Track information, or the lane's
@@ -124,12 +124,7 @@ export function readOneTrack(
   const lane = takeLaneRead(args);
 
   if (lane != null) {
-    return readOneTakeLane(
-      lane,
-      args.path as string,
-      args.include,
-      context.notation,
-    );
+    return readOneTakeLane(lane, args.include, context.notation);
   }
 
   const { track, category, trackIndex } = resolveReadTrackTarget(args);

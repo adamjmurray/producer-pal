@@ -10,7 +10,8 @@
  *
  * A lane is a path segment: `t8/l0` is the track's first take lane, and lanes
  * up to the index are created as needed. Results report the same spelling, so a
- * clip's `path` says which lane it landed on.
+ * clip's `path` says which lane it landed on, and a lane's own `id` reads back
+ * the same lane the path does.
  *
  * Take lanes are append-only — Live exposes no API to delete a lane or a
  * take-lane clip — so every test depends on setupMcpTestContext() reopening the
@@ -44,8 +45,17 @@ import { CHILD_TRACK, EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 const ctx = setupMcpTestContext();
 
 interface TakeLaneInfo {
+  id: string;
   name: string;
   clips: Array<{ id: string; name?: string }>;
+}
+
+/** A take lane read on its own, by path or by its id. */
+interface TakeLaneReadResult {
+  id: string;
+  path: string;
+  name: string;
+  clips?: Array<{ path: string }>;
 }
 
 interface ReadTrackTakeLanesResult {
@@ -152,6 +162,47 @@ describe("take lanes", () => {
     expect(detail.takeLanes![0]!.clips[0]!.id).toBeDefined();
     expect(detail.takeLanes![1]!.name).toBe("Variation B");
     expect(detail.takeLanes![1]!.clips).toHaveLength(1);
+  });
+
+  it("reads a lane by the id a read reported, the same as by its path", async () => {
+    await createOnLane({
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
+      notes: "C3 1|1",
+    });
+
+    await sleep(100);
+    const listed = (await readTakeLanes(EMPTY_MIDI_TRACK)).takeLanes![0]!;
+    const byPath = parseToolResult<TakeLaneReadResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}/l0` },
+      }),
+    );
+    const byId = parseToolResult<TakeLaneReadResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: listed.id },
+      }),
+    );
+
+    expect(byId).toStrictEqual(byPath);
+    expect(byId).toStrictEqual({
+      id: listed.id,
+      path: `t${EMPTY_MIDI_TRACK}/l0`,
+      name: listed.name,
+    });
+
+    // The lane's clips come with the same include either way
+    const withClips = parseToolResult<TakeLaneReadResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: listed.id, include: ["arrangement-clips"] },
+      }),
+    );
+
+    expect(withClips.clips!.map((clip) => clip.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
+    ]);
   });
 
   // takeLane is a hidden alias now, and 1-based where the path segment is

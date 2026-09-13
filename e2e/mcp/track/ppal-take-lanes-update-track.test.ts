@@ -5,9 +5,10 @@
 
 /**
  * E2E tests for take lanes as ppal-update-track and ppal-read-track targets:
- * `t8/l+` appends a lane, `t8/l<n>` names one (creating the lanes up to it),
- * and a lane path reads back as the lane rather than its track. The clip tools'
- * side of take lanes is in ppal-take-lanes.test.ts.
+ * `t8/l+` appends a lane, `t8/l<n>` names one (creating the lanes up to it), a
+ * lane path reads back as the lane rather than its track, and the id either
+ * tool reports names that lane on both. The clip tools' side of take lanes is
+ * in ppal-take-lanes.test.ts.
  *
  * Take lanes are append-only, so every test depends on setupMcpTestContext()
  * reopening the Live Set between tests to reset state (no `once`).
@@ -121,6 +122,43 @@ describe("take lanes as track-tool targets", () => {
       path: `t${EMPTY_MIDI_TRACK}/l0`,
       name: "Renamed",
     });
+  });
+
+  it("takes the id a lane read reported back as a target", async () => {
+    await updateTrack<UpdateTakeLaneResult>({
+      path: `t${EMPTY_MIDI_TRACK}/l+`,
+      name: "Take A",
+    });
+
+    await sleep(100);
+    const read = parseToolResult<UpdateTakeLaneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}/l0` },
+      }),
+    );
+
+    // The id a read hands back names the lane on both tools
+    const renamed = await updateTrack<UpdateTakeLaneResult>({
+      id: read.id,
+      name: "By id",
+    });
+
+    expect(renamed).toStrictEqual({
+      id: read.id,
+      path: `t${EMPTY_MIDI_TRACK}/l0`,
+      name: "By id",
+    });
+
+    await sleep(100);
+    const byId = parseToolResult<UpdateTakeLaneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: read.id },
+      }),
+    );
+
+    expect(byId).toStrictEqual({ ...read, name: "By id" });
   });
 
   it("reads a lane's clips with the arrangement-clips include", async () => {

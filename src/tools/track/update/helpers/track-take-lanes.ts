@@ -4,14 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Take lanes as update-track targets. `t2/l<n>` names a lane, creating the ones
-// up to it; `t2/l+` appends one. A lane holds a name and nothing else, so every
-// other param the call sent is reported on the lane's own entry.
+// up to it; `t2/l+` appends one; a lane's own id names the lane it came from. A
+// lane holds a name and nothing else, so every other param the call sent is
+// reported on the lane's own entry.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
   assertTrackTakesLanes,
   resolveTakeLane,
+  takeLaneById,
   takeLaneCapacityMessage,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { takeLanePathEntry } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -20,7 +22,7 @@ import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** One take-lane target of a call, as the caller spelled it. */
 export interface TakeLaneTargetSpec {
-  /** The path entry, for messages */
+  /** The entry the caller wrote, path or id, for messages */
   entry: string;
   trackIndex: number;
   /** The lane to name, or null to append one (`l+`) */
@@ -53,15 +55,13 @@ export function planTakeLaneTargets(
   const lanes = new Map<number, TakeLaneTargetSpec>();
 
   for (const [index, target] of targets.entries()) {
-    const path =
-      target.param === "path" ? takeLanePathEntry(target.value) : null;
+    const spec =
+      target.param === "path"
+        ? lanePathSpec(target.value)
+        : laneIdSpec(target.value);
 
-    if (path != null) {
-      lanes.set(index, {
-        entry: target.value,
-        trackIndex: path.trackIndex,
-        laneIndex: path.kind === "take-lane" ? path.laneIndex : null,
-      });
+    if (spec != null) {
+      lanes.set(index, spec);
     }
   }
 
@@ -127,6 +127,46 @@ export function updateTakeLane(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The lane a path entry names.
+ * @param entry - One path, as the caller wrote it
+ * @returns The lane target, or null when the path names no lane
+ */
+function lanePathSpec(entry: string): TakeLaneTargetSpec | null {
+  const path = takeLanePathEntry(entry);
+
+  if (path == null) {
+    return null;
+  }
+
+  return {
+    entry,
+    trackIndex: path.trackIndex,
+    laneIndex: path.kind === "take-lane" ? path.laneIndex : null,
+  };
+}
+
+/**
+ * The lane an id names. It is already there, so it adds nothing to the track's
+ * lane count.
+ * @param entry - One id, as the caller wrote it
+ * @returns The lane target, or null when the id names something else
+ */
+function laneIdSpec(entry: string): TakeLaneTargetSpec | null {
+  const lane = takeLaneById(entry);
+
+  if (lane == null) {
+    return null;
+  }
+
+  // A lane sits at `live_set tracks N take_lanes M`, so both indices are there.
+  return {
+    entry,
+    trackIndex: lane.trackIndex as number,
+    laneIndex: lane.takeLaneIndex as number,
+  };
+}
 
 /**
  * Refuses a call whose lane entries would put a track over the cap, before any
