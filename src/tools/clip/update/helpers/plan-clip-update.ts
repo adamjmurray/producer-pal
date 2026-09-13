@@ -194,6 +194,43 @@ export function planClipUpdate({
   };
 }
 
+/** The whole-call args a blank value drops. */
+export type BlankArgs = Omit<ClipUpdatePlanArgs, "requestedIds" | "context">;
+
+/** Reported in this order, whatever order the call listed them in. */
+const DROPPED_WHEN_BLANK = [
+  "toPath",
+  "toSlot",
+  "arrangementStart",
+  "arrangementLength",
+  "arrangementSplit",
+  "split",
+] as const satisfies ReadonlyArray<keyof BlankArgs>;
+
+/**
+ * Say which of the plan's args arrived blank and were dropped.
+ *
+ * A blank reads as unset (ADR-0029), so the move, the position, the length or
+ * the split it asked for never happens — and no result entry can carry that:
+ * these are one value for the whole call, not a property of any one clip. Said
+ * by the spelling the caller wrote, deprecated names included.
+ * @param args - The destination, position and split params as received
+ */
+export function warnBlankArgs(args: BlankArgs): void {
+  const dropped = DROPPED_WHEN_BLANK.filter(
+    (param) => args[param]?.trim() === "",
+  );
+
+  if (dropped.length === 0) {
+    return;
+  }
+
+  console.warn(
+    `blank ${dropped.join(", ")} ignored — ` +
+      `leave ${dropped.length === 1 ? "it" : "them"} out instead`,
+  );
+}
+
 /**
  * Resolve any `loc:` entry in the two song-timeline params to the bar|beat it
  * names. Neither one set costs no Live API call at all.

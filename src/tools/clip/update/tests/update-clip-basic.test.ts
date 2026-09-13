@@ -16,6 +16,7 @@ import {
 } from "#src/test/test-data-builders.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
+import { type BlankArgs } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
 import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/process-single-clip-update.ts";
 import * as sessionHelpers from "#src/tools/clip/update/helpers/move/position-operations.ts";
 import {
@@ -36,6 +37,16 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 vi.mock(import("#src/tools/clip/code-exec/apply-code-to-clip.ts"), () => ({
   applyCodeToSingleClip: vi.fn(),
 }));
+
+// Each one is a single value for the whole call, not a per-clip list.
+const BLANK_ARGS: Array<[string, BlankArgs]> = [
+  ["toPath", { toPath: "" }],
+  ["toSlot", { toSlot: "" }],
+  ["arrangementStart", { arrangementStart: "" }],
+  ["arrangementLength", { arrangementLength: "" }],
+  ["arrangementSplit", { arrangementSplit: "" }],
+  ["split", { split: "" }],
+];
 
 describe("updateClip - Basic operations", () => {
   let mocks: UpdateClipMocks;
@@ -158,6 +169,67 @@ describe("updateClip - Basic operations", () => {
 
     expect(capturedWarnings()).toStrictEqual(['no clip at path "t9/s9"']);
     expect(result).toStrictEqual([]);
+  });
+
+  // The whole-call args are the other half of it: a blank one is dropped too,
+  // and no result entry could say the destination, position or split the
+  // caller sent went nowhere.
+  it.each(BLANK_ARGS)(
+    "warns when a blank %s is dropped",
+    async (param, blankArg) => {
+      setupMidiClipMock(mocks.clip123);
+
+      const result = await updateClip({
+        id: "123",
+        name: "Still Renamed",
+        ...blankArg,
+      });
+
+      expect(capturedWarnings()).toStrictEqual([
+        `blank ${param} ignored — leave it out instead`,
+      ]);
+      // The blank is all that was dropped: the rest of the call still lands.
+      expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Still Renamed");
+      expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    },
+  );
+
+  it("treats a whitespace-only whole-call arg as blank", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", arrangementStart: "   " });
+
+    expect(capturedWarnings()).toStrictEqual([
+      "blank arrangementStart ignored — leave it out instead",
+    ]);
+  });
+
+  // One warning, in a fixed order, so the same call always reads the same way.
+  it("names every blank whole-call arg at once", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", split: "", toPath: "", name: "Renamed" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      "blank toPath, split ignored — leave them out instead",
+    ]);
+  });
+
+  it("says nothing when no whole-call arg arrived blank", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", name: "Renamed" });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says nothing about a blank whole-call arg when the call is refused", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await expect(
+      updateClip({ id: "123", toPath: "", timeSignature: "x" }),
+    ).rejects.toThrow("Time signature must be in format");
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // A permanent alias, not a migration: models reach for the plural on their

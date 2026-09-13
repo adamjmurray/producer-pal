@@ -22,6 +22,7 @@ import {
 import { trackMoveSkips } from "./helpers/arrangement/update-clip-move-skip.ts";
 import {
   planClipUpdate,
+  warnBlankArgs,
   type ClipUpdatePlan,
 } from "./helpers/plan-clip-update.ts";
 import {
@@ -149,9 +150,10 @@ export async function updateClip(
     context,
   });
 
-  // Said here, not where the args are read: it claims what the call did, so a
-  // call refused above — or one whose paths found no clip — must not carry it.
+  // Said here, not where the args are read: they claim what the call did, so a
+  // call refused above — or one whose paths found no clip — must not carry them.
   warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
+  warnBlankArgs(args);
 
   const movedClipGroups = new Map<string, MoveGroup>();
   const updated = await runClipBatch({
