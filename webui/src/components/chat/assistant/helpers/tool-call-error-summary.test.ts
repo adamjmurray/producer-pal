@@ -7,46 +7,6 @@ import { describe, expect, it } from "vitest";
 import { extractErrorSummary } from "./tool-call-error-summary";
 
 describe("extractErrorSummary", () => {
-  describe("MCP content array with error field", () => {
-    it("extracts error from double-serialized MCP content array", () => {
-      const result = JSON.stringify([
-        {
-          type: "text",
-          text: JSON.stringify({
-            error: "No clip in this slot",
-            id: null,
-            type: null,
-            trackIndex: 0,
-            sceneIndex: 5,
-          }),
-        },
-      ]);
-
-      expect(extractErrorSummary(result)).toBe("No clip in this slot");
-    });
-
-    it("returns null for MCP content array without error field", () => {
-      const result = JSON.stringify([
-        {
-          type: "text",
-          text: JSON.stringify({ id: "1", name: "Track" }),
-        },
-      ]);
-
-      expect(extractErrorSummary(result)).toBeNull();
-    });
-
-    it("returns null for malformed MCP content array", () => {
-      expect(extractErrorSummary("[invalid json")).toBeNull();
-    });
-
-    it("returns null for MCP content array with no text items", () => {
-      const result = JSON.stringify([{ type: "image", data: "base64..." }]);
-
-      expect(extractErrorSummary(result)).toBeNull();
-    });
-  });
-
   describe("Error prefix", () => {
     it("strips the error prefix from a JSON-stringified error", () => {
       const result = JSON.stringify("Error: trackIndex 99 does not exist");

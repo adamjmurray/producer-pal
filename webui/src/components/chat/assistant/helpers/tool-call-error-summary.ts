@@ -11,10 +11,9 @@
  * Extract a clean, human-readable error summary from a raw tool result string.
  *
  * Handles these formats (in priority order):
- * 1. MCP content array with `error` field in inner JSON
- * 2. `Error: message` prefix
- * 3. `Tool call '...' timed out after Nms` prefix
- * 4. `MCP error -NNNNN: message` prefix (with optional `Input validation error:` sub-prefix)
+ * 1. `Error: message` prefix
+ * 2. `Tool call '...' timed out after Nms` prefix
+ * 3. `MCP error -NNNNN: message` prefix (with optional `Input validation error:` sub-prefix)
  *
  * @param result - Raw tool result string
  * @returns Clean error message, or null if no pattern matched
@@ -23,7 +22,6 @@ export function extractErrorSummary(result: string): string | null {
   const text = unquoteJsonString(result);
 
   return (
-    extractMcpContentError(text) ??
     stripErrorPrefix(text) ??
     stripTimeoutPrefix(text) ??
     stripMcpErrorPrefix(text)
@@ -46,33 +44,6 @@ function unquoteJsonString(s: string): string {
     return typeof parsed === "string" ? parsed : s;
   } catch {
     return s;
-  }
-}
-
-/**
- * Extract error message from MCP content array format.
- * Parses `[{"type":"text","text":"{\"error\":\"...\"}"}]` and returns the error value.
- * @param s - Possibly MCP content array string
- * @returns Error message or null
- */
-function extractMcpContentError(s: string): string | null {
-  if (!s.startsWith("[")) {
-    return null;
-  }
-
-  try {
-    const arr = JSON.parse(s) as Array<{ type: string; text?: string }>;
-    const firstText = arr.find((item) => item.type === "text")?.text;
-
-    if (!firstText) {
-      return null;
-    }
-
-    const inner = JSON.parse(firstText) as Record<string, unknown>;
-
-    return typeof inner.error === "string" ? inner.error : null;
-  } catch {
-    return null;
   }
 }
 

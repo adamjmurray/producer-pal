@@ -28,19 +28,6 @@ export function markLastThoughtAsOpen(messages: UIMessage[]): void {
 }
 
 /**
- * Detect error indicators in a tool result string using heuristic matching
- * @param result - Tool result string to check
- * @returns True if result contains error indicators
- */
-export function isErrorResult(result: string): boolean {
-  return (
-    result.includes('"error"') ||
-    result.includes('\\"error\\"') ||
-    result.includes('"isError":true')
-  );
-}
-
-/**
  * Safely parse tool call arguments JSON, returning empty object on failure.
  * Prevents formatter crashes on malformed arguments from non-standard providers.
  * @param argsString - JSON string of tool arguments

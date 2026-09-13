@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isErrorResult } from "#webui/chat/helpers/message-formatting";
 import { extractErrorSummary } from "#webui/components/chat/assistant/helpers/tool-call-error-summary";
 import { haltedToolStatus } from "#webui/components/chat/assistant/helpers/tool-call-halted-status";
 import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warnings";
@@ -122,8 +121,7 @@ function describeToolCall(
   isError?: boolean,
 ): ToolCallState {
   const halted = haltedToolStatus(result);
-  const effectiveIsError =
-    halted == null && (isError ?? (result != null && isErrorResult(result)));
+  const effectiveIsError = halted == null && (isError ?? false);
 
   return {
     halted,
