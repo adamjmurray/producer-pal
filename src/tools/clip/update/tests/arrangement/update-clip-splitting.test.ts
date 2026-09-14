@@ -399,6 +399,9 @@ describe("updateClip - loc: song positions", () => {
     );
   });
 
+  // Not a reason on the clip's entry, unlike the same miss inside a toPath
+  // coordinate: this list is read as a whole before anything moves, the way a
+  // malformed bar|beat in it is, and create-clip and duplicate refuse it too.
   it("throws, naming arrangementStart, when the locator is not found", async () => {
     setupWithLocators();
 

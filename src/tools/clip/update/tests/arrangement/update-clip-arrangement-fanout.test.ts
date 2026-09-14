@@ -10,6 +10,7 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 /**
@@ -212,6 +213,84 @@ describe("updateClip - a toPath coordinate", () => {
 
     expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
     expect(movedTo(tracks[0] as RegisteredMockObject)).toBeNull();
+  });
+
+  // A clip goes on a lane that exists; ppal-update-track is what adds one. The
+  // retired "l=" named the lane an "l+" before it appended, and never shipped.
+  // create-clip and duplicate throw for both, because a lone destination is all
+  // they have; here each one is the entry's own miss.
+  it("reports the retired l= and an l+ on the clip's entry", async () => {
+    const result = await updateClip({
+      id: "100,101",
+      toPath: "t2/l=[5|1],t3/l+[5|1]",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "100",
+        ok: false,
+        reason:
+          'not moved: invalid toPath "t2/l=" - "l=" is not a device, chain, ' +
+          'or drum pad; expected "d<index>", "c<index>", "rc<index>", or "p<note>"',
+      },
+      {
+        id: "101",
+        ok: false,
+        reason:
+          'not moved: invalid toPath "t3/l+[5|1]" - "l+" adds a take lane, ' +
+          'which only ppal-update-track does; name an existing lane as "t<track>/l<lane>"',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);
+  });
+
+  it("throws for a lone clip sent to the retired l=", async () => {
+    await expect(
+      updateClip({ id: "100", toPath: "t2/l=[5|1]" }),
+    ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
+  });
+
+  // A name the Set doesn't have is that clip's own miss, so it rides back on
+  // the clip's entry and the batch keeps going. It used to warn "clip not
+  // moved" and drop every destination in the call.
+  it("reports a locator the Set doesn't have on the clip's entry", async () => {
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
+    });
+    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+
+    const result = await updateClip({
+      id: "100,101",
+      toPath: "t2[loc:Nope],t3[loc:Chorus]",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "100",
+        ok: false,
+        reason: 'not moved: no locator found with name "Nope" for toPath',
+      },
+      expect.objectContaining({ id: "moved-3" }),
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(movedTo(tracks[3] as RegisteredMockObject)).toBe(32);
+    expect(movedTo(tracks[2] as RegisteredMockObject)).toBeNull();
+  });
+
+  // One target has no list to hold a place in, so the reason goes back as the
+  // error it would have been.
+  it("throws for a lone clip whose locator the Set doesn't have", async () => {
+    setupCuePointMocksRegistry({ cuePoints: [] });
+    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+
+    await expect(
+      updateClip({ id: "100", toPath: "t2[loc:Nope]" }),
+    ).rejects.toThrow(
+      'not moved: no locator found with name "Nope" for toPath',
+    );
+
+    expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);
   });
 
   // Two spellings of one position: honoring either is the silent wrong-target

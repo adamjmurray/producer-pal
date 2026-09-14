@@ -18,7 +18,7 @@ import {
   requireClipDestinationPath,
   type ClipDestinationPath,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
+import { destinationPositionResolver } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import { takeLaneIndexOfClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
@@ -127,49 +127,31 @@ export function resolveMoveDestinations(
     return none;
   }
 
-  // A bad destination is one param out of many on a batch update, and the
-  // tool's rule is to do the rest so the notes still land. Neither param can be
-  // empty here: the guard above drops a toSlot that names nothing, and toPath
-  // refuses one when it splits its entries.
-  try {
-    const entries: Array<DestinationEntry | null> =
-      toSlot != null
-        ? parseSlotList(toSlot, "toSlot").map((slot) => ({
-            lane: { kind: "slot" as const, ...slot },
-            position: null,
-          }))
-        : pathDestinations(toPath as string);
-    const labels = {
-      param: toSlot == null ? "toPath" : "toSlot",
-      noun: "destination",
-      item: "clip",
-      // Say only that these clips got no destination to pair with — not that
-      // the paired clips moved. A named destination can still fail to parse
-      // (a device path, say), so pairing alone doesn't mean a clip moved.
-      shortfall: "have nowhere to go",
-    };
-    // A bare "[5|1]" doesn't fully determine a location — each clip keeps its
-    // own lane — so one of them covers every clip, exactly as the
-    // arrangementStart it replaces does. A lane or a slot still pairs 1:1:
-    // those hold one clip each, and broadcasting would land every clip on the
-    // last one. See dev/Object-Paths.md, "Which lists pair and which
-    // broadcast".
-    const paired = namesNoLane(entries)
-      ? pairValues(entries, clipCount, labels)
-      : pairExact(entries, clipCount, labels);
+  const entries = destinationEntries(toPath, toSlot);
 
-    return {
-      destinations: paired.map((entry) => entry?.lane ?? null),
-      positions: paired.map((entry) => entry?.position ?? null),
-      refusals: paired.map((entry) => entry?.refused ?? null),
-    };
-  } catch (error) {
-    // The list as a whole couldn't be read, so no clip has a destination to
-    // report against.
-    console.warn(`clip not moved: ${errorMessage(error)}`);
+  if (entries == null) {
+    return none;
   }
 
-  return none;
+  const labels = {
+    param: toSlot == null ? "toPath" : "toSlot",
+    noun: "destination",
+    item: "clip",
+    // Pairing alone doesn't mean a clip moved: a paired entry can still fail
+    // to parse.
+    shortfall: "have nowhere to go",
+  };
+  // A bare "[5|1]" keeps each clip's lane, so one covers every clip. A lane or
+  // slot holds one clip, so those pair 1:1 (see dev/Object-Paths.md).
+  const paired = namesNoLane(entries)
+    ? pairValues(entries, clipCount, labels)
+    : pairExact(entries, clipCount, labels);
+
+  return {
+    destinations: paired.map((entry) => entry?.lane ?? null),
+    positions: paired.map((entry) => entry?.position ?? null),
+    refusals: paired.map((entry) => entry?.refused ?? null),
+  };
 }
 
 interface RequestedClips {
@@ -428,6 +410,32 @@ function dropDestinationsHoldingBatchClips(
 }
 
 /**
+ * Splits whichever param named the destinations into one entry each. A param
+ * whose own syntax is broken names no clip in particular, so it warns; every
+ * failure past the split belongs to its entry.
+ * @param toPath - Destination path(s), or undefined
+ * @param toSlot - Deprecated destination slot(s), or undefined
+ * @returns One entry per destination written, or null when none could be read
+ */
+function destinationEntries(
+  toPath: string | undefined,
+  toSlot: string | undefined,
+): Array<DestinationEntry | null> | null {
+  try {
+    return toSlot != null
+      ? parseSlotList(toSlot, "toSlot").map((slot) => ({
+          lane: { kind: "slot" as const, ...slot },
+          position: null,
+        }))
+      : pathDestinations(toPath as string);
+  } catch (error) {
+    console.warn(`clip not moved: ${errorMessage(error)}`);
+
+    return null;
+  }
+}
+
+/**
  * Reads the destinations off a toPath, keeping the reason with each entry that
  * names something update-clip can't move a clip to.
  * @param toPath - Destination path(s), comma-separated
@@ -447,15 +455,34 @@ function pathDestinations(toPath: string): Array<DestinationEntry | null> {
         "toPath",
       );
     } catch (error) {
-      return {
-        lane: null,
-        position: null,
-        refused: `not moved: ${errorMessage(error)}`,
-      };
+      return refusedDestination(error);
     }
   });
+  const resolve = destinationPositionResolver(parsed, { paramName: "toPath" });
 
-  return resolveDestinationPositions(parsed, {
-    paramName: "toPath",
+  if (resolve == null) {
+    return parsed;
+  }
+
+  // A missing locator costs only this entry's move.
+  return parsed.map((entry) => {
+    try {
+      return resolve(entry);
+    } catch (error) {
+      return refusedDestination(error);
+    }
   });
+}
+
+/**
+ * An entry that names nowhere to go, carrying why.
+ * @param error - What reading the entry threw
+ * @returns The entry, with no lane and no position
+ */
+function refusedDestination(error: unknown): DestinationEntry {
+  return {
+    lane: null,
+    position: null,
+    refused: `not moved: ${errorMessage(error)}`,
+  };
 }

@@ -144,6 +144,13 @@ into it — see Tolerance below.
 **Song timeline only.** `create-clip`'s `start` and `firstStart` are
 clip-relative and must not accept `loc:`.
 
+**A missing locator is reported where the spelling puts it.** Inside a `[...]`
+coordinate it is that entry's own miss: the clip the entry was written for says
+`not moved: ...` on its own entry, the rest of the batch still moves, and a lone
+clip throws (ADR-0042). `arrangementStart` and `arrangementSplit` are read as
+one list before anything moves — the same as a malformed bar|beat in them — so a
+missing name there refuses the call, on every tool that takes them.
+
 Managing locators is separate and unchanged: `update-live-set`'s
 `locatorOperation` / `locatorId` / `locatorTime` / `locatorName` treat a locator
 as an object to create, delete or rename, not as a coordinate.
