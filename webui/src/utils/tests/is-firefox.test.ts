@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isFirefox } from "#webui/utils/browser-detect";
+import { isFirefox } from "#webui/utils/is-firefox";
 
 afterEach(() => {
   vi.unstubAllGlobals();

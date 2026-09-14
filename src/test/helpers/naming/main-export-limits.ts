@@ -17,7 +17,7 @@ import { type CommentTree } from "../comment-scan-helpers.ts";
 export const MAIN_EXPORT_LIMITS: Record<CommentTree, number> = {
   src: 15,
   scripts: 3,
-  webui: 6,
+  webui: 5,
   evals: 7,
   e2e: 0,
 };

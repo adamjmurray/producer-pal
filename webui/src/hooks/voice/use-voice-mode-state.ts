@@ -29,7 +29,7 @@ import {
   realtimeProvider,
   resolveRealtimeModel,
 } from "#webui/lib/constants/models";
-import { isFirefox } from "#webui/utils/browser-detect";
+import { isFirefox } from "#webui/utils/is-firefox";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 
 /** The shared mode props voice mode actually uses. */
