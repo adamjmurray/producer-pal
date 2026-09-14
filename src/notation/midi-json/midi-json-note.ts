@@ -12,7 +12,7 @@
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { isValidMidi } from "#src/shared/pitch.ts";
+import { clampMidi, isValidMidi } from "#src/shared/pitch.ts";
 
 /**
  * Note format exposed to user code and the MIDI JSON notation. Uses camelCase
@@ -199,16 +199,13 @@ export function validateAndSanitizeNote(
 
   // Sanitize by clamping values
   const sanitized: CodeNote = {
-    pitch: Math.max(0, Math.min(127, Math.round(n.pitch))),
+    pitch: clampMidi(Math.round(n.pitch)),
     start: n.start,
     duration: Math.max(0.001, duration),
     velocity: isDeleteMarker
       ? 0
       : Math.max(1, Math.min(127, Math.round(velocity))),
-    velocityDeviation: Math.max(
-      0,
-      Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
-    ),
+    velocityDeviation: clampMidi(Math.round(Number(n.velocityDeviation) || 0)),
     probability: Math.max(0, Math.min(1, probability)),
   };
 

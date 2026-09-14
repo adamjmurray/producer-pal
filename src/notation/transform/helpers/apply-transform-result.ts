@@ -9,6 +9,7 @@
  * flat LFO can be dropped before it lands.
  */
 
+import { clampMidi } from "#src/shared/pitch.ts";
 import { type NoteEvent } from "../../types.ts";
 import { type TransformAssignment } from "../parser/transform-parser.ts";
 import { isFlatWaveform } from "./flat-waveforms.ts";
@@ -124,7 +125,7 @@ export function applyTransformResult(
     case "pitch": {
       const raw = operator === "set" ? value : note.pitch + value;
 
-      note.pitch = Math.max(0, Math.min(127, Math.round(raw)));
+      note.pitch = clampMidi(Math.round(raw));
       break;
     }
   }

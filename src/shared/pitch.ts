@@ -118,6 +118,17 @@ export function isValidMidi(midi: unknown): midi is number {
 }
 
 /**
+ * Clamp a value into the MIDI range. Callers that must not fabricate a value
+ * (a mistyped pitch, a delete marker naming nothing) range-check with
+ * isValidMidi instead of clamping.
+ * @param value - Pitch, velocity, or other 7-bit MIDI value
+ * @returns The value, clamped to 0-127
+ */
+export function clampMidi(value: number): number {
+  return Math.max(0, Math.min(127, value));
+}
+
+/**
  * Check if a string is a valid note name (e.g., "C3", "F#4", "Bb-1").
  * Case-insensitive; enharmonic spellings (Cb3, E#3) are valid. Checks the
  * shape only — noteNameToMidi still range-checks the octave.
@@ -303,7 +314,7 @@ export function quantizePitchToScale(pitch: number, scaleMask: number): number {
     }
   }
 
-  return Math.max(0, Math.min(127, rounded));
+  return clampMidi(rounded);
 }
 
 /**
