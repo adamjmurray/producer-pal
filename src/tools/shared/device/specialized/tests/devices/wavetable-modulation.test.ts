@@ -19,8 +19,8 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Edge cases of the Wavetable mod-matrix helpers: the index-0 boundaries (source
 // "Amp" and target slot 0 are both real values, not "not found"), the ±1 amount
-// contract, whitespace tolerance on LLM-supplied names, and the warning text
-// that tells the model what it should have passed. The happy paths live in
+// contract, whitespace tolerance on LLM-supplied names, and the reasons that
+// tell the model what it should have passed. The happy paths live in
 // wavetable.test.ts.
 
 describe("modulation source resolution", () => {
@@ -73,22 +73,18 @@ describe("modulation source resolution", () => {
 
   it("names every valid source when the source is invalid", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
+    const reason = `source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`;
 
-    applySpecializedActions(device, [
+    const results = applySpecializedActions(device, [
       "setModulation('Osc 1 Pos', 'Nope', 0.5)",
       "clearModulation('Osc 1 Pos', 'Nope')",
     ]);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `setModulation source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
-      ),
-    );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clearModulation source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
-      ),
-    );
+    expect(results).toStrictEqual([
+      { action: "setModulation('Osc 1 Pos', 'Nope', 0.5)", ok: false, reason },
+      { action: "clearModulation('Osc 1 Pos', 'Nope')", ok: false, reason },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 
@@ -132,7 +128,7 @@ describe("modulation target resolution", () => {
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
   });
 
-  it("does not warn when an auto-added target lands in slot 0", () => {
+  it("does not report a failure when an auto-added target lands in slot 0", () => {
     // The matrix starts empty, so the added target resolves to index 0 — the
     // post-add check must accept it rather than report "could not add".
     const targets: string[] = [];
@@ -148,30 +144,34 @@ describe("modulation target resolution", () => {
       },
     );
 
-    applySpecializedActions(device, [
+    const results = applySpecializedActions(device, [
       "setModulation('Osc 1 Pos', 'LFO 1', 0.5)",
     ]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("could not add to matrix"),
-    );
+    expect(results).toStrictEqual([
+      { action: "setModulation('Osc 1 Pos', 'LFO 1', 0.5)" },
+    ]);
   });
 
-  it("returns -1 for an unknown target in a non-empty matrix", () => {
+  it("reports nothing to clear for an unknown target in a non-empty matrix", () => {
     // Exercises the resolve loop's non-matching path: the scan must run past a
-    // real target and still report "not in the modulation matrix".
+    // real target and still report "not in the modulation matrix". The cell is
+    // already unrouted, so this is a no-op entry rather than a skip.
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(device, [
+    const results = applySpecializedActions(device, [
       "clearModulation('Filter Freq', 'LFO 1')",
     ]);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        'clearModulation target "Filter Freq" is not in the modulation matrix',
-      ),
-    );
+    expect(results).toStrictEqual([
+      {
+        action: "clearModulation('Filter Freq', 'LFO 1')",
+        reason:
+          'target "Filter Freq" is not in the modulation matrix — nothing to clear',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 
@@ -194,13 +194,18 @@ describe("setModulation amount contract", () => {
   it.each([1.5, -1.5])("rejects the out-of-range amount %s", (amount) => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(device, [
+    const results = applySpecializedActions(device, [
       `setModulation('Osc 1 Pos', 'LFO 1', ${amount})`,
     ]);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`amount must be in -1..1 (got ${amount})`),
-    );
+    expect(results).toStrictEqual([
+      {
+        action: `setModulation('Osc 1 Pos', 'LFO 1', ${amount})`,
+        ok: false,
+        reason: `amount must be in -1..1 (got ${amount})`,
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 

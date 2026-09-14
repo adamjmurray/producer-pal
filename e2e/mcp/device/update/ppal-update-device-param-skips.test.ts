@@ -5,7 +5,8 @@
 
 /**
  * E2E tests for a param write that lands nowhere: it keeps its slot in `params`
- * as `ok: false` with a reason, and warns nowhere.
+ * as `ok: false` with a reason, and warns nowhere. The `actions` arg answers the
+ * same way, one entry per action sent.
  *
  * These need a real Live: what a stock param does with a value a mock was told
  * to expect proves nothing.
@@ -22,8 +23,10 @@ import {
   writeParam,
 } from "./update-device-param-test-helpers";
 import {
+  createMidiTrack,
   createTestDevice,
   parseToolResultWithWarnings,
+  SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
@@ -123,5 +126,97 @@ describe("ppal-update-device on a pseudo-param the device refused", () => {
     );
 
     expectParamRefused(written, "oversample", "expected true/false");
+  });
+});
+
+/** One entry of the `actions` an update-device result reports. */
+interface ActionEntry {
+  action: string;
+  ok?: false;
+  reason?: string;
+}
+
+/** Create an instrument on a fresh MIDI track; returns the device id. */
+async function createInstrument(deviceName: string): Promise<string> {
+  const trackIndex = await createMidiTrack(ctx.client!);
+
+  return createTestDevice(ctx.client!, deviceName, `t${trackIndex}`);
+}
+
+/** Send actions to a device and return the entries they answered with. */
+async function sendActions(
+  id: string,
+  actions: string[],
+): Promise<{ entries: ActionEntry[] | undefined; warnings: string[] }> {
+  const { data, warnings } = parseToolResultWithWarnings<{
+    actions?: ActionEntry[];
+  }>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id, actions },
+    }),
+  );
+
+  await sleep(100);
+
+  return { entries: data.actions, warnings };
+}
+
+describe("ppal-update-device actions", () => {
+  it("answers per action sent: one that ran, a no-op, bad args, unknown", async () => {
+    const id = await createInstrument("Wavetable");
+
+    const { entries, warnings } = await sendActions(id, [
+      "addModulationTarget('Flt 1 Freq')",
+      "addModulationTarget('Flt 1 Freq')",
+      "setModulation('Flt 1 Freq','LFO 1')",
+      "reverse",
+    ]);
+
+    // The second add has nothing left to do, so it keeps a normal entry with a
+    // reason and no `ok`; only the last two are refusals.
+    expect(entries).toStrictEqual([
+      { action: "addModulationTarget('Flt 1 Freq')" },
+      {
+        action: "addModulationTarget('Flt 1 Freq')",
+        reason: 'parameter "Flt 1 Freq" is already in the modulation matrix',
+      },
+      {
+        action: "setModulation('Flt 1 Freq','LFO 1')",
+        ok: false,
+        reason: "requires 3 arguments (target, source, amount)",
+      },
+      {
+        action: "reverse",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("reports a sample edit that ran beside one with a bad argument", async () => {
+    const id = await createInstrument("Simpler");
+
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id, params: [{ name: "sample", value: SAMPLE_FILE }] },
+    });
+    await sleep(100);
+
+    const { entries, warnings } = await sendActions(id, [
+      "reverse",
+      "warpAs(soon)",
+    ]);
+
+    expect(entries).toStrictEqual([
+      { action: "reverse" },
+      {
+        action: "warpAs(soon)",
+        ok: false,
+        reason: "requires a numeric beats argument",
+      },
+    ]);
+    expect(warnings).toStrictEqual([]);
   });
 });

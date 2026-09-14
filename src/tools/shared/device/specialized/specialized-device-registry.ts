@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { compressorSpec } from "./devices/compressor.ts";
 import { driftSpec } from "./devices/drift.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
@@ -27,6 +27,7 @@ import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
   type ActionDef,
+  type ActionResult,
   type PseudoParam,
   type SpecializedDeviceSpec,
 } from "./specialized-device-types.ts";
@@ -186,34 +187,47 @@ export function readSpecializedParams(
 }
 
 /**
- * Parse and dispatch the `actions` arg for a specialized device. Unknown or
- * malformed actions warn-and-skip.
+ * Parse and dispatch the `actions` arg for a specialized device. Every action
+ * keeps its slot, and nothing warns: its entry is where the caller reads what
+ * happened to it.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
+ * @returns One entry per action sent, in order
  */
 export function applySpecializedActions(
   device: LiveAPI,
   actions: string[],
-): void {
+): ActionResult[] {
   const spec = getSpecForDevice(device);
 
-  for (const raw of actions) {
+  return actions.map((raw): ActionResult => {
     const parsed = parseAction(raw);
 
     if (!parsed) {
-      console.warn(`could not parse action "${raw}"`);
-      continue;
+      return refusedAction(raw, "could not parse: expected name or name(args)");
     }
 
     const action = findAction(spec, parsed.name);
 
     if (!action) {
-      console.warn(`unknown action "${parsed.name}" for this device`);
-      continue;
+      return refusedAction(raw, "unknown action for this device");
     }
 
-    action.handler(device, parsed.args);
-  }
+    // Isolate each action: a throw in one handler must not abort the rest of
+    // the call, so it becomes that action's own skip entry.
+    try {
+      const outcome = action.handler(device, parsed.args);
+
+      if (typeof outcome === "string") {
+        return refusedAction(raw, outcome);
+      }
+
+      // A no-op ran, so it keeps a normal entry rather than a skip.
+      return outcome == null ? { action: raw } : { action: raw, ...outcome };
+    } catch (e) {
+      return refusedAction(raw, errorMessage(e));
+    }
+  });
 }
 
 /**
@@ -333,6 +347,16 @@ function findParam(
   const keyLower = key.toLowerCase();
 
   return params.find((p) => p.name.toLowerCase() === keyLower);
+}
+
+/**
+ * The entry for an action nothing was done for.
+ * @param action - The action as the call wrote it
+ * @param reason - Why nothing was done
+ * @returns The skip entry
+ */
+function refusedAction(action: string, reason: string): ActionResult {
+  return { action, ok: false, reason };
 }
 
 /**

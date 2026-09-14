@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ChainMixerReport } from "./chain-mixer-report.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
+import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import {
   type DrumPadGroup,
   chainsOnDrumPad,
@@ -53,6 +54,7 @@ interface UpdateTargetResult extends ChainMixerReport {
   id: string;
   path?: string;
   params?: ParamResult[];
+  actions?: ActionResult[];
 }
 
 /** A bare pad path names the whole pad, so it resolves to a group of objects
@@ -285,7 +287,11 @@ function updateTarget(
     );
   }
 
-  const { params, ignored } = updateDeviceProperties(target, type, options);
+  const { params, actions, ignored } = updateDeviceProperties(
+    target,
+    type,
+    options,
+  );
   const result: UpdateTargetResult = {
     id: target.id,
     ...pathField(target, written),
@@ -293,6 +299,10 @@ function updateTarget(
 
   if (params.length > 0) {
     result.params = params;
+  }
+
+  if (actions.length > 0) {
+    result.actions = actions;
   }
 
   return reportIgnoredParams(result, ignored, type, options);

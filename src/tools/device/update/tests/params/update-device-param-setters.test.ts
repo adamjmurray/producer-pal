@@ -19,6 +19,15 @@ import {
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
+ * The `actions` entries one target's result came back with.
+ * @param result - What updateDevice returned
+ * @returns The entries, or [] when the result reported none
+ */
+function actionsOf(result: unknown): unknown[] {
+  return (result as { actions?: unknown[] }).actions ?? [];
+}
+
+/**
  * Registration options for a mock "Volume" param. Fresh objects each call —
  * set() writes into `properties`, so two mocks must not share one.
  * @returns The properties and str_for_value a Volume param mock needs
@@ -662,7 +671,39 @@ describe("updateDevice - actions arg", () => {
     const result = updateDevice({ id: "simpler-1", actions: ["reverse"] });
 
     expect(simpler.call).toHaveBeenCalledWith("reverse");
-    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      actions: [{ action: "reverse" }],
+    });
+  });
+
+  it("answers per action sent, and warns nowhere", () => {
+    registerSimplerDevice();
+
+    const result = updateDevice({
+      id: "simpler-1",
+      actions: ["crop", "nope", "warpAs(x)"],
+    });
+
+    expect(result).toStrictEqual({
+      id: "simpler-1",
+      path: "t0/d0",
+      actions: [
+        { action: "crop" },
+        {
+          action: "nope",
+          ok: false,
+          reason: "unknown action for this device",
+        },
+        {
+          action: "warpAs(x)",
+          ok: false,
+          reason: "requires a numeric beats argument",
+        },
+      ],
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("applies actions alongside params in one call", () => {
@@ -679,6 +720,42 @@ describe("updateDevice - actions arg", () => {
       "/tmp/kick.wav",
     );
     expect(simpler.call).toHaveBeenCalledWith("reverse");
+  });
+
+  it("isolates an action whose handler throws", () => {
+    const simpler = registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: children("vol-param"),
+      },
+      methods: {
+        crop: () => {
+          throw new Error("Live refused the crop");
+        },
+      },
+    });
+    const param = registerMockObject("vol-param", volumeParamOptions());
+
+    const result = updateDevice({
+      id: "simpler-1",
+      params: [{ name: "Volume", value: "0.8" }],
+      actions: ["reverse", "crop", "warpHalf"],
+    });
+
+    // The throw takes its own action's entry and nothing else: the param write
+    // before it and the action after it both stand.
+    expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    expect(simpler.call).toHaveBeenCalledWith("warp_half");
+    expect(paramsOf(result)).toHaveLength(1);
+    expect(actionsOf(result)).toStrictEqual([
+      { action: "reverse" },
+      { action: "crop", ok: false, reason: "Live refused the crop" },
+      { action: "warpHalf" },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("refuses actions on a non-device target (chain)", () => {

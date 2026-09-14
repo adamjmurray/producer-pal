@@ -7,6 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { expect } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type ActionResult } from "../../specialized-device-types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Shared mock data + builders for the Wavetable specs (wavetable.test.ts and
@@ -94,13 +95,16 @@ export function registerWavetable(
 }
 
 /**
- * Assert that no modulation value was written and a warning was emitted.
+ * Assert that no modulation value was written and the action's own entry says
+ * why, rather than a warning.
  * @param device - The mock device to inspect (the returned LiveAPI from registerWavetable)
- * @param warningSubstring - Substring expected in the warning message
+ * @param results - What applySpecializedActions answered
+ * @param reasonSubstring - Substring expected in the entry's reason
  */
 export function expectModulationNotSet(
   device: LiveAPI,
-  warningSubstring: string,
+  results: ActionResult[],
+  reasonSubstring: string,
 ): void {
   expect(device.call).not.toHaveBeenCalledWith(
     "set_modulation_value",
@@ -108,7 +112,11 @@ export function expectModulationNotSet(
     expect.anything(),
     expect.anything(),
   );
-  expect(capturedWarnings()).toContainEqual(
-    expect.stringContaining(warningSubstring),
-  );
+  expect(results).toStrictEqual([
+    expect.objectContaining({
+      ok: false,
+      reason: expect.stringContaining(reasonSubstring),
+    }),
+  ]);
+  expect(capturedWarnings()).toStrictEqual([]);
 }

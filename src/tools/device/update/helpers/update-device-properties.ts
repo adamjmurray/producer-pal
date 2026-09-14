@@ -19,6 +19,7 @@ import {
   type ChainMixerReport,
 } from "./chain-mixer-report.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
 import {
   updateABCompare,
@@ -56,6 +57,8 @@ export interface UpdateTargetOptions extends UpdatePropertyOptions {
 export interface DeviceApplied {
   /** One per param the call named: what it reads as, or why it named nothing */
   params: ParamResult[];
+  /** One per action the call sent: what it did, or why it did nothing */
+  actions: ActionResult[];
   ignored: string[];
 }
 
@@ -64,7 +67,7 @@ export interface DeviceApplied {
  * @param target - Device to update
  * @param type - Device type
  * @param options - Update options
- * @returns What the call's params read as, and the ones a device can't take
+ * @returns What its params read as, what its actions did, and what it can't take
  */
 export function updateDeviceProperties(
   target: LiveAPI,
@@ -99,9 +102,8 @@ export function updateDeviceProperties(
   const paramResults =
     params != null ? setParamValues(target, params, force) : [];
 
-  if (actions != null) {
-    applySpecializedActions(target, actions);
-  }
+  const actionResults =
+    actions == null ? [] : applySpecializedActions(target, actions);
 
   if (abCompare != null) {
     updateABCompare(target, abCompare);
@@ -132,7 +134,11 @@ export function updateDeviceProperties(
   noteIfSet(ignored, "chokeGroup", chokeGroup);
   noteIfSet(ignored, "mappedPitch", mappedPitch);
 
-  return { params: refreshParamValues(paramResults), ignored };
+  return {
+    params: refreshParamValues(paramResults),
+    actions: actionResults,
+    ignored,
+  };
 }
 
 /** What a chain or pad update wrote: its mixer, plus any params it took. */

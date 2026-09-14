@@ -295,7 +295,7 @@ describe("parseCodexStream", () => {
             { type: "text", text: '{"id":"device1"}' },
             {
               type: "text",
-              text: 'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
+              text: 'WARNING: move target at path "t9/d0" does not exist',
             },
           ],
         },
@@ -307,9 +307,7 @@ describe("parseCodexStream", () => {
         name: "ppal-update-device",
         args: {},
         result: '{"id":"device1"}',
-        warnings: [
-          'WARNING: setModulation target "Flt 1 Freq" — parameter not found',
-        ],
+        warnings: ['WARNING: move target at path "t9/d0" does not exist'],
       },
     ]);
   });

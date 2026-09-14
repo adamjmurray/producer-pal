@@ -411,12 +411,14 @@ describe("Wavetable actions — setModulation", () => {
     ["param missing", "Nonexistent", 1, "Nonexistent"],
     // is_parameter_modulatable returns 0: param exists but mod isn't supported.
     ["param not modulatable", "Osc 1 Pos", 0, "not modulatable"],
-  ])("warns and skips setModulation when %s", (_, target, mod, msg) => {
+  ])("skips setModulation when %s", (_, target, mod, msg) => {
     const device = registerWavetable({}, buildModMethods([], {}, mod as 0 | 1));
 
-    applySpecializedActions(device, [`setModulation('${target}', 0, 0.5)`]);
+    const results = applySpecializedActions(device, [
+      `setModulation('${target}', 0, 0.5)`,
+    ]);
 
-    expectModulationNotSet(device, msg);
+    expectModulationNotSet(device, results, msg);
   });
 
   it.each([
@@ -424,11 +426,12 @@ describe("Wavetable actions — setModulation", () => {
     ["amount NaN", "('Volume', 0, 'notanumber')", "amount"],
     ["amount > 1", "('Volume', 0, 5)", "amount must be in -1..1"],
     ["amount < -1", "('Volume', 0, -2)", "amount must be in -1..1"],
-  ])("warns and skips invalid setModulation: %s", (_, args, msg) => {
+  ])("skips invalid setModulation: %s", (_, args, msg) => {
     const device = registerWavetable({}, buildModMethods(["Volume"]));
 
-    applySpecializedActions(device, [`setModulation${args}`]);
-    expectModulationNotSet(device, msg);
+    const results = applySpecializedActions(device, [`setModulation${args}`]);
+
+    expectModulationNotSet(device, results, msg);
   });
 });
 
@@ -436,96 +439,173 @@ describe("Wavetable actions — clearModulation", () => {
   it("calls set_modulation_value with 0 when target is present", () => {
     const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
 
-    applySpecializedActions(device, ["clearModulation('Osc 1 Pos', 2)"]);
+    const results = applySpecializedActions(device, [
+      "clearModulation('Osc 1 Pos', 2)",
+    ]);
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 2, 0);
+    expect(results).toStrictEqual([
+      { action: "clearModulation('Osc 1 Pos', 2)" },
+    ]);
   });
 
-  it("warns and skips when target is not in matrix", () => {
+  it("reports nothing to clear when the target is not in the matrix", () => {
+    // The cell is already unrouted, so the call got what it asked for: a
+    // normal entry with a reason, not a skip.
     const device = registerWavetable({}, buildModMethods([]));
 
-    applySpecializedActions(device, ["clearModulation('Missing', 0)"]);
+    const results = applySpecializedActions(device, [
+      "clearModulation('Missing', 0)",
+    ]);
 
-    expectModulationNotSet(device, "Missing");
-  });
-
-  it("warns on a source index out of range", () => {
-    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
-
-    applySpecializedActions(device, ["clearModulation('Osc 1 Pos', 13)"]);
-
-    expectModulationNotSet(device, "clearModulation source");
-  });
-});
-
-describe("Wavetable actions — addModulationTarget", () => {
-  it("calls add_parameter_to_modulation_matrix for a known param", () => {
-    const device = registerWavetable({}, buildModMethods([]));
-
-    applySpecializedActions(device, ["addModulationTarget('Osc 1 Pos')"]);
-
-    expect(device.call).toHaveBeenCalledWith(
-      "add_parameter_to_modulation_matrix",
-      expect.anything(),
-    );
-  });
-
-  it.each([
-    ["not found", "Unknown Param", 1, "Unknown Param"],
-    // is_parameter_modulatable returns 0: param exists but mod isn't supported.
-    ["not modulatable", "Osc 1 Pos", 0, "not modulatable"],
-  ])(
-    "warns and skips addModulationTarget when param is %s",
-    (_, name, mod, msg) => {
-      const device = registerWavetable(
-        {},
-        buildModMethods([], {}, mod as 0 | 1),
-      );
-
-      applySpecializedActions(device, [`addModulationTarget('${name}')`]);
-
-      expect(device.call).not.toHaveBeenCalledWith(
-        "add_parameter_to_modulation_matrix",
-        expect.anything(),
-      );
-      expect(capturedWarnings()).toContainEqual(expect.stringContaining(msg));
-    },
-  );
-});
-
-describe("Wavetable actions — argument validation", () => {
-  it.each([
-    ["setModulation('Volume')", "setModulation requires 3 arguments"],
-    ["clearModulation('Volume')", "clearModulation requires 2 arguments"],
-    ["addModulationTarget()", "addModulationTarget requires 1 argument"],
-  ])("warns when %s has too few arguments", (action, message) => {
-    const device = registerWavetable({}, buildModMethods(["Volume"]));
-
-    applySpecializedActions(device, [action]);
-
-    expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
-  });
-
-  it("warns when a found target still cannot be added to the matrix", () => {
-    // 'Volume' exists as a param child, but the (no-op) add never registers it,
-    // so the re-resolve still fails → "could not add to matrix".
-    const device = registerWavetable({}, buildModMethods([]));
-
-    applySpecializedActions(device, ["setModulation('Volume', 0, 0.5)"]);
-
-    expect(device.call).toHaveBeenCalledWith(
-      "add_parameter_to_modulation_matrix",
-      expect.anything(),
-    );
     expect(device.call).not.toHaveBeenCalledWith(
       "set_modulation_value",
       expect.anything(),
       expect.anything(),
       expect.anything(),
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("could not add to matrix"),
+    expect(results).toStrictEqual([
+      {
+        action: "clearModulation('Missing', 0)",
+        reason:
+          'target "Missing" is not in the modulation matrix — nothing to clear',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("skips a source index out of range", () => {
+    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
+
+    const results = applySpecializedActions(device, [
+      "clearModulation('Osc 1 Pos', 13)",
+    ]);
+
+    expectModulationNotSet(device, results, 'source "13" is invalid');
+  });
+});
+
+describe("Wavetable actions — addModulationTarget", () => {
+  it("calls add_parameter_to_modulation_matrix for a known param", () => {
+    // The add has to land in the matrix: the action re-resolves the target
+    // afterwards and reports a target the matrix still doesn't hold.
+    const targets: string[] = [];
+    const device = registerWavetable(
+      {},
+      {
+        ...buildModMethods(targets),
+        add_parameter_to_modulation_matrix: () => {
+          targets.push("Osc 1 Pos");
+
+          return null;
+        },
+      },
     );
+
+    const results = applySpecializedActions(device, [
+      "addModulationTarget('Osc 1 Pos')",
+    ]);
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(results).toStrictEqual([
+      { action: "addModulationTarget('Osc 1 Pos')" },
+    ]);
+  });
+
+  it("says so when the add does not land in the matrix", () => {
+    // The (no-op) add never registers the target, so the re-resolve fails.
+    const device = registerWavetable({}, buildModMethods([]));
+
+    expect(
+      applySpecializedActions(device, ["addModulationTarget('Osc 1 Pos')"]),
+    ).toStrictEqual([
+      {
+        action: "addModulationTarget('Osc 1 Pos')",
+        ok: false,
+        reason: 'parameter "Osc 1 Pos" — could not add to matrix',
+      },
+    ]);
+  });
+
+  it("says nothing changed for a target already in the matrix", () => {
+    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
+
+    const results = applySpecializedActions(device, [
+      "addModulationTarget('Osc 1 Pos')",
+    ]);
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(results).toStrictEqual([
+      {
+        action: "addModulationTarget('Osc 1 Pos')",
+        reason: 'parameter "Osc 1 Pos" is already in the modulation matrix',
+      },
+    ]);
+  });
+
+  it.each([
+    ["not found", "Unknown Param", 1, "Unknown Param"],
+    // is_parameter_modulatable returns 0: param exists but mod isn't supported.
+    ["not modulatable", "Osc 1 Pos", 0, "not modulatable"],
+  ])("skips addModulationTarget when param is %s", (_, name, mod, msg) => {
+    const device = registerWavetable({}, buildModMethods([], {}, mod as 0 | 1));
+
+    const results = applySpecializedActions(device, [
+      `addModulationTarget('${name}')`,
+    ]);
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(results).toStrictEqual([
+      expect.objectContaining({
+        action: `addModulationTarget('${name}')`,
+        ok: false,
+        reason: expect.stringContaining(msg),
+      }),
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+});
+
+describe("Wavetable actions — argument validation", () => {
+  it.each([
+    [
+      "setModulation('Volume')",
+      "requires 3 arguments (target, source, amount)",
+    ],
+    ["clearModulation('Volume')", "requires 2 arguments (target, source)"],
+    ["addModulationTarget()", "requires 1 argument (parameterName)"],
+  ])("skips %s for too few arguments", (action, reason) => {
+    const device = registerWavetable({}, buildModMethods(["Volume"]));
+
+    expect(applySpecializedActions(device, [action])).toStrictEqual([
+      { action, ok: false, reason },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("says so when a found target still cannot be added to the matrix", () => {
+    // 'Volume' exists as a param child, but the (no-op) add never registers it,
+    // so the re-resolve still fails → "could not add to matrix".
+    const device = registerWavetable({}, buildModMethods([]));
+
+    const results = applySpecializedActions(device, [
+      "setModulation('Volume', 0, 0.5)",
+    ]);
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expectModulationNotSet(device, results, "could not add to matrix");
   });
 });
 

@@ -248,31 +248,36 @@ describe("Simpler pseudo-params", () => {
     ])("dispatches %s to %s", (action, method) => {
       const device = registerSimpler();
 
-      applySpecializedActions(device, [action]);
-
+      expect(applySpecializedActions(device, [action])).toStrictEqual([
+        { action },
+      ]);
       expect(device.call).toHaveBeenCalledWith(method);
     });
 
     it("dispatches warpAs(N) to warp_as with the beats arg", () => {
       const device = registerSimpler();
 
-      applySpecializedActions(device, ["warpAs(4)"]);
-
+      expect(applySpecializedActions(device, ["warpAs(4)"])).toStrictEqual([
+        { action: "warpAs(4)" },
+      ]);
       expect(device.call).toHaveBeenCalledWith("warp_as", 4);
     });
 
-    it("warns when warpAs has a non-numeric arg", () => {
+    it("skips warpAs with a non-numeric arg", () => {
       const device = registerSimpler();
 
-      applySpecializedActions(device, ["warpAs(soon)"]);
-
+      expect(applySpecializedActions(device, ["warpAs(soon)"])).toStrictEqual([
+        {
+          action: "warpAs(soon)",
+          ok: false,
+          reason: "requires a numeric beats argument",
+        },
+      ]);
       expect(device.call).not.toHaveBeenCalledWith(
         "warp_as",
         expect.anything(),
       );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("warpAs requires a numeric"),
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 });

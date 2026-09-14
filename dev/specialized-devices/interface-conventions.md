@@ -46,6 +46,13 @@ quoted strings (single or double quotes — pick one and stick with it; commas
 inside quotes are respected; no nested function calls; no implicit type coercion
 beyond standard JS literal parsing).
 
+**Action results.** Every action keeps its slot in the device's result entry:
+`actions` holds one entry per action sent, in order, addressed by the string the
+call wrote. `{ action }` alone means it ran; a `reason` beside it means it found
+nothing to change; `ok: false` with a reason means it was refused (unparseable,
+unknown for the device, bad args, or the handler turned it down). Nothing about
+an action warns (ADR-0042).
+
 **Action discovery (`include: ["actions"]`).** The actions a device supports are
 discoverable at runtime via `ppal-read-device include: ["actions"]`, which
 returns `{ name, signature, description }` for each action on the resolved

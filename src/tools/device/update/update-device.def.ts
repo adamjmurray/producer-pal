@@ -76,7 +76,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // a delimited string would be ambiguous. One action string per element.
     actions: param(z.array(z.string()).optional(), {
       default:
-        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)"',
+        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)". Every action sent comes back as one entry, in order: the action alone when it ran, plus a reason when there was nothing to do, or `ok:false` and why nothing happened',
       smallModel: null,
     }),
     macroVariation: param(

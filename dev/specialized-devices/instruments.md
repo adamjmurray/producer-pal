@@ -292,8 +292,8 @@ Actions via `update-device`'s new `actions: string[]` arg:
 **Skipped:**
 
 - `can_warp_as` / `can_warp_double` / `can_warp_half` — state-dependent
-  capability flags; let LLM attempt the action and warn on failure rather than
-  surface the flags.
+  capability flags; let the LLM attempt the action and read the refusal off its
+  own result entry rather than surface the flags.
 - `playing_position` / `playing_position_enabled` — realtime, not useful for
   Producer Pal's batch model.
 - `pad_slicing` — niche.

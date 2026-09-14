@@ -179,57 +179,88 @@ describe("readSpecializedParams", () => {
 });
 
 describe("applySpecializedActions", () => {
-  it("dispatches a recognized action", () => {
+  it("dispatches a recognized action and reports it by the string sent", () => {
     registerMockObject("simpler-1", {
       type: "SimplerDevice",
       properties: { class_display_name: "Simpler" },
     });
     const device = LiveAPI.from("id simpler-1");
 
-    applySpecializedActions(device, ["reverse"]);
+    const results = applySpecializedActions(device, ["reverse"]);
 
     expect(device.call).toHaveBeenCalledWith("reverse");
+    expect(results).toStrictEqual([{ action: "reverse" }]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns on an unparseable action", () => {
+  it("answers per action sent, in the order sent", () => {
     const device = registerDevice("Simpler");
 
-    applySpecializedActions(device, ["1bad("]);
+    const results = applySpecializedActions(device, [
+      "reverse",
+      "doesNotExist",
+      "crop",
+    ]);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("could not parse action"),
-    );
+    expect(results.map((entry) => entry.action)).toStrictEqual([
+      "reverse",
+      "doesNotExist",
+      "crop",
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns on an unknown action for the device", () => {
+  it("skips an unparseable action", () => {
     const device = registerDevice("Simpler");
 
-    applySpecializedActions(device, ["doesNotExist"]);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unknown action"),
-    );
+    expect(applySpecializedActions(device, ["1bad("])).toStrictEqual([
+      {
+        action: "1bad(",
+        ok: false,
+        reason: "could not parse: expected name or name(args)",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns on an action for a generic device (no spec)", () => {
+  it("skips an unknown action for the device", () => {
+    const device = registerDevice("Simpler");
+
+    expect(applySpecializedActions(device, ["doesNotExist"])).toStrictEqual([
+      {
+        action: "doesNotExist",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("skips an action for a generic device (no spec)", () => {
     const device = registerDevice("Operator");
 
-    applySpecializedActions(device, ["reverse"]);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unknown action"),
-    );
+    expect(applySpecializedActions(device, ["reverse"])).toStrictEqual([
+      {
+        action: "reverse",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
   });
 
-  it("warns on an action for a device whose spec defines none", () => {
+  it("skips an action for a device whose spec defines none", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    applySpecializedActions(device, ["reverse"]);
+    const results = applySpecializedActions(device, ["reverse"]);
 
     expect(device.call).not.toHaveBeenCalledWith("reverse");
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unknown action"),
-    );
+    expect(results).toStrictEqual([
+      {
+        action: "reverse",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
   });
 });
 

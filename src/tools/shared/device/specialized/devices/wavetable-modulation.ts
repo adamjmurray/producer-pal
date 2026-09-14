@@ -3,22 +3,18 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { coerceInt } from "../specialized-param-access.ts";
+import { type ActionOutcome } from "../specialized-device-types.ts";
 
-// Wavetable mod-matrix helpers. See
-// dev/specialized-devices/instruments.md.
+// Wavetable mod-matrix helpers. See dev/specialized-devices/instruments.md.
 //
-// Wavetable's modulation matrix is imperative: targets are registered by
-// DeviceParameter reference, indexed by position, and cells are read/written
-// via device.call("get/set_modulation_value", targetIndex, sourceIndex, amount).
-//
-// The 13 sources are addressed by name (MOD_SOURCES, in matrix column order),
-// verified against Live 12.4's UI (2026-05-22). A bare integer index 0-12 is
-// also accepted for robustness. No LOM property exposes the source names.
-//
-// Matrix keyed by PARAMETER NAME (from get_modulation_target_parameter_name),
+// The matrix is imperative: targets are registered by DeviceParameter
+// reference, indexed by position, and cells go through
+// device.call("get/set_modulation_value", targetIndex, sourceIndex, amount).
+// Sources are addressed by name (MOD_SOURCES, in matrix column order, verified
+// against Live 12.4's UI) or a bare index 0-12 — no LOM property exposes them.
+// Targets are keyed by PARAMETER NAME (get_modulation_target_parameter_name),
 // not display label (visible_modulation_target_names).
 
 // Modulation sources in matrix column order (index = sourceIndex 0-12).
@@ -41,17 +37,13 @@ export const MOD_SOURCES = [
 /** Total source count (13). */
 const SOURCE_COUNT = MOD_SOURCES.length;
 
-// Defensive cap on the matrix-target scan. The loops stop at the LOM's numeric
-// sentinel; this guards against an infinite loop if a future Live version stops
-// returning it. Far above any real device's parameter count.
+// Defensive cap on the matrix-target scan: the loops stop at the LOM's numeric
+// sentinel, and a future Live that stopped returning it would spin forever.
 const MAX_TARGETS = 512;
 
 /**
  * Resolve the target index for a named parameter in the modulation matrix.
- * Iterates `get_modulation_target_parameter_name` until the sentinel (number)
- * is returned. Matching is case-insensitive and trims surrounding whitespace
- * (mirroring source resolution); LLMs case-mangle param names. Returns -1 when
- * the target is not found.
+ * Matching is case-insensitive and trims whitespace: LLMs case-mangle names.
  * @param device - LiveAPI device object
  * @param target - Parameter name to find
  * @returns Target index (0-based), or -1 if not found
@@ -98,58 +90,47 @@ export function findParamChild(
  * Handle the setModulation action: write a modulation-matrix cell.
  * Auto-adds the target parameter when not yet registered.
  *
- * Args: [target: string, source: name|int 0-12, amount: float]
- * Source accepts a name (e.g. "LFO 1") or a bare index 0-12; see
- * resolveSourceIndex.
+ * Args: [target: string, source: name (e.g. "LFO 1") | int 0-12, amount: float]
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
+ * @returns Null when the cell was written, otherwise why it wasn't
  */
 export function setModulationAction(
   device: LiveAPI,
   args: Array<string | number>,
-): void {
+): ActionOutcome {
   if (args.length < 3) {
-    console.warn(`setModulation requires 3 arguments (target, source, amount)`);
-
-    return;
+    return "requires 3 arguments (target, source, amount)";
   }
 
   const target = String(args[0]);
   const s = resolveSourceIndex(args[1] as string | number);
 
   if (s < 0) {
-    console.warn(
-      `setModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
-    );
-
-    return;
+    return invalidSource(args[1] as string | number);
   }
 
   const a = Number(args[2]);
 
   if (!Number.isFinite(a)) {
-    console.warn(
-      `setModulation amount must be a finite number (got "${String(args[2])}")`,
-    );
-
-    return;
+    return `amount must be a finite number (got "${String(args[2])}")`;
   }
 
   // Enforce documented -1..1 contract. Live may clamp internally, but writing
   // an out-of-range amount means the request didn't say what the caller meant.
   if (Math.abs(a) > 1) {
-    console.warn(`setModulation amount must be in -1..1 (got ${a})`);
-
-    return;
+    return `amount must be in -1..1 (got ${a})`;
   }
 
   const targetIndex = ensureModulationTarget(device, target);
 
-  if (targetIndex < 0) {
-    return;
+  if (typeof targetIndex === "string") {
+    return targetIndex;
   }
 
   device.call("set_modulation_value", targetIndex, s, a);
+
+  return null;
 }
 
 /**
@@ -159,39 +140,35 @@ export function setModulationAction(
  * Args: [target: string, source: int 0-12]
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
+ * @returns Null when the cell was cleared, otherwise why it wasn't
  */
 export function clearModulationAction(
   device: LiveAPI,
   args: Array<string | number>,
-): void {
+): ActionOutcome {
   if (args.length < 2) {
-    console.warn(`clearModulation requires 2 arguments (target, source)`);
-
-    return;
+    return "requires 2 arguments (target, source)";
   }
 
   const target = String(args[0]);
   const s = resolveSourceIndex(args[1] as string | number);
 
   if (s < 0) {
-    console.warn(
-      `clearModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
-    );
-
-    return;
+    return invalidSource(args[1] as string | number);
   }
 
   const targetIndex = resolveTargetIndex(device, target);
 
+  // Not a refusal: an unrouted target is already the state asked for.
   if (targetIndex < 0) {
-    console.warn(
-      `clearModulation target "${target}" is not in the modulation matrix`,
-    );
-
-    return;
+    return {
+      reason: `target "${target}" is not in the modulation matrix — nothing to clear`,
+    };
   }
 
   device.call("set_modulation_value", targetIndex, s, 0);
+
+  return null;
 }
 
 /**
@@ -200,35 +177,28 @@ export function clearModulationAction(
  * Args: [parameterName: string]
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
+ * @returns Null when the target was added, otherwise why it wasn't
  */
 export function addModulationTargetAction(
   device: LiveAPI,
   args: Array<string | number>,
-): void {
+): ActionOutcome {
   if (args.length === 0) {
-    console.warn(`addModulationTarget requires 1 argument (parameterName)`);
-
-    return;
+    return "requires 1 argument (parameterName)";
   }
 
   const name = String(args[0]);
-  const param = findParamChild(device, name);
 
-  if (param == null) {
-    console.warn(`addModulationTarget "${name}" — parameter not found`);
-
-    return;
+  // Not a refusal: the parameter is already routable.
+  if (resolveTargetIndex(device, name) >= 0) {
+    return {
+      reason: `parameter "${name}" is already in the modulation matrix`,
+    };
   }
 
-  if (!isParameterModulatable(device, param)) {
-    console.warn(
-      `addModulationTarget "${name}" — parameter is not modulatable`,
-    );
+  const added = ensureModulationTarget(device, name);
 
-    return;
-  }
-
-  device.call("add_parameter_to_modulation_matrix", toLiveApiId(param.id));
+  return typeof added === "string" ? added : null;
 }
 
 /**
@@ -286,44 +256,62 @@ function resolveSourceIndex(value: string | number): number {
 }
 
 /**
- * Ensure a named parameter is registered as a modulation target, adding it if
- * needed. Returns the resolved target index, or -1 on failure.
+ * Why a source the matrix has no column for was refused.
+ * @param value - The source the call sent
+ * @returns The reason, naming every valid source
+ */
+function invalidSource(value: string | number): string {
+  return `source "${String(value)}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`;
+}
+
+/**
+ * Register a parameter as a modulation target.
  * @param device - LiveAPI device object
  * @param target - Parameter name
- * @returns Resolved target index, or -1
+ * @returns Null when it was added, otherwise why it wasn't
  */
-function ensureModulationTarget(device: LiveAPI, target: string): number {
-  let targetIndex = resolveTargetIndex(device, target);
-
-  if (targetIndex >= 0) {
-    return targetIndex;
-  }
-
-  // Target not in matrix — try to add it.
+function addTargetToMatrix(device: LiveAPI, target: string): string | null {
   const param = findParamChild(device, target);
 
   if (param == null) {
-    console.warn(`setModulation target "${target}" — parameter not found`);
-
-    return -1;
+    return `parameter "${target}" not found`;
   }
 
   if (!isParameterModulatable(device, param)) {
-    console.warn(
-      `setModulation target "${target}" — parameter is not modulatable`,
-    );
-
-    return -1;
+    return `parameter "${target}" is not modulatable`;
   }
 
   device.call("add_parameter_to_modulation_matrix", toLiveApiId(param.id));
-  targetIndex = resolveTargetIndex(device, target);
 
-  if (targetIndex < 0) {
-    console.warn(`setModulation target "${target}" — could not add to matrix`);
+  return null;
+}
+
+/**
+ * Ensure a named parameter is registered as a modulation target, adding it if
+ * needed.
+ * @param device - LiveAPI device object
+ * @param target - Parameter name
+ * @returns The resolved target index, or the reason there is none
+ */
+function ensureModulationTarget(
+  device: LiveAPI,
+  target: string,
+): number | string {
+  const existing = resolveTargetIndex(device, target);
+
+  if (existing >= 0) {
+    return existing;
   }
 
-  return targetIndex;
+  const refused = addTargetToMatrix(device, target);
+
+  if (refused != null) {
+    return refused;
+  }
+
+  const added = resolveTargetIndex(device, target);
+
+  return added < 0 ? `parameter "${target}" — could not add to matrix` : added;
 }
 
 /**
