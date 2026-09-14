@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useRef, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-message";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation";
+import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
 import { loadEnabledTools } from "#webui/hooks/settings/helpers/chat-settings-storage";
 import { disabledToolNames } from "#webui/lib/utils/enabled-tools";
 import { fetchJson, fetchJsonOrNull } from "#webui/utils/fetch-json";
@@ -66,8 +67,8 @@ export interface UseSkillsPreviewReturn {
  * selected notation + small-model combination, and read the device's live
  * combination from /config so the view can default to it and badge it as "live".
  * The selection defaults to the live combination once /config resolves, unless
- * the user has already picked one. Each selection change refetches with an
- * AbortController so an out-of-order response can't clobber a newer one.
+ * the user has already picked one. Each selection change aborts the read the
+ * last one started, so an out-of-order response can't clobber a newer one.
  *
  * Tool gating is on by default and reads the SAME saved toolset the chat
  * connects with (localStorage, not the live conversation's pinned one), so the
@@ -103,65 +104,56 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
   }, []);
 
   // Read the live combination once; default the selection to it if untouched.
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadCurrentMode = useCallback(async (signal: AbortSignal) => {
+    const mode = await fetchCurrentMode(signal);
 
-    void (async () => {
-      const mode = await fetchCurrentMode(controller.signal);
+    if (mode == null || signal.aborted) {
+      return;
+    }
 
-      if (mode == null || controller.signal.aborted) {
-        return;
-      }
+    setCurrentMode(mode);
 
-      setCurrentMode(mode);
-
-      // Adopt the live mode as the selection, but keep the same object when it
-      // already matches: a new-but-equal reference would re-run the preview
-      // effect, flashing the loading state and refetching an identical blob.
-      if (!userPickedRef.current) {
-        setSelected((prev) => (sameCombination(prev, mode) ? prev : mode));
-      }
-    })();
-
-    return () => controller.abort();
+    // Adopt the live mode as the selection, but keep the same object when it
+    // already matches: a new-but-equal reference would re-run the preview
+    // load, flashing the loading state and refetching an identical blob.
+    if (!userPickedRef.current) {
+      setSelected((prev) => (sameCombination(prev, mode) ? prev : mode));
+    }
   }, []);
+
+  useAbortableLoad(loadCurrentMode);
 
   // (Re)fetch the preview whenever the selection or the tool gating changes.
   // The saved toolset is read here rather than held in state so reopening the
   // editor after a Settings change previews the new toolset.
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadPreview = useCallback(
+    async (signal: AbortSignal) => {
+      setStatus({ kind: "loading" });
 
-    setStatus({ kind: "loading" });
-
-    void (async () => {
       try {
         const disabledTools = enabledToolsOnly
           ? disabledToolNames(loadEnabledTools())
           : null;
-        const preview = await fetchPreview(
-          selected,
-          disabledTools,
-          controller.signal,
-        );
+        const preview = await fetchPreview(selected, disabledTools, signal);
 
         // A newer selection aborted this request; don't clobber its result.
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           return;
         }
 
         setStatus({ kind: "ready", preview });
       } catch (error: unknown) {
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           return;
         }
 
         setStatus({ kind: "error", message: errorMessage(error) });
       }
-    })();
+    },
+    [selected, enabledToolsOnly],
+  );
 
-    return () => controller.abort();
-  }, [selected, enabledToolsOnly]);
+  useAbortableLoad(loadPreview);
 
   return {
     status,

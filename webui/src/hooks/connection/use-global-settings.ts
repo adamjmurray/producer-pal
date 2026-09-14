@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useState } from "preact/hooks";
+import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
 import { fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getSettingsUrl } from "#webui/utils/mcp-url";
 
@@ -57,9 +58,8 @@ export async function patchGlobalSettings(
  * Reads the machine-global settings on mount and writes changes back.
  *
  * These are machine-wide preferences that also govern the Max for Live device,
- * not per-conversation settings, so they apply on change rather than waiting for
- * the settings modal's Save button — the same way that tab's Delete buttons act
- * immediately.
+ * not per-conversation settings, so they apply on change rather than waiting
+ * for the settings modal's Save button.
  *
  * @returns The current settings and their setters
  */
@@ -69,25 +69,21 @@ export function useGlobalSettings(): UseGlobalSettingsReturn {
   // stale render is replaced before the user can act on it.
   const [autoUpdateCheck, setLocalAutoUpdateCheck] = useState(true);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadSettings = useCallback(async (signal: AbortSignal) => {
+    // Nothing came back (server down, or the read aborted on unmount) — keep
+    // the default. A settings screen that can't reach the server can't save
+    // either, so there's nothing better to show.
+    const settings = await fetchJsonOrNull<Partial<GlobalSettings>>(
+      getSettingsUrl(),
+      signal,
+    );
 
-    void (async () => {
-      // Nothing came back (server down, or the effect aborted on unmount) —
-      // keep the default. A settings screen that can't reach the server can't
-      // save either, so there's nothing better to show.
-      const settings = await fetchJsonOrNull<Partial<GlobalSettings>>(
-        getSettingsUrl(),
-        controller.signal,
-      );
-
-      if (settings) {
-        setLocalAutoUpdateCheck(settings.autoUpdateCheck !== false);
-      }
-    })();
-
-    return () => controller.abort();
+    if (settings) {
+      setLocalAutoUpdateCheck(settings.autoUpdateCheck !== false);
+    }
   }, []);
+
+  useAbortableLoad(loadSettings);
 
   const setAutoUpdateCheck = useCallback((enabled: boolean) => {
     setLocalAutoUpdateCheck(enabled);

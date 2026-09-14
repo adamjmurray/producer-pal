@@ -9,6 +9,7 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation";
+import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
@@ -115,24 +116,19 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   }, []);
 
   // Fetch on mount
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetchConfig(controller.signal);
-
-    return () => controller.abort();
-  }, [fetchConfig]);
+  useAbortableLoad(fetchConfig);
 
   // Re-fetch when MCP connection succeeds (handles server restart)
-  useEffect(() => {
-    const controller = new AbortController();
+  const fetchOnConnect = useCallback(
+    async (signal: AbortSignal) => {
+      if (mcpStatus === "connected") {
+        await fetchConfig(signal);
+      }
+    },
+    [mcpStatus, fetchConfig],
+  );
 
-    if (mcpStatus === "connected") {
-      void fetchConfig(controller.signal);
-    }
-
-    return () => controller.abort();
-  }, [mcpStatus, fetchConfig]);
+  useAbortableLoad(fetchOnConnect);
 
   // Re-fetch when window gains focus (syncs with Max device changes)
   useEffect(() => {
