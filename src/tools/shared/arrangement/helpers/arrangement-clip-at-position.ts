@@ -20,6 +20,14 @@ import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexe
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { isTakeLaneClip } from "./take-lanes.ts";
 
+/** Where a complete path lands, and what is there. */
+export interface ArrangementPositionTarget {
+  /** The position in Ableton beats. */
+  beats: number;
+  /** The clip covering it, or null when none does. */
+  clip: LiveAPI | null;
+}
+
 /**
  * The arrangement clip covering a complete path's position.
  * @param path - A song position and the lane it sits on
@@ -30,13 +38,29 @@ export function arrangementClipAtPosition(
   path: CompleteArrangementPosition,
   paramName: string,
 ): LiveAPI | null {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const posBeats = positionBeats(liveSet, path, paramName);
+  return arrangementPositionTarget(path, paramName).clip;
+}
 
-  return (
-    clipsOnLane(path.lane).find((clip) => coversPosition(clip, posBeats)) ??
-    null
-  );
+/**
+ * The same lookup, plus the beats the position resolved to — for a caller that
+ * also needs the spot itself, not only the clip sitting on it.
+ * @param path - A song position and the lane it sits on
+ * @param paramName - The param the path came from, for its own errors
+ * @returns The position in beats and the clip covering it
+ */
+export function arrangementPositionTarget(
+  path: CompleteArrangementPosition,
+  paramName: string,
+): ArrangementPositionTarget {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const beats = positionBeats(liveSet, path, paramName);
+
+  return {
+    beats,
+    clip:
+      clipsOnLane(path.lane).find((clip) => coversPosition(clip, beats)) ??
+      null,
+  };
 }
 
 /**

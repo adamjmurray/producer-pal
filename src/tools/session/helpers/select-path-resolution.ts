@@ -19,6 +19,9 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
+import { type CompleteArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-position.ts";
+import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
 import { isSameLiveApiId, parseClipSlot } from "./select-id-resolution.ts";
 import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
@@ -38,6 +41,9 @@ export interface PathTarget {
   impliedTrack?: ImpliedTrack;
   /** The scene a slot path sits on, checked the same way. */
   impliedScene?: number;
+  /** A spot on the arrangement timeline: the start marker goes there, and the
+   * clip covering it, if any, is selected with it. */
+  arrangementPosition?: CompleteArrangementPosition;
 }
 
 /** A track named by a path but not selected from it. `trackIndex` is unset for
@@ -228,6 +234,12 @@ function assertIdAgrees(
     assertSameObject(sceneId, livePath.scene(sceneIndex));
   }
 
+  const position = target.arrangementPosition;
+
+  if (clipId != null && position != null) {
+    assertClipAtPosition(clipId, position);
+  }
+
   const slot = target.parsedClipSlot;
 
   if (clipId != null && slot != null) {
@@ -235,6 +247,23 @@ function assertIdAgrees(
       clipId,
       livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex).clip(),
     );
+  }
+}
+
+/**
+ * Refuse an id naming a clip other than the one on the spot the path names.
+ * A lane with nothing there names no clip to disagree with.
+ * @param clipId - The clip `id` named
+ * @param position - The spot the path named
+ */
+function assertClipAtPosition(
+  clipId: string,
+  position: CompleteArrangementPosition,
+): void {
+  const clip = arrangementClipAtPosition(position, "path");
+
+  if (clip != null && !isSameLiveApiId(clip.id, clipId)) {
+    throw pathConflict("id");
   }
 }
 
@@ -368,17 +397,23 @@ function targetFromPath(path: ObjectPath): PathTarget {
         impliedTrack: { trackIndex: path.trackIndex, category: "regular" },
         impliedScene: path.sceneIndex,
       };
-    case "arrangement-position":
-      throw pathError(
-        "path",
-        formatObjectPath(path),
-        'an arrangement position is not selectable; select the clip there by id, or its track with "t<track>"',
-      );
+
+    case "arrangement-position": {
+      const position = requireCompletePosition(path, "path");
+
+      return {
+        trackIndex: position.lane.trackIndex,
+        category: "regular",
+        arrangementPosition: position,
+      };
+    }
+
     default:
       throw pathError(
         "path",
         formatObjectPath(path),
-        'a take lane is not selectable; select a clip by id, or its track with "t<track>"',
+        "a take lane is not selectable; name a spot on it as " +
+          '"t<track>/l<lane>[5|1]", or select its track with "t<track>"',
       );
   }
 }

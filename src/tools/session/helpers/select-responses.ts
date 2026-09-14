@@ -147,6 +147,10 @@ export interface ResolvedArgs {
   trackIndex?: number;
   category: TrackCategory;
   sceneIndex?: number;
+  /** Where a song position puts the arrangement start marker, in beats. */
+  arrangementStartBeats?: number;
+  /** Why a take lane the path named isn't there, warned once the rest lands. */
+  missingTakeLane?: string;
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
   devicePathParam?: "path" | "devicePath";

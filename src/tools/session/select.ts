@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { toLiveApiView } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
@@ -26,6 +27,10 @@ import {
 } from "./helpers/select-id-resolution.ts";
 import { resolvePath } from "./helpers/select-path-resolution.ts";
 import {
+  applyArrangementStart,
+  resolveArrangementPosition,
+} from "./helpers/select-arrangement-position.ts";
+import {
   resolveRackTarget,
   selectRackTarget,
 } from "./helpers/rack-selection.ts";
@@ -44,7 +49,8 @@ export interface SelectArgs extends SelectIdArgs {
   trackType?: TrackCategory;
   trackIndex?: number;
   sceneIndex?: number;
-  /** Clip slot "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
+  /** Clip slot "t0/s3", an arrangement spot "t0[5|1]", a device "t0/d1", a drum
+   * pad "t0/d0/pC1", or a bare track "t0" */
   path?: string;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string;
@@ -69,7 +75,7 @@ export interface SelectResult {
   selectedClip?: {
     id: string;
     /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
-     * the arrangement. select's own path takes the session form only. */
+     * the arrangement. select's own path takes either form. */
     path?: string;
   };
   selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
@@ -96,6 +102,7 @@ export function select(
   const { view, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
   const { trackIndex, category, sceneIndex, devicePath } = resolved;
+  const { arrangementStartBeats } = resolved;
   const { rackTargetId, rackTargetPath } = resolved;
   const devicePathParam = resolved.devicePathParam ?? "path";
 
@@ -145,6 +152,16 @@ export function select(
     sceneIndex,
   });
 
+  if (arrangementStartBeats != null) {
+    applyArrangementStart(arrangementStartBeats);
+
+    // Said after the writes: a lane that isn't there stops nothing, so the
+    // warning reports what the call did rather than what it refused.
+    if (resolved.missingTakeLane != null) {
+      console.warn(resolved.missingTakeLane);
+    }
+  }
+
   // Scene/slot are session-only concepts, so they force session view.
   const needsSessionView =
     sceneId != null || sceneIndex != null || parsedClipSlot != null;
@@ -154,6 +171,7 @@ export function select(
     songView,
     view,
     needsSessionView,
+    needsArrangementView: arrangementStartBeats != null,
     clipId,
   });
 
@@ -293,18 +311,21 @@ interface ResolveEffectiveViewOptions {
   songView: LiveAPI;
   view?: "session" | "arrangement";
   needsSessionView: boolean;
+  needsArrangementView: boolean;
   clipId?: string;
 }
 
 /**
  * Decide the view select ends on and switch Live to it. An explicit `view`
- * always wins; otherwise a scene/slot target forces session view, and a clip
- * target infers session or arrangement from where the clip lives.
+ * always wins; otherwise a scene/slot target forces session view, a song
+ * position forces arrangement view, and a clip target infers session or
+ * arrangement from where the clip lives.
  * @param options - Inputs to the decision
  * @param options.appView - LiveAPI instance for live_app view
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.view - The caller's own `view` param, if given
  * @param options.needsSessionView - Whether a scene/slot target forces session
+ * @param options.needsArrangementView - Whether a song position forces arrangement
  * @param options.clipId - Clip ID being selected, if any
  * @returns The view select switched to and should report, if any
  */
@@ -313,15 +334,22 @@ function resolveEffectiveView({
   songView,
   view,
   needsSessionView,
+  needsArrangementView,
   clipId,
 }: ResolveEffectiveViewOptions): "session" | "arrangement" | undefined {
+  const forcedView = needsSessionView
+    ? "session"
+    : needsArrangementView
+      ? "arrangement"
+      : undefined;
+
   if (view != null) {
     appView.call("show_view", toLiveApiView(view));
-  } else if (needsSessionView) {
-    appView.call("show_view", toLiveApiView("session"));
+  } else if (forcedView != null) {
+    appView.call("show_view", toLiveApiView(forcedView));
   }
 
-  let effectiveView = view ?? (needsSessionView ? "session" : undefined);
+  let effectiveView = view ?? forcedView;
 
   if (clipId !== undefined) {
     const clipView = updateClipSelection({
@@ -403,6 +431,9 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   const { parsedClipSlot, devicePath, devicePathParam, rackTargetPath } =
     fromPath;
   const { trackIndex, category, sceneIndex } = fromPath;
+  // Read before any write, like the existence checks: a position Live can't
+  // resolve must fail with the view and selection untouched.
+  const arrangement = resolveArrangementPosition(fromPath.arrangementPosition);
 
   const hasSelectionArgs =
     trackId != null ||
@@ -424,11 +455,14 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   return {
     trackId,
     sceneId,
-    clipId,
+    // A clip on the spot a position path names is selected like any other.
+    clipId: clipId ?? arrangement?.clipId,
     deviceId,
     trackIndex,
     category: category ?? "regular",
     sceneIndex,
+    arrangementStartBeats: arrangement?.beats,
+    missingTakeLane: arrangement?.missingTakeLane,
     parsedClipSlot,
     devicePath,
     devicePathParam,
