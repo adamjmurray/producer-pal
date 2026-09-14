@@ -633,15 +633,15 @@ G4-G5: velocity += 20`;
       expect(result.velocity!.value).toBeCloseTo(-1.0, 5);
     });
 
-    it("throws error when variable period is <= 0", () => {
+    it("takes a zero variable period as phase 0", () => {
       const result = evaluateTransform(
         "velocity += cos(note.duration - 0.5)",
         createContext(),
         noteProps,
       );
 
-      // noteProps.duration - 0.5 = 0.5 - 0.5 = 0, should error
-      expect(result).toStrictEqual({});
+      // noteProps.duration - 0.5 = 0, so every note samples phase 0
+      expect(result.velocity!.value).toBe(1);
     });
   });
 

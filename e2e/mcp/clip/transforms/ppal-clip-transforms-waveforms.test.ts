@@ -124,45 +124,66 @@ describe("ppal-clip-transforms-waveforms", () => {
   });
 
   // A period that divides the note spacing samples ONE phase, so every note
-  // would get the same value. The assignment is warned about and skipped —
-  // the clip is created with four DIFFERENT velocities precisely so a skip is
-  // distinguishable from a flattening write.
-  it("warns and writes nothing when the period lands every note on one phase", async () => {
+  // gets the same value. That is a legitimate result, so it is written like any
+  // other — the clip starts with four DIFFERENT velocities so the flattening
+  // write is visible.
+  it("writes one value to every note when the period lands them on one phase", async () => {
     const clipId = await createMidiClip(
-      41,
+      92,
       "v40 C3 1|1\nv70 C3 1|2\nv100 C3 1|3\nv120 C3 1|4",
     );
     const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
       await applyTransform(clipId, "velocity = 64 + 50 * sin(1)"),
     );
 
-    expect(warnings.join("\n")).toContain("flat LFO");
-    expect(warnings.join("\n")).toContain("nothing was written");
-    expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([
-      40, 70, 100, 120,
-    ]);
+    expect(warnings).toStrictEqual([]);
+    // sin(phase 0) = 0, so every note lands on the 64 offset.
+    expect(await readClipNotes(clipId)).toContain("v64");
+    expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([64]);
   });
 
-  // Skipping is per assignment, not per call: the flat line is dropped and
-  // every other line in the same transform still lands.
-  it("skips only the flat assignment, not the whole transform", async () => {
-    const clipId = await createMidiClip(
-      44,
-      "v40 C3 1|1\nv70 C3 1|2\nv100 C3 1|3\nv120 C3 1|4",
-    );
+  it("applies a zero period as phase 0 for every note", async () => {
+    const clipId = await createWaveformClip(93);
     const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
-      await applyTransform(
-        clipId,
-        "velocity = 64 + 50 * sin(1)\nprobability = 0.5",
-      ),
+      await applyTransform(clipId, "velocity = 64 + 50 * cos(0)"),
     );
 
-    expect(warnings.join("\n")).toContain("flat LFO");
+    expect(warnings).toStrictEqual([]);
+    // cos(phase 0) = 1 — no division by zero, no NaN.
+    expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([114]);
+  });
 
-    const notes = await readClipNotes(clipId);
+  // A sign reaches the period only as a bare number — the grammar has no signed
+  // note value (`-n/1`) or bar count (`-1bar`). -4 beats is one bar in 4/4.
+  it("runs the cycle backwards for a negative period", async () => {
+    const forwardId = await createWaveformClip(94);
+    const backwardId = await createWaveformClip(95);
 
-    expect(extractVelocities(notes)).toStrictEqual([40, 70, 100, 120]);
-    expect(notes).toContain("p0.5");
+    await applyTransform(forwardId, "velocity = 64 + 50 * saw(4)");
+
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(backwardId, "velocity = 64 + 50 * saw(-4)"),
+    );
+
+    expect(warnings).toStrictEqual([]);
+
+    const forward = extractVelocities(await readClipNotes(forwardId));
+    const backward = extractVelocities(await readClipNotes(backwardId));
+
+    expect(backward).toHaveLength(4);
+    expect(backward).not.toStrictEqual(forward);
+  });
+
+  it("applies a per-note phase offset without warning", async () => {
+    const clipId = await createWaveformClip(96);
+    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
+      await applyTransform(clipId, "velocity = 64 + 50 * sin(n/1, note.start)"),
+    );
+
+    expect(warnings).toStrictEqual([]);
+    expect(
+      new Set(extractVelocities(await readClipNotes(clipId))).size,
+    ).toBeGreaterThan(1);
   });
 
   // ramp()/curve() interpolate across the RANGE, not across the notes they
@@ -201,14 +222,5 @@ describe("ppal-clip-transforms-waveforms", () => {
     );
 
     expect(warnings.join("\n")).not.toContain("of the way to its end value");
-  });
-
-  it("stays quiet when the waveform actually varies the notes", async () => {
-    const clipId = await createWaveformClip(42);
-    const { warnings } = parseToolResultWithWarnings<UpdateClipResult>(
-      await applyTransform(clipId, "velocity = 64 + 50 * sin(n/1)"),
-    );
-
-    expect(warnings.join("\n")).not.toContain("flat LFO");
   });
 });

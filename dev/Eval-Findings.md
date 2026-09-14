@@ -197,6 +197,13 @@ it. Refusing the call is what moved the number: once a period built from
 LFO, the trials fell to 2 to 3 calls and self-corrected to `sin(1bar)` off the
 message alone.
 
+Both guards were removed on 2026-09-13: any signed period is legitimate (a
+negative one runs the cycle backwards, a zero one is phase 0), and so is a
+waveform that gives every note the same value. So the lever that moved the
+number is gone on purpose. The finding stands — refusal is what causes
+self-correction — but the turn-4 check is now a capability target with no
+product lever behind it.
+
 The first call is still the radian form, and nothing we send can reach it — the
 model writes it before it has seen anything from us. The turn-4 check wants one
 call, so it stays red whatever ships. Don't retry this as prose.

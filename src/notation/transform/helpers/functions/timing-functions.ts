@@ -5,7 +5,6 @@
 
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import { parsePeriod } from "../../transform-functions.ts";
 import { type EvalContext } from "../transform-context.ts";
 
 /**
@@ -36,7 +35,7 @@ export function evaluateSwing(
   let grid = 0.5;
 
   if (args.length === 2) {
-    grid = parsePeriod(args[1] as ExpressionNode, ctx, "swing");
+    grid = parseGrid(args[1] as ExpressionNode, ctx, "swing");
   }
 
   const period = grid * 2;
@@ -78,7 +77,7 @@ export function evaluateQuant(
     );
   }
 
-  const grid = parsePeriod(args[0] as ExpressionNode, ctx, "quant");
+  const grid = parseGrid(args[0] as ExpressionNode, ctx, "quant");
 
   return Math.round(ctx.position / grid) * grid;
 }
@@ -134,4 +133,29 @@ export function evaluateLegato(
 
   // duration is always populated by buildNoteProperties for note transforms.
   return ctx.noteProperties.duration as number;
+}
+
+/**
+ * Parse a swing/quant grid argument. Unlike a waveform period, a grid of zero
+ * or less has no meaning — it would divide by zero or snap backwards.
+ * @param gridArg - Grid expression, in musical beats
+ * @param ctx - Evaluation context
+ * @param name - Function name for the error message
+ * @returns Grid in beats
+ */
+function parseGrid(
+  gridArg: ExpressionNode,
+  ctx: EvalContext,
+  name: string,
+): number {
+  const grid = ctx.evaluateExpression(gridArg, ctx);
+
+  if (grid <= 0) {
+    throw new Error(
+      `Function ${name}() grid must be > 0, got ${grid}. The argument is a ` +
+        `grid size in beats (e.g. n/8, n/16).`,
+    );
+  }
+
+  return grid;
 }

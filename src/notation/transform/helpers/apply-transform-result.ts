@@ -5,64 +5,11 @@
 
 /**
  * Writing an evaluated transform value onto a note: the per-parameter clamping
- * and beat conversion, and the deferred write a waveform assignment uses so a
- * flat LFO can be dropped before it lands.
+ * and beat conversion.
  */
 
 import { clampMidi } from "#src/shared/pitch.ts";
 import { type NoteEvent } from "../../types.ts";
-import { type TransformAssignment } from "../parser/transform-parser.ts";
-import { isFlatWaveform } from "./flat-waveforms.ts";
-
-/** A waveform value evaluated but not yet written to its note. */
-export interface DeferredWrite {
-  note: NoteEvent;
-  index: number;
-  value: number;
-}
-
-/**
- * Write the values a waveform assignment held back — unless it came out flat,
- * in which case the whole assignment is dropped and none of its notes count as
- * transformed.
- *
- * @param waveformName - Waveform the assignment used, for the warning
- * @param deferred - Values evaluated but not yet applied, one per note
- * @param assignment - The assignment being applied
- * @param timeSigDenominator - Time signature denominator for beat conversion
- * @param transformedIndices - Set collecting the notes this transform changed
- * @returns How many notes were written (0 when the waveform came out flat)
- */
-export function commitWaveformWrites(
-  waveformName: string,
-  deferred: DeferredWrite[],
-  assignment: TransformAssignment,
-  timeSigDenominator: number,
-  transformedIndices: Set<number>,
-): number {
-  if (
-    isFlatWaveform(
-      waveformName,
-      deferred.map((write) => write.value),
-    )
-  ) {
-    return 0;
-  }
-
-  for (const write of deferred) {
-    applyTransformResult(
-      write.note,
-      assignment.parameter,
-      assignment.operator,
-      write.value,
-      timeSigDenominator,
-    );
-
-    transformedIndices.add(write.index);
-  }
-
-  return deferred.length;
-}
 
 /**
  * Apply a single transform result to a note in-place.

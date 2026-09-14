@@ -8,11 +8,7 @@ import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
-import {
-  type DeferredWrite,
-  applyTransformResult,
-  commitWaveformWrites,
-} from "./helpers/apply-transform-result.ts";
+import { applyTransformResult } from "./helpers/apply-transform-result.ts";
 import {
   buildNoteContext,
   selectAssignmentNotes,
@@ -21,7 +17,6 @@ import {
   rejectsPitchLiteralValue,
   warnShortRamp,
 } from "./helpers/assignment-warnings.ts";
-import { findWaveformName } from "./helpers/flat-waveforms.ts";
 import { buildNoteProperties } from "./helpers/note-properties.ts";
 import { timeRangeBoundsInMusicalBeats } from "./helpers/time-range-bounds.ts";
 import {
@@ -253,12 +248,6 @@ function applyAssignmentToNotes(
   // single malformed line doesn't relay N copies of the same WARNING.
   const warnedFailures = new Set<string>();
 
-  // A waveform that lands on one phase for every note is a mistake whatever it
-  // was aiming at, so its writes are held back until the whole selection has
-  // been evaluated and the flat case can be ruled out. Only waveforms defer;
-  // everything else applies as it goes, which is what lets transforms stack.
-  const waveformName = findWaveformName(assignment.expression);
-  const deferred: DeferredWrite[] = [];
   // transformedIndices is cumulative across the whole transform, so it can't
   // tell whether THIS assignment applied anything. Count what this one wrote.
   let appliedCount = 0;
@@ -305,11 +294,6 @@ function applyAssignmentToNotes(
         evaluateExpression,
       });
 
-      if (waveformName != null) {
-        deferred.push({ note, index: i, value });
-        continue;
-      }
-
       // Apply transform immediately (enables stacked transforms)
       applyTransformResult(
         note,
@@ -329,16 +313,6 @@ function applyAssignmentToNotes(
         console.warn(message);
       }
     }
-  }
-
-  if (waveformName != null) {
-    appliedCount = commitWaveformWrites(
-      waveformName,
-      deferred,
-      assignment,
-      timeSigDenominator,
-      transformedIndices,
-    );
   }
 
   if (appliedCount > 0) {

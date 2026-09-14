@@ -14,7 +14,7 @@ import {
   type TransformAssignment,
 } from "../parser/transform-parser.ts";
 import * as console from "../transform-warning-label.ts";
-import { findFunctionName } from "./flat-waveforms.ts";
+import { findFunctionName } from "./find-function.ts";
 import { type TimeRange } from "./transform-context.ts";
 import { operatorDisplay } from "./transform-evaluation.ts";
 

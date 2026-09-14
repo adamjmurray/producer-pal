@@ -156,8 +156,9 @@ function evaluateWaveform(
     );
   }
 
-  // First argument is the period: a note-value or numeric expression, in beats
-  const period = parsePeriod(args[0] as ExpressionNode, ctx, name);
+  // First argument is the period: a note-value or numeric expression, in beats.
+  // Any sign is allowed — a negative period runs the cycle backwards.
+  const period = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
 
   // Sync: use absolute arrangement position for phase
   let effectivePosition = position;
@@ -176,8 +177,9 @@ function evaluateWaveform(
     }
   }
 
-  // Calculate phase from position and period
-  const basePhase = (effectivePosition / period) % 1.0;
+  // Phase from position and period. A zero period is one phase (0) for every
+  // note, not a division by zero — dividing would give Infinity or NaN.
+  const basePhase = period === 0 ? 0 : (effectivePosition / period) % 1.0;
 
   // Optional second argument: phase offset
   let phaseOffset = 0;
@@ -216,30 +218,4 @@ function evaluateWaveform(
     default:
       throw new Error(`Unknown waveform function: ${name}()`);
   }
-}
-
-/**
- * Parse period argument for waveform/timing functions.
- * The period is any numeric expression — a note value (e.g. `n/4`), a variable
- * (e.g. `clip.barDuration`), or a bare number — evaluated to musical beats.
- * @param periodArg - Period expression
- * @param ctx - Evaluation context
- * @param name - Function name for error messages
- * @returns Period in beats
- */
-export function parsePeriod(
-  periodArg: ExpressionNode,
-  ctx: EvalContext,
-  name: string,
-): number {
-  const period = ctx.evaluateExpression(periodArg, ctx);
-
-  if (period <= 0) {
-    throw new Error(
-      `Function ${name}() period must be > 0, got ${period}. The first ` +
-        `argument is a period in beats (e.g. n/4, 2bar), not a phase.`,
-    );
-  }
-
-  return period;
 }

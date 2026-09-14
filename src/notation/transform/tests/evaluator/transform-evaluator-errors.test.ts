@@ -105,12 +105,18 @@ describe("Transform Evaluator Error Handling", () => {
       expectTransformError("velocity = ramp(0, 100, 1)");
     });
 
-    it("handles waveform with zero period gracefully", () => {
-      expectTransformError("velocity += cos(0)");
+    it("takes a zero period as phase 0 rather than erroring", () => {
+      expect(
+        evaluateTransform("velocity += cos(0)", DEFAULT_CONTEXT).velocity!
+          .value,
+      ).toBe(1);
     });
 
-    it("handles waveform with negative period gracefully", () => {
-      expectTransformError("velocity += cos(-1)");
+    it("takes a negative period rather than erroring", () => {
+      expect(
+        evaluateTransform("velocity += cos(0 - 1)", DEFAULT_CONTEXT).velocity!
+          .value,
+      ).toBe(1);
     });
   });
 

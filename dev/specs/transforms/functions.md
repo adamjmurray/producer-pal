@@ -45,7 +45,9 @@ timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
 Snaps note timing to the nearest grid point. Returns absolute position — use
 with `timing =`.
 
-- **grid**: Grid size as a note value or numeric musical beats.
+- **grid**: Grid size as a note value or numeric musical beats. Must be > 0 —
+  unlike a waveform period, a zero or negative grid has nothing to snap to. Same
+  for `swing()`'s optional grid.
 
 ```
 timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
