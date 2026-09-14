@@ -113,7 +113,9 @@ needs a measurement
 Chains auto-create when referenced (up to 16), except the catch-all pad: Live
 clamps a drum chain's `in_note` to 0-127, so a `p*` chain can't be made and a
 write that would create one refuses instead. An existing one still resolves.
-Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
+Depth changes nothing: a pad on a Drum Rack nested in another rack's pad
+(`t0/d0/pC1/c0/d0/pD1`) creates its chain the same way. Take lanes auto-create
+up to the index named, capped at `MAX_TAKE_LANES`.
 
 A `+` is accepted only by the tool that creates that kind of object: `t+`, `rt+`
 and `s+` by the create tools, `l+` by `ppal-update-track`, because a take lane
@@ -487,8 +489,9 @@ device, named there by `name` or `id`.
 One second spelling did grow anyway: a `params` name may carry a path prefix, so
 `{name: "c0/d0/Volume"}` on `t1/d0` writes a nested device's param. It is
 load-bearing for a drum pad `sample` write, whose target device does not exist
-yet and so can't be addressed as a path. Whether the general form should survive
-is open.
+yet and so can't be addressed as a path — at any depth, so the prefix may cross
+into a rack nested in a pad (`pC1/c0/d0/pD1/sample`). Whether the general form
+should survive is open.
 
 **Locators as objects.** `loc:` names a point in time. Creating, deleting and
 renaming a locator stays on `update-live-set`'s own params — that is object

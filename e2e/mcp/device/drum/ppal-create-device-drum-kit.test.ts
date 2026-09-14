@@ -231,6 +231,79 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     expectSampleWrite(warnings, pad.sample, "kick.aiff");
   });
 
+  // A pad one rack down is a pad like any other: its chain is missing, the
+  // path says which chain it is, so the write makes it.
+  it("loads a sample onto a pad inside a nested Drum Rack, creating its chain", async () => {
+    const rack = await createTrackWithDrumRack();
+    const nested = await createTestDeviceAt(
+      ctx.client!,
+      "Drum Rack",
+      `${rack}/pC1`,
+    );
+    // Where the nested rack landed, spelled with the pad chain the create left
+    // implicit, so the write crosses the nesting explicitly. Its device index
+    // comes off the path the create returned rather than being assumed.
+    const under = `pC1/c0/${nested.slice(nested.lastIndexOf("/") + 1)}`;
+
+    await sleep(150);
+
+    const { data, warnings } = parseToolResultWithWarnings<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path: rack,
+          params: [{ name: `${under}/pD1/sample`, value: KICK_FILE }],
+        },
+      }),
+    );
+
+    expect(data.params?.[0]?.name).toBe(`${under}/pD1/sample`);
+    // The pad shortcut is not the deprecated general form, one level down
+    // either — the Simpler it needs still doesn't exist to be addressed.
+    expect(warnings.join("\n")).not.toContain("deprecated");
+
+    await sleep(150);
+
+    const pad = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: `${rack}/${under}/pD1/c0/d0`, include: ["sample"] },
+      }),
+    );
+
+    expect(pad.type).toContain("Simpler");
+    expectSampleWrite(warnings, pad.sample, "kick.aiff");
+  });
+
+  it("creates a device on a pad inside a nested Drum Rack", async () => {
+    const rack = await createTrackWithDrumRack();
+    const nested = await createTestDeviceAt(
+      ctx.client!,
+      "Drum Rack",
+      `${rack}/pC1`,
+    );
+
+    await sleep(150);
+
+    // E1 has no chain on the nested rack, so the insertion path has to make
+    // one before the Operator has anywhere to land.
+    await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Operator", path: `${nested}/pE1` },
+    });
+
+    await sleep(150);
+
+    const pad = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: `${nested}/pE1/c0/d0` },
+      }),
+    );
+
+    expect(pad.type).toContain("Operator");
+  });
+
   it("skips a sample write onto a DrumSampler pad, and replaces it under force", async () => {
     const rack = await createTrackWithDrumRack();
 

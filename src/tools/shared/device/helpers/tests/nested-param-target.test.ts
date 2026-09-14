@@ -158,6 +158,91 @@ function registerEffectThenSimpler(): RegisteredMockObject {
   return chain;
 }
 
+/** The nested pad the writes below address: D1 on the rack in the C1 pad. */
+const NESTED_PAD = "pC1/c0/d0/pD1";
+const D1 = 38;
+
+interface NestedRacks {
+  inner: RegisteredMockObject;
+  outer: RegisteredMockObject;
+}
+
+/**
+ * Register a Drum Rack whose C1 pad holds a nested Drum Rack. The nested rack
+ * starts with `innerChainIds`; its insert_chain adds "inner-chain", the D1
+ * layer a write has to create.
+ * @param innerChainIds - Chains the nested rack already holds
+ * @param canHaveDrumPads - 0 makes the nested device a plain rack instead
+ * @returns The nested rack and the rack holding it
+ */
+function registerNestedRacks(
+  innerChainIds: string[] = [],
+  canHaveDrumPads = 1,
+): NestedRacks {
+  const chains = children(...innerChainIds);
+  const outer = registerMockObject("outer-rack", {
+    path: RACK_PATH,
+    type: "RackDevice",
+    properties: { can_have_drum_pads: 1, chains: children("outer-chain") },
+  });
+
+  registerMockObject("outer-chain", {
+    path: `${RACK_PATH} chains 0`,
+    type: "DrumChain",
+    properties: { in_note: 36, devices: children("inner-rack") },
+  });
+
+  const inner = registerMockObject("inner-rack", {
+    path: `${RACK_PATH} chains 0 devices 0`,
+    type: "RackDevice",
+    properties: {
+      can_have_drum_pads: canHaveDrumPads,
+      can_have_chains: 1,
+      chains,
+    },
+    methods: {
+      insert_chain: () => {
+        chains.push("id", "inner-chain");
+
+        return ["id", "inner-chain"];
+      },
+    },
+  });
+
+  return { inner, outer };
+}
+
+/**
+ * Register a nested rack whose D1 pad has no chain, plus the chain and Simpler
+ * a sample write has to make there.
+ * @returns The nested rack and the rack holding it
+ */
+function registerEmptyNestedPad(): NestedRacks {
+  const racks = registerNestedRacks();
+
+  registerDrumChain("inner-chain", D1, [], {
+    insert_device: () => ["id", "new-simpler"],
+  });
+  registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+  return racks;
+}
+
+/**
+ * Register a nested rack whose D1 pad holds two layers, each with a Simpler.
+ * @returns The nested rack and the rack holding it
+ */
+function registerStackedNestedPad(): NestedRacks {
+  const racks = registerNestedRacks(["layer-a", "layer-b"]);
+
+  registerDrumChain("layer-a", D1, ["simpler-a"]);
+  registerDrumChain("layer-b", D1, ["simpler-b"]);
+  registerDevice("simpler-a", "Simpler", "SimplerDevice");
+  registerDevice("simpler-b", "Simpler", "SimplerDevice");
+
+  return racks;
+}
+
 /** @returns A LiveAPI handle to the registered rack */
 function rack(): LiveAPI {
   return LiveAPI.from(RACK_PATH);
@@ -719,5 +804,111 @@ describe("resolveNestedParamTarget", () => {
       expectSkipped(target, message);
       expectNoDeviceInserted(chain);
     });
+  });
+});
+// A `sample` write can address a pad on a Drum Rack nested in another rack's
+// pad. That pad behaves like one on the addressed rack: its chain and the
+// Simpler to hold the sample are made when they're missing.
+describe("sample write below a nested drum rack", () => {
+  it("creates the nested pad's chain and a Simpler to hold the sample", () => {
+    const { inner, outer } = registerEmptyNestedPad();
+
+    expect(deviceOf(resolveSampleTarget(NESTED_PAD))?.id).toBe("new-simpler");
+    // The chain lands on the rack that holds the pad, not on the outer one,
+    // whose own C1 chain is already there.
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // The outer pad's chain 0 is implied, exactly as it is at the top level.
+  it("creates it with the outer chain segment left out", () => {
+    const { inner } = registerEmptyNestedPad();
+
+    expect(deviceOf(resolveSampleTarget("pC1/d0/pD1"))?.id).toBe("new-simpler");
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("reuses the Simpler the nested pad already holds", () => {
+    const { inner } = registerNestedRacks(["held-chain"]);
+
+    registerDrumChain("held-chain", D1, ["held-simpler"]);
+    registerDevice("held-simpler", "Simpler", "SimplerDevice");
+
+    expect(deviceOf(resolveSampleTarget(`${NESTED_PAD}/d0`))?.id).toBe(
+      "held-simpler",
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("lists the nested pad's own layers when it is stacked", () => {
+    registerStackedNestedPad();
+
+    // The retries are param names the caller resends as-is, so they carry the
+    // whole prefix down to the nested pad.
+    expectSkipped(
+      resolveSampleTarget(NESTED_PAD),
+      `"${NESTED_PAD}/c0/sample", "${NESTED_PAD}/c1/sample"`,
+    );
+  });
+
+  it("writes the named layer of a stacked nested pad", () => {
+    registerStackedNestedPad();
+
+    expect(deviceOf(resolveSampleTarget(`${NESTED_PAD}/c1`))?.id).toBe(
+      "simpler-b",
+    );
+  });
+
+  // A rack inside a pad is only reachable through a chain that already holds
+  // it, so a walk that finds no device has nothing the write could create.
+  it("skips when the walk to the nested rack finds no device", () => {
+    const { inner } = registerEmptyNestedPad();
+
+    expectSkipped(
+      resolveSampleTarget("pC1/c0/d9/pD1"),
+      'no device at "t0/d0/pC1/c0/d9"',
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("skips a nested device that is not a Drum Rack, stranding no chain", () => {
+    const { inner } = registerNestedRacks([], 0);
+
+    expectSkipped(
+      resolveSampleTarget(NESTED_PAD),
+      `could not resolve or create drum pad "t0/d0/${NESTED_PAD}"`,
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // The cap on auto-created chains is the rack's, wherever the rack sits.
+  it("stops at the auto-create cap one level down too", () => {
+    const { inner } = registerEmptyNestedPad();
+
+    expect(() => resolveSampleTarget(`${NESTED_PAD}/c20`)).toThrow(
+      "Cannot auto-create 21 drum pad chains (max: 16)",
+    );
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("is the sample shortcut, so it is never reported as deprecated", () => {
+    expect(isDrumPadSampleShortcut(NESTED_PAD, "sample")).toBe(true);
+    expect(isDrumPadSampleShortcut(`${NESTED_PAD}/c1/d0`, "sample")).toBe(true);
+  });
+
+  it("leaves a non-sample param on read-only navigation", () => {
+    const { inner } = registerNestedRacks(["held-chain"]);
+
+    registerDrumChain("held-chain", D1, ["held-simpler"]);
+    registerDevice("held-simpler", "Simpler", "SimplerDevice");
+
+    const target = resolveNestedParamTarget(
+      rack(),
+      `${NESTED_PAD}/d0`,
+      "gainDb",
+    );
+
+    expect(deviceOf(target)?.id).toBe("held-simpler");
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });
