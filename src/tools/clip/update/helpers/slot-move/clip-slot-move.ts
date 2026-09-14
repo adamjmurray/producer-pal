@@ -20,6 +20,7 @@ import {
 import {
   canRecreateClip,
   recreatedClipLosses,
+  recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
@@ -224,6 +225,7 @@ export function handleArrangementToSlotMove({
         updatedClips,
         noteResult,
         reasons,
+        losses,
       )
     : recreateIntoEmptySlot(
         clip,
@@ -232,6 +234,7 @@ export function handleArrangementToSlotMove({
         updatedClips,
         noteResult,
         reasons,
+        losses,
       );
 
   if (newClip == null) {
@@ -241,7 +244,7 @@ export function handleArrangementToSlotMove({
   noteClipReason(
     reasons,
     clip.id,
-    `re-created at ${destPath}` + (losses ? ` (${losses})` : ""),
+    `re-created at ${destPath}${recreateLossesNote(losses)}`,
   );
 
   if (isTakeLaneClip(clip)) {

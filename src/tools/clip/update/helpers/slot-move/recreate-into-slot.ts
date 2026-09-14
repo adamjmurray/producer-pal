@@ -40,6 +40,7 @@ interface ScratchSlot {
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
  * @param reasons - What each clip has to say beyond its result
+ * @param losses - What the re-create lost, added to
  * @returns The new clip, or null when the move failed (already reported)
  */
 export function recreateIntoEmptySlot(
@@ -49,8 +50,9 @@ export function recreateIntoEmptySlot(
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
   reasons: ClipReasons,
+  losses: string[],
 ): LiveAPI | null {
-  const attempt = attemptRecreate(clip, destClipSlot);
+  const attempt = attemptRecreate(clip, destClipSlot, losses);
 
   if (attempt.ok) {
     return attempt.clip;
@@ -78,6 +80,7 @@ export function recreateIntoEmptySlot(
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
  * @param reasons - What each clip has to say beyond its result
+ * @param losses - What the re-create lost, added to
  * @returns The new clip, or null when the move failed (already reported)
  */
 export function recreateIntoOccupiedSlot(
@@ -88,6 +91,7 @@ export function recreateIntoOccupiedSlot(
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
   reasons: ClipReasons,
+  losses: string[],
 ): LiveAPI | null {
   const scratch = findScratchSlot(toSlot);
 
@@ -99,6 +103,7 @@ export function recreateIntoOccupiedSlot(
       updatedClips,
       noteResult,
       reasons,
+      losses,
     );
   }
 
@@ -110,6 +115,7 @@ export function recreateIntoOccupiedSlot(
     updatedClips,
     noteResult,
     reasons,
+    losses,
   );
 }
 
@@ -123,13 +129,18 @@ export function recreateIntoOccupiedSlot(
  * throws from inside recreateClipInSlot before any child exists.
  * @param sourceClip - The clip being copied
  * @param slot - The (empty) slot to create in
+ * @param losses - What the re-create lost, added to
  * @returns The new clip, or which way the attempt failed
  */
-function attemptRecreate(sourceClip: LiveAPI, slot: LiveAPI): RecreateAttempt {
+function attemptRecreate(
+  sourceClip: LiveAPI,
+  slot: LiveAPI,
+  losses: string[],
+): RecreateAttempt {
   try {
     return {
       ok: true,
-      clip: recreateClipInSlot(sourceClip, slot, undefined, undefined),
+      clip: recreateClipInSlot(sourceClip, slot, undefined, undefined, losses),
     };
   } catch (error) {
     return { ok: false, incomplete: slot.child("clip").exists(), error };
@@ -180,6 +191,7 @@ function findScratchSlot(toSlot: ClipSlotPosition): ScratchSlot | null {
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
  * @param reasons - What each clip has to say beyond its result
+ * @param losses - What the re-create lost, added to
  * @returns The new clip, or null when the move failed (already reported)
  */
 function recreateViaScratchSlot(
@@ -190,8 +202,9 @@ function recreateViaScratchSlot(
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
   reasons: ClipReasons,
+  losses: string[],
 ): LiveAPI | null {
-  const attempt = attemptRecreate(clip, scratch.slot);
+  const attempt = attemptRecreate(clip, scratch.slot, losses);
 
   if (!attempt.ok) {
     // The scratch slot is one this function picked, not one the caller
@@ -255,6 +268,7 @@ function recreateViaScratchSlot(
  * @param updatedClips - Array to collect results
  * @param noteResult - Note update result for result
  * @param reasons - What each clip has to say beyond its result
+ * @param losses - What the re-create lost, added to
  * @returns The new clip, or null when the move failed (already reported)
  */
 function recreateOverOccupant(
@@ -264,10 +278,11 @@ function recreateOverOccupant(
   updatedClips: ClipResult[],
   noteResult: NoteUpdateResult | null,
   reasons: ClipReasons,
+  losses: string[],
 ): LiveAPI | null {
   destClipSlot.call("delete_clip");
 
-  const attempt = attemptRecreate(clip, destClipSlot);
+  const attempt = attemptRecreate(clip, destClipSlot, losses);
 
   if (attempt.ok) {
     noteClipOverwrite(reasons, clip.id, destPath);

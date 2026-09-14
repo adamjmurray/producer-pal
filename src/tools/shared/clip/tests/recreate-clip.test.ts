@@ -14,14 +14,20 @@ import { PartialRecreateError, recreateClip } from "../recreate-clip.ts";
 const SOURCE_PATH = livePath.track(0).takeLane(0).arrangementClip(0);
 const LANE_PATH = livePath.track(0).takeLane(0);
 
-const NOTES = [0, 4, 8, 12].map((start_time) => ({
+/** What the copy must receive: per-note state kept, note_id dropped. */
+const NOTES = [0, 4, 8, 12].map((start_time, index) => ({
   pitch: 60,
   start_time,
   duration: 1,
   velocity: 100,
   probability: 1,
   velocity_deviation: 0,
+  mute: index === 1 ? 1 : 0,
+  release_velocity: 64 + index,
 }));
+
+/** What the source reads back: the same notes, each with Live's own note_id. */
+const RAW_NOTES = NOTES.map((note, index) => ({ ...note, note_id: index + 1 }));
 
 /** The source's live state, mutated when the destination replaces it. */
 let sourceProps: Record<string, unknown>;
@@ -32,7 +38,7 @@ let sourceNotes: Array<Record<string, number>>;
  * create — what Live does when the copy covers the clip already on the lane.
  */
 function registerSelfOverlappingLane(): void {
-  sourceNotes = NOTES;
+  sourceNotes = RAW_NOTES;
   sourceProps = {
     is_midi_clip: 1,
     is_arrangement_clip: 1,
@@ -106,12 +112,14 @@ describe("recreateClip onto the source's own lane", () => {
       0,
       undefined,
       color,
+      [],
     );
   }
 
-  it("copies the notes the destination wiped", () => {
+  it("copies the notes the destination wiped, per-note state and all", () => {
     recreateOverSource();
 
+    // mute and release_velocity ride along; only note_id is dropped.
     expect(lookupMockObject("copy_clip")?.call).toHaveBeenCalledWith(
       "add_new_notes",
       { notes: NOTES },
@@ -165,8 +173,81 @@ describe("recreateClip onto the source's own lane", () => {
   });
 });
 
+describe("recreateClip and the source's groove", () => {
+  const SOURCE_HAS_GROOVE = { has_groove: 1, groove: ["id", 42] };
+
+  /**
+   * Copy a source with or without a groove onto a lane.
+   * @param sourceGroove - The source's has_groove/groove state
+   * @param copyGroove - What the copy reports after the write
+   * @returns What the copy turned out to lose
+   */
+  function recreateWithGroove(
+    sourceGroove: Record<string, unknown>,
+    copyGroove: Record<string, unknown> = {},
+  ): string[] {
+    registerMockObject("groove_src", {
+      path: SOURCE_PATH,
+      type: "Clip",
+      properties: { is_midi_clip: 1, length: 16, ...sourceGroove },
+      methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
+    });
+    registerMockObject("groove_copy", {
+      path: livePath.track(0).takeLane(0).arrangementClip(1),
+      type: "Clip",
+      properties: { is_arrangement_clip: 1, ...copyGroove },
+    });
+    registerMockObject("groove_lane", {
+      path: LANE_PATH,
+      type: "TakeLane",
+      methods: { create_midi_clip: () => ["id", "groove_copy"] },
+    });
+
+    const losses: string[] = [];
+
+    recreateClip(
+      LiveAPI.from(SOURCE_PATH),
+      LiveAPI.from(LANE_PATH),
+      0,
+      undefined,
+      undefined,
+      losses,
+    );
+
+    return losses;
+  }
+
+  it("copies the source's groove onto the copy", () => {
+    const losses = recreateWithGroove(SOURCE_HAS_GROOVE, { has_groove: 1 });
+
+    expect(lookupMockObject("groove_copy")?.set).toHaveBeenCalledWith(
+      "groove",
+      "id 42",
+    );
+    expect(losses).toStrictEqual([]);
+  });
+
+  // Live answers a set the same way whether or not it landed, so the only
+  // honest report is what the copy reads back.
+  it("reports the groove as lost when it doesn't land on the copy", () => {
+    expect(
+      recreateWithGroove(SOURCE_HAS_GROOVE, { has_groove: 0 }),
+    ).toStrictEqual(["groove isn't copied"]);
+  });
+
+  it("writes no groove, and loses none, when the source has none", () => {
+    const losses = recreateWithGroove({ has_groove: 0 });
+
+    expect(lookupMockObject("groove_copy")?.set).not.toHaveBeenCalledWith(
+      "groove",
+      expect.anything(),
+    );
+    expect(losses).toStrictEqual([]);
+  });
+});
+
 describe("recreateClip on an audio source", () => {
-  it("copies the source's mute state onto the copy", () => {
+  it("copies the source's mute state and groove onto the copy", () => {
     registerMockObject("audio_src", {
       path: SOURCE_PATH,
       type: "Clip",
@@ -175,12 +256,14 @@ describe("recreateClip on an audio source", () => {
         is_audio_clip: 1,
         file_path: "/samples/loop.wav",
         muted: 1,
+        has_groove: 1,
+        groove: ["id", 42],
       },
     });
     registerMockObject("audio_copy", {
       path: livePath.track(0).takeLane(0).arrangementClip(1),
       type: "Clip",
-      properties: { is_arrangement_clip: 1 },
+      properties: { is_arrangement_clip: 1, has_groove: 1 },
     });
     registerMockObject("audio_lane", {
       path: LANE_PATH,
@@ -194,11 +277,16 @@ describe("recreateClip on an audio source", () => {
       0,
       undefined,
       undefined,
+      [],
     );
 
     expect(lookupMockObject("audio_copy")?.set).toHaveBeenCalledWith(
       "muted",
       1,
+    );
+    expect(lookupMockObject("audio_copy")?.set).toHaveBeenCalledWith(
+      "groove",
+      "id 42",
     );
   });
 });
@@ -226,6 +314,7 @@ describe("recreateClip on an audio source with no sample", () => {
         0,
         undefined,
         undefined,
+        [],
       ),
     ).toThrow("audio clip has no sample file");
     expect(lookupMockObject("audio_lane")?.call).not.toHaveBeenCalled();
@@ -278,6 +367,7 @@ describe("recreateClip when a later step fails after creating", () => {
           0,
           undefined,
           "not-a-color", // setColor throws on a malformed hex
+          [],
         );
       } catch (error) {
         caught = error;

@@ -130,6 +130,8 @@ interface MoveOptions {
   isMidi?: number;
   filePath?: string;
   hasEnvelopes?: number;
+  /** 1 gives the source a groove for the copy to keep, or fail to. */
+  hasGroove?: number;
   /** Take lanes the destination track already has */
   initialLanes?: number;
   /** 0 makes the destination an audio track */
@@ -158,6 +160,7 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
     isMidi = 1,
     filePath = "",
     hasEnvelopes = 0,
+    hasGroove = 0,
     initialLanes = 0,
     destHasMidiInput = 1,
     hasNotes = false,
@@ -173,6 +176,8 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
       is_midi_clip: isMidi,
       file_path: filePath,
       has_envelopes: hasEnvelopes,
+      has_groove: hasGroove,
+      groove: ["id", 42],
       start_time: 8,
       end_time: 16,
       length: 8,
@@ -428,6 +433,19 @@ describe("moving an arrangement clip to another lane", () => {
     ).toHaveBeenCalledWith("create_take_lane");
     expect(movedReason()).toBe(
       `re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
+    );
+  });
+
+  // Live takes a groove write and can still leave the copy grooveless, so the
+  // copy is read back and the entry says what really happened.
+  it("says so when the copy didn't keep the source's groove", () => {
+    runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      hasGroove: 1,
+    });
+
+    expect(movedReason()).toBe(
+      `re-created on t${DEST_TRACK}/l0 (groove isn't copied)`,
     );
   });
 

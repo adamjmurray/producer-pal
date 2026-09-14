@@ -146,17 +146,24 @@ function recreateCopy(
   destination: LiveAPI,
   kind: "take-lane" | "promoted",
 ): CopyAttempt {
+  const losses: string[] = [];
+
   try {
-    return {
-      copy: getMinimalClipInfo(
-        recreateClip(
-          options.object,
-          destination,
-          options.startBeats,
-          options.name,
-          options.color,
-        ),
+    const copy = getMinimalClipInfo(
+      recreateClip(
+        options.object,
+        destination,
+        options.startBeats,
+        options.name,
+        options.color,
+        losses,
       ),
+    );
+
+    // What a re-create costs is warned once for the whole call, before any copy
+    // exists, so a loss only this copy hit has to go on its own entry.
+    return {
+      copy: losses.length > 0 ? { ...copy, reason: losses.join("; ") } : copy,
     };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a

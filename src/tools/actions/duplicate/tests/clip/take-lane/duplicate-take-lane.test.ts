@@ -164,14 +164,15 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("strips Live note metadata before re-adding to the take lane", async () => {
+  it("keeps per-note mute and release velocity, dropping only note_id", async () => {
     const newClip = await duplicateToFreshLane({}, [
-      { ...SOURCE_NOTE, note_id: 7, mute: 0, release_velocity: 64 },
+      { ...SOURCE_NOTE, note_id: 7, mute: 1, release_velocity: 77 },
     ]);
 
-    // note_id/mute/release_velocity must not survive into add_new_notes
+    // A stale note_id re-fed on a later write lands on the note it was read
+    // from, so it goes; the per-note state is the copy's to keep.
     expect(newClip?.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: [SOURCE_NOTE],
+      notes: [{ ...SOURCE_NOTE, mute: 1, release_velocity: 77 }],
     });
   });
 

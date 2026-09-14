@@ -24,9 +24,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
+  parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -104,6 +106,36 @@ describe("arrangement clip moved to another lane", () => {
     expect(
       await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "17|1"),
     ).toBeUndefined();
+  });
+
+  // A re-create rebuilds the notes from scratch, so everything Live keeps per
+  // note has to be carried over by hand.
+  it("carries per-note state through a take-lane re-create", async () => {
+    await setConfig({ liveApiEnabled: true });
+    await sleep(50);
+
+    const source = await createClip("641|1", "Muted Note");
+
+    await writeOneMutedNote(source.id);
+
+    const before = await noteDicts(source.id);
+
+    expect(before).toHaveLength(1);
+    expect(before[0]!.mute).toBe(1);
+    expect(before[0]!.release_velocity).toBe(77);
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${CHILD_TRACK}/l0`,
+    });
+
+    expect(moved.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+
+    const after = await noteDicts(moved.id!);
+
+    expect(after[0]!.mute).toBe(1);
+    expect(after[0]!.release_velocity).toBe(77);
+    // Every note field comes across except note_id, which Live assigns itself.
+    expect(after).toStrictEqual(before);
   });
 
   it("refuses a MIDI clip aimed at an audio track and keeps it where it is", async () => {
@@ -486,4 +518,74 @@ async function createClip(
   // Warnings are tolerated: creating on a take lane always warns that the lane
   // is hidden until the track's arrow is expanded.
   return parseToolResultWithWarnings<CreateClipResult>(result).data;
+}
+
+/**
+ * Leave the clip holding one note, muted and with a distinctive release
+ * velocity.
+ *
+ * ppal-live-api passes only scalars, and a JSON string is how the dictionary
+ * `add_new_notes` wants gets through. Never use Live's older note protocol
+ * (select_all_notes/replace_selected_notes/notes/note/done) — it pops a modal
+ * dialog that stalls every Live call until someone dismisses it.
+ * @param clipId - The clip's Live API id
+ */
+async function writeOneMutedNote(clipId: string): Promise<void> {
+  const note = {
+    pitch: 64,
+    start_time: 1,
+    duration: 1,
+    velocity: 90,
+    mute: 1,
+    release_velocity: 77,
+  };
+
+  await ctx.client!.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        {
+          type: "call",
+          method: "remove_notes_extended",
+          args: [0, 128, 0, 4],
+        },
+        {
+          type: "call",
+          method: "add_new_notes",
+          args: [JSON.stringify({ notes: [note] })],
+        },
+      ],
+    },
+  });
+
+  await sleep(100);
+}
+
+/**
+ * A clip's notes as Live reports them, minus the note_id it assigns itself.
+ * @param clipId - The clip's Live API id
+ * @returns One dictionary per note, in Live's own shape
+ */
+async function noteDicts(
+  clipId: string,
+): Promise<Array<Record<string, number>>> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
+      ],
+    },
+  });
+
+  const [raw] = parseToolResult<{
+    results: Array<{ result: string }>;
+  }>(result).results;
+  const { notes } = JSON.parse(raw!.result) as {
+    notes: Array<Record<string, number>>;
+  };
+
+  return notes.map(({ note_id: _noteId, ...note }) => note);
 }

@@ -19,6 +19,7 @@ import {
   PartialRecreateError,
   recreateClip,
   recreatedClipLosses,
+  recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
@@ -260,13 +261,14 @@ function recreateForMove(
       targetBeats,
       undefined,
       undefined,
+      losses,
     );
 
     if (newClip.exists()) {
       noteClipReason(
         reasons,
         clip.id,
-        `re-created on ${landingPath}` + (losses ? ` (${losses})` : ""),
+        `re-created on ${landingPath}${recreateLossesNote(losses)}`,
       );
     }
 

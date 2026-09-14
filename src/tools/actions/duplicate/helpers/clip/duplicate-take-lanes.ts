@@ -15,6 +15,7 @@ import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts
 import {
   canRecreateClip,
   recreatedClipLosses,
+  recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
@@ -90,7 +91,7 @@ export function resolveDuplicateTakeLanes(
     lanes.set(key, { lane, laneIndex });
     console.warn(
       `created on take lane "t${trackIndex}/l${laneIndex}"` +
-        (losses ? ` (${losses})` : "") +
+        recreateLossesNote(losses) +
         ". Expand the take-lanes arrow on the track header in Live to see it.",
     );
   }

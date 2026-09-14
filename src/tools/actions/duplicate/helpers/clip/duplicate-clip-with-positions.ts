@@ -25,6 +25,7 @@ import { type UnreachedDestination } from "../sources/scene-arrangement-position
 import {
   canRecreateClip,
   recreatedClipLosses,
+  recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { entriesPerDestination, refusedCopy } from "./copy-entries.ts";
 import {
@@ -409,7 +410,7 @@ function warnRecreatedCopyLimits(
 
     console.warn(
       `clip ${targetLabel(object)} was promoted to the main lane by re-creating it` +
-        (losses ? ` (${losses})` : ""),
+        recreateLossesNote(losses),
     );
   }
 
