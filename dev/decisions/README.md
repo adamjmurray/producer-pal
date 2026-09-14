@@ -110,3 +110,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md) | A `+` belongs to the tool that creates that kind of object            |
 | [0044](0044-write-results-report-only-what-changed.md)             | A write result reports only what didn't land as asked                 |
 | [0045](0045-c-plus-appends-a-rack-chain.md)                        | `c+` appends a rack chain; nothing ever inserts one                   |
+| [0046](0046-d-plus-appends-a-device.md)                            | `d+` appends a device; `d<n>` still inserts at n                      |

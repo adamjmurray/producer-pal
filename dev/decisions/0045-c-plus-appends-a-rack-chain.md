@@ -1,6 +1,7 @@
 # ADR-0045: `c+` appends a rack chain
 
-- **Status:** Accepted
+- **Status:** Accepted; extended to devices by
+  [ADR-0046](0046-d-plus-appends-a-device.md)
 - **Date logged:** 2026-09-13
 - **Amends:**
   [ADR-0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)

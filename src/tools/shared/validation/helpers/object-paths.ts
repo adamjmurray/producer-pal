@@ -20,6 +20,7 @@ import {
 import { entriesFrom } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   NEW_CHAIN_ADVICE,
+  NEW_DEVICE_ADVICE,
   NEW_TAKE_LANE_ADVICE,
   splitPathEntries,
   pathError,
@@ -59,6 +60,9 @@ export interface DeviceContainerPath {
   /** The path ended in `c+`, so the container is a chain appended to whatever
    * the segments name rather than the segments themselves. */
   appendsChain?: boolean;
+  /** The path ended in `d+`, so a device goes at the end of what the segments
+   * name rather than at an index in it. */
+  appendsDevice?: boolean;
 }
 
 /**
@@ -273,6 +277,10 @@ export function requireDeviceContainer(
     return { root: path.root, segments: path.segments, appendsChain: true };
   }
 
+  if (path.kind === "new-device") {
+    return { root: path.root, segments: path.segments, appendsDevice: true };
+  }
+
   if (
     path.kind === "track" ||
     path.kind === "return-track" ||
@@ -306,6 +314,14 @@ export function requireDevicePath(
       label,
       formatObjectPath(path),
       `${NEW_CHAIN_ADVICE}; name an existing chain as "c<index>"`,
+    );
+  }
+
+  if (container.appendsDevice) {
+    throw pathError(
+      label,
+      formatObjectPath(path),
+      `${NEW_DEVICE_ADVICE}; name an existing device as "d<index>"`,
     );
   }
 
@@ -352,6 +368,7 @@ function describeNonClipPath(path: ObjectPath): string {
   switch (path.kind) {
     case "device":
     case "new-chain":
+    case "new-device":
       return "device paths hold no clips";
     case "new-take-lane":
       return NEW_TAKE_LANE_ADVICE;

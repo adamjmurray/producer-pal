@@ -66,7 +66,7 @@ export function moveDeviceToPath(
     return { outcome: "unresolvable", reason: destination.reason };
   }
 
-  const { container, position } = destination;
+  const { container, position, appendsDevice = false } = destination;
 
   if (!container?.exists()) {
     return { outcome: "no-destination" };
@@ -92,7 +92,10 @@ export function moveDeviceToPath(
     "move_device",
     toLiveApiId(device.id),
     toLiveApiId(container.id),
-    position ?? 0,
+    // `move_device` always takes an index, so a "d+" has to spell the end out:
+    // Live takes the device count itself as "append". Without a marker the top
+    // of the container is where a path that names no slot has always landed.
+    position ?? (appendsDevice ? container.getChildIds("devices").length : 0),
   );
 
   // Live drops some moves without a word. Check rather than assume: the device

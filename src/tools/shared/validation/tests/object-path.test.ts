@@ -313,7 +313,7 @@ describe("parseObjectPath", () => {
       ["t0/d0/rc0/rc1", /"rc1" can't follow a return chain/],
       [
         "t0/d0/pC1/rc0",
-        /"rc0" can't follow a drum pad; expected "c<index>", "d<index>", "inst"/,
+        /"rc0" can't follow a drum pad; expected "c<index>", "d<index>", "d\+"/,
       ],
     ];
 
@@ -614,7 +614,7 @@ describe("parseObjectPath, devices by type", () => {
 
   it("offers the new forms wherever a device may go", () => {
     expect(() => parseObjectPath("t0/c0")).toThrow(
-      `expected "d<index>", "inst", "mfx<index>", or "afx<index>"`,
+      `expected "d<index>", "d+", "inst", "mfx<index>", or "afx<index>"`,
     );
   });
 });

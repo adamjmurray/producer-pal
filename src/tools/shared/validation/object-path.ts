@@ -13,6 +13,7 @@
 
 import {
   NEW_CHAIN,
+  NEW_DEVICE,
   parseLegacyPath,
   pathError,
   splitCoord,
@@ -80,6 +81,7 @@ export type ObjectPath =
   | { kind: "new-take-lane"; trackIndex: number }
   | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
   | { kind: "new-chain"; root: TrackSegment; segments: DeviceSegment[] }
+  | { kind: "new-device"; root: TrackSegment; segments: DeviceSegment[] }
   | ArrangementPosition;
 
 const TRACK_ROOT = /^t(\d+)$/;
@@ -197,6 +199,8 @@ export function formatObjectPath(path: ObjectPath): string {
       return deviceChainPath(path.root, path.segments);
     case "new-chain":
       return `${deviceChainPath(path.root, path.segments)}/${NEW_CHAIN}`;
+    case "new-device":
+      return `${deviceChainPath(path.root, path.segments)}/${NEW_DEVICE}`;
     case "arrangement-position":
       return `${path.lane == null ? "" : formatObjectPath(path.lane)}[${path.position}]`;
     default:
@@ -354,9 +358,30 @@ function parseTail(
     return parseTrackChild(root, first, tail.length, label, input);
   }
 
-  const { segments, appendsChain } = parseDeviceTail(tail, label, input);
+  const { segments, appendsChain, appendsDevice } = parseDeviceTail(
+    tail,
+    label,
+    input,
+  );
 
-  return { kind: appendsChain ? "new-chain" : "device", root, segments };
+  return { kind: deviceTailKind(appendsChain, appendsDevice), root, segments };
+}
+
+/**
+ * What a device chain names: a place for something new, or what is there.
+ * @param appendsChain - Whether the tail ended in `c+`
+ * @param appendsDevice - Whether it ended in `d+`
+ * @returns The path kind
+ */
+function deviceTailKind(
+  appendsChain: boolean,
+  appendsDevice: boolean,
+): "new-chain" | "new-device" | "device" {
+  if (appendsChain) {
+    return "new-chain";
+  }
+
+  return appendsDevice ? "new-device" : "device";
 }
 
 /**

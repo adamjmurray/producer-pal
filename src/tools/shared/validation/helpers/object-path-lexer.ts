@@ -24,6 +24,13 @@ export const NEW_CHAIN = "c+";
 export const NEW_CHAIN_ADVICE =
   '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
 
+/** Appends a device to the container the rest of the path names. */
+export const NEW_DEVICE = "d+";
+
+/** Why a tool that only reads or writes an existing object can't take a `d+`. */
+export const NEW_DEVICE_ADVICE =
+  '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+
 const LEGACY_TRACK = /^(\d+)$/;
 const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
 

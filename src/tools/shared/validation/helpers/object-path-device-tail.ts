@@ -8,7 +8,7 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type DeviceSegment, type DeviceTypeName } from "../object-path.ts";
-import { NEW_CHAIN, pathError } from "./object-path-lexer.ts";
+import { NEW_CHAIN, NEW_DEVICE, pathError } from "./object-path-lexer.ts";
 
 const DEVICE = /^d(\d+)$/;
 const CHAIN = /^c(\d+)$/;
@@ -72,7 +72,7 @@ type DeviceTailStep = DeviceSegment["kind"] | "root";
 
 const DEVICE_KIND = "device";
 const DEVICE_BY_TYPE_KIND = "device-by-type";
-const A_DEVICE = `"d<index>", "inst", "mfx<index>", or "afx<index>"`;
+const A_DEVICE = `"d<index>", "d+", "inst", "mfx<index>", or "afx<index>"`;
 const A_PAD_CHILD = `"c<index>", ${A_DEVICE}`;
 
 // How to name each step, and what may follow it. Without these rules a path
@@ -158,20 +158,22 @@ function parseDeviceSegment(
   );
 }
 
-/** A parsed device chain, and whether it ends in a `c+` that appends one. */
+/** A parsed device chain, and whether a `c+` or `d+` appends one past it. */
 export interface DeviceTail {
   segments: DeviceSegment[];
   appendsChain: boolean;
+  appendsDevice: boolean;
 }
 
 /**
  * Parses the device chain after the root, checking each segment can follow the
- * one before it. A trailing `c+` appends a chain to whatever the segments name,
- * so it goes on the tail rather than into it.
+ * one before it. A trailing `c+` or `d+` appends to whatever the segments name,
+ * so it goes on the tail rather than into it. Each must be last, so a path can
+ * only ever carry one of them.
  * @param tail - Segments after the root
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
- * @returns The parsed device-chain segments, and whether a `c+` closes them
+ * @returns The parsed segments, and which append marker closes them
  */
 export function parseDeviceTail(
   tail: string[],
@@ -181,20 +183,24 @@ export function parseDeviceTail(
   const segments: DeviceSegment[] = [];
   let previous: DeviceTailStep = "root";
   let appendsChain = false;
+  let appendsDevice = false;
 
   for (const [index, raw] of tail.entries()) {
-    if (raw === NEW_CHAIN) {
-      if (index !== tail.length - 1) {
-        throw pathError(
-          label,
-          input,
-          `"${NEW_CHAIN}" appends a new, empty chain, so nothing can follow it`,
-        );
-      }
+    const last = index === tail.length - 1;
 
+    if (raw === NEW_CHAIN) {
+      requireLast(last, NEW_CHAIN, "a new, empty chain", label, input);
       // Goes exactly where a "c<index>" could: a rack's chain, or a pad's layer.
       requireStep("chain", previous, raw, label, input);
       appendsChain = true;
+      continue;
+    }
+
+    if (raw === NEW_DEVICE) {
+      requireLast(last, NEW_DEVICE, "a new device", label, input);
+      // Goes exactly where a "d<index>" could.
+      requireStep(DEVICE_KIND, previous, raw, label, input);
+      appendsDevice = true;
       continue;
     }
 
@@ -205,7 +211,33 @@ export function parseDeviceTail(
     segments.push(segment);
   }
 
-  return { segments, appendsChain };
+  return { segments, appendsChain, appendsDevice };
+}
+
+/**
+ * Checks an append marker closes the path, since what it makes is empty and
+ * nothing can be addressed inside it.
+ * @param last - Whether the marker is the final segment
+ * @param marker - The marker as written
+ * @param noun - What it appends, for the error
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @throws Error when something follows the marker
+ */
+function requireLast(
+  last: boolean,
+  marker: string,
+  noun: string,
+  label: string,
+  input: string,
+): void {
+  if (!last) {
+    throw pathError(
+      label,
+      input,
+      `"${marker}" appends ${noun}, so nothing can follow it`,
+    );
+  }
 }
 
 /**

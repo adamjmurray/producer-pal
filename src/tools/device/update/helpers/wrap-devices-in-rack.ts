@@ -22,12 +22,24 @@ import {
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { NEW_CHAIN_ADVICE } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import {
+  NEW_CHAIN_ADVICE,
+  NEW_DEVICE_ADVICE,
+} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  type ObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+
+/** Why a path that only names a place to put a device wraps nothing. */
+const APPEND_ADVICE: Partial<Record<ObjectPath["kind"], string>> = {
+  "new-chain": NEW_CHAIN_ADVICE,
+  "new-device": NEW_DEVICE_ADVICE,
+};
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -249,10 +261,13 @@ function rackDestination(toPath: string): InsertionPathResolution | null {
  * @returns Device LiveAPI or null if not found
  */
 function resolveDeviceFromPath(path: string): LiveAPI | null {
-  // wrapInRack wraps devices that are already there, and resolving a "c+" here
-  // would append the chain before finding no device in it.
-  if (parseObjectPath(path).kind === "new-chain") {
-    throw new Error(nothingAtPath(path, NEW_CHAIN_ADVICE));
+  // wrapInRack wraps devices that are already there, so an append marker names
+  // nothing to wrap — and resolving a "c+" here would make the chain before
+  // finding no device in it.
+  const advice = APPEND_ADVICE[parseObjectPath(path).kind];
+
+  if (advice != null) {
+    throw new Error(nothingAtPath(path, advice));
   }
 
   const resolved = resolveInsertionPath(path);

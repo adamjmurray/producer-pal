@@ -70,6 +70,21 @@ describe("ppal-create-device", () => {
   }
 
   /**
+   * The index a created device landed at, so nothing hardcodes one.
+   * @param device - A create-device result
+   * @returns The device's index in its container
+   */
+  function deviceIndexOf(device: CreateDeviceResult): number {
+    const index = Number(device.path.match(/\/d(\d+)$/)?.[1]);
+
+    if (Number.isNaN(index)) {
+      throw new Error(`no device index in "${device.path}"`);
+    }
+
+    return index;
+  }
+
+  /**
    * Read a device back by id.
    * @param id - Device id
    * @returns The device
@@ -346,6 +361,46 @@ describe("ppal-create-device", () => {
     const chainDevice = await createDevice("Compressor", `${rack.path}/c0/d0`);
 
     expect(chainDevice.path).toBe(`${rack.path}/c0/d0`);
+  });
+
+  // Only real Live says where an append really lands: it sorts a chain by
+  // device type, and a default track preset may already have put devices there.
+  it("appends a device with d+ on a track", async () => {
+    const trackIndex = await createTrack("audio");
+
+    const first = await createDevice("Compressor", `t${trackIndex}/d+`);
+    const second = await createDevice("Compressor", `t${trackIndex}/d+`);
+
+    // Both are audio effects, so the second lands one past the first wherever
+    // the track's own preset left the end of that section.
+    expect(second.path).toBe(`t${trackIndex}/d${deviceIndexOf(first) + 1}`);
+    expect((await readDeviceAt(second.path)).id).toBe(second.id);
+  });
+
+  it("appends a device with d+ inside a rack chain", async () => {
+    const trackIndex = await createTrack("audio");
+    const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+
+    await sleep(100);
+
+    const first = await createDevice("Compressor", `${rack.path}/c0/d+`);
+    const second = await createDevice("Compressor", `${rack.path}/c0/d+`);
+
+    expect(second.path).toBe(`${rack.path}/c0/d${deviceIndexOf(first) + 1}`);
+  });
+
+  // Nothing reads a device that isn't there yet, and the refusal has to say
+  // which tools do take a `d+`.
+  it("refuses d+ as a read target, naming the tools that take it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d+" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    );
   });
 
   // Only real Live says which index insert_chain actually landed on, which is

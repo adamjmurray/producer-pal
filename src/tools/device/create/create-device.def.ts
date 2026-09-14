@@ -23,9 +23,9 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .describe("device name, omit to list available devices"),
     path: param(z.coerce.string().optional(), {
       default:
-        "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0' or 't0,t1,t0/d0/c0'). An insert renumbers the chain, so no later entry may be spelled through a chain an earlier one inserts into. 't0/d0/c+' appends a new chain to that rack and loads the device into it (the result reports the index it landed at); 'c<n>' makes the chains up to n. In a Drum Rack a chain belongs to a pad, so use 't0/d0/pC1' or 't0/d0/pC1/c+' for another layer",
+        "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0/d+' or 't0/d+,t1/d+,t0/d0/c0/d+'). 't0/d+' appends; 't0/d1' inserts at 1. An insert renumbers the chain, so no later entry may be spelled through a chain an earlier one inserts into. 't0/d0/c+' appends a new chain to that rack and loads the device into it (the result reports the index it landed at); 'c<n>' makes the chains up to n. In a Drum Rack a chain belongs to a pad, so use 't0/d0/pC1' or 't0/d0/pC1/c+' for another layer",
       smallModel:
-        "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0'; 't0/d0/c+' appends a new rack chain)",
+        "insertion path, required with deviceName ('t0/d+' appends, 't0/d1' inserts at 1, 't0/d0/c0/d+'; 't0/d0/c+' appends a new rack chain)",
     }),
     name: param(z.string().optional(), {
       default: "name for all, or comma-separated one per device, in order",

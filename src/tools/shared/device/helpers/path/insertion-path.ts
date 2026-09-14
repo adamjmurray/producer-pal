@@ -47,7 +47,7 @@ export {
  * from the grammar's own device forms so it can't fall behind them.
  */
 const TRAILING_POSITION = new RegExp(
-  `/(?:d\\d+|(?:${Object.values(DEVICE_TYPE_FORMS)
+  `/(?:d\\d+|d\\+|(?:${Object.values(DEVICE_TYPE_FORMS)
     .flatMap((form) => [form.segment, form.long])
     .join("|")})\\d*)$`,
 );
@@ -55,6 +55,9 @@ const TRAILING_POSITION = new RegExp(
 export interface InsertionPathResolution {
   container: LiveAPI | null;
   position: number | null;
+  /** The path ended in `d+`, which names the end of the container rather than
+   * a slot in it. Only set when it did. */
+  appendsDevice?: boolean;
   /** What the container does hold, when a type-addressed segment (`inst`,
    * `afx1`) named no device. The container may well exist. */
   namesNothing?: string;
@@ -65,15 +68,17 @@ export interface InsertionPathResolution {
 
 /**
  * Resolve a path to a container (track or chain) for device insertion.
- * A path ending in a device index names that position; one ending in a
- * container (t, rt, mt, c, rc, p) appends.
+ * A trailing `d+` appends to the container above it; a path ending in a device
+ * index names that position. A bare container (t, rt, mt, c, rc, p) resolves
+ * with no position, which create-device appends to and a move lands first in
+ * — so `d+` is the spelling to teach.
  *
  * Examples:
- * - "t0" -> track 0, append
+ * - "t0/d+" -> track 0, append
  * - "t0/d3" -> track 0, position 3
- * - "t0/d0/c0" -> chain 0 of device 0 on track 0, append
+ * - "t0/d0/c0/d+" -> chain 0 of device 0 on track 0, append
  * - "t0/d0/c0/d1" -> chain 0 of device 0 on track 0, position 1
- * - "t0/d0/pC1" -> drum pad C1 chain 0, append
+ * - "t0/d0/pC1/d+" -> drum pad C1 chain 0, append
  * - "rt0/d0" -> return track 0, device 0; "mt/d0" -> master track
  *
  * @param path - Device insertion path
@@ -88,6 +93,7 @@ export function resolveInsertionPath(
     root,
     segments,
     appendsChain = false,
+    appendsDevice = false,
   } = requireDeviceContainer(parseObjectPath(path, label), label);
   // A trailing `inst`/`mfx<n>`/`afx<n>` is a position like `d<n>`, so it has to
   // become one before the position is read off it.
@@ -97,9 +103,11 @@ export function resolveInsertionPath(
   );
   const resolved = namesNothing == null;
   const last = canonical.at(-1);
-  // A `c+` names no object inside its container, so nothing is trimmed off it.
+  // Neither `c+` nor `d+` names an object inside its container, so nothing is
+  // trimmed off them.
+  const appends = appendsChain || appendsDevice;
   const held = <T extends DeviceSegment>(list: T[]): T[] =>
-    appendsChain ? list : containerSegments(list);
+    appends ? list : containerSegments(list);
   const above = held(canonical);
   // A type-addressed segment that named no device makes a canonical spelling
   // name the wrong thing — echo what the call wrote instead.
@@ -110,7 +118,8 @@ export function resolveInsertionPath(
 
   return {
     container,
-    position: !appendsChain && last?.kind === "device" ? last.index : null,
+    position: !appends && last?.kind === "device" ? last.index : null,
+    ...(appendsDevice ? { appendsDevice } : {}),
     ...(resolved ? {} : { namesNothing }),
     // The chain a `c+` made has an index only now that it exists, and the
     // result has to name it rather than the `c+` the call wrote.
@@ -124,8 +133,8 @@ export function resolveInsertionPath(
 
 /**
  * How a call spelled the container an insertion path names — the path itself,
- * or everything above a trailing `d<n>` position. Parsing only, so a result can
- * echo the caller's own spelling without a Live read.
+ * or everything above a trailing `d<n>` position or `d+`. Parsing only, so a
+ * result can echo the caller's own spelling without a Live read.
  *
  * A path that doesn't parse comes back trimmed lexically rather than throwing:
  * this only names what a result already has, so it must not turn a completed
@@ -140,7 +149,8 @@ export function insertionContainerPath(path: string, label = "path"): string {
     const parsed = requireDeviceContainer(parseObjectPath(path, label), label);
 
     // A `c+` names the container itself, so there is nothing above it to trim
-    // — and the chain it makes has no index until it exists.
+    // — and the chain it makes has no index until it exists. A `d+` leaves its
+    // container in the segments, so formatting them drops it.
     return parsed.appendsChain
       ? path.trim()
       : formatObjectPath({

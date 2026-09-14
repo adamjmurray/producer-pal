@@ -34,7 +34,7 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ```
 path     := ( root ( "/" segment )* )? coord?
 root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
-segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "c+" | "rc"<n>
+segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "d+" | "c"<n> | "c+" | "rc"<n>
            | "p"<note> | "p*" | "inst" | "mfx"<n> | "afx"<n>
 coord    := "[" position "]"
 position := <bar|beat> | "loc:" <locator>
@@ -98,6 +98,7 @@ needs a measurement
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
 | `t0/l+`        | a new take lane, appended         | —                                      |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
+| `t0/d+`        | a new device, appended            | —                                      |
 | `t0/inst`      | the track's instrument            | the `devices N` whose `type` is 1      |
 | `t0/mfx0`      | its first MIDI effect             | the first `devices N` with `type` 4    |
 | `t0/afx1`      | its second audio effect           | the second `devices N` with `type` 2   |
@@ -126,10 +127,20 @@ is an aspect of its track rather than an object a tool makes on its own
 ([ADR-0043](decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
 `c+` is the chain's, taken by the tools that make chains: `ppal-create-device`,
 `ppal-duplicate` and `ppal-update-device`
-([ADR-0045](decisions/0045-c-plus-appends-a-rack-chain.md)). Every other path
-must name something that already exists, or an index a tool fills in up to. A
-tool that only reads or writes an existing object refuses a `+` and says which
-tool takes it.
+([ADR-0045](decisions/0045-c-plus-appends-a-rack-chain.md)). `d+` is the
+device's, taken by those same three
+([ADR-0046](decisions/0046-d-plus-appends-a-device.md)). Every other path must
+name something that already exists, or an index a tool fills in up to. A tool
+that only reads or writes an existing object refuses a `+` and says which tool
+takes it.
+
+`t0/d+` appends a device to the track, `t0/d0/c0/d+` to that chain, and `d<n>`
+inserts at n. A bare container (`t0`, `t0/d0/c0`, `t0/d0/pC1`) is still accepted
+— it is what results and reads spell a container as — but it is not a synonym:
+create-device appends to it, while a move or copy to one lands at the top. So
+`d+` is the spelling to teach. One marker covers every device type: Live's
+`insert_device` appends within the section for the device's own type, so nothing
+has to say which.
 
 Live's `insert_chain` only ever appends, so neither `c+` nor `c<n>` can mean
 "insert at n": `c<n>` fills in the chains up to n, and `c+` adds one past the

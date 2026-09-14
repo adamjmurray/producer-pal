@@ -28,6 +28,18 @@ describe("readOneDevice with path parameter", () => {
     expect(() => readOneDevice({})).toThrow("id or path is required");
   });
 
+  // A read needs a device that is already there, so an append marker names
+  // nothing to read — and the refusal points at the tools that take it.
+  it.each(["t0/d+", "t0/d0/c0/d+"])(
+    "refuses %s, which makes a device",
+    (path) => {
+      expect(() => readOneDevice({ path })).toThrow(
+        `"d+" appends a device, which only ppal-create-device, ppal-duplicate ` +
+          `and ppal-update-device do; name an existing device as "d<index>"`,
+      );
+    },
+  );
+
   // A permanent alias, not a migration: models reach for the prefixed spelling
   // on their own, so it keeps working.
   it("still reads a device by the deviceId alias", () => {
