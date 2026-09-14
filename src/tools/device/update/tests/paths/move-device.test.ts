@@ -268,11 +268,13 @@ describe("moveDeviceToPath", () => {
 
     expect(move.outcome).toBe("moved");
     expect(move.container?.id).toBe("chain-new");
+    // The new chain appends, and the static mock already lists the device, so
+    // the count read before the move is 1 rather than an empty chain's 0.
     expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-0",
       "id chain-new",
-      0,
+      1,
     );
   });
 });

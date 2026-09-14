@@ -157,16 +157,23 @@ describe("a device move Live refuses", () => {
   });
 });
 
-describe('"d+" as a device destination', () => {
+// A bare container appends too, so both spellings land after the last device.
+describe.each([
+  ["d+", "/d+"],
+  ["a bare container", ""],
+])("%s as a device destination", (_label, suffix) => {
   it("moves a device to the end of a track", async () => {
     const from = await createMidiTrack(ctx.client!);
     const to = await createMidiTrack(ctx.client!);
     const deviceId = await createTestDevice(ctx.client!, "Reverb", `t${from}`);
+
+    // Something already on the destination, so the end is not also index 0.
+    await createTestDevice(ctx.client!, "Utility", `t${to}`);
     const before = await readDeviceCount(ctx.client!, to);
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { id: deviceId, toPath: `t${to}/d+` },
+      arguments: { id: deviceId, toPath: `t${to}${suffix}` },
     });
 
     expect(getToolWarnings(result)).not.toContainEqual(
@@ -190,11 +197,13 @@ describe('"d+" as a device destination', () => {
       "Compressor",
       `t${from}`,
     );
+
+    await createTestDevice(ctx.client!, "Utility", `t${to}`);
     const before = await readDeviceCount(ctx.client!, to);
 
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
-      arguments: { type: "device", id: deviceId, toPath: `t${to}/d+` },
+      arguments: { type: "device", id: deviceId, toPath: `t${to}${suffix}` },
     });
 
     expect(isToolError(result)).toBe(false);
@@ -206,7 +215,9 @@ describe('"d+" as a device destination', () => {
 
     expect(await readDeviceCount(ctx.client!, to)).toBe(before + 1);
   });
+});
 
+describe('"d+" as the device to update', () => {
   // A move needs a device that exists, so the append marker names nothing to
   // move — and the refusal has to say which tools do take it.
   it("refuses d+ as the device to update", async () => {

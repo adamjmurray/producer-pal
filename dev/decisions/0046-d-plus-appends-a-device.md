@@ -25,10 +25,11 @@ One marker covers all three device types. Live's `insert_device` with no index
 appends within the section for the device's own type — MIDI effect, instrument,
 audio effect — so the type is Live's business, not the path's.
 
-The bare container is still accepted, but it is not a synonym: create-device
-appends to it, while a move or copy to one lands at the top. It is what results
-and reads spell a container as, so refusing it would break callers pasting a
-path back. It just isn't what we teach.
+The bare container is still accepted and also appends, on every tool: a move or
+copy to `t1` lands after the track's last device, the same as `t1/d+`. It is
+what results and reads spell a container as, so refusing it would break callers
+pasting a path back. It just isn't what we teach, because `d+` says what happens
+and a bare container doesn't.
 
 ## Rejected alternatives
 

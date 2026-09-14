@@ -633,14 +633,15 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
-      // move_device takes "id X" format for live object parameters
+      // A bare container appends, so the index is the track's device count.
+      // move_device takes "id X" format for live object parameters.
       expect(liveSet.call).toHaveBeenCalledWith(
         "move_device",
         "id 123",
         "id track1",
-        0,
+        2,
       );
-      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d2" });
     });
 
     it("should move device to a specific position", () => {
@@ -732,13 +733,13 @@ describe("updateDevice", () => {
         "move_device",
         "id 123",
         "id track1",
-        0,
+        2,
       );
 
       // Should also set name
       expect(device123.set).toHaveBeenCalledWith("name", "Moved Device");
 
-      expect(result).toStrictEqual({ id: "123", path: "t1/d0" });
+      expect(result).toStrictEqual({ id: "123", path: "t1/d2" });
     });
   });
 

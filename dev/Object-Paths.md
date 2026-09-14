@@ -135,10 +135,9 @@ that only reads or writes an existing object refuses a `+` and says which tool
 takes it.
 
 `t0/d+` appends a device to the track, `t0/d0/c0/d+` to that chain, and `d<n>`
-inserts at n. A bare container (`t0`, `t0/d0/c0`, `t0/d0/pC1`) is still accepted
-— it is what results and reads spell a container as — but it is not a synonym:
-create-device appends to it, while a move or copy to one lands at the top. So
-`d+` is the spelling to teach. One marker covers every device type: Live's
+inserts at n. A bare container (`t0`, `t0/d0/c0`, `t0/d0/pC1`) appends too — it
+is what results and reads spell a container as — but `d+` is the spelling to
+teach, since it says what happens. One marker covers every device type: Live's
 `insert_device` appends within the section for the device's own type, so nothing
 has to say which.
 

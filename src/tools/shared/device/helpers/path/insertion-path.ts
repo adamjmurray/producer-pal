@@ -70,8 +70,8 @@ export interface InsertionPathResolution {
  * Resolve a path to a container (track or chain) for device insertion.
  * A trailing `d+` appends to the container above it; a path ending in a device
  * index names that position. A bare container (t, rt, mt, c, rc, p) resolves
- * with no position, which create-device appends to and a move lands first in
- * — so `d+` is the spelling to teach.
+ * with no position, which every tool treats as append — `d+` is just the
+ * spelling to teach.
  *
  * Examples:
  * - "t0/d+" -> track 0, append
