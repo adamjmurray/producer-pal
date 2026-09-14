@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Tests for converter.ts
+ * Tests for result-conversion.ts
  */
 
 import { describe, it, expect } from "vitest";
@@ -13,7 +13,7 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../../types.ts";
-import { toJsonResult } from "../converter.ts";
+import { toJsonResult } from "../result-conversion.ts";
 
 const PASSING_JUDGE = { pass: true, issues: [] };
 const FAILING_JUDGE = {

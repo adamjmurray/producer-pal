@@ -24,7 +24,7 @@ import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
-import { setQuietMode } from "./helpers/output-config.ts";
+import { setQuietMode } from "./helpers/quiet-mode.ts";
 import { type ResultsByScenario } from "./helpers/reporting/report-table.ts";
 import {
   emitSkipped,

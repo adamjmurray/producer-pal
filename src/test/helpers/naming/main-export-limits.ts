@@ -18,6 +18,6 @@ export const MAIN_EXPORT_LIMITS: Record<CommentTree, number> = {
   src: 15,
   scripts: 3,
   webui: 5,
-  evals: 7,
+  evals: 3,
   e2e: 0,
 };

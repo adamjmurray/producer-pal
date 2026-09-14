@@ -5,7 +5,7 @@
 
 import { type streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setQuietMode } from "#evals/scenarios/helpers/output-config.ts";
+import { setQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
 import { processCliStream } from "../stream.ts";
 
 type StreamPart = { type: string; [key: string]: unknown };

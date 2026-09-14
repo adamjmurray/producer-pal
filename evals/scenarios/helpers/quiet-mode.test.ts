@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Tests for output configuration
+ * Tests for quiet mode
  */
 
 import { describe, expect, it, beforeEach } from "vitest";
-import { setQuietMode, isQuietMode } from "./output-config.ts";
+import { setQuietMode, isQuietMode } from "./quiet-mode.ts";
 
-describe("output-config", () => {
+describe("quiet-mode", () => {
   beforeEach(() => {
     // Reset to default state
     setQuietMode(false);

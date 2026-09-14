@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Shared utilities for eval session implementations
+ * Turn logging, shared by the eval session implementations
  */
 
 import {
@@ -12,7 +12,7 @@ import {
   formatTurnHeader,
   formatUserLabel,
 } from "#evals/chat/shared/formatting.ts";
-import { isQuietMode } from "./output-config.ts";
+import { isQuietMode } from "./quiet-mode.ts";
 
 /**
  * Log the start of a turn (user message and assistant prompt)

@@ -21,7 +21,7 @@ import {
 } from "../assertions/index.ts";
 import { type EvalSession } from "../eval-session.ts";
 import { assertionLabel } from "../helpers/json-results/assertion-label.ts";
-import { isQuietMode } from "../helpers/output-config.ts";
+import { isQuietMode } from "../helpers/quiet-mode.ts";
 import {
   seedConnectTurn,
   shouldSeedConnect,

@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type McpConnection } from "#evals/chat/mcp.ts";
-import { setQuietMode } from "#evals/scenarios/helpers/output-config.ts";
+import { setQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
 import { CLAUDE_CODE_TRANSPORT } from "../../claude-code/claude-code-protocol.ts";
 import { CODEX_CLI_TRANSPORT } from "../../codex/codex-cli-protocol.ts";
 import { createAgentCliSession } from "../agent-cli-session.ts";

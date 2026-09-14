@@ -12,7 +12,10 @@ import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
 import { type EvalScenario } from "../../types.ts";
-import { toJsonResult, type TrialInfo } from "../json-results/converter.ts";
+import {
+  toJsonResult,
+  type TrialInfo,
+} from "../json-results/result-conversion.ts";
 import { buildSkippedResult } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { writeJsonResult } from "../json-results/writer.ts";

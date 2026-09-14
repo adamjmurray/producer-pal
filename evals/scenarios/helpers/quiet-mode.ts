@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Output configuration for eval scripts
+ * Quiet mode for eval output
  */
 
 let quietMode = false;

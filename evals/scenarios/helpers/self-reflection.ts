@@ -10,7 +10,7 @@
 import { styleText } from "node:util";
 import { type EvalSession } from "../eval-session.ts";
 import { type EvalAssertionResult, type EvalTurnResult } from "../types.ts";
-import { isQuietMode } from "./output-config.ts";
+import { isQuietMode } from "./quiet-mode.ts";
 
 /** Assertion types that trigger self-reflection on failure */
 const REFLECTABLE_TYPES = new Set(["tool_called", "custom"]);
