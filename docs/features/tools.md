@@ -196,7 +196,7 @@ limitation).
 ### Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
-- Create, rename, or delete arrangement locators
+- Create, rename, or delete arrangement locators, several per call
 
 <!--@include: ../_generated/ppal-update-live-set-schema.md-->
 
