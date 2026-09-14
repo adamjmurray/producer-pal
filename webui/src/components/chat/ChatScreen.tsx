@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5 (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useState } from "preact/hooks";
@@ -144,7 +144,45 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenConnectionSettings={onOpenConnectionSettings}
       onOpenContext={onOpenContext}
     >
-      <div className="flex-1 overflow-y-auto">
+      {/* The composer is first in the DOM so Tab reaches the input, Send and
+          the other composer controls without walking every button and link in
+          the transcript; `order` puts it back below the transcript on screen.
+          Screen readers follow the DOM, so they meet the composer first too. */}
+      <div className="order-2 flex flex-col">
+        {rateLimitState?.isRetrying && (
+          <RateLimitIndicator
+            retryAttempt={rateLimitState.attempt}
+            maxAttempts={rateLimitState.maxAttempts}
+            retryDelayMs={rateLimitState.delayMs}
+            onCancel={onStop}
+          />
+        )}
+
+        {toolLimitReached && !isAssistantResponding && (
+          <ToolLimitNotice
+            onContinue={() =>
+              void handleSend(
+                "Please continue from where you left off.",
+                currentOverrides,
+              )
+            }
+            disabled={isAssistantResponding}
+          />
+        )}
+
+        <ChatInput
+          handleSend={handleSend}
+          onEnqueue={enqueueMessage}
+          isAssistantResponding={isAssistantResponding}
+          hasError={conversationHasError(messages)}
+          isCompacting={isCompacting}
+          onStop={onStop}
+          thinking={thinking}
+          onThinkingChange={setThinking}
+        />
+      </div>
+
+      <div className="order-1 flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <ChatStart
             mcpStatus={mcpStatus}
@@ -174,38 +212,6 @@ export function ChatScreen(props: ChatScreenProps) {
           />
         )}
       </div>
-
-      {rateLimitState?.isRetrying && (
-        <RateLimitIndicator
-          retryAttempt={rateLimitState.attempt}
-          maxAttempts={rateLimitState.maxAttempts}
-          retryDelayMs={rateLimitState.delayMs}
-          onCancel={onStop}
-        />
-      )}
-
-      {toolLimitReached && !isAssistantResponding && (
-        <ToolLimitNotice
-          onContinue={() =>
-            void handleSend(
-              "Please continue from where you left off.",
-              currentOverrides,
-            )
-          }
-          disabled={isAssistantResponding}
-        />
-      )}
-
-      <ChatInput
-        handleSend={handleSend}
-        onEnqueue={enqueueMessage}
-        isAssistantResponding={isAssistantResponding}
-        hasError={conversationHasError(messages)}
-        isCompacting={isCompacting}
-        onStop={onStop}
-        thinking={thinking}
-        onThinkingChange={setThinking}
-      />
     </AppShell>
   );
 }

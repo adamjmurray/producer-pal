@@ -128,6 +128,8 @@ webui/
 - MessageList (scrollable message history)
 - ChatInput (user input form)
 - Shows ChatStart when no messages
+- The composer is first in the DOM and put back below the transcript with CSS
+  `order`, so Tab reaches it without walking every message's buttons
 
 **MessageList.tsx** - Message rendering:
 
