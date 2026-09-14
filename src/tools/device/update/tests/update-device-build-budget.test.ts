@@ -14,7 +14,7 @@
 // per target that used to resolve once.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import {
   beginLiveApiScope,
   endLiveApiScope,
@@ -55,15 +55,6 @@ function setupRack(): void {
       properties: { devices: children(), name: `Chain ${String(i)}` },
     });
   }
-}
-
-/**
- * How many times the call resolved a target of this shape.
- * @param shape - Target shape, indices replaced with `*`
- * @returns Resolution count
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
 }
 
 /**

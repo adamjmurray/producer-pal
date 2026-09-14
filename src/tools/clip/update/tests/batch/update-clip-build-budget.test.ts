@@ -15,6 +15,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import {
   beginLiveApiScope,
   endLiveApiScope,
@@ -33,15 +34,6 @@ const CLIPS = 4;
 
 /** The ids the call names, in order. */
 const IDS = Array.from({ length: CLIPS }, (_, i) => `10${String(i)}`);
-
-/**
- * How many times the call resolved a target of this shape.
- * @param shape - Target shape, indices replaced with `*`
- * @returns Resolution count
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
-}
 
 /** The Live Set, holding the meter and scale every clip update reads. */
 function registerLiveSet(): void {

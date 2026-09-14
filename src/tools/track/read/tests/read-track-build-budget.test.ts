@@ -20,6 +20,7 @@
 
 import { describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -74,18 +75,7 @@ function setupRackWithoutDrumRack(): void {
  * @returns Resolutions of the rack's chain ids
  */
 function chainResolves(): number {
-  return shapeResolves("id rackChain*");
-}
-
-/**
- * How many objects a read resolved of one target shape.
- * @param shape - Target shape, with indices written as `*`
- * @returns Resolutions of that shape
- */
-function shapeResolves(shape: string): number {
-  return (
-    liveApiBuildStats().byShape.find(([found]) => found === shape)?.[1] ?? 0
-  );
+  return resolves("id rackChain*");
 }
 
 /** Clip slots on the fixture track. */
@@ -159,8 +149,8 @@ describe("readTrack build budget", () => {
     // once per scene, and built a scene object it never looked at again. A
     // clip that answers already proves both.
     expect(liveApiBuildStats().resolved).toBe(SLOT_COUNT + 2);
-    expect(shapeResolves("live_set tracks *")).toBe(1);
-    expect(shapeResolves("live_set scenes *")).toBe(0);
+    expect(resolves("live_set tracks *")).toBe(1);
+    expect(resolves("live_set scenes *")).toBe(0);
   });
 
   it("builds nothing but the chains to find out there is no drum map", () => {
