@@ -13,8 +13,11 @@ export type InsertionSpot = number | "end";
 
 /** Where one new object is created, and where it ends up. */
 export interface Insertion<S extends InsertionSpot = InsertionSpot> {
-  /** Index to create at, in the container as it stands when this one runs. */
+  /** Index to create at, clamped to the container as it stands when this one
+   * runs: Live refuses an index past the end instead of appending. */
   insertIndex: S;
+  /** The index asked for before that clamp, so a cap sees the call's reach. */
+  reachIndex: S;
   /** Empty objects to add on the end first, so that index exists. */
   padCount: number;
   /** Where it sits once every object the call named has been created. */
@@ -38,17 +41,16 @@ export function planInsertions<S extends InsertionSpot>(
   existingCount: number,
   padsGaps = false,
 ): Insertion<S>[] {
-  const insertIndexes: InsertionSpot[] = spots.map((spot, i) =>
+  const shifted: InsertionSpot[] = spots.map((spot, i) =>
     shiftPastEarlier(spot, spots.slice(0, i)),
   );
   const layout: number[] = Array.from({ length: existingCount }, () => -1);
   const padCounts: number[] = [];
+  const insertIndexes: InsertionSpot[] = [];
 
-  for (const [i, insertIndex] of insertIndexes.entries()) {
+  for (const [i, spot] of shifted.entries()) {
     const pad =
-      padsGaps && insertIndex !== "end"
-        ? Math.max(0, insertIndex - layout.length)
-        : 0;
+      padsGaps && spot !== "end" ? Math.max(0, spot - layout.length) : 0;
 
     padCounts.push(pad);
 
@@ -56,18 +58,17 @@ export function planInsertions<S extends InsertionSpot>(
       layout.push(-1);
     }
 
-    const at =
-      insertIndex === "end"
-        ? layout.length
-        : Math.min(insertIndex, layout.length);
+    const at = spot === "end" ? layout.length : Math.min(spot, layout.length);
 
+    insertIndexes.push(spot === "end" ? "end" : at);
     layout.splice(at, 0, i);
   }
 
-  // A numeric spot only ever shifts to another number, so the entries come back
-  // in the same shape the caller passed in.
+  // A numeric spot stays a number and "end" stays "end", so the entries come
+  // back in the shape the caller passed in.
   return insertIndexes.map((insertIndex, i) => ({
     insertIndex: insertIndex as S,
+    reachIndex: shifted[i] as S,
     padCount: padCounts[i] as number,
     finalIndex: layout.indexOf(i),
   }));

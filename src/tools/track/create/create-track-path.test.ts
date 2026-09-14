@@ -96,6 +96,18 @@ describe("createTrack by path", () => {
     ]);
   });
 
+  // Live creates nothing for an index past the end, so the index is clamped to
+  // the end before the call and the result names where the track landed.
+  it("creates at the last index for a track asked for past the end", () => {
+    registerMockObject("midi_track_2", {});
+
+    expect(createTrack({ path: "t50", name: "Past The End" })).toStrictEqual({
+      id: "midi_track_2",
+      path: "t2",
+    });
+    expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", 2);
+  });
+
   it("mixes a return track into the list", () => {
     registerMockObject("midi_track_-1", {});
     registerMockObject("return_track_0", {});

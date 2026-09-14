@@ -172,9 +172,8 @@ function returnTrackBase(
  * @param insertions - Where each regular track goes
  */
 function validateTrackCap(total: number, insertions: Insertion[]): void {
-  // The total must not exceed the cap in ANY mode. The reach check below only
-  // sees inserts at a named index, so appends and return tracks would otherwise
-  // be unbounded.
+  // The total must not exceed the cap in ANY mode: the reach check below sees
+  // only inserts at a named index, so appends and returns would be unbounded.
   if (total > MAX_AUTO_CREATED_TRACKS) {
     throw new Error(
       `creating ${total} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
@@ -182,7 +181,7 @@ function validateTrackCap(total: number, insertions: Insertion[]): void {
   }
 
   const indexes = insertions
-    .map((insertion) => insertion.insertIndex)
+    .map((insertion) => insertion.reachIndex)
     .filter((index): index is number => index !== "end");
 
   if (Math.max(-1, ...indexes) + 1 > MAX_AUTO_CREATED_TRACKS) {
@@ -217,10 +216,9 @@ function createSingleTrack(
         : liveSet.call("create_audio_track", index);
   }
 
-  // Live API returns ["id", 123] — the second element is a NUMBER, verified
-  // against Live 12.4.3. Every other tool derives its id from `api.id`, which
-  // is always a string, so stringify here to keep `id` one type across the
-  // whole tool surface (and to make this function's return type honest).
+  // Live API returns ["id", 123] — the second element is a NUMBER (Live
+  // 12.4.3). Every other tool's id comes from `api.id`, always a string, so
+  // stringify to keep `id` one type across the whole tool surface.
   return atomToString(
     assertDefined((result as unknown[])[1], "track id from result"),
   );

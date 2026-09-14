@@ -77,7 +77,8 @@ export function returnSlotLetter(
 /**
  * Live prepends a return slot's send letter to its name, so writing back the
  * name a read tool reported ("A-Delay", "F Pedal") would double it. Strip a
- * leading letter when it matches the slot's own index.
+ * leading "<letter><separator>", case-insensitively, but only when the letter
+ * is the slot's own: "B-Side" on return C is a name, not a doubled prefix.
  * @param path - The slot's Live API path
  * @param name - Requested name
  * @param slotPattern - Regex capturing the slot index at the end of the path

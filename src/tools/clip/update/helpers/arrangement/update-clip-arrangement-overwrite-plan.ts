@@ -52,22 +52,22 @@ export interface ClipMoves {
 
 /**
  * Work out which clips will not survive when several are moved onto one lane at
- * one position. Walks backwards through each group in ID order, tracking
- * maximum length seen. A clip survives only if its length exceeds all clips
- * after it (because later clips placed at the same position overwrite earlier
- * ones up to their length).
+ * one position. Walks backwards through each group in processing order,
+ * tracking maximum length seen. A clip survives only if its length exceeds
+ * every clip after it (because later clips placed at the same position
+ * overwrite earlier ones up to their length).
  *
- * Survivors in ID order are always in descending length: the longest clip is
- * first, each subsequent survivor is shorter and "stacks on top" at the target
- * position. That does NOT make every survivor longer than every non-survivor —
- * lengths [20, 40, 12] leave the 20 a non-survivor while the trailing 12
- * survives — so the plan carries each survivor's length and the deferred
- * deletion compares before it clears anything.
+ * Survivors in processing order are always in descending length: the longest
+ * clip is first, each subsequent survivor is shorter and "stacks on top" at
+ * the target position. That does NOT make every survivor longer than every
+ * non-survivor — lengths [20, 40, 12] leave the 20 a non-survivor while the
+ * trailing 12 survives — so the plan carries each survivor's length and the
+ * deferred deletion compares before it clears anything.
  *
  * Returns null when the optimization applies to nothing: no group has more
  * than one clip, or no group has a non-survivor.
  *
- * @param clips - Clips in the order they will be processed (ID order)
+ * @param clips - Clips in the order they will be processed
  * @param moves - Where each clip is headed
  * @returns The overwrite plan, or null when it applies to nothing
  */
@@ -139,7 +139,7 @@ export function computeOverwritePlan(
 /**
  * Backwards scan of one group: a clip survives if its length beats every clip
  * after it, and is overwritten otherwise.
- * @param group - The group's clips, in ID order
+ * @param group - The group's clips, in processing order
  * @returns The group's survivors and the clips they overwrite
  */
 function splitGroup(group: ClipMoveInfo[]): {

@@ -261,6 +261,31 @@ describe("ppal-create-track", () => {
     expect(atIndex.path).toBe("t0");
   });
 
+  // Live creates nothing for an index past the end, so the index is clamped to
+  // the end before the call. The offset stays well under the 100-track cap the
+  // tool refuses above.
+  it("reports the last index for a track asked for past the end", async () => {
+    const before = await trackCount();
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: `t${String(before + 20)}`, name: "Past The End" },
+      }),
+    );
+
+    expect(created.path).toBe(`t${String(before)}`);
+
+    await sleep(100);
+    expect(await nameAt(created.path!)).toBe("Past The End");
+
+    await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { id: created.id, type: "track" },
+    });
+    await sleep(100);
+    expect(await trackCount()).toBe(before);
+  });
+
   it("creates multiple tracks in batch", async () => {
     // Get initial track count
     const initialResult = await ctx.client!.callTool({
