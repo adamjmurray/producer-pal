@@ -150,7 +150,6 @@ function duplicateDevice(
         adjustedDestination,
         device,
         destination,
-        sourceLabel,
       );
 
       if (outcome === "no-destination") {
@@ -160,9 +159,9 @@ function duplicateDevice(
       }
 
       if (outcome === "refused") {
-        throw new Error(
-          `the copy of ${sourceLabel} could not be moved to "${destination}"`,
-        );
+        const refusal = `the copy of ${sourceLabel} could not be moved to "${destination}"`;
+
+        throw new Error(reason == null ? refusal : `${refusal}: ${reason}`);
       }
 
       if (outcome === "unresolvable") {

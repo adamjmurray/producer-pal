@@ -53,19 +53,24 @@ describe("update-device sendReturn by id", () => {
     expect(written?.gainDb).toBeCloseTo(-14, 1);
   });
 
-  it("warns and skips an id that is not one of the rack's return chains", async () => {
+  it("refuses an id that is not one of the rack's return chains", async () => {
     // The rack's own id: a real Live object, and not a return chain of it.
     const kit = await readKitPads(ctx.client!);
 
-    const { warnings } = await callWithWarnings(
+    const { data, warnings } = await callWithWarnings(
       ctx.client!,
       "ppal-update-device",
       { path: CLAP, sendGainDb: -3, sendReturn: kit.id },
     );
 
-    expect(
-      warnings.some((w) => w.includes(`no return chain matching "${kit.id}"`)),
-    ).toBe(true);
+    expect(data.sends).toStrictEqual([
+      expect.objectContaining({
+        return: kit.id,
+        ok: false,
+        reason: expect.stringContaining(`no return chain matching "${kit.id}"`),
+      }),
+    ]);
+    expect(warnings).toStrictEqual([]);
 
     const sends = padChain(await readKitPads(ctx.client!), "Clap").sends ?? [];
 
@@ -134,11 +139,15 @@ describe("update-device sendReturn by id", () => {
       { path: CLAP, sends: [{ return: "ZZZ", gainDb: -6 }] },
     );
 
-    expect(
-      warnings.some((w) => w.includes('no return chain matching "ZZZ"')),
-    ).toBe(true);
-    // Nothing was written, so nothing is reported as though it had been.
-    expect(data.sends).toBeUndefined();
+    // Nothing was written, so the send carries the reason in place of a level.
+    expect(data.sends).toStrictEqual([
+      expect.objectContaining({
+        return: "ZZZ",
+        ok: false,
+        reason: expect.stringContaining('no return chain matching "ZZZ"'),
+      }),
+    ]);
+    expect(warnings).toStrictEqual([]);
   });
 
   // The multi-send write, and the round trip that makes it usable: what a read

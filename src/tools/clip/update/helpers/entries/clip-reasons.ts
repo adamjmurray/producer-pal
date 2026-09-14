@@ -8,14 +8,11 @@
 // the helpers that find out collect it here and the update loop puts it on the
 // entry they wrote.
 //
-// A clip updated but not as asked keeps its entry and a reason; one the call
-// asked nothing else of and couldn't move at all keeps its slot as a skip —
-// `refuseClipWork` marks that kind, and `ignoreClipParams` marks a param that
-// did nothing, which is the same thing once that param stops counting as work.
-//
-// Keyed by the clip's id as the call found it, which is what the loop looks up.
-// A step writing under a new id (a move re-creates the clip) hands its reasons
-// back with {@link moveClipReasons}.
+// A clip updated but not as asked keeps its entry and a reason; one whose only
+// work was refused keeps its slot as a skip — `refuseClipWork` marks that, and
+// so does `ignoreClipParams`, since an ignored param stops counting as work.
+// Everything is keyed by the clip's id as the call found it; a step writing
+// under a new id hands its reasons back with {@link moveClipReasons}.
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 
@@ -62,6 +59,21 @@ export function noteClipReason(
 }
 
 /**
+ * Note that the clip moved into a slot that already held one, which the move
+ * replaced.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param destPath - The slot it moved into
+ */
+export function noteClipOverwrite(
+  reasons: ClipReasons,
+  clipId: string,
+  destPath: string,
+): void {
+  noteClipReason(reasons, clipId, `overwrote the existing clip at ${destPath}`);
+}
+
+/**
  * Note that the work this clip was sent for didn't happen at all, so a call that
  * asked for nothing else has only the reason to report.
  * @param reasons - What each clip has to say, added to
@@ -91,7 +103,7 @@ export function markClipLanded(reasons: ClipReasons, clipId: string): void {
  * Note that params the call sent did nothing on this clip, and refuse the work
  * they asked for. Naming them is what makes the refusal stick: the loop reads a
  * param the call sent as work asked of the clip, so an ignored one has to stop
- * counting or the clip looks like it was updated.
+ * counting or the clip looks updated.
  * @param reasons - What each clip has to say, added to
  * @param clipId - The clip, by the id the call found it at
  * @param params - The params that did nothing

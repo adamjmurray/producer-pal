@@ -25,7 +25,7 @@ import {
   updateMacroCount,
   updateMacroVariation,
 } from "./rack-macro-updates.ts";
-import { isChainType, isRackDevice, warnIfSet } from "./update-target-types.ts";
+import { isChainType, isRackDevice, noteIfSet } from "./update-target-types.ts";
 
 export interface UpdatePropertyOptions {
   params?: ParamEntry[];
@@ -52,18 +52,25 @@ export interface UpdateTargetOptions extends UpdatePropertyOptions {
   name?: string;
 }
 
+/** What a device update wrote, and what a device has no use for. */
+export interface DeviceApplied {
+  /** One per param the call named: what it reads as, or why it named nothing */
+  params: ParamResult[];
+  ignored: string[];
+}
+
 /**
  * Update device-specific properties
  * @param target - Device to update
  * @param type - Device type
  * @param options - Update options
- * @returns Every param the call named: what it reads as, or why it named nothing
+ * @returns What the call's params read as, and the ones a device can't take
  */
 export function updateDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
-): ParamResult[] {
+): DeviceApplied {
   const {
     params,
     actions,
@@ -83,6 +90,8 @@ export function updateDeviceProperties(
     mappedPitch,
     force,
   } = options;
+
+  const ignored: string[] = [];
 
   // Written first so a macroVariation "create" stores what was just set. The
   // values are read at the end instead: an A/B swap, a variation recall or a
@@ -107,28 +116,34 @@ export function updateDeviceProperties(
       updateMacroCount(target, macroCount);
     }
   } else {
-    warnIfSet("macroVariation", macroVariation, type, target);
-    warnIfSet("macroVariationIndex", macroVariationIndex, type, target);
-    warnIfSet("macroCount", macroCount, type, target);
+    noteIfSet(ignored, "macroVariation", macroVariation);
+    noteIfSet(ignored, "macroVariationIndex", macroVariationIndex);
+    noteIfSet(ignored, "macroCount", macroCount);
   }
 
-  warnIfSet("mute", mute, type, target);
-  warnIfSet("solo", solo, type, target);
-  warnIfSet("color", color, type, target);
-  warnIfSet("gainDb", gainDb, type, target);
-  warnIfSet("pan", pan, type, target);
-  warnIfSet("sendGainDb", sendGainDb, type, target);
-  warnIfSet("sendReturn", sendReturn, type, target);
-  warnIfSet("sends", sends, type, target);
-  warnIfSet("chokeGroup", chokeGroup, type, target);
-  warnIfSet("mappedPitch", mappedPitch, type, target);
+  noteIfSet(ignored, "mute", mute);
+  noteIfSet(ignored, "solo", solo);
+  noteIfSet(ignored, "color", color);
+  noteIfSet(ignored, "gainDb", gainDb);
+  noteIfSet(ignored, "pan", pan);
+  noteIfSet(ignored, "sendGainDb", sendGainDb);
+  noteIfSet(ignored, "sendReturn", sendReturn);
+  noteIfSet(ignored, "sends", sends);
+  noteIfSet(ignored, "chokeGroup", chokeGroup);
+  noteIfSet(ignored, "mappedPitch", mappedPitch);
 
-  return refreshParamValues(paramResults);
+  return { params: refreshParamValues(paramResults), ignored };
 }
 
-/** What a chain or pad update has to say: its mixer, plus any params it took. */
-export interface NonDeviceApplied extends ChainMixerReport {
+/** What a chain or pad update wrote: its mixer, plus any params it took. */
+export interface NonDeviceWrites extends ChainMixerReport {
   params?: ParamResult[];
+}
+
+/** ...plus the params it had no use for, which the caller turns into the
+ * target's reason rather than leaving in the entry. */
+export interface NonDeviceApplied extends NonDeviceWrites {
+  ignored: string[];
 }
 
 /**
@@ -136,7 +151,8 @@ export interface NonDeviceApplied extends ChainMixerReport {
  * @param target - Chain or drum pad to update
  * @param type - Target type
  * @param options - Update options
- * @returns What the chain's mixer and sample writes didn't land as asked
+ * @returns What the chain's mixer and sample writes didn't land as asked, and
+ *   the params a chain or pad can't take
  */
 export function updateNonDeviceProperties(
   target: LiveAPI,
@@ -147,12 +163,13 @@ export function updateNonDeviceProperties(
   // the same route the rack's `pC1/sample` shortcut does. Everything else in
   // `params` is still not applicable, and says so in its own entry.
   const params = applyChainSampleParams(target, type, options);
+  const ignored: string[] = [];
 
-  warnIfSet("actions", options.actions, type, target);
-  warnIfSet("macroVariation", options.macroVariation, type, target);
-  warnIfSet("macroVariationIndex", options.macroVariationIndex, type, target);
-  warnIfSet("macroCount", options.macroCount, type, target);
-  warnIfSet("abCompare", options.abCompare, type, target);
+  noteIfSet(ignored, "actions", options.actions);
+  noteIfSet(ignored, "macroVariation", options.macroVariation);
+  noteIfSet(ignored, "macroVariationIndex", options.macroVariationIndex);
+  noteIfSet(ignored, "macroCount", options.macroCount);
+  noteIfSet(ignored, "abCompare", options.abCompare);
 
   if (options.mute != null) {
     target.set("mute", options.mute ? 1 : 0);
@@ -173,22 +190,24 @@ export function updateNonDeviceProperties(
       mixer = chainMixerReport(applyChainMixer(target, options), options);
     }
   } else {
-    warnIfSet("color", options.color, type, target);
-    warnIfSet("gainDb", options.gainDb, type, target);
-    warnIfSet("pan", options.pan, type, target);
-    warnIfSet("sendGainDb", options.sendGainDb, type, target);
-    warnIfSet("sendReturn", options.sendReturn, type, target);
-    warnIfSet("sends", options.sends, type, target);
+    noteIfSet(ignored, "color", options.color);
+    noteIfSet(ignored, "gainDb", options.gainDb);
+    noteIfSet(ignored, "pan", options.pan);
+    noteIfSet(ignored, "sendGainDb", options.sendGainDb);
+    noteIfSet(ignored, "sendReturn", options.sendReturn);
+    noteIfSet(ignored, "sends", options.sends);
   }
 
   if (type === "DrumChain") {
     updateDrumChainProperties(target, options);
   } else {
-    warnIfSet("chokeGroup", options.chokeGroup, type, target);
-    warnIfSet("mappedPitch", options.mappedPitch, type, target);
+    noteIfSet(ignored, "chokeGroup", options.chokeGroup);
+    noteIfSet(ignored, "mappedPitch", options.mappedPitch);
   }
 
-  return params.length > 0 ? { ...mixer, params } : mixer;
+  return params.length > 0
+    ? { ...mixer, params, ignored }
+    : { ...mixer, ignored };
 }
 
 /**

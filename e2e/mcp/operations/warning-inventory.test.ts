@@ -36,6 +36,13 @@ const SCRATCH = `t${EMPTY_MIDI_TRACK}`;
 /** A colour Live's palette does not hold, so every write of it snaps. */
 const OFF_PALETTE = "#123456";
 
+/** One send of a write result: only what these probes read off it. */
+interface SendEntry {
+  return?: string;
+  ok?: false;
+  reason?: string;
+}
+
 /** One entry of a multi-target write result. */
 interface TargetEntry {
   id?: string;
@@ -43,7 +50,7 @@ interface TargetEntry {
   ok?: false;
   reason?: string;
   params?: Array<{ reason?: string }>;
-  sends?: Array<{ reason?: string }>;
+  sends?: SendEntry[];
 }
 
 describe("warnings the tools still raise", () => {
@@ -146,17 +153,7 @@ describe("warnings the tools still raise", () => {
     ]);
   });
 
-  it("warns rather than reports when a target has no use for a param", async () => {
-    // Not on the device's entry: update-device's `params` list reports per
-    // param, but its chain-and-pad params still go back as a warning.
-    expect(
-      await warningsFrom("ppal-update-device", { path: "t0/d0", gainDb: -6 }),
-    ).toStrictEqual([
-      `WARNING: 'gainDb' not applicable to RackDevice ${await label("ppal-read-device", "t0/d0")}`,
-    ]);
-  });
-
-  it("warns when a send names a return that isn't there", async () => {
+  it("warns when a send names a return track that isn't there", async () => {
     // One warning for the whole call: `sends` names return tracks, and which
     // ones exist is a fact about the Set rather than about either track.
     expect(
@@ -166,43 +163,6 @@ describe("warnings the tools still raise", () => {
       }),
     ).toStrictEqual([
       'WARNING: sends entry "Nope" names no return track, so its gainDb was not written (Available: A-Delay, B-Reverb)',
-    ]);
-
-    // A rack's return chains belong to the rack, and this one still warns per
-    // chain instead of reporting on the pad's entry.
-    const chain = await label("ppal-read-device", "t0/d0/pC1/c0");
-
-    expect(
-      await warningsFrom("ppal-update-device", {
-        path: "t0/d0/pC1",
-        sends: [{ return: "Nope", gainDb: -10 }],
-      }),
-    ).toStrictEqual([
-      `WARNING: chain "Kick Bass Drum 505 Classic" ${chain}: no return chain matching "Nope" (returns: a Saturator)`,
-    ]);
-  });
-
-  it("warns about a copy and an overwrite the entry already reports", async () => {
-    const rackLabel = await label("ppal-read-device", "t0/d0");
-
-    expect(
-      await warningsFrom("ppal-duplicate", {
-        type: "device",
-        path: `t11/d0,t0/d0`,
-      }),
-    ).toStrictEqual([
-      `WARNING: Live refused the move of ${rackLabel}: the destination already has an instrument, and only one is allowed`,
-    ]);
-
-    const clipLabel = await label("ppal-read-clip", "t0/s0");
-
-    expect(
-      await warningsFrom("ppal-update-clip", {
-        path: "t0/s0",
-        toPath: "t1/s0",
-      }),
-    ).toStrictEqual([
-      `WARNING: clip ${clipLabel} overwrote the existing clip at t1/s0`,
     ]);
   });
 });
@@ -237,15 +197,83 @@ describe("calls that report on the entry and warn about nothing", () => {
     );
   });
 
-  it("rounds a send, skips an empty pad, and finds nothing to delete", async () => {
+  it("refuses a param, a send and a device move on the target's own entry", async () => {
+    // update-device's `params` list reports per param; gainDb and the other
+    // chain-and-pad arguments have no entry of their own, so they ride on the
+    // target's. The rack takes nothing else here, so its slot is a skip.
+    const ignoredArg = await entriesFrom("ppal-update-device", {
+      path: "t0/d0,t0/d0/pC1/c0",
+      gainDb: -6,
+    });
+
+    expect(ignoredArg[0]).toStrictEqual({
+      path: "t0/d0",
+      ok: false,
+      reason: "gainDb not applicable to RackDevice",
+    });
+    // The chain it was sent alongside takes it, and keeps its own slot.
+    expect(ignoredArg[1]?.path).toBe("t0/d0/pC1/c0");
+
+    // A rack's return chains belong to the rack, so the pad the call named is
+    // what has nothing matching — its own entry says it.
+    const padSend = await entryFrom("ppal-update-device", {
+      path: "t0/d0/pC1",
+      sends: [{ return: "Nope", gainDb: -10 }],
+    });
+
+    expect(padSend.sends).toStrictEqual([
+      {
+        return: "Nope",
+        ok: false,
+        reason: 'no return chain matching "Nope" (returns: a Saturator)',
+      },
+    ]);
+
+    const rackLabel = await label("ppal-read-device", "t0/d0");
+    const refusedCopy = await entriesFrom("ppal-duplicate", {
+      type: "device",
+      path: `t11/d0,t0/d0`,
+    });
+
+    expect(refusedCopy[1]).toStrictEqual({
+      path: "t0/d0",
+      ok: false,
+      reason:
+        `the copy of ${rackLabel} could not be moved to "t0/d1": ` +
+        "the destination already has an instrument, and only one is allowed",
+    });
+  });
+
+  it("says on the moved clip's entry that it replaced the one there", async () => {
+    const moved = await entryFrom("ppal-update-clip", {
+      path: "t0/s0",
+      toPath: "t1/s0",
+    });
+
+    expect(moved.reason).toBe("overwrote the existing clip at t1/s0");
+  });
+
+  it("rounds a send, refuses one a track can't take, and skips an empty pad", async () => {
     const send = await entryFrom("ppal-update-track", {
       path: "t0",
       sends: [{ return: "A", gainDb: -12.345 }],
     });
 
-    expect(send.sends![0]!.reason).toBe(
+    expect(sendsOf(send)[0]?.reason).toBe(
       "gainDb read back as shown, not as sent",
     );
+
+    // The main track has no sends at all, so the write has nowhere to land.
+    // The track's entry carries the refusal instead of the call warning and
+    // leaving no entry.
+    const mainSend = await entryFrom("ppal-update-track", {
+      path: "mt",
+      sends: [{ return: "A", gainDb: -10 }],
+    });
+
+    expect(sendsOf(mainSend)).toStrictEqual([
+      expect.objectContaining({ ok: false, reason: "the track has no sends" }),
+    ]);
 
     const pads = await entriesFrom("ppal-update-device", {
       path: "t0/d0/pC1,t0/d0/pC2",
@@ -326,6 +354,15 @@ async function entriesFrom(
   await sleep(100);
 
   return data;
+}
+
+/**
+ * The sends one entry reports.
+ * @param entry - The target's entry
+ * @returns Its sends, or an empty list when it reported none
+ */
+function sendsOf(entry: TargetEntry): SendEntry[] {
+  return entry.sends ?? [];
 }
 
 /**

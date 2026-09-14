@@ -26,8 +26,8 @@ Per-file scores after triage:
 
 | File                                       | Score   | Survived | Notes                             |
 | ------------------------------------------ | ------- | -------- | --------------------------------- |
-| `update-target-types.ts`                   | 100.00% | 0        | warnIfSet null-guard pinned       |
-| `update-device-properties.ts`              | 96.63%  | 3        | cross-type not-applicable warns   |
+| `update-target-types.ts`                   | 100.00% | 0        | noteIfSet null-guard pinned       |
+| `update-device-properties.ts`              | 96.63%  | 3        | cross-type not-applicable params  |
 | `move-device.ts` + `rack-macro-updates.ts` | 95.31%  | 10       | macro variation/count, drum chain |
 | `update-device.ts`                         | 93.52%  | 7        | focus `.at(-1)`, move/type warns  |
 | `read-device.ts`                           | 92.31%  | 12       | return-chains + nested bounds     |
@@ -71,7 +71,7 @@ One durable test-authoring gotcha surfaced (worth reusing across domains):
 | Drum-chain move: single-chain vs whole-pad, sharp note, `p*`        | `update-device-drum-chain-move.test.ts`     |
 | Nested drum-pad chain/device index boundary + non-numeric segments  | `read-device-drum-pad-path.test.ts`         |
 | Device `focus` selects `.at(-1)` (3 devices, not a 2-element tie)   | `update-device-focus.test.ts`               |
-| Cross-type "not applicable" warns (rack-only on non-rack, etc.)     | `update-device-chains.test.ts`              |
+| Cross-type "not applicable" params (rack-only on non-rack, etc.)    | `update-device-chains.test.ts`              |
 | Division-label OR, min-unparseable fallback, pan display-max        | `update-device-param-conversion.test.ts`    |
 | return-chains include on/off; malformed-path safe-resolve warn      | `read-device.test.ts`, `update-device-path` |
 | Malformed-JSON `params` string rejected (not swallowed)             | `device-params-schema.test.ts`              |

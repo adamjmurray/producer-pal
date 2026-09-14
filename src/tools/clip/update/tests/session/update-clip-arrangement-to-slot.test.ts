@@ -299,11 +299,12 @@ function expectMovedToDestination(updatedClips: ClipResult[]): void {
   ]);
 }
 
-/** The destination's occupant was replaced, and the caller was told. */
-function expectOverwriteWarning(): void {
-  expect(capturedWarnings()).toContain(
-    `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+/** The destination's occupant was replaced, and the clip's entry says so. */
+function expectOverwriteReason(): void {
+  expect(movedReason()).toContain(
+    `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
   );
+  expect(capturedWarnings()).toStrictEqual([]);
 }
 
 describe("handleArrangementToSlotMove", () => {
@@ -394,7 +395,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expectOverwriteWarning();
+    expectOverwriteReason();
   });
 
   // The occupant is never predeleted here: the replacement is built and
@@ -413,7 +414,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
       "delete_clip",
     );
-    expectOverwriteWarning();
+    expectOverwriteReason();
     expectMovedToDestination(updatedClips);
   });
 
@@ -438,7 +439,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expectOverwriteWarning();
+    expectOverwriteReason();
     expectMovedToDestination(updatedClips);
   });
 

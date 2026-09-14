@@ -388,24 +388,42 @@ describe("applyChainMixer", () => {
       expect(sends[0]?.set).not.toHaveBeenCalled();
     });
 
-    it("warns with the available returns when none matches", () => {
+    it("lists the available returns when none matches", () => {
       registerChainWithSends();
 
-      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "Chorus" });
+      const applied = applyChainMixer(chainApi(), {
+        sendGainDb: -6,
+        sendReturn: "Chorus",
+      });
 
-      expect(capturedWarnings()).toContain(
-        'chain "Snare" t0/d0/c1 (id chain-1): no return chain matching "Chorus" (returns: a Delay, b Reverb)',
-      );
+      expect(applied.sends).toStrictEqual([
+        {
+          return: "Chorus",
+          ok: false,
+          reason:
+            'no return chain matching "Chorus" (returns: a Delay, b Reverb)',
+        },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("warns when the rack has no return chains", () => {
+    it("says so when the rack has no return chains", () => {
       registerChainWithSends([]);
 
-      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "a" });
+      const applied = applyChainMixer(chainApi(), {
+        sendGainDb: -6,
+        sendReturn: "a",
+      });
 
-      expect(capturedWarnings()).toContain(
-        'chain "Snare" t0/d0/c1 (id chain-1): no return chain matching "a" (rack has no return chains; they can only be added in Live)',
-      );
+      expect(applied.sends).toStrictEqual([
+        {
+          return: "a",
+          ok: false,
+          reason:
+            'no return chain matching "a" (rack has no return chains; they can only be added in Live)',
+        },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("warns and skips a macro-mapped send", () => {
@@ -461,7 +479,7 @@ describe("applyChainMixer", () => {
         ]);
       });
 
-      it("reports only the entries that landed, and warns about the rest", () => {
+      it("reports the entries that landed and the ones that named nothing", () => {
         const [first] = registerChainWithSends();
 
         keepsParamValue(first as RegisteredMockObject, -6.02);
@@ -474,10 +492,16 @@ describe("applyChainMixer", () => {
         });
 
         expect(first?.set).toHaveBeenCalledWith("display_value", -6);
-        expect(applied.sends).toStrictEqual([snappedSend(-6.02)]);
-        expect(capturedWarnings().join()).toContain(
-          'no return chain matching "nope"',
-        );
+        expect(applied.sends).toStrictEqual([
+          snappedSend(-6.02),
+          {
+            return: "nope",
+            ok: false,
+            reason:
+              'no return chain matching "nope" (returns: a Delay, b Reverb)',
+          },
+        ]);
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
       it("honors both the scalar pair and the list in one call", () => {

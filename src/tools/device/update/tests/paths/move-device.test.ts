@@ -124,30 +124,10 @@ describe("moveDeviceToPath", () => {
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
       outcome: "refused",
+      reason: undefined,
     });
-    expect(capturedWarnings()).toContain(
-      "Live refused the move of t0/d0 (id device-0)",
-    );
-  });
-
-  it("names the source a duplication gave it, not the temp copy it moved", () => {
-    // Both duplication paths hand the move a temp copy on a track the cleanup
-    // is about to delete, so naming `device` here would print a dead id.
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
-
-    expect(
-      moveDeviceToPath(
-        LiveAPI.from(device.path),
-        "t1/d0",
-        null,
-        "t1/d0",
-        "t0/d0/c0/d0",
-      ),
-    ).toStrictEqual({ outcome: "refused" });
-    expect(capturedWarnings()).toContain(
-      "Live refused the move of t0/d0/c0/d0",
-    );
+    // The caller puts the refusal on the target's own entry (ADR-0042).
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("names the one refusal Live's own state explains", () => {
@@ -170,10 +150,10 @@ describe("moveDeviceToPath", () => {
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
       outcome: "refused",
+      reason:
+        "the destination already has an instrument, and only one is allowed",
     });
-    expect(capturedWarnings()).toContain(
-      "Live refused the move of t0/d0 (id device-0): the destination already has an instrument, and only one is allowed",
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("refuses an index past the end, which Live would drop in silence", () => {

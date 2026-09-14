@@ -5,7 +5,6 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ClipResult,
   keepClip,
@@ -15,8 +14,11 @@ import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
+import {
+  noteClipOverwrite,
+  refuseClipWork,
+  type ClipReasons,
+} from "../entries/clip-reasons.ts";
 
 /** What trying to build the replacement clip found. */
 type RecreateAttempt =
@@ -237,9 +239,7 @@ function recreateViaScratchSlot(
     return null;
   }
 
-  console.warn(
-    `clip ${targetLabel(clip)} overwrote the existing clip at ${destPath}`,
-  );
+  noteClipOverwrite(reasons, clip.id, destPath);
 
   return newClip;
 }
@@ -270,9 +270,7 @@ function recreateOverOccupant(
   const attempt = attemptRecreate(clip, destClipSlot);
 
   if (attempt.ok) {
-    console.warn(
-      `clip ${targetLabel(clip)} overwrote the existing clip at ${destPath}`,
-    );
+    noteClipOverwrite(reasons, clip.id, destPath);
 
     return attempt.clip;
   }

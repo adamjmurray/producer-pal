@@ -12,7 +12,6 @@ import {
   sourceChain,
   warnIfChainMixerLeftBehind,
 } from "#src/tools/shared/device/helpers/chain-mixer.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { deviceHasInstrument } from "#src/tools/shared/device/helpers/chain-info.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
@@ -21,12 +20,9 @@ import {
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
-/**
- * What a device move did. The caller words "no-destination" and "refused",
- * because only it knows the path the user asked for — a duplicate's is adjusted
- * for its temp track. "unresolvable" comes back with its reason, which only the
- * resolution knows.
- */
+/** What a device move did. The caller words "no-destination" and "refused":
+ * only it knows the path the user asked for, since a duplicate's is adjusted
+ * for its temp track. */
 export type DeviceMoveOutcome =
   | "moved"
   | "no-destination"
@@ -39,9 +35,8 @@ export interface DeviceMove {
   /** The container the device landed in, so a caller that has to name it
    * afterwards doesn't re-resolve toPath. Only a "moved" outcome has one. */
   container?: LiveAPI;
-  /** Why the path didn't resolve, spelled as the caller wrote it. Only an
-   * "unresolvable" outcome has one, and only its caller knows whether that
-   * belongs in a result entry or a warning. */
+  /** Why the move didn't happen, spelled as the caller wrote it. Always on an
+   * "unresolvable"; on a "refused" when the destination accounts for it. */
   reason?: string;
 }
 
@@ -51,26 +46,19 @@ export interface DeviceMove {
  * destinations of the same call still get their work done.
  * @param device - LiveAPI device object
  * @param toPath - Target path
- * @param source - The device the user is really moving or copying, when
- *   `device` is a temp copy of it (device duplication); drives the
- *   left-behind chain mixer warning. Null when the caller has already put the
- *   source chain's mixer on the destination itself (chain duplication), so
- *   there is nothing here to carry or warn about
- * @param reportPath - How to spell toPath in warnings, when the caller adjusted
- *   it (device duplication shifts track indices past its temp track)
- * @param reportLabel - How to name the device in warnings, when `device` is a
- *   temp copy the caller is about to delete. Defaults to the device itself
- * @returns "moved" once the device is at the destination, "no-destination" when
- *   toPath names nothing, "refused" when Live wouldn't take it, or
- *   "unresolvable" when toPath doesn't resolve at all — with the container it
- *   landed in when it moved, or the reason it didn't resolve
+ * @param source - The device really being moved or copied, when `device` is a
+ *   temp copy of it (device duplication); drives the left-behind chain mixer
+ *   warning. Null when the source chain's mixer is already on the destination
+ *   (chain duplication), so there is nothing here to carry or warn about
+ * @param reportPath - How to spell toPath back, when the caller adjusted it
+ *   (device duplication shifts track indices past its temp track)
+ * @returns What the move did, plus the container it landed in or why it didn't
  */
 export function moveDeviceToPath(
   device: LiveAPI,
   toPath: string,
   source: LiveAPI | null = device,
   reportPath: string = toPath,
-  reportLabel?: string,
 ): DeviceMove {
   const destination = resolveMoveDestination(toPath, reportPath);
 
@@ -111,13 +99,7 @@ export function moveDeviceToPath(
   // is still wherever it was, and reporting its id would name a device that
   // never arrived — for a duplicate, one the cleanup is about to delete.
   if (!container.getChildIds("devices").includes(toLiveApiId(device.id))) {
-    // On a duplication path `device` is the temp copy, whose track the cleanup
-    // is about to delete — so those callers pass the real source's label.
-    console.warn(
-      `Live refused the move of ${reportLabel ?? targetLabel(device)}${refusalReason(device, container)}`,
-    );
-
-    return { outcome: "refused" };
+    return { outcome: "refused", reason: refusalReason(device, container) };
   }
 
   if (carry != null) {
@@ -220,11 +202,14 @@ function spelledForCaller(
  * Why Live turned a move down, when the destination says it plainly enough
  * @param device - The device that stayed put
  * @param container - Where it was headed
- * @returns Explanatory clause, or "" when nothing obvious accounts for it
+ * @returns The reason, or undefined when nothing obvious accounts for it
  */
-function refusalReason(device: LiveAPI, container: LiveAPI): string {
+function refusalReason(
+  device: LiveAPI,
+  container: LiveAPI,
+): string | undefined {
   return deviceHasInstrument(device) &&
     container.someChild("devices", deviceHasInstrument)
-    ? ": the destination already has an instrument, and only one is allowed"
-    : "";
+    ? "the destination already has an instrument, and only one is allowed"
+    : undefined;
 }

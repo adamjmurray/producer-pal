@@ -153,6 +153,8 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     });
   });
 
+  // The rack's return chains belong to the rack, so this is about the chain the
+  // call named — its own entry says it, and nothing warns (ADR-0042).
   it("reports no send for a return name that matches none", () => {
     const result = updateDevice({
       id: "chain-0",
@@ -160,10 +162,18 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     });
 
     expect(send.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
-    expect(capturedWarnings().join()).toContain(
-      'no return chain matching "nope"',
-    );
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      sends: [
+        {
+          return: "nope",
+          ok: false,
+          reason: 'no return chain matching "nope" (returns: a Reverb)',
+        },
+      ],
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("sets a chain's send to a rack return chain", () => {
@@ -207,11 +217,13 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(send.set).toHaveBeenCalledWith("display_value", -12);
   });
 
-  it.each(["SimplerDevice"] as const)(
-    "warns when mixer params are used on a %s",
-    (type) => {
-      registerMockObject("target-1", { type });
+  // A chain's mixer params have no entry of their own on a device — `params`
+  // reports per param, these don't go through it — so they ride on the
+  // target's entry, and a target they were the whole of throws (ADR-0042).
+  it("refuses the chain mixer params sent to a device", () => {
+    registerMockObject("target-1", { type: "SimplerDevice" });
 
+    expect(() =>
       updateDevice({
         id: "target-1",
         gainDb: -3,
@@ -219,21 +231,46 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         sendGainDb: -6,
         sendReturn: "a",
         sends: [{ return: "a", gainDb: -6 }],
-      });
+      }),
+    ).toThrow(
+      "gainDb, pan, sendGainDb, sendReturn, sends not applicable to SimplerDevice",
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
 
-      for (const name of [
-        "gainDb",
-        "pan",
-        "sendGainDb",
-        "sendReturn",
-        "sends",
-      ]) {
-        expect(capturedWarnings()).toContain(
-          `'${name}' not applicable to ${type} id target-1`,
-        );
-      }
-    },
-  );
+  // Two things to say about one target: the level Live didn't keep, and the
+  // param a chain has no use for. Both ride on the same entry.
+  it("adds a not-applicable param to a reason the entry already has", () => {
+    keepsParamValue(volume, -15.02);
+
+    expect(
+      updateDevice({ id: "chain-0", gainDb: -15, macroCount: 4 }),
+    ).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/c0",
+      gainDb: -15.02,
+      reason:
+        "gainDb read back as shown, not as sent; macroCount not applicable to DrumChain",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps the device's slot in a call that also names a chain", () => {
+    registerMockObject("target-1", { type: "SimplerDevice" });
+
+    const result = updateDevice({ id: "target-1,chain-0", gainDb: -3 }) as [
+      unknown,
+      { id: string },
+    ];
+
+    expect(result[0]).toStrictEqual({
+      id: "target-1",
+      ok: false,
+      reason: "gainDb not applicable to SimplerDevice",
+    });
+    expect(result[1].id).toBe("chain-0");
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
 });
 
 describe("updateDevice - return chain rename mid-request", () => {
@@ -280,25 +317,38 @@ describe("updateDevice - return chain rename mid-request", () => {
     // return-chain memo lives for its whole duration.
     beginLiveApiScope();
 
+    let result: SendEntries;
+
     try {
-      updateDevice({
+      result = updateDevice({
         id: "chain-a,return-x,chain-b",
         name: "Chain A,Echo,Chain B",
         sends: [{ return: "Echo", gainDb: -6 }],
-      });
+      }) as SendEntries;
     } finally {
       endLiveApiScope();
     }
 
     expect(returnX.set).toHaveBeenCalledWith("name", "Echo");
     // chain-a's send to "Echo" legitimately misses — at that point in the
-    // request Live still calls the return chain "Delay". chain-b's must not,
-    // and must not double the "no return chain matching" warning either.
+    // request Live still calls the return chain "Delay" — and says so on its
+    // own entry. chain-b's must land, and say nothing.
     expect(sendB.set).toHaveBeenCalledWith("display_value", -6);
+    expect(result[0]?.sends).toStrictEqual([
+      {
+        return: "Echo",
+        ok: false,
+        reason: 'no return chain matching "Echo" (returns: Delay)',
+      },
+    ]);
+    expect(result[2]?.sends).toBeUndefined();
+    // The rename target has no send of its own in this mock, which is the one
+    // chain-mixer path that still warns rather than reporting on the entry.
     expect(
-      capturedWarnings().filter((w) =>
-        w.includes('no return chain matching "Echo"'),
-      ),
-    ).toHaveLength(1);
+      capturedWarnings().filter((w) => w.includes("no return chain matching")),
+    ).toStrictEqual([]);
   });
 });
+
+/** The entries a multi-target update-device answers with, as far as sends go. */
+type SendEntries = Array<{ sends?: unknown[] }>;

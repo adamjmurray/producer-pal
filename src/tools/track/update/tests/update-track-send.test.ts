@@ -203,21 +203,20 @@ describe("updateTrack - send properties", () => {
     );
   });
 
-  it("should warn and skip when track has no sends", () => {
+  it("says on the track's entry that it has no sends", () => {
     // Override mixer_1 with empty sends for this test
     registerMockObject("mixer_1", {
       path: livePath.track(0).mixerDevice(),
       properties: { sends: [] },
     });
 
-    // Should not throw, just warn and skip the send update
     const result = updateTrack({
       id: "123",
       sendGainDb: -12,
       sendReturn: "A",
     });
 
-    expectSendUpdateSkipped(result, [send1, send2], "has no sends");
+    expectSendRefused(result, [send1, send2], "the track has no sends");
   });
 
   it("names the param and lists the returns when none matches", () => {
@@ -646,23 +645,22 @@ describe("updateTrack - send properties", () => {
     expect(send2.set).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when mixer device does not exist", () => {
+  it("says on the track's entry that it has no mixer", () => {
     // Override mixer to be non-existent for this test
     registerMockObject("id 0", {
       path: livePath.track(0).mixerDevice(),
     });
 
-    // Should not throw, just warn and skip the send update
     const result = updateTrack({
       id: "123",
       sendGainDb: -12,
       sendReturn: "A",
     });
 
-    expectSendUpdateSkipped(result, [send1, send2], "has no mixer device");
+    expectSendRefused(result, [send1, send2], "the track has no mixer");
   });
 
-  it("should warn and skip when send index exceeds available sends", () => {
+  it("says on the track's entry that it has no send for the return", () => {
     // Setup: 3 return tracks but only 2 sends
     registerMockObject("liveSet", {
       path: livePath.liveSet,
@@ -675,16 +673,41 @@ describe("updateTrack - send properties", () => {
       properties: { name: "C-Echo" },
     });
 
-    // Should not throw, just warn and skip the send update
     const result = updateTrack({
       id: "123",
       sendGainDb: -12,
       sendReturn: "C", // Matches return track at index 2
     });
 
-    expectSendUpdateSkipped(result, [send1, send2], "has no send for return");
+    expectSendRefused(
+      result,
+      [send1, send2],
+      "the track has no send for this return",
+    );
   });
 });
+
+/**
+ * A send the track itself couldn't take: nothing was written, the track's own
+ * entry says why, and nothing was warned about (ADR-0042).
+ * @param result - What updateTrack returned
+ * @param sends - The send params that must have stayed untouched
+ * @param reason - What the send's entry says
+ */
+function expectSendRefused(
+  result: ReturnType<typeof updateTrack>,
+  sends: RegisteredMockObject[],
+  reason: string,
+): void {
+  for (const send of sends) {
+    expect(send.set).not.toHaveBeenCalled();
+  }
+
+  expect(capturedWarnings()).toStrictEqual([]);
+  expect(sendsOf(result)).toStrictEqual([
+    expect.objectContaining({ ok: false, reason }),
+  ]);
+}
 
 /**
  * The `sends` a single-track result reports.

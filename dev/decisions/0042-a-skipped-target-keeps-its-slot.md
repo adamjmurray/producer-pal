@@ -116,17 +116,18 @@ target, so no entry exists yet to carry them.
   clip named twice holds its second slot as a normal entry saying the update
   already happened, and a clip that was written but not as asked keeps its entry
   with a `reason`: a throw partway, a move refused beside a name or a length
-  that landed, a re-create and what it cost, a take-lane leftover. A param the
-  clip can't take — notes, preTransforms, duplicateLoop or quantize on an audio
-  clip, warp markers or the audio params (gainDb, pitchShift, warpMode, warping)
-  on a MIDI clip, firstStart on a clip that isn't looping or past its content
-  end, warping off while looping — is a reason on its entry too, and a skip when
-  it was all the call asked of the clip. The move and arrangement helpers report
-  all of it on the clip's entry instead of warning, through a per-call collector
-  keyed by the clip id the call found; a step that writes under a new id — a
-  move re-creates the clip — hands its reasons back to the id the caller named.
-  One target never answers with no entries: a split whose pieces the rescan
-  can't find says so too.
+  that landed, a re-create and what it cost, a take-lane leftover, a move that
+  replaced the clip already in the destination slot. A param the clip can't take
+  — notes, preTransforms, duplicateLoop or quantize on an audio clip, warp
+  markers or the audio params (gainDb, pitchShift, warpMode, warping) on a MIDI
+  clip, firstStart on a clip that isn't looping or past its content end, warping
+  off while looping — is a reason on its entry too, and a skip when it was all
+  the call asked of the clip. The move and arrangement helpers report all of it
+  on the clip's entry instead of warning, through a per-call collector keyed by
+  the clip id the call found; a step that writes under a new id — a move
+  re-creates the clip — hands its reasons back to the id the caller named. One
+  target never answers with no entries: a split whose pieces the rescan can't
+  find says so too.
 - **create-clip says it on the clip it made.** A `firstStart` the call can't use
   — it only lands alongside `looping: true` — is a `reason` on that clip's entry
   rather than a warning, and no `ok`: the clip exists.
@@ -146,19 +147,23 @@ target, so no entry exists yet to carry them.
   deadline warning still names what it never reached, and counts only copies
   that exist.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
-  by the caller's own spelling of that `toPath` entry. It names a rack or a pad
-  rather than a clip, and the caller has only what they wrote to match it on.
-  Where nothing named a destination — a chain or device appending to its own
-  rack — the entry is addressed by the source's `id` or `path` instead. A
-  destination that used to drop out with a warning (no rack there, a rack of the
-  wrong kind, a path naming something that isn't a pad, a pad copied onto
-  itself, a destination Live wouldn't take the copy at) is that entry's `reason`
-  now. So is a source no destination could be copied from, such as a return
-  chain: it is reported on every destination it was given, and a lone one
-  throws. A copy that landed incomplete keeps its entry with a `reason` rather
-  than being rolled back — a chain whose devices didn't all cross, a pad copy
-  that layered onto chains already there. `count`, which none of these types
-  uses, is still a warning: it is about the call, not a destination.
+  by the caller's own spelling of that `toPath` entry. A move Live turned down
+  hands back why rather than warning it, so the destination's reason says what
+  the caller can act on
+  (`the destination already has an instrument, and only one is allowed`) instead
+  of only that the copy didn't move. It names a rack or a pad rather than a
+  clip, and the caller has only what they wrote to match it on. Where nothing
+  named a destination — a chain or device appending to its own rack — the entry
+  is addressed by the source's `id` or `path` instead. A destination that used
+  to drop out with a warning (no rack there, a rack of the wrong kind, a path
+  naming something that isn't a pad, a pad copied onto itself, a destination
+  Live wouldn't take the copy at) is that entry's `reason` now. So is a source
+  no destination could be copied from, such as a return chain: it is reported on
+  every destination it was given, and a lone one throws. A copy that landed
+  incomplete keeps its entry with a `reason` rather than being rolled back — a
+  chain whose devices didn't all cross, a pad copy that layered onto chains
+  already there. `count`, which none of these types uses, is still a warning: it
+  is about the call, not a destination.
 - **update-device's per-param drop paths became entries.** A `params` list
   answers with one entry per param sent: a disabled param, an ambiguous name, an
   unreadable value, a unit that can't be checked, a write Live ignored, a nested
@@ -169,6 +174,21 @@ target, so no entry exists yet to carry them.
   the reason, and no `ok`. A specialized pseudo-param answers the same way: a
   `PseudoParam.write` returns the reason it refused a value rather than a
   boolean, so the refusal reaches the caller as that param's own entry.
+- **The params that never go through `params` report on the target.** `gainDb`,
+  `pan`, `mute`, `solo`, `sends` and the rest are their own arguments, so there
+  is no param entry to hold them: a kind of object with no use for one collects
+  it and the target's entry says `gainDb, pan not applicable to RackDevice` —
+  the type, without the label the entry already carries. They stop counting as
+  work asked of that target, so a target they were the whole of keeps its slot
+  as a skip and a lone one throws.
+- **A rack's return chains are the rack's, so a send that names none is the
+  chain's.** `sends` (and the `sendGainDb`/`sendReturn` pair) on a chain or pad
+  naming no return chain of its rack is that send's own
+  `{return, ok: false, reason}` on the chain's entry, the return spelled the way
+  the caller wrote it. update-track's own three — no mixer, no sends, no send
+  for that return — are facts about the track rather than about the Live Set,
+  and answer the same way. Which return _tracks_ exist is still one warning for
+  the whole call: it is about the Set, not about any track.
 - **A type-addressed device path that names nothing reports once.** `t0/inst` on
   a track with no instrument substitutes a fallback index, and what the
   container does hold rides back on the resolution instead of a warning: the

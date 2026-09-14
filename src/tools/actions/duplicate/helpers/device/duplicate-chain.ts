@@ -329,7 +329,6 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
         `${adjusted}/d${index}`,
         null,
         `${destinationChainPath}/d${index}`,
-        `${pathPrefix(chain)}/d${index}`,
       );
 
       if (outcome !== "moved") {

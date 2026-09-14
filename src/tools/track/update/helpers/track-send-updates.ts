@@ -22,7 +22,6 @@ import {
 } from "#src/tools/shared/sends/send-list.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A send level matched to a return track, ready to write on any track. */
 export interface ResolvedSend extends IndexedSend {
@@ -91,7 +90,7 @@ export function resolveTrackSends(
  * Write every resolved send on one track and read them back.
  * @param track - Track object
  * @param sends - The winners from {@link resolveTrackSends}
- * @returns What each send that landed now reads, by its position in the list
+ * @returns What each send now reads, or why it was refused, by its position
  */
 export function applyTrackSends(
   track: LiveAPI,
@@ -100,11 +99,7 @@ export function applyTrackSends(
   const landed = new Map<number, SendResult>();
 
   for (const send of sends) {
-    const result = applyTrackSend(track, send);
-
-    if (result != null) {
-      landed.set(send.index, result);
-    }
+    landed.set(send.index, applyTrackSend(track, send));
   }
 
   return landed;
@@ -119,33 +114,29 @@ export function applyTrackSends(
  * else owns says so on its own entry — silence means the level landed.
  * @param track - Track object
  * @param send - One send from {@link resolveTrackSends}
- * @returns What the send now reads, or null when nothing was written
+ * @returns What the send now reads, or why nothing was written
  */
-function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult | null {
+function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
-    console.warn(`track ${targetLabel(track)} has no mixer device`);
-
-    return null;
+    return refusedSend(send.name, send.returnId, "the track has no mixer");
   }
 
   const sends = mixer.getChildren("sends");
 
   if (sends.length === 0) {
-    console.warn(`track ${targetLabel(track)} has no sends`);
-
-    return null;
+    return refusedSend(send.name, send.returnId, "the track has no sends");
   }
 
   const target = sends[send.index];
 
   if (target == null) {
-    console.warn(
-      `track ${targetLabel(track)} has no send for return "${send.return}"`,
+    return refusedSend(
+      send.name,
+      send.returnId,
+      "the track has no send for this return",
     );
-
-    return null;
   }
 
   if (!isParamEnabled(target)) {

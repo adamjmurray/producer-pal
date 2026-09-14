@@ -150,7 +150,7 @@ describe("arrangement clip moved into a session slot", () => {
     ).toBeUndefined();
   });
 
-  it("warns before overwriting the clip already in the slot", async () => {
+  it("says on the moved clip's entry that it overwrote the one there", async () => {
     const occupant = await createClip({
       path: `t${EMPTY_MIDI_TRACK}/s4`,
       name: "In The Way",
@@ -167,9 +167,10 @@ describe("arrangement clip moved into a session slot", () => {
       toPath: `t${EMPTY_MIDI_TRACK}/s4`,
     });
 
-    expect(warnings.join(" ")).toContain(
+    expect(moved.reason).toContain(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
     );
+    expect(warnings).toStrictEqual([]);
     expect(moved.id).not.toBe(occupant.id);
     expect(
       (await readClipFully(ctx.client!, { path: `t${EMPTY_MIDI_TRACK}/s4` }))

@@ -469,16 +469,11 @@ describe("updateDevice", () => {
     });
 
     it("should reject non-rack devices with error", () => {
-      const result = updateDevice({
-        id: "456",
-        macroCount: 8,
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'macroCount' not applicable to Device t0/d1 (id 456)",
+      expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
+        "macroCount not applicable to Device",
       );
       expect(device456.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should call add_macro when increasing count (macros added in pairs)", () => {

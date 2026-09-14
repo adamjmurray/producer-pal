@@ -85,16 +85,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "456" });
     });
 
-    it("should warn when mute is used on a Device", () => {
-      const result = updateDevice({
-        id: "123",
-        mute: true,
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'mute' not applicable to RackDevice id 123",
+    // Nothing else was asked, so the lone target has nothing to report and
+    // throws instead (ADR-0042).
+    it("should refuse mute on a Device", () => {
+      expect(() => updateDevice({ id: "123", mute: true })).toThrow(
+        "mute not applicable to RackDevice",
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 
@@ -121,16 +118,11 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
-    it("should warn when color is used on a Device", () => {
-      const result = updateDevice({
-        id: "123",
-        color: "#FF0000",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'color' not applicable to RackDevice id 123",
+    it("should refuse color on a Device", () => {
+      expect(() => updateDevice({ id: "123", color: "#FF0000" })).toThrow(
+        "color not applicable to RackDevice",
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 
@@ -145,28 +137,16 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
-    it("should warn when chokeGroup is used on a Chain", () => {
-      const result = updateDevice({
-        id: "456",
-        chokeGroup: 1,
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'chokeGroup' not applicable to Chain id 456",
+    it("should refuse chokeGroup on a Chain", () => {
+      expect(() => updateDevice({ id: "456", chokeGroup: 1 })).toThrow(
+        "chokeGroup not applicable to Chain",
       );
-      expect(result).toStrictEqual({ id: "456" });
     });
 
-    it("should warn when chokeGroup is used on a Device", () => {
-      const result = updateDevice({
-        id: "123",
-        chokeGroup: 1,
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'chokeGroup' not applicable to RackDevice id 123",
+    it("should refuse chokeGroup on a Device", () => {
+      expect(() => updateDevice({ id: "123", chokeGroup: 1 })).toThrow(
+        "chokeGroup not applicable to RackDevice",
       );
-      expect(result).toStrictEqual({ id: "123" });
     });
   });
 
@@ -199,16 +179,10 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(drumChain.set).not.toHaveBeenCalled();
     });
 
-    it("should warn when mappedPitch is used on a Chain", () => {
-      const result = updateDevice({
-        id: "456",
-        mappedPitch: "C3",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "'mappedPitch' not applicable to Chain id 456",
+    it("should refuse mappedPitch on a Chain", () => {
+      expect(() => updateDevice({ id: "456", mappedPitch: "C3" })).toThrow(
+        "mappedPitch not applicable to Chain",
       );
-      expect(result).toStrictEqual({ id: "456" });
     });
   });
 
@@ -244,7 +218,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
   });
 
-  describe("cross-type not-applicable warnings", () => {
+  describe("cross-type not-applicable params", () => {
     beforeEach(() => {
       // A non-rack device (rack-only props don't apply) and a rack device.
       registerMockObject("800", { type: "PluginDevice" });
@@ -265,13 +239,16 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["solo", { solo: true }, "RackDevice", "123"],
       ["mappedPitch", { mappedPitch: "C3" }, "RackDevice", "123"],
     ] as const)(
-      "warns that %s is not applicable to a device",
+      "says %s is not applicable to a device, beside what did land",
       (label, args, type, id) => {
-        updateDevice({ id: id, ...args });
-
-        expect(capturedWarnings()).toContain(
-          `'${label}' not applicable to ${type} id ${id}`,
+        // A name lands, so the target keeps a normal entry and the param that
+        // did nothing rides on it as a reason.
+        expect(updateDevice({ id, name: "Named", ...args })).toStrictEqual(
+          expect.objectContaining({
+            reason: `${label} not applicable to ${type}`,
+          }),
         );
+        expect(capturedWarnings()).toStrictEqual([]);
       },
     );
 
@@ -280,16 +257,22 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["macroVariationIndex", { macroVariationIndex: 1 }],
       ["macroCount", { macroCount: 4 }],
       ["abCompare", { abCompare: "a" }],
-    ] as const)("warns that %s is not applicable to a Chain", (label, args) => {
-      updateDevice({ id: "456", ...args });
-
-      expect(capturedWarnings()).toContain(
-        `'${label}' not applicable to Chain id 456`,
-      );
-    });
+    ] as const)(
+      "says %s is not applicable to a Chain, beside what did land",
+      (label, args) => {
+        expect(
+          updateDevice({ id: "456", name: "Named", ...args }),
+        ).toStrictEqual(
+          expect.objectContaining({
+            reason: `${label} not applicable to Chain`,
+          }),
+        );
+        expect(capturedWarnings()).toStrictEqual([]);
+      },
+    );
 
     it("does not spuriously warn about A/B Compare when abCompare is unset", () => {
-      updateDevice({ id: "123", mute: true });
+      updateDevice({ id: "123", name: "Named" });
 
       expect(capturedWarnings()).not.toContain(
         "A/B Compare not available on this device",
@@ -566,7 +549,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(capturedWarnings()).toContain(
-      "Live refused the move of t0/d0/c0/d0 (id device-0)",
+      't0/d0/c0/d0 (id device-0) was not moved to "t0/d0/c1"',
     );
     expect(destinationVolume.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).not.toContainEqual(

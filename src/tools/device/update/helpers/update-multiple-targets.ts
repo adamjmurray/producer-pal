@@ -42,7 +42,11 @@ import {
   updateDeviceProperties,
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
-import { isDeviceType, isValidUpdateType } from "./update-target-types.ts";
+import {
+  isDeviceType,
+  isValidUpdateType,
+  reportIgnoredParams,
+} from "./update-target-types.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
 interface UpdateTargetResult extends ChainMixerReport {
@@ -125,8 +129,7 @@ function resolveIdToTarget(id: string): ResolvedTarget | null {
 /**
  * A DrumPad id names the same thing its pad path does, so give it the same
  * whole-pad update. read-device hands these ids out, and without this most of
- * what it reports on a pad answers "not applicable to DrumPad" when written
- * back by id.
+ * what it reports on a pad is "not applicable to DrumPad" when written back.
  * @param target - The object an id resolved to
  * @returns The whole-pad target, or null when this isn't a pad
  */
@@ -268,12 +271,21 @@ function updateTarget(
   if (!isDeviceType(type)) {
     // The chain's own mixer reads back here, so a clamped or snapped level is
     // visible instead of the caller's argument being assumed to have landed.
-    const mixer = updateNonDeviceProperties(target, type, options);
+    const { ignored, ...mixer } = updateNonDeviceProperties(
+      target,
+      type,
+      options,
+    );
 
-    return { id: target.id, ...pathField(target, written), ...mixer };
+    return reportIgnoredParams(
+      { id: target.id, ...pathField(target, written), ...mixer },
+      ignored,
+      type,
+      options,
+    );
   }
 
-  const params = updateDeviceProperties(target, type, options);
+  const { params, ignored } = updateDeviceProperties(target, type, options);
   const result: UpdateTargetResult = {
     id: target.id,
     ...pathField(target, written),
@@ -283,7 +295,7 @@ function updateTarget(
     result.params = params;
   }
 
-  return result;
+  return reportIgnoredParams(result, ignored, type, options);
 }
 
 /**
@@ -341,7 +353,11 @@ function moveDeviceAndName(
   } else if (outcome === "no-destination") {
     console.warn(`move target at path "${toPath}" does not exist`);
   } else if (outcome === "refused") {
-    console.warn(`${targetLabel(device)} was not moved to "${toPath}"`);
+    const explained = reason == null ? "" : `: ${reason}`;
+
+    console.warn(
+      `${targetLabel(device)} was not moved to "${toPath}"${explained}`,
+    );
   }
 
   // Live confirms the device is in this container before the move reports

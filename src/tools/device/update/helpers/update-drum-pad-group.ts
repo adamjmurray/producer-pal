@@ -27,8 +27,10 @@ import {
   pathTargetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
+import { reportIgnoredParams } from "./update-target-types.ts";
 import {
   type NonDeviceApplied,
+  type NonDeviceWrites,
   type UpdateTargetOptions,
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
@@ -57,7 +59,7 @@ const CHAIN_WRITE_PROPS = [
   ...PER_LAYER_PROPS,
 ] as const;
 
-export interface DrumPadUpdateResult extends NonDeviceApplied {
+export interface DrumPadUpdateResult extends NonDeviceWrites {
   /** The DrumPad's id, absent on a virtual pad that has no DrumPad object */
   id?: string;
   /** The pad's path, so a whole-pad write names its target the way every other
@@ -132,7 +134,7 @@ export function updateDrumPadGroup(
 
   // Only a single-layer pad reaches the chain mixer — the per-layer settings
   // are dropped above once a pad is stacked — so this is one chain's read-back.
-  const mixer = applyToChains(chains, chainOptions);
+  const { ignored, ...mixer } = applyToChains(chains, chainOptions);
 
   const result: DrumPadUpdateResult = { ...mixer };
   const skipped = ambiguous?.skipped ?? [];
@@ -152,7 +154,9 @@ export function updateDrumPadGroup(
     result.chainIds = chains.map((chain) => chain.id);
   }
 
-  return result;
+  // The call's own options, not the filtered ones: a per-layer drop already
+  // said its piece, so it still counts as work the pad was asked for.
+  return reportIgnoredParams(result, ignored, "DrumChain", options);
 }
 
 /**
@@ -215,7 +219,8 @@ function createChainForSample(
  * Write the pad's properties to its chains.
  * @param chains - The pad's chains, in rack order
  * @param options - Update options, already filtered for this pad
- * @returns The first chain's mixer read-back; the rest only take pad-wide props
+ * @returns The first chain's mixer read-back and the params it had no use for;
+ *   the rest only take pad-wide props
  */
 function applyToChains(
   chains: LiveAPI[],
@@ -234,11 +239,11 @@ function applyToChains(
     first.set("name", stripReturnChainLetter(first, options.name));
   }
 
-  let mixer: NonDeviceApplied = {};
+  let mixer: NonDeviceApplied = { ignored: [] };
 
   for (const [index, chain] of chains.entries()) {
-    // The first chain carries the full options so the "not applicable to
-    // DrumChain" warnings are emitted once, not once per layer.
+    // The first chain carries the full options, so the params a DrumChain has
+    // no use for are reported once rather than once per layer.
     const applied = updateNonDeviceProperties(
       chain,
       "DrumChain",

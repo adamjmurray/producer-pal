@@ -94,7 +94,6 @@ describe("duplicate - device duplication", () => {
       "t0/d3",
       expect.anything(),
       expect.any(String),
-      expect.any(String),
     );
 
     // Should delete the temp track
@@ -122,7 +121,6 @@ describe("duplicate - device duplication", () => {
       }),
       "t3/d0",
       expect.anything(),
-      expect.any(String),
       expect.any(String),
     );
   });
@@ -159,7 +157,6 @@ describe("duplicate - device duplication", () => {
       }),
       "t1/d0/c0/d2",
       expect.objectContaining({ _id: "rack_device1" }),
-      expect.any(String),
       expect.any(String),
     );
 
@@ -233,7 +230,6 @@ describe("duplicate - device duplication", () => {
       "t2/d0",
       expect.anything(),
       expect.any(String),
-      expect.any(String),
     );
   });
 
@@ -251,7 +247,6 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       // Warnings keep the spelling the caller sent.
       "2",
-      expect.any(String),
     );
   });
 
@@ -315,7 +310,6 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       // The move reports failures in the caller's own coordinates, not t100's.
       "t99",
-      expect.any(String),
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -333,6 +327,26 @@ describe("duplicate - device duplication", () => {
       'the copy of t0/d0 (id device1) could not be moved to "t2/d0"',
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  // The reason used to be a warning of its own, leaving the entry to say only
+  // that the copy didn't move.
+  it("puts the reason Live gave for the refusal in the entry", async () => {
+    setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({
+      outcome: "refused",
+      reason:
+        "the destination already has an instrument, and only one is allowed",
+    });
+
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "t2/d0" }),
+    ).rejects.toThrow(
+      'the copy of t0/d0 (id device1) could not be moved to "t2/d0": ' +
+        "the destination already has an instrument, and only one is allowed",
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   it("keeps the copies that worked when one destination fails", async () => {
@@ -383,7 +397,6 @@ describe("duplicate - device duplication", () => {
       "t0/d2",
       expect.anything(),
       expect.any(String),
-      expect.any(String),
     );
   });
 
@@ -411,7 +424,6 @@ describe("duplicate - device duplication", () => {
       "t3/d0",
       expect.anything(),
       expect.any(String),
-      expect.any(String),
     );
   });
 
@@ -426,7 +438,6 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "r0/d0",
       expect.anything(),
-      expect.any(String),
       expect.any(String),
     );
   });
@@ -482,7 +493,6 @@ describe("duplicate - device duplication", () => {
       "t12/d1",
       expect.anything(),
       expect.any(String),
-      expect.any(String),
     );
   });
 
@@ -506,7 +516,6 @@ describe("duplicate - device duplication", () => {
       "t13/d0",
       expect.anything(),
       "t12/d0",
-      expect.any(String),
     );
   });
 
@@ -531,7 +540,6 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t0/d0/c0",
       expect.anything(),
-      expect.any(String),
       expect.any(String),
     );
   });

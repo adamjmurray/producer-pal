@@ -304,14 +304,16 @@ describe("handleClipSlotMove", () => {
     });
   });
 
-  it("should not warn about overwriting when the destination is empty", () => {
-    runSessionMove({ toTrackIndex: 1, toSceneIndex: 5, destHasClip: 0 });
+  it("should not report an overwrite when the destination is empty", () => {
+    const { reasons } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 5,
+      destHasClip: 0,
+    });
 
-    // has_clip is falsy, so the overwrite warning must not fire (kills the
+    // has_clip is falsy, so the overwrite reason must not appear (kills the
     // forced-true mutant on the has_clip guard).
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("overwrote the existing clip"),
-    );
+    expect(reasonFor(reasons)).not.toContain("overwrote the existing clip");
   });
 
   it("should no-op when moving to same slot", () => {
@@ -467,31 +469,30 @@ describe("handleClipSlotMove", () => {
     expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
-  // The old warning fired before the copy, so a declined copy produced two
-  // contradictory warnings and the first one was false.
+  // The old report happened before the copy, so a declined copy claimed an
+  // overwrite that never happened.
   it("should not claim an overwrite when the copy never landed", () => {
-    runSessionMove({
+    const { reasons } = runSessionMove({
       toTrackIndex: 0,
       toSceneIndex: 1,
       destHasClip: 1,
       copyLands: false,
     });
 
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("overwrote the existing clip"),
-    );
+    expect(reasonFor(reasons)).not.toContain("overwrote the existing clip");
   });
 
-  it("should warn when overwriting existing clip at destination", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+  it("should say on the clip's entry that it overwrote the destination", () => {
+    const { updatedClips, sourceSlot, reasons } = runSessionMove({
       toTrackIndex: 0,
       toSceneIndex: 1,
       destHasClip: 1,
     });
 
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 123) overwrote the existing clip at t0/s1",
+    expect(reasonFor(reasons)).toContain(
+      "overwrote the existing clip at t0/s1",
     );
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     // The copy replaced the occupant, so the result is the copy's id.

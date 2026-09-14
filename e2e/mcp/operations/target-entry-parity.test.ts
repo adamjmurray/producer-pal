@@ -272,9 +272,6 @@ describe("a write answers the same by path and by id", () => {
         { path: "t11/d0", id: hostDeviceId },
         { path: "t0/d0", id: rackId },
       ],
-      [
-        `WARNING: Live refused the move of t0/d0 (id ${rackId}): the destination already has an instrument, and only one is allowed`,
-      ],
     );
 
     expect(device).toStrictEqual({
@@ -285,7 +282,9 @@ describe("a write answers the same by path and by id", () => {
     expect(rack).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason: `the copy of t0/d0 (id ${rackId}) could not be moved to "t0/d1"`,
+      reason:
+        `the copy of t0/d0 (id ${rackId}) could not be moved to "t0/d1": ` +
+        "the destination already has an instrument, and only one is allowed",
     });
   });
 });

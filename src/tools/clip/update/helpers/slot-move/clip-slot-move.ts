@@ -5,7 +5,6 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   buildClipResultObject,
   type ClipResult,
@@ -30,6 +29,7 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
+  noteClipOverwrite,
   noteClipReason,
   refuseClipWork,
   type ClipReasons,
@@ -143,8 +143,10 @@ export function handleClipSlotMove({
   }
 
   if (destinationWasOccupied) {
-    console.warn(
-      `clip ${targetLabel(clip)} overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
+    noteClipOverwrite(
+      reasons,
+      clip.id,
+      slotPath(toSlot.trackIndex, toSlot.sceneIndex),
     );
   }
 

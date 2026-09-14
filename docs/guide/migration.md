@@ -133,6 +133,23 @@ without a word); the created clip now carries
 `reason: "firstStart ignored: set looping: true to use it"` and no `ok`, since
 the clip was made.
 
+**`ppal-update-device` reports a param the object can't take on its entry.**
+`gainDb`, `pan`, `mute`, `solo`, `sends` and the rest sent to an object with no
+use for them used to warn once per param. The target's entry now carries
+`reason: "gainDb, pan not applicable to RackDevice"`, and where they were
+everything you asked of it the entry is `ok: false`, and a lone target throws. A
+`sends` entry naming no return chain of the rack is that send's own
+`{return, ok: false, reason}` under the chain or pad it was sent to, matching
+how `ppal-update-track` reports a send a track can't take (no mixer, no sends,
+no send for that return).
+
+**Two move reports moved onto entries too.** A device copy Live turned down now
+names what Live objected to on its destination entry, after the
+`could not be moved to "t0/d1"` the reason already carried:
+`the destination already has an instrument, and only one is allowed`. And a
+`ppal-update-clip` move into an occupied slot carries
+`reason: "overwrote the existing clip at t1/s0"` on the moved clip's entry.
+
 **A call naming one target that can't be done now throws** instead of returning
 an empty array with a warning. `ppal-update-track path="t99"` is an error, as is
 an update-clip or duplicate call whose one target got nothing done; deleting

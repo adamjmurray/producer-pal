@@ -259,8 +259,6 @@ describe("duplicate - chain", () => {
       "t0/d0/c1/d0",
       null,
       "t0/d0/c1/d0",
-      // The device that is really being copied, not the temp track's copy of it.
-      "t0/d0/c0/d0",
     );
   });
 
@@ -294,7 +292,6 @@ describe("duplicate - chain", () => {
       "t2/d0/c1/d0",
       null,
       "t1/d0/c1/d0",
-      "t0/d0/c0/d0",
     );
   });
 

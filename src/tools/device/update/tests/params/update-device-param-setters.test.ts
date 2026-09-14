@@ -681,18 +681,17 @@ describe("updateDevice - actions arg", () => {
     expect(simpler.call).toHaveBeenCalledWith("reverse");
   });
 
-  it("warns when actions are set on a non-device target (chain)", () => {
+  it("refuses actions on a non-device target (chain)", () => {
     registerMockObject("chain-1", {
       path: livePath.track(0).device(0).chain(0),
       type: "Chain",
       properties: { name: "Chain", mute: 0, solo: 0, devices: [] },
     });
 
-    updateDevice({ id: "chain-1", actions: ["reverse"] });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("'actions' not applicable to Chain"),
+    expect(() => updateDevice({ id: "chain-1", actions: ["reverse"] })).toThrow(
+      "actions not applicable to Chain",
     );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 

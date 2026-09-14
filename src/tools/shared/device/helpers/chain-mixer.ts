@@ -11,6 +11,7 @@ import {
   dedupeSendsByReturn,
   readSendBack,
   readSendGainDb,
+  refusedSend,
   warnSendCollisions,
 } from "#src/tools/shared/sends/send-list.ts";
 import {
@@ -107,7 +108,8 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 
 /**
  * Set a chain's own gain, pan, and send levels. A write Live ignores (a disabled
- * parameter, an unmatched return) warns and is left out of the result.
+ * parameter) warns and is left out of the result; a send naming no return chain
+ * of the rack comes back as that send's own refused entry.
  *
  * Every reported value is read back off the chain, not echoed from the
  * argument: Live clamps and snaps what it is given. The sendGainDb/sendReturn
@@ -225,13 +227,11 @@ export function sourceChain(device: LiveAPI): LiveAPI | null {
  * mixer still at defaults. That is what an auto-created pad chain looks like,
  * so the trim follows the sound instead of stranding on the chain it left.
  *
- * Anything else keeps its own fader: a chain already holding devices would have
- * them re-levelled by a write the caller never asked for, and a non-default trim
- * is someone's deliberate setting. Those cases warn instead.
- *
- * So does a destination in a different rack. Sends are matched by return-chain
- * name, which only lines up within one rack, so a cross-rack carry writes the
- * gain and pan and drops the sends — a partial trim nobody asked for.
+ * Anything else keeps its own fader and warns instead: a chain already holding
+ * devices would have them re-levelled by a write nobody asked for, and a
+ * non-default trim is someone's deliberate setting. So does a destination in
+ * another rack — sends match by return-chain name, which only lines up within
+ * one rack, so a cross-rack carry would drop them and leave a partial trim.
  *
  * Must be called BEFORE the move — afterward the destination holds the device
  * and no longer reads as untouched.
@@ -284,13 +284,17 @@ export function carryChainMixer(
     pan: mixer.pan as number | undefined,
   });
   const sends = (mixer.sends ?? []) as { return: string; gainDb: number }[];
-  const landedSends = sends.flatMap(
-    (send) =>
-      applyChainMixer(destination, {
-        sendGainDb: send.gainDb,
-        sendReturn: send.return,
-      }).sends ?? [],
-  );
+  // Only the sends that landed: a return the destination's rack doesn't have
+  // comes back as a refused entry, which is no part of the carry.
+  const landedSends = sends
+    .flatMap(
+      (send) =>
+        applyChainMixer(destination, {
+          sendGainDb: send.gainDb,
+          sendReturn: send.return,
+        }).sends ?? [],
+    )
+    .filter((send) => send.ok !== false);
 
   // applied holds only gainDb and pan — the sends went through their own calls.
   const landed: Record<string, unknown> = { ...applied };
@@ -382,12 +386,14 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
  * @param chain - Chain the mixer belongs to
  * @param mixer - The chain's mixer device
  * @param send - The send to write, with the return spelled as the caller wrote it
+ * @param refused - Entries for the sends that named no return chain, added to
  * @returns The send and the return it went to, or null when nothing was written
  */
 function applyChainSend(
   chain: LiveAPI,
   mixer: LiveAPI,
   send: ChainSend,
+  refused: SendResult[],
 ): WrittenChainSend | null {
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
@@ -405,8 +411,14 @@ function applyChainSend(
         ? ` (returns: ${names.join(", ")})`
         : " (rack has no return chains; they can only be added in Live)";
 
-    console.warn(
-      `${chainLabel(chain)}: no return chain matching "${send.return}"${available}`,
+    // A fact about the chain the call named, so it rides back on that chain's
+    // own entry (ADR-0042).
+    refused.push(
+      refusedSend(
+        send.return,
+        undefined,
+        `no return chain matching "${send.return}"${available}`,
+      ),
     );
 
     return null;
@@ -444,7 +456,7 @@ function applyChainSend(
  * @param chain - Chain or DrumChain LiveAPI object
  * @param mixer - The chain's mixer device
  * @param params - Mixer values to set
- * @returns One entry per return that landed
+ * @returns One entry per return that landed, plus one per send that named none
  */
 function applyChainSends(
   chain: LiveAPI,
@@ -452,11 +464,17 @@ function applyChainSends(
   params: ChainMixerParams,
 ): SendResult[] {
   const { sendGainDb, sendReturn } = params;
+  const refused: SendResult[] = [];
 
   // A half pair was refused up front, so either both are set or neither is.
   const scalar =
     sendGainDb != null && sendReturn != null
-      ? applyChainSend(chain, mixer, { return: sendReturn, gainDb: sendGainDb })
+      ? applyChainSend(
+          chain,
+          mixer,
+          { return: sendReturn, gainDb: sendGainDb },
+          refused,
+        )
       : null;
 
   // After the scalar pair, so a call using both honors both. They only collide
@@ -464,7 +482,7 @@ function applyChainSends(
   const list: WrittenChainSend[] = [];
 
   for (const send of params.sends ?? []) {
-    const written = applyChainSend(chain, mixer, send);
+    const written = applyChainSend(chain, mixer, send, refused);
 
     if (written != null) {
       list.push(written);
@@ -483,7 +501,7 @@ function applyChainSends(
   // rather than the one that won the argument list.
   warnSendCollisions(collisions, landed);
 
-  return [...landed.values()];
+  return [...landed.values(), ...refused];
 }
 
 /**
@@ -534,13 +552,12 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
 
 /**
  * Name and id of each return chain of the rack that owns a chain, in send
- * order. The chain list itself is memoized per request — every chain of a
- * rack asks for the same list, and a 64-pad kit resolving it per pad doubled
- * the cost of reading the kit. Nothing creates or deletes a return chain
- * mid-request, so the list and its ids can't go stale under us — but `name`
- * can: a multi-id update-device call can rename one return chain and then
- * send to it by the new name in the same request, so it's read fresh off the
- * memoized objects on every call instead of cached alongside them.
+ * order. The chain list is memoized per request: every chain of a rack asks for
+ * the same one, and a 64-pad kit resolving it per pad doubled the cost of
+ * reading the kit. Nothing creates or deletes a return chain mid-request, so
+ * the list and its ids can't go stale — but `name` can, since one call can
+ * rename a return chain and then send to it by the new name, so names are read
+ * fresh off the memoized objects every time.
  * @param chain - Chain or DrumChain LiveAPI object
  * @returns Return chain names and ids, index-aligned with the chain's sends
  */
