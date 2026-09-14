@@ -27,6 +27,10 @@ fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
 | 7   | gpt-5.6-luna    | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m |
 | 8   | gpt-5.6-luna    | default         | `47adbc056`  | 3      | 301 | 270 (90%) | 124.6M | 2h56m |
 | 9   | gpt-5.6-luna    | default         | `d5971a5bd`  | 3      | 301 | 273 (91%) | 130.7M | 4h11m |
+| 10  | gpt-5.6-luna    | default         | `ba97d9173`  | 3      | 300 | 268 (89%) | 131.0M | 2h52m |
+| 11  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m |
+| 12  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m |
+| 13  | qwen3.8-27b     | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -35,9 +39,18 @@ gone 3/3 to 0/3 against run 2, and bisecting that mattered more than finishing.
 See "Where a fragment sits can cost more than what it says". Do not compare its
 percentage to any full run.
 
-All `--skip-judge`, so these are deterministic checks only. Gemma runs local (LM
-Studio, `-b http://localhost:1234/v1`) and costs nothing, but its token totals
-measure the same thing. Small-model mode skips 34 of the 93 scenarios.
+Runs 1-9 are `--skip-judge`, so they are deterministic checks only. Runs 10-13
+ran the judge, but no trial failed on the judge alone, so their numbers compare.
+Gemma and qwen run local (LM Studio, `-b http://localhost:1234/v1`) and cost
+nothing, but their token totals measure the same thing. Small-model mode skips
+34 of the 93 scenarios (36 of 101 by run 11).
+
+**Run 10 was stitched from four segments.** Codex refused luna three times in
+three hours ("Selected model is at capacity"), and the harness stops after three
+scenarios in a row never start. Each restart re-ran only the scenarios still
+short of three real trials, and a scenario's three trials always come from one
+segment. Its 2h52m is scenario time; the wall clock was ~4.5h. The abort message
+now says when the provider, not Live, is the cause.
 
 **Input tokens are the number to move** when trimming tool and param
 descriptions. That is why a run records its totals and not only its failures.
@@ -152,6 +165,45 @@ the range touches any of them.
 Red in three runs, 0/3 each time: `drum-transforms`, `note-ops-repeat`,
 `note-ops-split`, `transform-random-baked-or-replayed`. These are stable
 findings, not flakiness.
+
+### What moved between runs 9 and 10
+
+132 commits apart, same model, same flags. Too wide a range to pin a moved cell
+on a commit; read anything within one trial as noise.
+
+Green: `context-memory-recall`, `drum-backbeat-midi-json`,
+`library-search-fanout`, `melody-transforms` back to 3/3. `drum-transforms` 0/3
+to 1/3 and `legato-transforms` 1/3 to 2/3 — each the best luna result on record
+for that scenario.
+
+Red: `bar-beat-zip-streams` 3/3 to 1/3 (it hand-listed 16 positions instead of a
+repeat), `note-ops-merge` 1/3 to 0/3, `synced-lfo-meter-invariance` 2/3 to 1/3,
+`context-write-layer-global` 2/3 to 1/3, `bar-beat-melodic-legato-run` and
+`context-memory-update-not-duplicate` 3/3 to 2/3.
+
+Two scenarios are new since run 9: `write-trust-echoed-result` 2/3, and
+`rack-pad-ops` 0/3 — the latter was the grader, not the model (see "A scenario
+can go red when a result moves its facts").
+
+**13 of the 32 fails share one signature:** "`transforms` parameter missing in
+turn 2", across `note-ops-merge`, `note-ops-repeat`, `note-ops-split` (0/3
+each), `note-ops-ratchet-roll`, `synced-lfo-meter-invariance` and
+`drum-transforms`. The model reaches turn 2 of a transforms scenario and edits
+the clip another way, or not at all. One behavior, not six scenarios — and the
+same thing "Surfacing the note-count operations" below measured.
+
+### qwen3.8-27b on the basic tier (runs 11-13)
+
+Three n=1 runs at the same commit, so together they say what one gemma run
+cannot: 47 of 65 scored scenarios pass all three times, 15 flip, 3 never pass.
+Read the model as ~85% ± 2 on this tier; a single run's swing is noise.
+
+The three that never pass are judgment, not precision: `negative-cases` changed
+the tempo it was told to leave alone every run (to 70, 50, 70);
+`drum-pad-force-guard` passed `force:true` without asking, or replaced the pad
+before turn 4 said to; `duration-reach-for-quarter` is the `transforms`-missing
+signature above. `path-topath-clips` failed the same way twice — kept only the
+second of two `toPath` targets — which reads as a real multi-target weakness.
 
 ## Wording changes that were measured and did not work
 
@@ -408,6 +460,19 @@ which IS the baked outcome, reached without the DSL. Graded on the clip's end
 state instead (distinct velocities and no deviation vs. a deviation on every
 note), the same baseline is 2 of 3. The first number was the grader, not the
 model.
+
+## A scenario can go red when a result moves its facts
+
+`rack-pad-ops` was 0/3 for luna in run 10 on
+`turn 3: the copy layered onto the occupied pad`, and every transcript showed
+the model doing exactly that. The check read the call's `warnings` for the word
+"layer"; the duplicate tool had moved that fact onto the copy's own result entry
+as a `reason` in the range, so no trial could ever pass. The assertion now reads
+the `reason`.
+
+When a tool starts reporting a target's fact on the target's entry instead of in
+the `WARNING:` block, grep the scenarios for `.warnings` on that tool — a grader
+still reading warnings goes red on every model at once, which is the tell.
 
 ## What a transcript does not show you
 

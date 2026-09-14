@@ -26,6 +26,7 @@
  * No LLM judge: the pad reads pin every outcome.
  */
 
+import { parseToolResult } from "#evals/chat/mcp.ts";
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import {
@@ -176,9 +177,10 @@ function assertCalledWithType(
 }
 
 /**
- * The layer landed: copying onto an occupied pad warns that it layered rather
- * than replaced. Nothing in the end state can prove this — a copy that never
- * happened leaves the same one-chain pad as the layer that was removed again.
+ * The layer landed: copying onto an occupied pad says so as a `reason` on the
+ * copy's own result entry. Nothing in the end state can prove it — a copy that
+ * never happened leaves the same one-chain pad as the layer that was removed
+ * again.
  *
  * @param turn - Turn index containing the copy
  * @returns A custom assertion
@@ -188,15 +190,23 @@ function assertLayeredOntoPad(turn: number): EvalAssertion {
     type: "custom",
     description: `turn ${turn}: the copy layered onto the occupied pad`,
     assert: (turns: EvalTurnResult[]) => {
-      const warnings = getToolCalls(turns, turn)
+      const reasons = getToolCalls(turns, turn)
         .filter((c) => c.name === TOOL_DUPLICATE)
-        .flatMap((c) => c.warnings ?? []);
+        .flatMap((c) => {
+          if (c.result == null) {
+            return [];
+          }
 
-      if (!warnings.some((w) => /layer/i.test(w))) {
+          const { reason } = parseToolResult(c.result) as { reason?: string };
+
+          return reason == null ? [] : [reason];
+        });
+
+      if (!reasons.some((r) => /layer/i.test(r))) {
         throw new Error(
-          warnings.length === 0
-            ? "no layering warning — the copy never reached the occupied pad"
-            : `no layering warning — got: ${warnings.join("; ")}`,
+          reasons.length === 0
+            ? "no layering reason — the copy never reached the occupied pad"
+            : `no layering reason — got: ${reasons.join("; ")}`,
         );
       }
 

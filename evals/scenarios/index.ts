@@ -34,6 +34,10 @@ import {
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
 import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
 import {
+  describeRunAbort,
+  neverStartedRuns,
+} from "./helpers/trials/run-abort.ts";
+import {
   loadScenarios,
   printList,
   printTags,
@@ -376,10 +380,11 @@ async function runAllScenarios(
   // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
   // that wants the same one runs against it instead of paying another open.
   let lastOpenedLiveSet: string | null = null;
-  // Consecutive scenarios where nothing ran at all. Live has already retried
-  // and relaunched by this point, so the run is not going to recover — and a
-  // long unattended run would otherwise fill the results directory with
-  // scenarios nobody ever asked a model about.
+  // Consecutive scenarios where nothing ran at all. Either Live has already
+  // retried and relaunched and still isn't back, or the provider is refusing
+  // every request — the run is not going to recover, and a long unattended run
+  // would otherwise fill the results directory with scenarios nobody ever asked
+  // a model about.
   let consecutiveErrors = 0;
 
   for (const scenario of scenarios) {
@@ -418,34 +423,14 @@ async function runAllScenarios(
 
     resultsByScenario.set(scenario.id, modelResults);
 
-    consecutiveErrors = allRunsErrored(modelResults)
-      ? consecutiveErrors + 1
-      : 0;
+    const neverStarted = neverStartedRuns(modelResults);
+
+    consecutiveErrors = neverStarted.length > 0 ? consecutiveErrors + 1 : 0;
 
     if (consecutiveErrors >= MAX_CONSECUTIVE_SCENARIO_ERRORS) {
-      throw new Error(
-        `${consecutiveErrors} scenarios in a row never started — Live is not ` +
-          `recovering. Stopping so the rest of the run isn't scored blind. ` +
-          `Results so far are saved.`,
-      );
+      throw new Error(describeRunAbort(consecutiveErrors, neverStarted));
     }
   }
 
   return resultsByScenario;
-}
-
-/**
- * Whether every run of a scenario errored before the model took a turn.
- *
- * @param modelResults - The scenario's results, by model and label
- * @returns True when nothing ran
- */
-function allRunsErrored(
-  modelResults: Map<string, Map<string, JsonEvalResult[]>>,
-): boolean {
-  const runs = [...modelResults.values()].flatMap((byLabel) =>
-    [...byLabel.values()].flat(),
-  );
-
-  return runs.length > 0 && runs.every((run) => run.result === "error");
 }
