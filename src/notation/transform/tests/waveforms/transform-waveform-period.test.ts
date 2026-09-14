@@ -51,8 +51,6 @@ function runTransform(
 
 describe("waveform period sign", () => {
   it("runs the cycle backwards for a negative period", () => {
-    // A sign only reaches the period as a bare number: the grammar has no
-    // signed note value (`-n/1`) or signed bar count (`-2bar`).
     const forward = runTransform("velocity = 70 + 30 * sin(8)");
     const backward = runTransform("velocity = 70 + 30 * sin(-8)");
 
@@ -67,6 +65,22 @@ describe("waveform period sign", () => {
     expect(new Set(backward.velocities)).not.toStrictEqual(
       new Set(forward.velocities),
     );
+  });
+
+  it.each([
+    ["-n/1", "n/1"],
+    ["-2bar", "2bar"],
+  ])("accepts a signed musical period (%s)", (backwardPeriod, period) => {
+    const forward = runTransform(`velocity = 70 + 30 * sin(${period})`);
+    const backward = runTransform(
+      `velocity = 70 + 30 * sin(${backwardPeriod})`,
+    );
+
+    expect(backward.warnings).toStrictEqual([]);
+
+    for (const [i, velocity] of backward.velocities.entries()) {
+      expect(velocity).toBeCloseTo(140 - (forward.velocities[i] as number), 10);
+    }
   });
 
   it("samples phase 0 for a zero period, with no NaN or Infinity", () => {

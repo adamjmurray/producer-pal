@@ -153,8 +153,7 @@ describe("ppal-clip-transforms-waveforms", () => {
     expect(extractVelocities(await readClipNotes(clipId))).toStrictEqual([114]);
   });
 
-  // A sign reaches the period only as a bare number — the grammar has no signed
-  // note value (`-n/1`) or bar count (`-1bar`). -4 beats is one bar in 4/4.
+  // -4 beats is one bar in 4/4.
   it("runs the cycle backwards for a negative period", async () => {
     const forwardId = await createWaveformClip(94);
     const backwardId = await createWaveformClip(95);
@@ -172,6 +171,21 @@ describe("ppal-clip-transforms-waveforms", () => {
 
     expect(backward).toHaveLength(4);
     expect(backward).not.toStrictEqual(forward);
+  });
+
+  it("accepts a signed bar count as a period", async () => {
+    const clipId = await createWaveformClip(97);
+
+    // sin(-1bar) is sin(1bar) backwards: 0→0, 0.25→-1, 0.5→0, 0.75→1
+    // velocity: 64, 14, 64, 114
+    const notes = await applyAndReadNotes(
+      clipId,
+      "velocity = 64 + 50 * sin(-1bar)",
+    );
+
+    expect(notes).toContain("v64 n/4 C3 1|1,3");
+    expect(notes).toContain("v14 C3 1|2");
+    expect(notes).toContain("v114 C3 1|4");
   });
 
   it("applies a per-note phase offset without warning", async () => {

@@ -694,6 +694,7 @@ multiplicative
 primary
   = functionCall
   / variable
+  / negatedDuration
   / nDuration
   / barDuration
   / pitchLiteral
@@ -704,6 +705,15 @@ primary
   / unknownFunction
   / number
   / "(" _ expr:expression _ ")" { return expr; }
+
+// A leading `-` on a note value or bar count (`-n/1`, `-2bar`), so a backwards
+// waveform cycle can be written in musical units like a forward one. Desugars
+// to `0 - value` so the evaluator needs no new node type. A bare number carries
+// its own sign (see `number`), and binary `-` is handled by `additive`.
+negatedDuration
+  = "-" value:(nDuration / barDuration) {
+    return { type: "subtract", left: 0, right: value };
+  }
 
 // ratchet()/repeat()/merge() are note-count operations (whole statements), not
 // values. Matched here only to raise a targeted error when one is used in an

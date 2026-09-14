@@ -95,8 +95,8 @@ taught it the feature was unsupported, so it hand-wrote the result instead.
     - A bare number is treated as a period in beats
     - Any sign is accepted. A negative period runs the cycle backwards; a zero
       period is phase 0 for every note (`sin(0)` = 0, `cos(0)` = 1), never a
-      division by zero. Only a bare number carries a sign — there is no `-n/1`
-      or `-2bar` in the grammar.
+      division by zero. A note value or bar count takes a leading `-` too
+      (`sin(-n/1)`, `cos(-2bar)`).
   - The old synced-period syntax (`1t`, `4t`, `1:0t`) is **removed** and is a
     parse error.
   - **A period that samples one phase is written, not refused.** A period that
