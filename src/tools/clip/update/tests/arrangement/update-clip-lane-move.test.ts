@@ -13,7 +13,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  expectTakeLaneMidiClip,
+  registerTakeLaneTrack,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
@@ -657,5 +660,137 @@ describe("moving a clip off a take lane", () => {
     expect(source?.set).toHaveBeenCalledWith("name", "(moved) Verse");
     expect(source?.set).toHaveBeenCalledWith("muted", 1);
     expect(movedReason()).toContain("muted instead of deleted");
+  });
+});
+
+// A destination that names a position but no lane keeps the clip's own lane. It
+// used to land every clip on the track's MAIN lane, which promoted a take-lane
+// clip off a lane the caller never mentioned — and piled a batch sharing one
+// bare position onto that one lane, where each landing cleared the last.
+describe("a move that names a position but no lane", () => {
+  /** Past the index the lane's own create_midi_clip writes to. */
+  const LANE_SOURCE = livePath.track(DEST_TRACK).takeLane(0).arrangementClip(3);
+  const MAIN_SOURCE_ID = "321";
+
+  /** Bar 9 in 4/4, where every move here aims. */
+  const BAR_9 = 32;
+
+  /**
+   * A take-lane source on the lane track, so its own lane is a real one.
+   * @returns The clip the call names
+   */
+  function registerLaneSource(): string {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      type: "Song",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerMoveWorld({ sourcePath: LANE_SOURCE, initialLanes: 1 });
+
+    return SOURCE_ID;
+  }
+
+  /**
+   * A main-lane clip on the same track, for the batch that shares a position.
+   * Its move answers with a copy that reports where it landed, so the entry's
+   * path says which lane took it.
+   */
+  function registerMainSource(): void {
+    registerMainLaneClip(MAIN_SOURCE_ID, 9, 48);
+
+    const track = lookupMockObject(undefined, livePath.track(DEST_TRACK));
+
+    track!.methods.duplicate_clip_to_arrangement = (_sourceId, startTime) => {
+      registerMainLaneClip("322", 10, startTime as number);
+
+      return ["id", "322"];
+    };
+  }
+
+  /**
+   * Register an 8-beat MIDI clip on the lane track's main lane.
+   * @param id - Clip id
+   * @param clipIndex - Its place in the track's arrangement_clips
+   * @param start - Its start, in beats
+   */
+  function registerMainLaneClip(
+    id: string,
+    clipIndex: number,
+    start: number,
+  ): void {
+    registerMockObject(id, {
+      path: livePath.track(DEST_TRACK).arrangementClip(clipIndex),
+      type: "Clip",
+      properties: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 1,
+        start_time: start,
+        end_time: start + 8,
+        length: 8,
+      },
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("keeps a take-lane clip on its own lane", async () => {
+    const result = (await updateClip({
+      id: registerLaneSource(),
+      toPath: "[9|1]",
+    })) as { path?: string; reason?: string };
+
+    expectTakeLaneMidiClip(0, BAR_9, 8, DEST_TRACK);
+    expect(result.path).toBe(`t${DEST_TRACK}/l0[9|1]`);
+    expect(result.reason).toContain(`re-created on t${DEST_TRACK}/l0`);
+  });
+
+  // arrangementStart is the deprecated spelling of the same bare position, so
+  // it has to keep the lane too.
+  it("keeps the lane when the position comes from arrangementStart", async () => {
+    const result = (await updateClip({
+      id: registerLaneSource(),
+      arrangementStart: "9|1",
+    })) as { path?: string };
+
+    expectTakeLaneMidiClip(0, BAR_9, 8, DEST_TRACK);
+    expect(result.path).toBe(`t${DEST_TRACK}/l0[9|1]`);
+  });
+
+  // Naming the track IS naming the main lane, so that promote still happens.
+  it("still promotes the clip when the destination names the track", async () => {
+    const result = (await updateClip({
+      id: registerLaneSource(),
+      toPath: `t${DEST_TRACK}[9|1]`,
+    })) as { reason?: string };
+
+    expect(
+      lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", BAR_9, 8);
+    expect(result.reason).toContain(`re-created on t${DEST_TRACK}`);
+    expect(result.reason).not.toContain(`re-created on t${DEST_TRACK}/l0`);
+  });
+
+  // The shape that lost a clip: both clips sit on one track, so before this
+  // both landed on its main lane and the second wiped out the first.
+  it("lands a main-lane and a take-lane clip on their own lanes", async () => {
+    const laneId = registerLaneSource();
+
+    registerMainSource();
+
+    const result = (await updateClip({
+      id: `${MAIN_SOURCE_ID},${laneId}`,
+      toPath: "[9|1]",
+    })) as Array<{ path?: string }>;
+
+    expect(result.map((entry) => entry.path)).toStrictEqual([
+      `t${DEST_TRACK}[9|1]`,
+      `t${DEST_TRACK}/l0[9|1]`,
+    ]);
+    // Different lanes, so nothing stacked and nothing may be warned about.
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("moved to the same position"),
+    );
   });
 });

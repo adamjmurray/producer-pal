@@ -265,6 +265,55 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(blocker.id);
   });
 
+  // A destination with a position but no lane is "same lane, other bar". It
+  // used to land on the track's main lane, promoting a clip off a lane the
+  // caller never mentioned.
+  it("moves a take-lane clip along its own lane", async () => {
+    const source = await createClip("601|1", "Stays On Lane", `/l0`);
+
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+      toPath: "[610|1]",
+    });
+
+    expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[610|1]`);
+    expect(moved.reason).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
+    expect(warnings).toStrictEqual([]);
+
+    const placed = await readClipFully(ctx.client!, { id: moved.id });
+
+    expect(placed.name).toBe("Stays On Lane");
+    expect(placed.notes).toContain("C3");
+  });
+
+  // The shape that lost a clip: two clips on ONE track, one per lane, sharing a
+  // bare position. Both landing on the main lane meant the second wiped the
+  // first — through the form the docs call the safe one.
+  it("sends a main-lane and a take-lane clip to their own lanes", async () => {
+    const main = await createClip("621|1", "Main Lane");
+    const take = await createClip("625|1", "Take Lane", `/l0`);
+
+    const { data, warnings } = await updateClip(
+      ctx.client!,
+      `${main.id},${take.id}`,
+      { toPath: "[630|1]" },
+    );
+    const entries = data as unknown as ReadClipResult[];
+
+    expect(entries.map((entry) => entry.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}[630|1]`,
+      `t${EMPTY_MIDI_TRACK}/l0[630|1]`,
+    ]);
+    // Both survived: before this, the take clip landed on the main-lane one and
+    // the response still reported each of them as moved.
+    expect(
+      (await readClipFully(ctx.client!, { id: entries[0]!.id })).name,
+    ).toBe("Main Lane");
+    expect(
+      (await readClipFully(ctx.client!, { id: entries[1]!.id })).name,
+    ).toBe("Take Lane");
+    expect(warnings).toStrictEqual([]);
+  });
+
   it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {
     const source = await createClip("29|1", "Lane Bound", `/l0`);
 

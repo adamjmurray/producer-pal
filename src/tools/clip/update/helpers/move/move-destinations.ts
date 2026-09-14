@@ -19,6 +19,7 @@ import {
   type ClipDestinationPath,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
+import { takeLaneIndexOfClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
@@ -245,6 +246,38 @@ export function resolveRequestedClips(
   );
 
   return { clips, destinationById, requestedIndexById };
+}
+
+/**
+ * Sends a clip back to its own take lane when the call named a position but no
+ * lane. A move with no destination lands on the track's MAIN lane, so a bare
+ * `[5|1]` promoted a take-lane clip off a lane the caller never mentioned, and a
+ * batch sharing one position piled every lane's clip onto the main one, where
+ * each landing cleared the last. Main-lane clips need nothing: an unnamed
+ * destination already means their own lane.
+ * @param clips - The clips this call updates
+ * @param destinationById - Destinations by clip id, added to
+ * @param startBeatsFor - Where each clip is headed, or null when it stays put
+ */
+export function keepSourceLaneDestinations(
+  clips: LiveAPI[],
+  destinationById: Map<string, ClipPath>,
+  startBeatsFor: (clip: LiveAPI) => number | null,
+): void {
+  for (const clip of clips) {
+    if (destinationById.has(clip.id) || startBeatsFor(clip) == null) {
+      continue;
+    }
+
+    const laneIndex = takeLaneIndexOfClip(clip);
+    const trackIndex = clip.trackIndex;
+
+    if (laneIndex == null || trackIndex == null) {
+      continue;
+    }
+
+    destinationById.set(clip.id, { kind: "take-lane", trackIndex, laneIndex });
+  }
 }
 
 // --- Helpers below main exports ---

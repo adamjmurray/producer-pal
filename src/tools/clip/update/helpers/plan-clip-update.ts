@@ -36,6 +36,7 @@ import {
 } from "./entries/clip-reasons.ts";
 import { type ClipTargets } from "./entries/clip-targets.ts";
 import {
+  keepSourceLaneDestinations,
   moveDestinationParam,
   resolveMoveDestinations,
   resolveRequestedClips,
@@ -158,6 +159,11 @@ export function planClipUpdate({
     beatsForClip(startBeats, requestedIndexById.get(clip.id));
   const lengthBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(lengthBeats, requestedIndexById.get(clip.id));
+
+  // A position with no lane means "same lane, other bar", so a take-lane clip
+  // is aimed back at its own lane before anything else reads the destinations.
+  keepSourceLaneDestinations(clips, destinationById, startBeatsFor);
+
   const { clips: splitClips, slots } = applySplittingIfNeeded({
     clips,
     slots: clips.map((clip) => requestedIndexById.get(clip.id) as number),
