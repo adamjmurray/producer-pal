@@ -8,6 +8,7 @@ import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAudioClipInSession,
+  EPSILON,
   type TilingContext,
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
@@ -145,9 +146,11 @@ export function handleArrangementLengthening({
     updatedClips.push({ id: clip.id });
     updatedClips.push(...tiledClips);
   } else {
-    // Lengthening via tiling
     const currentOffset = clipStartMarker - clipLoopStart;
-    const totalContentLength = clipLoopEnd - clipStartMarker;
+    // One pass is the whole loop plus any pre-roll: a start marker inside the
+    // loop doesn't shorten it, Live wraps to loop_start and plays out the rest.
+    const totalContentLength =
+      clipLoopEnd - Math.min(clipStartMarker, clipLoopStart);
     const tiledClips = createLoopedClipTiles({
       clip,
       isAudioClip,
@@ -210,8 +213,9 @@ function createLoopedClipTiles({
 }: CreateLoopedClipTilesArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
-  // If clip not showing full content, tile with start_marker offsets
-  if (currentArrangementLength < totalContentLength) {
+  // Showing less than one pass: tile with start_marker offsets. EPSILON keeps
+  // a float wobble between two Live reads from truncating an exact pass.
+  if (currentArrangementLength < totalContentLength - EPSILON) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
     const tiledClips = tileWithContext(
       clip,
@@ -232,7 +236,7 @@ function createLoopedClipTiles({
   }
 
   // If current arrangement length > total content length, shorten first then tile
-  if (currentArrangementLength > totalContentLength) {
+  if (currentArrangementLength > totalContentLength + EPSILON) {
     let newEndTime = currentStartTime + totalContentLength;
     const tempClipLength = currentEndTime - newEndTime;
 
@@ -265,7 +269,8 @@ function createLoopedClipTiles({
     return updatedClips;
   }
 
-  // Tile the properly-sized clip
+  // Tile the properly-sized clip at the same loop phase; only the first pass
+  // plays the pre-roll.
   const firstTileLength = currentEndTime - currentStartTime;
   const remainingSpace = arrangementLengthBeats - firstTileLength;
   const tiledClips = tileWithContext(
@@ -276,6 +281,7 @@ function createLoopedClipTiles({
     context,
     {
       adjustPreRoll: true,
+      startOffset: Math.max(currentOffset, 0),
       tileLength: firstTileLength,
     },
   );

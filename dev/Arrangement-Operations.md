@@ -278,6 +278,9 @@ loop region:
 **Target >= clip loop length** ("standard tiling"):
 
 - `createLoopeClipTiles()` fills remaining space with duplicated loop iterations
+- One pass is the loop length. A `firstStart` inside the loop does not shorten
+  it: Live plays to `loop_end`, wraps to `loop_start` and plays out the rest, so
+  the tiles carry that same offset instead of splitting into sub-loop pieces
 - Full tiles use direct duplication
 - Last tile shortened via holding area if it would overshoot the target
 - Uses `tileClipToRange()` for the actual tiling work

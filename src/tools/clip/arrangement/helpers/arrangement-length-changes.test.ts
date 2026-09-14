@@ -46,16 +46,16 @@ describe("arrangement-length-changes", () => {
     });
 
     it("should tile clip when currentArrangementLength > totalContentLength for looped clips", () => {
-      // clipProps start_marker 4 → totalContentLength = 8 - 4 = 4.
-      // currentArrangementLength (8) > totalContentLength (4) triggers the
+      // clipProps loop 0..8 → totalContentLength = 8.
+      // currentArrangementLength (12) > totalContentLength (8) triggers the
       // shortening-then-tiling branch. arrangementLengthBeats (16) > clipLength (8).
       const { tile, result } = runLengthening(
-        { start_marker: 4 },
+        {},
         {
           arrangementLengthBeats: 16,
-          currentArrangementLength: 8,
+          currentArrangementLength: 12,
           currentStartTime: 0,
-          currentEndTime: 8,
+          currentEndTime: 12,
         },
       );
 
@@ -69,7 +69,7 @@ describe("arrangement-length-changes", () => {
     it("should handle audio clip shortening with createAudioClipInSession in createLoopedClipTiles", () => {
       const sessionClipId = "session-123";
       const arrangementClipId = "arr-456";
-      const clipProps = { start_marker: 4 };
+      const clipProps = {};
 
       setupArrangementMocks({
         clipProps,
@@ -101,9 +101,9 @@ describe("arrangement-length-changes", () => {
         clip: mockClip as unknown as LiveAPI,
         isAudioClip: true, // Audio clip
         arrangementLengthBeats: 16,
-        currentArrangementLength: 8, // > totalContentLength (4)
+        currentArrangementLength: 12, // > totalContentLength (8)
         currentStartTime: 0,
-        currentEndTime: 8,
+        currentEndTime: 12,
         context: { silenceWavPath: "/test.wav" },
       });
 
@@ -259,12 +259,11 @@ describe("arrangement-length-changes", () => {
     });
 
     it("tiles the properly-sized clip when currentArrangementLength == totalContentLength", () => {
-      // totalContentLength = loop_end(8) - start_marker(0) = 8, equal to
+      // totalContentLength = loop_end(8) - loop_start(0) = 8, equal to
       // currentArrangementLength(8) → the equal branch. firstTileLength =
       // currentEndTime(10) - currentStartTime(2) = 8, remainingSpace = 20 - 8 =
-      // 12, position = currentEndTime(10). The exact options object (no
-      // startOffset) also pins the `<` boundary, adjustPreRoll, and the object
-      // literal.
+      // 12, position = currentEndTime(10). The exact options object also pins
+      // the `<` boundary, adjustPreRoll, and the object literal.
       const { tile, clip } = runLengthening(
         {},
         {
@@ -275,7 +274,11 @@ describe("arrangement-length-changes", () => {
         },
       );
 
-      expectTiled(tile, clip, 10, 12, { adjustPreRoll: true, tileLength: 8 });
+      expectTiled(tile, clip, 10, 12, {
+        adjustPreRoll: true,
+        startOffset: 0,
+        tileLength: 8,
+      });
 
       tile.mockRestore();
     });
@@ -296,32 +299,111 @@ describe("arrangement-length-changes", () => {
         },
       );
 
-      expectTiled(tile, clip, 20, 10, { adjustPreRoll: true, tileLength: 20 });
+      expectTiled(tile, clip, 20, 10, {
+        adjustPreRoll: true,
+        startOffset: 0,
+        tileLength: 20,
+      });
 
       tile.mockRestore();
     });
 
     it("pins the shorten-then-tile arithmetic when currentArrangementLength > totalContentLength", () => {
-      // totalContentLength = loop_end(8) - start_marker(2) = 6 <
-      // currentArrangementLength(10) → shorten-then-tile branch.
-      //   newEndTime = currentStartTime(1) + totalContentLength(6) = 7
-      //   tempClipLength = currentEndTime(11) - newEndTime(7) = 4  → temp clip
-      //   firstTileLength = newEndTime(7) - currentStartTime(1) = 6
-      //   remainingSpace = arrangementLengthBeats(20) - firstTileLength(6) = 14
+      // start_marker(2) sits inside the loop, so totalContentLength is the loop
+      // length: loop_end(8) - loop_start(0) = 8 < currentArrangementLength(12).
+      //   newEndTime = currentStartTime(1) + totalContentLength(8) = 9
+      //   tempClipLength = currentEndTime(13) - newEndTime(9) = 4  → temp clip
+      //   firstTileLength = newEndTime(9) - currentStartTime(1) = 8
+      //   remainingSpace = arrangementLengthBeats(20) - firstTileLength(8) = 12
       const { tile, clip } = runLengthening(
         { loop_start: 0, loop_end: 8, start_marker: 2, end_marker: 8 },
         {
           arrangementLengthBeats: 20,
-          currentArrangementLength: 10,
+          currentArrangementLength: 12,
           currentStartTime: 1,
-          currentEndTime: 11,
+          currentEndTime: 13,
         },
       );
 
       const track = requireMockObject(livePath.track(0));
 
-      expect(track.call).toHaveBeenCalledWith("create_midi_clip", 7, 4);
-      expectTiled(tile, clip, 7, 14, { adjustPreRoll: true, tileLength: 6 });
+      expect(track.call).toHaveBeenCalledWith("create_midi_clip", 9, 4);
+      expectTiled(tile, clip, 9, 12, { adjustPreRoll: true, tileLength: 8 });
+
+      tile.mockRestore();
+    });
+
+    it("tiles a full loop when the start marker sits inside the loop", () => {
+      // The bug: a fresh arrangement copy of a clip whose firstStart is inside
+      // the loop spans one whole loop (Live wraps back to loop_start), but
+      // loop_end - start_marker reported only the part before the wrap, so the
+      // clip was truncated and tiled into sub-loop fragments.
+      // totalContentLength = loop_end(8) - loop_start(0) = 8 ==
+      // currentArrangementLength(8) → equal branch, tiles a full loop each.
+      // startOffset keeps the tiles at the same phase in the loop.
+      const { tile, clip } = runLengthening(
+        { loop_start: 0, loop_end: 8, start_marker: 5, end_marker: 8 },
+        {
+          arrangementLengthBeats: 32,
+          currentArrangementLength: 8,
+          currentStartTime: 0,
+          currentEndTime: 8,
+        },
+      );
+
+      expectTiled(tile, clip, 8, 24, {
+        adjustPreRoll: true,
+        startOffset: 5,
+        tileLength: 8,
+      });
+
+      tile.mockRestore();
+    });
+
+    it("drops the pre-roll from the tiles when the start marker precedes the loop", () => {
+      // start_marker(1) < loop_start(2), so the first pass plays 1 beat of
+      // pre-roll plus the loop: totalContentLength = loop_end(10) -
+      // start_marker(1) = 9 == currentArrangementLength → equal branch. Only
+      // that first pass plays the pre-roll, so the tiles start at loop_start
+      // (startOffset 0), not at the negative offset.
+      const { tile, clip } = runLengthening(
+        { loop_start: 2, loop_end: 10, start_marker: 1, end_marker: 10 },
+        {
+          arrangementLengthBeats: 27,
+          currentArrangementLength: 9,
+          currentStartTime: 0,
+          currentEndTime: 9,
+        },
+      );
+
+      expectTiled(tile, clip, 9, 18, {
+        adjustPreRoll: true,
+        startOffset: 0,
+        tileLength: 9,
+      });
+
+      tile.mockRestore();
+    });
+
+    it("treats a sub-tick difference from one full pass as equal", () => {
+      // The lengths come from different Live reads, so a clip showing exactly
+      // one pass can land either side of equal. Within a tick it must still
+      // take the equal branch instead of truncating itself.
+      const { tile, clip } = runLengthening(
+        {},
+        {
+          arrangementLengthBeats: 24,
+          currentArrangementLength: 8.0000001,
+          currentStartTime: 0,
+          currentEndTime: 8.0000001,
+        },
+      );
+
+      expectTiled(tile, clip, 8.0000001, 15.9999999, {
+        adjustPreRoll: true,
+        startOffset: 0,
+        tileLength: 8.0000001,
+      });
 
       tile.mockRestore();
     });
