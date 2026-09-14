@@ -175,6 +175,10 @@ Tell the user to check ${SETUP_URL} for configuration help.
    * try block, so letting a send failure escape would turn a working connection
    * into a "cannot connect to Ableton Live" error. The whole send is wrapped —
    * a throw and a rejection are equally fatal here.
+   *
+   * One direction only. Going offline needs no nudge: the next tools/list
+   * serves the fallback anyway, and notifying from that handler would ask the
+   * client to re-list the list it is already fetching.
    */
   private _notifyToolListChanged(): void {
     if (!this.servedFallbackTools) {

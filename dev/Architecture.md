@@ -153,6 +153,10 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 - Zero runtime dependencies (all bundled)
 - Graceful degradation when Live isn't running
 - Returns helpful setup instructions when offline
+- Declares `tools.listChanged` and tells the client to re-list once the device
+  comes online, so a cached offline tool list gets corrected. The stateless HTTP
+  server can't send that itself — every `POST /mcp` is a fresh server — but the
+  portal holds the stdio connection.
 
 ### 2. MCP Server (`src/mcp-server/mcp-server.ts`)
 
