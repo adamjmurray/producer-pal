@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { waitUntil } from "#src/shared/max/v8-sleep.ts";
+import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -23,7 +23,7 @@ class MockTask {
 }
 g.Task = MockTask;
 
-describe("v8-sleep", () => {
+describe("v8-wait-until", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

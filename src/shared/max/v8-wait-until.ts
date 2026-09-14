@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Sleep utility for V8 environment in Max for Live
+ * Polling waits for the V8 environment in Max for Live
  * Uses Max's Task object for scheduling
  */
 

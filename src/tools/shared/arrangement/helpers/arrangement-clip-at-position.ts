@@ -15,7 +15,7 @@ import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts"
 import {
   type CompleteArrangementPosition,
   type ArrangementLane,
-} from "#src/tools/shared/validation/helpers/object-path-coord.ts";
+} from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { isTakeLaneClip } from "./take-lanes.ts";

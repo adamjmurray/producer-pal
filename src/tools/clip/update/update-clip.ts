@@ -6,7 +6,7 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-optimizer.ts";
+import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
 import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
   emitArrangementWarnings,

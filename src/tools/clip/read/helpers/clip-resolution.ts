@@ -13,7 +13,7 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
 import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
-import { type ArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
+import { type ArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
   requireClipSlotPath,
   slotPath,

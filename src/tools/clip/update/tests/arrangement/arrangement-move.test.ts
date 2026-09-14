@@ -17,7 +17,7 @@ import {
   handleArrangementOperations,
   handleArrangementStartOperation,
 } from "../../helpers/arrangement/arrangement-move.ts";
-import { type OverwritePlan } from "../../helpers/arrangement/update-clip-arrangement-optimizer.ts";
+import { type OverwritePlan } from "../../helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
 import { flushDeferredDeletions } from "../../helpers/arrangement/update-clip-deferred-deletion.ts";
 import {
   moveGroupKey,

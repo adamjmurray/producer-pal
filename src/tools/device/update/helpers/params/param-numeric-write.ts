@@ -8,7 +8,7 @@ import { type ParamNumericRange } from "#src/tools/shared/device/helpers/param-n
 import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
 import { findRawValueForDisplay } from "./param-display-search.ts";
-import { displayValueForWrite } from "./param-unit-check.ts";
+import { displayValueForWrite } from "./param-unit-display-value.ts";
 import {
   type ParamWriteOutcome,
   writeParam,

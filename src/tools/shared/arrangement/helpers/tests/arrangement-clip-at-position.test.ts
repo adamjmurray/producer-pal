@@ -16,7 +16,7 @@ import { arrangementClipAtPosition } from "../arrangement-clip-at-position.ts";
 import {
   type CompleteArrangementPosition,
   type ArrangementLane,
-} from "#src/tools/shared/validation/helpers/object-path-coord.ts";
+} from "#src/tools/shared/validation/helpers/object-path-position.ts";
 
 const PARAM_NAME = "path";
 const MAIN_LANE: ArrangementLane = { kind: "track", trackIndex: 0 };

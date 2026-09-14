@@ -11,13 +11,13 @@ import { filesContaining } from "#src/test/helpers/meta-test-helpers.ts";
 // "must be a string" throw is a handler going its own way again.
 const OWN_STRING_THROW = /throw new Error\(\s*"[^"]*must be a string/;
 
-const HOME = "src/mcp-server/rpc/route-args.ts";
+const HOME = "src/mcp-server/rpc/route-string-args.ts";
 
 describe("route string args have one home", () => {
   it("refuses a non-string from requireString only", () => {
     expect(
       filesContaining("src", OWN_STRING_THROW),
-      "call requireString from route-args.ts",
+      "call requireString from route-string-args.ts",
     ).toStrictEqual([]);
   });
 

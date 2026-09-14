@@ -11,7 +11,7 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type ClipMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-arrangement-optimizer.ts";
+import { type ClipMoves } from "#src/tools/clip/update/helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
 import {
   type ArrangementMoveOrder,
   orderArrangementMoves,

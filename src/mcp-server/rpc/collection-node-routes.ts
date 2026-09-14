@@ -16,7 +16,7 @@
  */
 
 import { registerNodeRoute } from "./node-request-protocol.ts";
-import { optionalString, requireString } from "./route-args.ts";
+import { optionalString, requireString } from "./route-string-args.ts";
 
 /** Result shape shared by every collection route: a text payload for the LLM. */
 interface CollectionRouteResult {

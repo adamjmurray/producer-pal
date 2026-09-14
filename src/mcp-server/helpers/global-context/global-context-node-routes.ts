@@ -16,7 +16,7 @@
  */
 
 import { registerNodeRoute } from "../../rpc/node-request-protocol.ts";
-import { requireString } from "../../rpc/route-args.ts";
+import { requireString } from "../../rpc/route-string-args.ts";
 import {
   readGlobalContext,
   writeGlobalContext,

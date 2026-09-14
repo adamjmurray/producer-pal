@@ -23,7 +23,7 @@ import {
 import {
   arrangementPosition,
   type ArrangementPosition,
-} from "./helpers/object-path-coord.ts";
+} from "./helpers/object-path-position.ts";
 
 /** A path root naming a track. */
 export type TrackSegment =

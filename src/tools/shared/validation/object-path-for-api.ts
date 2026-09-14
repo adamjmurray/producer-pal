@@ -7,7 +7,7 @@ import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.t
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
-import { type ArrangementLane } from "./helpers/object-path-coord.ts";
+import { type ArrangementLane } from "./helpers/object-path-position.ts";
 import { arrangementPath, slotPath } from "./helpers/object-paths.ts";
 import { songMeter } from "./helpers/song-meter.ts";
 import { formatObjectPath } from "./object-path.ts";

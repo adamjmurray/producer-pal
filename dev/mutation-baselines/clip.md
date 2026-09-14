@@ -33,18 +33,18 @@ imported — 14 all-`NoCoverage` mutants that can never be killed.
 Per-file scores after triage (files with remaining survivors; 12 more files hit
 100%):
 
-| File                                 | Score  | Survived | Notes                                   |
-| ------------------------------------ | ------ | -------- | --------------------------------------- |
-| `update-clip-arrangement-optimizer`  | 90.32% | 6        | merge-group length boundary (bkt 2)     |
-| `note-updates`                       | 91.82% | 9        | redundant fast-path guards (bkt 2)      |
-| `clip-data-preparation`              | 93.02% | 6        | loop-region default equivalents         |
-| `update-clip.ts`                     | 93.75% | 6        | toSlot dual-return + split integ.       |
-| `audio-clip-creation`                | 95.45% | 1        | arrangementStart null-guard (bkt 2)     |
-| `clip-properties-to-set`             | 96.47% | 3        | setEndFirst redundant operands          |
-| `clip-resolution`                    | 97.30% | 2        | dead `=== ""` clause (bkt 2)            |
-| `code-execution-context`             | 97.75% | 2        | view-branch guards (weak, need LiveAPI) |
-| `read-clip.ts`                       | 98.31% | 3        | `?? "barbeat"` fallthrough (bkt 2)      |
-| 7 more (`create-clip.ts`, timing, …) | 98–99% | 1 each   | isolated equivalents (bkt 2)            |
+| File                                     | Score  | Survived | Notes                                   |
+| ---------------------------------------- | ------ | -------- | --------------------------------------- |
+| `update-clip-arrangement-overwrite-plan` | 90.32% | 6        | merge-group length boundary (bkt 2)     |
+| `note-updates`                           | 91.82% | 9        | redundant fast-path guards (bkt 2)      |
+| `clip-data-preparation`                  | 93.02% | 6        | loop-region default equivalents         |
+| `update-clip.ts`                         | 93.75% | 6        | toSlot dual-return + split integ.       |
+| `audio-clip-creation`                    | 95.45% | 1        | arrangementStart null-guard (bkt 2)     |
+| `clip-properties-to-set`                 | 96.47% | 3        | setEndFirst redundant operands          |
+| `clip-resolution`                        | 97.30% | 2        | dead `=== ""` clause (bkt 2)            |
+| `code-execution-context`                 | 97.75% | 2        | view-branch guards (weak, need LiveAPI) |
+| `read-clip.ts`                           | 98.31% | 3        | `?? "barbeat"` fallthrough (bkt 2)      |
+| 7 more (`create-clip.ts`, timing, …)     | 98–99% | 1 each   | isolated equivalents (bkt 2)            |
 
 The remaining 45 survivors are overwhelmingly **bucket 2 (equivalent)**. The
 recurring shapes:
@@ -53,7 +53,7 @@ recurring shapes:
   `existingNotes.length === 0` / `preTransformString == null` short- circuit
   duplicating a guard `applyTransforms` already performs internally, so forcing
   it changes nothing observable.
-- **Merge-group length boundaries** (`update-clip-arrangement-optimizer`):
+- **Merge-group length boundaries** (`update-clip-arrangement-overwrite-plan`):
   `>= 1` / `< 1` on group lengths the merge loop can only ever enter with ≥1
   element.
 - **Dual null-returns** (`update-clip.ts` `parseToSlotParam`, since moved to

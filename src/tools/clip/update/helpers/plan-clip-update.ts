@@ -22,7 +22,7 @@ import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths
 import {
   computeOverwritePlan,
   type OverwritePlan,
-} from "./arrangement/update-clip-arrangement-optimizer.ts";
+} from "./arrangement/update-clip-arrangement-overwrite-plan.ts";
 import {
   beatsForClip,
   parseArrangementParams,

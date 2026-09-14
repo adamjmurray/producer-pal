@@ -104,7 +104,7 @@ describe("Main export scan", () => {
   it("should flag exports that share no word with the file", () => {
     expect(
       scan(
-        "src/shared/max/v8-sleep.ts",
+        "src/shared/max/v8-timers.ts",
         "export async function waitUntil() {}",
       ),
     ).toStrictEqual({ names: ["waitUntil"], named: false });

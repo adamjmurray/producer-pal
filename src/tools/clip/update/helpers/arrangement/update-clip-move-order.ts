@@ -27,7 +27,7 @@
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
-import { type ClipMoves } from "./update-clip-arrangement-optimizer.ts";
+import { type ClipMoves } from "./update-clip-arrangement-overwrite-plan.ts";
 
 /** A span on one track's main arrangement lane. */
 interface LaneSpan {

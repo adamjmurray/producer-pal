@@ -10,7 +10,7 @@ import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths
 import {
   computeOverwritePlan,
   type ClipMoves,
-} from "../../helpers/arrangement/update-clip-arrangement-optimizer.ts";
+} from "../../helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
 import { moveGroupKey } from "../../helpers/arrangement/update-clip-move-groups.ts";
 
 /**
