@@ -127,7 +127,10 @@ target, so no entry exists yet to carry them.
   the clip id the call found; a step that writes under a new id — a move
   re-creates the clip — hands its reasons back to the id the caller named. One
   target never answers with no entries: a split whose pieces the rescan can't
-  find says so too.
+  find says so too. A clip another clip in the same call was moved onto keeps a
+  normal entry rather than a skip — `deleted: true` and the address it had:
+  nothing the call asked of it landed, but that it is gone is news no skip can
+  carry.
 - **create-clip says it on the clip it made.** A `firstStart` the call can't use
   — it only lands alongside `looping: true` — is a `reason` on that clip's entry
   rather than a warning, and no `ok`: the clip exists.

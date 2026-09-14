@@ -272,9 +272,13 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
  * A fresh lookup misses it, but anything already holding it keeps the stale id
  * — only its path clears and its property reads dry up. `confirmDeleted` in
  * `tools/actions/delete/delete.ts` depends on that split.
+ *
+ * Exported for the fixtures whose own `call` implementations destroy something
+ * — an arrangement create clears the range it writes to — since those never
+ * reach {@link defaultMockCall} and so aren't covered by simulateMockDeletes.
  * @param idOrPath - The object's ID or path
  */
-function deleteMockObject(idOrPath: string): void {
+export function deleteMockObject(idOrPath: string): void {
   const mock = lookupMockObject(idOrPath, idOrPath);
 
   if (!mock) {

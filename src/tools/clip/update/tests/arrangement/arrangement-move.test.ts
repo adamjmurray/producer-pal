@@ -760,7 +760,9 @@ function groupHoldingOneClipBack(landed: string, clipExists = true) {
           {
             clip: {
               id: FIRST,
-              path: "",
+              // The half that tells the truth about a held clip: a dead one
+              // keeps its id and clears its path.
+              path: clipExists ? livePath.track(0).arrangementClip(0) : "",
               exists: () => clipExists,
             } as unknown as LiveAPI,
             sourceTrack: sourceTrack as unknown as LiveAPI,

@@ -77,6 +77,19 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
   return devicePathForApi(api, path);
 }
 
+/**
+ * Whether an id still names the object at the path a result gave it. Looked up
+ * fresh every time, never off an object the caller kept: a dead one goes on
+ * reporting its id, and `exists()` with it, so only a new lookup reads the
+ * empty path that says it is gone (dev/LiveAPI-Object-Reuse.md).
+ * @param id - The id the result reported
+ * @param path - The path the result reported
+ * @returns True when the object is still there
+ */
+export function stillAtPath(id: string, path: string): boolean {
+  return objectPathForApi(LiveAPI.from(id)) === path;
+}
+
 /** A container a call named by path, with the object that spelling resolved to. */
 export interface WrittenContainer {
   /** The object the spelling resolved to — must be `api`'s direct parent, and

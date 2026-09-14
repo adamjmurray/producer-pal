@@ -68,6 +68,9 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - `mockNonExistentObjects()` makes unregistered IDs non-existent, for invalid-ID
   tests. `simulateMockDeletes()` makes `delete_*` calls really remove the
   target, leaving holders half-stale: cleared path, but the id still lying.
+  `deleteMockObject(id)` does the same for a fixture whose own `call`
+  implementation destroys something — an arrangement create clears the range it
+  writes to, and that never reaches a `delete_*`.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 

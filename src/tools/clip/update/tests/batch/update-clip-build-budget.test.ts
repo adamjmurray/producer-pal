@@ -221,5 +221,11 @@ describe("updateClip build budget", () => {
     // destination holds a clip it also updates, and the copy then reads back
     // what landed.
     expect(resolves("live_set tracks * clip_slots * clip")).toBe(CLIPS * 2);
+
+    // Six per clip, plus the one destination track: the id the call named, the
+    // two slots and two destination clips above, and the read-back at the end
+    // that says whether a sibling's move buried this one. A call that moves
+    // nothing skips that read-back entirely — the rename above stays at CLIPS.
+    expect(liveApiBuildStats().resolved).toBe(CLIPS * 6 + 1);
   });
 });

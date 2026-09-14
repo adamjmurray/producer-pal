@@ -6,7 +6,7 @@
 // What a duplicate result says about a copy another copy in the same call
 // landed on top of.
 
-import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { stillAtPath } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 
 /** A copy a later copy in the same call replaced. It has no id: it is gone. */
@@ -48,7 +48,7 @@ export function markOverwrittenCopies(createdObjects: object[]): void {
   for (const slot of slots) {
     const { path } = slot.entry;
 
-    if (path == null || stillAt(slot.entry.id, path)) {
+    if (path == null || stillAtPath(slot.entry.id, path)) {
       continue;
     }
 
@@ -72,20 +72,6 @@ export function collectClipResults(
 }
 
 // --- Helpers below main exports ---
-
-/**
- * Whether an id still names a clip at the path the result gave it.
- *
- * Looked up fresh every time, never off an object the call kept: a dead one
- * goes on reporting its id, and `exists()` with it, so only a new lookup reads
- * the empty path that says it is gone (dev/LiveAPI-Object-Reuse.md).
- * @param id - The id the result reported
- * @param path - The path the result reported
- * @returns True when the clip is still there
- */
-function stillAt(id: string, path: string): boolean {
-  return objectPathForApi(LiveAPI.from(id)) === path;
-}
 
 /**
  * Finds every clip entry in a result, top-level or nested under `clips`.

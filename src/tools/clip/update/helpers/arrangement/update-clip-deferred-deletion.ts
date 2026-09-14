@@ -4,20 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Clearing a clip a later clip in the call will land on top of, without
- * betting on that landing.
+ * Clearing a clip a later clip in the call will land on top of, without betting
+ * on that landing.
  *
- * The move optimization can only predict the overwrite, and a placement can
- * refuse after the prediction is made. So a clip it marks is left alone until a
- * survivor of its group is confirmed to have landed, and it is only then
- * cleared. When nothing lands, the clip stays where it was and its entry says
- * so.
+ * The optimizer only predicts the overwrite, and a placement can refuse after
+ * the prediction is made. So a marked clip is left alone until a survivor of
+ * its group is confirmed landed, and cleared only then; when nothing lands it
+ * stays where it was and its entry says so.
  *
- * Waiting for the landing, rather than predicting every refusal, is what makes
- * this safe without knowing the full list. The duplicate answering with id 0 is
- * guarded for on that basis: nothing is known to provoke it — a frozen track,
- * the usual suspect, takes the duplicate fine — so don't drop the guard on the
- * grounds that you can't reproduce it.
+ * Don't drop the id-0 guard because you can't reproduce it: nothing is known to
+ * provoke it, and a frozen track — the usual suspect — takes the duplicate fine.
  */
 
 import {
@@ -32,6 +28,7 @@ import {
 import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { clipIsGone } from "../batch/buried-clips.ts";
 import { appendReason } from "../entries/clip-reasons.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-optimizer.ts";
 import {
@@ -116,7 +113,7 @@ export function flushDeferredDeletions(
         // Nothing landed on it — but the placement that failed still cleared
         // the target range first, which destroys a clip that already sat in it.
         // Report what is true now, not what was planned.
-        result.deleted = !clip.exists();
+        result.deleted = clipIsGone(clip);
 
         continue;
       }
@@ -126,7 +123,7 @@ export function flushDeferredDeletions(
 
       // The landing may already have cleared the range this clip sat in, in
       // which case there is nothing left to delete.
-      if (clip.exists()) {
+      if (!clipIsGone(clip)) {
         const leftover = removeMovedSource(clip, sourceTrack);
 
         if (leftover != null) {
@@ -161,10 +158,9 @@ export function removeMovedSource(
 /**
  * Whether something landed on this group that buries a held-back clip whole.
  *
- * Length is the whole question: clips landing at one position overwrite only up
- * to their own length, and a group's survivors are not all longer than its
- * non-survivors. A landing shorter than the held-back clip leaves part of it
- * standing, so it settles nothing. An unknown length never clears anything.
+ * Length is the whole question: a landing overwrites only up to its own length,
+ * and a group's survivors are not all longer than its non-survivors. One
+ * shorter than the held-back clip settles nothing, and so does an unknown one.
  * @param group - The group the clip was headed for
  * @param survivorLengths - The clips whose landing does the overwrite, by length
  * @param heldLength - Arrangement length of the held-back clip, in beats

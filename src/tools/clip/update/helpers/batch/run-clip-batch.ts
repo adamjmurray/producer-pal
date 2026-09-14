@@ -26,6 +26,11 @@ import {
 import { type ClipTargets, refuseTarget } from "../entries/clip-targets.ts";
 import { type ClipUpdatePlan } from "../plan-clip-update.ts";
 import {
+  buriedClipEntry,
+  clipAddresses,
+  markBuriedClips,
+} from "./buried-clips.ts";
+import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
@@ -119,8 +124,14 @@ export async function runClipBatch({
     vacates: plan.vacates,
     reasons,
     refusedMoves: plan.refusedMoves,
+    heldBackIds: plan.overwrites?.nonSurvivorIds,
     refuseMove: plan.refuseMove,
   });
+  // Both cost a Live read apiece, so neither runs for a call that can bury
+  // nothing. The addresses are read before the first move: a clip cleared by
+  // one of them has none left to report itself by.
+  const clears = clearsSpans(clips, plan);
+  const addresses = clipAddresses(clips, clears);
 
   for (const [step, i] of moveOrder.entries()) {
     const clip = clips[i] as LiveAPI;
@@ -128,6 +139,16 @@ export async function runClipBatch({
 
     if (stopBatch({ deadline, plan, targets, clips, order: moveOrder, step })) {
       break;
+    }
+
+    const buried = buriedClipEntry(clip, addresses);
+
+    if (buried != null) {
+      // No `skips.settle`: the clip is gone, so its span is free and whatever
+      // was waiting on it can still run.
+      resultsPerClip[i] = [buried];
+
+      continue;
     }
 
     const written = updatedClips.length;
@@ -187,7 +208,29 @@ export async function runClipBatch({
     skips.settle(i, resultsPerClip[i]);
   }
 
+  markBuriedClips(
+    resultsPerClip.flat(),
+    clears,
+    plan.overwrites?.nonSurvivorIds,
+  );
+
   return groupResultsBySlot(resultsPerClip, plan.slots);
+}
+
+/**
+ * Whether the call writes anywhere a clip could be sitting: a move clears its
+ * whole destination span, an arrangementLength the span it tiles across.
+ * @param clips - The clips to update
+ * @param plan - What the call does to which clips
+ * @returns True when something the call does clears a span
+ */
+function clearsSpans(clips: LiveAPI[], plan: ClipUpdatePlan): boolean {
+  return clips.some(
+    (clip) =>
+      plan.destinationById.has(clip.id) ||
+      plan.startBeatsFor(clip) != null ||
+      plan.lengthBeatsFor(clip) != null,
+  );
 }
 
 interface SettleClipTurnArgs {
