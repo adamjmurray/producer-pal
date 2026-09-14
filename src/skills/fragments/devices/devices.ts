@@ -38,7 +38,7 @@ ppal-select takes these paths too: \`path: "t0/d0/pC1"\` shows a pad in Live, \`
 
 Clip destinations speak the same grammar: \`t0\` = that track's arrangement, \`t0/s1\` = a clip slot.
 
-Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
+Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains. To add one without counting what's there, use \`c+\`: \`ppal-create-device path="t0/d0/c+"\` appends a chain and puts the device in it, and \`ppal-duplicate type="chain" toPath="t0/d0/c+"\` appends a copy. The result reports the index it landed at. Live can only append, so nothing inserts a chain at an index, and rack return chains can only be added in Live. A Drum Rack refuses \`c+\` on the rack — its chains belong to pads — so name the pad: \`t0/d0/pC1/c+\` adds a layer to C1.
 
 ### VST/AU Plugins
 

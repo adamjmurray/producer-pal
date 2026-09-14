@@ -17,6 +17,13 @@ import { type ObjectPath } from "../object-path.ts";
 export const NEW_TAKE_LANE_ADVICE =
   '"l+" adds a take lane, which only ppal-update-track does';
 
+/** Appends a chain to the rack (or drum pad) the rest of the path names. */
+export const NEW_CHAIN = "c+";
+
+/** Why a tool that only reads or writes an existing object can't take a `c+`. */
+export const NEW_CHAIN_ADVICE =
+  '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+
 const LEGACY_TRACK = /^(\d+)$/;
 const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
 

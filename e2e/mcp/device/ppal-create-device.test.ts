@@ -348,6 +348,73 @@ describe("ppal-create-device", () => {
     expect(chainDevice.path).toBe(`${rack.path}/c0/d0`);
   });
 
+  // Only real Live says which index insert_chain actually landed on, which is
+  // the whole point of `c+`: the caller never counted the rack's chains.
+  it("appends a chain with c+ and reports the index it landed at", async () => {
+    const trackIndex = await createTrack("audio");
+    const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+
+    await sleep(100);
+
+    // How many chains a fresh rack arrives with is a per-machine default.
+    const chains =
+      parseToolResult<{ chains?: unknown[] }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-device",
+          arguments: { path: rack.path, include: ["chains"] },
+        }),
+      ).chains?.length ?? 0;
+
+    const first = await createDevice("Compressor", `${rack.path}/c+`);
+
+    expect(first.path).toBe(`${rack.path}/c${chains}/d0`);
+    expect((await readDeviceAt(first.path)).id).toBe(first.id);
+
+    // The second goes past the first rather than back into it.
+    const second = await createDevice("Compressor", `${rack.path}/c+`);
+
+    expect(second.path).toBe(`${rack.path}/c${chains + 1}/d0`);
+  });
+
+  // A new chain has no note, so Live would put it on the catch-all pad, where
+  // it would sound on every note no pad claims.
+  it("refuses c+ on a Drum Rack and names the pad spelling", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Chorus-Ensemble", path: `${rackPath}/c+` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "every chain belongs to a pad",
+    );
+  });
+
+  it("adds a layer to a drum pad with c+, on that pad's note", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    // D1 already holds two layers, so c+ makes a third.
+    const device = await createDevice("Chorus-Ensemble", `${rackPath}/pD1/c+`);
+
+    expect(device.path).toMatch(new RegExp(`^${rackPath}/pD1/c2/d\\d+$`));
+    expect((await readDeviceAt(device.path)).id).toBe(device.id);
+  });
+
+  // Nothing reads or writes a chain that doesn't exist yet, and the refusal has
+  // to say which tools do take a `c+`.
+  it("refuses c+ as a read target, naming the tools that take it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d0/c+" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    );
+  });
+
   // Live keeps a chain sorted by device type, so appending an instrument to a
   // chain that already holds an audio effect pushes that effect down a slot.
   // The path cache shares one container walk across a batch, and this is the

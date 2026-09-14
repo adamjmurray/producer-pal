@@ -237,6 +237,44 @@ describe("moveDeviceToPath", () => {
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toHaveLength(0);
   });
+
+  // The same `c+` create-device takes: a move into a chain that doesn't exist
+  // yet, so a device can be pulled out into a layer of its own in one call.
+  it("appends a chain for a c+ destination and moves the device into it", () => {
+    const rackPath = livePath.track(1).device(0);
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+    registerMockObject("rack-1", {
+      path: rackPath,
+      type: "RackDevice",
+      properties: {
+        chains: children("chain-0"),
+        can_have_chains: 1,
+        can_have_drum_pads: 0,
+      },
+      methods: { insert_chain: () => ["id", "chain-new"] },
+    });
+    registerMockObject("chain-0", { path: rackPath.chain(0), type: "Chain" });
+    // Static mocks, so the destination lists the device from the start — that
+    // is what "the move landed" looks like when it is read back.
+    registerMockObject("chain-new", {
+      path: rackPath.chain(1),
+      type: "Chain",
+      properties: { devices: children("device-0") },
+    });
+
+    const move = moveDeviceToPath(LiveAPI.from(device.path), "t1/d0/c+");
+
+    expect(move.outcome).toBe("moved");
+    expect(move.container?.id).toBe("chain-new");
+    expect(liveSet.call).toHaveBeenCalledWith(
+      "move_device",
+      "id device-0",
+      "id chain-new",
+      0,
+    );
+  });
 });
 
 describe("moveDeviceToPath - out of a trimmed chain", () => {

@@ -9,6 +9,7 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   liveApiCollection,
@@ -59,6 +60,26 @@ export function resolveContainerWithAutoCreate(
   }
 
   return current;
+}
+
+/**
+ * Append an empty chain to a rack. Live's `insert_chain` is append-only, so
+ * this is the only chain creation there is — nothing inserts at an index.
+ *
+ * On a Drum Rack the new chain arrives on the catch-all pad (in_note -1); a
+ * caller that wants it on a pad sets its `in_note` afterwards.
+ * @param rack - The rack device
+ * @returns The new chain, or null when Live made none
+ */
+export function appendChain(rack: LiveAPI): LiveAPI | null {
+  // insert_chain returns ["id", chainId] on success, or 1 on failure.
+  const result = rack.call("insert_chain");
+
+  invalidateRackChains(rack);
+
+  return Array.isArray(result) && result[0] === "id"
+    ? LiveAPI.from(String(result[1]))
+    : null;
 }
 
 /**
@@ -161,10 +182,7 @@ function autoCreateChains(
 
   // Create the exact number of chains needed (bounded loop, not while)
   for (let i = 0; i < chainsToCreate; i++) {
-    const result = device.call("insert_chain");
-
-    // insert_chain returns ["id", chainId] on success, or 1 on failure
-    if (!Array.isArray(result) || result[0] !== "id") {
+    if (appendChain(device) == null) {
       throw new Error(
         `Failed to create chain ${i + 1}/${chainsToCreate} in path "${fullPath}"`,
       );
@@ -300,7 +318,12 @@ export function resolveOrCreateDrumPadChain(
     return null;
   }
 
-  const chainIndex = parseDrumPadChainIndex(chainSegments);
+  // "c+" names the layer after the pad's last, and the miss already counted
+  // them — so it is the index to create.
+  const chainIndex =
+    chainSegments[0] === NEW_CHAIN
+      ? existing.chainCount
+      : parseDrumPadChainIndex(chainSegments);
 
   if (chainIndex == null) {
     return null;

@@ -22,10 +22,12 @@ import {
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { NEW_CHAIN_ADVICE } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -247,6 +249,12 @@ function rackDestination(toPath: string): InsertionPathResolution | null {
  * @returns Device LiveAPI or null if not found
  */
 function resolveDeviceFromPath(path: string): LiveAPI | null {
+  // wrapInRack wraps devices that are already there, and resolving a "c+" here
+  // would append the chain before finding no device in it.
+  if (parseObjectPath(path).kind === "new-chain") {
+    throw new Error(nothingAtPath(path, NEW_CHAIN_ADVICE));
+  }
+
   const resolved = resolveInsertionPath(path);
 
   if (resolved.namesNothing != null) {

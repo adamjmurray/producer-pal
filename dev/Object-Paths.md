@@ -34,8 +34,8 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ```
 path     := ( root ( "/" segment )* )? coord?
 root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
-segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note>
-           | "p*" | "inst" | "mfx"<n> | "afx"<n>
+segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "c+" | "rc"<n>
+           | "p"<note> | "p*" | "inst" | "mfx"<n> | "afx"<n>
 coord    := "[" position "]"
 position := <bar|beat> | "loc:" <locator>
 ```
@@ -62,7 +62,8 @@ Segments have to nest the way Live does, and a path that doesn't is a parse
 error rather than a missing object later: a track holds devices, a device holds
 chains, return chains, and drum pads, and each of those holds devices. A drum
 pad also takes a `c<n>`, picking among the chains that share its note. So
-`t0/c0` and `t0/d0/d1` are rejected.
+`t0/c0` and `t0/d0/d1` are rejected. `c+` goes wherever a `c<n>` may, but only
+last: the chain it appends is empty, so nothing can hang below it.
 
 **A device can also be addressed by type.** `inst` is the container's
 instrument, `mfx<n>` its n-th MIDI effect, `afx<n>` its n-th audio effect —
@@ -101,10 +102,12 @@ needs a measurement
 | `t0/mfx0`      | its first MIDI effect             | the first `devices N` with `type` 4    |
 | `t0/afx1`      | its second audio effect           | the second `devices N` with `type` 2   |
 | `t0/d0/c1`     | rack chain                        | `... chains 1`                         |
+| `t0/d0/c+`     | a new rack chain, appended        | —                                      |
 | `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                  |
 | `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                     |
 | `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1         |
 | `t0/d0/pC1/c1` | one layer of a drum pad           | `... chains N` with that `in_note`     |
+| `t0/d0/pC1/c+` | a new layer on that pad           | —                                      |
 | `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0`  |
 | `t0[5\|1]`     | arrangement clip on the main lane | `tracks 0 arrangement_clips N`         |
 | `t0/l1[5\|1]`  | arrangement clip on a take lane   | `... take_lanes 1 arrangement_clips N` |
@@ -121,10 +124,19 @@ A `+` is accepted only by the tool that creates that kind of object: `t+`, `rt+`
 and `s+` by the create tools, `l+` by `ppal-update-track`, because a take lane
 is an aspect of its track rather than an object a tool makes on its own
 ([ADR-0043](decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
-Every other path must name something that already exists, or an index a tool
-fills in up to. A clip tool given `l+` is refused and told which tool adds a
-lane. A rack chain has no `+` at all: it is reached by its index, and the write
-creates the chains up to it.
+`c+` is the chain's, taken by the tools that make chains: `ppal-create-device`,
+`ppal-duplicate` and `ppal-update-device`
+([ADR-0045](decisions/0045-c-plus-appends-a-rack-chain.md)). Every other path
+must name something that already exists, or an index a tool fills in up to. A
+tool that only reads or writes an existing object refuses a `+` and says which
+tool takes it.
+
+Live's `insert_chain` only ever appends, so neither `c+` nor `c<n>` can mean
+"insert at n": `c<n>` fills in the chains up to n, and `c+` adds one past the
+last. Rack return chains can't be created at all. A `c+` on a Drum Rack is
+refused and points at the pad spelling — a new, empty chain has no note, so it
+would land on the catch-all pad and sound on every note no pad claims. On a pad
+(`t0/d0/pC1/c+`) it appends a layer, which does have a note.
 
 ## Song-timeline positions
 

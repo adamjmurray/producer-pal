@@ -540,6 +540,19 @@ describe("updateDevice - wrapInRack", () => {
     expect(result).toBeNull();
   });
 
+  // Resolving it as an insertion path would append the chain first, leaving an
+  // empty one behind on the way to "device not found".
+  it("should warn and return null for a c+ path, without making a chain", () => {
+    mockNonExistentObjects();
+
+    const result = updateDevice({ path: "t0/d0/c+", wrapInRack: true });
+
+    expect(capturedWarnings()).toContain(
+      'wrapInRack: nothing at path "t0/d0/c+": "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    );
+    expect(result).toBeNull();
+  });
+
   it("should warn and return null when a drum-pad container can't be resolved", () => {
     // "pC1" under a device that is not a Drum Rack: resolveContainer yields
     // null, which is a different miss from the device simply not existing.

@@ -8,7 +8,7 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type DeviceSegment, type DeviceTypeName } from "../object-path.ts";
-import { pathError } from "./object-path-lexer.ts";
+import { NEW_CHAIN, pathError } from "./object-path-lexer.ts";
 
 const DEVICE = /^d(\d+)$/;
 const CHAIN = /^c(\d+)$/;
@@ -158,38 +158,83 @@ function parseDeviceSegment(
   );
 }
 
+/** A parsed device chain, and whether it ends in a `c+` that appends one. */
+export interface DeviceTail {
+  segments: DeviceSegment[];
+  appendsChain: boolean;
+}
+
 /**
  * Parses the device chain after the root, checking each segment can follow the
- * one before it.
+ * one before it. A trailing `c+` appends a chain to whatever the segments name,
+ * so it goes on the tail rather than into it.
  * @param tail - Segments after the root
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
- * @returns The parsed device-chain segments
+ * @returns The parsed device-chain segments, and whether a `c+` closes them
  */
 export function parseDeviceTail(
   tail: string[],
   label: string,
   input: string,
-): DeviceSegment[] {
+): DeviceTail {
+  const segments: DeviceSegment[] = [];
   let previous: DeviceTailStep = "root";
+  let appendsChain = false;
 
-  return tail.map((raw) => {
-    const segment = parseDeviceSegment(raw, label, input);
+  for (const [index, raw] of tail.entries()) {
+    if (raw === NEW_CHAIN) {
+      if (index !== tail.length - 1) {
+        throw pathError(
+          label,
+          input,
+          `"${NEW_CHAIN}" appends a new, empty chain, so nothing can follow it`,
+        );
+      }
 
-    if (!canFollow(segment.kind, previous)) {
-      const { noun, expected } = DEVICE_TAIL_RULES[previous];
-
-      throw pathError(
-        label,
-        input,
-        `"${raw}" can't follow ${noun}; expected ${expected}`,
-      );
+      // Goes exactly where a "c<index>" could: a rack's chain, or a pad's layer.
+      requireStep("chain", previous, raw, label, input);
+      appendsChain = true;
+      continue;
     }
 
-    previous = segment.kind;
+    const segment = parseDeviceSegment(raw, label, input);
 
-    return segment;
-  });
+    requireStep(segment.kind, previous, raw, label, input);
+    previous = segment.kind;
+    segments.push(segment);
+  }
+
+  return { segments, appendsChain };
+}
+
+/**
+ * Checks a segment can sit under the step before it.
+ * @param kind - The segment's kind
+ * @param previous - The step it would sit under
+ * @param raw - The segment as written, for the error
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @throws Error when that is nesting Live doesn't have
+ */
+function requireStep(
+  kind: DeviceSegment["kind"],
+  previous: DeviceTailStep,
+  raw: string,
+  label: string,
+  input: string,
+): void {
+  if (canFollow(kind, previous)) {
+    return;
+  }
+
+  const { noun, expected } = DEVICE_TAIL_RULES[previous];
+
+  throw pathError(
+    label,
+    input,
+    `"${raw}" can't follow ${noun}; expected ${expected}`,
+  );
 }
 
 /**

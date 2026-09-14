@@ -34,6 +34,9 @@ interface InsertionTarget {
   /** Names a slot an insert would push the rest of the chain past. A position
    * Live can't take is an append, which pushes nothing. */
   positioned: boolean;
+  /** The entry inserts into a chain it appends (`c+`), which nothing else in
+   * the call can name — so it renumbers nothing. */
+  appendsChain: boolean;
 }
 
 /**
@@ -87,6 +90,12 @@ export function validateInsertionOrder(
           `which an earlier entry renumbers by inserting into it. Make these calls ` +
           `separately, or name where the device should land after that insert.`,
       );
+    }
+
+    // A `c+` entry's device goes into a chain that doesn't exist yet, so it
+    // neither fills nor renumbers the container its path is spelled through.
+    if (target.appendsChain) {
+      continue;
     }
 
     if (target.liveKey != null) {
@@ -157,7 +166,9 @@ function insertionTarget(
   }
 
   const last = canonical.at(-1);
-  const position = last?.kind === "device" ? last.index : null;
+  // A `c+` ends in the rack it appends to, not in a position inside it.
+  const position =
+    !parsed.appendsChain && last?.kind === "device" ? last.index : null;
   const segments = position == null ? canonical : canonical.slice(0, -1);
   const container = { kind: "device", root: parsed.root, segments } as const;
   const live = peekContainer(parsed.root, segments, chainsMemo);
@@ -167,6 +178,7 @@ function insertionTarget(
     key: formatObjectPath({ ...container, segments: segments.map(padByNote) }),
     liveKey: live?.path ?? null,
     positioned: position != null && !landsAtEnd(position, live, pending),
+    appendsChain: parsed.appendsChain ?? false,
   };
 }
 

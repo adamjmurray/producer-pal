@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  appendChain,
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
@@ -12,6 +13,11 @@ import {
   trackSegmentPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { DEVICE_TYPE_FORMS } from "#src/tools/shared/validation/helpers/object-path-device-tail.ts";
+import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import {
+  objectPathForApi,
+  pathPrefix,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   formatObjectPath,
   namesDevice,
@@ -78,10 +84,11 @@ export function resolveInsertionPath(
   path: string,
   label = "path",
 ): InsertionPathResolution {
-  const { root, segments } = requireDeviceContainer(
-    parseObjectPath(path, label),
-    label,
-  );
+  const {
+    root,
+    segments,
+    appendsChain = false,
+  } = requireDeviceContainer(parseObjectPath(path, label), label);
   // A trailing `inst`/`mfx<n>`/`afx<n>` is a position like `d<n>`, so it has to
   // become one before the position is read off it.
   const { segments: canonical, namesNothing } = resolveDeviceTypeSegments(
@@ -90,20 +97,28 @@ export function resolveInsertionPath(
   );
   const resolved = namesNothing == null;
   const last = canonical.at(-1);
-  const above = containerSegments(canonical);
+  // A `c+` names no object inside its container, so nothing is trimmed off it.
+  const held = <T extends DeviceSegment>(list: T[]): T[] =>
+    appendsChain ? list : containerSegments(list);
+  const above = held(canonical);
   // A type-addressed segment that named no device makes a canonical spelling
   // name the wrong thing — echo what the call wrote instead.
-  const spelled = resolved ? above : containerSegments(segments);
+  const spelled = resolved ? above : held(segments);
+  const container = resolved
+    ? resolveContainer(root, above, path, appendsChain)
+    : null;
 
   return {
-    container: resolved ? resolveContainer(root, above, path) : null,
-    position: last?.kind === "device" ? last.index : null,
+    container,
+    position: !appendsChain && last?.kind === "device" ? last.index : null,
     ...(resolved ? {} : { namesNothing }),
-    containerPath: formatObjectPath({
-      kind: "device",
-      root,
-      segments: spelled,
-    }),
+    // The chain a `c+` made has an index only now that it exists, and the
+    // result has to name it rather than the `c+` the call wrote.
+    containerPath:
+      (appendsChain && container != null
+        ? objectPathForApi(container)
+        : null) ??
+      formatObjectPath({ kind: "device", root, segments: spelled }),
   };
 }
 
@@ -122,16 +137,17 @@ export function resolveInsertionPath(
  */
 export function insertionContainerPath(path: string, label = "path"): string {
   try {
-    const { root, segments } = requireDeviceContainer(
-      parseObjectPath(path, label),
-      label,
-    );
+    const parsed = requireDeviceContainer(parseObjectPath(path, label), label);
 
-    return formatObjectPath({
-      kind: "device",
-      root,
-      segments: containerSegments(segments),
-    });
+    // A `c+` names the container itself, so there is nothing above it to trim
+    // — and the chain it makes has no index until it exists.
+    return parsed.appendsChain
+      ? path.trim()
+      : formatObjectPath({
+          kind: "device",
+          root: parsed.root,
+          segments: containerSegments(parsed.segments),
+        });
   } catch {
     return path.replace(TRAILING_POSITION, "");
   }
@@ -154,49 +170,94 @@ function containerSegments<T extends DeviceSegment>(segments: T[]): T[] {
  * @param root - Parsed track root
  * @param segments - Device-chain segments below the root
  * @param path - Original path, for error messages
+ * @param appendsChain - Whether the path ended in `c+`
  * @returns LiveAPI object (Track or Chain)
  */
 function resolveContainer(
   root: TrackSegment,
   segments: CanonicalDeviceSegment[],
   path: string,
+  appendsChain: boolean,
 ): LiveAPI | null {
-  const indexed: IndexedSegment[] = [];
+  const indexed = segments.filter(
+    (segment): segment is IndexedSegment => segment.kind !== "drum-pad",
+  );
 
-  for (const segment of segments) {
-    // A drum pad resolves by MIDI note against a live rack, so the whole path
-    // goes through the pad navigator rather than the chain walker.
-    if (segment.kind === "drum-pad") {
-      return resolveDrumPadContainer(root, segments);
-    }
-
-    indexed.push(segment);
+  // A drum pad resolves by MIDI note against a live rack, so the whole path
+  // goes through the pad navigator rather than the chain walker.
+  if (indexed.length !== segments.length) {
+    return resolveDrumPadContainer(root, segments, path, appendsChain);
   }
 
-  if (indexed.length === 0) {
-    return liveApiAtDevicePath(trackSegmentPath(root).toString());
-  }
+  const container =
+    indexed.length === 0
+      ? liveApiAtDevicePath(trackSegmentPath(root).toString())
+      : resolveContainerWithAutoCreate(root, indexed, path);
 
-  return resolveContainerWithAutoCreate(root, indexed, path);
+  return appendsChain ? appendChainTo(container, path) : container;
 }
 
 /**
  * Resolve a drum pad container path with auto-creation of missing chains
  * @param root - Parsed track root
  * @param segments - Device-chain segments, at least one of them a drum pad
+ * @param path - Original path, for error messages
+ * @param appendsChain - Whether the path ended in `c+`
  * @returns LiveAPI object (Chain)
  */
 function resolveDrumPadContainer(
   root: TrackSegment,
   segments: CanonicalDeviceSegment[],
+  path: string,
+  appendsChain: boolean,
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
   const rack = liveApiAtDevicePath(resolved.liveApiPath);
+  // The path had a drum pad segment, so resolution stopped at one
+  const note = resolved.drumPadNote as string;
+  const tail = resolved.remainingSegments;
 
-  return resolveOrCreateDrumPadChain(
-    rack,
-    // The path had a drum pad segment, so resolution stopped at one
-    resolved.drumPadNote as string,
-    resolved.remainingSegments,
-  );
+  // A `c+` straight after the pad appends a layer to it, which only the pad
+  // navigator can do — Live indexes a drum chain by note, not by position.
+  if (appendsChain && tail.length === 0) {
+    return resolveOrCreateDrumPadChain(rack, note, [NEW_CHAIN]);
+  }
+
+  const container = resolveOrCreateDrumPadChain(rack, note, tail);
+
+  // Deeper down, the `c+` belongs to a rack nested under the pad.
+  return appendsChain && container != null
+    ? appendChainTo(container, path)
+    : container;
+}
+
+/**
+ * Append a chain to the rack a `c+` path names.
+ * @param rack - The device the `c+` sits under
+ * @param path - The path as the caller wrote it, for error messages
+ * @returns The new chain
+ * @throws Error when the device takes no chain, or Live made none
+ */
+function appendChainTo(rack: LiveAPI, path: string): LiveAPI {
+  // A new chain arrives on the catch-all pad, which plays every note no pad
+  // claims — a surprise no result text undoes, and the reason cN refuses a
+  // Drum Rack too. A pad path has a note to land on.
+  if ((rack.getProperty("can_have_drum_pads") as number) > 0) {
+    throw new Error(
+      `"${path}" appends a chain to a Drum Rack, where every chain belongs to ` +
+        `a pad; name the pad instead (e.g. "${pathPrefix(rack)}/pC1/${NEW_CHAIN}")`,
+    );
+  }
+
+  if (!rack.getProperty("can_have_chains")) {
+    throw new Error(`"${path}" appends a chain to a device that has none`);
+  }
+
+  const created = appendChain(rack);
+
+  if (created == null) {
+    throw new Error(`could not append a chain at "${path}"`);
+  }
+
+  return created;
 }

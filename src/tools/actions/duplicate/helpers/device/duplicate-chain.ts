@@ -11,18 +11,22 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
+import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
-import { invalidateRackChains } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   pathField,
   pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
@@ -230,7 +234,7 @@ function rackAtPath(toPath: string): LiveAPI | null {
     drumPadNote,
     remainingSegments,
     namesNothing,
-  } = resolvePathToLiveApi(canonicalPath(toPath));
+  } = resolvePathToLiveApi(rackDestination(toPath));
 
   if (namesNothing != null) {
     throw new Error(nothingAtPath(toPath, namesNothing, "toPath"));
@@ -256,22 +260,37 @@ function rackAtPath(toPath: string): LiveAPI | null {
 }
 
 /**
+ * The rack a chain destination names. A copy always appends, so `t0/d1/c+`
+ * and the bare `t0/d1` name the same place — `c+` just says so out loud.
+ * @param toPath - The destination path as written
+ * @returns The path with a trailing `c+` taken off
+ */
+function rackDestination(toPath: string): string {
+  try {
+    const parsed = parseObjectPath(toPath, "toPath");
+
+    return formatObjectPath(
+      parsed.kind === "new-chain" ? { ...parsed, kind: "device" } : parsed,
+    );
+  } catch {
+    return toPath;
+  }
+}
+
+/**
  * Append an empty chain to a rack.
  * @param rack - The destination rack
  * @returns The new chain
  * @throws Error when Live made no chain
  */
 function insertChain(rack: LiveAPI): LiveAPI {
-  // insert_chain returns ["id", chainId] on success, or 1 on failure.
-  const result = rack.call("insert_chain");
+  const created = appendChain(rack);
 
-  invalidateRackChains(rack);
-
-  if (!Array.isArray(result) || result[0] !== "id") {
+  if (created == null) {
     throw new Error(`could not create a chain in "${targetLabel(rack)}"`);
   }
 
-  return LiveAPI.from(String(result[1]));
+  return created;
 }
 
 /**

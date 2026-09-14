@@ -12,6 +12,7 @@
 // anything is created or moved. See dev/Object-Paths.md.
 
 import {
+  NEW_CHAIN,
   parseLegacyPath,
   pathError,
   splitCoord,
@@ -78,6 +79,7 @@ export type ObjectPath =
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
   | { kind: "new-take-lane"; trackIndex: number }
   | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
+  | { kind: "new-chain"; root: TrackSegment; segments: DeviceSegment[] }
   | ArrangementPosition;
 
 const TRACK_ROOT = /^t(\d+)$/;
@@ -192,10 +194,9 @@ export function formatObjectPath(path: ObjectPath): string {
     case "new-scene":
       return NEW_SCENE;
     case "device":
-      return [
-        formatTrackSegment(path.root),
-        ...path.segments.map(formatDeviceSegment),
-      ].join("/");
+      return deviceChainPath(path.root, path.segments);
+    case "new-chain":
+      return `${deviceChainPath(path.root, path.segments)}/${NEW_CHAIN}`;
     case "arrangement-position":
       return `${path.lane == null ? "" : formatObjectPath(path.lane)}[${path.position}]`;
     default:
@@ -353,11 +354,9 @@ function parseTail(
     return parseTrackChild(root, first, tail.length, label, input);
   }
 
-  return {
-    kind: "device",
-    root,
-    segments: parseDeviceTail(tail, label, input),
-  };
+  const { segments, appendsChain } = parseDeviceTail(tail, label, input);
+
+  return { kind: appendsChain ? "new-chain" : "device", root, segments };
 }
 
 /**
@@ -433,6 +432,21 @@ function trackChildError(label: string, input: string, segment: string): Error {
         input,
         `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes`,
       );
+}
+
+/**
+ * Renders a track root and the device chain below it.
+ * @param root - A parsed track root
+ * @param segments - The device-chain segments below it
+ * @returns The canonical path string
+ */
+function deviceChainPath(
+  root: TrackSegment,
+  segments: DeviceSegment[],
+): string {
+  return [formatTrackSegment(root), ...segments.map(formatDeviceSegment)].join(
+    "/",
+  );
 }
 
 /**

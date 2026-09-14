@@ -126,6 +126,43 @@ describe("ppal-duplicate type=chain", () => {
     );
   });
 
+  // `c+` is the spelling for the append a chain copy always does; only real
+  // Live says which index the copy actually landed on.
+  it("appends the copy to the rack a c+ names", async () => {
+    const before = await readChains(OUTER);
+
+    const { data } = await callWithWarnings(ctx.client!, "ppal-duplicate", {
+      type: "chain",
+      id: before[0]!.id,
+      toPath: `${OUTER}/c+`,
+    });
+
+    const copy = data as ChainResult;
+
+    expect(copy.path).toBe(`${OUTER}/c${before.length}`);
+
+    const after = await readChains(OUTER);
+
+    expect(after).toHaveLength(before.length + 1);
+    expect(after.at(-1)?.id).toBe(copy.id);
+  });
+
+  // A copy carries its source's in_note, so a Drum Rack `c+` lands on the
+  // source's pad rather than the catch-all — which is why duplicate takes a
+  // `c+` there and create-device refuses one.
+  it("takes a c+ into a Drum Rack, landing on the source's pad", async () => {
+    const before = await readChains(`${KIT}/pE1`);
+
+    await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "chain", id: before[0]!.id, toPath: `${KIT}/c+` },
+    });
+
+    const after = await readChains(`${KIT}/pE1`);
+
+    expect(after.length).toBe(before.length + 1);
+  });
+
   // The temp-track workaround copies the whole track. If it ever failed to
   // clean up, the Set would be left with a stray duplicate.
   it("leaves no temporary track behind", async () => {
