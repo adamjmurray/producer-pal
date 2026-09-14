@@ -22,7 +22,7 @@ import {
   compareCorpora,
   CORPUS_MARKER,
   formatChanges,
-  parseArgs,
+  parseSnapshotArgs,
 } from "./corpus-snapshot.ts";
 
 const PROJECT_ROOT = path.join(
@@ -57,9 +57,9 @@ async function main(): Promise<void> {
  *
  * @returns The parsed arguments
  */
-function parseOrExit(): ReturnType<typeof parseArgs> {
+function parseOrExit(): ReturnType<typeof parseSnapshotArgs> {
   try {
-    return parseArgs(process.argv.slice(2), DEFAULT_DIR);
+    return parseSnapshotArgs(process.argv.slice(2), DEFAULT_DIR);
   } catch (error: unknown) {
     console.error(`skills:snapshot: ${(error as Error).message}`);
 

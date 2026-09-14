@@ -40,7 +40,7 @@ const FLAGS = new Set(["--out", "--diff"]);
  * @returns The resolved output and comparison directories
  * @throws When an argument is unknown, malformed, or missing its value
  */
-export function parseArgs(
+export function parseSnapshotArgs(
   argv: readonly string[],
   defaultDir: string,
 ): SnapshotArgs {

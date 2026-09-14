@@ -5,20 +5,24 @@
 
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { compareCorpora, formatChanges, parseArgs } from "./corpus-snapshot.ts";
+import {
+  compareCorpora,
+  formatChanges,
+  parseSnapshotArgs,
+} from "./corpus-snapshot.ts";
 
 const DEFAULT_DIR = "/repo/dev/skills-snapshots";
 
-describe("parseArgs", () => {
+describe("parseSnapshotArgs", () => {
   it("defaults the output directory and asks for no comparison", () => {
-    expect(parseArgs([], DEFAULT_DIR)).toStrictEqual({
+    expect(parseSnapshotArgs([], DEFAULT_DIR)).toStrictEqual({
       outDir: DEFAULT_DIR,
       diffDir: null,
     });
   });
 
   it("resolves both directories against the invocation directory", () => {
-    const args = parseArgs(["--out", "a", "--diff", "b"], DEFAULT_DIR);
+    const args = parseSnapshotArgs(["--out", "a", "--diff", "b"], DEFAULT_DIR);
 
     expect(args.outDir).toBe(path.resolve("a"));
     expect(args.diffDir).toBe(path.resolve("b"));
@@ -27,34 +31,34 @@ describe("parseArgs", () => {
   it("rejects --flag=value, which would silently write to the default", () => {
     // The default output directory is ERASED before writing, so falling back to
     // it on a typo is how a user loses the baseline they meant to keep.
-    expect(() => parseArgs(["--out=/tmp/x"], DEFAULT_DIR)).toThrow(
+    expect(() => parseSnapshotArgs(["--out=/tmp/x"], DEFAULT_DIR)).toThrow(
       /unknown argument/,
     );
   });
 
   it("rejects an unknown flag", () => {
-    expect(() => parseArgs(["--check"], DEFAULT_DIR)).toThrow(
+    expect(() => parseSnapshotArgs(["--check"], DEFAULT_DIR)).toThrow(
       /unknown argument "--check"/,
     );
   });
 
   it("rejects a flag with no value, or with another flag as its value", () => {
-    expect(() => parseArgs(["--diff"], DEFAULT_DIR)).toThrow(
+    expect(() => parseSnapshotArgs(["--diff"], DEFAULT_DIR)).toThrow(
       /--diff needs a directory/,
     );
-    expect(() => parseArgs(["--diff", "--out", "x"], DEFAULT_DIR)).toThrow(
-      /--diff needs a directory/,
-    );
+    expect(() =>
+      parseSnapshotArgs(["--diff", "--out", "x"], DEFAULT_DIR),
+    ).toThrow(/--diff needs a directory/);
   });
 
   it("refuses to diff against the directory it is about to erase", () => {
     // Otherwise: delete the baseline, regenerate it, diff it against itself, and
     // report "No blob changed" — a confident false negative.
-    expect(() => parseArgs(["--diff", DEFAULT_DIR], DEFAULT_DIR)).toThrow(
-      /would erase it/,
-    );
     expect(() =>
-      parseArgs(["--out", "same", "--diff", "same"], DEFAULT_DIR),
+      parseSnapshotArgs(["--diff", DEFAULT_DIR], DEFAULT_DIR),
+    ).toThrow(/would erase it/);
+    expect(() =>
+      parseSnapshotArgs(["--out", "same", "--diff", "same"], DEFAULT_DIR),
     ).toThrow(/would erase it/);
   });
 });
