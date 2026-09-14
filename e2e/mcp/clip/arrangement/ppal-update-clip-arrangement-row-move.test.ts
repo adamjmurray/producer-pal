@@ -11,7 +11,8 @@
  * position. Only real Live shows what that costs: the clips in between were
  * wiped before the loop reached them. The batch now runs the moves in an order
  * that clears nobody's way, and refuses a move nothing can clear for: a pair
- * trading places, or a clip the call sends nowhere at all.
+ * trading places, or a clip the call sends nowhere at all. Take lanes are
+ * ordered too — a create on a lane wipes the range it writes to.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track)
  *
@@ -24,7 +25,10 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
-import { arrangementClipAt } from "../helpers/clip-io-test-helpers.ts";
+import {
+  arrangementClipAt,
+  readClipFully,
+} from "../helpers/clip-io-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
@@ -161,6 +165,33 @@ describe("moving a row of arrangement clips", () => {
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "605|1"))?.id,
     ).toBe(second.id);
   });
+
+  // A take-lane create wipes the range it writes to, just as the main-lane
+  // duplicate does, but take-lane clips used to sit out the ordering entirely:
+  // the first landing destroyed the second clip before its turn came.
+  it("keeps both clips when a take-lane row shifts four bars later", async () => {
+    const positions = ["705|1", "709|1"];
+    const row = await createRow(["701|1", "705|1"], "Lane", laneDestination);
+
+    const { data } = await moveClips(row, positions.map(laneDestination));
+
+    expect(data.map((clip) => clip.path)).toStrictEqual(
+      positions.map(laneDestination),
+    );
+    // Live can't delete a take-lane clip, so each source is emptied in place.
+    expect(data[0]?.reason).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
+
+    // Both are really there, with the notes and names they were created with.
+    for (const [index, position] of positions.entries()) {
+      const placed = await readClipFully(ctx.client!, {
+        path: laneDestination(position),
+      });
+
+      expect(placed.id).toBe(data[index]?.id);
+      expect(placed.name).toBe(`Lane ${String(index)}`);
+      expect(placed.notes).toContain("C3");
+    }
+  });
 });
 
 /**
@@ -187,7 +218,7 @@ async function expectRowAt(
 }
 
 /**
- * The clip path for a position on the scratch track.
+ * The clip path for a position on the scratch track's main lane.
  * @param position - Position in bar|beat format
  * @returns The path, e.g. `t8[205|1]`
  */
@@ -196,14 +227,25 @@ function destination(position: string): string {
 }
 
 /**
+ * The clip path for a position on the scratch track's first take lane.
+ * @param position - Position in bar|beat format
+ * @returns The path, e.g. `t8/l0[705|1]`
+ */
+function laneDestination(position: string): string {
+  return `t${EMPTY_MIDI_TRACK}/l0[${position}]`;
+}
+
+/**
  * Create a row of 4-bar arrangement clips, one per position.
  * @param positions - Positions in bar|beat format
  * @param namePrefix - Name prefix; each clip gets its index appended
+ * @param pathFor - How to spell each position as a path
  * @returns The created clips, in the order the positions were given
  */
 async function createRow(
   positions: string[],
   namePrefix: string,
+  pathFor: (position: string) => string = destination,
 ): Promise<CreateClipResult[]> {
   const clips: CreateClipResult[] = [];
 
@@ -211,7 +253,7 @@ async function createRow(
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: destination(position),
+        path: pathFor(position),
         name: `${namePrefix} ${String(index)}`,
         notes: "C3 1|1",
         length: "4bar",

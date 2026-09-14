@@ -11,27 +11,33 @@
  * destination span before the copy lands, and an arrangementLength clears the
  * span it tiles across. When that span holds another clip in the same batch,
  * the batch later reaches a dead object and reports it as updated — the loss
- * the 1:1 pairing exists to prevent. Shifting a row of clips later hits this
- * every time: each destination sits on the next clip's current position.
+ * the 1:1 pairing exists to prevent. Shifting a row of clips hits it every
+ * time: each destination sits on the next clip's current position.
  *
- * Running them in dependency order fixes the row — a later shift runs
- * back-to-front, an earlier one front-to-back. Clips trading positions are a
- * cycle with no such order, so those operations are refused instead: both the
- * move and the resize, since either one clears.
+ * Dependency order fixes the row — a later shift runs back-to-front, an earlier
+ * one front-to-back. Clips trading positions are a cycle with no such order, so
+ * both their move and their resize are refused instead, since either clears.
  *
  * A clip the call moves nowhere is refused the same way, for the same reason:
  * it takes its turn in the order, but its span never comes free, so anything
  * aimed at that span would run over a clip that is still sitting there.
+ *
+ * Spans are keyed by lane, not just by track: a take-lane clip is only ever in
+ * the way of another clip on that same lane. It clears its destination like any
+ * other move — `create_midi_clip` wipes the range it writes to.
  */
 
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import {
+  type ArrangementTrack,
+  takeLaneIndexOfClip,
+} from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
 import { type ClipMoves } from "./update-clip-arrangement-overwrite-plan.ts";
 
-/** A span on one track's main arrangement lane. */
-interface LaneSpan {
-  trackIndex: number;
+/** A span on one arrangement lane: a track's main lane, or a take lane on it. */
+interface LaneSpan extends ArrangementTrack {
   start: number;
   end: number;
 }
@@ -45,8 +51,8 @@ interface ClipSpan {
 
 /** What the call does to a clip's span, before the clip's own is known. */
 interface MoveIntent {
-  /** The destination track, or null for the clip's own. */
-  trackIndex: number | null;
+  /** The destination lane, or null for the clip's own. */
+  landing: ArrangementTrack | null;
   /** The position it lands at, or null to keep the one it has. */
   startBeats: number | null;
   /** The arrangement span it is resized to, or null when the call sets none. */
@@ -57,16 +63,9 @@ interface MoveIntent {
 export interface ArrangementMoveOrder {
   /** Positions in the clip list, in the order the clips must be processed. */
   order: number[];
-  /**
-   * Ids whose move and resize are both refused: nothing can clear the span
-   * they ask for first, and either one would clear it themselves.
-   */
+  /** Ids whose move and resize are both refused: nothing clears their span. */
   blockedIds: Set<string>;
-  /**
-   * Which clips each clip has to wait for. Kept past the sort so the executor
-   * can re-decide: the order below assumes every move lands, and Live can turn
-   * one down after the plan is made.
-   */
+  /** Which clips each waits for. Kept past the sort: Live can refuse a move. */
   dependencies: Array<Set<number>>;
   /** Whether each clip's move was expected to free the span it sits on. */
   vacates: boolean[];
@@ -85,8 +84,7 @@ export function orderArrangementMoves(
   moves: ClipMoves,
   reasons: ClipReasons,
 ): ArrangementMoveOrder {
-  // No graph means nothing waits on anything, so the executor has no move to
-  // re-decide either.
+  // No graph: nothing waits on anything, and the executor re-decides nothing.
   const inOrder = {
     order: clips.map((_, index) => index),
     blockedIds: new Set<string>(),
@@ -99,8 +97,8 @@ export function orderArrangementMoves(
     return inOrder;
   }
 
-  // Read from the params alone, before anything asks Live where the clips are:
-  // a call that moves none of them can't be in anyone's way either.
+  // From the params alone, before anything asks Live where the clips are: a
+  // call that moves none of them can't be in anyone's way either.
   const intents = clips.map((clip) => moveIntent(clip, moves));
 
   if (intents.every((intent) => intent == null)) {
@@ -128,9 +126,9 @@ export function orderArrangementMoves(
 // --- Helpers below main exports ---
 
 /**
- * What the call does to a clip's span on a main arrangement lane, or null when
- * it clears nothing there: the call leaves the clip alone, or sends it to a
- * take lane or a clip slot.
+ * What the call does to a clip's span on an arrangement lane, or null when it
+ * clears nothing there: the call leaves the clip alone, or sends it to a clip
+ * slot.
  * @param clip - The clip being updated
  * @param moves - Where each clip is headed
  * @returns The destination and span, or null
@@ -139,15 +137,9 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
   const destination = moves.destinationById?.get(clip.id);
   const lengthBeats = moves.lengthBeatsFor(clip);
 
-  // A take lane is not the main lane a clear runs on, and a clip slot is off
-  // the timeline entirely — except alongside an arrangement length, which makes
-  // update-clip ignore the slot and tile the clip where it stands.
-  const usesMainLane =
-    destination == null ||
-    destination.kind === "track" ||
-    (destination.kind === "slot" && lengthBeats != null);
-
-  if (!usesMainLane) {
+  // A clip slot is off the timeline entirely — except alongside an arrangement
+  // length, which makes update-clip ignore the slot and tile where it stands.
+  if (destination?.kind === "slot" && lengthBeats == null) {
     return null;
   }
 
@@ -157,20 +149,35 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
     return null;
   }
 
+  return { landing: landingLane(destination), startBeats, lengthBeats };
+}
+
+/**
+ * The lane a destination sends a clip to. An ignored slot lands nowhere of its
+ * own, so it reads as the clip's own lane, same as no destination at all.
+ * @param destination - Where the call named the clip to go, if anywhere
+ * @returns The lane, or null for the clip's own
+ */
+function landingLane(
+  destination: ClipPath | undefined,
+): ArrangementTrack | null {
+  if (destination == null || destination.kind === "slot") {
+    return null;
+  }
+
   return {
-    trackIndex: destination?.kind === "track" ? destination.trackIndex : null,
-    startBeats,
-    lengthBeats,
+    trackIndex: destination.trackIndex,
+    takeLane: destination.kind === "take-lane" ? destination.laneIndex : null,
   };
 }
 
 /**
  * Whether the call takes this clip off the span it holds now. True for a move
  * to a slot or a take lane too: the clip is re-created there and the original
- * deleted, so the arrangement span it held comes free.
+ * deleted, so the arrangement span it held comes free. A take-lane source is
+ * only emptied, but whatever lands there next clears the muted leftover.
  *
- * False means a permanent occupant — no other clip's move can wait for it to
- * get out of the way, because it never does.
+ * False means a permanent occupant: nothing can wait for it to move aside.
  * @param clip - The clip being updated
  * @param moves - Where each clip is headed
  * @returns True when the clip's current span comes free
@@ -193,8 +200,7 @@ function freesCurrentSpan(clip: LiveAPI, moves: ClipMoves): boolean {
 
 /**
  * Where a clip sits and where its move lands, or null when the clip is off the
- * main arrangement lane entirely — a session clip, or one on a take lane, which
- * a main-lane clear never touches.
+ * arrangement timeline — a session clip, which no arrangement clear touches.
  * @param clip - The clip being updated
  * @param intent - Where the call sends it, or null when it stays put
  * @returns The clip's spans, or null when it takes no part
@@ -204,19 +210,16 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
     return null;
   }
 
-  if (isTakeLaneClip(clip)) {
-    return null;
-  }
-
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
     return null;
   }
 
+  const takeLane = takeLaneIndexOfClip(clip);
   const start = clip.getProperty("start_time") as number;
   const end = clip.getProperty("end_time") as number;
-  const current = { trackIndex, start, end };
+  const current = { trackIndex, takeLane, start, end };
 
   if (intent == null) {
     return { current, target: null };
@@ -224,18 +227,16 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
 
   // No position of its own means "same place, other lane".
   const targetStart = intent.startBeats ?? start;
-  // A move clears the clip's own length. A longer arrangementLength tiles
-  // copies forward and clears the whole span it fills, so the wider one wins.
-  // Both happen at the destination: update-clip moves before it resizes.
-  const cleared = Math.max(end - start, intent.lengthBeats ?? 0);
+  const landing = intent.landing ?? { trackIndex, takeLane };
+  // A move clears the clip's own length; a longer arrangementLength tiles
+  // copies forward and clears the span it fills, so the wider one wins. Both
+  // at the destination — and update-clip never tiles on a take lane.
+  const tiled = landing.takeLane == null ? (intent.lengthBeats ?? 0) : 0;
+  const cleared = Math.max(end - start, tiled);
 
   return {
     current,
-    target: {
-      trackIndex: intent.trackIndex ?? trackIndex,
-      start: targetStart,
-      end: targetStart + cleared,
-    },
+    target: { ...landing, start: targetStart, end: targetStart + cleared },
   };
 }
 
@@ -281,17 +282,17 @@ function buildDependencies(
 }
 
 /**
- * Whether two spans share any beat of the same track's main lane.
+ * Whether two spans share any beat of one lane.
  * @param a - One span
  * @param b - The other
  * @returns True when they overlap
  */
 function overlaps(a: LaneSpan, b: LaneSpan): boolean {
-  return a.trackIndex === b.trackIndex && a.start < b.end && a.end > b.start;
+  return sameLane(a, b) && a.start < b.end && a.end > b.start;
 }
 
 /**
- * Whether a clip is headed for the same track and position as another move.
+ * Whether a clip is headed for the same lane and position as another move.
  * @param target - The clip's own destination, if it has one
  * @param other - The destination to compare against
  * @returns True when both land in the same place
@@ -301,10 +302,18 @@ function landsAt(
   other: LaneSpan,
 ): boolean {
   return (
-    target != null &&
-    target.trackIndex === other.trackIndex &&
-    target.start === other.start
+    target != null && sameLane(target, other) && target.start === other.start
   );
+}
+
+/**
+ * Whether two spans sit on one lane.
+ * @param a - One span
+ * @param b - The other
+ * @returns True when they share a track and a take lane (or both the main one)
+ */
+function sameLane(a: LaneSpan, b: LaneSpan): boolean {
+  return a.trackIndex === b.trackIndex && a.takeLane === b.takeLane;
 }
 
 /**
@@ -313,9 +322,8 @@ function landsAt(
  *
  * Emitting a clip and freeing its span are two different things: a clip the
  * call moves nowhere still takes its turn (its name, color and notes land) but
- * never gets out of anyone's way. Whatever can't be reached is a cycle, a
- * permanent occupant's dependents, or clips waiting behind either: none of them
- * can move, because the clip in their way never leaves.
+ * never gets out of anyone's way. Whatever can't be reached — a cycle, or a
+ * permanent occupant and everything behind it — can't move at all.
  * @param clips - The clips to update, in the order the caller named them
  * @param dependencies - Which clips each clip has to wait for
  * @param intents - What the call does to each clip's span

@@ -379,14 +379,14 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
 lengthening uses the new position.
 
 **The duplicate clears its destination range first**, so it destroys whatever
-sat there — including another clip the same call names.
-`update-clip-move-order.ts` orders the moves to avoid that where an order
-exists, but not every case has one: a take-lane destination isn't resolved to a
-lane index until write time, so it never enters the graph, and two clips sent to
-one spot are meant to stack. `buried-clips.ts` reports what is left: a clip
-found gone before its turn gets `deleted: true` and the address it had instead
-of an update read off a dead object, and a read-back at the end of the batch
-marks an entry whose clip a later sibling buried.
+sat there — including another clip the same call names. A take-lane create does
+the same on its own lane. `update-clip-move-order.ts` orders the moves to avoid
+that where an order exists, keying each span by track AND lane so clips on
+different lanes never hold each other up. Two clips sent to one spot have no
+such order — that stack is what the call asked for. `buried-clips.ts` reports
+what is left: a clip found gone before its turn gets `deleted: true` and the
+address it had instead of an update read off a dead object, and a read-back at
+the end of the batch marks an entry whose clip a later sibling buried.
 
 ### Splitting
 

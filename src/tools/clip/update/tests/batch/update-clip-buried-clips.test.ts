@@ -7,9 +7,9 @@
 // if the update had run: the batch reached a dead object, read nothing off it,
 // and answered with why a session clip can't be moved.
 //
-// Two ways in, one per lane kind. A take-lane destination never enters the move
-// ordering's dependency graph, and two clips sent to one main-lane spot are
-// meant to stack, so the longer one lands first and clears the other.
+// The move ordering keeps a batch out of its own way, but not when the clips
+// are sent to one spot: that stack is what the call asked for, so the clip that
+// lands first is cleared by the one after it. Same on both lane kinds.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -135,7 +135,7 @@ describe("updateClip reports a clip the batch buried", () => {
 
     const result = (await updateClip({
       id: `${first},${second}`,
-      toPath: "t0/l0[5|1],t0/l0[9|1]",
+      toPath: "t0/l0[5|1],t0/l0[5|1]",
     })) as ClipResult[];
 
     // The mover landed at bar 5; the clip that was sitting there is gone, named
