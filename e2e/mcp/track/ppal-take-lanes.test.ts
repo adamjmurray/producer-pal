@@ -47,7 +47,7 @@ const ctx = setupMcpTestContext();
 interface TakeLaneInfo {
   id: string;
   name: string;
-  clips: Array<{ id: string; name?: string }>;
+  clips: Array<{ id: string; name?: string; arrangementLength?: string }>;
 }
 
 /** A take lane read on its own, by path or by its id. */
@@ -162,6 +162,13 @@ describe("take lanes", () => {
     expect(detail.takeLanes![0]!.clips[0]!.id).toBeDefined();
     expect(detail.takeLanes![1]!.name).toBe("Variation B");
     expect(detail.takeLanes![1]!.clips).toHaveLength(1);
+
+    // A lane clip says how far it runs, with no timing include
+    for (const lane of detail.takeLanes!) {
+      for (const clip of lane.clips) {
+        expect(clip.arrangementLength).toBeDefined();
+      }
+    }
   });
 
   it("reads a lane by the id a read reported, the same as by its path", async () => {

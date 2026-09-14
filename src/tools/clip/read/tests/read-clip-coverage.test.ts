@@ -294,7 +294,7 @@ describe("readOneClip - include flag gating", () => {
     expect(result.gainDb).toBeUndefined();
   });
 
-  it("omits arrangementLength for an arrangement clip when timing is not requested", () => {
+  it("reports arrangementLength for an arrangement clip when timing is not requested", () => {
     setupMidiClipMock({
       clipId: "arr_clip",
       path: livePath.track(2).arrangementClip(0),
@@ -317,6 +317,26 @@ describe("readOneClip - include flag gating", () => {
 
     expect(result.view).toBe("arrangement");
     expect(result.path).toBe("t2[3|1]"); // start_time 8 in 4/4
+    expect(result.arrangementLength).toBe("1bar");
+    // The clip's own length still needs timing.
+    expect(result.length).toBeUndefined();
+  });
+
+  it("omits arrangementLength for a session clip", () => {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+    });
+
+    const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+
+    expect(result.view).toBe("session");
     expect(result.arrangementLength).toBeUndefined();
   });
 });

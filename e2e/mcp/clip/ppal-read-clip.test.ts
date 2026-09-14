@@ -141,16 +141,23 @@ describe("ppal-read-clip", () => {
     expect(track.arrangementClips).toBeDefined();
     expect(track.arrangementClips!.length).toBeGreaterThan(0);
 
+    // Every listed clip says how far it runs, with no timing include
+    for (const clip of track.arrangementClips!) {
+      expect(clip.arrangementLength).toBeDefined();
+    }
+
     const arrClipId = track.arrangementClips![0]!.id;
     const arrResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { id: arrClipId, include: ["timing"] },
+      arguments: { id: arrClipId },
     });
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 
     expect(arrClip.view).toBe("arrangement");
     expect(arrangementStartOf(arrClip)).toBe("1|1");
+    // The span comes without the timing include; the clip's own length needs it
     expect(arrClip.arrangementLength).toBeDefined();
+    expect(arrClip.length).toBeUndefined();
   });
 
   it("reads clips with offset loops", async () => {
@@ -363,5 +370,5 @@ interface SceneWithClipNotes {
 }
 
 interface TrackWithClips {
-  arrangementClips?: Array<{ id: string; position: string; length: string }>;
+  arrangementClips?: ReadClipResult[];
 }

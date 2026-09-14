@@ -370,6 +370,7 @@ describe("readOneTrack", () => {
       properties: {
         is_arrangement_clip: 1,
         start_time: 0,
+        end_time: 8,
       },
     });
     registerMockObject("arr_clip2", {
@@ -378,7 +379,12 @@ describe("readOneTrack", () => {
       properties: {
         is_arrangement_clip: 1,
         start_time: 16,
+        end_time: 32,
       },
+    });
+    registerMockObject("live-set", {
+      path: "live_set",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     const result = readOneTrack({
@@ -389,15 +395,19 @@ describe("readOneTrack", () => {
     const arrangementClips = result.arrangementClips as Array<{
       id: string;
       path: string;
+      arrangementLength: string;
     }>;
 
     expect(arrangementClips).toHaveLength(2);
     expect(arrangementClips[0]!.id).toBe("arr_clip1");
     expect(arrangementClips[1]!.id).toBe("arr_clip2");
     // The path is where the clip starts, so it survives the strip that drops
-    // what the parent track already said.
+    // what the parent track already said. arrangementLength says how far it
+    // runs, without asking for the timing include.
     expect(arrangementClips[0]!.path).toBe("t2[1|1]");
     expect(arrangementClips[1]!.path).toBe("t2[5|1]");
+    expect(arrangementClips[0]!.arrangementLength).toBe("2bar");
+    expect(arrangementClips[1]!.arrangementLength).toBe("4bar");
   });
 
   it("returns sessionClipCount when session-clips is not included", () => {

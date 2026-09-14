@@ -234,36 +234,35 @@ section for details on these includes.
 
 Always returned for any clip:
 
-| Field         | Type                         | Description                                                                                     |
-| ------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `id`          | `string`                     | Clip ID                                                                                         |
-| `type`        | `"midi" \| "audio"`          | Clip type                                                                                       |
-| `name`        | `string`                     | Clip name (omitted if empty)                                                                    |
-| `view`        | `"session" \| "arrangement"` | Which view the clip is in                                                                       |
-| `path`        | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
-| `playing`     | `true`                       | Only present when true                                                                          |
-| `triggered`   | `true`                       | Only present when true                                                                          |
-| `recording`   | `true`                       | Only present when true                                                                          |
-| `overdubbing` | `true`                       | Only present when true                                                                          |
-| `muted`       | `true`                       | Only present when true                                                                          |
+| Field               | Type                         | Description                                                                                     |
+| ------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `id`                | `string`                     | Clip ID                                                                                         |
+| `type`              | `"midi" \| "audio"`          | Clip type                                                                                       |
+| `name`              | `string`                     | Clip name (omitted if empty)                                                                    |
+| `view`              | `"session" \| "arrangement"` | Which view the clip is in                                                                       |
+| `path`              | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
+| `arrangementLength` | `string`                     | Arrangement clips only: how far the clip runs (`4bar`, `n/4`, `1bar+n/4`), in song meter        |
+| `playing`           | `true`                       | Only present when true                                                                          |
+| `triggered`         | `true`                       | Only present when true                                                                          |
+| `recording`         | `true`                       | Only present when true                                                                          |
+| `overdubbing`       | `true`                       | Only present when true                                                                          |
+| `muted`             | `true`                       | Only present when true                                                                          |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
 `muted`) are omitted when `false` to reduce response size.
 
 ### Include: `"timing"`
 
-Adds timing/loop information. For arrangement clips, also adds
-`arrangementLength`.
+Adds timing/loop information.
 
-| Field               | Type      | Description                                          |
-| ------------------- | --------- | ---------------------------------------------------- |
-| `timeSignature`     | `string`  | e.g., `"4/4"`, `"6/8"`                               |
-| `looping`           | `boolean` | Whether looping is enabled                           |
-| `start`             | `string`  | Active start position (bar\|beat)                    |
-| `end`               | `string`  | Active end position (bar\|beat)                      |
-| `length`            | `string`  | Active length (`4bar`, `n/4`, or `1bar+n/4`)         |
-| `firstStart`        | `string`  | Start marker position, only if different from active |
-| `arrangementLength` | `string`  | Arrangement clips only: total length                 |
+| Field           | Type      | Description                                          |
+| --------------- | --------- | ---------------------------------------------------- |
+| `timeSignature` | `string`  | e.g., `"4/4"`, `"6/8"`                               |
+| `looping`       | `boolean` | Whether looping is enabled                           |
+| `start`         | `string`  | Active start position (bar\|beat)                    |
+| `end`           | `string`  | Active end position (bar\|beat)                      |
+| `length`        | `string`  | Active length (`4bar`, `n/4`, or `1bar+n/4`)         |
+| `firstStart`    | `string`  | Start marker position, only if different from active |
 
 When looping is enabled, `start`/`end` reflect loop bounds. When disabled, they
 reflect the start/end markers. `firstStart` appears only when the start marker

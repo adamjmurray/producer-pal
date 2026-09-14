@@ -92,6 +92,7 @@ export interface ReadClipResult {
   /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
    * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
+  /** Arrangement clips only: how far the clip runs, in song meter. */
   arrangementLength?: string;
 
   // MIDI clip properties
@@ -183,7 +184,6 @@ export function readOneClip(
     throw new Error("id or path is required");
   }
 
-  // Resolve clip from ID or location
   const resolved = resolveClip(
     clipId,
     trackIndex,
@@ -216,18 +216,14 @@ export function readOneClip(
     ...(includeColor && { color: clip.getColor() }),
   };
 
-  // Add boolean state properties
   addBooleanStateProperties(result, clip);
 
-  // Add location properties (arrangementLength gated behind timing)
-  addClipLocationProperties(result, clip, isArrangementClip, includeTiming);
+  addClipLocationProperties(result, clip, isArrangementClip);
 
-  // Add timing properties when requested
   if (includeTiming) {
     addTimingProperties(result, clip, result.type === "audio");
   }
 
-  // Process MIDI clip properties
   if (result.type === "midi") {
     processMidiClip(
       result,
@@ -238,7 +234,6 @@ export function readOneClip(
     );
   }
 
-  // Process audio clip properties
   if (result.type === "audio" && (includeSample || includeWarp)) {
     processAudioClip(result, clip, includeSample, includeWarp);
   }
@@ -354,16 +349,9 @@ function processMidiClip(
   ) as number;
   const lengthBeats = clip.getProperty("length") as number;
 
-  // Read one clip-length of margin on each side of the playable region
-  // [0, lengthBeats], i.e. the window [-lengthBeats, 2*lengthBeats], so that
-  // authored notes outside the playable bounds round-trip on read instead of
-  // being silently dropped:
-  //   - before the start (negative start_time — e.g. a pickup `1|1-n/12`)
-  //   - after the end (overhang past lengthBeats)
-  // Live accepts negative note start times. The window is bounded (rather than
-  // unbounded) to keep the scan finite; notes more than a clip-length outside
-  // the region are still missed, which is the same finite-scan tradeoff made on
-  // the low end.
+  // Read the window [-lengthBeats, 2*lengthBeats] so a pickup before the start
+  // (Live allows negative start_time) and overhang past the end round-trip.
+  // Notes more than a clip-length outside the region are still missed.
   const notesDictionary = clip.call(
     "get_notes_extended",
     0,
@@ -453,33 +441,30 @@ function processAudioClip(
 }
 
 /**
- * Add clip location properties (path, plus arrangement timing)
+ * Add clip location properties (path, plus the arrangement span)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether clip is in arrangement view
- * @param includeTiming - Whether to include arrangementLength
  */
 function addClipLocationProperties(
   result: ReadClipResult,
   clip: LiveAPI,
   isArrangementClip: boolean,
-  includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    // The path carries where the clip starts, so nothing else reports it.
+    // Path and arrangementLength are both unconditional: without the length a
+    // reader guesses each clip's extent from the next clip's start.
     result.path = objectPathForApi(clip);
 
-    if (includeTiming) {
-      const startTimeBeats = clip.getProperty("start_time") as number;
-      const endTimeBeats = clip.getProperty("end_time") as number;
-      const { numerator, denominator } = songMeter();
+    const startTimeBeats = clip.getProperty("start_time") as number;
+    const endTimeBeats = clip.getProperty("end_time") as number;
+    const { numerator, denominator } = songMeter();
 
-      result.arrangementLength = abletonBeatsToDuration(
-        endTimeBeats - startTimeBeats,
-        numerator,
-        denominator,
-      );
-    }
+    result.arrangementLength = abletonBeatsToDuration(
+      endTimeBeats - startTimeBeats,
+      numerator,
+      denominator,
+    );
   } else {
     result.path = slotPath(
       clip.trackIndex as number,

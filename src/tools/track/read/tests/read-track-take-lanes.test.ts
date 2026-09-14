@@ -57,10 +57,14 @@ function registerTrackWithTakeLanes(
   registerArrangementClip("clip_a", livePath.track(2).takeLane(0).arrangementClip(0)); // prettier-ignore
   registerArrangementClip("clip_b1", livePath.track(2).takeLane(1).arrangementClip(0)); // prettier-ignore
   registerArrangementClip("clip_b2", livePath.track(2).takeLane(1).arrangementClip(1)); // prettier-ignore
+  registerMockObject("live-set", {
+    path: "live_set",
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
 }
 
 /**
- * Register a minimal MIDI arrangement clip mock.
+ * Register a minimal two-bar MIDI arrangement clip mock.
  * @param id - Mock object ID
  * @param path - Canonical Live API path for the clip
  */
@@ -68,7 +72,13 @@ function registerArrangementClip(id: string, path: PathLike) {
   registerMockObject(id, {
     path: String(path),
     type: "Clip",
-    properties: { is_arrangement_clip: 1, is_midi_clip: 1, name: id },
+    properties: {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      name: id,
+      start_time: 0,
+      end_time: 8,
+    },
   });
 }
 
@@ -218,8 +228,15 @@ describe("readTrack on a take lane target", () => {
     });
 
     expect(result.id).toBe("lane2");
-    expect((result.clips as Array<{ id: string }>).map((c) => c.id)) //
-      .toStrictEqual(["clip_b1", "clip_b2"]);
+
+    const clips = result.clips as Array<{ id: string; arrangementLength: string }>; // prettier-ignore
+
+    expect(clips.map((c) => c.id)).toStrictEqual(["clip_b1", "clip_b2"]);
+    // A lane clip reports its span too, without the timing include.
+    expect(clips.map((c) => c.arrangementLength)).toStrictEqual([
+      "2bar",
+      "2bar",
+    ]);
   });
 
   it("mixes lane paths with track paths, one entry each", () => {
