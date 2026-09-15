@@ -4,6 +4,10 @@ An Ableton Live remote script that listens on **http://127.0.0.1:3349** and can
 list and load Live devices, Max for Live devices and VST/VST3/AU plugins.
 Prototype.
 
+To open or create a Set with Producer Pal in it, use the
+[`ableton-open-live-set`](../examples/skills/ableton-open-live-set/) skill's
+`--add-producer-pal`, which calls this script.
+
 ## Install
 
 Set `ABLETON_USER_LIBRARY` in `.env` (see `.env.example`), then:

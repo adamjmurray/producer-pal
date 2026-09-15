@@ -61,7 +61,9 @@ Key entry points:
 - Evaluation scenarios: `evals/scenarios/index.ts`
 - Remote script: `remote-script/Producer_Pal/` — Python control surface with an
   HTTP API for bootstrapping a freshly opened Live Set with the Producer Pal
-  device. See `remote-script/README.md`.
+  device. See `remote-script/README.md`. To open or create a Set with Producer
+  Pal in it, use the `ableton-open-live-set` skill's `--add-producer-pal`
+  (`examples/skills/ableton-open-live-set/`).
 
 See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
