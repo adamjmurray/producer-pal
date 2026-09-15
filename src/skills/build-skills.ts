@@ -11,6 +11,7 @@ import {
 import {
   audienceGatedFragments,
   gatedOutFragments,
+  remoteScriptGatedFragments,
   type SkillsAudience,
 } from "#src/skills/fragment-tool-gates.ts";
 import { fragmentRequires } from "#src/skills/fragment-requires.ts";
@@ -47,6 +48,12 @@ export interface BuildSkillsOptions {
    * person. Omit for the user-facing default.
    */
   audience?: SkillsAudience;
+  /**
+   * Whether the Producer Pal remote script answered, which lets create-device
+   * load plug-ins and Max for Live devices. Omitted counts as no, and drops the
+   * fragment teaching it.
+   */
+  remoteScript?: boolean;
 }
 
 /**
@@ -129,6 +136,7 @@ export function buildSkills(
  * @param options.smallModelMode - Whether small-model mode is active.
  * @param options.tools - The tools available to this caller (omit for no gating).
  * @param options.audience - Who the blob is for (omit for the user-facing chat).
+ * @param options.remoteScript - Whether the Producer Pal remote script answered.
  * @param overrides - Per-fragment user overrides (empty by default).
  * @param onWarn - Sink for non-fatal assembly warnings.
  * @returns The blob and the fragments gating dropped from it.
@@ -139,6 +147,7 @@ export function assembleSkills(
     smallModelMode = false,
     tools,
     audience,
+    remoteScript,
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
@@ -153,10 +162,13 @@ export function assembleSkills(
     ...gatedOutFragments(tools),
     ...audienceGatedFragments(audience),
   ]);
-  // Tool gating, audience gating, and the user's per-slot off switches empty a
-  // fragment in exactly the same way, so all three resolve through one set.
+  // Tool gating, audience gating, the remote script, and the user's per-slot
+  // off switches empty a fragment the same way, so all resolve through one set.
+  // The remote script stays out of `dropped`: the preview explains that list as
+  // tools switched off.
   const suppressed = new Set([
     ...gated,
+    ...remoteScriptGatedFragments(remoteScript),
     ...switchableOff(overrides.disabled ?? [], onWarn),
   ]);
 

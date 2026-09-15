@@ -117,13 +117,13 @@ describe("createDevice path cache", () => {
   // no longer names the inner rack. That is refused up front now rather than
   // left to the cache: re-resolving would have found a real device at that
   // path and inserted into the wrong one.
-  it("refuses a path spelled through a chain an earlier append re-sorts", () => {
-    expect(() =>
+  it("refuses a path spelled through a chain an earlier append re-sorts", async () => {
+    await expect(
       createDevice({
         deviceName: "Operator",
         path: `${NESTED}, t0/d0/c0, ${NESTED}`,
       }),
-    ).toThrow(`path entry "${NESTED}" is spelled through "t0/d0/c0"`);
+    ).rejects.toThrow(`path entry "${NESTED}" is spelled through "t0/d0/c0"`);
 
     // Refused before anything ran, so there is nothing to clean up.
     expect(innerInserts()).toBe(0);
@@ -131,8 +131,8 @@ describe("createDevice path cache", () => {
 
   // An audio effect goes on the end, so every path already resolved still
   // stands and the batch keeps sharing one walk.
-  it("keeps the cache when the append cannot move anything", () => {
-    createDevice({
+  it("keeps the cache when the append cannot move anything", async () => {
+    await createDevice({
       deviceName: "Reverb",
       path: `${NESTED}, t0/d0/c0, ${NESTED}`,
     });

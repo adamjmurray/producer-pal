@@ -63,6 +63,7 @@ a whole area you never use:
 | `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms`; the whole transforms guide in small model mode                          |
 | `library`                                        | Using library search results: sanity-checking a tag hit against the file's folder, and loading a result into a clip or a Simpler     |
 | `devices`                                        | Device paths and VST/AU limits                                                                                                       |
+| `plugins-and-max-devices`                        | Loading VST/AU plug-ins and Max for Live devices by name, sent only while the Producer Pal remote script is running                  |
 | `devices-write`                                  | How parameter values snap on a write, building Simpler and Drum Rack instruments, loading samples                                    |
 | `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                                                      |
 | `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                        |
@@ -187,7 +188,7 @@ override you wrote for it, so check the box again and it comes back.
 | Search Live's library or your sample folder with the AI  | `library`                                                                                                                                                         |
 | Edit Drift, Wavetable, EQ Eight… with the AI             | `specialized-devices`                                                                                                                                             |
 | Build Simpler or Drum Rack instruments with the AI       | `devices-write`                                                                                                                                                   |
-| Touch devices with the AI at all                         | `devices`, `devices-write` **and** `specialized-devices`                                                                                                          |
+| Touch devices with the AI at all                         | `devices`, `devices-write`, `plugins-and-max-devices` **and** `specialized-devices`                                                                               |
 | Let the AI move clips or record takes in the Arrangement | `arrangement-write`                                                                                                                                               |
 | Work in the Arrangement view with the AI                 | `arrangement` **and** `arrangement-write`                                                                                                                         |
 | Use project/global context or memory                     | `context-standard`                                                                                                                                                |
@@ -206,12 +207,12 @@ A few fragments teach a vocabulary whose syntax lives elsewhere. The other
 transforms guides all build on `transforms-core`; keeping
 `transforms-generative` without it leaves the AI knowing `ratchet()` and the
 waveforms but not the shape of a transform, which is worse than dropping them
-all. `devices-write` and `specialized-devices` both sit inside `devices` the
-same way, and so does `arrangement-write` inside `arrangement`. Each notation's
-write half sits inside its own guide too: `barbeat-standard-write` inside
-`barbeat-standard`, `stark-basic-write` inside `stark-basic`, and so on. That's
-why the rows above are ordered most-specific-first and say which fragments
-travel together.
+all. `devices-write`, `plugins-and-max-devices` and `specialized-devices` all
+sit inside `devices` the same way, and so does `arrangement-write` inside
+`arrangement`. Each notation's write half sits inside its own guide too:
+`barbeat-standard-write` inside `barbeat-standard`, `stark-basic-write` inside
+`stark-basic`, and so on. That's why the rows above are ordered
+most-specific-first and say which fragments travel together.
 
 `time-and-values` is the widest of these: it defines the units everything else
 counts in, plus the octave convention (C3 = MIDI 60). The bar|beat guide,

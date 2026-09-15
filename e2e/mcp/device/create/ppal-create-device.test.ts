@@ -10,7 +10,7 @@
  * Uses: e2e-test-set
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- device/ppal-create-device
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -23,12 +23,12 @@ import {
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
-} from "../mcp-test-helpers";
-import { createLayeredPad } from "./drum/drum-pad-test-helpers.ts";
+} from "../../mcp-test-helpers";
+import { createLayeredPad } from "../drum/drum-pad-test-helpers.ts";
 import {
   callForParams,
   expectSkipThenValue,
-} from "./helpers/device-param-test-helpers.ts";
+} from "../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 

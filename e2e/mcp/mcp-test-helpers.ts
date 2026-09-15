@@ -552,6 +552,24 @@ export async function serverHasCodeExec(client: Client): Promise<boolean> {
   return createClip?.inputSchema.properties?.code != null;
 }
 
+/**
+ * Whether the Producer Pal remote script answers its ping. Only then can
+ * ppal-create-device load plug-ins and Max devices, and only then do the skills
+ * teach it.
+ *
+ * @returns True when GET /ping answered within a second
+ */
+export async function remoteScriptAnswers(): Promise<boolean> {
+  const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
+
+  return await fetch(`http://127.0.0.1:${port}/ping`, {
+    signal: AbortSignal.timeout(1000),
+  }).then(
+    (response) => response.ok,
+    () => false,
+  );
+}
+
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================

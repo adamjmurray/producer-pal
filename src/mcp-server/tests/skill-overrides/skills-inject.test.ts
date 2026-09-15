@@ -5,7 +5,11 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
-import { withSkills } from "#src/mcp-server/helpers/skills-inject.ts";
+import {
+  withRemoteScriptAnswer,
+  withSkills,
+} from "#src/mcp-server/helpers/skills-inject.ts";
+import { startFakeRemoteScript } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { writeSkillOverride } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
@@ -142,5 +146,44 @@ describe("withSkills", () => {
     const result = await wrapped("ppal-connect", {});
 
     expect(result.content).toHaveLength(1);
+  });
+});
+
+describe("withRemoteScriptAnswer", () => {
+  const HEADING = "### Plug-Ins & Max for Live Devices";
+
+  it("teaches loading plug-ins while the remote script answers its ping", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: true,
+      });
+
+      const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
+
+      expect(lastText(await wrapped("ppal-connect", {}))).toContain(HEADING);
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it("doesn't when nothing answers", async () => {
+    expect(await withRemoteScriptAnswer({})).toStrictEqual({
+      remoteScript: false,
+    });
+  });
+
+  it("doesn't ping in small-model mode", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+
+    try {
+      expect(
+        await withRemoteScriptAnswer({ smallModelMode: true }),
+      ).toStrictEqual({ smallModelMode: true, remoteScript: false });
+      expect(remote.requests).toStrictEqual([]);
+    } finally {
+      await remote.close();
+    }
   });
 });

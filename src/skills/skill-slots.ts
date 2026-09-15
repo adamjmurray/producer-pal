@@ -22,6 +22,7 @@ import {
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
+import { pluginsAndMaxDevices } from "#src/skills/fragments/devices/plugins-and-max-devices.ts";
 import {
   objectPaths,
   objectPathsBasic,
@@ -105,6 +106,7 @@ export const SKILL_SLOT_NAMES = [
   "transforms-basic",
   "library",
   DEVICES,
+  "plugins-and-max-devices",
   "devices-write",
   "specialized-devices",
   ARRANGEMENT,
@@ -279,6 +281,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Device paths and what can't be reached inside a VST/AU plug-in — what every device task needs, whichever direction it goes.",
     builtIn: devices,
+  },
+
+  "plugins-and-max-devices": {
+    title: "Devices: loading plug-ins & Max devices",
+    description:
+      "Loading VST/AU plug-ins and Max for Live devices with create-device, found through library search. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode. Needs the devices guide it sits under.",
+    builtIn: pluginsAndMaxDevices,
   },
 
   "devices-write": {

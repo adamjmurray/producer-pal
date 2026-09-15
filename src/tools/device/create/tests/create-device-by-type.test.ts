@@ -16,7 +16,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { createDevice } from "../create-device.ts";
-import { validateInsertionOrder } from "../device-insertion-order.ts";
+import { validateInsertionOrder } from "../helpers/device-insertion-order.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({ select: vi.fn() }));
 
@@ -47,9 +47,9 @@ describe("createDevice by device type", () => {
 
   // "afx0" is the existing Reverb's slot, so the new device lands in front of
   // it — the same as writing the position that segment resolves to.
-  it("inserts at the position the type segment resolves to", () => {
+  it("inserts at the position the type segment resolves to", async () => {
     expect(
-      createDevice({ path: "t0/afx0", deviceName: "Compressor" }),
+      await createDevice({ path: "t0/afx0", deviceName: "Compressor" }),
     ).toStrictEqual({ id: "inserted", path: "t0/d1" });
     expect(track.call).toHaveBeenCalledWith("insert_device", "Compressor", 1);
   });
@@ -69,10 +69,10 @@ describe("createDevice by device type", () => {
 
   // The track exists; it is the segment that names nothing, so the error must
   // not blame the container.
-  it("refuses an insert at a type segment that names nothing", () => {
-    expect(() =>
+  it("refuses an insert at a type segment that names nothing", async () => {
+    await expect(
       createDevice({ path: "t0/afx1", deviceName: "Compressor" }),
-    ).toThrow(
+    ).rejects.toThrow(
       'path "t0/afx1" names no device to insert at: t0 has 1 audio effect (afx0)',
     );
     // The error says what the track holds, so nothing warns it as well.

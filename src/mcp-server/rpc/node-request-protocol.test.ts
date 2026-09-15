@@ -248,6 +248,27 @@ describe("node-request-protocol", () => {
     );
   });
 
+  it("gives a route registered with its own timeout that long", async () => {
+    vi.useFakeTimers();
+
+    registerNodeRoute("slow", () => new Promise(() => {}), 40_000);
+
+    const promise = handleNodeRequest(
+      "req-slow",
+      JSON.stringify({ route: "slow", args: {} }),
+    );
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(Max.outlet).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(25_000);
+    await promise;
+
+    expect(parseSentResponse().error).toMatch(
+      /Route 'slow' timed out after 40000ms/,
+    );
+  });
+
   it("logs error when Max.outlet fails", async () => {
     const consoleMock = await import("../node-for-max-logger.ts");
 

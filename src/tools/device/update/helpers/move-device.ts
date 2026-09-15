@@ -66,8 +66,29 @@ export function moveDeviceToPath(
     return { outcome: "unresolvable", reason: destination.reason };
   }
 
-  const { container, position } = destination;
+  return moveDeviceIntoContainer(device, destination, source, reportPath);
+}
 
+/**
+ * Move a device into a container the caller already resolved. For a caller
+ * that can only resolve a path once — a `c+` appends a chain every time.
+ * @param device - LiveAPI device object
+ * @param destination - The container, and the index in it (null appends)
+ * @param destination.container - Where the device goes
+ * @param destination.position - Index in the container, or null to append
+ * @param source - As in moveDeviceToPath
+ * @param reportPath - How to spell the destination in a warning
+ * @returns What the move did, plus the container it landed in or why it didn't
+ */
+export function moveDeviceIntoContainer(
+  device: LiveAPI,
+  {
+    container,
+    position,
+  }: Pick<InsertionPathResolution, "container" | "position">,
+  source: LiveAPI | null,
+  reportPath: string,
+): DeviceMove {
   if (!container?.exists()) {
     return { outcome: "no-destination" };
   }

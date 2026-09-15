@@ -14,7 +14,7 @@ declare const Task: new (callback: () => void) => {
   schedule: (ms: number) => void;
 };
 
-/** How long V8 waits for Node's answer before giving up. */
+/** How long V8 waits for Node's answer before giving up, unless a call says otherwise. */
 export const REQUEST_TIMEOUT_MS = 10_000;
 
 /** Every answer Node sends back says whether it worked. */
@@ -45,6 +45,7 @@ interface RequestChannel {
     payload: string,
     subject: string,
     refusal?: string | null,
+    timeoutMs?: number,
   ) => Promise<T>;
   receive: (requestId: string, responseJson: string) => void;
 }
@@ -64,12 +65,14 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
      * @param payload - The request body, already serialized
      * @param subject - What this call is, for the timeout and failure text
      * @param refusal - Why the request can't be sent at all, when it can't
+     * @param timeoutMs - How long to wait for the answer
      * @returns The answer, or a failure when nothing usable came back
      */
     send<T extends ChannelResult>(
       payload: string,
       subject: string,
       refusal?: string | null,
+      timeoutMs: number = REQUEST_TIMEOUT_MS,
     ): Promise<T> {
       const requestId = `${spec.idPrefix}${nextRequestId++}`;
 
@@ -90,11 +93,11 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
 
           const task = new Task(() => {
             if (pending.delete(requestId)) {
-              fail(`${subject} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+              fail(`${subject} timed out after ${timeoutMs}ms`);
             }
           });
 
-          task.schedule(REQUEST_TIMEOUT_MS);
+          task.schedule(timeoutMs);
           pending.set(requestId, {
             resolve: resolve as (result: ChannelResult) => void,
             cancelTimeout: () => task.schedule(-1),

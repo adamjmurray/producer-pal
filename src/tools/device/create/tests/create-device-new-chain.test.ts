@@ -91,20 +91,20 @@ describe("createDevice — c+ appends a chain", () => {
     clearMockRegistry();
   });
 
-  it("makes a chain past the last one and reports the index it landed at", () => {
+  it("makes a chain past the last one and reports the index it landed at", async () => {
     const { rack } = registerRack(false, [0, 0]);
 
     expect(
-      createDevice({ deviceName: "Simpler", path: "t0/d0/c+" }),
+      await createDevice({ deviceName: "Simpler", path: "t0/d0/c+" }),
     ).toStrictEqual({ id: "device-2", path: "t0/d0/c2/d0" });
     expect(rack.call).toHaveBeenCalledWith("insert_chain");
   });
 
-  it("makes one chain per entry in a list", () => {
+  it("makes one chain per entry in a list", async () => {
     const { rack } = registerRack(false, [0]);
 
     expect(
-      createDevice({ deviceName: "Simpler", path: "t0/d0/c+,t0/d0/c+" }),
+      await createDevice({ deviceName: "Simpler", path: "t0/d0/c+,t0/d0/c+" }),
     ).toStrictEqual([
       { id: "device-1", path: "t0/d0/c1/d0" },
       { id: "device-2", path: "t0/d0/c2/d0" },
@@ -116,19 +116,19 @@ describe("createDevice — c+ appends a chain", () => {
 
   // A brand-new Drum Rack chain lands on the catch-all pad, which sounds on
   // every note no pad claims — never what "another chain" means.
-  it("refuses a Drum Rack and names the pad spelling instead", () => {
+  it("refuses a Drum Rack and names the pad spelling instead", async () => {
     registerRack(true, [36]);
 
-    expect(() =>
+    await expect(
       createDevice({ deviceName: "Simpler", path: "t0/d0/c+" }),
-    ).toThrow('name the pad instead (e.g. "t0/d0/pC1/c+")');
+    ).rejects.toThrow('name the pad instead (e.g. "t0/d0/pC1/c+")');
   });
 
-  it("adds a layer to a drum pad, which owns chains of its own", () => {
+  it("adds a layer to a drum pad, which owns chains of its own", async () => {
     const { rack } = registerRack(true, [36]);
 
     expect(
-      createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c+" }),
+      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c+" }),
     ).toStrictEqual({ id: "device-1", path: "t0/d0/pC1/c1/d0" });
     expect(rack.call).toHaveBeenCalledWith("insert_chain");
   });

@@ -141,13 +141,13 @@ function setupKit8(): void {
 describe("createDevice build budget", () => {
   beforeEach(setupRack);
 
-  it("resolves the shared prefix once for the whole batch", () => {
+  it("resolves the shared prefix once for the whole batch", async () => {
     const paths = Array.from(
       { length: CHAINS },
       (_, i) => `t0/d0/c${String(i)}`,
     );
 
-    createDevice({ deviceName: "Operator", path: paths.join(",") });
+    await createDevice({ deviceName: "Operator", path: paths.join(",") });
 
     // The track and the rack are the same objects for every path. CHAINS times
     // this many means each path re-walked the prefix.
@@ -159,18 +159,18 @@ describe("createDevice build budget", () => {
     expect(resolves("id newdev")).toBe(CHAINS);
   });
 
-  it("builds one object for a single created device, not two", () => {
-    createDevice({ deviceName: "Operator", path: "t0/d0/c0" });
+  it("builds one object for a single created device, not two", async () => {
+    await createDevice({ deviceName: "Operator", path: "t0/d0/c0" });
 
     expect(resolves("id newdev")).toBe(1);
   });
 
   // Building a kit in one call is the recommended usage, and every pad path
   // used to resolve the rack twice over.
-  it("resolves the rack once for a whole kit of pad paths", () => {
+  it("resolves the rack once for a whole kit of pad paths", async () => {
     setupKit();
 
-    createDevice({
+    await createDevice({
       deviceName: "Reverb",
       path: PAD_NOTES.map((note) => `t1/d0/p${note}`).join(","),
     });
@@ -182,10 +182,10 @@ describe("createDevice build budget", () => {
   // own per-rack memo, it rescanned every chain on the rack once per pad named
   // (16 extra chain builds for this 4-pad kit), on top of what actually
   // creating each device already costs.
-  it("reads a kit's chains once for order validation, not once per pad", () => {
+  it("reads a kit's chains once for order validation, not once per pad", async () => {
     setupKit();
 
-    createDevice({
+    await createDevice({
       deviceName: "Reverb",
       path: PAD_NOTES.map((note) => `t1/d0/p${note}`).join(","),
     });
@@ -196,10 +196,10 @@ describe("createDevice build budget", () => {
     expect(resolves("id kitchain*")).toBe(21);
   });
 
-  it("reads an 8-pad kit's chains once for order validation, not once per pad", () => {
+  it("reads an 8-pad kit's chains once for order validation, not once per pad", async () => {
     setupKit8();
 
-    createDevice({
+    await createDevice({
       deviceName: "Reverb",
       path: PAD_NOTES_8.map((note) => `t2/d0/p${note}`).join(","),
     });

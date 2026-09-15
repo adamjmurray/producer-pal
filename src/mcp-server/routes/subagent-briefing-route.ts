@@ -34,6 +34,7 @@ import {
 import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
 import { resolveRequestProfile } from "../helpers/http/request-profile.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
+import { withRemoteScriptAnswer } from "../helpers/skills-inject.ts";
 import { type McpResponse } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
 
@@ -128,7 +129,12 @@ export function registerSubagentBriefingRoute(
       }
 
       const skills = buildSkills(
-        { notation, smallModelMode, tools, audience: "subagent" },
+        await withRemoteScriptAnswer({
+          notation,
+          smallModelMode,
+          tools,
+          audience: "subagent",
+        }),
         readSkillOverrides(),
         (message) => console.warn(`Subagent briefing skills: ${message}`),
       );

@@ -295,6 +295,36 @@ describe("node-request-v8-protocol", () => {
     }
   });
 
+  it("waits as long as the request asks", async () => {
+    const scheduleCalls: number[] = [];
+    const restoreTracking = installTrackingTask(scheduleCalls);
+
+    try {
+      void requestNode("test.slow", {}, 45_000);
+
+      expect(scheduleCalls).toStrictEqual([45_000]);
+    } finally {
+      restoreTracking();
+    }
+
+    const captured: Array<() => void> = [];
+    const restoreCapturing = installCapturingTask(captured);
+
+    try {
+      const promise = requestNode("test.slow", {}, 45_000);
+
+      captured[0]!();
+
+      const response = await promise;
+
+      expect(response.error).toBe(
+        "node_request 'test.slow' timed out after 45000ms",
+      );
+    } finally {
+      restoreCapturing();
+    }
+  });
+
   it("ignores a second timeout callback firing for the same request", async () => {
     const captured: Array<() => void> = [];
     const restoreTask = installCapturingTask(captured);

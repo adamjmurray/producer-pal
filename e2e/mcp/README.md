@@ -38,6 +38,22 @@ ENABLE_CODE_EXEC=true npm run e2e:mcp
 
 The suite skips itself when the variable is absent from the test environment.
 
+### Remote script tests
+
+The `device/create/ppal-create-device-browser.test.ts` suite loads Max for Live
+devices through the Producer Pal remote script, so it needs the script installed
+and selected as a control surface — see
+[remote-script/README.md](../../remote-script/README.md). It only runs when
+asked:
+
+```bash
+npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
+```
+
+That script is `e2e:mcp` with `E2E_REMOTE_SCRIPT=true`. Without the variable the
+suite skips itself. With it, a remote script that doesn't answer `/ping` fails
+the suite instead of skipping it.
+
 ### The direct Live API tool is off during e2e
 
 `ppal-live-api` is **not** available to an e2e test unless the test asks for it.

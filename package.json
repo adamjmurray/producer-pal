@@ -111,6 +111,7 @@
     "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.docs.config.ts --headed",
     "e2e:docs": "npm run docs:test",
     "e2e:mcp": "vitest run -c config/vitest.e2e.config.ts",
+    "e2e:mcp:remote-script": "E2E_REMOTE_SCRIPT=true vitest run -c config/vitest.e2e.config.ts",
     "e2e:mcp:watch": "vitest -c config/vitest.e2e.config.ts",
     "e2e:portal": "vitest run -c config/vitest.e2e.portal.config.ts",
     "e2e:webui": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.webui.config.ts",
