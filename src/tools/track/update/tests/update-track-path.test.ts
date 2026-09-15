@@ -70,17 +70,35 @@ describe("updateTrack by path", () => {
     // The skipped entry keeps its slot: "Second" must not slide onto t1's
     // neighbor, and t1 must not be renamed "First".
     expect(track1.set).toHaveBeenCalledWith("name", "Second");
-    expect(result).toStrictEqual({ id: "456", path: "t1" });
-    expect(capturedWarnings()).toContain(
-      'invalid path "s0" - names a scene, not a track; expected "t<index>", "rt<index>", or "mt"',
-    );
+    expect(result).toStrictEqual([
+      {
+        path: "s0",
+        ok: false,
+        reason:
+          'invalid path "s0" - names a scene, not a track; expected "t<index>", "rt<index>", or "mt"',
+      },
+      { id: "456", path: "t1" },
+    ]);
+    // The entry said it, so nothing warns it a second time.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("says when a path names a track that isn't there", () => {
+  it("reports a path naming no track, in its own slot", () => {
     mockNonExistentObjects();
 
-    expect(updateTrack({ path: "t9", name: "Nowhere" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('nothing at path "t9"');
+    expect(updateTrack({ path: "t0,t9", name: "Here,Nowhere" })).toStrictEqual([
+      { id: "123", path: "t0" },
+      { path: "t9", ok: false, reason: 'no track at path "t9"' },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("throws when the one path it was given names no track", () => {
+    mockNonExistentObjects();
+
+    expect(() => updateTrack({ path: "t9", name: "Nowhere" })).toThrow(
+      'no track at path "t9"',
+    );
   });
 
   it("still asks for a target when neither id nor path is given", () => {

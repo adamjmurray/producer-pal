@@ -16,6 +16,7 @@
 // color is a property, not a place.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { plural } from "./plural.ts";
 
 /** How a mismatched list is described in the warning. */
 export interface PairLabels {
@@ -168,14 +169,4 @@ export function warnPairingMismatch(
       ? `${head}; the extra ${noun}s went unused`
       : `${head}; the ${item}s past the last ${noun} ${shortfall}`,
   );
-}
-
-/**
- * "1 name", "3 names" — every noun the pairing labels use takes a plain -s.
- * @param count - How many
- * @param noun - The singular noun
- * @returns The counted phrase
- */
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

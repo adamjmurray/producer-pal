@@ -11,14 +11,14 @@ import {
   setupTrackWithDevices,
 } from "./helpers/read-track-device-test-helpers.ts";
 import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   describe("devices - rack edge cases", () => {
     it("strips chains from rack devices in read-track output", () => {
       setupEmptyRackMocks();
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices"],
       });
@@ -36,7 +36,7 @@ describe("readTrack", () => {
     it("strips drum rack chains/drumPads in read-track output", () => {
       setupDrumRackMocks();
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["devices", "drum-map"],
       });
@@ -72,7 +72,7 @@ describe("readTrack", () => {
         },
       ]);
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ALL_DEVICE_INCLUDE_OPTIONS,
       });

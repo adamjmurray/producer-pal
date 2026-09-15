@@ -12,6 +12,7 @@ import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ToolCall } from "#evals/chat/shared/types.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type ScenarioTag } from "./load-scenarios/scenario-tags.ts";
 
 // Re-export types from chat for convenience
 export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
@@ -41,6 +42,10 @@ export interface EvalScenario {
   /** Whether this is a regression test (should always pass) or capability test
    * (improvement target, may have low pass rates). Default: "regression" */
   kind?: "regression" | "capability";
+
+  /** Subset tags the `--tag` filter selects on. At least one; add a second when
+   *  the scenario genuinely grades both families. See `SCENARIO_TAGS`. */
+  tags: ScenarioTag[];
 
   /** Live Set name or path. Short names (no `/`) resolve to
    * `evals/live-sets/{name} Project/{name}.als` */

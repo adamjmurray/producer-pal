@@ -8,7 +8,7 @@ import {
   MAX_CHUNK_SIZE,
   END_OF_CHUNKS,
   reassembleChunks,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import {
   handleNodeResponse,
   requestNode,

@@ -114,6 +114,17 @@ describe("ContextTabs", () => {
     expect(screen.getByTestId("editor").textContent).toBe("PROJECT-DOC");
   });
 
+  it("mounts on the tab the caller asked for", () => {
+    render(<ContextTabs initialTab="instructions" />);
+
+    expect(
+      screen
+        .getByRole("button", { name: "Instructions" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
+  });
+
   it("switches to the Global tab and shows the global document", () => {
     render(<ContextTabs />);
 

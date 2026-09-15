@@ -10,22 +10,22 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { handleArrangementOperations } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
-  handlePositionOperations,
-  resolveMoveDestinations,
-} from "../../helpers/update-clip-session-helpers.ts";
-import { handleClipSlotMove } from "../../helpers/slot-move/update-clip-slot-move-helpers.ts";
+  type ClipReasons,
+  newClipReasons,
+} from "../../helpers/entries/clip-reasons.ts";
+import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { handleArrangementOperations } from "../../helpers/arrangement/arrangement-move.ts";
+import { resolveMoveDestinations } from "../../helpers/move/move-destinations.ts";
+import { handlePositionOperations } from "../../helpers/move/position-operations.ts";
+import { handleClipSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-vi.mock(
-  import("../../helpers/arrangement/update-clip-arrangement-helpers.ts"),
-  () => ({
-    handleArrangementOperations: vi.fn(),
-  }),
-);
+vi.mock(import("../../helpers/arrangement/arrangement-move.ts"), () => ({
+  handleArrangementOperations: vi.fn(),
+}));
 
 /** Id of the clip Live creates in the destination slot when the copy lands */
 const COPY_ID = "456";
@@ -48,7 +48,9 @@ const OCCUPANT_ID = "789";
  * @param opts.clipIsMidi - Whether the source clip is MIDI
  * @param opts.destIsMidi - Whether the destination track takes MIDI
  * @param opts.destIsFrozen - Whether the destination track is frozen
- * @returns Object with mockClip, updatedClips, and source clip slot mock
+ * @param opts.deleteFails - Whether Live refuses to delete the copied-out source
+ * @returns Object with mockClip, updatedClips, what the clip had to say, and
+ *   the source clip slot mock
  */
 function runSessionMove(opts: {
   trackIndex?: number;
@@ -61,6 +63,7 @@ function runSessionMove(opts: {
   clipIsMidi?: number;
   destIsMidi?: number;
   destIsFrozen?: number;
+  deleteFails?: boolean;
 }) {
   const {
     trackIndex = 0,
@@ -73,6 +76,7 @@ function runSessionMove(opts: {
     clipIsMidi = 1,
     destIsMidi = 1,
     destIsFrozen = 0,
+    deleteFails = false,
   } = opts;
 
   mockNonExistentObjects();
@@ -109,6 +113,13 @@ function runSessionMove(opts: {
 
           return null;
         },
+        delete_clip: () => {
+          if (deleteFails) {
+            throw new Error("delete failed");
+          }
+
+          return null;
+        },
       },
     },
   );
@@ -126,34 +137,41 @@ function runSessionMove(opts: {
   }
 
   const updatedClips: ClipResult[] = [];
+  const reasons: ClipReasons = newClipReasons();
 
   handleClipSlotMove({
     clip: mockClip as unknown as LiveAPI,
     toSlot: { trackIndex: toTrackIndex, sceneIndex: toSceneIndex },
     updatedClips,
     noteResult,
+    reasons,
   });
 
   return {
     mockClip,
     updatedClips,
+    reasons,
     sourceSlot: sourceSlot as RegisteredMockObject,
   };
 }
+
+const reasonFor = (reasons: ClipReasons, clipId = "123"): string =>
+  joinedClipReason(reasons, clipId);
 
 /**
  * The move was refused before it touched anything: the source slot was left
  * alone and the unmoved source clip is all that came back.
  * @param moved - What runSessionMove returned
- * @param warning - The refusal warning the caller should have been given
+ * @param reason - What the clip's own entry should say
  */
 function expectMoveRefused(
   moved: ReturnType<typeof runSessionMove>,
-  warning: string,
+  reason: string,
 ): void {
-  const { updatedClips, sourceSlot } = moved;
+  const { updatedClips, sourceSlot, reasons } = moved;
 
-  expect(capturedWarnings()).toContain(warning);
+  expect(reasonFor(reasons)).toBe(reason);
+  expect(capturedWarnings()).toStrictEqual([]);
   expect(sourceSlot.call).not.toHaveBeenCalled();
   expect(updatedClips).toHaveLength(1);
   expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
@@ -185,7 +203,24 @@ describe("handleClipSlotMove", () => {
     });
   });
 
-  it("should warn and skip for clip with unknown slot position", () => {
+  // Live refusing the delete leaves the clip in both slots. The copy is really
+  // there, so it keeps the entry and the reason says where the original still
+  // sits — letting the throw out would lose the copy from the result.
+  it("reports the copy that landed when deleting the source fails", () => {
+    const { updatedClips, reasons } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
+      deleteFails: true,
+    });
+
+    expect(updatedClips).toStrictEqual([{ id: COPY_ID, path: "t1/s2" }]);
+    expect(reasonFor(reasons)).toBe(
+      "the original at t0/s0 could not be deleted (delete failed); " +
+        "delete it in Live",
+    );
+  });
+
+  it("reports a clip whose slot position is unknown on its own entry", () => {
     const mockClip = {
       id: "123",
       trackIndex: null,
@@ -194,24 +229,24 @@ describe("handleClipSlotMove", () => {
     };
 
     const updatedClips: ClipResult[] = [];
+    const reasons: ClipReasons = newClipReasons();
 
     handleClipSlotMove({
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       updatedClips,
       noteResult: null,
+      reasons,
     });
 
-    expect(capturedWarnings()).toContain(
-      "could not determine slot position for clip id 123",
-    );
+    expect(reasonFor(reasons)).toBe("not moved: could not determine its slot");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
   });
 
   /**
    * Move a clip whose source slot is only half-known, and assert the guard
-   * warned rather than computing a bogus source slot.
+   * fired rather than computing a bogus source slot.
    * @param trackIndex - Source track index, or null when unknown
    * @param sceneIndex - Source scene index, or null when unknown
    */
@@ -219,6 +254,8 @@ describe("handleClipSlotMove", () => {
     trackIndex: number | null,
     sceneIndex: number | null,
   ): void {
+    const reasons: ClipReasons = newClipReasons();
+
     handleClipSlotMove({
       clip: {
         id: "123",
@@ -229,11 +266,10 @@ describe("handleClipSlotMove", () => {
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       updatedClips: [],
       noteResult: null,
+      reasons,
     });
 
-    expect(capturedWarnings()).toContain(
-      "could not determine slot position for clip id 123",
-    );
+    expect(reasonFor(reasons)).toBe("not moved: could not determine its slot");
   }
 
   it("should warn when only the track index is unknown", () => {
@@ -268,14 +304,16 @@ describe("handleClipSlotMove", () => {
     });
   });
 
-  it("should not warn about overwriting when the destination is empty", () => {
-    runSessionMove({ toTrackIndex: 1, toSceneIndex: 5, destHasClip: 0 });
+  it("should not report an overwrite when the destination is empty", () => {
+    const { reasons } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 5,
+      destHasClip: 0,
+    });
 
-    // has_clip is falsy, so the overwrite warning must not fire (kills the
+    // has_clip is falsy, so the overwrite reason must not appear (kills the
     // forced-true mutant on the has_clip guard).
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("overwrote the existing clip"),
-    );
+    expect(reasonFor(reasons)).not.toContain("overwrote the existing clip");
   });
 
   it("should no-op when moving to same slot", () => {
@@ -308,16 +346,18 @@ describe("handleClipSlotMove", () => {
     };
 
     const updatedClips: ClipResult[] = [];
+    const reasons: ClipReasons = newClipReasons();
 
     handleClipSlotMove({
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 99, sceneIndex: 99 },
       updatedClips,
       noteResult: null,
+      reasons,
     });
 
-    expect(capturedWarnings()).toContain(
-      "clip id 123 was not moved: destination t99/s99 does not exist",
+    expect(reasonFor(reasons)).toBe(
+      "not moved: destination t99/s99 does not exist",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
@@ -334,7 +374,7 @@ describe("handleClipSlotMove", () => {
 
     expectMoveRefused(
       moved,
-      "clip t0/s0 (id 123) was not moved: track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
+      "not moved: track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
     );
   });
 
@@ -352,7 +392,7 @@ describe("handleClipSlotMove", () => {
 
     expectMoveRefused(
       moved,
-      "clip t0/s0 (id 123) was not moved: track t17 (id live_set/tracks/17) is frozen; unfreeze it first",
+      "not moved: track t17 (id live_set/tracks/17) is frozen; unfreeze it first",
     );
   });
 
@@ -372,14 +412,14 @@ describe("handleClipSlotMove", () => {
   });
 
   it("should not move an audio clip to a MIDI track", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+    const { updatedClips, sourceSlot, reasons } = runSessionMove({
       toTrackIndex: 1,
       toSceneIndex: 2,
       clipIsMidi: 0,
     });
 
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 123) was not moved: track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
+    expect(reasonFor(reasons)).toBe(
+      "not moved: track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);
@@ -389,7 +429,7 @@ describe("handleClipSlotMove", () => {
   // has to be gated on the copy actually being there — for any reason it
   // declined, not just the MIDI/audio mismatch above.
   it("should keep the source when no clip lands in an empty destination", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+    const { updatedClips, sourceSlot, reasons } = runSessionMove({
       toTrackIndex: 1,
       toSceneIndex: 2,
       copyLands: false,
@@ -400,8 +440,8 @@ describe("handleClipSlotMove", () => {
       expect.any(String),
     );
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 123) was not moved: no clip landed at t1/s2, so the original was kept",
+    expect(reasonFor(reasons)).toBe(
+      "not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
   });
@@ -410,7 +450,7 @@ describe("handleClipSlotMove", () => {
   // one either way. Only the destination clip's id tells the copy apart from
   // the clip that was always there — get it wrong and the source is deleted.
   it("should keep the source when the occupied destination still holds its own clip", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+    const { updatedClips, sourceSlot, reasons } = runSessionMove({
       toTrackIndex: 1,
       toSceneIndex: 2,
       destHasClip: 1,
@@ -418,8 +458,8 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 123) was not moved: no clip landed at t1/s2, so the original was kept",
+    expect(reasonFor(reasons)).toBe(
+      "not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
@@ -429,34 +469,30 @@ describe("handleClipSlotMove", () => {
     expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
-  // The old warning fired before the copy, so a declined copy produced two
-  // contradictory warnings and the first one was false.
+  // The old report happened before the copy, so a declined copy claimed an
+  // overwrite that never happened.
   it("should not claim an overwrite when the copy never landed", () => {
-    runSessionMove({
+    const { reasons } = runSessionMove({
       toTrackIndex: 0,
       toSceneIndex: 1,
       destHasClip: 1,
       copyLands: false,
     });
 
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("overwrote the existing clip"),
-    );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("so the original was kept"),
-    );
+    expect(reasonFor(reasons)).not.toContain("overwrote the existing clip");
   });
 
-  it("should warn when overwriting existing clip at destination", () => {
-    const { updatedClips, sourceSlot } = runSessionMove({
+  it("should say on the clip's entry that it overwrote the destination", () => {
+    const { updatedClips, sourceSlot, reasons } = runSessionMove({
       toTrackIndex: 0,
       toSceneIndex: 1,
       destHasClip: 1,
     });
 
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 123) overwrote the existing clip at t0/s1",
+    expect(reasonFor(reasons)).toContain(
+      "overwrote the existing clip at t0/s1",
     );
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     // The copy replaced the occupant, so the result is the copy's id.
@@ -504,8 +540,9 @@ interface PositionOpsOptions {
  * Run handlePositionOperations against a bare clip stub, so each test says only
  * what it varies.
  * @param opts - What this test varies
+ * @returns What the clip had to say about its update
  */
-function runPositionOps(opts: PositionOpsOptions = {}): void {
+function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
   const {
     isArrangementClip = false,
     destinationParam = "toPath",
@@ -514,6 +551,8 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
     arrangementStartBeats,
     arrangementLengthBeats,
   } = opts;
+
+  const reasons: ClipReasons = newClipReasons();
 
   handlePositionOperations({
     clip: {
@@ -533,8 +572,11 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
     context: {},
     updatedClips: [],
     noteResult: null,
+    reasons,
     isNonSurvivor: false,
   });
+
+  return reasons;
 }
 
 describe("handlePositionOperations", () => {
@@ -547,58 +589,49 @@ describe("handlePositionOperations", () => {
     });
 
     expect(handleArrangementOperations).not.toHaveBeenCalled();
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("only session clips move to a slot"),
-    );
   });
 
   // toSlot is deprecated and hidden, so a caller who sent toPath must not be
   // pointed at it — and one who sent toSlot is told the name they used.
   it("names the deprecated param when that is what the caller sent", () => {
-    runPositionOps({
+    const reasons = runPositionOps({
       destinationParam: "toSlot",
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementStartBeats: 8,
     });
 
-    expect(capturedWarnings()).toContain(
-      "toSlot ignored when arrangement parameters are specified",
-    );
+    expect(reasonFor(reasons, "789")).toContain("toSlot ignored:");
   });
 
-  it("should warn when toSlot used with arrangement parameters", () => {
-    runPositionOps({
+  it("reports a slot destination dropped for arrangement parameters", () => {
+    const reasons = runPositionOps({
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementStartBeats: 8,
     });
 
-    expect(capturedWarnings()).toContain(
-      "toPath ignored when arrangement parameters are specified",
-    );
+    expect(reasonFor(reasons, "789")).toContain("toPath ignored:");
   });
 
-  it("should warn when toSlot used with arrangement LENGTH only", () => {
+  it("reports it for arrangement LENGTH only too", () => {
     // Only arrangementLengthBeats is set (no start): the second operand of the
     // arrangement-params guard must stay live (kills its -> false mutant).
-    runPositionOps({
+    const reasons = runPositionOps({
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementLengthBeats: 8,
     });
 
-    expect(capturedWarnings()).toContain(
-      "toPath ignored when arrangement parameters are specified",
-    );
+    expect(reasonFor(reasons, "789")).toContain("toPath ignored:");
   });
 
   // A session clip has no arrangement source to duplicate from, so a lane
   // destination can't move it — and it must not be misread as a slot either.
   it("refuses to send a session clip to an arrangement lane", () => {
-    runPositionOps({ toLane: { kind: "track", trackIndex: 4 } });
+    const reasons = runPositionOps({
+      toLane: { kind: "track", trackIndex: 4 },
+    });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        'toPath "t4" names an arrangement lane, so session clip id 789 was not moved',
-      ),
+    expect(reasonFor(reasons, "789")).toContain(
+      'not moved: toPath "t4" names an arrangement lane and this is a session clip',
     );
     expect(handleArrangementOperations).toHaveBeenCalledWith(
       expect.objectContaining({ destination: null }),
@@ -621,15 +654,13 @@ describe("handlePositionOperations", () => {
   // A lane destination says where on the timeline to land, so unlike a slot it
   // combines with arrangementStart instead of cancelling it.
   it("keeps arrangementStart alongside a lane destination", () => {
-    runPositionOps({
+    const reasons = runPositionOps({
       isArrangementClip: true,
       toLane: { kind: "track", trackIndex: 4 },
       arrangementStartBeats: 8,
     });
 
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("ignored when arrangement parameters"),
-    );
+    expect(reasonFor(reasons, "789")).toBe("");
     expect(handleArrangementOperations).toHaveBeenCalledWith(
       expect.objectContaining({
         arrangementStartBeats: 8,
@@ -710,12 +741,13 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
-  it("warns and skips a destination no clip can occupy", () => {
+  it("reports a destination no clip can occupy on the clip's entry", () => {
     // A scene names no track, so there is no one place the clip would go.
-    expect(moveLanes("s3", undefined, 1)).toStrictEqual([null]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("a scene alone names no track"),
-    );
+    const moves = resolveMoveDestinations("s3", undefined, 1);
+
+    expect(moves.destinations).toStrictEqual([null]);
+    expect(moves.refusals[0]).toContain("a scene alone names no track");
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // The whole point of the fan-out: sending both clips to destinations[0] put
@@ -762,14 +794,17 @@ describe("resolveMoveDestinations", () => {
     // of it, so a typo cost every move — while an entry that parsed but named
     // the wrong kind of place cost only its own. Which one you got depended on
     // nothing but which side of the grammar the typo fell on.
-    expect(moveLanes("t2/s3,tX,t6/s7", undefined, 3)).toStrictEqual([
+    const moves = resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3);
+
+    expect(moves.destinations).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       { kind: "slot", trackIndex: 6, sceneIndex: 7 },
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("clip not moved:"),
-    );
+    // Only the bad entry's own clip hears about it.
+    expect(moves.refusals[0]).toBeNull();
+    expect(moves.refusals[1]).toContain("not moved:");
+    expect(moves.refusals[2]).toBeNull();
   });
 
   it("moves no clip when toPath names nothing at all", () => {

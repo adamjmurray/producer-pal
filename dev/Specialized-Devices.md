@@ -65,8 +65,10 @@ to catch after the fact. The discipline that prevents shipping a wrong mapping:
   range. _(The polyVoices range was first misread as 0-3 this exact way.)_
 - **Validate before the write, not after.** Use `writeIntInRange` (contiguous
   range), `writeIntFromSet` (discrete set; `asIndex` when the property is an
-  index), or `writeEnumByIndex` (string enums). Out-of-range input then warns
-  and skips instead of silently no-op'ing.
+  index), or `writeEnumByIndex` (string enums). Out-of-range input then comes
+  back as the reason it was refused instead of silently no-op'ing. Every
+  `PseudoParam.write` answers that way — a reason string, or null when the write
+  ran — and the reason becomes that param's `ok: false` entry in the result.
 - **What can't be validated up front is checked after.** A Simpler `sample` path
   names a file the V8 runtime can't see, so nothing refuses it before the write:
   Live loads nothing and keeps the sample it had. That param carries a

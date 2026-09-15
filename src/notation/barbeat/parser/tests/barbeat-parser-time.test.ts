@@ -175,19 +175,21 @@ describe("BarBeatScript Parser - time declarations", () => {
     );
   });
 
-  it("rejects n-prefixed bar steps with the targeted <count>bar error (@n1bar)", () => {
-    // Same category error as the duration sites: bars are the bare `<count>bar` form,
-    // never `n`-prefixed. The step interval is a duration site too (it already
-    // honors the plural `@2bars` alias), so it gets the steered error, not the
-    // generic "note-value form" one.
-    expect(() => parser.parse("1|1x3@n1bar")).toThrow(
-      /bar steps don't use the "n" prefix — write @<count>bar \(e\.g\. @1bar\)/,
-    );
+  it("accepts a bare-count @n<count>bar as an alias for @<count>bar", () => {
+    // Untaught tolerance (ADR-0018), same as the duration site.
+    expect(parser.parse("1|1x3@n1bar")).toStrictEqual([
+      { bar: 1, beat: { start: 1, times: 3, step: 0, stepBars: 1 } },
+    ]);
+  });
+
+  it("rejects n-fraction bar steps with a targeted steer (@n/1bar)", () => {
+    // Same category error as the duration sites: a bar count can't be guessed
+    // from a fraction.
     expect(() => parser.parse("1|1x3@n/1bar")).toThrow(
-      /bar steps don't use the "n" prefix — write @<count>bar \(e\.g\. @1bar\)/,
+      /an n fraction and a bar count are different things/,
     );
     expect(() => parser.parse("1|1x3@n3/4bar")).toThrow(
-      /bar steps don't use the "n" prefix — write @<count>bar \(e\.g\. @4bar\)/,
+      /an n fraction and a bar count are different things/,
     );
   });
 

@@ -18,7 +18,7 @@ import { createMessageSource } from "./shared/message-source.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "./shared/types.ts";
 import { processCliStream } from "./stream.ts";
-import { buildProviderOptions } from "./thinking.ts";
+import { buildProviderOptions } from "./thinking-provider-options.ts";
 
 const DEFAULT_MAX_TOKENS = 8192;
 

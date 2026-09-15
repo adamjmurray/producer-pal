@@ -23,16 +23,16 @@ function headers(header: string | undefined): Record<string, string> {
 }
 
 /**
- * Whether ppal-create-track's schema still exposes the `count` param — present
+ * Whether ppal-create-track's schema still exposes the `mute` param — present
  * in full mode, dropped under small-model mode. A clean, stable discriminator
  * for the per-request schema shrink (the first of the two consumers the header
  * drives).
  *
  * @param serverUrl - The running server's /mcp URL
  * @param header - Value for the small-model-mode header, or undefined to omit it
- * @returns True when `count` is present in ppal-create-track's input schema
+ * @returns True when `mute` is present in ppal-create-track's input schema
  */
-async function createTrackHasCount(
+async function createTrackHasMute(
   serverUrl: string,
   header: string | undefined,
 ): Promise<boolean> {
@@ -45,7 +45,7 @@ async function createTrackHasCount(
     const { tools } = await client.listTools();
     const createTrack = tools.find((t) => t.name === "ppal-create-track");
 
-    return createTrack?.inputSchema.properties?.count != null;
+    return createTrack?.inputSchema.properties?.mute != null;
   } finally {
     await transport.close();
   }
@@ -57,25 +57,25 @@ describe("POST /mcp per-request small-model-mode header", () => {
 
   describe("tool-schema shrink", () => {
     it("shrinks tool schemas for this request when the header is true", async () => {
-      expect(await createTrackHasCount(appState.serverUrl, "true")).toBe(false);
+      expect(await createTrackHasMute(appState.serverUrl, "true")).toBe(false);
     });
 
     it("keeps full schemas when the header is explicitly false", async () => {
-      expect(await createTrackHasCount(appState.serverUrl, "false")).toBe(true);
+      expect(await createTrackHasMute(appState.serverUrl, "false")).toBe(true);
     });
 
     it("falls back to the global default (full schemas) when absent", async () => {
       // Proves an external MCP client that sends no header is unaffected.
-      expect(await createTrackHasCount(appState.serverUrl, undefined)).toBe(
+      expect(await createTrackHasMute(appState.serverUrl, undefined)).toBe(
         true,
       );
     });
 
     it("does not leak one request's mode onto the next", async () => {
       // A shrunk request must not mutate the global for a later headerless one.
-      await createTrackHasCount(appState.serverUrl, "true");
+      await createTrackHasMute(appState.serverUrl, "true");
 
-      expect(await createTrackHasCount(appState.serverUrl, undefined)).toBe(
+      expect(await createTrackHasMute(appState.serverUrl, undefined)).toBe(
         true,
       );
     });

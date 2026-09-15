@@ -5,20 +5,14 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { emptyTakeLaneClip } from "../helpers/take-lane-placeholder.ts";
-import { takeLaneIndexOfClip } from "../helpers/take-lane-helpers.ts";
+import { takeLaneIndexOfClip } from "../helpers/take-lanes.ts";
 
 const CLIP_ID = "42";
-/**
- * How a warning names the clip: both spellings, per ADR-0009. It starts at 0,
- * which the song's 4/4 spells as bar 1 beat 1.
- */
-const CLIP = `t0/l1[1|1] (id ${CLIP_ID})`;
 
 /**
  * Register a clip at the given path and hand it back.
@@ -66,7 +60,7 @@ describe("take-lane placeholders", () => {
       1,
     );
 
-    emptyTakeLaneClip(clip);
+    const left = emptyTakeLaneClip(clip);
 
     expect(clip.call).toHaveBeenCalledWith(
       "remove_notes_extended",
@@ -77,8 +71,9 @@ describe("take-lane placeholders", () => {
     );
     expect(clip.set).toHaveBeenCalledWith("name", "(moved) Take");
     expect(clip.set).toHaveBeenCalledWith("muted", 1);
-    expect(capturedWarnings()).toContain(
-      `clip ${CLIP} was emptied instead of deleted: Live's API can't remove a clip from a take lane. A muted "(moved) Take" was left there — delete it in Live's UI`,
+    // Returned, not warned: it belongs on the clip's own entry.
+    expect(left).toBe(
+      `emptied instead of deleted: Live's API can't remove a clip from a take lane. A muted "(moved) Take" was left there — delete it in Live's UI`,
     );
   });
 
@@ -97,12 +92,10 @@ describe("take-lane placeholders", () => {
       name,
     );
 
-    emptyTakeLaneClip(clip);
+    const left = emptyTakeLaneClip(clip);
 
     expect(clip.set).toHaveBeenCalledWith("name", expected);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`A muted "${expected}" was left there`),
-    );
+    expect(left).toContain(`A muted "${expected}" was left there`);
   });
 
   // Emptying runs after the destination copy is committed, so a throw on a
@@ -141,7 +134,7 @@ describe("take-lane placeholders", () => {
       0,
     );
 
-    emptyTakeLaneClip(clip);
+    const left = emptyTakeLaneClip(clip);
 
     expect(clip.call).not.toHaveBeenCalledWith(
       "remove_notes_extended",
@@ -151,10 +144,8 @@ describe("take-lane placeholders", () => {
       expect.anything(),
     );
     expect(clip.set).toHaveBeenCalledWith("muted", 1);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${CLIP} was muted instead of deleted: Live's API can't remove a clip from a take lane, and an audio clip's sample can't be cleared`,
-      ),
+    expect(left).toContain(
+      "muted instead of deleted: Live's API can't remove a clip from a take lane, and an audio clip's sample can't be cleared",
     );
   });
 });

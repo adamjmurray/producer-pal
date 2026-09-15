@@ -16,7 +16,7 @@ import {
   MAX_AUTO_CREATED_SCENES,
 } from "#src/tools/constants.ts";
 import { createClip } from "../../create-clip.ts";
-import { createAudioArrangementClip } from "../../helpers/create-clip-audio-helpers.ts";
+import { createAudioArrangementClip } from "../../helpers/audio-clip-creation.ts";
 import {
   expectNoTimingProperties,
   setupAudioArrangementClipMocks,

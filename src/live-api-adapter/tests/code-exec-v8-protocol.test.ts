@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-response-utils.ts";
+import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   executeNoteCodeWithData,
@@ -133,6 +133,18 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
     } finally {
       restore();
     }
+  });
+
+  it("rejects when outlet() throws, rather than answering a failed result", () => {
+    // Unlike node_request, code-exec doesn't report a send failure as a result:
+    // a Max IPC failure reaches the caller as a rejection.
+    vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+      throw new Error("outlet exploded");
+    });
+
+    return expect(requestCodeExecution("return notes")).rejects.toThrow(
+      "outlet exploded",
+    );
   });
 });
 

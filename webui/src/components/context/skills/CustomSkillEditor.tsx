@@ -4,19 +4,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { confirmEntryDelete } from "#webui/components/context/collection/collection-delete-confirm";
 import {
   BodyField,
+  CollectionEditorShell,
   DescriptionField,
   EditorFooter,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
 import { useDraftLeaveGuard } from "#webui/components/context/collection/leave-guard";
-import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { useCollectionEntryAutosave } from "#webui/hooks/context/helpers/use-doc-collection";
+import { useCollectionEntryDraft } from "#webui/hooks/context/helpers/use-collection-entry-draft";
 
 interface CustomSkillEditorProps {
   /** The collection hook (per-entry save/delete lives here). */
@@ -46,16 +48,9 @@ export function CustomSkillEditor(
   props: CustomSkillEditorProps,
 ): preact.JSX.Element {
   const { collection, entry, onSaved, onDeleted } = props;
-  const isNew = entry == null;
-  const [name, setName] = useState(entry?.name ?? "");
-  const [description, setDescription] = useState(entry?.description ?? "");
+  const draft = useCollectionEntryDraft(entry);
+  const { isNew, name, description, body, targetName } = draft;
   const [enabled, setEnabled] = useState(entry?.enabled ?? true);
-  const [body, setBody] = useState(entry?.body ?? "");
-  // Remount key for the seed-only body editor; bumped on an external reload so
-  // the adopted body reaches the (otherwise uncontrolled) markdown editor.
-  const [bodyEditorKey, setBodyEditorKey] = useState(0);
-
-  const targetName = isNew ? name : entry.name;
   // Two flavors on purpose: the autosave hook must NOT be gated on an in-flight
   // save (it chains overlapping writes, and gating drops its unmount flush
   // mid-save), while the footer button still disables while one is on the wire.
@@ -90,14 +85,10 @@ export function CustomSkillEditor(
       externalKey: entry != null ? customSkillKey(entry) : undefined,
     });
 
-  // A new draft with any field filled guards against silent loss: leaving it
+  // A new draft with anything typed in it guards against silent loss: leaving it
   // (New, select another skill, switch tabs, close the browser tab) confirms a
   // discard first. A blank draft (or an existing skill) guards nothing.
-  const isDirtyNew =
-    isNew &&
-    (name.trim() !== "" || description.trim() !== "" || body.trim() !== "");
-
-  useDraftLeaveGuard(isDirtyNew, DISCARD_NEW_SKILL_MESSAGE);
+  useDraftLeaveGuard(draft.isDirtyNew, DISCARD_NEW_SKILL_MESSAGE);
 
   const handleSave = async (): Promise<void> => {
     const saved = await doSave();
@@ -108,42 +99,36 @@ export function CustomSkillEditor(
     }
   };
 
-  // Adopt the server's current fields as the new draft AND advance the
-  // autosave baseline. See MemoryEntryEditor's handleReload for why calling
-  // adoptExternal AFTER these setState calls is safe (it reads externalKey off
-  // a ref unaffected by them), unlike noteSaved.
+  // Adopt the server's fields as the draft AND advance the autosave baseline.
+  // adoptExternal after the reseed is safe (it reads externalKey off a ref the
+  // reseed doesn't touch), unlike noteSaved — see MemoryEntryEditor.
   const handleReload = (): void => {
     if (entry == null) {
       return;
     }
 
-    setName(entry.name);
-    setDescription(entry.description);
+    draft.reseed(entry);
     setEnabled(entry.enabled);
-    setBody(entry.body);
-    setBodyEditorKey((key) => key + 1);
     adoptExternal();
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-      {externalUpdate && (
-        <ExternalUpdateBanner
-          message="This skill was changed elsewhere (another tab or a hand edit)."
-          onReload={handleReload}
-        />
-      )}
+    <CollectionEditorShell
+      externalUpdate={externalUpdate}
+      externalMessage="This skill was changed elsewhere (another tab or a hand edit)."
+      onReload={handleReload}
+    >
       <NameField
         isNew={isNew}
         name={name}
         displayName={entry?.name}
         placeholder="jazz-voicings"
-        onChange={setName}
+        onChange={draft.setName}
       />
       <DescriptionField
         hint="One-line “load me when…” hook shown in the index."
         value={description}
-        onChange={setDescription}
+        onChange={draft.setDescription}
       />
       <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
         <input
@@ -160,8 +145,8 @@ export function CustomSkillEditor(
       <BodyField
         label="Instructions"
         value={body}
-        onChange={setBody}
-        editorKey={bodyEditorKey}
+        onChange={draft.setBody}
+        editorKey={draft.bodyEditorKey}
         heightClass="h-80"
       />
       <EditorFooter
@@ -173,7 +158,7 @@ export function CustomSkillEditor(
         onSave={() => void handleSave()}
         onDelete={() => void confirmDelete(collection, entry, onDeleted)}
       />
-    </div>
+    </CollectionEditorShell>
   );
 }
 
@@ -195,11 +180,7 @@ async function confirmDelete(
     return;
   }
 
-  if (
-    !window.confirm(
-      `Delete custom skill "${entry.name}"? This cannot be undone.`,
-    )
-  ) {
+  if (!confirmEntryDelete("custom skill", entry.name)) {
     return;
   }
 

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { createConversationStore } from "#webui/lib/conversation-store";
+import { createConversationStore } from "#webui/lib/conversations/conversation-store";
 import {
   createTestRecord,
   storeWithPersistedTrunk,

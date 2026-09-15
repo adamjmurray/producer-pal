@@ -1,0 +1,27 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it } from "vitest";
+import {
+  classifyPitchedLine,
+  dynamicSuffix,
+} from "#src/notation/stark/helpers/stark-note-formatting.ts";
+
+describe("stark note formatting — classifyPitchedLine", () => {
+  it("falls back to a melody classification for an empty note list", () => {
+    const result = classifyPitchedLine([]);
+
+    // Empty → median pitch defaults to 60 → melody line, C3 register.
+    expect(result.lineType).toBe("melody");
+    expect(result.registerDefault).toBe(60);
+    expect(result.sorted).toStrictEqual([]);
+  });
+});
+
+describe("stark note formatting — dynamicSuffix", () => {
+  it("maps a soft velocity to the ? suffix", () => {
+    expect(dynamicSuffix(50)).toBe("?");
+  });
+});

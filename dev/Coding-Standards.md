@@ -40,21 +40,23 @@ Test files should follow this pattern:
    - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
 
 2. **Split tests**: `{filename}-{feature-group}.test.ts` (or `.tsx`) - When test
-   files exceed size limits (325 lines for source, 650 for whole test suites),
+   files exceed size limits (375 lines for source, 650 for whole test suites),
    split by feature area
    - Example: `update-clip-audio-arrangement.test.ts`
    - Example: `read-track-drums-advanced.test.ts`
    - Example: `duplicate-arrangement-length.test.ts`
 
-3. **Helper files**: `{filename}-helpers.ts` - Source helper functions
-   - Example: `duplicate-helpers.ts`
+3. **Support modules**: named for what they do, not for the file they were split
+   from. Existing `{filename}-helpers.ts` files are being renamed; don't add new
+   ones.
+   - Example: `audio-clip-warping.ts`
 
-4. **Helper tests**: `{filename}-helpers.test.ts` - Tests for helper functions
-   - Example: `duplicate-helpers.test.ts`
+4. **Support module tests**: `{filename}.test.ts` beside the module
+   - Example: `audio-clip-warping.test.ts`
 
 5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities, fixtures,
    and shared test setup. A test file (see dev/Testing.md), but not a suite, so
-   it keeps the 325-line source budget.
+   it keeps the 375-line source budget.
    - Example: `duplicate-test-helpers.ts`
    - Example: `update-clip-test-helpers.ts`
 
@@ -72,8 +74,9 @@ Prefer specific, descriptive names over generic terms:
 - `clip-operations.ts` instead of `clip-utils.ts`
 - `message-transforms.ts` instead of `message-helper.ts`
 
-Exception: `utils.ts` is acceptable for general utilities within a specific
-domain (e.g., `src/tools/shared/utils.ts`).
+There is no exception for `utils.ts` or `-helpers.ts`: a ratchet test
+(`src/test/meta/naming/module-name-limits.test.ts`) caps how many modules may be
+named for nothing, and the cap only goes down.
 
 ## Imports
 
@@ -256,6 +259,18 @@ object came back.
 in a probe means driving Live's **Edit → Freeze Track** menu. That acts on the
 UI's selected track, and writing `live_set view selected_track` does not move it
 — the write reports as applied and the menu still acts elsewhere.
+
+### Rounding a Float Property for a Result
+
+Round to display precision — the number Live's UI shows: 2dp for dB, pan, and
+tempo; a device parameter uses its own display precision (already applied by
+parsing its label text). Round centrally with `roundDisplayValue` from
+`src/tools/shared/helpers/rounding.ts`, at the point a raw float becomes a
+result field — not per site, and never on a value that still feeds arithmetic or
+bar|beat conversion (beat positions, times, lengths). Max serializes some
+float32 values (tiny pan, gain, or tempo noise) as an exponent-notation STRING,
+not a number, so narrow with `asFiniteNumber`/`roundDisplayValue` rather than
+`typeof value === "number"` alone.
 
 ### Live API Paths — Use `livePath` Builders
 

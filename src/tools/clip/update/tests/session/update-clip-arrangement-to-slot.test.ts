@@ -11,9 +11,18 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { handleArrangementToSlotMove } from "../../helpers/slot-move/update-clip-slot-move-helpers.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { handleArrangementToSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "../../helpers/entries/clip-reasons.ts";
+import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
+
+/** What the clip had to say about the move the last runMove ran. */
+let reasons: ClipReasons = newClipReasons();
+const movedReason = (): string => joinedClipReason(reasons, SOURCE_ID);
 
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 1;
@@ -24,8 +33,6 @@ const SOURCE_ID = "123";
  * starts at 0, which the song's 4/4 spells as bar 1 beat 1.
  */
 const SOURCE = `t${SOURCE_TRACK}[1|1] (id ${SOURCE_ID})`;
-/** Same, for the tests whose source sits on a take lane. */
-const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0[1|1] (id ${SOURCE_ID})`;
 const NEW_ID = "456";
 const OCCUPANT_ID = "789";
 /** Id of the clip built in a scratch slot before it's swapped onto the destination */
@@ -76,6 +83,8 @@ interface MoveOptions {
   scratchIncompleteCreate?: boolean;
   /** The scratch slot's own cleanup delete_clip throws (only meaningful with scratchIncompleteCreate). */
   scratchDeleteFails?: boolean;
+  /** Live refuses to delete the arrangement source after the move landed. */
+  sourceDeleteFails?: boolean;
 }
 
 /**
@@ -100,6 +109,7 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
     scratchCopyDeclines = false,
     scratchIncompleteCreate = false,
     scratchDeleteFails = false,
+    sourceDeleteFails = false,
   } = opts;
 
   mockNonExistentObjects();
@@ -132,6 +142,13 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
   registerMockObject(`track_${SOURCE_TRACK}`, {
     path: livePath.track(SOURCE_TRACK),
+    ...(sourceDeleteFails && {
+      methods: {
+        delete_clip: () => {
+          throw new Error("delete failed");
+        },
+      },
+    }),
   });
   registerMockObject(`track_${DEST_TRACK}`, {
     path: livePath.track(DEST_TRACK),
@@ -262,11 +279,14 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
   const updatedClips: ClipResult[] = [];
 
+  reasons = newClipReasons();
+
   handleArrangementToSlotMove({
     clip: LiveAPI.from(`id ${SOURCE_ID}`),
     toSlot: { trackIndex: DEST_TRACK, sceneIndex: DEST_SCENE },
     updatedClips,
     noteResult: null,
+    reasons,
   });
 
   return updatedClips;
@@ -279,11 +299,12 @@ function expectMovedToDestination(updatedClips: ClipResult[]): void {
   ]);
 }
 
-/** The destination's occupant was replaced, and the caller was told. */
-function expectOverwriteWarning(): void {
-  expect(capturedWarnings()).toContain(
-    `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+/** The destination's occupant was replaced, and the clip's entry says so. */
+function expectOverwriteReason(): void {
+  expect(movedReason()).toContain(
+    `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
   );
+  expect(capturedWarnings()).toStrictEqual([]);
 }
 
 describe("handleArrangementToSlotMove", () => {
@@ -302,6 +323,36 @@ describe("handleArrangementToSlotMove", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expectMovedToDestination(updatedClips);
+  });
+
+  // The re-created clip is really in the slot, so it keeps the entry and the
+  // reason says the original is still in the arrangement as well.
+  it("reports the new clip when deleting the arrangement source fails", () => {
+    const updatedClips = runMove({ sourceDeleteFails: true });
+
+    expectMovedToDestination(updatedClips);
+    expect(movedReason()).toContain(
+      `the original at ${SOURCE} could not be deleted (delete failed); ` +
+        "delete it in Live",
+    );
+  });
+
+  // add_new_notes throws after Live created the clip, so the destination holds
+  // a partial clip rather than nothing. Nothing was there to lose, so the
+  // reason says only what is there now and that the source was kept.
+  it("reports an incomplete clip left in an empty destination", () => {
+    const updatedClips = runMove({ destHasClip: 0, incompleteCreate: true });
+
+    const reason = movedReason();
+
+    expect(reason).toContain(
+      `create at t${DEST_TRACK}/s${DEST_SCENE} started but didn't finish`,
+    );
+    expect(reason).toContain("an incomplete clip is there now");
+    expect(reason).toContain("source clip in the arrangement is untouched");
+    expect(reason).not.toContain("can't be recovered");
+    expect(updatedClips).toHaveLength(1);
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 
   it("carries the source's name and color", () => {
@@ -326,8 +377,8 @@ describe("handleArrangementToSlotMove", () => {
   it("says what the re-created clip loses", () => {
     runMove({ hasEnvelopes: 1 });
 
-    expect(capturedWarnings()).toContain(
-      `arrangement clip ${SOURCE} was re-created at t${DEST_TRACK}/s${DEST_SCENE} (automation envelopes aren't copied)`,
+    expect(movedReason()).toBe(
+      `re-created at t${DEST_TRACK}/s${DEST_SCENE} (automation envelopes aren't copied)`,
     );
   });
 
@@ -335,9 +386,7 @@ describe("handleArrangementToSlotMove", () => {
   it("names no loss when the clip loses nothing", () => {
     runMove();
 
-    expect(capturedWarnings()).toContain(
-      `arrangement clip ${SOURCE} was re-created at t${DEST_TRACK}/s${DEST_SCENE}`,
-    );
+    expect(movedReason()).toBe(`re-created at t${DEST_TRACK}/s${DEST_SCENE}`);
   });
 
   it("clears the slot's existing clip first, and says so", () => {
@@ -346,7 +395,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expectOverwriteWarning();
+    expectOverwriteReason();
   });
 
   // The occupant is never predeleted here: the replacement is built and
@@ -365,7 +414,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
       "delete_clip",
     );
-    expectOverwriteWarning();
+    expectOverwriteReason();
     expectMovedToDestination(updatedClips);
   });
 
@@ -390,7 +439,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expectOverwriteWarning();
+    expectOverwriteReason();
     expectMovedToDestination(updatedClips);
   });
 
@@ -400,9 +449,7 @@ describe("handleArrangementToSlotMove", () => {
   it("reports a post-creation failure as an incomplete clip left behind", () => {
     const updatedClips = runMove({ destHasClip: 1, incompleteCreate: true });
 
-    const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE} was not moved`),
-    );
+    const warning = movedReason();
 
     expect(warning).toContain("incomplete clip is there now");
     expect(warning).toContain(`t${DEST_TRACK}/s${DEST_SCENE}`);
@@ -422,12 +469,8 @@ describe("handleArrangementToSlotMove", () => {
       destCreateFails: true,
     });
 
-    const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE} was not moved`),
-    );
-
-    expect(warning).toBe(
-      `clip ${SOURCE} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip at t${DEST_TRACK}/s${DEST_SCENE}). The source clip in the arrangement is untouched.`,
+    expect(movedReason()).toBe(
+      `not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip at t${DEST_TRACK}/s${DEST_SCENE}). The source clip in the arrangement is untouched.`,
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
@@ -445,9 +488,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
 
-    const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE} was not moved`),
-    );
+    const warning = movedReason();
 
     expect(warning).toContain(`t${DEST_TRACK}/s0`);
     expect(warning).toContain(`t${DEST_TRACK}/s${DEST_SCENE} was not touched`);
@@ -473,9 +514,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
 
-    const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE} was not moved`),
-    );
+    const warning = movedReason();
 
     expect(warning).toContain("was deleted");
     expect(warning).not.toContain("is there now");
@@ -500,9 +539,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
 
-    const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE} was not moved`),
-    );
+    const warning = movedReason();
 
     expect(warning).toContain("is there now");
     expect(warning).not.toContain("was deleted");
@@ -523,10 +560,8 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE} was not moved: the copy onto t${DEST_TRACK}/s${DEST_SCENE} did not land`,
-      ),
+    expect(movedReason()).toContain(
+      `not moved: the copy onto t${DEST_TRACK}/s${DEST_SCENE} did not land`,
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
@@ -546,16 +581,12 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE}`,
-      ),
+    expect(movedReason()).toContain(
+      `not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("gone and can't be recovered"),
-    );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("source clip in the arrangement is untouched"),
+    expect(movedReason()).toContain("gone and can't be recovered");
+    expect(movedReason()).toContain(
+      "source clip in the arrangement is untouched",
     );
     // The source is only reported kept, not actually deleted from the track.
     expect(
@@ -586,11 +617,7 @@ describe("handleArrangementToSlotMove", () => {
     );
     expect(source?.set).toHaveBeenCalledWith("name", "(moved) Verse");
     expect(source?.set).toHaveBeenCalledWith("muted", 1);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `clip ${SOURCE_ON_LANE} was emptied instead of deleted`,
-      ),
-    );
+    expect(movedReason()).toContain("emptied instead of deleted");
   });
 
   // Every refusal keeps the clip where it is and still reports it, so the rest
@@ -609,9 +636,7 @@ describe("handleArrangementToSlotMove", () => {
   ])("refuses %s", (_label, opts: MoveOptions, expected) => {
     const updatedClips = runMove(opts);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`clip ${SOURCE} was not moved: ${expected}`),
-    );
+    expect(movedReason()).toContain(`not moved: ${expected}`);
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalled();
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
@@ -619,8 +644,8 @@ describe("handleArrangementToSlotMove", () => {
   it("refuses a destination slot that does not exist", () => {
     const updatedClips = runMove({ destSlotExists: false });
 
-    expect(capturedWarnings()).toContain(
-      `clip ${SOURCE} was not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
+    expect(movedReason()).toBe(
+      `not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
     );
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
@@ -632,6 +657,8 @@ describe("handleArrangementToSlotMove", () => {
     mockNonExistentObjects();
     const updatedClips: ClipResult[] = [];
 
+    reasons = newClipReasons();
+
     handleArrangementToSlotMove({
       clip: {
         id: SOURCE_ID,
@@ -642,11 +669,10 @@ describe("handleArrangementToSlotMove", () => {
       toSlot: { trackIndex: DEST_TRACK, sceneIndex: DEST_SCENE },
       updatedClips,
       noteResult: null,
+      reasons,
     });
 
-    expect(capturedWarnings()).toContain(
-      `clip id ${SOURCE_ID} was not moved: could not determine its track`,
-    );
+    expect(movedReason()).toBe("not moved: could not determine its track");
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
 });

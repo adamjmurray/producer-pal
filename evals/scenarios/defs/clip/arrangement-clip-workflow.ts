@@ -15,7 +15,7 @@ import {
   asArrangementTrack,
   callNamesArrangementPosition,
   clipStarts,
-} from "../arrangement-helpers.ts";
+} from "../arrangement-readback.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;
@@ -98,6 +98,7 @@ function assertSplitInSongTime(turn: number): EvalAssertion {
 
 export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
+  tags: ["clips"],
   description:
     "Create arrangement clip, duplicate, and cut at song-timeline positions",
   kind: "regression",

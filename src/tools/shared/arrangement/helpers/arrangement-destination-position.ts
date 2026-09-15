@@ -28,8 +28,23 @@ import { type ClipDestinationPath } from "#src/tools/shared/validation/helpers/c
 export function resolveDestinationPositions<
   T extends ClipDestinationPath | null,
 >(entries: T[], labels: SongPositionLabels): T[] {
+  const resolve = destinationPositionResolver(entries, labels);
+
+  return resolve == null ? entries : entries.map(resolve);
+}
+
+/**
+ * The same rewrite one entry at a time, so a caller can catch each lookup on
+ * its own. The Live Set is read once, and only when a locator is named.
+ * @param entries - The parsed destinations, in order
+ * @param labels - How to name the position in its own errors
+ * @returns A rewrite for one entry, or null when the list names no locator
+ */
+export function destinationPositionResolver<
+  T extends ClipDestinationPath | null,
+>(entries: T[], labels: SongPositionLabels): ((entry: T) => T) | null {
   if (!entries.some((entry) => namesLocator(entry))) {
-    return entries;
+    return null;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -39,7 +54,7 @@ export function resolveDestinationPositions<
     timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
   };
 
-  return entries.map((entry) =>
+  return (entry) =>
     namesLocator(entry)
       ? {
           ...entry,
@@ -49,8 +64,7 @@ export function resolveDestinationPositions<
             options.timeSigDenominator,
           ),
         }
-      : entry,
-  );
+      : entry;
 }
 
 // --- Helpers below main exports ---

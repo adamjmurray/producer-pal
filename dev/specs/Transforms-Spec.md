@@ -86,21 +86,23 @@ taught it the feature was unsupported, so it hand-wrote the result instead.
     - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
       any meter.
   - **Bar-length cycle** (`<count>bar`): meter-aware bars, e.g. `cos(1bar)` (1
-    bar) or `cos(4bar)` (4 bars).
+    bar) or `cos(4bar)` (4 bars). The bare-count `n`-prefixed form (`n1bar`,
+    `n4bar`) is an untaught input-tolerance alias, same as clip `length` and
+    note durations — it parses to the same value. Fraction forms (`n/1bar`,
+    `n3/4bar`) stay rejected: no bar count can be guessed from a fraction.
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
     - A bare number is treated as a period in beats
-    - Must be > 0
+    - Any sign is accepted. A negative period runs the cycle backwards; a zero
+      period is phase 0 for every note (`sin(0)` = 0, `cos(0)` = 1), never a
+      division by zero. A note value or bar count takes a leading `-` too
+      (`sin(-n/1)`, `cos(-2bar)`).
   - The old synced-period syntax (`1t`, `4t`, `1:0t`) is **removed** and is a
     parse error.
-  - **A period that samples one phase is refused.** When a waveform gives every
-    note it touched the same value — a period that divides the note spacing
-    (`sin(1)` on quarter notes), or a phase expression passed as the period
-    (`sin(note.start * k)`, constant by construction) — the assignment is warned
-    about and **skipped**, counting 0 transformed. Detection is on the values
-    produced, never on the syntax: a constant period is the normal idiom
-    (`cos(4bar)`). Skipping is per assignment; other lines in the same transform
-    still apply.
+  - **A period that samples one phase is written, not refused.** A period that
+    divides the note spacing (`sin(1)` on quarter notes) gives every note the
+    same value. That lands like any other assignment: with `=` every note gets
+    that value, with `+=` a constant offset.
 - **phase**: cycles (0.0-1.0), optional, default 0
   - 0.0 = start of cycle
   - 0.25 = quarter cycle

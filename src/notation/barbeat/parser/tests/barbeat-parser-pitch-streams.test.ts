@@ -188,9 +188,13 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
       expect(() => parser.parse("(C3 [D3 E3])")).toThrow('but "(" found');
     });
 
-    it("rejects a bare chord with no surrounding stream", () => {
-      // `(...)` is only a stream value, not a standalone element.
-      expect(() => parser.parse("(C3 E3)")).toThrow('but "(" found');
+    it("accepts a bare chord with no surrounding stream", () => {
+      // `(...)` around a single chord is untaught tolerance (ADR-0018): same
+      // result as the unparenthesized chord `C3 E3`.
+      expect(parser.parse("(C3 E3)")).toStrictEqual([
+        { pitch: 60 },
+        { pitch: 64 },
+      ]);
     });
 
     it("still requires whitespace from a bracket to a non-bracket element", () => {

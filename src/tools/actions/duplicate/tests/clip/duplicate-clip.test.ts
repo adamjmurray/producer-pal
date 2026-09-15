@@ -352,13 +352,16 @@ describe("duplicate - clip duplication", () => {
         path: livePath.track(2).clipSlot(0),
       });
 
-      await duplicate({
-        type: "clip",
-        id: "clip1",
-        arrangementStart: "3|1",
-        toPath: "t2/s0",
-      });
-
+      // The slot holds no clip in this mock, so the one copy it asked for
+      // couldn't be made — the warning about the dropped param still lands.
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toPath: "t2/s0",
+        }),
+      ).rejects.toThrow("Live made no copy there");
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("arrangementStart ignored"),
       );
@@ -452,13 +455,14 @@ describe("duplicate - clip duplication", () => {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      await duplicate({
-        type: "clip",
-        id: "clip1",
-        arrangementStart: "3|1",
-        toSlot: "2/0",
-      });
-
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toSlot: "2/0",
+        }),
+      ).rejects.toThrow("Live made no copy there");
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "arrangementStart ignored — toSlot names a clip slot",
@@ -482,16 +486,11 @@ describe("duplicate - clip duplication", () => {
 
       registerArrangementClip(0, 0, 8);
 
-      const result = await duplicate({
-        type: "clip",
-        id: "clip1",
-        arrangementStart: "3|1",
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Failed to duplicate clip"),
-      );
-      expect(result).toStrictEqual({ path: "t0", clips: [] });
+      // One copy asked for, none made: the reason comes back as the error
+      // rather than an entry with no clip in it.
+      await expect(
+        duplicate({ type: "clip", id: "clip1", arrangementStart: "3|1" }),
+      ).rejects.toThrow("Live made no copy there");
     });
 
     it("skips a silent duplicate failure on the with-length path too (no phantom clip)", async () => {
@@ -518,17 +517,14 @@ describe("duplicate - clip duplication", () => {
       });
       registerMockObject("live_set", { path: livePath.liveSet });
 
-      const result = await duplicate({
-        type: "clip",
-        id: "clip1",
-        arrangementStart: "3|1",
-        arrangementLength: "1bar", // 4 beats == clip length → Case 2 (exact)
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Failed to duplicate clip"),
-      );
-      expect(result).toStrictEqual({ path: "t0", clips: [] });
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          arrangementLength: "1bar", // 4 beats == clip length → Case 2 (exact)
+        }),
+      ).rejects.toThrow("Live made no copy there");
     });
 
     it("routes a self-overlapping duplicate through the holding area instead of skipping", async () => {
@@ -633,7 +629,15 @@ describe("duplicate - clip duplication", () => {
         { deadline: Date.now() - 1 },
       );
 
-      expect(result).toStrictEqual([]);
+      // Every destination still answers, so the caller can pair the entries
+      // against the positions it sent.
+      expect(result).toStrictEqual(
+        ["3|1", "4|1", "5|1"].map((position) => ({
+          path: `t0[${position}]`,
+          ok: false,
+          reason: "the request ran out of time; re-run for this destination",
+        })),
+      );
       expect(track0.call).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContain(
         "Ran out of time after duplicating 0 of 3. " +

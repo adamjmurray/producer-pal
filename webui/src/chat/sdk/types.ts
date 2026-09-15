@@ -16,6 +16,43 @@ import { type LanguageModel, type LanguageModelUsage } from "ai";
  */
 type Notation = "barbeat" | "midi-json" | "stark";
 
+/** An image attached to a user message. */
+export interface ChatImage {
+  /** MIME type, e.g. "image/png". */
+  mediaType: string;
+  /** Base64 image bytes WITHOUT the `data:` URL prefix. */
+  data: string;
+}
+
+/** A message to send with its attachments. */
+export interface UserMessageInput {
+  text: string;
+  images?: ChatImage[];
+}
+
+/** What callers may send: plain text, or text plus attached images. */
+export type UserMessage = string | UserMessageInput;
+
+/**
+ * Normalize a sent message to its object form, so callers that only have text
+ * (the evals CLIs, subagent tasks) can keep passing a bare string.
+ * @param message - Text, or text plus images
+ * @returns The object form
+ */
+export function normalizeUserMessage(message: UserMessage): UserMessageInput {
+  return typeof message === "string" ? { text: message } : message;
+}
+
+/**
+ * The inverse: a message with nothing attached collapses back to plain text, so
+ * a chat without images sends exactly the shape it always did.
+ * @param input - Text plus any images
+ * @returns The bare string, or the object when images are attached
+ */
+export function toSentMessage(input: UserMessageInput): UserMessage {
+  return input.images?.length ? input : input.text;
+}
+
 /**
  * Intermediate message type for the AI SDK client.
  * We use this instead of the SDK's ModelMessage because ModelMessage uses
@@ -26,6 +63,12 @@ type Notation = "barbeat" | "midi-json" | "stark";
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  /**
+   * Images the user attached to this message, in the order they were attached.
+   * Sent to the model as image parts ahead of the text (buildModelMessages) and
+   * persisted with the conversation. User messages only.
+   */
+  images?: ChatImage[];
   /** True for error messages persisted in history (not sent to LLM) */
   isError?: boolean;
   toolCalls?: Array<{

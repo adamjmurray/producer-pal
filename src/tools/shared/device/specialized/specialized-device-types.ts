@@ -42,13 +42,13 @@ export interface PseudoParam {
    */
   read: (device: LiveAPI) => unknown;
   /**
-   * Apply a new value. Follow update-tool conventions: warn-and-skip on
-   * invalid input rather than throwing. Return false for a value that was
-   * skipped — the `params` result reports a value only for a write that ran,
-   * so a refusal that returned true would report the unchanged value as if the
+   * Apply a new value. Answer with the reason an invalid value was refused
+   * rather than throwing; it becomes that param's own `ok: false` result entry.
+   * Null says the write ran — the `params` result reports a value only then, so
+   * a refusal that answered null would report the unchanged value as if the
    * write had landed.
    */
-  write?: (device: LiveAPI, value: string | number) => boolean;
+  write?: (device: LiveAPI, value: string | number) => string | null;
   /**
    * Why a write that ran did not land, or undefined when it did. Only for a
    * param a device takes whole or ignores — Simpler's `sample`, where a path
@@ -75,11 +75,25 @@ export interface ParsedAction {
   args: Array<string | number>;
 }
 
+/** What an action handler answers with, like `PseudoParam.write`: `null` ran, a
+ * string is the reason it refused (`ok: false` on its entry), `{ reason }` ran
+ * but found nothing to change. Handlers never warn. */
+export type ActionOutcome = string | { reason: string } | null;
+
 /** Handler for a single named action. */
 export type ActionHandler = (
   device: LiveAPI,
   args: Array<string | number>,
-) => void;
+) => ActionOutcome;
+
+/** One entry of the `actions` an update-device result reports, addressed by the
+ * action string as written: the action alone when it ran, plus a `reason` when
+ * it found nothing to change, and `ok: false` with one when nothing was done.
+ * `ok` never appears without a reason. */
+export type ActionResult =
+  | { action: string }
+  | { action: string; reason: string }
+  | { action: string; ok: false; reason: string };
 
 /**
  * A named action's full definition: the handler plus the discovery metadata

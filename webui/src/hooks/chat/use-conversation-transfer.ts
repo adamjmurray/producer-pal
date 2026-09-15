@@ -10,6 +10,7 @@ import {
   exportConversations,
   importConversations,
 } from "#webui/lib/conversation-transfer";
+import { downloadTextFile } from "#webui/utils/text-file-io";
 
 /**
  * Format an error for user-facing notification.
@@ -68,15 +69,12 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
   const handleExport = useCallback(async () => {
     try {
       const { json, count } = await exportConversations();
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
 
-      a.href = url;
-      a.download = `producer-pal-conversations-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-
+      downloadTextFile(
+        `producer-pal-conversations-${new Date().toISOString().slice(0, 10)}.json`,
+        json,
+        "application/json",
+      );
       showNotification(
         `Exported ${count} conversation${count === 1 ? "" : "s"}`,
         "success",
@@ -90,9 +88,6 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
     async (id: string) => {
       try {
         const { json, title } = await exportConversation(id);
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
         const date = new Date().toISOString().slice(0, 10);
         const slug = title
           ? `-${title
@@ -101,10 +96,11 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
               .replaceAll(/(^-|-$)/g, "")}`
           : "";
 
-        a.href = url;
-        a.download = `producer-pal-conversation${slug}-${date}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadTextFile(
+          `producer-pal-conversation${slug}-${date}.json`,
+          json,
+          "application/json",
+        );
 
         showNotification("Exported conversation", "success");
       } catch (err) {

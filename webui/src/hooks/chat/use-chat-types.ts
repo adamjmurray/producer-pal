@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Notation } from "#src/shared/notation";
+import { type ChatImage, type UserMessage } from "#webui/chat/sdk/types";
+import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -12,6 +14,18 @@ import { type Provider } from "#webui/types/settings";
 export interface MessageOverrides {
   thinking?: string;
 }
+
+/** Send a user message (text, or text plus attached images) and stream a reply. */
+export type SendMessageHandler = (
+  message: UserMessage,
+  options?: MessageOverrides,
+) => Promise<void>;
+
+/** Queue a user message while the assistant is still responding. */
+export type EnqueueMessageHandler = (
+  message: UserMessage,
+  overrides?: MessageOverrides,
+) => void;
 
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
@@ -24,7 +38,7 @@ export interface ChatClient<TMessage> {
   toolLimitReached?: boolean;
   initialize: () => Promise<void>;
   sendMessage: (
-    message: string,
+    message: UserMessage,
     signal: AbortSignal,
     overrides?: MessageOverrides,
     shouldInterrupt?: () => boolean,
@@ -82,43 +96,14 @@ export interface ChatAdapter<
   /** Extract user message text from a message for retry */
   extractUserMessage: (message: TMessage) => string | undefined;
 
+  /** Extract a user message's attached images, so retry/edit re-send them */
+  extractUserImages: (message: TMessage) => ChatImage[] | undefined;
+
   /** Create initial user message for error display */
-  createUserMessage: (text: string) => TMessage;
+  createUserMessage: (text: string, images?: ChatImage[]) => TMessage;
 
   /** Create a synthetic compaction summary message */
   createCompactionSummary: (summary: string) => TMessage;
-}
-
-/** Model/provider/behavior settings persisted with a conversation */
-export interface ConversationLockedSettings {
-  model: string | null;
-  provider: Provider | null;
-  thinking: string | null;
-  smallModelMode: boolean | null;
-  /**
-   * The resolved system instruction the conversation runs with. Locked like the
-   * other settings so continuing a restored chat keeps sending what it started
-   * with, even after the global override changes. Null for legacy records.
-   */
-  systemInstruction: string | null;
-  /**
-   * The notation the conversation runs with, sent per-request so it is this
-   * chat's notation rather than the device global. Hard-locked like the system
-   * instruction rather than re-read per init: notation decides how clip notes are
-   * PARSED, so a transcript written in one notation must keep being read in it —
-   * swapping mid-conversation would hand the model note strings it was never
-   * taught. Null for legacy records and for a chat that has yet to lock one.
-   */
-  notation: Notation | null;
-  /**
-   * The tool selection the conversation runs with. Locked for the mirror image
-   * of the notation reason: a transcript full of successful calls to a tool is
-   * itself an instruction to keep calling it, so withdrawing that tool
-   * mid-conversation invites a call the client can no longer route. Null for
-   * legacy records and for a chat that has yet to lock one; those reconnect on
-   * the current selection.
-   */
-  enabledTools: Record<string, boolean> | null;
 }
 
 /**
@@ -161,7 +146,7 @@ export interface UseChatReturn {
   activeMaxToolSteps: number | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
-  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  enqueueMessage: EnqueueMessageHandler;
   removeMessage: (id: number) => void;
   /** True when the last response stopped at the tool-call step limit */
   toolLimitReached: boolean;
@@ -169,7 +154,7 @@ export interface UseChatReturn {
   isCompacting: boolean;
   /** True when the most recent compaction can still be undone (in-memory) */
   canUndoCompaction: boolean;
-  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  handleSend: SendMessageHandler;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
   /**

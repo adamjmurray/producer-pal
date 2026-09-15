@@ -9,32 +9,34 @@ import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpe
 import {
   namedIdParam,
   namedPathParam,
-  targetEntries,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   parseClipDestinationList,
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
-import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
-import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
+import { focusIfRequested } from "./helpers/focus-if-requested.ts";
+import { copyLabels } from "./helpers/sources/copy-labels.ts";
 import {
   duplicateChainSources,
   duplicateOneSource,
-} from "./helpers/sources/duplicate-run-source-helpers.ts";
+} from "./helpers/sources/duplicate-one-source.ts";
 import {
   planSources,
   resolveSourceClipDestinations,
-} from "./helpers/sources/duplicate-source-helpers.ts";
-import { markOverwrittenCopies } from "./helpers/clip/duplicate-overwrite-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
+} from "./helpers/sources/source-plan.ts";
+import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
 import {
   hasArrangementPosition,
   resolveDestinationAndWarn,
+} from "./helpers/duplicate-destinations.ts";
+import {
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-} from "./helpers/duplicate-validation-helpers.ts";
+} from "./helpers/duplicate-input-validation.ts";
 
 interface DuplicateArgs {
   type: string;
@@ -187,9 +189,10 @@ export async function duplicate(
 
   const labels = copyLabels(name, color, sources.length);
 
-  // Both of these take comma-separated toPath for multiple destinations
+  // All three take comma-separated toPath for multiple destinations, and answer
+  // with one entry per destination named.
   if (type === "drum-pad" || type === "device" || type === "chain") {
-    return duplicateChainSources(type, sources, labels, count);
+    return oneOrAll(duplicateChainSources(type, sources, labels, count));
   }
 
   const createdObjects: object[] = [];
@@ -237,9 +240,29 @@ export async function duplicate(
   // Handle view switching if requested
   focusIfRequested(focus, destination, type, createdObjects);
 
-  // Return single object or array based on results
-  if (createdObjects.length === 1) {
-    return createdObjects[0] as object;
+  return oneOrAll(createdObjects);
+}
+
+/**
+ * The copy when the call asked for one, otherwise one entry per copy asked for.
+ *
+ * A lone copy that wasn't made has no list for its entry to hold a place in, so
+ * its reason goes back as the error it would have been (ADR-0042).
+ * @param createdObjects - One entry per copy the call asked for
+ * @returns The single entry, or all of them
+ * @throws Error when the call asked for one copy and it wasn't made
+ */
+function oneOrAll(createdObjects: object[]): object | object[] {
+  const [only] = createdObjects;
+
+  if (createdObjects.length === 1 && only != null) {
+    const skip = only as { ok?: false; reason?: string };
+
+    if (skip.ok === false) {
+      throw new Error(skip.reason);
+    }
+
+    return only;
   }
 
   return createdObjects;
@@ -322,6 +345,10 @@ function settleDestination(
  * track a scene copy has no use for. Positions are spelled back as bar|beat
  * before they join arrangementStart's comma-separated list, so a locator name
  * holding a comma survives the trip.
+ *
+ * A scene's only destination is an arrangement position, so a toPath naming
+ * anything else (a track, a clip slot) can't be honored at all — the call is
+ * refused up front rather than silently duplicating into the session instead.
  * @param type - What is being duplicated
  * @param toPath - Destination path(s) as the caller wrote them
  * @param arrangementStart - Position list as the caller wrote it
@@ -332,8 +359,15 @@ function foldSceneDestination(
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): { toPath?: string; arrangementStart?: string } {
-  if (type !== "scene" || !pathCarriesPosition(toPath)) {
+  if (type !== "scene" || toPath == null || toPath.trim() === "") {
     return { toPath, arrangementStart };
+  }
+
+  if (!pathCarriesPosition(toPath)) {
+    throw new Error(
+      `toPath "${toPath.trim()}" names no arrangement position; a scene's ` +
+        `only destination is one, written as "[5|1]"`,
+    );
   }
 
   refuseDoubledPosition(toPath, arrangementStart, "toPath");
@@ -349,7 +383,7 @@ function foldSceneDestination(
     }
 
     throw new Error(
-      `toPath "${toPath?.trim()}" names a lane, but a scene ` +
+      `toPath "${toPath.trim()}" names a lane, but a scene ` +
         `copies across every track; name the position alone, as "[5|1]"`,
     );
   }

@@ -24,6 +24,7 @@ import {
   type BuildStoredArgs,
   collectionIndexLine,
   makeMarkdownCollectionStore,
+  sortByName,
 } from "../config-store/markdown-collection-store.ts";
 
 /** One stored memory: its slug, one-line hook, and body. */
@@ -110,16 +111,6 @@ function toEntry(slug: string, raw: string): MemoryEntry {
     description: data.description ?? "",
     body: body.trim(),
   };
-}
-
-/**
- * Order memories alphabetically by name.
- *
- * @param entries - The freshly-read entries to sort
- * @returns A new array, sorted by name
- */
-function sortByName(entries: MemoryEntry[]): MemoryEntry[] {
-  return entries.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

@@ -4,9 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type ClipReasons,
+  newClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleArrangementLengthOperation } from "./arrangement-operations.ts";
-import * as helpers from "./helpers/arrangement-operations-helpers.ts";
+import * as helpers from "./helpers/arrangement-length-changes.ts";
 
 interface MockClipOptions {
   id?: string;
@@ -35,25 +38,22 @@ function createMockClip({
 
 /**
  * Run handleArrangementLengthOperation on a clip it must refuse, and assert it
- * returned no clips and warned with `reason`.
+ * returned no clips and left `reason` on the clip's own entry.
  * @param clip - The clip stub under test
- * @param warnSpy - The console.warn spy for this case
- * @param reason - Substring the warning must contain
+ * @param reason - Substring the clip's reason must contain
  */
-function expectSkippedWithWarning(
-  clip: LiveAPI,
-  warnSpy: ReturnType<typeof vi.spyOn>,
-  reason: string,
-): void {
+function expectSkippedWithReason(clip: LiveAPI, reason: string): void {
+  const reasons: ClipReasons = newClipReasons();
   const result = handleArrangementLengthOperation({
     clip,
     isAudioClip: false,
     arrangementLengthBeats: 16,
     context: {},
+    reasons,
   });
 
   expect(result).toStrictEqual([]);
-  expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(reason));
+  expect(reasons.said.get(clip.id)?.join("; ")).toContain(reason);
 }
 
 describe("handleArrangementLengthOperation", () => {
@@ -61,20 +61,18 @@ describe("handleArrangementLengthOperation", () => {
     vi.clearAllMocks();
   });
 
-  it("warns and skips for a session clip", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("reports a session clip on its own entry", () => {
     const clip = createMockClip({ props: { is_arrangement_clip: 0 } });
 
-    expectSkippedWithWarning(clip, warnSpy, "ignored for session clip");
+    expectSkippedWithReason(clip, "ignored: this is a session clip");
   });
 
-  it("warns and skips for a take-lane clip", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("reports a take-lane clip on its own entry", () => {
     const clip = createMockClip({
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    expectSkippedWithWarning(clip, warnSpy, "ignored for take-lane clip");
+    expectSkippedWithReason(clip, "ignored for a take-lane clip");
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {
@@ -88,6 +86,7 @@ describe("handleArrangementLengthOperation", () => {
       isAudioClip: true,
       arrangementLengthBeats: 16,
       context: {},
+      reasons: newClipReasons(),
     });
 
     expect(lengtheningSpy).toHaveBeenCalledTimes(1);
@@ -105,6 +104,7 @@ describe("handleArrangementLengthOperation", () => {
       isAudioClip: false,
       arrangementLengthBeats: 4,
       context: {},
+      reasons: newClipReasons(),
     });
 
     expect(shorteningSpy).toHaveBeenCalledTimes(1);
@@ -121,6 +121,7 @@ describe("handleArrangementLengthOperation", () => {
       isAudioClip: false,
       arrangementLengthBeats: 8,
       context: {},
+      reasons: newClipReasons(),
     });
 
     expect(lengtheningSpy).not.toHaveBeenCalled();

@@ -114,22 +114,29 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("should log warning when track ID doesn't exist", () => {
+  it("throws when the one track ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateTrack({ id: "nonexistent" });
-
-    expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(() => updateTrack({ id: "nonexistent" })).toThrow(
+      'id "nonexistent" does not exist',
+    );
   });
 
-  it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
+  it("reports a dead id in its own slot and updates the rest", () => {
     mockNonExistentObjects();
 
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123", path: "t0" });
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
+    ]);
+    // The entry carries it, so the response doesn't say it twice.
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(track123.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -146,6 +153,11 @@ describe("updateTrack", () => {
     });
 
     expect(result).toStrictEqual([
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
       { id: "123", path: "t0" },
       { id: "456", path: "t1" },
     ]);
@@ -153,7 +165,6 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(track456.set).toHaveBeenCalledWith("name", "C");
     expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it
@@ -173,7 +184,7 @@ describe("updateTrack", () => {
   // against 2, and refused.
   it("refuses a trailing comma that leaves the lists uneven", () => {
     expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
-      "id and path names 3 entries but name names 2 entries.",
+      "id names 3 entries but name names 2 entries.",
     );
   });
 
@@ -451,9 +462,48 @@ describe("updateTrack", () => {
     it("leaves a regular track's name alone", () => {
       const track = registerMockObject("trk1", { path: livePath.track(0) });
 
-      updateTrack({ id: "trk1", name: "A-Delay" });
+      const result = updateTrack({ id: "trk1", name: "A-Delay" });
 
       expect(track.set).toHaveBeenCalledWith("name", "A-Delay");
+      expect(result).toStrictEqual({ id: "trk1", path: "t0" });
+    });
+
+    it("reports the name Live landed on when it prefixed the letter", () => {
+      const returnTrack = registerMockObject("ret3", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = updateTrack({ id: "ret3", name: "B-Side" });
+
+      // "B-Side" isn't return C's own letter, so it stays and Live prefixes it.
+      expect(returnTrack.set).toHaveBeenCalledWith("name", "B-Side");
+      expect(result).toStrictEqual({
+        id: "ret3",
+        path: "rt2",
+        name: "C-B-Side",
+        reason: "Live prefixes a return track's name with its send letter",
+      });
+    });
+
+    it("says nothing when the name lands as asked", () => {
+      registerMockObject("ret1", { path: livePath.returnTrack(0) });
+
+      const result = updateTrack({ id: "ret1", name: "A-Delay" });
+
+      expect(result).toStrictEqual({ id: "ret1", path: "rt0" });
+    });
+
+    it("reports the letter a bare name comes back with", () => {
+      registerMockObject("ret1", { path: livePath.returnTrack(0) });
+
+      const result = updateTrack({ id: "ret1", name: "Tape" });
+
+      expect(result).toStrictEqual({
+        id: "ret1",
+        path: "rt0",
+        name: "A-Tape",
+        reason: "Live prefixes a return track's name with its send letter",
+      });
     });
   });
 

@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useState } from "preact/hooks";
 import { type UpdateInfo } from "#src/shared/version-check";
+import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
 import { patchGlobalSettings } from "#webui/hooks/connection/use-global-settings";
+import { fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getUpdateUrl } from "#webui/utils/mcp-url";
 
 export interface UseUpdateCheckReturn {
@@ -34,33 +36,20 @@ export interface UseUpdateCheckReturn {
 export function useUpdateCheck(): UseUpdateCheckReturn {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadUpdate = useCallback(async (signal: AbortSignal) => {
+    // The badge is decoration — a failed read (including this read's own abort
+    // on unmount) just doesn't show it.
+    const result = await fetchJsonOrNull<UpdateInfo | null>(
+      getUpdateUrl(),
+      signal,
+    );
 
-    void (async () => {
-      try {
-        const response = await fetch(getUpdateUrl(), {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const result = (await response.json()) as UpdateInfo | null;
-
-        if (result) {
-          setUpdate(result);
-        }
-      } catch {
-        // The update badge is decoration — a failed read (including this
-        // effect's own abort on unmount) just doesn't show it.
-      }
-    })();
-
-    return () => controller.abort();
+    if (result) {
+      setUpdate(result);
+    }
   }, []);
+
+  useAbortableLoad(loadUpdate);
 
   // Recorded server-side rather than in localStorage so the device's own update
   // notification honors the same dismissal — /update is the single answer both

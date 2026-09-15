@@ -4,23 +4,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
-import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
-import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
-import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import {
+  type PairedLabels,
+  pairLabels,
+} from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
-import {
-  createClips,
-  prepareClipData,
-} from "./helpers/create-clip-loop-helpers.ts";
+import { resolveCreateClipDestinations } from "./helpers/create-clip-destinations.ts";
+import { prepareClipData } from "./helpers/clip-data-preparation.ts";
+import { createClips } from "./helpers/create-clips-loop.ts";
+import { type ClipResultObject } from "./helpers/created-clip-result.ts";
 import {
   resolveClipTimingContext,
   resolveCreateClipTakeLanes,
   validateArrangementPositions,
-} from "./helpers/create-clip-prep-helpers.ts";
+} from "./helpers/clip-timing-context.ts";
 import {
   handleAutoPlayback,
   validateCreateClipParams,
@@ -28,8 +29,7 @@ import {
   validatePositions,
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
-} from "./helpers/create-clip-validation-helpers.ts";
-import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+} from "./helpers/create-clip-validation.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 export interface CreateClipArgs {
@@ -144,8 +144,6 @@ export async function createClip(
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
-  // Set once per request by the V8 adapter (see buildRequestContext).
-  const deadline = _context.deadline;
   const audio = { warping, gainDb, pitchShift, warpMode };
 
   // Treat a blank/whitespace-only transforms string as "no transform".
@@ -195,8 +193,7 @@ export async function createClip(
     transformString,
   );
 
-  // Parse comma-separated names/colors for multi-clip creation
-  const { parsedNames, parsedColors } = parseMultiClipParams(
+  const { parsedNames, parsedColors } = clipLabels(
     name,
     color,
     clipSlots.length + arrangementPositions.length,
@@ -249,7 +246,8 @@ export async function createClip(
       songTimeSigDenominator: timing.songTimeSigDenominator,
       length,
       sampleFile,
-      deadline,
+      // Set once per request by the V8 adapter (see buildRequestContext).
+      deadline: _context.deadline,
       code,
       ...audio,
     });
@@ -258,6 +256,8 @@ export async function createClip(
     ...(await clipsForView("session", 0)),
     ...(await clipsForView("arrangement", clipSlots.length)),
   ];
+
+  noteIgnoredFirstStart(createdClips, timing.firstStartIgnored);
 
   return finalizeCreatedClips(createdClips, auto, clipSlots, focus);
 }
@@ -342,18 +342,18 @@ function normalizeTransforms(transformString: string | null): string | null {
  * @returns Single clip object when one, array when multiple
  */
 function finalizeCreatedClips(
-  createdClips: object[],
+  createdClips: ClipResultObject[],
   auto: string | null,
   clipSlots: ClipSlotPosition[],
   focus: boolean | undefined,
-): object | object[] {
+): ClipResultObject | ClipResultObject[] {
   // Handle automatic playback (session clips only, guard inside handles no-op)
   handleAutoPlayback(auto, "session", clipSlots);
 
   // Focus last created clip: arrangement clips are after session clips, so
   // arrangement gets priority (the arrangement is where the final song lives)
   if (focus && createdClips.length > 0) {
-    const lastClip = createdClips.at(-1) as { id: string };
+    const lastClip = createdClips.at(-1) as ClipResultObject;
 
     focusSelect({ id: lastClip.id, detailView: "clip" });
   }
@@ -362,23 +362,40 @@ function finalizeCreatedClips(
 }
 
 /**
- * Parse comma-separated names and colors for multi-clip creation
- * @param name - Name parameter (may contain commas)
- * @param color - Color parameter (may contain commas)
- * @param totalPositionCount - Total number of clip positions
- * @returns Parsed names and colors arrays
+ * The names and colors for the positions this call fills
+ * @param name - The raw name param
+ * @param color - The raw color param
+ * @param count - How many positions the call fills
+ * @returns The call's name and color lists
  */
-function parseMultiClipParams(
+function clipLabels(
   name: string | null,
   color: string | null,
-  totalPositionCount: number,
-): { parsedNames: ListEntries | null; parsedColors: ListEntries | null } {
-  const parsedNames = parseNames(name ?? undefined, totalPositionCount, "clip");
-  const parsedColors = parseColors(
-    color ?? undefined,
-    totalPositionCount,
-    "clip",
-  );
+  count: number,
+): PairedLabels {
+  return pairLabels({
+    noun: "clip",
+    count,
+    name: name ?? undefined,
+    color: color ?? undefined,
+  });
+}
 
-  return { parsedNames, parsedColors };
+/**
+ * Say on each clip's own entry that firstStart did nothing: it sets where a
+ * looping clip starts playing, and these clips don't loop.
+ * @param createdClips - The clips the call made
+ * @param ignored - Whether firstStart was sent for clips that won't loop
+ */
+function noteIgnoredFirstStart(
+  createdClips: ClipResultObject[],
+  ignored: boolean,
+): void {
+  if (!ignored) {
+    return;
+  }
+
+  for (const clip of createdClips) {
+    clip.reason = "firstStart ignored: set looping: true to use it";
+  }
 }

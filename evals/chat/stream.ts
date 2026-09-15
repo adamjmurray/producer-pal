@@ -9,7 +9,7 @@
  */
 
 import { type streamText } from "ai";
-import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
+import { isQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
 import {
   continueThought,
   describeStreamError,

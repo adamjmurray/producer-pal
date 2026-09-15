@@ -9,7 +9,7 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,
@@ -24,7 +24,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
-import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/create-clip-prep-helpers.ts";
+import { resolveCreateClipTakeLanes } from "#src/tools/clip/create/helpers/clip-timing-context.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
@@ -294,9 +294,9 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(0, 16);
   });
 
-  // "l=" and "l+" once appended a lane or named the appended one. Both are
-  // gone: a "+" only ever roots a path, and a lane is named by its index.
-  it("refuses the retired l= and l+ in the path", async () => {
+  // A clip goes on a lane that exists; ppal-update-track is what adds one. The
+  // retired "l=" named the lane an "l+" before it appended, and never shipped.
+  it("refuses l+ and the retired l= in the path", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
 
@@ -305,7 +305,12 @@ describe("createClip take lane paths", () => {
     ).rejects.toThrow('"l=" is not a device, chain, or drum pad');
     await expect(
       createClip({ path: "t0/l+[1|1]", notes: "C3" }),
-    ).rejects.toThrow('a take lane is "t<track>/l<lane>" (e.g. "t0/l0")');
+    ).rejects.toThrow(
+      '"l+" adds a take lane, which only ppal-update-track does',
+    );
+    await expect(createClip({ path: "t0/l+", notes: "C3" })).rejects.toThrow(
+      '"l+" adds a take lane, which only ppal-update-track does',
+    );
   });
 
   // One written lane covers all three positions, the way any single value
@@ -519,7 +524,7 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
       { trackIndex: 0, arrangementStart: "2|1", takeLane: MAX_TAKE_LANES },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l7"]);
+    expect([...result.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES - 1}`]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
     );

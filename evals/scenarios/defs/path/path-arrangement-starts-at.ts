@@ -27,8 +27,8 @@ import {
   TOOL_CONNECT,
   TOOL_CREATE_CLIP,
   TOOL_UPDATE_CLIP,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertArrangementClipNamed } from "./path-scenario-helpers.ts";
+} from "../clip/helpers/clip-tool-constants.ts";
+import { assertArrangementClipNamed } from "./path-assertions.ts";
 
 /** Lead is track 3 in basic-midi-4-track. */
 const LEAD_TRACK_INDEX = 3;
@@ -67,6 +67,7 @@ function assertLearnedFromTheWarning(turn: number): EvalAssertion {
 
 export const pathArrangementStartsAt: EvalScenario = {
   id: "path-arrangement-starts-at",
+  tags: ["paths"],
   description: "Recover when a coordinate names a bar the clip only covers",
   kind: "capability",
   liveSet: "basic-midi-4-track",

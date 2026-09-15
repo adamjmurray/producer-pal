@@ -7,7 +7,7 @@
 // while nothing in the batch renumbers devices. See with-device-path-cache.ts.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -107,11 +107,7 @@ function innerInserts(): number {
  * @returns Resolution count
  */
 function nestedDeviceResolves(): number {
-  return (
-    liveApiBuildStats().byShape.find(
-      ([shape]) => shape === "live_set tracks * devices * chains * devices *",
-    )?.[1] ?? 0
-  );
+  return resolves("live_set tracks * devices * chains * devices *");
 }
 
 describe("createDevice path cache", () => {

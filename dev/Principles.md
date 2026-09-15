@@ -36,12 +36,13 @@ should follow from them unambiguously, without being spelled out here.
 
 4. Partial completion: A call that can do part of what was asked does what it
    can and skips the rest, rather than refusing the whole. Skips are reported in
-   the result entry. A call that can't do anything, can't be interpreted
-   unambiguously, or can't be partially done without cleanup throws an error
-   before it starts, having changed nothing. Validation that needs to read from
-   the API happens at each target, as it is reached — except when a partial
-   failure would need cleanup, where the whole list is checked before anything
-   runs.
+   the result entry. A target that needed no work is not a skip: its entry says
+   why there was nothing to do, without marking the target as failed. A call
+   that can't do anything, can't be interpreted unambiguously, or can't be
+   partially done without cleanup throws an error before it starts, having
+   changed nothing. Validation that needs to read from the API happens at each
+   target, as it is reached — except when a partial failure would need cleanup,
+   where the whole list is checked before anything runs.
 
 5. Observability: On a write, don't report an arg that took effect as intended.
    Report a value the API changed, reading it back off the object, with a reason

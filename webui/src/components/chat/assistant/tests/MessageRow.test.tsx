@@ -44,6 +44,61 @@ function renderAssistant(usage: TokenUsage) {
   );
 }
 
+/**
+ * Render a user MessageRow, optionally in edit mode.
+ * @param parts - The user message's UI parts
+ * @param editingIndex - Index being edited, or null
+ * @returns The rendered container
+ */
+function renderUser(parts: UIMessage["parts"], editingIndex: number | null) {
+  const message: UIMessage = {
+    role: "user",
+    parts,
+    rawHistoryIndex: 0,
+    timestamp: 0,
+  };
+
+  return render(
+    <MessageRow
+      message={message}
+      originalIdx={0}
+      messages={[message]}
+      isAssistantResponding={false}
+      showTimestamps={false}
+      showTokenUsage={false}
+      handleRetry={vi.fn()}
+      handleEdit={vi.fn()}
+      editingIndex={editingIndex}
+      setEditingIndex={vi.fn()}
+      editText="match this"
+      setEditText={vi.fn()}
+    />,
+  );
+}
+
+describe("MessageRow user images", () => {
+  const parts: UIMessage["parts"] = [
+    { type: "image", mediaType: "image/png", data: "AAA" },
+    { type: "text", content: "match this" },
+  ];
+
+  it.each([
+    { name: "reading", editingIndex: null },
+    { name: "editing", editingIndex: 0 },
+  ])("shows attached images while $name", ({ editingIndex }) => {
+    const { container } = renderUser(parts, editingIndex);
+    const image = container.querySelector("img");
+
+    expect(image?.getAttribute("src")).toBe("data:image/png;base64,AAA");
+  });
+
+  it("renders the text without the image parts", () => {
+    const { container } = renderUser(parts, null);
+
+    expect(container.textContent).toContain("match this");
+  });
+});
+
 describe("MessageRow token usage label", () => {
   it("renders cached and reasoning segments and defaults absent input/output to 0", () => {
     // inputTokens/outputTokens absent → `?? 0` nullish branches; cacheRead and

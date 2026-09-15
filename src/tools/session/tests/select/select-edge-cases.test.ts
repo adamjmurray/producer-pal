@@ -18,12 +18,15 @@ import {
   setupTrackViewMock,
 } from "./select-test-helpers.ts";
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { selectSharedUtilsMockBody } =
-    await import("./select-test-helpers.ts");
+vi.mock(
+  import("#src/tools/shared/helpers/live-api-values.ts"),
+  async (importOriginal) => {
+    const { selectLiveApiValuesMockBody } =
+      await import("./select-test-helpers.ts");
 
-  return selectSharedUtilsMockBody(await importOriginal());
-});
+    return selectLiveApiValuesMockBody(await importOriginal());
+  },
+);
 
 describe("select edge cases", () => {
   beforeEach(() => {
@@ -87,6 +90,22 @@ describe("select edge cases", () => {
       // When effectiveView is null and clip has no slot, view = "arrangement"
       expect(result.view).toBe("arrangement");
       expect(result.selectedClip).toBeDefined();
+    });
+
+    it("infers session view when a session clip is selected without explicit view", () => {
+      const appView = setupAppViewMock();
+
+      setupSongViewMock();
+      registerMockObject("session_clip_infer", {
+        path: livePath.track(0).clipSlot(1).clip(),
+        type: "Clip",
+        properties: { trackIndex: 0, clipSlotIndex: 1 },
+      });
+
+      const result = select({ id: "id session_clip_infer" });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.view).toBe("session");
     });
   });
 

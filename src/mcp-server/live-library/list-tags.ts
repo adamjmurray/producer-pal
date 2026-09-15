@@ -14,7 +14,7 @@
  * Read-only: SELECT statements only.
  */
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   clampLibraryLimit,

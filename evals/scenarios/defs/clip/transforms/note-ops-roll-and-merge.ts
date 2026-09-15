@@ -43,15 +43,17 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
-  assertNotesRead,
-  clearClipSlots,
-  getTransforms,
   MSG_CONNECT,
-  readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+} from "../helpers/clip-tool-constants.ts";
+import {
+  clearClipSlots,
+  getTransforms,
+  readClipNotesFromTurn,
+} from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** 4-track Live Set used by the split scenarios (Lead + Bass tracks). */
@@ -234,7 +236,7 @@ function assertRepeatGrew(createTurn: number, editTurn: number): EvalAssertion {
     description:
       "used repeat(offset, copies) and the note count grew (no resize)",
     assert: (turns) => {
-      const editCall = getToolCalls(turns, editTurn).find(
+      const editCall = getToolCalls(turns, editTurn).findLast(
         (c) => c.name === TOOL_UPDATE_CLIP,
       );
       const transforms = getTransforms(turns, editTurn, TOOL_UPDATE_CLIP);
@@ -296,6 +298,7 @@ function tokenBudget(maxTokens: number): EvalAssertion {
 
 export const noteOpsRatchetRoll: EvalScenario = {
   id: "note-ops-ratchet-roll",
+  tags: ["transforms"],
   description: "Turn each note of a melody into a roll via ratchet()",
   kind: "capability",
   requires: { transforms: true },
@@ -316,6 +319,7 @@ export const noteOpsRatchetRoll: EvalScenario = {
 
 export const noteOpsMerge: EvalScenario = {
   id: "note-ops-merge",
+  tags: ["transforms"],
   description:
     "Glue repeated same-pitch drum hits into sustained notes via merge()",
   kind: "capability",
@@ -337,6 +341,7 @@ export const noteOpsMerge: EvalScenario = {
 
 export const noteOpsRepeat: EvalScenario = {
   id: "note-ops-repeat",
+  tags: ["transforms"],
   description:
     "Echo notes within the clip via repeat() — adds notes, no resize",
   kind: "capability",
@@ -359,6 +364,7 @@ export const noteOpsRepeat: EvalScenario = {
 
 export const noteOpsSplit: EvalScenario = {
   id: "note-ops-split",
+  tags: ["transforms"],
   description:
     "Cut held notes at arrangement-timeline positions, then at clip positions",
   kind: "capability",

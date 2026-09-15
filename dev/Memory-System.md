@@ -38,7 +38,7 @@ built generic so a second collection is a thin binding, not a rewrite:
 second, user-authored **custom skills** collection
 (`~/.producer-pal/skills-custom/`) exists end to end: store
 (`helpers/skills-custom/`), REST routes, V8↔Node RPC routes, and a complete
-webui screen (`CustomSkillsScreen` / `CustomSkillsList` / `CustomSkillEditor` +
+webui screen (`CustomSkillsScreen` / `CustomSkillEditor` +
 `use-custom-skills-collection`), all with tests. It was hidden in v1.5.0 rather
 than removed, and every entry point that could reach a user or the model is
 disconnected:
@@ -287,14 +287,15 @@ the whole thing:
 - Carry the existing content forward. A write that doesn't is now refused rather
   than applied — see the clobber guard below.
 
-**The clobber guard** (`clobberWarning` in `context-helpers.ts`). Instructions
-are not a mechanism, so the destructive case is also blocked in code: a
-`project`/`global` write whose content keeps NONE of the existing document is
-skipped, and the model gets a `WARNING:` block plus the current document back,
-so it can re-send a merged write. `force: true` overrides it — declared in
-`context.def.ts` in every mode (a guard whose escape hatch is invisible to the
-tier that hits it would deadlock the write) but deliberately absent from the
-skills, so the model meets it in the warning rather than reaching for it.
+**The clobber guard** (`clobberWarning` in `project-context-operations.ts`).
+Instructions are not a mechanism, so the destructive case is also blocked in
+code: a `project`/`global` write whose content keeps NONE of the existing
+document is skipped, and the model gets a `WARNING:` block plus the current
+document back, so it can re-send a merged write. `force: true` overrides it —
+declared in `context.def.ts` in every mode (a guard whose escape hatch is
+invisible to the tier that hits it would deadlock the write) but deliberately
+absent from the skills, so the model meets it in the warning rather than
+reaching for it.
 
 Detection is line containment, both sides normalized (list marker stripped,
 whitespace collapsed, trailing punctuation dropped) so a reformat _of a line_
@@ -356,8 +357,8 @@ A **Memory** tab in the five-tab context editor
 Skills, Memory), backed by `useMemoryCollection` (a thin binding of
 `useDocCollection` to the `/memory` REST routes) and rendered by
 `components/context/memory/` (`MemoryScreen` — the two-pane orchestration;
-`MemoryList` — the flat, name-sorted left index; `MemoryEntryEditor` — the
-right-pane form):
+`MemoryEntryEditor` — the right-pane form) over the shared `CollectionList` left
+index:
 
 - Left pane: the flat index (no grouping) with create/select/delete.
 - Right pane: an editor for the selected entry's name, description, and body.

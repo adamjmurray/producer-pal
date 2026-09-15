@@ -12,7 +12,7 @@
 // one of them is being repeated per device.
 
 import { describe, expect, it, vi } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -27,15 +27,6 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 const DEVICES = 4;
 const RACK = livePath.track(0).device(0);
 const TEMP_CHAIN = `${livePath.track(1).device(0)} chains 0`;
-
-/**
- * How many times the call resolved a target of this shape.
- * @param shape - Target shape, indices replaced with `*`
- * @returns Resolution count
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
-}
 
 /**
  * A rack on track 0 whose first chain holds DEVICES devices, plus the temp

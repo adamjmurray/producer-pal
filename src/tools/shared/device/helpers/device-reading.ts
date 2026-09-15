@@ -1,0 +1,384 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { DEVICE_TYPE } from "#src/tools/constants.ts";
+import { readParameter, readParameterBasic } from "./param-reading.ts";
+import { processDrumPads } from "./drum-pads-from-chains.ts";
+import { buildChainInfo } from "./chain-info.ts";
+import { buildChainPath, buildReturnChainPath } from "./path/insertion-path.ts";
+
+// Re-export for external use
+export { buildChainInfo };
+
+type ReadDeviceFn = (
+  device: LiveAPI,
+  options: Record<string, unknown>,
+) => Record<string, unknown>;
+
+export interface ProcessChainsOptions {
+  includeChains: boolean;
+  includeReturnChains: boolean;
+  includeDrumPads: boolean;
+  /** See ReadDeviceOptions.chainsHidden */
+  chainsHidden?: boolean;
+  depth: number;
+  maxDepth: number;
+  readDeviceFn: ReadDeviceFn;
+  devicePath?: string;
+}
+
+export interface ReadDeviceParametersOptions {
+  includeValues?: boolean;
+  search?: string;
+}
+
+/**
+ * Check if device className is redundant (matches the rack type name)
+ * @param deviceType - Device type string
+ * @param className - Class display name
+ * @returns True if className is redundant
+ */
+export function isRedundantDeviceClassName(
+  deviceType: string,
+  className: string,
+): boolean {
+  if (deviceType === DEVICE_TYPE.INSTRUMENT_RACK) {
+    return className === "Instrument Rack";
+  }
+
+  if (deviceType === DEVICE_TYPE.DRUM_RACK) {
+    return className === "Drum Rack";
+  }
+
+  if (deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK) {
+    return className === "Audio Effect Rack";
+  }
+
+  if (deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK) {
+    return className === "MIDI Effect Rack";
+  }
+
+  return false;
+}
+
+/**
+ * Build chain info with depth-controlled device expansion
+ * At depth limit, shows deviceCount instead of expanding devices
+ * @param chain - Chain LiveAPI object
+ * @param chainPath - Resolved chain path
+ * @param depth - Current depth
+ * @param maxDepth - Max depth for device expansion
+ * @param readDeviceFn - readDevice function for recursive expansion
+ * @param deviceOptions - Options passed to readDeviceFn for nested devices
+ * @returns Chain info object
+ */
+function buildChainAtDepth(
+  chain: LiveAPI,
+  chainPath: string | null,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  deviceOptions: Record<string, unknown>,
+): Record<string, unknown> {
+  if (depth >= maxDepth) {
+    const deviceCount = chain.getChildCount("devices");
+
+    return buildChainInfo(chain, { path: chainPath, deviceCount });
+  }
+
+  const devices = chain.getChildren("devices").map((d, deviceIndex) => {
+    const nestedDevicePath = chainPath ? `${chainPath}/d${deviceIndex}` : null;
+
+    return readDeviceFn(d, { ...deviceOptions, parentPath: nestedDevicePath });
+  });
+
+  return buildChainInfo(chain, { path: chainPath, devices });
+}
+
+/**
+ * Process regular (non-drum) rack chains
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param options - Processing options
+ */
+function processRegularChains(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  options: ProcessChainsOptions,
+): void {
+  const {
+    includeChains,
+    includeDrumPads,
+    chainsHidden = false,
+    depth,
+    maxDepth,
+    readDeviceFn,
+    devicePath,
+  } = options;
+  const chains = device.getChildren("chains");
+  const hasSoloedChain = chains.some(
+    (chain) => (chain.getProperty("solo") as number) > 0,
+  );
+
+  if (includeChains) {
+    const deviceOptions = {
+      includeChains,
+      includeDrumPads,
+      chainsHidden,
+      depth: depth + 1,
+      maxDepth,
+    };
+
+    deviceInfo.chains = chains.map((chain, index) =>
+      chainsHidden
+        ? hiddenChainInfo(chain, depth, maxDepth, readDeviceFn, deviceOptions)
+        : buildChainAtDepth(
+            chain,
+            devicePath ? buildChainPath(devicePath, index) : null,
+            depth,
+            maxDepth,
+            readDeviceFn,
+            deviceOptions,
+          ),
+    );
+  }
+
+  if (hasSoloedChain) {
+    deviceInfo.hasSoloedChain = hasSoloedChain;
+  }
+}
+
+/**
+ * A chain the caller will throw away, carrying only the devices the drum-rack
+ * search descends into. Skipping buildChainInfo skips the chain mixer, which
+ * is a mixer, a volume, a pan and one send per return chain, per chain.
+ * @param chain - Chain LiveAPI object
+ * @param depth - Current depth
+ * @param maxDepth - Max depth for device expansion
+ * @param readDeviceFn - readDevice function for recursive expansion
+ * @param deviceOptions - Options passed to readDeviceFn for nested devices
+ * @returns Chain info holding devices, or nothing at the depth limit
+ */
+function hiddenChainInfo(
+  chain: LiveAPI,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  deviceOptions: Record<string, unknown>,
+): Record<string, unknown> {
+  if (depth >= maxDepth) {
+    return {};
+  }
+
+  return {
+    devices: chain
+      .getChildren("devices")
+      .map((device) => readDeviceFn(device, deviceOptions)),
+  };
+}
+
+/**
+ * Process all chain types for rack devices
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param deviceType - Device type
+ * @param options - Processing options
+ */
+export function processDeviceChains(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  deviceType: string,
+  options: ProcessChainsOptions,
+): void {
+  const {
+    includeChains,
+    includeReturnChains,
+    includeDrumPads,
+    depth,
+    maxDepth,
+    readDeviceFn,
+    devicePath,
+  } = options;
+
+  const isRack = deviceType.includes("rack");
+
+  if (!isRack) {
+    return;
+  }
+
+  // Process regular chains or drum pads
+  if (includeChains || includeDrumPads) {
+    if (deviceType === DEVICE_TYPE.DRUM_RACK) {
+      processDrumPads(
+        device,
+        deviceInfo,
+        includeChains,
+        includeDrumPads,
+        depth,
+        maxDepth,
+        readDeviceFn,
+        devicePath,
+      );
+    } else {
+      processRegularChains(device, deviceInfo, options);
+    }
+  }
+
+  // Process return chains (works for all rack types when requested)
+  if (includeReturnChains) {
+    processReturnChains(
+      device,
+      deviceInfo,
+      includeChains,
+      includeReturnChains,
+      depth,
+      maxDepth,
+      readDeviceFn,
+      devicePath,
+    );
+  }
+}
+
+/**
+ * Process return chains for rack devices (internal helper)
+ * @param device - Device object
+ * @param deviceInfo - Device info to update
+ * @param includeChains - Include chains
+ * @param includeReturnChains - Include return chains
+ * @param depth - Current depth
+ * @param maxDepth - Max depth
+ * @param readDeviceFn - readDevice function
+ * @param devicePath - Device path for building nested paths
+ */
+function processReturnChains(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  includeChains: boolean,
+  includeReturnChains: boolean,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  devicePath: string | undefined,
+): void {
+  const returnChains = device.getChildren("return_chains");
+
+  if (returnChains.length === 0) {
+    return;
+  }
+
+  const deviceOptions = {
+    includeChains,
+    includeReturnChains,
+    depth: depth + 1,
+    maxDepth,
+  };
+
+  deviceInfo.returnChains = returnChains.map((chain, index) => {
+    const chainPath = devicePath
+      ? buildReturnChainPath(devicePath, index)
+      : null;
+
+    return buildChainAtDepth(
+      chain,
+      chainPath,
+      depth,
+      maxDepth,
+      readDeviceFn,
+      deviceOptions,
+    );
+  });
+}
+
+/**
+ * Read macro variation and macro info for rack devices
+ * @param device - LiveAPI device object
+ * @returns Object with variations and/or macros properties if applicable, empty object otherwise
+ */
+export function readMacroVariations(device: LiveAPI): Record<string, unknown> {
+  const canHaveChains = device.getProperty("can_have_chains");
+
+  if (!canHaveChains) {
+    return {};
+  }
+
+  const result: Record<string, unknown> = {};
+
+  // Variation info
+  const variationCount = device.getProperty("variation_count");
+
+  if (variationCount) {
+    result.variations = {
+      count: variationCount,
+      selected: device.getProperty("selected_variation_index"),
+    };
+  }
+
+  // Macro info
+  const visibleMacroCount = device.getProperty("visible_macro_count") as number;
+
+  if (visibleMacroCount > 0) {
+    result.macros = {
+      count: visibleMacroCount,
+      hasMappings: (device.getProperty("has_macro_mappings") as number) > 0,
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Read A/B Compare state for devices that support it
+ * @param device - LiveAPI device object
+ * @returns Object with abCompare property if supported, empty object otherwise
+ */
+export function readABCompare(device: LiveAPI): Record<string, unknown> {
+  const canCompareAB = device.getProperty("can_compare_ab");
+
+  if (!canCompareAB) {
+    return {};
+  }
+
+  const isUsingB =
+    (device.getProperty("is_using_compare_preset_b") as number) > 0;
+
+  return {
+    abCompare: isUsingB ? "b" : "a",
+  };
+}
+
+/**
+ * Read all parameters for a device
+ * @param device - LiveAPI device object
+ * @param options - Reading options
+ * @returns Array of parameter info objects
+ */
+export function readDeviceParameters(
+  device: LiveAPI,
+  options: ReadDeviceParametersOptions = {},
+): Record<string, unknown>[] {
+  const { includeValues = false, search } = options;
+
+  let parameters = device.getChildren("parameters");
+
+  // Filter by search string if provided
+  if (search) {
+    const searchLower = search.toLowerCase().trim();
+
+    parameters = parameters.filter((p) =>
+      p.getName().toLowerCase().includes(searchLower),
+    );
+  }
+
+  if (!includeValues) {
+    return parameters.map(readParameterBasic);
+  }
+
+  // Read once per device: it only names the device for the recorded-unit
+  // lookup. Not `.map(readParameter)` — map passes the index as the second
+  // argument, which readParameter would read as the device name.
+  const deviceName = device.getProperty("class_display_name") as string;
+
+  return parameters.map((param) => readParameter(param, deviceName));
+}

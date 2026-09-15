@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   emitArrangementWarnings,
   tallyMovedClip,
@@ -19,20 +20,29 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 /**
+ * A track's main arrangement lane, where a move with no take lane lands.
+ * @param trackIndex - The track
+ * @returns The landing
+ */
+function mainLane(trackIndex: number): ArrangementTrack {
+  return { trackIndex, takeLane: null };
+}
+
+/**
  * Tally a run of clips landing on one lane at one position.
  * @param groups - The tally
- * @param trackIndex - The lane's track
+ * @param landing - The lane they land on
  * @param startBeats - The position
  * @param count - How many clips land there
  */
 function tallyMany(
   groups: Map<string, MoveGroup>,
-  trackIndex: number,
+  landing: ArrangementTrack,
   startBeats: number,
   count: number,
 ): void {
   for (let i = 0; i < count; i++) {
-    tallyMovedClip(groups, trackIndex, startBeats);
+    tallyMovedClip(groups, landing, startBeats);
   }
 }
 
@@ -50,8 +60,8 @@ describe("update-clip-move-groups", () => {
   it("does not warn when one clip lands per group", () => {
     const groups = new Map<string, MoveGroup>();
 
-    tallyMovedClip(groups, 0, 16);
-    tallyMovedClip(groups, 1, 16);
+    tallyMovedClip(groups, mainLane(0), 16);
+    tallyMovedClip(groups, mainLane(1), 16);
     emitArrangementWarnings(groups);
 
     expect(console.warn).not.toHaveBeenCalled();
@@ -60,9 +70,9 @@ describe("update-clip-move-groups", () => {
   it("does not warn for clips on one lane at different positions", () => {
     const groups = new Map<string, MoveGroup>();
 
-    tallyMovedClip(groups, 0, 16);
-    tallyMovedClip(groups, 0, 32);
-    tallyMovedClip(groups, 0, 48);
+    tallyMovedClip(groups, mainLane(0), 16);
+    tallyMovedClip(groups, mainLane(0), 32);
+    tallyMovedClip(groups, mainLane(0), 48);
     emitArrangementWarnings(groups);
 
     expect(console.warn).not.toHaveBeenCalled();
@@ -71,7 +81,7 @@ describe("update-clip-move-groups", () => {
   it("warns when clips land on one lane at one position", () => {
     const groups = new Map<string, MoveGroup>();
 
-    tallyMany(groups, 0, 16, 3);
+    tallyMany(groups, mainLane(0), 16, 3);
     emitArrangementWarnings(groups);
 
     expect(console.warn).toHaveBeenCalledWith(
@@ -82,9 +92,9 @@ describe("update-clip-move-groups", () => {
   it("warns once per overlapping group", () => {
     const groups = new Map<string, MoveGroup>();
 
-    tallyMany(groups, 0, 16, 2);
-    tallyMovedClip(groups, 1, 16);
-    tallyMany(groups, 2, 32, 4);
+    tallyMany(groups, mainLane(0), 16, 2);
+    tallyMovedClip(groups, mainLane(1), 16);
+    tallyMany(groups, mainLane(2), 32, 4);
     emitArrangementWarnings(groups);
 
     expect(console.warn).toHaveBeenCalledTimes(2);

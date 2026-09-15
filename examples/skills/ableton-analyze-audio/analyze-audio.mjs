@@ -73,10 +73,17 @@ const VALUE_OPTS = new Set([
   "--file-uri",
   "--delete",
 ]);
-const USAGE =
-  "Usage: node analyze-audio.mjs <audio-file> [--prompt <text>] [--upload]\n" +
-  "       node analyze-audio.mjs --file-uri <files/id> [--prompt <text>]\n" +
-  "       node analyze-audio.mjs --delete <files/id>";
+const USAGE = `Usage: node analyze-audio.mjs <audio-file> [--prompt <text>] [--upload]
+       node analyze-audio.mjs --file-uri <files/id> [--prompt <text>]
+       node analyze-audio.mjs --delete <files/id>
+
+  --prompt, -p <text>  question for the model (default: a general analysis)
+  --upload             upload even a small file, so it can be reused
+  --file-uri <id>      ask about a previous upload instead of a local file
+  --delete <id>        delete a previous upload
+  --model <id>         Gemini model (default ${DEFAULT_MODEL}, or GEMINI_MODEL)
+  --api-key <key>      instead of GEMINI_API_KEY / GEMINI_KEY
+  --help, -h           show this help`;
 
 /**
  * Split argv into positionals and a value map, honoring value-taking options.
@@ -97,7 +104,7 @@ function parseArgs(argv) {
         throw new Error(`Missing value for ${arg}`);
       }
       opts[arg] = value;
-    } else if (arg.startsWith("--")) {
+    } else if (arg.startsWith("-")) {
       opts[arg] = "true"; // bare boolean flag
     } else {
       positionals.push(arg);
@@ -108,6 +115,10 @@ function parseArgs(argv) {
 
 async function main() {
   const { positionals, opts } = parseArgs(process.argv.slice(2));
+  if (opts["--help"] != null || opts["-h"] != null) {
+    console.log(USAGE);
+    return;
+  }
   const apiKey =
     opts["--api-key"] ?? process.env.GEMINI_API_KEY ?? process.env.GEMINI_KEY;
   if (!apiKey) {

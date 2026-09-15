@@ -21,7 +21,7 @@ import { publishedEnumValues } from "#src/test/helpers/enum-options-test-helpers
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { toolDefReadTrack } from "../read-track.def.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
-import { readTrack } from "../read-track.ts";
+import { readOneTrack } from "../read-track.ts";
 
 // An empty audio track that can't be armed — the master and return tracks.
 function createBareTrackProperties(
@@ -75,7 +75,7 @@ function setupAudioSessionClipTrack(): void {
   });
 }
 
-describe("readTrack", () => {
+describe("readOneTrack", () => {
   describe("wildcard include '*'", () => {
     it("includes all available options when '*' is used", () => {
       setupTrackPathMappedMocks({
@@ -132,14 +132,14 @@ describe("readTrack", () => {
       });
 
       // Test with '*' - should include everything
-      const resultWildcard = readTrack({
+      const resultWildcard = readOneTrack({
         trackIndex: 0,
         include: ["*"],
       });
 
       // Every option the tool publishes, named one by one — read from the def
       // rather than copied, so this can't drift from what read-track offers
-      const resultExplicit = readTrack({
+      const resultExplicit = readOneTrack({
         trackIndex: 0,
         include: publishedEnumValues(toolDefReadTrack, "include").filter(
           (option) => option !== "*",
@@ -165,7 +165,7 @@ describe("readTrack", () => {
     it("passes warp through to nested clip reads", () => {
       setupAudioSessionClipTrack();
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["session-clips", "warp"],
       });
@@ -185,7 +185,7 @@ describe("readTrack", () => {
     it("includes warp in nested clip reads for '*'", () => {
       setupAudioSessionClipTrack();
 
-      const result = readTrack({ trackIndex: 0, include: ["*"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["*"] });
 
       expect(
         (result.sessionClips as Record<string, unknown>[])[0],
@@ -197,7 +197,7 @@ describe("readTrack", () => {
     it("omits warp from nested clip reads when it wasn't asked for", () => {
       setupAudioSessionClipTrack();
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["session-clips", "sample"],
       });
@@ -226,7 +226,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({
+      const result = readOneTrack({
         trackIndex: 0,
         include: ["arrangement-clips"],
       });
@@ -255,7 +255,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 1, trackType: "return" });
+        const result = readOneTrack({ trackIndex: 1, trackType: "return" });
 
         expect(result).toStrictEqual({
           id: "return_track_1",
@@ -274,7 +274,7 @@ describe("readTrack", () => {
         });
 
         expect(() =>
-          readTrack({ trackIndex: 99, trackType: "return" }),
+          readOneTrack({ trackIndex: 99, trackType: "return" }),
         ).toThrow("returnTrackIndex 99 does not exist");
       });
 
@@ -294,7 +294,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({
+        const result = readOneTrack({
           trackIndex: 0,
           trackType: "return",
           include: ["routings", "available-routings"],
@@ -343,7 +343,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 999, trackType: "master" }); // trackIndex should be ignored
+        const result = readOneTrack({ trackIndex: 999, trackType: "master" }); // trackIndex should be ignored
 
         expect(result).toStrictEqual({
           id: "master_track",
@@ -361,9 +361,9 @@ describe("readTrack", () => {
           type: "Track",
         });
 
-        expect(() => readTrack({ trackIndex: 0, trackType: "master" })).toThrow(
-          "trackIndex null does not exist",
-        );
+        expect(() =>
+          readOneTrack({ trackIndex: 0, trackType: "master" }),
+        ).toThrow("trackIndex null does not exist");
       });
 
       it("includes audio effects for master track when requested", () => {
@@ -399,7 +399,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({
+        const result = readOneTrack({
           trackIndex: 0,
           trackType: "master",
           include: ["devices"],
@@ -428,7 +428,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({
+        const result = readOneTrack({
           trackIndex: 0,
           trackType: "master",
           include: ["routings", "available-routings"],
@@ -456,7 +456,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackType: "master" });
+        const result = readOneTrack({ trackType: "master" });
 
         expect(result).toStrictEqual({
           id: "master_track",
@@ -492,7 +492,7 @@ describe("readTrack", () => {
     describe("invalid trackType", () => {
       it("throws error for invalid trackType", () => {
         expect(() => {
-          readTrack({ trackIndex: 0, trackType: "invalid" });
+          readOneTrack({ trackIndex: 0, trackType: "invalid" });
         }).toThrow(
           'Invalid trackType: invalid. Must be "regular", "return", or "master".',
         );
@@ -504,7 +504,7 @@ describe("readTrack", () => {
 function setupAndReadRegularTrack(
   name: string,
   trackType?: string,
-): ReturnType<typeof readTrack> {
+): ReturnType<typeof readOneTrack> {
   setupTrackPathMappedMocks({
     trackId: "track1",
     objects: {
@@ -512,10 +512,12 @@ function setupAndReadRegularTrack(
     },
   });
 
-  return readTrack({ trackIndex: 0, trackType });
+  return readOneTrack({ trackIndex: 0, trackType });
 }
 
-function expectRegularTrackResult(result: ReturnType<typeof readTrack>): void {
+function expectRegularTrackResult(
+  result: ReturnType<typeof readOneTrack>,
+): void {
   expect(result.path).toBe("t0");
   expect(result.id).toBe("track1");
 }

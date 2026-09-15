@@ -37,11 +37,9 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import {
-  clipStateAssertion,
-  getCreateClipNotes,
-  TOOL_CREATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+import { clipStateAssertion } from "../helpers/clip-note-assertions.ts";
+import { TOOL_CREATE_CLIP } from "../helpers/clip-tool-constants.ts";
+import { getCreateClipNotes } from "../helpers/clip-turn-readers.ts";
 import {
   createClipScenario,
   LEAD_SLOT_1,

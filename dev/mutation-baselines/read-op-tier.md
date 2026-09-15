@@ -24,8 +24,8 @@ only the returned object — never the warning text. Adding
 skip test killed ~16 blanked-message survivors in `live-set` locators alone. The
 second lever was **direct unit tests of exported helpers** only ever exercised
 transitively: `stopPlaybackIfNeeded` and `waitForPlayheadPosition` (polling
-predicate, success/failure warn, epsilon boundary) took
-`update-live-set-locator-helpers.ts` from 75.8% to 98.7%.
+predicate, success/failure warn, epsilon boundary) took `locator-updates.ts`
+from 75.8% to 98.7%.
 
 Remaining survivors are bucket 2/3:
 
@@ -45,17 +45,18 @@ Remaining survivors are bucket 2/3:
 
 ## Gaps closed (read-op / small tier)
 
-| Gap (now killed)                                                                           | Test strengthened / added                       |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| `liveApi` `> MAX_OPERATIONS` boundary + wrapped-error `cause` + no-args `call_method`      | `live-api.test.ts`                              |
-| `connect` stopped-set `isPlaying` boundary, live_app version path, return-track count      | `connect-core.test.ts`                          |
-| `callNodeMemoryRoute` `                                                                    |                                                 | `guard +`"unknown error"` default | `context-memory.test.ts` |
-| captureScene sceneIndex/name guards + two-digit selected-scene regex                       | `capture-scene.test.ts`                         |
-| createScene capture-focus, extra-names label, MAX boundary, single-property capture guard  | `create-scene.test.ts`                          |
-| readScene color-include gate, empty-clip filter + suppressed warning                       | `read-scene.test.ts`                            |
-| scene-helpers tempo 20/999/1000 boundaries; updateScene label + empty-focus guard          | `update-scene.test.ts`                          |
-| stopPlaybackIfNeeded / waitForPlayheadPosition direct unit tests                           | `update-live-set-locator-helpers.test.ts` (new) |
-| 16 blanked locator warn/skip messages + reverse-order delete sort                          | `update-live-set-locator-operations.test.ts`    |
-| updateLiveSet scale-absent no-warn + unknown-operation default throw                       | `update-live-set.test.ts`                       |
-| extendSong boundary + `"tracks"` child name; multi-word scale join; root/scale error lists | `update-live-set-helpers.test.ts`               |
-| readLiveSet mixer-include gate (full param mocks so it's observable)                       | `read-live-set-mixer.test.ts`                   |
+| Gap (now killed)                                                                          | Test strengthened / added                    |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `liveApi` `> MAX_OPERATIONS` boundary + wrapped-error `cause` + no-args `call_method`     | `live-api.test.ts`                           |
+| `connect` stopped-set `isPlaying` boundary, live_app version path, return-track count     | `connect-core.test.ts`                       |
+| `callNodeMemoryRoute` `                                                                   |                                              | `guard +`"unknown error"` default | `context-memory.test.ts` |
+| captureScene sceneIndex/name guards + two-digit selected-scene regex                      | `capture-scene.test.ts`                      |
+| createScene capture-focus, extra-names label, MAX boundary, single-property capture guard | `create-scene.test.ts`                       |
+| readScene color-include gate, empty-clip filter + suppressed warning                      | `read-scene.test.ts`                         |
+| scene-tempo-signature tempo 20/999/1000 boundaries; updateScene label + empty-focus guard | `update-scene.test.ts`                       |
+| stopPlaybackIfNeeded / waitForPlayheadPosition direct unit tests                          | `locator-updates.test.ts` (new)              |
+| 16 blanked locator warn/skip messages + reverse-order delete sort                         | `update-live-set-locator-operations.test.ts` |
+| updateLiveSet scale-absent no-warn + unknown-operation default throw                      | `update-live-set.test.ts`                    |
+| extendSong boundary + `"tracks"` child name                                               | `song-extension.test.ts`                     |
+| multi-word scale join; root/scale error lists                                             | `tempo-and-scale-updates.test.ts`            |
+| readLiveSet mixer-include gate (full param mocks so it's observable)                      | `read-live-set-mixer.test.ts`                |

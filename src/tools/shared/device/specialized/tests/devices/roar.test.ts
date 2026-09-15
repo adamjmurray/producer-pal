@@ -8,12 +8,12 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 /**
  * Register a mock Roar device and return its LiveAPI.
@@ -74,17 +74,16 @@ describe("Roar pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("routing_mode_index", 2);
     });
 
-    it("warns and skips an invalid routing mode", () => {
+    it("refuses an invalid routing mode", () => {
       const device = registerRoar();
 
-      expect(
+      expectWriteRefused(
         applySpecializedParamWrite(device, "routingMode", "bogus"),
-      ).toStrictEqual([]);
+        "routingMode",
+        "not a valid routingMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid routingMode"),
-      );
     });
   });
 
@@ -107,19 +106,16 @@ describe("Roar pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("env_listen", 0);
     });
 
-    it("warns naming envListen and skips uninterpretable input", () => {
+    it("refuses uninterpretable input, naming envListen", () => {
       const device = registerRoar();
 
-      expect(
+      expectWriteRefused(
         applySpecializedParamWrite(device, "envListen", "maybe"),
-      ).toStrictEqual([]);
+        "envListen",
+        '"maybe" is not a valid envListen (expected true/false)',
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          '"maybe" is not a valid envListen (expected true/false)',
-        ),
-      );
     });
   });
 });
@@ -155,7 +151,7 @@ describe("Roar via read-device", () => {
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableRoar();
 
-    const result = readDevice({ id: "roar-1", include: ["params"] });
+    const result = readOneDevice({ id: "roar-1", include: ["params"] });
 
     expect(result.parameters).toStrictEqual([
       { name: "routingMode", value: "multi-band" },
@@ -167,7 +163,7 @@ describe("Roar via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableRoar();
 
-    const result = readDevice({ id: "roar-1", include: ["options"] });
+    const result = readOneDevice({ id: "roar-1", include: ["options"] });
 
     expect(
       (result.options as Record<string, unknown>).paramOptions,

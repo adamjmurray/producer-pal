@@ -60,7 +60,7 @@ const NOTATION_GLOBS = [
 ];
 
 // src/shared holds cross-cutting utility modules (pitch, notation, compact
-// serializer/parser, path builders, mcp-response, config, error-utils, v8
+// serializer/parser, path builders, mcp-response, config, error-message, v8
 // console/sleep, silent-wav, version-check) imported by both the Node MCP
 // server and the V8 Max runtime. It is NOT under src/tools/, so toolDomain()
 // can't build its globs; and its scope key can't be `shared` — that already

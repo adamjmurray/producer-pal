@@ -5,7 +5,7 @@
 
 import { type RealtimeSession } from "@openai/agents/realtime";
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
 
 // Auto-retry timing. Fire a touch past the server-indicated wait (buffer), but
 // never spin faster than the floor even when the server reports a sub-second

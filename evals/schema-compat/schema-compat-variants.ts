@@ -250,7 +250,101 @@ export const VARIANTS: Variant[] = [
     check: (i) =>
       Array.isArray(i.value) && i.value.every((x) => typeof x === "number"),
   },
+  {
+    id: "name-or-id-entries",
+    toolName: "set_params",
+    tests:
+      "array<object{name?,id?,value}> (proposed update-device 'params' with " +
+      "an explicit id field)",
+    schema: {
+      type: "object",
+      properties: {
+        params: {
+          type: "array",
+          description:
+            "Parameters to set. Address each by `name` or by `id` (a " +
+            "parameter id from read-device), never both.",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "parameter name" },
+              id: { type: "string", description: "parameter id" },
+              value: { type: "string" },
+            },
+            required: ["value"],
+          },
+        },
+      },
+      required: ["params"],
+    },
+    prompt:
+      "Use set_params to set these device parameters: Frequency to 500, " +
+      "the parameter with id 14 to 20, Drive to 30%, and the parameter " +
+      "with id 27 to 0.5.",
+    check: (i) => isNameOrIdEntries(i.params),
+  },
 ];
+
+/**
+ * @param x - Value to test
+ * @returns The string when it is non-blank, else undefined. OpenAI models fill
+ * an optional they have no value for with "" rather than omitting it, and the
+ * tool treats that blank as absent, so the check does too.
+ */
+const filled = (x: unknown): string | undefined =>
+  isStr(x) && x.trim() !== "" ? x : undefined;
+
+/**
+ * Each entry names a param by exactly one of name/id, and the two ids from the
+ * prompt land in `id` — an id written into `name` is the overloading the
+ * variant exists to retire. Value is a string per the schema.
+ * @param x - The params input
+ * @returns True if the entries are shaped and addressed correctly
+ */
+function isNameOrIdEntries(x: unknown): boolean {
+  if (!Array.isArray(x) || x.length !== 4) {
+    return false;
+  }
+
+  const entries = x as Args[];
+  const wellFormed = entries.every(
+    (e) =>
+      isStr(e.value) && (filled(e.name) == null) !== (filled(e.id) == null),
+  );
+  const ids = entries.map((e) => filled(e.id)).filter(isStr);
+  const names = entries.map((e) => filled(e.name)).filter(isStr);
+
+  return (
+    wellFormed &&
+    hasAll(ids, ["14", "27"]) &&
+    hasAll(names, ["Frequency", "Drive"])
+  );
+}
+
+/**
+ * Select the variants to probe, honouring any --variant=id flags.
+ * @returns The variants to run
+ * @throws Error when a --variant names nothing in the corpus
+ */
+export function selectedVariants(): Variant[] {
+  const wanted = process.argv
+    .filter((a) => a.startsWith("--variant="))
+    .map((a) => a.slice("--variant=".length));
+
+  if (wanted.length === 0) {
+    return VARIANTS;
+  }
+
+  const chosen = VARIANTS.filter((v) => wanted.includes(v.id));
+
+  if (chosen.length !== wanted.length) {
+    const known = VARIANTS.map((v) => v.id).join(", ");
+
+    throw new Error(`Unknown --variant. Known variants: ${known}`);
+  }
+
+  return chosen;
+}
 
 /**
  * @param arr - Strings to search

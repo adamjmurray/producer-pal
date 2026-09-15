@@ -6,14 +6,14 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect, it, vi } from "vitest";
 import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
-import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
+import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-connection";
 
 // Shared MCP-client mock scaffold for the voice tool-bridge tests (OpenAI
-// Realtime + Gemini Live). Both bridges build on the same mcp-client-helpers, so
+// Realtime + Gemini Live). Both bridges build on the same mcp-client-connection, so
 // they share one fake client + one vi.mock factory rather than duplicating the
 // setup in each test file.
 //
-// Only mcp-client-helpers is mocked. connectAndListTools is left real, so each
+// Only mcp-client-connection is mocked. connectAndListTools is left real, so each
 // bridge's close-on-catalog-failure path is genuinely exercised — which is also
 // why it lives in its own module: a mock can't intercept a same-module call.
 
@@ -29,7 +29,7 @@ export const fakeMcpClient = {
 } as unknown as Client;
 
 /**
- * Factory for `vi.mock("#webui/chat/helpers/mcp-client-helpers")` — returns the
+ * Factory for `vi.mock("#webui/chat/helpers/mcp-client-connection")` — returns the
  * fake client and a passthrough filterEnabledTools.
  * @returns The mocked module shape
  */

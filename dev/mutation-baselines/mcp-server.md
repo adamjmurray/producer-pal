@@ -61,12 +61,12 @@ rather than real gaps:
 
 ## Gaps closed (`mcpServer`)
 
-| Gap (now killed)                                                                | Test added / strengthened     |
-| ------------------------------------------------------------------------------- | ----------------------------- |
-| `requireString`/`optionalString` null-args `?.[key]` guard + field-named errors | `route-args.test.ts` (new)    |
-| `clampLibraryLimit` non-positive request → default (the `<= 0` branch)          | `library-filters.test.ts`     |
-| `parseFrontmatter` body: anchored `^\n` strip preserves interior newlines       | `frontmatter.test.ts`         |
-| `cosineSimilarity` bounded by the shorter vector (no read past the end)         | `fe-values-helpers.test.ts`   |
-| `rejectCrossOriginWrite`: foreign origin → 403 + returns `true`                 | `request-origin.test.ts`      |
-| `resolveAbsolutePaths`: 3-segment path sets `folder` (the `>= 3` boundary)      | `reconstruct-path.test.ts`    |
-| Custom-skills index emits no `## Disabled` section when all skills are enabled  | `custom-skills-store.test.ts` |
+| Gap (now killed)                                                                | Test added / strengthened         |
+| ------------------------------------------------------------------------------- | --------------------------------- |
+| `requireString`/`optionalString` null-args `?.[key]` guard + field-named errors | `route-string-args.test.ts` (new) |
+| `clampLibraryLimit` non-positive request → default (the `<= 0` branch)          | `library-filters.test.ts`         |
+| `parseFrontmatter` body: anchored `^\n` strip preserves interior newlines       | `frontmatter.test.ts`             |
+| `cosineSimilarity` bounded by the shorter vector (no read past the end)         | `feature-vectors.test.ts`         |
+| `rejectCrossOriginWrite`: foreign origin → 403 + returns `true`                 | `request-origin.test.ts`          |
+| `resolveAbsolutePaths`: 3-segment path sets `folder` (the `>= 3` boundary)      | `reconstruct-path.test.ts`        |
+| Custom-skills index emits no `## Disabled` section when all skills are enabled  | `custom-skills-store.test.ts`     |

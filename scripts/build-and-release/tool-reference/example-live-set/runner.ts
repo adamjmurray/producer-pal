@@ -62,9 +62,9 @@ export async function createExampleRunner(): Promise<ExampleRunner> {
     buildExampleLiveSet();
     // Deletes have to actually remove the object, or ppal-delete documents
     // itself failing: it verifies a delete landed by looking the id up again,
-    // and a mock that keeps the object makes every delete report
-    // `deleted: false`. Safe here where it isn't in the shared tests, because
-    // each example rebuilds the Live Set above.
+    // and a mock that keeps the object makes every delete report a skip — or
+    // throw, where the example names one target. Safe here where it isn't in
+    // the shared tests, because each example rebuilds the Live Set above.
     simulateMockDeletes();
 
     const def = defs.get(example.toolName);

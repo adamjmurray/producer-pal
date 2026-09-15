@@ -18,7 +18,7 @@ import {
   unexpectedArgsWarning,
 } from "#src/tools/shared/tool-framework/unexpected-args.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
-import { paramNamesSomething } from "#src/tools/shared/utils.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };

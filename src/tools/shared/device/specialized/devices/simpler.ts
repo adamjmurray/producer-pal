@@ -3,21 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import {
   probeSimplerSample,
   setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
+import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   enumParam,
   readBoolProp,
   writeBoolProp,
   writeIntFromSet,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import {
+  type ActionOutcome,
   type PseudoParamWrite,
   type SpecializedDeviceSpec,
 } from "../specialized-device-types.ts";
@@ -94,8 +94,10 @@ function readEstimatedPlaybackLength(device: LiveAPI): number | undefined {
  * @returns An ActionHandler that calls the method
  */
 function sampleAction(method: string) {
-  return (device: LiveAPI): void => {
+  return (device: LiveAPI): ActionOutcome => {
     device.call(method);
+
+    return null;
   };
 }
 
@@ -188,12 +190,12 @@ export const simplerSpec: SpecializedDeviceSpec = {
         const beats = Number(args[0]);
 
         if (!Number.isFinite(beats)) {
-          console.warn(`warpAs requires a numeric beats argument`);
-
-          return;
+          return "requires a numeric beats argument";
         }
 
         device.call("warp_as", beats);
+
+        return null;
       },
       signature: "warpAs(beats)",
       description: "Warp the active region to span the given number of beats",

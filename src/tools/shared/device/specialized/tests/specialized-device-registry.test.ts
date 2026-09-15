@@ -7,7 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { type WrittenPseudoParam } from "../../helpers/device-display-helpers.ts";
+import { type WrittenPseudoParam } from "../../helpers/param-reading.ts";
 import { driftSpec } from "../devices/drift.ts";
 import {
   autoFilterSpec,
@@ -31,6 +31,7 @@ import {
 } from "../specialized-device-registry.ts";
 import { type InactiveWhenRule } from "../specialized-device-types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "./refused-write-assertions.ts";
 
 /**
  * Register a mock device with a given class_display_name.
@@ -110,18 +111,17 @@ describe("applySpecializedParamWrite", () => {
     expect((outcome![0] as WrittenPseudoParam).read()).toBe("single");
   });
 
-  it("reports no entry for a value the pseudo-param refused", () => {
+  it("reports a value the pseudo-param refused in that param's own entry", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    // "bogus" is not a routing mode: nothing was written, so nothing may say
-    // it reads as "single" — that would report the untouched value as written.
-    expect(
+    // "bogus" is not a routing mode: nothing was written, so the entry carries
+    // the reason, not the untouched value it would otherwise read as "single".
+    expectWriteRefused(
       applySpecializedParamWrite(device, "routingMode", "bogus"),
-    ).toStrictEqual([]);
-    expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid routingMode"),
+      "routingMode",
+      "not a valid routingMode",
     );
+    expect(device.set).not.toHaveBeenCalled();
   });
 
   it("reports a read-only pseudo-param as written by nothing", () => {
@@ -130,11 +130,21 @@ describe("applySpecializedParamWrite", () => {
     const outcome = applySpecializedParamWrite(device, "multiSampleMode", 0);
 
     expect(outcome).toStrictEqual([
-      { name: "multiSampleMode", reason: "read-only" },
+      { name: "multiSampleMode", ok: false, reason: "read-only" },
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("read-only"),
-    );
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  // Matching is case-insensitive, so the spec's own spelling would leave the
+  // caller matching the entry against something it never sent.
+  it("names a read-only pseudo-param the way the call spelled it", () => {
+    const device = registerDevice("Simpler", { multi_sample_mode: 1 });
+
+    expect(
+      applySpecializedParamWrite(device, "multisamplemode", 0),
+    ).toStrictEqual([
+      { name: "multisamplemode", ok: false, reason: "read-only" },
+    ]);
   });
 });
 
@@ -169,57 +179,88 @@ describe("readSpecializedParams", () => {
 });
 
 describe("applySpecializedActions", () => {
-  it("dispatches a recognized action", () => {
+  it("dispatches a recognized action and reports it by the string sent", () => {
     registerMockObject("simpler-1", {
       type: "SimplerDevice",
       properties: { class_display_name: "Simpler" },
     });
     const device = LiveAPI.from("id simpler-1");
 
-    applySpecializedActions(device, ["reverse"]);
+    const results = applySpecializedActions(device, ["reverse"]);
 
     expect(device.call).toHaveBeenCalledWith("reverse");
+    expect(results).toStrictEqual([{ action: "reverse" }]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns on an unparseable action", () => {
+  it("answers per action sent, in the order sent", () => {
     const device = registerDevice("Simpler");
 
-    applySpecializedActions(device, ["1bad("]);
+    const results = applySpecializedActions(device, [
+      "reverse",
+      "doesNotExist",
+      "crop",
+    ]);
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("could not parse action"),
-    );
+    expect(results.map((entry) => entry.action)).toStrictEqual([
+      "reverse",
+      "doesNotExist",
+      "crop",
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns on an unknown action for the device", () => {
+  it("skips an unparseable action", () => {
     const device = registerDevice("Simpler");
 
-    applySpecializedActions(device, ["doesNotExist"]);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unknown action"),
-    );
+    expect(applySpecializedActions(device, ["1bad("])).toStrictEqual([
+      {
+        action: "1bad(",
+        ok: false,
+        reason: "could not parse: expected name or name(args)",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns on an action for a generic device (no spec)", () => {
+  it("skips an unknown action for the device", () => {
+    const device = registerDevice("Simpler");
+
+    expect(applySpecializedActions(device, ["doesNotExist"])).toStrictEqual([
+      {
+        action: "doesNotExist",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("skips an action for a generic device (no spec)", () => {
     const device = registerDevice("Operator");
 
-    applySpecializedActions(device, ["reverse"]);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unknown action"),
-    );
+    expect(applySpecializedActions(device, ["reverse"])).toStrictEqual([
+      {
+        action: "reverse",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
   });
 
-  it("warns on an action for a device whose spec defines none", () => {
+  it("skips an action for a device whose spec defines none", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    applySpecializedActions(device, ["reverse"]);
+    const results = applySpecializedActions(device, ["reverse"]);
 
     expect(device.call).not.toHaveBeenCalledWith("reverse");
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("unknown action"),
-    );
+    expect(results).toStrictEqual([
+      {
+        action: "reverse",
+        ok: false,
+        reason: "unknown action for this device",
+      },
+    ]);
   });
 });
 

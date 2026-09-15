@@ -11,15 +11,14 @@
 import { argText } from "../../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type EvalScenario } from "../../../types.ts";
-import {
-  assertNotesRead,
-  getTransforms,
-} from "../helpers/clip-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { getTransforms } from "../helpers/clip-turn-readers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 export const legatoTransforms: EvalScenario = {
   id: "legato-transforms",
+  tags: ["transforms"],
   description: "Add octaves, humanize timing, and apply legato with tolerance",
   kind: "capability",
   requires: { transforms: true },

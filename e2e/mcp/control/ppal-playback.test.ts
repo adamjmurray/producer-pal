@@ -132,8 +132,16 @@ describe("ppal-playback", () => {
       startTime: "5|1",
     });
 
+    // Playback began where the caller put it, so the result says nothing about
+    // it. A later call that names no position is the one that reports it.
     expect(playFrom.playing).toBe(true);
-    expect(playFrom.startTime).toBe("5|1");
+    expect(playFrom.startTime).toBeUndefined();
+
+    await playback({ action: "stop" });
+
+    expect((await playback({ action: "play-arrangement" })).startTime).toBe(
+      "5|1",
+    );
 
     await playback({ action: "stop" });
   });
@@ -144,11 +152,15 @@ describe("ppal-playback", () => {
       startTime: "9|1",
     });
 
-    // Where the next play begins, which is the whole point of the call. The
-    // playhead doesn't move, and isn't reported: Live updates it too late for
-    // this request to read it back.
-    expect(set.startTime).toBe("9|1");
+    // It landed where the caller put it, so nothing reports — least of all the
+    // playhead, which doesn't move and which Live updates too late to read back.
+    expect(set.startTime).toBeUndefined();
     expect(set.playing).toBe(false);
+
+    // The next play begins there, and that call is the one that says so.
+    expect((await playback({ action: "play-arrangement" })).startTime).toBe(
+      "9|1",
+    );
 
     await playback({ action: "stop" });
   });
@@ -237,7 +249,8 @@ describe("ppal-playback", () => {
     const stopped = await playback({ action: "stop", startTime: "9|1" });
 
     expect(stopped.playing).toBe(false);
-    expect(stopped.startTime).toBe("9|1");
+    // Parked where the caller put it, so the stop says nothing about it.
+    expect(stopped.startTime).toBeUndefined();
 
     const playing = await playback({ action: "play-arrangement" });
 
@@ -283,6 +296,26 @@ describe("ppal-playback", () => {
     expect(slid.loopEnd).toBeUndefined();
 
     await playback({ action: "update-arrangement", loop: false });
+  });
+
+  it("names loopStart, not loopEnd, when a pickup slides it before 1|1", async () => {
+    // Regression: a pickup bar resolves to a negative position, and only
+    // loopStart was named — the refusal used to blame loopEnd and print a
+    // value ("1|1") nothing in the call computed.
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: {
+        action: "play-arrangement",
+        loopStart: "1|1-n1/4",
+      },
+    });
+
+    const warnings = getToolWarnings(refused);
+
+    expect(warnings.some((w) => w.includes("loopStart"))).toBe(true);
+    expect(warnings.some((w) => w.includes("loopEnd"))).toBe(false);
+
+    await playback({ action: "stop" });
   });
 
   it("refuses an inverted loop whole, leaving the loop off", async () => {
@@ -357,8 +390,16 @@ describe("ppal-playback", () => {
       startTime: "5|1",
     });
 
-    expect(set.startTime).toBe("5|1");
+    // The position landed where it was put, so that goes unsaid too.
+    expect(set.startTime).toBeUndefined();
     expect(set.loop).toBeUndefined();
+
+    // The call that names no position is the one that reports it.
+    expect((await playback({ action: "play-arrangement" })).startTime).toBe(
+      "5|1",
+    );
+
+    await playback({ action: "stop" });
   });
 
   it("plays and stops session clips", async () => {

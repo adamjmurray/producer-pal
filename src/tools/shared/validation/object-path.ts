@@ -12,15 +12,20 @@
 // anything is created or moved. See dev/Object-Paths.md.
 
 import {
+  NEW_CHAIN,
+  NEW_DEVICE,
   parseLegacyPath,
   pathError,
   splitCoord,
 } from "./helpers/object-path-lexer.ts";
-import { parseDeviceTail } from "./helpers/object-path-device-tail.ts";
+import {
+  DEVICE_TYPE_FORMS,
+  parseDeviceTail,
+} from "./helpers/object-path-device-tail.ts";
 import {
   arrangementPosition,
   type ArrangementPosition,
-} from "./helpers/object-path-coord.ts";
+} from "./helpers/object-path-position.ts";
 
 /** A path root naming a track. */
 export type TrackSegment =
@@ -28,15 +33,37 @@ export type TrackSegment =
   | { kind: "return-track"; returnIndex: number }
   | { kind: "master-track" };
 
-/** A segment below a track root, down the device chain. */
+/** A kind of device, for a segment that addresses one by type. */
+export type DeviceTypeName = "instrument" | "midi-effect" | "audio-effect";
+
+/**
+ * A segment below a track root, down the device chain. `device-by-type` names
+ * a device by what it is (`inst`, `mfx0`, `afx1`) rather than by its position,
+ * counting only devices of that type; its index is 0 for an instrument, which
+ * a container holds at most one of.
+ */
 export type DeviceSegment =
   | { kind: "device"; index: number }
+  | { kind: "device-by-type"; deviceType: DeviceTypeName; index: number }
   | { kind: "chain"; index: number }
   | { kind: "return-chain"; index: number }
   | { kind: "drum-pad"; note: string };
 
+/**
+ * A device-chain segment that already names its target by position. Every
+ * resolver takes these: a `device-by-type` segment is substituted for the
+ * `d<n>` it resolves to before anything walks the path.
+ */
+export type CanonicalDeviceSegment = Exclude<
+  DeviceSegment,
+  { kind: "device-by-type" }
+>;
+
 /** A device-chain segment that indexes into a Live API collection. */
-export type IndexedSegment = Exclude<DeviceSegment, { kind: "drum-pad" }>;
+export type IndexedSegment = Exclude<
+  CanonicalDeviceSegment,
+  { kind: "drum-pad" }
+>;
 
 /** A path naming a place to create something rather than a thing that exists. */
 export type NewObjectSegment =
@@ -51,16 +78,19 @@ export type ObjectPath =
   | { kind: "scene"; sceneIndex: number }
   | { kind: "slot"; trackIndex: number; sceneIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
+  | { kind: "new-take-lane"; trackIndex: number }
   | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
+  | { kind: "new-chain"; root: TrackSegment; segments: DeviceSegment[] }
+  | { kind: "new-device"; root: TrackSegment; segments: DeviceSegment[] }
   | ArrangementPosition;
 
 const TRACK_ROOT = /^t(\d+)$/;
 const RETURN_TRACK_ROOT = /^rt(\d+)$/;
 const SCENE = /^s(\d+)$/;
 const TAKE_LANE = /^l(\d+)$/;
-// An early spelling for "append a lane". Still recognized so it gets the
-// take-lane error rather than a device one: a "+" now only ever roots a path.
-const RETIRED_TAKE_LANE = "l+";
+// Appends a lane. A "+" is accepted only by the tool that creates that kind of
+// object, and a take lane is part of its track, so ppal-update-track owns it.
+const NEW_TAKE_LANE = "l+";
 const NEW_TRACK = "t+";
 const NEW_RETURN_TRACK = "rt+";
 const NEW_SCENE = "s+";
@@ -157,6 +187,8 @@ export function formatObjectPath(path: ObjectPath): string {
       return `t${path.trackIndex}/s${path.sceneIndex}`;
     case "take-lane":
       return `t${path.trackIndex}/l${path.laneIndex}`;
+    case "new-take-lane":
+      return `t${path.trackIndex}/${NEW_TAKE_LANE}`;
     case "new-track":
       return NEW_TRACK;
     case "new-return-track":
@@ -164,10 +196,11 @@ export function formatObjectPath(path: ObjectPath): string {
     case "new-scene":
       return NEW_SCENE;
     case "device":
-      return [
-        formatTrackSegment(path.root),
-        ...path.segments.map(formatDeviceSegment),
-      ].join("/");
+      return deviceChainPath(path.root, path.segments);
+    case "new-chain":
+      return `${deviceChainPath(path.root, path.segments)}/${NEW_CHAIN}`;
+    case "new-device":
+      return `${deviceChainPath(path.root, path.segments)}/${NEW_DEVICE}`;
     case "arrangement-position":
       return `${path.lane == null ? "" : formatObjectPath(path.lane)}[${path.position}]`;
     default:
@@ -193,6 +226,13 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
   switch (segment.kind) {
     case "device":
       return `d${segment.index}`;
+
+    case "device-by-type": {
+      const form = DEVICE_TYPE_FORMS[segment.deviceType];
+
+      return form.indexed ? `${form.segment}${segment.index}` : form.segment;
+    }
+
     case "chain":
       return `c${segment.index}`;
     case "return-chain":
@@ -209,6 +249,17 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
  */
 export function liveApiCollection(segment: IndexedSegment): string {
   return LIVE_API_COLLECTION[segment.kind];
+}
+
+/**
+ * Whether a trailing segment names a device rather than a container. Both
+ * spellings count, so an insertion path ending in `afx0` names a position the
+ * same way one ending in `d2` does.
+ * @param segment - The last device-chain segment, or undefined for none
+ * @returns True when the segment names a device
+ */
+export function namesDevice(segment: DeviceSegment | undefined): boolean {
+  return segment?.kind === "device" || segment?.kind === "device-by-type";
 }
 
 // --- Helpers below main exports ---
@@ -307,11 +358,30 @@ function parseTail(
     return parseTrackChild(root, first, tail.length, label, input);
   }
 
-  return {
-    kind: "device",
-    root,
-    segments: parseDeviceTail(tail, label, input),
-  };
+  const { segments, appendsChain, appendsDevice } = parseDeviceTail(
+    tail,
+    label,
+    input,
+  );
+
+  return { kind: deviceTailKind(appendsChain, appendsDevice), root, segments };
+}
+
+/**
+ * What a device chain names: a place for something new, or what is there.
+ * @param appendsChain - Whether the tail ended in `c+`
+ * @param appendsDevice - Whether it ended in `d+`
+ * @returns The path kind
+ */
+function deviceTailKind(
+  appendsChain: boolean,
+  appendsDevice: boolean,
+): "new-chain" | "new-device" | "device" {
+  if (appendsChain) {
+    return "new-chain";
+  }
+
+  return appendsDevice ? "new-device" : "device";
 }
 
 /**
@@ -321,9 +391,7 @@ function parseTail(
  */
 function isTrackChild(segment: string): boolean {
   return (
-    SCENE.test(segment) ||
-    TAKE_LANE.test(segment) ||
-    segment === RETIRED_TAKE_LANE
+    SCENE.test(segment) || TAKE_LANE.test(segment) || segment === NEW_TAKE_LANE
   );
 }
 
@@ -343,12 +411,12 @@ function parseTrackChild(
   label: string,
   input: string,
 ): ObjectPath {
-  if (
-    root.kind !== "track" ||
-    tailLength !== 1 ||
-    segment === RETIRED_TAKE_LANE
-  ) {
+  if (root.kind !== "track" || tailLength !== 1) {
     throw trackChildError(label, input, segment);
+  }
+
+  if (segment === NEW_TAKE_LANE) {
+    return { kind: "new-take-lane", trackIndex: root.trackIndex };
   }
 
   const scene = SCENE.exec(segment);
@@ -389,6 +457,21 @@ function trackChildError(label: string, input: string, segment: string): Error {
         input,
         `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes`,
       );
+}
+
+/**
+ * Renders a track root and the device chain below it.
+ * @param root - A parsed track root
+ * @param segments - The device-chain segments below it
+ * @returns The canonical path string
+ */
+function deviceChainPath(
+  root: TrackSegment,
+  segments: DeviceSegment[],
+): string {
+  return [formatTrackSegment(root), ...segments.map(formatDeviceSegment)].join(
+    "/",
+  );
 }
 
 /**

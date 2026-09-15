@@ -124,6 +124,14 @@ describe("ramp reach detection", () => {
     expect(warnings[0]).toContain("curve()");
   });
 
+  it("finds a ramp nested in another function's arguments", () => {
+    const { warnings } = reachWarnings(
+      "2|3-3|1: velocity = min(ramp(1, 127), 127)",
+    );
+
+    expect(warnings).toHaveLength(1);
+  });
+
   it("stays quiet for a non-ramp expression", () => {
     const { warnings } = reachWarnings("2|3-3|1: velocity = 64");
 

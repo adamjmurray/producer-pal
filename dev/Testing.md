@@ -27,7 +27,7 @@ step.
 
 - **Line limits**: whole test suites (`*.test.*`, `*.spec.*`, `*-test-cases.ts`)
   get 650 lines per file and 630 per function. Test helpers and fixtures use the
-  standard 325 / 115.
+  standard 375 / 115.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
   split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
@@ -68,6 +68,9 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - `mockNonExistentObjects()` makes unregistered IDs non-existent, for invalid-ID
   tests. `simulateMockDeletes()` makes `delete_*` calls really remove the
   target, leaving holders half-stale: cleared path, but the id still lying.
+  `deleteMockObject(id)` does the same for a fixture whose own `call`
+  implementation destroys something — an arrangement create clears the range it
+  writes to, and that never reaches a `delete_*`.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 
@@ -149,11 +152,40 @@ approval.
 comment block per tree, and names the worst files (`--all` lists every file).
 The license header and lint directives don't count.
 
-`src/test/comment-limits.test.ts` ratchets those numbers: comment lines, longest
-block, and how many files hold a block of 8+ lines. The caps live in
-`src/test/helpers/comment-limits.ts`, and `--markdown` prints them beside the
-current counts. Lower a limit when a count falls; raising one needs user
-approval.
+`src/test/comment-limits.test.ts` ratchets two numbers, neither of which moves
+when files are split, merged or renamed:
+
+- **Comment density** per tree — comment lines per code line, capped to 3
+  decimals within 0.005 of the current number. Lower a cap when density falls;
+  raising one needs user approval.
+- **Block length** — no comment block over `MAX_BLOCK_LINES` (25), repo-wide.
+  Files that were already over it are listed in `LONG_BLOCK_ALLOWANCES`, each at
+  its exact longest block. That list only shrinks: shortening or moving a block
+  means updating its entry in the same commit, and new long blocks don't get an
+  entry.
+
+The caps live in `src/test/helpers/comment-limits.ts`, and `--markdown` prints
+them beside the current numbers.
+
+## Module names
+
+`src/test/meta/naming/module-name-limits.test.ts` ratchets how many non-test
+modules per tree end in a nothing word (`helpers`, `utils`, `misc`, `common`,
+`support`). The caps live in `src/test/helpers/naming/module-name-limits.ts` and
+must match the current count exactly, so renaming a file means lowering the cap
+in the same commit. Test support files (`-test-helpers.ts`) don't count.
+
+`src/test/meta/naming/main-export-limits.test.ts` ratchets the same way over
+modules whose exported functions and classes share no word with the filename;
+its caps live in `src/test/helpers/naming/main-export-limits.ts`. A module that
+exports neither (a constants table, a `.def.ts`, scenario data) has no main
+export and isn't counted.
+
+That rule is weaker than "the first exported function is the main one, named
+after the file": any export sharing any word counts, matched by prefix so
+`parse`/`parser` counts too. Checked literally, the convention flags most of the
+repo — modules named for a subject with several peer exports, and noun/verb
+pairs — so a strict ratchet would push renames onto correctly named files.
 
 ## Auditing coverage
 

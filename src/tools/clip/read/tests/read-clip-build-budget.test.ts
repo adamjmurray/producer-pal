@@ -21,6 +21,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -55,15 +56,6 @@ const NOTES = [
     velocity_deviation: 0,
   },
 ];
-
-/**
- * How many objects the call resolved of one target shape.
- * @param shape - Target shape, indices written as `*`
- * @returns Resolutions of that shape
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
-}
 
 /**
  * A track whose only device is an instrument rack of CHAIN_COUNT chains with no

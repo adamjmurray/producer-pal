@@ -59,12 +59,12 @@ export function parseToolResult<T>(result: unknown): T {
 }
 
 /**
- * Parse a batch create/update result and assert its shape. Every batch tool
- * answers with an array whatever it operates on, so the scene and track suites
- * share this check before their own per-domain assertions.
- * @param result - Raw tool result from a batch call
- * @param count - Expected number of items in the batch
- * @returns The parsed batch items
+ * Parse a multi-target result and assert its shape. A batch write and a list
+ * read both answer with an array, so the suites share this check before their
+ * own per-domain assertions.
+ * @param result - Raw tool result from a call naming several targets
+ * @param count - Expected number of entries
+ * @returns The parsed entries
  */
 export function parseBatchResult<T>(result: unknown, count: number): T[] {
   const batch = parseToolResult<T[]>(result);
@@ -367,6 +367,28 @@ export async function readDeviceCount(
 }
 
 /**
+ * The id Live currently gives the object at a path, read through the tool that
+ * owns it. Read it per test: Live reassigns ids every time it opens a Set, so
+ * an id written into a test file names a different object on the next run.
+ *
+ * @param client - Connected MCP client
+ * @param tool - The read tool for that kind of object, e.g. "ppal-read-track"
+ * @param path - Producer Pal path to the object
+ * @returns The object's id
+ */
+export async function readIdAtPath(
+  client: Client,
+  tool: string,
+  path: string,
+): Promise<string> {
+  const object = parseToolResult<{ id: string }>(
+    await client.callTool({ name: tool, arguments: { path } }),
+  );
+
+  return object.id;
+}
+
+/**
  * Creates a fresh MIDI track and waits for state to settle.
  * @param client - Connected MCP client
  * @returns The new track's index
@@ -534,6 +556,17 @@ export async function serverHasCodeExec(client: Client): Promise<boolean> {
 // Shared Result Interfaces
 // ============================================================================
 
+/**
+ * The entry a call leaves where it couldn't carry out the target named, on a
+ * read or a write. `ok` marks only these.
+ */
+export interface SkippedTargetResult {
+  id?: string;
+  path?: string;
+  ok: false;
+  reason: string;
+}
+
 /** Result from ppal-create-clip tool */
 export interface CreateClipResult {
   id: string;
@@ -544,6 +577,8 @@ export interface CreateClipResult {
   path?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
+  /** What the call asked for that the clip didn't get */
+  reason?: string;
 }
 
 /** Result from ppal-update-clip tool (single clip) */
@@ -558,6 +593,9 @@ export interface UpdateClipResult {
 export interface CreateTrackResult {
   id: string;
   path?: string;
+  /** The name Live landed on, only when it isn't the one asked for */
+  name?: string;
+  reason?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
@@ -578,6 +616,8 @@ export interface ReadClipResult {
   arrangementLength?: string;
   /** Only on a clip a move was set to overwrite: whether it was cleared */
   deleted?: boolean;
+  /** Why the update didn't go as asked, when something landed anyway */
+  reason?: string;
   noteCount?: number;
   notes?: string;
   // Audio clip properties

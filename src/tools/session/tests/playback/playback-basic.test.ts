@@ -57,12 +57,9 @@ describe("transport", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
     expectLiveSetProperty(liveSet, "start_time", 16); // bar 5 = 16 beats in 4/4
-    // play-arrangement obeys the loop, so it says whether one is coming.
-    expect(result).toStrictEqual({
-      playing: true,
-      startTime: "5|1",
-      loop: false,
-    });
+    // Playback began where the caller put it, so the result says nothing about
+    // it. play-arrangement obeys the loop, so it says whether one is coming.
+    expect(result).toStrictEqual({ playing: true, loop: false });
   });
 
   it("should handle update-arrangement action with loop settings", () => {
@@ -145,6 +142,25 @@ describe("transport", () => {
     expect(result).toStrictEqual({ playing: false });
   });
 
+  it("names loopStart, not loopEnd, when loopStart alone lands before 1|1", () => {
+    // Regression: a pickup bar ("1|1-n1/4") resolves to a negative position.
+    // With only loopStart named, the refusal used to report a made-up loopEnd
+    // and print 1|1 for it instead of naming the param the caller actually sent.
+    liveSet = setupPlaybackLiveSet({ is_playing: 0 });
+
+    playback({
+      action: "update-arrangement",
+      loopStart: "1|1-n1/4",
+    });
+
+    expectLoopNotWritten(liveSet);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringMatching(
+        /^loopStart .+ is before 1\|1 — leaving the loop as it was$/,
+      ),
+    );
+  });
+
   it("turns the loop on when only its bounds are named", () => {
     // Bounds with the loop off do nothing audible, so asking for a loop from
     // bar 3 to bar 7 means asking for a loop.
@@ -207,7 +223,8 @@ describe("transport", () => {
     });
 
     expectLiveSetProperty(liveSet, "start_time", 6); // bar 3 = 6 beats in 3/4
-    expect(result.startTime).toBe("3|1");
+    // The position landed where it was asked for, in the song's own meter.
+    expect(result.startTime).toBeUndefined();
     // The loop is off in the mock, and play-arrangement obeys it — so it says
     // the loop is off, and spends no tokens on bounds that do nothing.
     expectReportedLoop(result, { loop: false });
@@ -530,7 +547,7 @@ describe("transport", () => {
 
     expectLoopNotWritten(liveSet);
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("would start the loop before 1|1"),
+      expect.stringContaining("would set the loop start before 1|1"),
     );
     // Nothing slid, so there is no moved end to report — reporting one would
     // read as half the request landing.
@@ -557,8 +574,8 @@ describe("transport", () => {
     expectLiveSetProperty(liveSet, "loop_start", 0);
     expectLiveSetProperty(liveSet, "loop_length", 6); // 2 bars = 6 Ableton beats
 
-    // Both ends came from the call, so the result repeats neither.
-    expect(result).toStrictEqual({ playing: true, startTime: "2|1" });
+    // Every position came from the call, so the result repeats none of them.
+    expect(result).toStrictEqual({ playing: true });
   });
 
   it("plays from the start position already set when given no startTime", () => {

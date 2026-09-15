@@ -12,8 +12,8 @@
 import {
   type ArrangementPosition,
   type CompleteArrangementPosition,
-} from "./object-path-coord.ts";
-import { requireClipPath, type ClipPath } from "./object-path-helpers.ts";
+} from "./object-path-position.ts";
+import { requireClipPath, type ClipPath } from "./object-paths.ts";
 import { pathError } from "./object-path-lexer.ts";
 import { formatObjectPath, type ObjectPath } from "../object-path.ts";
 

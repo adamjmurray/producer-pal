@@ -139,10 +139,13 @@ describe("paramsInputSchema", () => {
     ]);
   });
 
-  it("rejects an entry with a missing name", () => {
-    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow(
-      "Invalid input: expected string, received undefined",
-    );
+  it("accepts an entry addressed by id, or by neither (refused later)", () => {
+    expect(paramsInputSchema.parse([{ id: 42, value: "1" }])).toStrictEqual([
+      { id: "42", value: "1" },
+    ]);
+    expect(paramsInputSchema.parse([{ value: "1" }])).toStrictEqual([
+      { value: "1" },
+    ]);
   });
 
   it("parses a JSON-stringified array (small-model fallback)", () => {

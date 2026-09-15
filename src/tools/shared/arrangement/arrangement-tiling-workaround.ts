@@ -10,13 +10,13 @@
  * clips before duplication and handle moving clips from holding areas.
  */
 
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
   type TilingContext,
-} from "./helpers/arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-clips.ts";
 
 /**
  * Verify a duplicate_clip_to_arrangement result and return the new clip's ID.

@@ -13,11 +13,14 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseBatchResult,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
+  type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers";
 
@@ -175,6 +178,23 @@ describe("ppal-update-track", () => {
     await updateTrack({ id: trackId, panningMode: "stereo", pan: 0 });
   });
 
+  it("reads back a tiny pan as a clean rounded number, not a noisy string", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![0]!.id;
+
+    // Live can serialize a value this small as an exponent-notation string
+    // (e.g. "9.999999747378752e-05" for 0.0001), and reads must still round it
+    // to a clean number rather than passing the noisy text through.
+    await updateTrack({ id: trackId, pan: 0.0001 });
+
+    const panTrack = await readTrackMixer(trackId);
+
+    expect(panTrack.pan).toBe(0);
+    expect(typeof panTrack.pan).toBe("number");
+
+    await updateTrack({ id: trackId, pan: 0 });
+  });
+
   it("updates multiple tracks in batch", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
@@ -318,13 +338,12 @@ describe("ppal-update-track", () => {
     expect(track.sends![0]!.gainDb).toBe(-9.55);
   });
 
-  // The write result says what landed. Asserted against a read of
-  // the same track rather than a hardcoded number, so no fader position has to
-  // be guessed. The values carry the discrimination: Live keeps a float32 of
-  // the 6-significant-digit value, so a result that echoed the argument would
-  // report -6.333333 where a read reports -6.33. A value like -6 or -0.3
-  // round-trips to itself and would pass either way.
-  it("reports the gain and pan it wrote, read back off the track", async () => {
+  // A write result says only what didn't land as asked, so a gain and pan Live
+  // kept are read back from the track instead. The values carry the
+  // discrimination: Live keeps a float32 of the 6-significant-digit value, so
+  // the read reports -6.33 for a -6.333333 request — the same value at the
+  // resolution reads publish, which is why the write says nothing.
+  it("says nothing about the gain and pan it wrote", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
@@ -335,35 +354,60 @@ describe("ppal-update-track", () => {
     });
 
     const data = parseToolResult<UpdateTrackResult>(result);
+
+    expect(data.gainDb).toBeUndefined();
+    expect(data.pan).toBeUndefined();
+    expect(data.reason).toBeUndefined();
+    // Stereo is the mode every caller assumes, so it goes unsaid.
+    expect(data.panningMode).toBeUndefined();
+
+    // The follow-up read is what proves both writes landed.
     const track = await readTrackMixer(trackId);
 
-    expect(data.gainDb).toBe(track.gainDb);
-    expect(data.pan).toBe(track.pan);
+    expect(track.gainDb).toBe(-6.33);
+    expect(track.pan).toBe(-0.33);
   });
 
-  it("reports the split pans it wrote, read back off the track", async () => {
+  it("says pan had no effect in split mode, and nothing about the pans", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
     try {
-      // Split mode writes two params and refuses `pan`, so a result carrying
-      // only the gain would read as "the pans did not land".
       const result = await updateTrack({
         id: trackId,
         panningMode: "split",
         gainDb: -12.333333,
         leftPan: -0.333333,
         rightPan: 0.666667,
+        pan: 0.5,
       });
 
       const data = parseToolResult<UpdateTrackResult>(result);
+
+      // Everything that landed goes unsaid; `pan` doesn't apply in split mode,
+      // and that is the track's own business, so it rides on its entry.
+      expect(data.gainDb).toBeUndefined();
+      expect(data.leftPan).toBeUndefined();
+      expect(data.rightPan).toBeUndefined();
+      expect(data.pan).toBeUndefined();
+      expect(data.reason).toContain("pan had no effect");
+      // The call set the mode itself, so it isn't reported back.
+      expect(data.panningMode).toBeUndefined();
+
       const track = await readTrackMixer(trackId);
 
-      expect(data.gainDb).toBe(track.gainDb);
-      expect(data.leftPan).toBe(track.leftPan);
-      expect(data.rightPan).toBe(track.rightPan);
-      // `pan` doesn't apply in split mode, so nothing may report as landed.
-      expect(data.pan).toBeUndefined();
+      expect(track.gainDb).toBe(-12.33);
+      expect(track.leftPan).toBe(-0.33);
+      expect(track.rightPan).toBe(0.67);
+
+      // A pan param written without naming the mode reports split: the state
+      // that decides which pan params apply, and one the caller may never
+      // have read.
+      const inSplit = parseToolResult<UpdateTrackResult>(
+        await updateTrack({ id: trackId, leftPan: -0.25 }),
+      );
+
+      expect(inSplit.panningMode).toBe("split");
     } finally {
       // In a finally so a failed assertion can't strand the track in split
       // mode for the rest of the file.
@@ -371,7 +415,7 @@ describe("ppal-update-track", () => {
     }
   });
 
-  it("reports the sends it wrote, read back at Live's display resolution", async () => {
+  it("says nothing about a send that took the level asked for", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
     const returnTrack = liveSet.returnTracks![0]!;
@@ -381,33 +425,32 @@ describe("ppal-update-track", () => {
       sends: [{ return: returnTrack.id, gainDb: -6.333333 }],
     });
 
-    // Live hands back a 32-bit float, so an unrounded read reports
-    // -6.333000183105469. The id is the one a read reports, so the result
-    // round-trips straight back into `sends`.
-    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
-      {
-        return: returnTrack.name,
-        returnId: returnTrack.id,
-        gainDb: -6.33,
-      },
-    ]);
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toBeUndefined();
+
+    // Live hands back a 32-bit float, so the read rounds it to -6.33 — the
+    // level asked for, which is why the write had nothing to report.
+    const track = await readTrackMixer(trackId);
+
+    expect(track.sends![0]!.gainDb).toBe(-6.33);
   });
 
-  it("reports the sendGainDb/sendReturn pair under sends too", async () => {
+  it("says nothing about the sendGainDb/sendReturn pair either", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
     const returnTrack = liveSet.returnTracks![1]!;
 
-    // One send has one shape in the result, whichever param spelled it.
     const result = await updateTrack({
       id: trackId,
       sendGainDb: -18,
       sendReturn: returnTrack.id,
     });
 
-    expect(parseToolResult<UpdateTrackResult>(result).sends).toStrictEqual([
-      { return: returnTrack.name, returnId: returnTrack.id, gainDb: -18 },
-    ]);
+    expect(parseToolResult<UpdateTrackResult>(result).sends).toBeUndefined();
+
+    const track = await readTrackMixer(trackId);
+    const send = track.sends!.find((s) => s.returnId === returnTrack.id);
+
+    expect(send!.gainDb).toBe(-18);
   });
 
   it("reports no send for a return name that matches none", async () => {
@@ -456,7 +499,7 @@ describe("ppal-update-track", () => {
   it("can never give a return track an all-digit name", async () => {
     // Checked here, rather than adding an all-digit-return-name send test:
     // Live prepends a return's own send letter to its name (see
-    // stripReturnTrackLetter) and re-asserts it even over an explicit rename,
+    // returnTrackRename) and re-asserts it even over an explicit rename,
     // so a return track's name can never read back as pure digits — the
     // numeric-name risk that hits locators, chains, and regular tracks
     // doesn't reach return-track sends at all.
@@ -484,6 +527,50 @@ describe("ppal-update-track", () => {
   });
 });
 
+describe("ppal-update-track over a list with a target it can't reach", () => {
+  it("keeps a slot for a path that names no track, and warns nowhere", async () => {
+    // parseToolResult fails the test if anything warned: the entry carries it.
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ path: "t0,t999", name: "ListSkip,Nowhere" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0" }),
+      { path: "t999", ok: false, reason: 'no track at path "t999"' },
+    ]);
+
+    // The name went to t0, not to whatever followed the miss.
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "t0" },
+      }),
+    );
+
+    expect(track.name).toBe("ListSkip");
+  });
+
+  it("reports a dead id in its own slot", async () => {
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ id: "99999,99998", mute: false }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      { id: "99999", ok: false, reason: 'id "99999" does not exist' },
+      { id: "99998", ok: false, reason: 'id "99998" does not exist' },
+    ]);
+  });
+
+  it("throws when the one target it was given names no track", async () => {
+    const result = await updateTrack({ path: "t999", mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('no track at path "t999"');
+  });
+});
+
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
   returnTracks?: Array<{ id: string; name: string }>;
@@ -495,11 +582,19 @@ interface CreateTrackResult {
 
 interface UpdateTrackResult {
   id: string;
+  path?: string;
   gainDb?: number;
   pan?: number;
   leftPan?: number;
   rightPan?: number;
-  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
+  panningMode?: "stereo" | "split";
+  reason?: string;
+  sends?: Array<{
+    return: string;
+    returnId?: string;
+    gainDb: number;
+    reason?: string;
+  }>;
 }
 
 interface ReadTrackResult {
@@ -514,5 +609,5 @@ interface ReadTrackResult {
   state?: string;
   isArmed?: boolean;
   monitoringState?: string;
-  sends?: Array<{ return: string; gainDb: number }>;
+  sends?: Array<{ return: string; returnId?: string; gainDb: number }>;
 }

@@ -403,4 +403,38 @@ describe("formatChatMessages", () => {
       { type: "compaction", content: "Earlier summary" },
     ]);
   });
+
+  it("puts a user message's images ahead of its text", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "user",
+        content: "like this",
+        images: [
+          { mediaType: "image/png", data: "AAA" },
+          { mediaType: "image/webp", data: "BBB" },
+        ],
+      },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result[0]!.parts).toStrictEqual([
+      { type: "image", mediaType: "image/png", data: "AAA" },
+      { type: "image", mediaType: "image/webp", data: "BBB" },
+      { type: "text", content: "like this" },
+    ]);
+  });
+
+  it("formats an image-only message with no text part", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "user",
+        content: "",
+        images: [{ mediaType: "image/png", data: "AAA" }],
+      },
+    ];
+
+    expect(formatChatMessages(history)[0]!.parts).toStrictEqual([
+      { type: "image", mediaType: "image/png", data: "AAA" },
+    ]);
+  });
 });

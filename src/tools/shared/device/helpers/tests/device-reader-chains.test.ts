@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
-import { processDeviceChains } from "../device-reader-helpers.ts";
+import { processDeviceChains } from "../device-reading.ts";
 
 // A chain with no mixer device, so buildChainInfo adds no mixer fields.
 const noMixer = { exists: () => false };

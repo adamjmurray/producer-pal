@@ -142,12 +142,13 @@ describe("updateDevice - bare drum pad paths", () => {
     });
 
     expect(chains[0]?.set).toHaveBeenCalledWith("name", "Kick");
-    // The chain's mixer read-back rides along, so a single-layer pad reports
-    // the level that landed the same way a chain path does.
+    // The chain's mixer report rides along, so a single-layer pad says what
+    // Live kept the same way a chain path does.
     expect(result).toStrictEqual({
       id: "pad-36",
       chainIds: ["chain-0"],
       gainDb: -6.02,
+      reason: "gainDb read back as shown, not as sent",
     });
   });
 
@@ -165,32 +166,48 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ chainIds: ["chain-0", "chain-1"] });
   });
 
-  it("warns and skips a pad with no chains, by path as well as by id", () => {
+  it("refuses a pad with no chains, by path as well as by id", () => {
     const { pad } = registerDrumRack(0);
-
-    const result = updateDevice({ path: "t0/d0/pC1", mute: true });
 
     // Live drops the write — set returns 1 and the read-back stays 0 — so a
     // result here would say a mute happened that didn't.
-    expect(capturedWarnings()).toContain(
+    expect(() => updateDevice({ path: "t0/d0/pC1", mute: true })).toThrow(
       "drum pad t0/d0/pC1 (id pad-36) has no chains, so there is nothing " +
         "to update — Live ignores writes to an empty pad",
     );
     expect(pad?.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual([]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns once, not once per layer, for a device-only property", () => {
+  // The rack's return chains belong to the rack, so a send naming none is a
+  // fact about the pad the call named — its own entry says it (ADR-0042).
+  it("reports a send naming no return chain on the pad's entry", () => {
+    registerDrumRack(1);
+
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      sends: [{ return: "Nope", gainDb: -6 }],
+    }) as { sends?: unknown[] };
+
+    expect(result.sends).toStrictEqual([
+      {
+        return: "Nope",
+        ok: false,
+        reason:
+          'no return chain matching "Nope" (rack has no return chains; they can only be added in Live)',
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Once for the pad, not once per layer: the first chain carries the full
+  // options and the rest only take what broadcasts.
+  it("names a device-only property once for the whole pad", () => {
     registerDrumRack(2);
 
-    updateDevice({ path: "t0/d0/pC1", macroCount: 4 });
-
-    expect(
-      capturedWarnings().filter((warning) =>
-        warning.startsWith(
-          "'macroCount' not applicable to DrumChain t0/d0/pC1/c0 (id ",
-        ),
-      ),
-    ).toHaveLength(1);
+    expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: 4 })).toThrow(
+      "macroCount not applicable to DrumChain",
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

@@ -4,15 +4,49 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Shared right-pane form chrome for the collection managers (memory, custom
-// skills): a labeled Field row, the create-editable / edit-readonly NameField,
-// and the Save/Delete + status EditorFooter. The domain-specific fields (custom
-// skills' enabled toggle) live in each collection's own editor; these are the
-// parts they have in common so the two editors read identically.
+// skills): the scrolling shell with its external-update banner, a labeled Field
+// row, the create-editable / edit-readonly NameField, and the Save/Delete +
+// status EditorFooter. The domain-specific fields (custom skills' enabled
+// toggle) live in each collection's own editor; these are the parts they have in
+// common so the two editors read identically.
 
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
+import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 import { type SaveStatus } from "#webui/hooks/context/use-doc";
+
+interface CollectionEditorShellProps {
+  /** Whether this entry changed elsewhere while the local draft is clean. */
+  externalUpdate: boolean;
+  /** The banner's wording (each collection names its own writers). */
+  externalMessage: string;
+  /** Adopt the server's copy as the draft. */
+  onReload: () => void;
+  children: preact.ComponentChildren;
+}
+
+/**
+ * The right pane's scrolling frame, with the "changed elsewhere" banner above
+ * the fields.
+ * @param props - Shell props
+ * @returns Shell element
+ */
+export function CollectionEditorShell(
+  props: CollectionEditorShellProps,
+): preact.JSX.Element {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+      {props.externalUpdate && (
+        <ExternalUpdateBanner
+          message={props.externalMessage}
+          onReload={props.onReload}
+        />
+      )}
+      {props.children}
+    </div>
+  );
+}
 
 /** Shared input styling for the collection editors' text controls. */
 const INPUT_CLASS =

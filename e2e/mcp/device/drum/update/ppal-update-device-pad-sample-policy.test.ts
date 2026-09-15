@@ -83,23 +83,19 @@ function padSwapTests(
   held: string,
   instrumentType: string,
 ): void {
-  it("skips the write and warns, leaving the instrument alone", async () => {
+  it("skips the write in the param's own entry, leaving the instrument alone", async () => {
     const { params, warnings } = await writeSample(pad);
 
-    expect(
-      warnings.some(
-        (w) => w.includes("sample write SKIPPED") && w.includes(held),
-      ),
-    ).toBe(true);
-    // The warning is where the model learns force:true exists.
-    expect(warnings.some((w) => w.includes("force:true"))).toBe(true);
-
-    // And the param's own entry carries the same reason: a params list that
-    // came back a name short is one the caller has to diff against its request.
+    // A params list that came back a name short is one the caller has to diff
+    // against its request, and the entry is also where the model learns
+    // force:true exists.
     expect(params).toHaveLength(1);
     expect(params[0]?.name).toBe(`${pad}/sample`);
+    expect(params[0]?.ok).toBe(false);
+    expect(params[0]?.reason).toContain("sample write SKIPPED");
     expect(params[0]?.reason).toContain(held);
     expect(params[0]?.reason).toContain("force:true");
+    expect(warnings).toStrictEqual([]);
 
     expect((await padDevices(padName))[0]?.type).toContain(instrumentType);
   });

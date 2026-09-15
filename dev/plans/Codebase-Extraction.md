@@ -22,7 +22,7 @@ Three clean layers with increasing coupling:
 | ----------------- | -------------------------------------------------- | ----- | --------------------- |
 | Path builders     | `live-api-path-builders.ts`                        | ~160  | Zero                  |
 | Type declarations | `live-api.d.ts`, `live-object-types.ts`            | ~170  | Path builders (types) |
-| Extensions        | `live-api-extensions.ts`, `live-api-path-utils.ts` | ~366  | Path builders only    |
+| Extensions        | `live-api-extensions.ts`, `live-api-id-or-path.ts` | ~366  | Path builders only    |
 
 ### Scope: all three layers
 

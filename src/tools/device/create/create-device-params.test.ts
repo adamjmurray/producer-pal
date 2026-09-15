@@ -122,14 +122,13 @@ describe("createDevice params", () => {
         params: [
           {
             name: "nonexistent",
+            ok: false,
             reason: "not found on t0/d2 (id simpler-new)",
           },
         ],
       });
-
-      const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
-
-      expect(calls).toMatch(/param "nonexistent" not found/);
+      // The entry is the whole report: it warns nowhere.
+      expect(vi.mocked(mockConsole.warn)).not.toHaveBeenCalled();
     });
 
     it("keeps the params the caller sent paired with the list it sent", () => {
@@ -150,8 +149,19 @@ describe("createDevice params", () => {
         id: "comp-new",
         path: "t0/d2",
         params: [
-          { name: "nope", reason: "not found on t0/d2 (id comp-new)" },
-          { id: "threshold", name: "Threshold", value: -60 },
+          {
+            name: "nope",
+            ok: false,
+            reason: "not found on t0/d2 (id comp-new)",
+          },
+          {
+            id: "threshold",
+            name: "Threshold",
+            value: -60,
+            reason: expect.stringContaining(
+              "so -100 was set to the nearest valid value",
+            ),
+          },
         ],
       });
     });

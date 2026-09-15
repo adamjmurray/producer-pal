@@ -43,6 +43,7 @@ const TOOL_UPDATE_DEVICE = "ppal-update-device";
 
 export const deviceSoundDesign: EvalScenario = {
   id: "device-sound-design",
+  tags: ["devices"],
   description:
     "Route Wavetable modulation (LFO + envelope → filter) via the actions grammar",
   kind: "capability",

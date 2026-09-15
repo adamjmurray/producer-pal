@@ -12,12 +12,18 @@ import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
 import { type EvalScenario } from "../../types.ts";
-import { toJsonResult, type TrialInfo } from "../json-results/converter.ts";
+import {
+  toJsonResult,
+  type TrialInfo,
+} from "../json-results/result-conversion.ts";
 import { buildSkippedResult } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { writeJsonResult } from "../json-results/writer.ts";
 import { printResultBlock } from "../reporting/result-printer.ts";
-import { planTrialLiveSetOpens, printTrialSummary } from "./trial-helpers.ts";
+import {
+  planTrialLiveSetOpens,
+  printTrialSummary,
+} from "./multi-trial-runs.ts";
 
 /** The CLI options a trial run reads. Satisfied by the eval CLI's options. */
 export interface TrialRunOptions {

@@ -629,11 +629,40 @@ describe("chatAdapter", () => {
     });
   });
 
+  describe("extractUserImages", () => {
+    it("returns a user message's attached images", () => {
+      const images = [{ mediaType: "image/png", data: "AAA" }];
+      const msg: ChatMessage = { role: "user", content: "Hi", images };
+
+      expect(chatAdapter.extractUserImages(msg)).toStrictEqual(images);
+    });
+
+    it("returns undefined for assistant messages", () => {
+      const msg: ChatMessage = { role: "assistant", content: "Hi" };
+
+      expect(chatAdapter.extractUserImages(msg)).toBeUndefined();
+    });
+  });
+
   describe("createUserMessage", () => {
     it("creates a user message with the given text", () => {
       const msg = chatAdapter.createUserMessage("Hello");
 
       expect(msg).toStrictEqual({ role: "user", content: "Hello" });
+    });
+
+    it("carries attached images, and omits the key when there are none", () => {
+      const images = [{ mediaType: "image/png", data: "AAA" }];
+
+      expect(chatAdapter.createUserMessage("Hello", images)).toStrictEqual({
+        role: "user",
+        content: "Hello",
+        images,
+      });
+      expect(chatAdapter.createUserMessage("Hello", [])).toStrictEqual({
+        role: "user",
+        content: "Hello",
+      });
     });
   });
 

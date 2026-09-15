@@ -50,7 +50,9 @@ describe("ppal-update-live-set", () => {
     });
     const tempoResult = parseToolResult<UpdateResult>(tempoUpdate);
 
-    expect(tempoResult.tempo).toBe(newTempo);
+    // Live kept the tempo asked for, so the write says nothing about it — the
+    // read below is what proves it landed.
+    expect(tempoResult.tempo).toBeUndefined();
 
     // Verify with read
     const afterTempo = await ctx.client!.callTool({
@@ -75,7 +77,7 @@ describe("ppal-update-live-set", () => {
     });
     const timeSigResult = parseToolResult<UpdateResult>(timeSigUpdate);
 
-    expect(timeSigResult.timeSignature).toBe(newTimeSig);
+    expect(timeSigResult.timeSignature).toBeUndefined();
 
     // Wait for Live API state to settle, then verify with read
     await sleep(100);
@@ -91,6 +93,39 @@ describe("ppal-update-live-set", () => {
     await ctx.client!.callTool({
       name: "ppal-update-live-set",
       arguments: { timeSignature: originalTimeSig },
+    });
+  });
+
+  it("reads back a noisy tempo rounded to Live's 2dp display precision", async () => {
+    const { originalTempo } = await readLiveSetOriginals();
+
+    // Live stores tempo as a 32-bit float, so a value like 123.456789 comes
+    // back with float32 noise (e.g. 123.456787109375) unless the read rounds
+    // it to what Live's UI shows.
+    const written = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { tempo: 123.456789 },
+      }),
+    );
+
+    // 123.46 either way, which is the resolution the read publishes — the same
+    // value, so the write reports none.
+    expect(written.tempo).toBeUndefined();
+
+    await sleep(100);
+    const afterRead = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+    const afterParsed = parseToolResult<ReadResult>(afterRead);
+
+    expect(afterParsed.tempo).toBe(123.46);
+
+    // Restore original tempo
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { tempo: originalTempo },
     });
   });
 
@@ -129,8 +164,10 @@ describe("ppal-update-live-set", () => {
     });
     const multiResult = parseToolResult<UpdateResult>(multiUpdate);
 
-    expect(multiResult.tempo).toBe(140);
-    expect(multiResult.timeSignature).toBe("6/8");
+    // Both landed as asked, so only the scale — which Live spells its own
+    // way — comes back.
+    expect(multiResult.tempo).toBeUndefined();
+    expect(multiResult.timeSignature).toBeUndefined();
     expect(multiResult.scale).toBe("G Major");
 
     // Wait for Live API state to settle, then verify all with read
@@ -287,6 +324,115 @@ describe("ppal-update-live-set", () => {
     expect(locators.length).toBe(initialLocators.length);
   });
 
+  it("creates, renames, and deletes several locators per call", async () => {
+    // Marking up a song structure is one call per section otherwise. The Set
+    // ships with locators at 1|1, 9|1, 17|1 and 33|1, so these three sit in the
+    // gap between the first two and are deleted again at the end.
+    const initialLocators = await readLocatorList();
+
+    const created = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "5|1,6|1,7|1",
+          locatorName: "E2E List A,E2E List B,E2E List C",
+        },
+      }),
+    );
+
+    expect(created.locator?.map((entry) => entry.operation)).toStrictEqual([
+      "created",
+      "created",
+      "created",
+    ]);
+    expect(created.locator?.map((entry) => entry.name)).toStrictEqual([
+      "E2E List A",
+      "E2E List B",
+      "E2E List C",
+    ]);
+
+    await sleep(100);
+    let locators = await readLocatorList();
+
+    expect(
+      locators
+        .filter((l) => l.name.startsWith("E2E List "))
+        .map((l) => [l.name, l.time]),
+    ).toStrictEqual([
+      ["E2E List A", "5|1"],
+      ["E2E List B", "6|1"],
+      ["E2E List C", "7|1"],
+    ]);
+
+    // Rename two of them by time, in one call
+    const renamed = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "rename",
+          locatorTime: "5|1,7|1",
+          locatorName: "E2E List X,E2E List Z",
+        },
+      }),
+    );
+
+    expect(renamed.locator?.map((entry) => entry.name)).toStrictEqual([
+      "E2E List X",
+      "E2E List Z",
+    ]);
+
+    await sleep(100);
+    locators = await readLocatorList();
+
+    expect(
+      locators.filter((l) => l.name.startsWith("E2E List ")).map((l) => l.name),
+    ).toStrictEqual(["E2E List X", "E2E List B", "E2E List Z"]);
+
+    // Delete all three in one call, leaving the Set as it was found
+    const deleted = parseToolResult<UpdateLocatorListResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "delete",
+          locatorTime: "5|1,6|1,7|1",
+        },
+      }),
+    );
+
+    expect(deleted.locator?.map((entry) => entry.operation)).toStrictEqual([
+      "deleted",
+      "deleted",
+      "deleted",
+    ]);
+
+    await sleep(100);
+    locators = await readLocatorList();
+
+    expect(locators).toStrictEqual(initialLocators);
+  });
+
+  it("refuses locator lists that name different numbers of locators", async () => {
+    // Nothing is written: the lists are split before the first locator runs.
+    const before = await readLocatorList();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "5|1,6|1,7|1",
+        locatorName: "E2E List A,E2E List B",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "locatorTime names 3 locators but locatorName names 2 locators",
+    );
+
+    expect(await readLocatorList()).toStrictEqual(before);
+  });
+
   it("takes a numeric locator name", async () => {
     // Models send numbers where the schema says string, and the MCP SDK
     // validates before our handler runs, so only a real call proves the
@@ -377,6 +523,18 @@ interface ReadResult {
   scale?: string;
   scalePitches?: string;
   locators?: LocatorInfo[];
+}
+
+/** A call naming several locators answers with one entry each, in order. */
+interface UpdateLocatorListResult {
+  locator?: Array<{
+    operation: string;
+    id?: string;
+    name?: string;
+    time?: string;
+    ok?: boolean;
+    reason?: string;
+  }>;
 }
 
 interface UpdateResult {

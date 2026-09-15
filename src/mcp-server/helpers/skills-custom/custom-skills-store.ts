@@ -22,6 +22,7 @@ import {
   type BuildStoredArgs,
   collectionIndexLine,
   makeMarkdownCollectionStore,
+  sortByName,
 } from "../config-store/markdown-collection-store.ts";
 
 /** One stored custom skill: its slug, hook, enabled flag, and instructions. */
@@ -121,16 +122,6 @@ function toEntry(slug: string, raw: string): CustomSkillEntry {
     enabled: data.enabled !== "false",
     body: body.trim(),
   };
-}
-
-/**
- * Order skills by name.
- *
- * @param entries - The freshly-read entries to sort
- * @returns A new array, sorted by name
- */
-function sortByName(entries: CustomSkillEntry[]): CustomSkillEntry[] {
-  return entries.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

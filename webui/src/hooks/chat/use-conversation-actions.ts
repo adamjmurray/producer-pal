@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useCallback } from "preact/hooks";
-import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
-import { beginTurn } from "#webui/hooks/chat/helpers/streaming-helpers";
+import { formatUserContent } from "#webui/chat/helpers/message-formatting";
+import { type UserMessage, toSentMessage } from "#webui/chat/sdk/types";
+import { type ExecuteWithRetryArgs } from "#webui/hooks/chat/helpers/use-execute-with-retry";
+import { beginTurn } from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -34,13 +36,7 @@ interface ConversationActionsDeps<
     fn: (stillCurrent: () => boolean) => Promise<T>,
     userMessage?: TMessage,
   ) => Promise<T | undefined>;
-  executeWithRetry: (args: {
-    executeStream: () => AsyncIterable<TMessage[]>;
-    resumeStream: () => AsyncIterable<TMessage[]>;
-    getHistory: () => TMessage[];
-    stillCurrent: () => boolean;
-    stillLive: () => boolean;
-  }) => Promise<boolean>;
+  executeWithRetry: (args: ExecuteWithRetryArgs<TMessage>) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
   pendingForkRef?: PendingForkRef;
@@ -94,7 +90,7 @@ export function useConversationActions<
   const forkConversation = useCallback(
     async (
       mergedMessageIndex: number,
-      newMessage: string,
+      newMessage: UserMessage,
       anchorIndex = mergedMessageIndex,
     ) => {
       if (!apiKey) {
@@ -223,6 +219,25 @@ export function useConversationActions<
     ],
   );
 
+  // The raw history entry a user row was rendered from, when the client still
+  // has it. Retry and edit both need it: the text on screen has lost the
+  // attached images, which only the raw entry carries.
+  const rawEntryAt = useCallback(
+    (mergedMessageIndex: number): TMessage | undefined => {
+      const message = messages[mergedMessageIndex];
+
+      if (message?.role !== "user") {
+        return undefined;
+      }
+
+      const history =
+        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
+
+      return history?.[message.rawHistoryIndex];
+    },
+    [messages, clientRef, pendingHistoryRef],
+  );
+
   const handleRetry = useCallback(
     async (mergedMessageIndex: number) => {
       const message = messages[mergedMessageIndex];
@@ -231,9 +246,7 @@ export function useConversationActions<
         return;
       }
 
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-      const rawMessage = history?.[message.rawHistoryIndex];
+      const rawMessage = rawEntryAt(mergedMessageIndex);
       // A send that failed before the client saw it (no API key) renders the
       // row against a history the client never got, so rawHistoryIndex points
       // past the end. Fall back to the text on screen — what handleEdit forks
@@ -242,8 +255,10 @@ export function useConversationActions<
         rawMessage == null
           ? formatUserContent(message)
           : adapter.extractUserMessage(rawMessage);
+      const images =
+        rawMessage == null ? undefined : adapter.extractUserImages(rawMessage);
 
-      if (!userMessage) {
+      if (!userMessage && !images?.length) {
         return;
       }
 
@@ -253,24 +268,32 @@ export function useConversationActions<
       // assistant turn is a single UIMessage, so +1 is always that response.
       await forkConversation(
         mergedMessageIndex,
-        userMessage,
+        toSentMessage({ text: userMessage ?? "", images }),
         mergedMessageIndex + 1,
       );
     },
-    [messages, adapter, forkConversation, clientRef, pendingHistoryRef],
+    [messages, adapter, forkConversation, rawEntryAt],
   );
 
   const handleEdit = useCallback(
     async (mergedMessageIndex: number, newMessage: string) => {
       const trimmed = newMessage.trim();
+      // Editing changes the text only; the original message's images ride
+      // along, so a fork doesn't silently drop what the model was shown.
+      const rawMessage = rawEntryAt(mergedMessageIndex);
+      const images =
+        rawMessage == null ? undefined : adapter.extractUserImages(rawMessage);
 
-      if (!trimmed) {
+      if (!trimmed && !images?.length) {
         return;
       }
 
-      await forkConversation(mergedMessageIndex, trimmed);
+      await forkConversation(
+        mergedMessageIndex,
+        toSentMessage({ text: trimmed, images }),
+      );
     },
-    [forkConversation],
+    [adapter, forkConversation, rawEntryAt],
   );
 
   // forkConversation is intentionally not exported: it's the lower-level

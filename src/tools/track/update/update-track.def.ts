@@ -5,11 +5,9 @@
 
 import { z } from "zod";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -26,22 +24,21 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     id: z.coerce
       .string()
       .optional()
-      .describe("track ID(s) to update, comma-separated for multiple"),
+      .describe(
+        "track or take lane ID(s) to update, comma-separated for multiple",
+      ),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
-        "track path(s) to update instead of id, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt<index>' (return), or 'mt' (main) - e.g. 't0' or 't0,rt1'",
+        "track or take lane path(s) to update instead of id, comma-separated: 't<index>' (t0 is the first track, so a user's \"track 3\" is t2), 'rt<index>' (return), 'mt' (main), 't<index>/l<lane>' (a take lane, creating the lanes up to it), 't<index>/l+' (append a take lane). A lane takes only name - e.g. 't0,rt1' or 't2/l+'",
       smallModel:
-        "track path to update instead of id: 't<index>', where t0 is the first track (a user's \"track 3\" is t2)",
+        "track path to update instead of id: 't<index>', where t0 is the first track (a user's \"track 3\" is t2). 't0/l0' names a take lane and 't0/l+' adds one; a lane takes only name",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated one per track, in order, ideally unique",
+        "name for all, or comma-separated one per target, in order, ideally unique",
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {

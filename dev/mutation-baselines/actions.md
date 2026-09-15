@@ -1,8 +1,8 @@
 # Mutation baseline — 2026-07-15, `src/tools/actions/`
 
 Third write-op domain triaged (`delete` and `duplicate` tools — the latter
-spanning ten `duplicate-*-helpers.ts` files). Full pass — Stryker 9.6.1, Node
-24, `coverageAnalysis: "perTest"`:
+spanning ten `duplicate-*` helper modules). Full pass — Stryker 9.6.1, Node 24,
+`coverageAnalysis: "perTest"`:
 
 | Metric                     | Value      |
 | -------------------------- | ---------- |
@@ -21,28 +21,29 @@ code touched.
 
 Per-file scores after triage:
 
-| File                                 | Score   | Survived | Notes                            |
-| ------------------------------------ | ------- | -------- | -------------------------------- |
-| `duplicate-focus-helpers.ts`         | 100.00% | 0        | determineTargetView fully pinned |
-| `duplicate-validation-helpers.ts`    | 99.38%  | 1        | direct unit tests (81% → 99%)    |
-| `duplicate-take-lane-helpers.ts`     | 96.30%  | 2        | setAll/message/color-fallback    |
-| `delete.ts`                          | 94.22%  | 15       | 2-digit indices + comparator     |
-| `duplicate-routing-helpers.ts`       | 94.12%  | 6        | mock fix exposed routing branch  |
-| `duplicate-track-scene-helpers.ts`   | 91.62%  | 11       |                                  |
-| `duplicate-clip-position-helpers.ts` | 90.70%  | 4        |                                  |
-| `duplicate.ts`                       | 87.60%  | 15       |                                  |
-| `duplicate-transform-helpers.ts`     | 86.67%  | 4        | edge/optional-chain (bucket 2)   |
-| `duplicate-device-helpers.ts`        | 85.54%  | 10       | 2-digit track regexes            |
-| `duplicate-helpers.ts`               | 81.65%  | 25       | heavy tiling paths — see below   |
+| File                                                         | Score   | Survived | Notes                            |
+| ------------------------------------------------------------ | ------- | -------- | -------------------------------- |
+| `focus-if-requested.ts`                                      | 100.00% | 0        | determineTargetView fully pinned |
+| `duplicate-destinations.ts`                                  | 99.38%  | 1        | direct unit tests (81% → 99%)    |
+| `duplicate-take-lanes.ts`                                    | 96.30%  | 2        | setAll/message/color-fallback    |
+| `delete.ts`                                                  | 94.22%  | 15       | 2-digit indices + comparator     |
+| `duplicate-routing.ts`                                       | 94.12%  | 6        | mock fix exposed routing branch  |
+| `duplicate-track.ts` / `duplicate-scene.ts`                  | 91.62%  | 11       |                                  |
+| `duplicate-clip-with-positions.ts`                           | 90.70%  | 4        |                                  |
+| `duplicate.ts`                                               | 87.60%  | 15       |                                  |
+| `apply-clip-transforms.ts`                                   | 86.67%  | 4        | edge/optional-chain (bucket 2)   |
+| `duplicate-device.ts`                                        | 85.54%  | 10       | 2-digit track regexes            |
+| `arrangement-length.ts` / `duplicate-clip-to-arrangement.ts` | 81.65%  | 25       | heavy tiling paths — see below   |
 
-`duplicate-helpers.ts` is the low outlier, and its survivors are mostly
-bucket-2/3: the `createClipsForLength` / `lengthenClipAndCollectInfo` /
-`duplicateClipToArrangement` arrangement-tiling paths route through several
-mocked shared helpers, so `setAll({name, color})` object mutants and
-`is_midi_clip === 1` branch mutants there are hard to observe without a full
-Live-API integration harness. Two more provably-equivalent classes live here:
-the `omitFields: string[] = []` default (mutating to `["Stryker…"]` omits a
-field name nothing checks) and the `parseArrangementLength` catch-wrapper
+`arrangement-length.ts` / `duplicate-clip-to-arrangement.ts` are the low
+outliers, and their survivors are mostly bucket-2/3: the `createClipsForLength`
+/ `lengthenClipAndCollectInfo` / `duplicateClipToArrangement` arrangement-tiling
+paths route through several mocked shared helpers, so `setAll({name, color})`
+object mutants and `is_midi_clip === 1` branch mutants there are hard to observe
+without a full Live-API integration harness. Two more provably-equivalent
+classes live here: the `omitFields: string[] = []` default (mutating to
+`["Stryker…"]` omits a field name nothing checks) and the
+`parseArrangementLength` catch-wrapper
 (`msg.includes("Invalid duration format")` — both branches throw a message the
 substring assertions already accept). Left for a future integration-test pass
 rather than over-fitting.
@@ -67,12 +68,12 @@ Two structural wins beyond the usual warn-and-skip hardening:
 | -------------------------------------------------------------------- | ------------------------------------------------------- |
 | Track / scene / return-track / clip / device index regexes (`\d+`)   | `delete.test.ts`, `delete-device.test.ts`               |
 | Device-deletion comparator tiebreaker (chains-before-return_chains)  | `delete-device.test.ts`                                 |
-| `validateAndConfigureRouteToSource` warns + forced `{true,true}`     | `duplicate-validation-helpers.test.ts`                  |
-| `inferDestination` / `validateArrangementParameters` whitespace trim | `duplicate-validation-helpers.test.ts`                  |
-| `findRoutingOptionForDuplicateNames` id-sort position                | `duplicate-routing-helpers.test.ts`                     |
+| `validateAndConfigureRouteToSource` warns + forced `{true,true}`     | `duplicate-input-validation.test.ts`                    |
+| `inferDestination` / `validateArrangementParameters` whitespace trim | `duplicate-destinations.test.ts`                        |
+| `findRoutingOptionForDuplicateNames` id-sort position                | `duplicate-routing.test.ts`                             |
 | Input/output routing-change branch (mock stored objects, not JSON)   | `duplicate-test-helpers.ts` + `duplicate-track.test.ts` |
 | transforms/code-ignored warn (clip no-warn control + code-only arm)  | `duplicate-transforms.test.ts`                          |
 | Take-lane setAll property copies + "created on lane N" + color-copy  | `duplicate-take-lane.test.ts`                           |
-| determineTargetView track/device/scene arms + empty-array `.at(-1)`  | `duplicate-focus-helpers.test.ts`                       |
-| name/color/omit-trackIndex/has_clip guards on duplicated tracks      | `duplicate-track-scene-helpers.test.ts`                 |
+| determineTargetView track/device/scene arms + empty-array `.at(-1)`  | `focus-if-requested.test.ts`                            |
+| name/color/omit-trackIndex/has_clip guards on duplicated tracks      | `duplicate-track.test.ts`                               |
 | 2-digit source/destination track regexes in device duplication       | `duplicate-device.test.ts`                              |

@@ -25,7 +25,7 @@ import {
 } from "#evals/shared/provider-configs.ts";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
-import { logTurnStart } from "./helpers/eval-session-base.ts";
+import { logTurnStart } from "./helpers/turn-logging.ts";
 import {
   buildSeededMessages,
   type SeededTurn,

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "../read-device.ts";
+import { readOneDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
 const OUTER_CHAIN = `${livePath.track(1).device(0)} chains 0`;
@@ -102,11 +102,11 @@ function setupNestedDrumRack(): void {
 // A path can pass through more than one drum pad. The segments after the first
 // pad's device used to be dropped, so a read of a nested pad answered with the
 // rack holding it — under the path that was asked for, so it looked right.
-describe("readDevice - paths through a nested drum rack", () => {
+describe("readOneDevice - paths through a nested drum rack", () => {
   it("reads the device inside the nested rack's pad", () => {
     setupNestedDrumRack();
 
-    expect(readDevice({ path: "t1/d0/pC1/c0/d0/pC3/c0/d0" })).toStrictEqual({
+    expect(readOneDevice({ path: "t1/d0/pC1/c0/d0/pC3/c0/d0" })).toStrictEqual({
       id: "sub-device",
       path: "t1/d0/pC1/c0/d0/pC3/c0/d0",
       type: "instrument: Simpler",
@@ -117,7 +117,7 @@ describe("readDevice - paths through a nested drum rack", () => {
   it("reads the nested rack's pad chain", () => {
     setupNestedDrumRack();
 
-    const result = readDevice({ path: "t1/d0/pC1/c0/d0/pC3/c0" });
+    const result = readOneDevice({ path: "t1/d0/pC1/c0/d0/pC3/c0" });
 
     expect(result.id).toBe("sub-chain");
     expect(result.path).toBe("t1/d0/pC1/c0/d0/pC3/c0");
@@ -127,7 +127,7 @@ describe("readDevice - paths through a nested drum rack", () => {
   it("still reads the nested rack itself", () => {
     setupNestedDrumRack();
 
-    const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
+    const result = readOneDevice({ path: "t1/d0/pC1/c0/d0" });
 
     expect(result.id).toBe("sub-rack");
     expect(result.type).toBe("drum-rack");
@@ -136,7 +136,7 @@ describe("readDevice - paths through a nested drum rack", () => {
   it("throws instead of answering with the wrong object for an unreachable pad", () => {
     setupNestedDrumRack();
 
-    expect(() => readDevice({ path: "t1/d0/pC1/c0/d0/pD3/c0/d0" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/pC1/c0/d0/pD3/c0/d0" })).toThrow(
       "Invalid path: t1/d0/pC1/c0/d0/pD3/c0/d0",
     );
   });
@@ -165,7 +165,7 @@ describe("readDevice - paths through a nested drum rack", () => {
     });
     registerOuterDrumRack(`${livePath.track(1).device(0)} chains 0 devices 0`);
 
-    const result = readDevice({ path: "t1/d0", include: ["drum-map"] });
+    const result = readOneDevice({ path: "t1/d0", include: ["drum-map"] });
 
     // The outer kit's own pad, not the Sub Kit rack's C3 "Hat" — the search
     // takes the first rack it reaches and doesn't descend into it.
@@ -200,13 +200,13 @@ describe("readDevice - paths through a nested drum rack", () => {
     setupNestedDrumRack();
     dropNestedRackPads();
 
-    expect(readDevice({ path: "t1/d0/c0/d0/pC3/c0/d0" })).toStrictEqual({
+    expect(readOneDevice({ path: "t1/d0/c0/d0/pC3/c0/d0" })).toStrictEqual({
       id: "sub-device",
       path: "t1/d0/c0/d0/pC3/c0/d0",
       type: "instrument: Simpler",
       name: "synth-hat",
     });
-    expect(readDevice({ path: "t1/d0/c0/d0/pC3/c0" }).id).toBe("sub-chain");
+    expect(readOneDevice({ path: "t1/d0/c0/d0/pC3/c0" }).id).toBe("sub-chain");
   });
 
   // No pad object means no id, no mute and no solo to read — the chains carry
@@ -215,7 +215,7 @@ describe("readDevice - paths through a nested drum rack", () => {
     setupNestedDrumRack();
     dropNestedRackPads();
 
-    const result = readDevice({ path: "t1/d0/c0/d0/pC3" });
+    const result = readOneDevice({ path: "t1/d0/c0/d0/pC3" });
 
     expect(result).toStrictEqual({
       path: "t1/d0/c0/d0/pC3",
@@ -230,7 +230,7 @@ describe("readDevice - paths through a nested drum rack", () => {
     setupNestedDrumRack();
     dropNestedRackPads();
 
-    expect(() => readDevice({ path: "t1/d0/c0/d0/pD3" })).toThrow(
+    expect(() => readOneDevice({ path: "t1/d0/c0/d0/pD3" })).toThrow(
       "Drum pad D3 not found",
     );
   });
@@ -238,7 +238,7 @@ describe("readDevice - paths through a nested drum rack", () => {
   it("reports the nested pad path in pad notation, not raw chain indexes", () => {
     setupNestedDrumRack();
 
-    const result = readDevice({
+    const result = readOneDevice({
       path: "t1/d0",
       include: ["drum-pads", "chains"],
       maxDepth: 2,

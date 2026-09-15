@@ -77,6 +77,7 @@ function setupTilesAndHoldingCopy(holdingEndTime: number): void {
   setupTileClip("201");
   setupTileClip("302");
   setupClip("300", { properties: { end_time: holdingEndTime } });
+  setupClip("301", {});
 }
 
 describe("tileClipToRange holding area", () => {
@@ -155,6 +156,7 @@ function tileOverSource(): LiveAPI {
   setupClip("300", {
     properties: { is_arrangement_clip: 1, start_time: 1000, end_time: 1002 },
   });
+  setupClip("999", {});
 
   const track = setupTrackWithClips(["100", "700"], {
     duplicate_clip_to_arrangement: [
@@ -162,6 +164,7 @@ function tileOverSource(): LiveAPI {
       ["id", "300"],
       ["id", "302"],
     ],
+    create_midi_clip: [["id", "999"]],
   });
 
   tileClipToRange(sourceClip, track, 100, 10, mockContext);

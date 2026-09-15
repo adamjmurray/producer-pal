@@ -6,7 +6,7 @@
 import {
   addTextContent,
   markLastThoughtAsOpen,
-} from "#webui/chat/helpers/formatter-helpers";
+} from "#webui/chat/helpers/message-formatting";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
 import { type ChatMessage } from "./types";
 
@@ -31,16 +31,28 @@ function addReasoning(reasoning: string | undefined, parts: UIPart[]): void {
 
 /**
  * Add a user message's content to parts. Compaction summaries become a single
- * compaction part (rendered as a divider); normal user text becomes text.
+ * compaction part (rendered as a divider); normal user text becomes text,
+ * preceded by an image part per attachment (the bubble shows thumbnails above
+ * the text, matching what the model is sent).
  * @param msg - User message
  * @param parts - Parts array to add to
  */
 function addUserParts(msg: ChatMessage, parts: UIPart[]): void {
   if (msg.isCompactionSummary) {
     parts.push({ type: "compaction", content: msg.content });
-  } else {
-    addTextContent(parts, msg.content);
+
+    return;
   }
+
+  for (const image of msg.images ?? []) {
+    parts.push({
+      type: "image",
+      mediaType: image.mediaType,
+      data: image.data,
+    });
+  }
+
+  addTextContent(parts, msg.content);
 }
 
 /**

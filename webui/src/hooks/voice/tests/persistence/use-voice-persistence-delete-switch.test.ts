@@ -14,8 +14,10 @@ import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { openGate } from "#webui/test-utils/async-test-helpers";
+import { flushTurns } from "#webui/test-utils/dom-test-helpers";
 import {
   renderVoicePersistence,
+  renderVoicePersistenceWithHistory,
   resetConversationsDb,
   saveVoiceRecord,
   setupLiveRecordWithDeletionSpy,
@@ -197,5 +199,63 @@ describe("useVoicePersistence bulk delete vs. a failed survival check", () => {
     // pre-sweep list.
     expect(result.current.conversations).toStrictEqual([]);
     spy.mockRestore();
+  });
+});
+
+/**
+ * Hold the next record write open until the returned release is called.
+ * @returns release (let the write finish) and restore (undo the spy)
+ */
+function gateNextSave(): { release: () => void; restore: () => void } {
+  const save = conversationDb.saveConversation;
+  const [gate, release] = openGate();
+  const spy = vi
+    .spyOn(conversationDb, "saveConversation")
+    .mockImplementationOnce(async (...args) => {
+      await gate;
+
+      return await save(...args);
+    });
+
+  return { release, restore: () => spy.mockRestore() };
+}
+
+// The sweep's mark is the only thing between a wipe and an autosave already
+// scheduled for the conversation it is taking. The debounce fires while the
+// sweep is still running, so its "is this still the live conversation" check
+// passes, and a brand-new conversation has no row for the write transaction to
+// notice the delete by.
+describe("useVoicePersistence bulk delete vs. a scheduled autosave", () => {
+  it("drops an autosave scheduled for the conversation it sweeps", async () => {
+    const { result, rerender } = renderVoicePersistenceWithHistory();
+
+    await waitForEffects();
+    rerender([userTextItem("brand new")]);
+    expect(result.current.activeConversationId).toBeNull();
+
+    const sweepGate = gateNextSweep();
+    const saveGate = gateNextSave();
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      // Let the debounce fire while the sweep is held open.
+      await flushTurns(4);
+      sweepGate.release();
+      await sweeping;
+    });
+
+    expect(result.current.conversations).toStrictEqual([]);
+
+    // Release the write the debounce would have queued: it lands after the rows
+    // are gone, so nothing but the mark can stop it resurrecting one.
+    saveGate.release();
+    await waitForEffects(24);
+
+    expect(await conversationDb.listAllConversationSummaries()).toStrictEqual(
+      [],
+    );
+    sweepGate.restore();
+    saveGate.restore();
   });
 });

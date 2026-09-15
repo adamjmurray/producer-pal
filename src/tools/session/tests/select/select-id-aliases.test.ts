@@ -17,12 +17,15 @@ import {
   setupSongViewMock,
 } from "./select-test-helpers.ts";
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { selectSharedUtilsMockBody } =
-    await import("./select-test-helpers.ts");
+vi.mock(
+  import("#src/tools/shared/helpers/live-api-values.ts"),
+  async (importOriginal) => {
+    const { selectLiveApiValuesMockBody } =
+      await import("./select-test-helpers.ts");
 
-  return selectSharedUtilsMockBody(await importOriginal());
-});
+    return selectLiveApiValuesMockBody(await importOriginal());
+  },
+);
 
 // select takes every object type by id, so trackId/sceneId/clipId/deviceId are
 // all names a model reaches for here. Each is a target of its own, type-detected

@@ -7,7 +7,7 @@ import {
   VOICE_SPEED_DEFAULT,
   VOICE_SPEED_MAX,
   VOICE_SPEED_MIN,
-} from "#webui/hooks/settings/settings-helpers";
+} from "#webui/hooks/settings/helpers/voice-settings-storage";
 
 export interface VoiceSpeedSliderProps {
   speed: number;

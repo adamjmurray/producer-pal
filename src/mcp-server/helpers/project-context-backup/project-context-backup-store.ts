@@ -54,7 +54,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "../../node-for-max-logger.ts";
 
 /** Filename of the project-context backup, dropped beside the Live Set. */

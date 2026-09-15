@@ -5,7 +5,7 @@ A `DeviceParameter` exposes no unit and no display range — only `min`, `max` a
 Live would print. So everything we tell a model about a param, and everything we
 do with a value it writes back, is reverse-engineered from those labels.
 
-Read: `device-display-helpers.ts` builds the param result. Write:
+Read: `param-reading.ts` builds the param result. Write:
 `update-device-param-setters.ts` picks a path, and `param-display-search.ts`
 maps a display value back to a raw one.
 

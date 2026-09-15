@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useState } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { errorMessage } from "#src/shared/error-message";
 import { type ChatPreset, type PresetFields } from "#webui/types/settings";
 import { createPresetId, loadPresets, savePresets } from "./preset-storage";
 

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Notation, NOTATION_LABELS } from "#src/shared/notation";
-import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
+import { getProviderName } from "#webui/components/chat/controls/header/provider-name";
 import { getModelName } from "#webui/lib/config";
 import {
   enabledToolsDiverge,
