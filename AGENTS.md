@@ -59,6 +59,9 @@ Key entry points:
 - Tools: `src/tools/**/*.ts`
 - Chat CLI: `evals/chat/index.ts`
 - Evaluation scenarios: `evals/scenarios/index.ts`
+- Remote script: `remote-script/Producer_Pal/` — Python control surface with an
+  HTTP API for bootstrapping a freshly opened Live Set with the Producer Pal
+  device. See `remote-script/README.md`.
 
 See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
