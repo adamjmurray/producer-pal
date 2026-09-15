@@ -242,9 +242,11 @@ The `producer-pal` skill is the connection. Five more skills come with it:
   racks and macros, parameters, clips, mixer, routing, scenes. Point it at a
   whole projects folder to compare many Sets at once, like "what master chain do
   I usually use?". Live 12 files, any platform, read-only.
-- **`ableton-open-live-set`**: open a Live Set by path and wait until it has
-  loaded, answering the dialogs in the way. It never throws away unsaved changes
-  or crash-recovered work unless you agree. macOS only, no device needed.
+- **`ableton-open-live-set`**: open a Live Set by path, or create a new one, and
+  wait until it has loaded, answering the dialogs in the way. It never throws
+  away unsaved changes or crash-recovered work unless you agree. It can also add
+  Producer Pal to the Set through the Producer Pal remote script. macOS only;
+  opening needs no device.
 
 <a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
 has all six. Unzip it the same way:

@@ -1,15 +1,17 @@
 ---
 name: ableton-open-live-set
 description: >-
-  Open an Ableton Live Set (.als) by path and wait until it has loaded,
-  answering the dialogs in the way. Use when the user wants to open, switch to,
-  load, or revert to a Set. macOS only. No Producer Pal device needed.
+  Open an Ableton Live Set (.als) by path, or create a new Set, and wait until
+  it has loaded, answering the dialogs in the way. Can add Producer Pal to the
+  Set. Use when the user wants to open, switch to, load, revert to, or start a
+  new Set. macOS only. Opening needs no Producer Pal device.
 ---
 
 # Ableton: Open a Live Set
 
-`open-live-set.mjs` opens a `.als` file in Ableton Live, answers the dialogs
-that block it, waits until Live shows the Set, and prints JSON.
+`open-live-set.mjs` opens a `.als` file in Ableton Live or creates a new Set,
+answers the dialogs that block it, waits until Live shows the Set, and prints
+JSON. It can also add Producer Pal to the Set.
 
 ## Safety: never discard work without asking
 
@@ -30,6 +32,10 @@ Without the flags the script loses nothing: it clicks Cancel on the save prompt
 (the open Set stays as it was), leaves the recovery dialog up, and exits with an
 error.
 
+`--add-producer-pal` changes the Set: it adds a MIDI track with the Producer Pal
+device, so the Set then has unsaved changes. Use it when the user asked for
+Producer Pal in the Set. Without the flag nothing is added.
+
 ## Prerequisites
 
 - **macOS** with **Accessibility permission** for the app running the agent
@@ -38,11 +44,18 @@ error.
 - **Ableton Live** installed. It doesn't need to be running.
 - English Live UI assumed.
 - Node.js 18+, no npm packages.
+- For `--add-producer-pal` only: the
+  [Producer Pal remote script](https://github.com/adamjmurray/producer-pal/tree/main/remote-script)
+  selected as a Control Surface (Live Settings → Link, Tempo & MIDI; port 3349,
+  `PPAL_REMOTE_SCRIPT_PORT` to override), and the `Producer_Pal` device in
+  Live's browser (e.g. the User Library).
 
 ## Usage
 
 ```bash
 node open-live-set.mjs "My Song Project/My Song.als"
+node open-live-set.mjs --new                        # new Untitled Set
+node open-live-set.mjs song.als --add-producer-pal  # add it if not running
 node open-live-set.mjs song.als --discard-unsaved   # only after the user agreed
 node open-live-set.mjs song.als --app "Ableton Live 12 Suite"
 node open-live-set.mjs big-set.als --timeout 300    # default 120 seconds
@@ -54,9 +67,11 @@ Output on stdout:
 { "opened": "/…/My Song.als", "producerPal": true, "dismissed": [] }
 ```
 
-- `opened` — the Set's absolute path.
+- `opened` — the Set's absolute path. With `--new`: `"new": true` instead.
 - `producerPal` — whether the Producer Pal device answered after the load (REST
   on port 3350, `PPAL_PORT` to override).
+- `addedProducerPal` — only when `--add-producer-pal` added the device:
+  `{ "trackIndex": 4, "trackName": "5-MIDI" }`.
 - `dismissed` — dialogs clicked away: `"unsaved-changes"`, `"crash-recovery"`.
 - `warning` — only when present. See "Same name" below.
 
@@ -78,6 +93,10 @@ Exit code 1, with `Error: …` on stderr.
 - **"did not swap Sets" / "No Live window showed"** — timed out. The error lists
   Live's windows and any dialog on screen; relay it. For a big Set or a cold
   launch, retry with a longer `--timeout`.
+- **"The Set is open, but …"** — the Set loaded; adding Producer Pal failed.
+  Relay the fix in the error: install and select the remote script, keep exactly
+  one `Producer_Pal` device in Live's browser, or (if the device was added but
+  never answered) check the track the error names.
 
 ## After opening
 
@@ -89,11 +108,13 @@ Exit code 1, with `Error: …` on stderr.
 
 - **Which Live:** the Set opens in the Live that's running. With none running,
   macOS picks its default app for `.als` files. `--app` chooses one (app name or
-  `.app` path).
+  `.app` path). `--new` uses the running Live and ignores `--app`; with none
+  running it launches `--app`, or Live.
 - **A Set saved by a newer Live won't open** in an older one.
-- **Same name:** Live windows show only the file name. If a window already had
-  that name and Producer Pal wasn't running, the swap can't be seen, so the
-  script returns once the name shows and adds a `warning`.
+- **Same name:** Live windows show only the file name (`Untitled` for a new
+  Set). If a window already had that name and Producer Pal wasn't running, the
+  swap can't be seen, so the script returns once the name shows and adds a
+  `warning`.
 - **Cold launches and big Sets are slow.** Raise `--timeout` when needed.
 - Live stays in the background, so the user's typing can't answer a dialog.
 - To look inside a Set without opening it, use `ableton-read-als`.

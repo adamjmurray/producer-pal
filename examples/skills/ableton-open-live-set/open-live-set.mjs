@@ -1,24 +1,29 @@
 #!/usr/bin/env node
 
-// open-live-set.mjs — open a Live Set (.als) in Ableton Live and wait until it
-// has loaded, answering the dialogs in the way. macOS only.
+// open-live-set.mjs — open a Live Set (.als), or create a new one, in Ableton
+// Live and wait until it has loaded, answering the dialogs in the way. macOS
+// only.
 //
 // Safe by default: an unsaved-changes prompt is cancelled (nothing opens) and a
 // crash-recovery prompt is left up for the user. Only --discard-unsaved and
 // --discard-recovery throw work away.
 //
-// `open -g` keeps Live in the background: a focused Live would take the user's
-// own typing, and Return answers a dialog.
+// Live stays in the background (`open -g`, menu clicks through System Events):
+// a focused Live would take the user's own typing, and Return answers a dialog.
 //
-// Live windows expose no file path, only a title (the file name without .als),
-// so "loaded" means: the old Set's Producer Pal server went away (if one was
-// up), then a window shows the new name.
+// Live windows expose no file path, only a title (the file name without .als, or
+// "Untitled" for a new Set), so "loaded" means: the old Set's Producer Pal
+// server went away (if one was up), then a window shows the new name.
+//
+// --add-producer-pal loads the Producer_Pal device through the Producer Pal
+// remote script when the Set has no running Producer Pal.
 //
 // PREREQUISITE: Accessibility permission for the app running this (System
 // Settings ▸ Privacy & Security ▸ Accessibility). English Live UI assumed.
 //
 // Usage:
 //   node open-live-set.mjs "My Song Project/My Song.als"
+//   node open-live-set.mjs --new --add-producer-pal
 //   node open-live-set.mjs song.als --discard-unsaved   # only if the user agreed
 //
 // Prints JSON on stdout: {"opened":"<path>","producerPal":true,"dismissed":[]}.
@@ -26,18 +31,30 @@
 
 import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
-import { get } from "node:http";
+import { get, request } from "node:http";
 import { basename, extname, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const PROCESS = "Live"; // System Events process name for Ableton Live
-const PPAL_CONFIG = `http://localhost:${process.env.PPAL_PORT ?? 3350}/config`;
+const LIVE_BUNDLE_ID = "com.ableton.live"; // shared by every installed Live
+const NEW_SET_NAME = "Untitled"; // a new Set's window title
+const PPAL_PORT = process.env.PPAL_PORT ?? 3350;
+const PPAL_CONFIG = `http://localhost:${PPAL_PORT}/config`;
+const REMOTE_SCRIPT_PORT = process.env.PPAL_REMOTE_SCRIPT_PORT ?? 3349;
+const REMOTE_SCRIPT = `http://127.0.0.1:${REMOTE_SCRIPT_PORT}`;
+const REMOTE_SCRIPT_REPO =
+  "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
 const POLL_MS = 250;
 // Live can re-instantiate the device right after a load, so one answer can be
 // the old device's last. Two in a row counts as up.
 const READY_STREAK = 2;
 const PPAL_START_MS = 15_000;
+const PPAL_ADDED_MS = 30_000;
+// The remote script restarts with every Set, so it can be down for a moment.
+const REMOTE_SCRIPT_START_MS = 10_000;
+// The remote script waits up to 30s for Live before it answers.
+const LOAD_TIMEOUT_MS = 35_000;
 
 // --- CLI ---------------------------------------------------------------------
 
@@ -58,18 +75,28 @@ const opt = (name, def) => {
 const flag = (name) => argv.includes(name); // valueless on/off switch
 
 const USAGE = `Usage: node open-live-set.mjs <path.als> [options]
+       node open-live-set.mjs --new [options]
 
+  --new                create a new Untitled Set instead of opening a file
+  --add-producer-pal   if Producer Pal isn't running in the Set, add the
+                       Producer_Pal device on a new MIDI track (needs the
+                       Producer Pal remote script)
   --discard-unsaved    click Don't Save if the open Set has unsaved changes
                        (default: cancel, open nothing)
   --discard-recovery   click No if Live offers to recover work after a crash
                        (default: leave the dialog up and stop)
-  --app <name|path>    Live app to open it with (default: the running Live,
-                       else the default app for .als files)
+  --app <name|path>    Live app to use (default: the running Live, else the
+                       default app for .als files). --new ignores it while
+                       Live is running.
   --timeout <seconds>  give up after this long (default: 120)
   --help, -h           show this help
 
-Prints {"opened": "<path>", "producerPal": true|false, "dismissed": [...]} on
-stdout. macOS only. Both --discard flags throw work away: ask the user first.`;
+Env: PPAL_PORT (default 3350), PPAL_REMOTE_SCRIPT_PORT (default 3349).
+
+Prints {"opened": "<path>" or "new": true, "producerPal": true|false,
+"dismissed": [...]} on stdout, plus "addedProducerPal": {"trackIndex",
+"trackName"} when it added the device. macOS only. Both --discard flags throw
+work away: ask the user first.`;
 
 async function main() {
   if (flag("--help") || flag("-h")) {
@@ -86,21 +113,35 @@ async function main() {
     unsaved: flag("--discard-unsaved"),
     recovery: flag("--discard-recovery"),
   };
+  const addProducerPal = flag("--add-producer-pal");
   await assertAssistiveAccess();
-  const result = await openLiveSet({ file, app, timeoutMs, discard });
+  const result = await openLiveSet({
+    file,
+    app,
+    timeoutMs,
+    discard,
+    addProducerPal,
+  });
   process.stdout.write(JSON.stringify(result) + "\n");
 }
 
 /**
- * The one positional argument, checked to be an existing .als file.
- * @returns {string} Absolute path to the Set.
+ * The one positional argument, checked to be an existing .als file, or nothing
+ * for --new.
+ * @returns {string | undefined} Absolute path to the Set; undefined for --new.
  */
 function setPath() {
   const paths = argv.filter(
     (a, i) => !a.startsWith("-") && !VALUE_OPTIONS.has(argv[i - 1]),
   );
+  if (flag("--new")) {
+    if (paths.length > 0) {
+      throw new Error(`Pass a .als path or --new, not both`);
+    }
+    return undefined;
+  }
   if (paths.length === 0) {
-    throw new Error(`Missing the .als path\n\n${USAGE}`);
+    throw new Error(`Missing the .als path (or --new)\n\n${USAGE}`);
   }
   if (paths.length > 1) {
     throw new Error(`Expected one .als path, got: ${paths.join(", ")}`);
@@ -152,48 +193,112 @@ async function assertAssistiveAccess() {
 }
 
 /**
- * Open the Set and wait until Live shows it.
+ * Open the Set (or create a new one) and wait until Live shows it.
  * @param {object} o - Options.
- * @param {string} o.file - Absolute path to the .als file.
+ * @param {string} [o.file] - Absolute path to the .als file; omit for a new Set.
  * @param {string} [o.app] - App name or .app path; omit to choose automatically.
  * @param {number} o.timeoutMs - Time limit for the whole open.
  * @param {{unsaved: boolean, recovery: boolean}} o.discard - What the user
  *   agreed to lose.
+ * @param {boolean} o.addProducerPal - Add the device if Producer Pal isn't up.
  * @returns {Promise<object>} The result printed on stdout.
  */
-async function openLiveSet({ file, app, timeoutMs, discard }) {
+async function openLiveSet({ file, app, timeoutMs, discard, addProducerPal }) {
   const deadline = Date.now() + timeoutMs;
-  const name = basename(file, extname(file));
-  const titleShows = async () => {
-    const titles = await liveWindowTitles();
-    return titles.includes(name);
-  };
+  const name = file ? basename(file, extname(file)) : NEW_SET_NAME;
   const wasServing = await ppalAnswers();
-  const titleWasShowing = await titleShows();
+  const titleWasShowing = await windowTitled(name);
   const dismissed = new Set();
   const answerDialogs = () => answerDialog(discard, dismissed);
+
+  await (file ? startOpen(file, app) : startNewSet(app, answerDialogs));
+  await waitForSet({ name, wasServing, deadline, timeoutMs, answerDialogs });
+
+  // Still answers dialogs: when the title was already showing, a save prompt
+  // can turn up after the title check passed. Before adding, don't cut this
+  // short: a device that is still starting would get a duplicate.
+  process.stderr.write("Checking for Producer Pal…\n");
+  const ppalWait = Date.now() + PPAL_START_MS;
+  const producerPal = await waitForPpal(
+    addProducerPal ? ppalWait : Math.min(deadline, ppalWait),
+    answerDialogs,
+  );
+  const added =
+    addProducerPal && !producerPal ? await loadProducerPal() : undefined;
+
+  return {
+    ...(file ? { opened: file } : { new: true }),
+    producerPal: producerPal || added != null,
+    ...(added && { addedProducerPal: added }),
+    dismissed: [...dismissed],
+    ...(titleWasShowing &&
+      !wasServing && {
+        warning: `A Live window was already titled "${name}", so the swap couldn't be confirmed.`,
+      }),
+  };
+}
+
+/**
+ * Hand the file to Live.
+ * @param {string} file - Absolute path to the .als file.
+ * @param {string} [app] - App name or .app path; omit to choose automatically.
+ * @returns {Promise<void>} Resolves once `open` has handed it off.
+ */
+async function startOpen(file, app) {
+  const bundle = app ?? (await runningLiveApp());
+  const inApp = bundle ? ` in ${bundle}` : "";
+  process.stderr.write(`Opening ${file}${inApp}…\n`);
+  await openInBackground([...(bundle ? ["-a", bundle] : []), file]);
+}
+
+/**
+ * Click File → New Live Set in the running Live, or launch Live, which starts
+ * with a new Set.
+ * @param {string} [app] - App to launch; ignored while Live is running.
+ * @param {() => Promise<void>} answerDialogs - Clears dialogs before the click.
+ * @returns {Promise<void>} Resolves once the new Set is on its way.
+ */
+async function startNewSet(app, answerDialogs) {
+  if ((await livePid()) == null) {
+    process.stderr.write(`Launching ${app ?? "Live"} with a new Set…\n`);
+    await openInBackground(app ? ["-a", app] : ["-b", LIVE_BUNDLE_ID]);
+    return;
+  }
+  await answerDialogs(); // a dialog already up would block the menu
+  const ignored = app ? " (--app ignored: Live is running)" : "";
+  process.stderr.write(`Creating a new Set${ignored}…\n`);
+  const { error } = await osascript(
+    `tell application "System Events" to tell process "${PROCESS}" to click menu item "New Live Set" of menu "File" of menu bar 1`,
+  );
+  if (error != null) {
+    throw new Error(`Couldn't click File → New Live Set in Live: ${error}`);
+  }
+}
+
+/**
+ * Wait for the old Set to let go, then for a window showing the new one.
+ * @param {object} o - Options.
+ * @param {string} o.name - Window title the new Set will have.
+ * @param {boolean} o.wasServing - Producer Pal answered before the swap.
+ * @param {number} o.deadline - Give up at this time (epoch ms).
+ * @param {number} o.timeoutMs - The time limit, for error messages.
+ * @param {() => Promise<void>} o.answerDialogs - Runs on every tick.
+ * @returns {Promise<void>} Resolves once the new Set's window shows.
+ */
+async function waitForSet({
+  name,
+  wasServing,
+  deadline,
+  timeoutMs,
+  answerDialogs,
+}) {
   const timedOut = async (what) =>
     new Error(
       `${what} within ${timeoutMs / 1000}s. ${await describeLiveState()}`,
     );
 
-  const bundle = app ?? (await runningLiveApp());
-  const inApp = bundle ? ` in ${bundle}` : "";
-  process.stderr.write(`Opening ${file}${inApp}…\n`);
-  try {
-    await execFileAsync("open", [
-      "-g",
-      ...(bundle ? ["-a", bundle] : []),
-      file,
-    ]);
-  } catch (err) {
-    throw new Error(`open failed: ${err.stderr?.trim() || err.message}`, {
-      cause: err,
-    });
-  }
-
-  // Live keeps the old Set's server up until the swap, so its going away is the
-  // sign the old Set let go.
+  // Live keeps the old Set's server up until the swap (even after the title
+  // changes), so its going away is the sign the old Set let go.
   if (wasServing) {
     process.stderr.write("Waiting for the open Set to close…\n");
     const stopped = async () => !(await ppalAnswers());
@@ -203,28 +308,80 @@ async function openLiveSet({ file, app, timeoutMs, discard }) {
   }
 
   process.stderr.write(`Waiting for "${name}" to load…\n`);
-  if (!(await poll(titleShows, deadline, answerDialogs))) {
+  const shows = () => windowTitled(name);
+  if (!(await poll(shows, deadline, answerDialogs))) {
     throw await timedOut(`No Live window showed "${name}"`);
   }
+}
 
-  // Still answers dialogs: when the title was already showing, a save prompt
-  // can turn up after the title check passed.
-  process.stderr.write("Checking for Producer Pal…\n");
+/**
+ * Load the Producer_Pal device through the remote script, then wait for
+ * Producer Pal to answer. Not bound by --timeout: the Set is already open.
+ * @returns {Promise<{trackIndex: number, trackName: string}>} Where it went.
+ */
+async function loadProducerPal() {
+  const open = "The Set is open, but";
+  process.stderr.write("Adding Producer Pal…\n");
+  const reachable = await poll(
+    () => answers(`${REMOTE_SCRIPT}/ping`),
+    Date.now() + REMOTE_SCRIPT_START_MS,
+  );
+  if (!reachable) {
+    throw new Error(
+      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${REMOTE_SCRIPT_PORT}. Install it and select it as a Control Surface (Live Settings → Link, Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+    );
+  }
+
+  const { status, body } = await postJson(`${REMOTE_SCRIPT}/load`, {
+    type: "mfl-device",
+    name: "Producer_Pal",
+  }).catch((err) => ({ status: 0, body: { error: err.message } }));
+  if (status !== 200) {
+    throw new Error(
+      `${open} Producer Pal couldn't be added: ${loadFailure(status, body)}`,
+    );
+  }
+
+  const track = { trackIndex: body.track?.index, trackName: body.track?.name };
+  process.stderr.write(`Waiting for Producer Pal on "${track.trackName}"…\n`);
+  if (!(await waitForPpal(Date.now() + PPAL_ADDED_MS))) {
+    throw new Error(
+      `${open} Producer Pal didn't answer on port ${PPAL_PORT} within ${PPAL_ADDED_MS / 1000}s after the Producer_Pal device was added to track ${track.trackIndex} ("${track.trackName}"). Set PPAL_PORT if it uses another port.`,
+    );
+  }
+  return track;
+}
+
+/**
+ * Explain a failed /load.
+ * @param {number} status - HTTP status.
+ * @param {{error?: string, candidates?: string[]}} body - The reply.
+ * @returns {string} What went wrong and what to do.
+ */
+function loadFailure(status, body) {
+  if (status === 404) {
+    return "Live's browser has no Producer_Pal device. Put Producer_Pal.amxd where the browser's Max for Live section lists it, e.g. the User Library.";
+  }
+  if (status === 409) {
+    return `Live's browser has more than one Producer_Pal device: ${(body.candidates ?? []).join(", ")}. Keep only one device named Producer_Pal there.`;
+  }
+  const reply = status ? `answered ${status}` : "didn't reply"; // 0: no reply
+  return `the remote script ${reply}: ${body.error ?? "(no error text)"}`;
+}
+
+/**
+ * Wait for Producer Pal to answer READY_STREAK times in a row.
+ * @param {number} until - Deadline (epoch ms).
+ * @param {() => Promise<void>} answerDialogs - Runs on every tick.
+ * @returns {Promise<boolean>} True once it's up, false on timeout.
+ */
+function waitForPpal(until, answerDialogs) {
   let streak = 0;
-  const ppalUp = async () => {
+  const up = async () => {
     streak = (await ppalAnswers()) ? streak + 1 : 0;
     return streak >= READY_STREAK;
   };
-  const ppalDeadline = Math.min(deadline, Date.now() + PPAL_START_MS);
-  const producerPal = await poll(ppalUp, ppalDeadline, answerDialogs);
-
-  const result = { opened: file, producerPal, dismissed: [...dismissed] };
-  if (titleWasShowing && !wasServing) {
-    result.warning =
-      `A Live window was already titled "${name}" before the open, so the ` +
-      "swap couldn't be confirmed.";
-  }
-  return result;
+  return poll(up, until, answerDialogs);
 }
 
 /**
@@ -234,15 +391,46 @@ async function openLiveSet({ file, app, timeoutMs, discard }) {
  *   isn't running.
  */
 async function runningLiveApp() {
+  const pid = await livePid();
+  if (pid == null) {
+    return undefined;
+  }
   try {
-    const { stdout: pids } = await execFileAsync("pgrep", ["-x", PROCESS]);
-    const pid = pids.trim().split("\n")[0];
     const { stdout } = await execFileAsync("ps", ["-o", "comm=", "-p", pid]);
     const exe = stdout.trim();
     const suffix = "/Contents/MacOS/Live";
     return exe.endsWith(suffix) ? exe.slice(0, -suffix.length) : undefined;
   } catch {
+    return undefined; // Live quit in between
+  }
+}
+
+/**
+ * Live's process id.
+ * @returns {Promise<string | undefined>} The pid, or undefined if Live isn't
+ *   running.
+ */
+async function livePid() {
+  try {
+    const { stdout } = await execFileAsync("pgrep", ["-x", PROCESS]);
+    return stdout.trim().split("\n")[0];
+  } catch {
     return undefined; // pgrep exits 1 when Live isn't running
+  }
+}
+
+/**
+ * Run `open -g`, which keeps the app in the background.
+ * @param {string[]} args - Arguments after -g.
+ * @returns {Promise<void>} Resolves once `open` has handed off.
+ */
+async function openInBackground(args) {
+  try {
+    await execFileAsync("open", ["-g", ...args]);
+  } catch (err) {
+    throw new Error(`open failed: ${err.stderr?.trim() || err.message}`, {
+      cause: err,
+    });
   }
 }
 
@@ -250,11 +438,11 @@ async function runningLiveApp() {
  * Answer dialogs and run a check every tick until it passes or time runs out.
  * @param {() => Promise<boolean>} check - The condition to wait for.
  * @param {number} until - Deadline (epoch ms).
- * @param {() => Promise<void>} answerDialogs - Runs first on every tick; throws
- *   to stop the wait.
+ * @param {() => Promise<void>} [answerDialogs] - Runs first on every tick;
+ *   throws to stop the wait. Omit once the Set is open.
  * @returns {Promise<boolean>} True if the check passed, false on timeout.
  */
-async function poll(check, until, answerDialogs) {
+async function poll(check, until, answerDialogs = async () => {}) {
   for (;;) {
     await answerDialogs();
     if (await check()) {
@@ -375,19 +563,69 @@ function dialogScript(discard) {
 
 /**
  * Whether Producer Pal's REST server answers.
- *
- * node:http, not fetch: the fetch in some Node versions holds a request made
- * after a sleep for up to 3s, which trips the 2s timeout and fakes "not up".
  * @returns {Promise<boolean>} True on a 200 within 2s.
  */
 function ppalAnswers() {
+  return answers(PPAL_CONFIG);
+}
+
+/**
+ * Whether a local server answers a GET.
+ *
+ * node:http, not fetch: the fetch in some Node versions holds a request made
+ * after a sleep for up to 3s, which trips the 2s timeout and fakes "not up".
+ * @param {string} url - What to GET.
+ * @returns {Promise<boolean>} True on a 200 within 2s.
+ */
+function answers(url) {
   return new Promise((done) => {
-    const req = get(PPAL_CONFIG, { agent: false, timeout: 2000 }, (res) => {
+    const req = get(url, { agent: false, timeout: 2000 }, (res) => {
       res.resume();
       done(res.statusCode === 200);
     });
     req.on("timeout", () => req.destroy(new Error("timeout")));
     req.on("error", () => done(false));
+  });
+}
+
+/**
+ * POST JSON and read the JSON reply (node:http, for the same reason as
+ * `answers`).
+ * @param {string} url - Where to POST.
+ * @param {object} payload - The request body.
+ * @returns {Promise<{status: number, body: object}>} The status and parsed
+ *   reply; a reply that isn't JSON comes back as `{error: <text>}`.
+ */
+function postJson(url, payload) {
+  const data = JSON.stringify(payload);
+  const options = {
+    method: "POST",
+    agent: false,
+    timeout: LOAD_TIMEOUT_MS,
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(data),
+    },
+  };
+  return new Promise((done, fail) => {
+    const req = request(url, options, (res) => {
+      let text = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => (text += chunk));
+      res.on("end", () => {
+        try {
+          done({ status: res.statusCode, body: JSON.parse(text) });
+        } catch {
+          done({ status: res.statusCode, body: { error: text.trim() } });
+        }
+      });
+    });
+    const waited = `no reply within ${LOAD_TIMEOUT_MS / 1000}s`;
+    req.on("timeout", () => req.destroy(new Error(waited)));
+    req.on("error", (err) =>
+      fail(new Error(`${url} failed: ${err.message}`, { cause: err })),
+    );
+    req.end(data);
   });
 }
 
@@ -442,6 +680,16 @@ async function liveWindowTitles() {
     end tell
   `);
   return output == null ? [] : output.split("\n");
+}
+
+/**
+ * Whether a Live window has this title.
+ * @param {string} name - The title to look for.
+ * @returns {Promise<boolean>} True if one does.
+ */
+async function windowTitled(name) {
+  const titles = await liveWindowTitles();
+  return titles.includes(name);
 }
 
 // --- shared helpers ----------------------------------------------------------
