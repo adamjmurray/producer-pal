@@ -223,7 +223,7 @@ into the skill folder.
 
 ## Companion skills
 
-The `producer-pal` skill is the connection. Four more skills come with it:
+The `producer-pal` skill is the connection. Five more skills come with it:
 
 - **`ableton-audio-generator`**: synthesize audio from scratch with plain
   Node.js DSP and place it in Live: drum kits and Drum Racks, samples for
@@ -242,9 +242,12 @@ The `producer-pal` skill is the connection. Four more skills come with it:
   racks and macros, parameters, clips, mixer, routing, scenes. Point it at a
   whole projects folder to compare many Sets at once, like "what master chain do
   I usually use?". Live 12 files, any platform, read-only.
+- **`ableton-open-live-set`**: open a Live Set by path and wait until it has
+  loaded, answering the dialogs in the way. It never throws away unsaved changes
+  or crash-recovered work unless you agree. macOS only, no device needed.
 
 <a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
-has all five. Unzip it the same way:
+has all six. Unzip it the same way:
 
 ```bash
 curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
@@ -254,11 +257,13 @@ unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
 Same global-vs-project choice as above: unzip into a project's own skills folder
 (`.claude/skills/`) to scope them all to that project.
 
-::: warning One part needs macOS
+::: warning Two skills need macOS
 
-`ableton-export-audio` drives Live's Export dialog with AppleScript, since Live
-has no render API. Everything else in the bundle (audio generation, Gemini
-analysis, reading `.als` files) runs anywhere Node does.
+`ableton-export-audio` and `ableton-open-live-set` drive Live's dialogs with
+AppleScript: export because Live has no render API, open because opening a Set
+means answering Live's save and crash-recovery prompts. Everything else in the
+bundle (audio generation, Gemini analysis, reading `.als` files) runs anywhere
+Node does.
 
 :::
 

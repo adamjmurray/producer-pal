@@ -84,6 +84,13 @@ a draggable Session clip); only the final drop is manual.
   it's the way to compare many projects at once ("what master chain do I usually
   use?"). Live 12 files, any platform, read-only.
 
+## Open Sets
+
+- **[`ableton-open-live-set`](ableton-open-live-set/)** — open a `.als` file in
+  Live and wait until it has loaded, answering the dialogs in the way. It never
+  throws away unsaved changes or crash-recovered work unless the user agrees.
+  **macOS only**; doesn't need the device.
+
 ## Shared conventions
 
 - **Plain-Node DSP** — oscillators, envelopes, filters, and WAV headers written
@@ -97,7 +104,8 @@ a draggable Session clip); only the final drop is manual.
 ## Prerequisites
 
 - Ableton Live running with the **Producer Pal** Max for Live device loaded
-  (shows "Producer Pal Running"). Default endpoint `http://localhost:3350`.
-  `ableton-read-als` and `ableton-analyze-audio` are the exceptions: one only
-  reads files, the other only sends them to Gemini.
+  (shows "Producer Pal Running"). Default endpoint `http://localhost:3350`. The
+  exceptions: `ableton-read-als` only reads files, `ableton-analyze-audio` only
+  sends them to Gemini, and `ableton-open-live-set` opens Sets through Live's
+  own UI.
 - Node.js 18+.
