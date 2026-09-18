@@ -270,6 +270,17 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       expectCleanedUp();
     });
 
+    it("when the load returns nothing", async () => {
+      answerRemoteScript({ load: { success: true }, arrives: false });
+
+      await expect(
+        createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+      ).rejects.toThrow(
+        `could not load "Pro-Q 4": the remote script returned nothing`,
+      );
+      expectCleanedUp();
+    });
+
     it("when the load gets no answer", async () => {
       answerRemoteScript({
         load: { success: false, error: "timed out" },

@@ -214,9 +214,11 @@ async function loadOnto(
   );
   const failure = !response.success
     ? response.error
-    : response.result?.available === false
-      ? "Live's browser stopped answering"
-      : response.result?.error;
+    : response.result == null
+      ? "the remote script returned nothing"
+      : !response.result.available
+        ? "Live's browser stopped answering"
+        : response.result.error;
 
   if (failure != null) {
     throw new Error(`could not load "${deviceName}": ${failure}`);

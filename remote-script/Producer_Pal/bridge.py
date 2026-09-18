@@ -125,8 +125,13 @@ class _Job:
         self._bridge = bridge
         self._params = params
         self._reply = queue.Queue(1)
+        self._abandoned = False
 
     def run(self):
+        # The HTTP side gave up: the caller may have torn down the track
+        # it named, so running now would land on whatever took its place.
+        if self._abandoned:
+            return
         try:
             self._reply.put((200, self._handler(self._bridge, self._params)))
         except RouteError as err:
@@ -147,4 +152,5 @@ class _Job:
         try:
             return self._reply.get(timeout=timeout)
         except queue.Empty:
+            self._abandoned = True
             return 504, {"error": "Live did not run the request within %ss" % timeout}
