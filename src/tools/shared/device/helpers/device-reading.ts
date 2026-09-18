@@ -123,6 +123,9 @@ function processRegularChains(
   );
 
   if (includeChains) {
+    // Param flags are deliberately not forwarded: nested params can dwarf the
+    // response (a layered kit is chains × devices × ~30 params), and they'd
+    // hand out ids for devices the caller never addressed.
     const deviceOptions = {
       includeChains,
       includeDrumPads,
