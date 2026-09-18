@@ -8,6 +8,32 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { duplicate } from "../duplicate.ts";
+
+/** What a lane copy always says it left behind. */
+export const CLIPS_ONLY =
+  "clips only: a take lane takes no devices, routing, mixer settings or session clips";
+
+/** One take lane's entry in the result of a copy onto lanes. */
+export interface LaneCopyEntry {
+  id: string;
+  path: string;
+  created?: true;
+  name?: string;
+  clips: Array<{ id?: string; path?: string; ok?: false; reason?: string }>;
+  reason: string;
+}
+
+/**
+ * Copy a source onto the take lanes a toPath names.
+ * @param args - The duplicate args beyond `type: "track"`
+ * @returns The result, as the caller expects it
+ */
+export async function duplicateToLanes<T>(
+  args: Record<string, unknown>,
+): Promise<T> {
+  return (await duplicate({ type: "track", ...args })) as T;
+}
 
 /** The one note every take-lane source carries, so a copy can be checked for it. */
 export const SOURCE_NOTE = {
@@ -129,6 +155,57 @@ export function registerMainLaneSource(
       ...trackProps,
     },
   });
+}
+
+/**
+ * Register the source take lane (track 0, lane 0) holding one clip per start
+ * position, plus the track it sits on and the live_set. Register a main-lane
+ * source after this one to have both on the track, passing the lane's id as the
+ * track's `take_lanes`.
+ * @param starts - One clip per start position, in Ableton beats
+ * @param trackProps - Track properties merged over the MIDI defaults
+ * @param clipProps - Properties merged over each clip's defaults
+ * @returns The lane's mock id
+ */
+export function registerLaneSource(
+  starts: number[],
+  trackProps: Record<string, unknown> = {},
+  clipProps: Record<string, unknown> = {},
+): string {
+  registerLiveSet();
+
+  const clipIds = starts.map((start, index) => {
+    const id = `src_lane_clip_${index}`;
+
+    registerMockObject(id, {
+      path: livePath.track(0).takeLane(0).arrangementClip(index),
+      type: "Clip",
+      properties: arrangementClipProperties(true, start, clipProps),
+      methods: {
+        get_notes_extended: () => JSON.stringify({ notes: [SOURCE_NOTE] }),
+      },
+    });
+
+    return id;
+  });
+
+  registerMockObject("src_lane", {
+    path: livePath.track(0).takeLane(0),
+    type: "TakeLane",
+    properties: { name: "Take", arrangement_clips: children(...clipIds) },
+  });
+  registerMockObject("src_track", {
+    path: livePath.track(0),
+    properties: {
+      has_midi_input: 1,
+      is_foldable: 0,
+      take_lanes: children("src_lane"),
+      arrangement_clips: children(),
+      ...trackProps,
+    },
+  });
+
+  return "src_lane";
 }
 
 /**

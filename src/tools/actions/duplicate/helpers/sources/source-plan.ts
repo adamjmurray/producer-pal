@@ -18,7 +18,10 @@ import {
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { targetIds } from "#src/tools/shared/validation/lists/target-lists.ts";
+import {
+  targetIds,
+  type IdPerPath,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   pathEntries,
   pathNamesSomething,
@@ -55,6 +58,9 @@ interface SourcePlanArgs {
    * way.
    */
   onArrangement: boolean;
+  /** How a `path` entry resolves, when the type's own lookup isn't it: a track
+   * copied onto a take lane takes a lane source too. */
+  idPerPath?: IdPerPath;
 }
 
 /**
@@ -67,6 +73,7 @@ interface SourcePlanArgs {
  * @param args.toSlot - Deprecated destination clip slot(s)
  * @param args.arrangementStart - Position(s), already resolved to bar|beat
  * @param args.onArrangement - Whether the copies land on the arrangement
+ * @param args.idPerPath - Path lookup to use instead of the type's own
  * @returns One share per source, ids first, then the paths in order
  */
 export function planSources({
@@ -77,8 +84,9 @@ export function planSources({
   toSlot,
   arrangementStart,
   onArrangement,
+  idPerPath,
 }: SourcePlanArgs): SourceShare[] {
-  const sources = sourceTargets(type, id, path);
+  const sources = sourceTargets(type, id, path, idPerPath);
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split
@@ -231,15 +239,17 @@ function perSource(
  * @param type - Object type to duplicate, which says how a path resolves
  * @param id - Source id(s), comma-separated for multiple
  * @param path - Source path(s), comma-separated for multiple
+ * @param lookup - Path lookup to use instead of the type's own
  * @returns One entry per source, ids first, then the paths in order
  */
 function sourceTargets(
   type: string,
   id: string | undefined,
   path: string | undefined,
+  lookup: IdPerPath = idPerPathForType(type),
 ): SourceTarget[] {
   const named = namedTargets({ id, path });
-  const resolved = targetIds({ id, path }, idPerPathForType(type));
+  const resolved = targetIds({ id, path }, lookup);
   const missing = resolved.flatMap((entry, i) =>
     entry == null ? [(named[i] as NamedTarget).value] : [],
   );

@@ -26,11 +26,16 @@ import {
 import {
   planSources,
   resolveSourceClipDestinations,
+  type SourceShare,
 } from "./helpers/sources/source-plan.ts";
 import {
   duplicateTracksToLanes,
   namesTakeLaneDestination,
 } from "./helpers/sources/duplicate-tracks-to-lanes.ts";
+import {
+  laneSourceIds,
+  refuseLaneSourceOffLane,
+} from "./helpers/sources/lane-sources.ts";
 import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
 import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
 import {
@@ -132,8 +137,11 @@ export async function duplicate(
   validateBasicInputs(type, id, count, path);
 
   // A track copied onto a take lane lands its clips there instead of making a
-  // new track, so the params that make no sense for it don't warn or apply.
+  // new track, so the params that make no sense for it don't warn or apply. It
+  // is also the only copy whose source can be a lane.
   const toTakeLane = namesTakeLaneDestination(type, toPath);
+
+  refuseLaneSourceOffLane(type, toTakeLane, id, path);
 
   if (!toTakeLane) {
     ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
@@ -163,15 +171,11 @@ export async function duplicate(
     toSlot,
     arrangementStart,
     onArrangement: type === "clip" && hasArrangementParams,
+    // A lane destination takes a lane source, which the track lookup rejects.
+    idPerPath: toTakeLane ? laneSourceIds : undefined,
   });
 
-  // A bad id partway through a list would leave the copies before it behind, so
-  // check every source before the first one is made.
-  if (sources.length > 1) {
-    for (const source of sources) {
-      validateIdType(source.id, type);
-    }
-  }
+  validateSourceIds(type, sources, toTakeLane);
 
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
@@ -251,6 +255,29 @@ export async function duplicate(
   focusIfRequested(focus, destination, type, createdObjects);
 
   return oneOrAll(createdObjects);
+}
+
+/**
+ * Checks every source of a list before the first copy is made: a bad id partway
+ * through would leave the copies before it behind. A lane copy does its own
+ * checking, since it plans every destination before creating anything, and its
+ * sources can be take lanes rather than tracks.
+ * @param type - What is being duplicated
+ * @param sources - The sources, in call order
+ * @param toTakeLane - Whether the copies land on take lanes
+ */
+function validateSourceIds(
+  type: string,
+  sources: SourceShare[],
+  toTakeLane: boolean,
+): void {
+  if (sources.length < 2 || toTakeLane) {
+    return;
+  }
+
+  for (const source of sources) {
+    validateIdType(source.id, type);
+  }
 }
 
 /**

@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for `ppal-duplicate` with a track source and a take-lane
- * destination: every clip on the source's main lane is re-created on the lane,
- * at the position it already had. No new track, and nothing but the clips.
+ * E2E tests for `ppal-duplicate` with a take-lane destination: every clip on the
+ * source — a track's main lane, or a take lane of its own — is re-created on the
+ * lane, at the position it already had. No new track, and nothing but the clips.
  *
  * Take lanes are append-only, so every test depends on setupMcpTestContext()
  * reopening the Set between tests (no `once`).
@@ -97,6 +97,57 @@ async function readNotes(target: Record<string, string>): Promise<string> {
   return clip.notes ?? "";
 }
 
+/** Copy a source onto the take lanes a toPath names. */
+async function copyToLanes<T>(
+  source: Record<string, string>,
+  toPath: string,
+): Promise<T> {
+  return parseToolResult<T>(
+    await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "track", ...source, toPath },
+    }),
+  );
+}
+
+/**
+ * Check a copy landed both source clips on the destination's first lane, and
+ * that the notes came across.
+ */
+async function expectBothClipsOnNewLane(
+  result: LaneCopyResult,
+  sourceNotes: string,
+): Promise<void> {
+  expect(result.path).toBe(`${DESTINATION}/l0`);
+  expect(result.created).toBe(true);
+  expect(result.clips.map((clip) => clip.path)).toStrictEqual([
+    `${DESTINATION}/l0[1|1]`,
+    `${DESTINATION}/l0[5|1]`,
+  ]);
+
+  await sleep(100);
+  const lanes = await readLanes(DESTINATION);
+
+  expect(lanes.takeLanes).toHaveLength(1);
+  expect(lanes.takeLanes![0]!.clips).toHaveLength(2);
+  // The copy is rebuilt from the source's notes, so they have to match.
+  expect(await readNotes({ id: result.clips[0]!.id! })).toBe(sourceNotes);
+}
+
+/** Stack the source track's main lane onto its own first take lane. */
+async function stackOnSourceLane(): Promise<LaneCopyResult> {
+  await createSourceClips();
+
+  const onSource = await copyToLanes<LaneCopyResult>(
+    { path: SOURCE },
+    `${SOURCE}/l0`,
+  );
+
+  await sleep(100);
+
+  return onSource;
+}
+
 describe("ppal-duplicate track to a take lane", () => {
   it("copies a track's arrangement clips onto a new lane, and makes no track", async () => {
     await createSourceClips();
@@ -107,36 +158,17 @@ describe("ppal-duplicate track to a take lane", () => {
         arguments: { include: ["tracks"] },
       }),
     );
-    const result = parseToolResult<LaneCopyResult>(
-      await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "track",
-          path: SOURCE,
-          toPath: `${DESTINATION}/l0`,
-        },
-      }),
+    const result = await copyToLanes<LaneCopyResult>(
+      { path: SOURCE },
+      `${DESTINATION}/l0`,
     );
 
-    expect(result.path).toBe(`${DESTINATION}/l0`);
-    expect(result.created).toBe(true);
-    expect(result.clips.map((clip) => clip.path)).toStrictEqual([
-      `${DESTINATION}/l0[1|1]`,
-      `${DESTINATION}/l0[5|1]`,
-    ]);
-    // The entry says what a lane can't take, so nothing is dropped silently.
-    expect(result.reason).toContain("clips only");
-
-    await sleep(100);
-    const lanes = await readLanes(DESTINATION);
-
-    expect(lanes.takeLanes).toHaveLength(1);
-    expect(lanes.takeLanes![0]!.clips).toHaveLength(2);
-
-    // The copy is rebuilt from the source's notes, so they have to match.
-    expect(await readNotes({ id: result.clips[0]!.id! })).toBe(
+    await expectBothClipsOnNewLane(
+      result,
       await readNotes({ path: `${SOURCE}[1|1]` }),
     );
+    // The entry says what a lane can't take, so nothing is dropped silently.
+    expect(result.reason).toContain("clips only");
 
     // A lane copy is not a track copy: the Set has the same tracks it had.
     const after = parseToolResult<ReadLiveSetTracksResult>(
@@ -152,15 +184,9 @@ describe("ppal-duplicate track to a take lane", () => {
   it("appends a lane with l+, and refuses a group track beside it", async () => {
     await createSourceClips();
 
-    const result = parseToolResult<LaneCopyResult[]>(
-      await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "track",
-          path: SOURCE,
-          toPath: `${DESTINATION}/l+,t${GROUP_TRACK}/l0`,
-        },
-      }),
+    const result = await copyToLanes<LaneCopyResult[]>(
+      { path: SOURCE },
+      `${DESTINATION}/l+,t${GROUP_TRACK}/l0`,
     );
 
     // l+ appends: the destination had no lanes, so the copy made l0.
@@ -200,18 +226,80 @@ describe("ppal-duplicate track to a take lane", () => {
     expect(lanes).not.toHaveProperty("takeLanes");
   });
 
+  it("copies a lane onto another track's lane", async () => {
+    const onSource = await stackOnSourceLane();
+
+    // l+ appends: the destination had no lanes, so the copy makes l0.
+    const result = await copyToLanes<LaneCopyResult>(
+      { path: `${SOURCE}/l0` },
+      `${DESTINATION}/l+`,
+    );
+
+    await expectBothClipsOnNewLane(
+      result,
+      await readNotes({ id: onSource.clips[0]!.id! }),
+    );
+  });
+
+  it("copies the lane an id names", async () => {
+    const onSource = await stackOnSourceLane();
+
+    const result = await copyToLanes<LaneCopyResult>(
+      { id: onSource.id },
+      `${DESTINATION}/l+`,
+    );
+
+    await expectBothClipsOnNewLane(
+      result,
+      await readNotes({ id: onSource.clips[0]!.id! }),
+    );
+  });
+
+  it("refuses a lane copied onto itself, and onto a bare track", async () => {
+    const onSource = await stackOnSourceLane();
+
+    const ontoItself = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "track",
+        id: onSource.id,
+        toPath: `${SOURCE}/l0`,
+      },
+    });
+
+    expect(isToolError(ontoItself)).toBe(true);
+    expect(getToolErrorMessage(ontoItself)).toContain(
+      "a lane can't copy onto itself",
+    );
+
+    // A lane's clips have nowhere to go on a track destination, which would
+    // otherwise make a whole new track.
+    const ontoTrack = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "track",
+        id: onSource.id,
+        toPath: DESTINATION,
+      },
+    });
+
+    expect(isToolError(ontoTrack)).toBe(true);
+    expect(getToolErrorMessage(ontoTrack)).toContain(
+      "its clips copy only onto another lane",
+    );
+
+    await sleep(100);
+    // Neither refusal made a lane, and the source still has just the one.
+    expect((await readLanes(SOURCE)).takeLanes).toHaveLength(1);
+    expect(await readLanes(DESTINATION)).not.toHaveProperty("takeLanes");
+  });
+
   it("keeps the lane that fits when another destination is past the cap", async () => {
     await createSourceClips();
 
-    const result = parseToolResult<LaneCopyResult[]>(
-      await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "track",
-          path: SOURCE,
-          toPath: `${DESTINATION}/l0,${DESTINATION}/l${MAX_TAKE_LANES}`,
-        },
-      }),
+    const result = await copyToLanes<LaneCopyResult[]>(
+      { path: SOURCE },
+      `${DESTINATION}/l0,${DESTINATION}/l${MAX_TAKE_LANES}`,
     );
 
     expect(result[0]!.path).toBe(`${DESTINATION}/l0`);

@@ -9,7 +9,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "./duplicate-mocks-test-helpers.ts";
-import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -18,6 +17,9 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import {
+  CLIPS_ONLY,
+  duplicateToLanes,
+  type LaneCopyEntry,
   registerMainLaneClip,
   registerMainLaneSource,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
@@ -26,30 +28,13 @@ import {
   clearCapturedWarnings,
 } from "#src/shared/max/v8-warning-capture.ts";
 
-/** What a lane copy always says it left behind. */
-const CLIPS_ONLY =
-  "clips only: a take lane takes no devices, routing, mixer settings or session clips";
-
-interface LaneEntry {
-  id: string;
-  path: string;
-  created?: true;
-  name?: string;
-  clips: Array<{ id?: string; path?: string; ok?: false; reason?: string }>;
-  reason: string;
-}
-
 /**
  * Copy the source track onto the lanes a toPath names.
  * @param args - The duplicate args beyond the track source
  * @returns The result, as the caller expects it
  */
 async function copyToLanes<T>(args: Record<string, unknown>): Promise<T> {
-  return (await duplicate({
-    type: "track",
-    id: "src_track",
-    ...args,
-  })) as T;
+  return await duplicateToLanes<T>({ id: "src_track", ...args });
 }
 
 describe("duplicate track to take lane", () => {
@@ -61,7 +46,7 @@ describe("duplicate track to take lane", () => {
     registerMainLaneSource([0, 16]);
 
     const destination = registerTakeLaneTrack({ trackIndex: 1 });
-    const result = await copyToLanes<LaneEntry>({
+    const result = await copyToLanes<LaneCopyEntry>({
       toPath: "t1/l0",
     });
 
@@ -81,7 +66,7 @@ describe("duplicate track to take lane", () => {
     registerMainLaneSource([0], {}, { has_envelopes: 1 });
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    const result = await copyToLanes<LaneEntry>({
+    const result = await copyToLanes<LaneCopyEntry>({
       toPath: "t1/l0",
       name: "Take B",
     });
@@ -99,7 +84,7 @@ describe("duplicate track to take lane", () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    const result = await copyToLanes<LaneEntry[]>({
+    const result = await copyToLanes<LaneCopyEntry[]>({
       toPath: "t1/l+,t1/l+",
       takeLaneName: "Take B",
     });
@@ -132,7 +117,7 @@ describe("duplicate track to take lane", () => {
     });
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    const result = await copyToLanes<LaneEntry>({ toPath: "t1/l0" });
+    const result = await copyToLanes<LaneCopyEntry>({ toPath: "t1/l0" });
 
     expect(result.clips.map((clip) => clip.path)).toStrictEqual(["t1/l0[1|1]"]);
   });
@@ -146,7 +131,7 @@ describe("duplicate track to take lane", () => {
 
     expect(destination.call).toHaveBeenCalledTimes(2);
 
-    const again = await copyToLanes<LaneEntry>({
+    const again = await copyToLanes<LaneCopyEntry>({
       toPath: "t1/l1",
     });
 
@@ -201,7 +186,7 @@ describe("duplicate track to take lane", () => {
     });
     registerTakeLaneTrack({ trackIndex: 1, hasMidiInput: 0 });
 
-    const result = await copyToLanes<LaneEntry>({
+    const result = await copyToLanes<LaneCopyEntry>({
       toPath: "t1/l0",
     });
 
@@ -227,7 +212,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     registerTakeLaneTrack({ trackIndex: 1 });
     registerTakeLaneTrack({ trackIndex: 2, hasMidiInput: 0 });
 
-    const result = await copyToLanes<LaneEntry[]>({
+    const result = await copyToLanes<LaneCopyEntry[]>({
       toPath: "t1/l0,t2/l0",
     });
 
@@ -257,7 +242,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
       properties: { has_midi_input: 1, is_foldable: 1 },
     });
 
-    const result = await copyToLanes<LaneEntry[]>({
+    const result = await copyToLanes<LaneCopyEntry[]>({
       toPath: "t1/l0,t9/l0",
     });
 
@@ -278,7 +263,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     registerTakeLaneTrack({ trackIndex: 1 });
 
     // "zz9" doesn't parse at all, and still gets its own entry.
-    const result = await copyToLanes<LaneEntry[]>({
+    const result = await copyToLanes<LaneCopyEntry[]>({
       toPath: "t1/l0,t2,zz9",
     });
 
@@ -303,7 +288,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
 
     const destination = registerTakeLaneTrack({ trackIndex: 1 });
 
-    const result = await copyToLanes<LaneEntry[]>({
+    const result = await copyToLanes<LaneCopyEntry[]>({
       toPath: `t1/l0,t1/l${MAX_TAKE_LANES}`,
     });
 
@@ -370,7 +355,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1, postCreateFails: true });
 
-    const result = await copyToLanes<LaneEntry>({
+    const result = await copyToLanes<LaneCopyEntry>({
       toPath: "t1/l0",
     });
 
@@ -384,7 +369,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1, clipCreationFails: true });
 
-    const result = await copyToLanes<LaneEntry>({
+    const result = await copyToLanes<LaneCopyEntry>({
       toPath: "t1/l0",
     });
 

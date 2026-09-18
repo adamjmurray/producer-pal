@@ -158,9 +158,10 @@ Live, or make sure your standalone Max is up to date. See
 - Stack variations on [take lanes](/features#take-lanes): naming one lane twice
   in `toPath`, `toPath: "t2/l0[9|1],t2/l0[13|1]"`, stacks both takes on it. A
   lane per copy is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`
-- Copy a whole track's arrangement onto one lane with `type: "track"` and a lane
-  `toPath`: every main-lane clip, at the position it already has, clips only (no
-  devices, routing, mixer settings, or session clips)
+- Copy a whole lane onto another lane with `type: "track"` and a lane `toPath`:
+  every clip at the position it already has, clips only (no devices, routing,
+  mixer settings, or session clips). The source is a track (its main lane) or a
+  take lane, by path (`t2/l0`) or by the lane's id
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the

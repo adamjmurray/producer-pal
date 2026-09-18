@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// A track source with a take-lane destination: every clip on the source's main
-// arrangement lane is re-created on the target lane, at the same position. A
-// lane holds clips and nothing else, so the devices, mixer, routing and session
-// clips a new-track copy carries stay behind — the lane's own entry says so.
+// A take-lane destination: every clip on the source — a track's main
+// arrangement lane, or a take lane of its own — is re-created on the target
+// lane, at the same position. A lane holds clips and nothing else, so the
+// devices, mixer, routing and session clips a new-track copy carries stay
+// behind — the lane's own entry says so.
 //
 // Every destination is checked before the first lane is created: a lane can't
 // be deleted, so a cap or type error found halfway would strand the lanes
@@ -17,7 +18,6 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   assertTrackTakesLanes,
-  isTakeLaneClip,
   resolveTakeLane,
   takeLaneLabel,
   takeLaneTargetsThatFit,
@@ -30,7 +30,6 @@ import {
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   pathEntries,
   takeLanePathEntry,
@@ -41,7 +40,6 @@ import {
   parseObjectPath,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getMinimalClipInfo,
   skippedCopy,
@@ -54,6 +52,7 @@ import {
   labelName,
   type CopyLabels,
 } from "./copy-labels.ts";
+import { laneSource, type LaneSource } from "./lane-sources.ts";
 import { type SourceShare } from "./source-plan.ts";
 import { type DuplicateParams } from "./duplicate-one-source.ts";
 
@@ -71,8 +70,8 @@ export interface TracksToLanesArgs {
 }
 
 /**
- * Copies each source track's main-lane arrangement clips onto the take lanes
- * its toPath names, one entry per destination.
+ * Copies each source's arrangement clips onto the take lanes its toPath names,
+ * one entry per destination.
  * @param args - The sources, their destinations, and the call's labels
  * @returns One entry per destination, in the order toPath named them
  */
@@ -122,7 +121,7 @@ interface LaneTarget {
   track: LiveAPI;
   /** `t2/l1`: the cap check's key, and the path the entry reports. */
   label: string;
-  /** The source's main-lane clips, in order */
+  /** The source's clips, in order */
   sourceClips: LiveAPI[];
   name: string | undefined;
   color: string | undefined;
@@ -132,16 +131,6 @@ interface LaneTarget {
 type LaneCopy =
   | { entry: string; target: LaneTarget; refusal?: undefined }
   | { entry: string; target?: undefined; refusal: string };
-
-/** What one source contributes to every destination it names. */
-interface LaneSource {
-  clips: LiveAPI[];
-  /** Whether any clip can be rebuilt at all: an audio one needs its sample. */
-  recreatable: boolean;
-  isMidi: boolean;
-  /** How the source is addressed, for a refusal that names it */
-  label: string;
-}
 
 /** Where one clip lands, and how the copy is labeled. */
 interface LaneDestination {
@@ -221,7 +210,7 @@ function warnUnusedTrackParams(count: number, params: DuplicateParams): void {
  * Plans every destination in the call before any lane exists, so a refusal
  * costs nothing: the labels are claimed, the tracks are checked, and each `l+`
  * lands after the lanes the entries before it named.
- * @param sources - The source tracks, in call order
+ * @param sources - The sources, in call order
  * @param labels - The call's names and colors
  * @returns One plan per destination, in the order the call named them
  */
@@ -234,15 +223,8 @@ function planLaneCopies(
   const laneCounts = new Map<number, number>();
 
   for (const share of sources) {
-    const track = validateIdType(share.id, "track");
+    const source = laneSource(share.id);
     const entries = pathEntries(share.toPath, "toPath");
-    const clips = mainLaneClips(track);
-    const source: LaneSource = {
-      clips,
-      recreatable: clips.some(canRecreateClip),
-      isMidi: (track.getProperty("has_midi_input") as number) > 0,
-      label: targetLabel(track),
-    };
 
     claimLabels(labels, entries.length);
 
@@ -262,7 +244,7 @@ function planLaneCopies(
 /**
  * Plans one destination: the lane it names, or why its clips can't land there.
  * @param entry - The destination as the caller wrote it
- * @param source - The source track's clips and type
+ * @param source - The source's clips and type
  * @param laneCounts - Lanes each track will have, updated as the plan grows
  * @param label - The name and color for this destination's clips
  * @param label.name - Name for them, or undefined to keep the source's
@@ -296,6 +278,14 @@ function planOneCopy(
   const before =
     laneCounts.get(trackIndex) ?? track.getChildCount("take_lanes");
   const laneIndex = path.kind === "take-lane" ? path.laneIndex : before;
+  const laneLabel = takeLaneLabel({ trackIndex, takeLane: laneIndex });
+
+  if (laneLabel === source.lanePath) {
+    return refused(
+      entry,
+      `toPath "${entry}" is the source lane; a lane can't copy onto itself`,
+    );
+  }
 
   laneCounts.set(trackIndex, Math.max(before, laneIndex + 1));
 
@@ -305,7 +295,7 @@ function planOneCopy(
       trackIndex,
       laneIndex,
       track,
-      label: takeLaneLabel({ trackIndex, takeLane: laneIndex }),
+      label: laneLabel,
       sourceClips: source.clips,
       ...label,
     },
@@ -318,7 +308,7 @@ function planOneCopy(
  * ends up empty can't be taken back.
  * @param track - The destination track
  * @param trackIndex - Its index, for the message
- * @param source - The source track's clips and type
+ * @param source - The source's clips and type
  * @returns The reason, or null
  */
 function laneTrackBlocker(
@@ -341,7 +331,9 @@ function laneTrackBlocker(
   }
 
   if (source.clips.length === 0) {
-    return `${source.label} has no arrangement clips on its main lane to copy`;
+    return source.lanePath == null
+      ? `${source.label} has no arrangement clips on its main lane to copy`
+      : `${source.label} has no arrangement clips to copy`;
   }
 
   if (!source.recreatable) {
@@ -472,20 +464,6 @@ function copyClipToLane(
 
     return missed(`the take-lane copy failed: ${errorMessage(error)}`);
   }
-}
-
-/**
- * The clips on a track's main arrangement lane. Whether Live's
- * `arrangement_clips` takes in the lanes' clips on a track that has lanes isn't
- * settled here, so the take-lane paths are filtered out.
- * @param track - The source track
- * @returns Its main-lane clips, in order
- */
-function mainLaneClips(track: LiveAPI): LiveAPI[] {
-  return track
-    .getChildIds("arrangement_clips")
-    .map((id) => LiveAPI.from(id))
-    .filter((clip) => clip.exists() && !isTakeLaneClip(clip));
 }
 
 /**
