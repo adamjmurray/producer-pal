@@ -104,6 +104,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
         "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); omitting toPath appends to the chain's own rack. " +
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
+        "Tracks: 't2/l0' (or 't2/l+') copies the source track's main-lane arrangement clips onto that take lane, " +
+        "at the positions they already have — clips only, and the two tracks must match MIDI/audio type; " +
+        "name/color label the copied clips. A track copy needs no toPath otherwise. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
         "One destination covers every source and position; a list pairs one per copy, in order, and never cycles. " +
         "A clip slot, device or pad holds one object, so name one per copy",

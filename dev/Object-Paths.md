@@ -272,8 +272,11 @@ target.
 duplicate handles neither direction: `TakeLane` has no duplicate API, and
 `Track.duplicate_clip_to_arrangement` silently no-ops when the _source_ is a
 take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
-(promote) by reading the notes and building a new clip — MIDI only, and envelope
-automation is dropped.
+(promote) by rebuilding the clip from its notes, or from its sample for audio;
+envelope automation is dropped, and a warped audio clip's markers reset. A
+`duplicate` with `type: "track"` and a lane destination copies every clip on the
+source track's main lane the same way — clips only, so the devices, routing,
+mixer settings and session clips a new-track copy carries stay behind.
 
 **A lane is one-way**: nothing removes a take lane or a clip on one. A move of a
 lane clip gets as close as Live allows — `update-clip` copies the content to the

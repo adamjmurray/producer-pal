@@ -146,6 +146,10 @@ cluttering the timeline.
   already has lanes, start after the last one a prior
   [Read Track](/features/tools#ppal-read-track) reported. Add
   [transforms](#transforms) to vary each one.
+- A whole track's arrangement goes onto one lane in a single
+  [Duplicate](/features/tools#ppal-duplicate): `type: "track"` with
+  `toPath: "t2/l0"` copies every clip on the source's main lane at the positions
+  it already has, clips only, and the two tracks must match MIDI/audio type.
 - [Update Track](/features/tools#ppal-update-track) owns the lanes themselves:
   `path: "t2/l+"` adds one, `path: "t2/l0"` with a `name` names an existing one,
   and a lane takes no other track setting.

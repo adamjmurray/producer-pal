@@ -54,6 +54,41 @@ export interface OneSourceArgs {
   context: Partial<ToolContext>;
 }
 
+/** Every source's turn, and what they share. */
+export interface EverySourceArgs extends Omit<
+  OneSourceArgs,
+  "source" | "clipDestinations"
+> {
+  sources: SourceShare[];
+  /** One destination set per source, or null for a type with no clip path. */
+  clipDestinations: ClipDestinations[] | null;
+}
+
+/**
+ * Makes every source's copies, in the order the call named them. Each source
+ * takes its own share of the destinations and positions.
+ * @param args - The sources, and what they share
+ * @returns Every copy, source by source
+ */
+export async function duplicateEverySource(
+  args: EverySourceArgs,
+): Promise<object[]> {
+  const created: object[] = [];
+
+  for (const [index, source] of args.sources.entries()) {
+    created.push(
+      ...(await duplicateOneSource({
+        ...args,
+        source,
+        clipDestinations: args.clipDestinations?.[index] ?? null,
+        params: { ...args.params, arrangementStart: source.arrangementStart },
+      })),
+    );
+  }
+
+  return created;
+}
+
 /**
  * Makes one source's copies. Clips iterate by position, tracks and scenes by
  * count.

@@ -36,6 +36,10 @@ const SCRATCH = `t${EMPTY_MIDI_TRACK}`;
 /** A colour Live's palette does not hold, so every write of it snaps. */
 const OFF_PALETTE = "#123456";
 
+/** What a track's take-lane copy says it left behind. */
+const CLIPS_ONLY =
+  "clips only: a take lane takes no devices, routing, mixer settings or session clips";
+
 /** One send of a write result: only what these probes read off it. */
 interface SendEntry {
   return?: string;
@@ -116,6 +120,47 @@ describe("warnings the tools still raise", () => {
     ).toStrictEqual([
       "WARNING: count 2 ignored: a drum pad copy goes to the pads toPath names",
     ]);
+  });
+
+  it("says what a track's take-lane copy has no use for", async () => {
+    parseToolResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: { path: `${SCRATCH}[1|1]`, notes: "C3 1|1" },
+      }),
+    );
+    await sleep(100);
+
+    const laneCopy = {
+      type: "track",
+      path: SCRATCH,
+      toPath: "t10/l0",
+    };
+
+    expect(
+      await warningsFrom("ppal-duplicate", { ...laneCopy, count: 2 }),
+    ).toStrictEqual([
+      "WARNING: count 2 ignored: a track's clips go once to each lane toPath names",
+    ]);
+
+    expect(
+      await warningsFrom("ppal-duplicate", {
+        ...laneCopy,
+        toPath: "t10/l1",
+        withoutClips: true,
+        withoutDevices: true,
+      }),
+    ).toStrictEqual([
+      `WARNING: withoutClips/withoutDevices ignored: ${CLIPS_ONLY}`,
+    ]);
+
+    expect(
+      await warningsFrom("ppal-duplicate", {
+        ...laneCopy,
+        toPath: "t10/l2",
+        routeToSource: true,
+      }),
+    ).toStrictEqual([`WARNING: routeToSource ignored: ${CLIPS_ONLY}`]);
   });
 
   it("names an argument it did not recognise, and a blank destination", async () => {

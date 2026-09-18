@@ -21,12 +21,16 @@ import { focusIfRequested } from "./helpers/focus-if-requested.ts";
 import { copyLabels } from "./helpers/sources/copy-labels.ts";
 import {
   duplicateChainSources,
-  duplicateOneSource,
+  duplicateEverySource,
 } from "./helpers/sources/duplicate-one-source.ts";
 import {
   planSources,
   resolveSourceClipDestinations,
 } from "./helpers/sources/source-plan.ts";
+import {
+  duplicateTracksToLanes,
+  namesTakeLaneDestination,
+} from "./helpers/sources/duplicate-tracks-to-lanes.ts";
 import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
 import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
 import {
@@ -127,13 +131,18 @@ export async function duplicate(
   // Validate basic inputs
   validateBasicInputs(type, id, count, path);
 
-  // Auto-configure for routing back to source
-  ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
-    type,
-    routeToSource,
-    withoutClips,
-    withoutDevices,
-  ));
+  // A track copied onto a take lane lands its clips there instead of making a
+  // new track, so the params that make no sense for it don't warn or apply.
+  const toTakeLane = namesTakeLaneDestination(type, toPath);
+
+  if (!toTakeLane) {
+    ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
+      type,
+      routeToSource,
+      withoutClips,
+      withoutDevices,
+    ));
+  }
 
   // One spelling from here down: a scene's whole destination is its position,
   // the deprecated locator folds onto the position it named, and every `loc:`
@@ -185,9 +194,22 @@ export async function duplicate(
     takeLaneName,
     transforms,
     code,
+    toTakeLane,
   });
 
   const labels = copyLabels(name, color, sources.length);
+
+  if (toTakeLane) {
+    return oneOrAll(
+      duplicateTracksToLanes({
+        sources,
+        labels,
+        count,
+        params: { withoutClips, withoutDevices, routeToSource },
+        takeLaneName,
+      }),
+    );
+  }
 
   // All three take comma-separated toPath for multiple destinations, and answer
   // with one entry per destination named.
@@ -195,30 +217,18 @@ export async function duplicate(
     return oneOrAll(duplicateChainSources(type, sources, labels, count));
   }
 
-  const createdObjects: object[] = [];
-
-  for (const [i, source] of sources.entries()) {
-    createdObjects.push(
-      ...(await duplicateOneSource({
-        type,
-        source,
-        destination,
-        clipDestinations: clipDestinations?.[i] ?? null,
-        count,
-        labels,
-        params: {
-          arrangementStart: source.arrangementStart,
-          arrangementLength,
-          withoutClips,
-          withoutDevices,
-          routeToSource,
-        },
-        takeLane,
-        takeLaneName,
-        context,
-      })),
-    );
-  }
+  const createdObjects = await duplicateEverySource({
+    type,
+    sources,
+    destination,
+    clipDestinations,
+    count,
+    labels,
+    params: { arrangementLength, withoutClips, withoutDevices, routeToSource },
+    takeLane,
+    takeLaneName,
+    context,
+  });
 
   // A copy can land on one an earlier copy in this call just made. Say so in
   // that copy's own entry, before anything downstream spends an id that now

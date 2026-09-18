@@ -215,6 +215,8 @@ interface DestinationParams {
   takeLaneName: string | undefined;
   transforms: string | undefined;
   code: string | undefined;
+  /** Whether toPath names a take lane this call will copy a track onto. */
+  toTakeLane: boolean;
 }
 
 /**
@@ -231,7 +233,7 @@ export function resolveDestinationAndWarn(
   const { type, clipDestinations, arrangementStart } = params;
   const { arrangementLength, takeLane, takeLaneName } = params;
 
-  warnUnusedDestination(type, params.toPath, params.toSlot);
+  warnUnusedDestination(type, params.toPath, params.toSlot, params.toTakeLane);
   warnUnusedArrangementParams(type, arrangementStart, arrangementLength);
 
   if (clipDestinations != null) {
@@ -245,7 +247,7 @@ export function resolveDestinationAndWarn(
   const destination =
     clipDestinations?.destination ?? inferDestination(type, arrangementStart);
 
-  validateDestinationParameter(type, destination);
+  validateDestinationParameter(type, destination, params.toTakeLane);
 
   if (type !== "clip" && (params.transforms != null || params.code != null)) {
     console.warn(
@@ -258,7 +260,14 @@ export function resolveDestinationAndWarn(
   // value doesn't throw before the warn-and-ignore path. Where they do apply,
   // the destination resolver folded takeLane onto the paths already, and the
   // lane resolver warns if it had no new lane to name.
-  warnUnusedTakeLane(type, destination, takeLane, console.warn, takeLaneName);
+  warnUnusedTakeLane(
+    type,
+    destination,
+    takeLane,
+    console.warn,
+    takeLaneName,
+    params.toTakeLane,
+  );
 
   return destination;
 }

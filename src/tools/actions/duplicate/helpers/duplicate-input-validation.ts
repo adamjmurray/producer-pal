@@ -80,12 +80,22 @@ export function validateAndConfigureRouteToSource(
  * Validates destination parameter compatibility with object type
  * @param type - Type of object being duplicated
  * @param destination - Inferred destination
+ * @param toTakeLane - Whether toPath names a take lane the track copies onto
  */
 export function validateDestinationParameter(
   type: string,
   destination: string | undefined,
+  toTakeLane = false,
 ): void {
-  if (type === "track" && destination === "arrangement") {
-    throw new Error("tracks cannot be duplicated to arrangement");
+  if (type !== "track" || destination !== "arrangement") {
+    return;
   }
+
+  // A lane copy does land on the arrangement — it just has no position to take,
+  // since every clip keeps the one it has.
+  throw new Error(
+    toTakeLane
+      ? "arrangementStart doesn't apply to a take lane copy: every clip keeps its own position; drop it"
+      : "tracks cannot be duplicated to arrangement",
+  );
 }

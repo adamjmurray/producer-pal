@@ -133,7 +133,7 @@ export function refusedCopy(
   destination: UnreachedDestination,
   { songTimeSigNumerator, songTimeSigDenominator }: CopyMeter,
   reason: string,
-): object {
+): TargetSkip {
   const position = abletonBeatsToBarBeat(
     destination.beats,
     songTimeSigNumerator,

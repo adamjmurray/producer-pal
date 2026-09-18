@@ -144,6 +144,8 @@ export function takeLaneLabel(target: ArrangementTrack): string {
  * @param takeLane - Raw takeLane value from the tool args
  * @param warn - console.warn binding (Max-aware in V8, native in tests)
  * @param takeLaneName - Raw takeLaneName value from the tool args
+ * @param toTakeLane - Whether the destination itself names a lane, which a
+ *   track copy also lands on: takeLaneName then names the lane it creates
  */
 export function warnUnusedTakeLane(
   type: string,
@@ -151,10 +153,13 @@ export function warnUnusedTakeLane(
   takeLane: number | string | null | undefined,
   warn: (...args: unknown[]) => void,
   takeLaneName?: string | null,
+  toTakeLane = false,
 ): void {
   const unusable = [
     ...(isTakeLaneRequested(takeLane) ? ["takeLane"] : []),
-    ...(paramNamesSomething(takeLaneName) ? ["takeLaneName"] : []),
+    ...(paramNamesSomething(takeLaneName) && !toTakeLane
+      ? ["takeLaneName"]
+      : []),
   ].join(" and ");
 
   if (unusable === "") {

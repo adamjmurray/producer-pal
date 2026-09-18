@@ -6,6 +6,7 @@
 /** Mocks the take-lane duplicate suites share. */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 /** The one note every take-lane source carries, so a copy can be checked for it. */
@@ -37,20 +38,7 @@ export function registerTakeLaneSource(
   registerMockObject("tl_src_clip", {
     path: livePath.track(0).takeLane(0).arrangementClip(0),
     type: "Clip",
-    properties: {
-      is_midi_clip: 1,
-      is_arrangement_clip: 1,
-      length: 4,
-      start_time: 0,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      ...extraProps,
-    },
+    properties: arrangementClipProperties(true, 0, extraProps),
     methods: {
       get_notes_extended: () => JSON.stringify({ notes: [SOURCE_NOTE] }),
     },
@@ -78,23 +66,96 @@ export function registerArrangementSource(
   registerMockObject("src_clip", {
     path: livePath.track(0).arrangementClip(0),
     type: "Clip",
-    properties: {
-      is_midi_clip: midi ? 1 : 0,
-      is_arrangement_clip: 1,
-      length: 4,
-      start_time: 0,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      ...options.extraProps,
-    },
+    properties: arrangementClipProperties(midi, 0, options.extraProps),
     methods: {
       get_notes_extended:
         options.getNotesExtended ?? (() => JSON.stringify({ notes })),
     },
   });
+}
+
+/**
+ * Register one clip on the source track's main arrangement lane, for a copy
+ * that reads the whole lane.
+ * @param index - Its place in the track's arrangement_clips
+ * @param startBeats - Where it starts, in Ableton beats
+ * @param extraProps - Clip properties merged over the MIDI defaults
+ * @returns The clip's mock id
+ */
+export function registerMainLaneClip(
+  index: number,
+  startBeats: number,
+  extraProps: Record<string, unknown> = {},
+): string {
+  const id = `src_clip_${index}`;
+
+  registerMockObject(id, {
+    path: livePath.track(0).arrangementClip(index),
+    type: "Clip",
+    properties: arrangementClipProperties(true, startBeats, extraProps),
+    methods: {
+      get_notes_extended: () => JSON.stringify({ notes: [SOURCE_NOTE] }),
+    },
+  });
+
+  return id;
+}
+
+/**
+ * Register the source track (index 0) holding one main-lane clip per start
+ * position, plus the live_set every position is spelled against.
+ * @param starts - One clip per start position, in Ableton beats
+ * @param trackProps - Track properties merged over the MIDI defaults
+ * @param clipProps - Properties merged over each clip's defaults
+ */
+export function registerMainLaneSource(
+  starts: number[],
+  trackProps: Record<string, unknown> = {},
+  clipProps: Record<string, unknown> = {},
+): void {
+  registerLiveSet();
+
+  const clipIds = starts.map((start, index) =>
+    registerMainLaneClip(index, start, clipProps),
+  );
+
+  registerMockObject("src_track", {
+    path: livePath.track(0),
+    properties: {
+      has_midi_input: 1,
+      is_foldable: 0,
+      take_lanes: children(),
+      arrangement_clips: children(...clipIds),
+      ...trackProps,
+    },
+  });
+}
+
+/**
+ * The properties a source arrangement clip answers, so a copy can be rebuilt
+ * from it.
+ * @param midi - Whether the clip is MIDI
+ * @param startBeats - Where it starts, in Ableton beats
+ * @param extraProps - Properties merged over the defaults
+ * @returns The clip's properties
+ */
+function arrangementClipProperties(
+  midi: boolean,
+  startBeats: number,
+  extraProps: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    is_midi_clip: midi ? 1 : 0,
+    is_arrangement_clip: 1,
+    length: 4,
+    start_time: startBeats,
+    loop_start: 0,
+    loop_end: 4,
+    start_marker: 0,
+    end_marker: 4,
+    looping: 1,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    ...extraProps,
+  };
 }
