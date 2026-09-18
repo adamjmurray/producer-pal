@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // What a take-lane copy reads from: a track's main lane, or a take lane of its
-// own. Only a lane destination takes a lane source, so `t2/l0` names the lane
-// here and the track everywhere else a track copy looks.
+// own. Only a lane copy takes a lane source, so `t2/l0` names the lane here and
+// the track everywhere else a track copy looks.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -23,6 +23,7 @@ import {
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
   pathEntries,
+  pathNamesSomething,
   takeLanePathEntry,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
@@ -39,14 +40,15 @@ export interface LaneSource {
   isMidi: boolean;
   /** How the source is addressed, for a refusal that names it */
   label: string;
-  /** The lane's own path when the source is a lane, so a copy onto itself can
-   * be refused. */
+  /** The lane's own path when the source is a lane: a copy onto itself is
+   * refused, and only this source promotes onto a track's main lane. */
   lanePath?: string;
 }
 
-/** What a lane source can't be copied onto. */
-const LANE_NEEDS_LANE =
-  'its clips copy only onto another lane, as toPath "t3/l0" or "t3/l+"';
+/** Where a lane source's clips can go, for a call that named nowhere. */
+const LANE_NEEDS_DESTINATION =
+  'its clips need a toPath: another lane, as "t3/l0" or "t3/l+", or a track, ' +
+  'as "t3", to promote them onto its main lane';
 
 /**
  * The clips one source hands to every destination it names, and what they can
@@ -102,30 +104,56 @@ export function laneSourceIds(paths: string): Array<string | null> {
 }
 
 /**
- * Refuses a take-lane source whose destination isn't a lane, before anything
- * is copied. A lane holds clips and nothing else, so it can't stand in for the
+ * Whether a source names a take lane, refusing one the call gave nowhere to
+ * copy to. A lane holds clips and nothing else, so it can't stand in for the
  * track a new-track copy needs.
  * @param type - What is being duplicated
- * @param toTakeLane - Whether the destination names a take lane
  * @param id - Source id(s), as the caller wrote them
  * @param path - Source path(s), as the caller wrote them
- * @throws Error when a source names a lane and the destination doesn't
+ * @param toPath - Destination path(s), as the caller wrote them
+ * @returns True when a source names a take lane
+ * @throws Error when a lane source has no destination
  */
-export function refuseLaneSourceOffLane(
+export function namesLaneSource(
   type: string,
-  toTakeLane: boolean,
   id: string | undefined,
   path: string | undefined,
-): void {
-  if (type !== "track" || toTakeLane) {
-    return;
+  toPath: string | undefined,
+): boolean {
+  if (type !== "track") {
+    return false;
   }
 
+  const named = laneSourceNamed(id, path);
+
+  if (named == null) {
+    return false;
+  }
+
+  if (!pathNamesSomething(toPath)) {
+    throw new Error(`${named}; ${LANE_NEEDS_DESTINATION}`);
+  }
+
+  return true;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * How the call named a take-lane source, for a refusal that quotes it.
+ * @param id - Source id(s), as the caller wrote them
+ * @param path - Source path(s), as the caller wrote them
+ * @returns The first lane source named, or null when none is
+ */
+function laneSourceNamed(
+  id: string | undefined,
+  path: string | undefined,
+): string | null {
   const paths = pathEntries(path, "path");
 
   for (const entry of paths) {
     if (takeLanePathEntry(entry)?.kind === "take-lane") {
-      throw new Error(`path "${entry}" names a take lane; ${LANE_NEEDS_LANE}`);
+      return `path "${entry}" names a take lane`;
     }
   }
 
@@ -133,14 +161,12 @@ export function refuseLaneSourceOffLane(
     const lane = takeLaneById(entry);
 
     if (lane != null) {
-      throw new Error(
-        `id "${entry}" names take lane ${pathPrefix(lane)}; ${LANE_NEEDS_LANE}`,
-      );
+      return `id "${entry}" names take lane ${pathPrefix(lane)}`;
     }
   }
-}
 
-// --- Helpers below main exports ---
+  return null;
+}
 
 /**
  * Refuses a source that appends a lane. `l+` makes a lane, which is empty, so

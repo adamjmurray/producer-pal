@@ -7,7 +7,7 @@
 // the lane toPath names, at the positions they already had.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
@@ -23,9 +23,10 @@ import {
   clearCapturedWarnings,
 } from "#src/shared/max/v8-warning-capture.ts";
 
-/** What a lane source can't be copied onto. */
-const NEEDS_LANE =
-  'its clips copy only onto another lane, as toPath "t3/l0" or "t3/l+"';
+/** Where a lane source's clips can go, when the call named nowhere. */
+const NEEDS_DESTINATION =
+  'its clips need a toPath: another lane, as "t3/l0" or "t3/l+", or a track, ' +
+  'as "t3", to promote them onto its main lane';
 
 describe("duplicate take lane to take lane", () => {
   beforeEach(() => {
@@ -154,27 +155,36 @@ describe("duplicate take lane to take lane", () => {
   });
 });
 
-describe("duplicate take lane - destinations that aren't lanes", () => {
+describe("duplicate take lane - a source with nowhere to go", () => {
   beforeEach(() => {
     clearCapturedWarnings();
   });
 
-  it("says a lane path needs a lane destination", async () => {
+  it("says a lane path needs a destination", async () => {
     registerLaneSource([0]);
-    registerTakeLaneTrack({ trackIndex: 1 });
 
-    await expect(
-      duplicateToLanes({ path: "t0/l0", toPath: "t1" }),
-    ).rejects.toThrow(`path "t0/l0" names a take lane; ${NEEDS_LANE}`);
+    await expect(duplicateToLanes({ path: "t0/l0" })).rejects.toThrow(
+      `path "t0/l0" names a take lane; ${NEEDS_DESTINATION}`,
+    );
   });
 
   it("says the same for a lane named by its id", async () => {
     const laneId = registerLaneSource([0]);
 
+    await expect(duplicateToLanes({ id: laneId })).rejects.toThrow(
+      `id "${laneId}" names take lane t0/l0; ${NEEDS_DESTINATION}`,
+    );
+  });
+
+  it("refuses a destination that is neither a lane nor a track", async () => {
+    registerLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
     await expect(
-      duplicateToLanes({ id: laneId, toPath: "t1" }),
-    ).rejects.toThrow(`id "${laneId}" names take lane t0/l0; ${NEEDS_LANE}`);
+      duplicateToLanes({ path: "t0/l0", toPath: "t1/s1" }),
+    ).rejects.toThrow(
+      'toPath "t1/s1" names no lane or track; a lane\'s clips copy onto ' +
+        'another lane, as "t3/l0", or onto a track, as "t3", for its main lane',
+    );
   });
 });

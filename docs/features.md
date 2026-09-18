@@ -152,6 +152,9 @@ cluttering the timeline.
   only, and the two tracks must match MIDI/audio type. The source is a track
   (`path: "t2"`, its main lane) or a take lane (`path: "t2/l0"`, or the lane's
   id).
+- A take lane goes the other way too: give a take-lane source a bare track
+  `toPath` (`t2`, its own track or another) and its clips are promoted onto that
+  track's main lane, replacing whatever sits at those positions.
 - [Update Track](/features/tools#ppal-update-track) owns the lanes themselves:
   `path: "t2/l+"` adds one, `path: "t2/l0"` with a `name` names an existing one,
   and a lane takes no other track setting.

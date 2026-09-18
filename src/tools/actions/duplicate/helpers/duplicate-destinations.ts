@@ -215,7 +215,9 @@ interface DestinationParams {
   takeLaneName: string | undefined;
   transforms: string | undefined;
   code: string | undefined;
-  /** Whether toPath names a take lane this call will copy a track onto. */
+  /** Whether this call copies clips lane to lane rather than making a track. */
+  laneCopy: boolean;
+  /** Whether a destination names a take lane, which the call may create. */
   toTakeLane: boolean;
 }
 
@@ -233,7 +235,7 @@ export function resolveDestinationAndWarn(
   const { type, clipDestinations, arrangementStart } = params;
   const { arrangementLength, takeLane, takeLaneName } = params;
 
-  warnUnusedDestination(type, params.toPath, params.toSlot, params.toTakeLane);
+  warnUnusedDestination(type, params.toPath, params.toSlot, params.laneCopy);
   warnUnusedArrangementParams(type, arrangementStart, arrangementLength);
 
   if (clipDestinations != null) {
@@ -247,7 +249,7 @@ export function resolveDestinationAndWarn(
   const destination =
     clipDestinations?.destination ?? inferDestination(type, arrangementStart);
 
-  validateDestinationParameter(type, destination, params.toTakeLane);
+  validateDestinationParameter(type, destination, params.laneCopy);
 
   if (type !== "clip" && (params.transforms != null || params.code != null)) {
     console.warn(

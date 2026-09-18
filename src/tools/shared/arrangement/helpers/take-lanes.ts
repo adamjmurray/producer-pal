@@ -144,8 +144,8 @@ export function takeLaneLabel(target: ArrangementTrack): string {
  * @param takeLane - Raw takeLane value from the tool args
  * @param warn - console.warn binding (Max-aware in V8, native in tests)
  * @param takeLaneName - Raw takeLaneName value from the tool args
- * @param toTakeLane - Whether the destination itself names a lane, which a
- *   track copy also lands on: takeLaneName then names the lane it creates
+ * @param toTakeLane - Whether a destination names a lane, which a track copy
+ *   also lands on: takeLaneName then names the lane it creates
  */
 export function warnUnusedTakeLane(
   type: string,

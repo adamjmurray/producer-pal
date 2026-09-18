@@ -8,7 +8,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -322,7 +322,7 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     await expect(
       copyToLanes({ toPath: "t1/l0", arrangementStart: "5|1" }),
     ).rejects.toThrow(
-      "arrangementStart doesn't apply to a take lane copy: every clip keeps its own position; drop it",
+      "arrangementStart doesn't apply to a lane copy: every clip keeps its own position; drop it",
     );
     expect(destination.call).not.toHaveBeenCalled();
   });

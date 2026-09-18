@@ -162,6 +162,8 @@ Live, or make sure your standalone Max is up to date. See
   every clip at the position it already has, clips only (no devices, routing,
   mixer settings, or session clips). The source is a track (its main lane) or a
   take lane, by path (`t2/l0`) or by the lane's id
+- Promote a whole take lane with a bare track `toPath` (`t2`): a take-lane
+  source's clips land on that track's main lane, over the clips already there
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the

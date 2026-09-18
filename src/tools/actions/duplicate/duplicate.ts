@@ -34,7 +34,7 @@ import {
 } from "./helpers/sources/duplicate-tracks-to-lanes.ts";
 import {
   laneSourceIds,
-  refuseLaneSourceOffLane,
+  namesLaneSource,
 } from "./helpers/sources/lane-sources.ts";
 import { markOverwrittenCopies } from "./helpers/clip/overwritten-copies.ts";
 import { applyTransformsToDuplicatedClips } from "./helpers/clip/apply-clip-transforms.ts";
@@ -136,14 +136,15 @@ export async function duplicate(
   // Validate basic inputs
   validateBasicInputs(type, id, count, path);
 
-  // A track copied onto a take lane lands its clips there instead of making a
-  // new track, so the params that make no sense for it don't warn or apply. It
-  // is also the only copy whose source can be a lane.
-  const toTakeLane = namesTakeLaneDestination(type, toPath);
+  // A track copied onto a take lane — or off one, onto a track's main lane —
+  // lands its clips there instead of making a new track, so the params that
+  // make no sense for it don't warn or apply. It is also the only copy whose
+  // source can be a lane.
+  const fromLane = namesLaneSource(type, id, path, toPath);
+  const toTakeLane = namesTakeLaneDestination(type, toPath, fromLane);
+  const laneCopy = fromLane || toTakeLane;
 
-  refuseLaneSourceOffLane(type, toTakeLane, id, path);
-
-  if (!toTakeLane) {
+  if (!laneCopy) {
     ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
       type,
       routeToSource,
@@ -171,11 +172,11 @@ export async function duplicate(
     toSlot,
     arrangementStart,
     onArrangement: type === "clip" && hasArrangementParams,
-    // A lane destination takes a lane source, which the track lookup rejects.
-    idPerPath: toTakeLane ? laneSourceIds : undefined,
+    // A lane copy takes a lane source, which the track lookup rejects.
+    idPerPath: laneCopy ? laneSourceIds : undefined,
   });
 
-  validateSourceIds(type, sources, toTakeLane);
+  validateSourceIds(type, sources, laneCopy);
 
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
@@ -198,21 +199,26 @@ export async function duplicate(
     takeLaneName,
     transforms,
     code,
+    laneCopy,
     toTakeLane,
   });
 
   const labels = copyLabels(name, color, sources.length);
 
-  if (toTakeLane) {
-    return oneOrAll(
-      duplicateTracksToLanes({
-        sources,
-        labels,
-        count,
-        params: { withoutClips, withoutDevices, routeToSource },
-        takeLaneName,
-      }),
-    );
+  if (laneCopy) {
+    const laneCopies = duplicateTracksToLanes({
+      sources,
+      labels,
+      count,
+      params: { withoutClips, withoutDevices, routeToSource },
+      takeLaneName,
+    });
+
+    // Two destinations can be the same place, and the second create clears what
+    // the first put there.
+    markOverwrittenCopies(laneCopies);
+
+    return oneOrAll(laneCopies);
   }
 
   // All three take comma-separated toPath for multiple destinations, and answer
@@ -264,14 +270,14 @@ export async function duplicate(
  * sources can be take lanes rather than tracks.
  * @param type - What is being duplicated
  * @param sources - The sources, in call order
- * @param toTakeLane - Whether the copies land on take lanes
+ * @param laneCopy - Whether the call copies clips lane to lane
  */
 function validateSourceIds(
   type: string,
   sources: SourceShare[],
-  toTakeLane: boolean,
+  laneCopy: boolean,
 ): void {
-  if (sources.length < 2 || toTakeLane) {
+  if (sources.length < 2 || laneCopy) {
     return;
   }
 

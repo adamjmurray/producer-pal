@@ -38,14 +38,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .describe(
         "id(s) of the object(s) to duplicate, comma-separated for multiple " +
-          "(type 'track' also takes a take lane's id, which needs a lane toPath)",
+          "(type 'track' also takes a take lane's id, which needs a lane or track toPath)",
       ),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
-        "(e.g. 't0', 's1', 't0/s1', 't0[5|1]', 't0/d0', 't0/d0/pC1'; 't0/l0' names a take lane, and needs a lane toPath)",
+        "(e.g. 't0', 's1', 't0/s1', 't0[5|1]', 't0/d0', 't0/d0/pC1'; 't0/l0' names a take lane, and needs a lane or track toPath)",
       smallModel:
         "path of the object to duplicate instead of id (e.g., 't0' or 't0/s1')",
     }),
@@ -107,6 +107,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
         "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane, " +
         "at the positions they already have. A track source copies its main lane, a 't2/l0' source that lane. " +
+        "A 't2/l0' source onto a bare 't2' promotes the lane's clips to the main lane, over the clips already there. " +
         "Clips only, and the two tracks must match MIDI/audio type; name/color label the copies. " +
         "A track copy needs no toPath otherwise. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +

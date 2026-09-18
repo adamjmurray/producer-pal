@@ -277,8 +277,12 @@ envelope automation is dropped, and a warped audio clip's markers reset. A
 `duplicate` with `type: "track"` and a lane destination copies a whole lane the
 same way — clips only, so the devices, routing, mixer settings and session clips
 a new-track copy carries stay behind. Its source is a track (`t2`, its main
-lane) or a lane (`t2/l0`, or that lane's id, which only a lane destination
-accepts); `t2/l+` names no source, and a lane can't copy onto itself.
+lane) or a lane (`t2/l0`, or that lane's id); `t2/l+` names no source, and a
+lane can't copy onto itself. A lane source with a bare track destination (`t2`,
+its own track or another) promotes the whole lane onto that track's main lane,
+replacing the clips already at those positions; it makes no lane, so its entry
+reports the track's path with no `created`. A track source has no such
+destination — a bare `toPath` there is the new-track copy's, and is ignored.
 
 **A lane is one-way**: nothing removes a take lane or a clip on one. A move of a
 lane clip gets as close as Live allows — `update-clip` copies the content to the

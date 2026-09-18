@@ -173,13 +173,14 @@ export function warnUnusedArrangementParams(
  * @param type - Type of object being duplicated
  * @param rawToPath - Destination path(s)
  * @param rawToSlot - Deprecated clip slot(s)
- * @param toTakeLane - Whether toPath names a take lane a track copy lands on
+ * @param laneCopy - Whether the call copies clips lane to lane, where toPath
+ *   names where they land
  */
 export function warnUnusedDestination(
   type: string,
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
-  toTakeLane = false,
+  laneCopy = false,
 ): void {
   if (type === "clip") {
     return;
@@ -189,7 +190,7 @@ export function warnUnusedDestination(
   const toSlot = namedHiddenPath(rawToSlot, "toSlot");
 
   if (
-    !toTakeLane &&
+    !laneCopy &&
     type !== "device" &&
     type !== "drum-pad" &&
     type !== "chain" &&
