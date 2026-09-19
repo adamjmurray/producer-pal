@@ -1,7 +1,8 @@
 # `ppal-context` tool
 
-`src/tools/core/context.def.ts` + `context.ts` + `context-helpers.ts`. One tool,
-three scopes, each a single storage shape.
+`src/tools/core/context.def.ts` + `context.ts` +
+`helpers/project-context-operations.ts` + `helpers/memory-entry-operations.ts`.
+One tool, three scopes, each a single storage shape.
 
 The action verbs are uniform across scopes — `read` / `write` / `delete` — and
 their meaning is driven by `scope`, so there is one verb set to learn rather

@@ -386,6 +386,49 @@ describe("createTrack", () => {
       expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
 
+    it("strips the slot letter Live will put back on the new track", () => {
+      const track = registerMockObject("return_track_0", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = createTrack({ path: "rt+", name: "C-Delay" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "Delay");
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
+    });
+
+    it("reports the name Live lands on when it prefixes the letter", () => {
+      const track = registerMockObject("return_track_0", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = createTrack({ path: "rt+", name: "Delay" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "Delay");
+      expect(result).toStrictEqual({
+        id: "return_track_0",
+        path: "rt2",
+        name: "C-Delay",
+        reason: "Live prefixes a return track's name with its send letter",
+      });
+    });
+
+    it("keeps another return's letter, and says the name doubled it", () => {
+      const track = registerMockObject("return_track_0", {
+        path: livePath.returnTrack(2),
+      });
+
+      const result = createTrack({ path: "rt+", name: "B-Side" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "B-Side");
+      expect(result).toStrictEqual({
+        id: "return_track_0",
+        path: "rt2",
+        name: "C-B-Side",
+        reason: "Live prefixes a return track's name with its send letter",
+      });
+    });
+
     it("should index a return track by the return-track count, not the total track count", () => {
       // Regression guard: the default mock happens to have equal regular and
       // return track counts, which masks whether the index is derived from

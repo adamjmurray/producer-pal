@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { library } from "../library.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -112,6 +113,23 @@ describe("library tool — action dispatch", () => {
     vi.clearAllMocks();
   });
 
+  it("sends the running Live version with every route call", async () => {
+    // Node has no Live API, so it can only scope its database lookup to the
+    // running major if V8 hands it the version.
+    registerMockObject("live_app", {
+      path: "live_app",
+      methods: { get_version_string: () => "12.4" },
+    });
+    mockSearchRoute([]);
+
+    await library({ query: "kick" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ liveVersion: "12.4" }),
+    );
+  });
+
   it("dispatches search action to library.search route by default", async () => {
     mockSearchRoute([]);
 
@@ -176,9 +194,10 @@ describe("library tool — action dispatch", () => {
 
     await library({ action: "listTags", limit: 50 });
 
-    expect(protocolMock.requestNode).toHaveBeenCalledWith("library.listTags", {
-      limit: 50,
-    });
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.listTags",
+      expect.objectContaining({ limit: 50 }),
+    );
   });
 
   it("dispatches listCategories action, forwarding category + limit", async () => {
@@ -191,7 +210,7 @@ describe("library tool — action dispatch", () => {
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
       "library.listCategories",
-      { category: "Drums", limit: 5 },
+      expect.objectContaining({ category: "Drums", limit: 5 }),
     );
   });
 

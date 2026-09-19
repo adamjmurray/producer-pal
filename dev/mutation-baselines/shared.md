@@ -94,20 +94,20 @@ the whole-domain score lands below what the triage alone would suggest.
 
 ## Gaps closed (`shared`, specialized subarea)
 
-| Gap (now killed)                                                                    | Test strengthened / added                    |
-| ----------------------------------------------------------------------------------- | -------------------------------------------- |
-| Simpler + Wavetable action catalogs (every `signature` / `description`)             | `specialized-device-catalog.test.ts` (new)   |
-| `class_display_name` → spec routing for all 12 specialized devices                  | `specialized-device-catalog.test.ts` (new)   |
-| Modulation-rate effects expose no params and no `paramOptions` key                  | `specialized-device-catalog.test.ts` (new)   |
-| Action grammar: `$` anchor, `""` arg, whitespace-only args, double-quoted commas    | `specialized-device-action-parser.test.ts`   |
-| Numeric args: multi-digit floats (`12.5`, `.25`) and digit-led words (`4x`)         | `specialized-device-action-parser.test.ts`   |
-| Mod matrix: source `"Amp"` (index 0), slot-0 target no re-add, ±1 amount boundary   | `wavetable-modulation-helpers.test.ts` (new) |
-| Mod matrix: name trimming, zero-cell exclusion, exactly-13-source scan              | `wavetable-modulation-helpers.test.ts` (new) |
-| Wavetable/Drift `inactiveWhen` rules (LFO sync, Cyc Env time mode)                  | `specialized-device-registry.test.ts`        |
-| First category / wavetable selectable (index 0) + `Available:` lists                | `wavetable.test.ts`                          |
-| Hybrid Reverb single-file category settable; first IR selectable; `Available:` list | `hybrid-reverb.test.ts`                      |
-| Compressor whitespace-only sidechain id clears; channel `Available:` list           | `compressor.test.ts`                         |
-| Simpler multi-sample / gain-less / non-number `voices` reads omit their params      | `simpler.test.ts`                            |
-| `coerceBool` trims; enum + int-set warnings name the param and list valid values    | `specialized-device-param-helpers.test.ts`   |
-| Boolean pseudo-param warnings name their param (`oversample`, `envListen`, …)       | `eq-eight` / `roar` / `hybrid-reverb` tests  |
-| `readSpecializedParams` search term is trimmed                                      | `specialized-device-registry.test.ts`        |
+| Gap (now killed)                                                                    | Test strengthened / added                   |
+| ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| Simpler + Wavetable action catalogs (every `signature` / `description`)             | `specialized-device-catalog.test.ts` (new)  |
+| `class_display_name` → spec routing for all 12 specialized devices                  | `specialized-device-catalog.test.ts` (new)  |
+| Modulation-rate effects expose no params and no `paramOptions` key                  | `specialized-device-catalog.test.ts` (new)  |
+| Action grammar: `$` anchor, `""` arg, whitespace-only args, double-quoted commas    | `specialized-device-action-parser.test.ts`  |
+| Numeric args: multi-digit floats (`12.5`, `.25`) and digit-led words (`4x`)         | `specialized-device-action-parser.test.ts`  |
+| Mod matrix: source `"Amp"` (index 0), slot-0 target no re-add, ±1 amount boundary   | `wavetable-modulation.test.ts` (new)        |
+| Mod matrix: name trimming, zero-cell exclusion, exactly-13-source scan              | `wavetable-modulation.test.ts` (new)        |
+| Wavetable/Drift `inactiveWhen` rules (LFO sync, Cyc Env time mode)                  | `specialized-device-registry.test.ts`       |
+| First category / wavetable selectable (index 0) + `Available:` lists                | `wavetable.test.ts`                         |
+| Hybrid Reverb single-file category settable; first IR selectable; `Available:` list | `hybrid-reverb.test.ts`                     |
+| Compressor whitespace-only sidechain id clears; channel `Available:` list           | `compressor.test.ts`                        |
+| Simpler multi-sample / gain-less / non-number `voices` reads omit their params      | `simpler.test.ts`                           |
+| `coerceBool` trims; enum + int-set warnings name the param and list valid values    | `specialized-param-access.test.ts`          |
+| Boolean pseudo-param warnings name their param (`oversample`, `envListen`, …)       | `eq-eight` / `roar` / `hybrid-reverb` tests |
+| `readSpecializedParams` search term is trimmed                                      | `specialized-device-registry.test.ts`       |

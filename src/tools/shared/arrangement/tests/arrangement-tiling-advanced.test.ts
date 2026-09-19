@@ -50,11 +50,16 @@ describe("createPartialTile", () => {
         ["id", "200"],
         ["id", "400"],
       ],
-      create_midi_clip: [["id", "300"]],
+      create_midi_clip: [
+        ["id", "300"],
+        ["id", "301"],
+      ],
       delete_clip: [null, null],
     });
 
     setupClip("200", { properties: { end_time: opts.holdingEndTime } });
+    setupClip("300", {});
+    setupClip("301", {});
 
     if (opts.finalClipProps) {
       setupClip("400", { properties: opts.finalClipProps });
@@ -218,6 +223,7 @@ describe("tileClipToRange", () => {
     setupTileClip("200");
     setupTileClip("201");
     setupClip("300", { properties: { end_time: 1004 } });
+    setupClip("301", {});
     setupTileClip("302");
 
     const result = tileClipToRange(sourceClip, track, 100, 10, mockContext);
@@ -389,6 +395,8 @@ describe("tileClipToRange", () => {
       loop_start: 4,
       end_time: 100,
     });
+
+    setupClip("300", {});
 
     tileClipToRange(sourceClip, track, 100, 4, mockContext);
 
@@ -591,6 +599,7 @@ function tilePartialOnlyMidiSource() {
 
   setupClip("300", { properties: { end_time: 1008 } });
   setupTileClip("301");
+  setupClip("302", {});
 
   const result = tileClipToRange(sourceClip, track, 100, 3, mockContext);
 

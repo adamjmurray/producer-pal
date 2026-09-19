@@ -9,7 +9,7 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   END_OF_CHUNKS,
-} from "#src/shared/mcp-response-utils.ts";
+} from "#src/shared/mcp-responses.ts";
 import {
   clearNodeRoutes,
   handleNodeRequest,
@@ -245,6 +245,27 @@ describe("node-request-protocol", () => {
 
     expect(consoleMock.error).toHaveBeenCalledWith(
       expect.stringContaining("Route 'hang' timed out"),
+    );
+  });
+
+  it("gives a route registered with its own timeout that long", async () => {
+    vi.useFakeTimers();
+
+    registerNodeRoute("slow", () => new Promise(() => {}), 40_000);
+
+    const promise = handleNodeRequest(
+      "req-slow",
+      JSON.stringify({ route: "slow", args: {} }),
+    );
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(Max.outlet).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(25_000);
+    await promise;
+
+    expect(parseSentResponse().error).toMatch(
+      /Route 'slow' timed out after 40000ms/,
     );
   });
 

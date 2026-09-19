@@ -30,6 +30,7 @@ const READ_TRACK = "ppal-read-track";
 const READ_SCENE = "ppal-read-scene";
 const UPDATE_CLIP = "ppal-update-clip";
 const DUPLICATE = "ppal-duplicate";
+const CREATE_DEVICE = "ppal-create-device";
 
 /**
  * Every tool that names a track or scene by `path` — reads, writes, creates,
@@ -64,6 +65,12 @@ const SMALL_MODEL_PATH_TOOLS = [
 const CONVERSATION_ONLY = "conversation-only";
 
 /**
+ * Fragments teaching what only the Producer Pal remote script makes possible.
+ * They also keep their tool gate; this is a second condition on top of it.
+ */
+const REMOTE_SCRIPT_FRAGMENTS = ["plugins-and-max-devices"] as const;
+
+/**
  * Tools that carry clip `notes` in either direction — the three read tools all
  * have a `notes` include, and create/update-clip take notes as input. Any one of
  * them makes the notation head load-bearing.
@@ -96,7 +103,7 @@ const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, DUPLICATE] as const;
 /** The three device tools. */
 const DEVICE_TOOLS = [
   "ppal-read-device",
-  "ppal-create-device",
+  CREATE_DEVICE,
   "ppal-update-device",
 ] as const;
 
@@ -120,10 +127,7 @@ const DEVICE_PATH_TOOLS = [
  * The two device tools that can BUILD — the gate on `devices-write`. A strict
  * subset of {@link DEVICE_PATH_TOOLS}, so the requires-subset invariant holds.
  */
-const DEVICE_WRITE_TOOLS = [
-  "ppal-create-device",
-  "ppal-update-device",
-] as const;
+const DEVICE_WRITE_TOOLS = [CREATE_DEVICE, "ppal-update-device"] as const;
 
 /**
  * Every tool that reports or sets an arrangement position: three put clips
@@ -132,6 +136,11 @@ const DEVICE_WRITE_TOOLS = [
  * dual-meter rule to make sense of the position either way. read-scene is
  * absent because it reads clip slots only, so no arrangement position ever
  * reaches it.
+ *
+ * update-track is absent even though it owns the take lanes: a gate is any-of,
+ * so adding it would ship the whole arrangement document to a caller that can
+ * only rename a track. The lane-creation spelling lives in `object-paths`,
+ * whose gate already keeps it.
  */
 const ARRANGEMENT_TOOLS = [
   CREATE_CLIP,
@@ -198,6 +207,9 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
 
   library: ["ppal-library"],
   devices: DEVICE_PATH_TOOLS,
+  // Only create-device loads one, and only through the remote script (see
+  // remoteScriptGatedFragments). A subset of the `devices` gate it requires.
+  "plugins-and-max-devices": [CREATE_DEVICE],
   // The build recipes: only create-device and update-device can run any of them.
   "devices-write": DEVICE_WRITE_TOOLS,
   // Reading a Drift or an EQ Eight benefits from the pseudo-param names as much
@@ -330,4 +342,18 @@ export function audienceGatedFragments(
   }
 
   return dropped;
+}
+
+/**
+ * The fragments to drop when the Producer Pal remote script isn't answering.
+ * They have no `requires` dependents, so dropping them can't strand another
+ * fragment's vocabulary.
+ *
+ * @param remoteScript - Whether it answered; omitted counts as no
+ * @returns Names of the fragments to omit
+ */
+export function remoteScriptGatedFragments(
+  remoteScript?: boolean,
+): ReadonlySet<string> {
+  return new Set(remoteScript === true ? [] : REMOTE_SCRIPT_FRAGMENTS);
 }

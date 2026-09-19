@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
@@ -21,9 +21,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
       .optional()
       .describe("scene ID(s) to update, comma-separated for multiple"),
 
-    ids: aliasParam(z.coerce.string().optional(), {
-      canonical: "id",
-    }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "scene path(s) to update instead of id, comma-separated: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2) - e.g. 's0' or 's0,s3'",
@@ -31,7 +29,6 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
         "scene path to update instead of id: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default: "name for all, or comma-separated one per scene, in order",
       smallModel: "scene name",

@@ -138,7 +138,7 @@ describe("updateScene", () => {
 
   it("refuses more names than scenes, naming both counts", () => {
     expect(() => updateScene({ id: "123,456", name: "A,B,C,D" })).toThrow(
-      "id and path names 2 entries but name names 4 entries.",
+      "id names 2 entries but name names 4 entries.",
     );
   });
 
@@ -177,22 +177,29 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
-  it("should log warning when scene ID doesn't exist", () => {
+  it("throws when the one scene ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateScene({ id: "nonexistent" });
-
-    expect(result).toStrictEqual([]);
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(() => updateScene({ id: "nonexistent" })).toThrow(
+      'id "nonexistent" does not exist',
+    );
   });
 
-  it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
+  it("reports a dead id in its own slot and updates the rest", () => {
     mockNonExistentObjects();
 
     const result = updateScene({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123", path: "s0" });
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
+    ]);
+    // The entry carries it, so the response doesn't say it twice.
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(scene1.set).toHaveBeenCalledWith("name", "Test");
   });
 
@@ -209,6 +216,11 @@ describe("updateScene", () => {
     });
 
     expect(result).toStrictEqual([
+      {
+        id: "nonexistent",
+        ok: false,
+        reason: 'id "nonexistent" does not exist',
+      },
       { id: "123", path: "s0" },
       { id: "456", path: "s1" },
     ]);
@@ -216,7 +228,6 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(scene2.set).toHaveBeenCalledWith("name", "C");
     expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(capturedWarnings()).toContain('id "nonexistent" does not exist');
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -352,14 +363,28 @@ describe("updateScene", () => {
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
 
-    it("does not focus when every id was skipped", () => {
+    it("does not focus when every scene was skipped", () => {
       mockNonExistentObjects();
 
-      // updatedScenes is empty, so `length > 0` guards the focus block; a
-      // mutated `>= 0`/`true` would enter it and crash on `.at(-1).id`.
-      const result = updateScene({ id: "nonexistent", focus: true });
+      // Nothing was written, so nothing is selected: the focus block is
+      // guarded on a scene having been reached at all.
+      const result = updateScene({
+        id: "nonexistent,also-gone",
+        focus: true,
+      });
 
-      expect(result).toStrictEqual([]);
+      expect(result).toStrictEqual([
+        {
+          id: "nonexistent",
+          ok: false,
+          reason: 'id "nonexistent" does not exist',
+        },
+        {
+          id: "also-gone",
+          ok: false,
+          reason: 'id "also-gone" does not exist',
+        },
+      ]);
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
   });

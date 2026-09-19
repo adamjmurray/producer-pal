@@ -21,13 +21,32 @@ export function validateIdType(id: string, expectedType: string): LiveAPI {
     throw new Error(`id "${id}" does not exist`);
   }
 
-  if (!isTypeMatch(object.type, expectedType)) {
-    throw new Error(
-      `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
-    );
+  const mismatch = typeMismatch(object, expectedType);
+
+  if (mismatch != null) {
+    throw new Error(mismatch);
   }
 
   return object;
+}
+
+/**
+ * Why an object isn't the type a call asked for, or null when it is. Shared so
+ * a tool reporting the mismatch in a result entry says it the same way as one
+ * throwing it.
+ * @param object - The object a call named
+ * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
+ * @returns The reason, or null when the type matches
+ */
+export function typeMismatch(
+  object: LiveAPI,
+  expectedType: string,
+): string | null {
+  if (isTypeMatch(object.type, expectedType)) {
+    return null;
+  }
+
+  return `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`;
 }
 
 interface ValidateIdTypesOptions {
@@ -90,16 +109,14 @@ export function validateObjectTypes(
       }
     }
 
-    if (!isTypeMatch(object.type, expectedType)) {
+    const mismatch = typeMismatch(object, expectedType);
+
+    if (mismatch != null) {
       if (skipInvalid) {
-        console.warn(
-          `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
-        );
+        console.warn(mismatch);
         continue;
       } else {
-        throw new Error(
-          `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
-        );
+        throw new Error(mismatch);
       }
     }
 
@@ -107,29 +124,6 @@ export function validateObjectTypes(
   }
 
   return validObjects;
-}
-
-/**
- * Validates that exactly one of two mutually exclusive parameters is provided
- * @param param1 - First parameter value
- * @param param2 - Second parameter value
- * @param name1 - Name of first parameter for error message
- * @param name2 - Name of second parameter for error message
- * @throws If neither or both parameters are provided
- */
-export function validateExclusiveParams(
-  param1: unknown,
-  param2: unknown,
-  name1: string,
-  name2: string,
-): void {
-  if (!param1 && !param2) {
-    throw new Error(`Either ${name1} or ${name2} must be provided`);
-  }
-
-  if (param1 && param2) {
-    throw new Error(`Provide either ${name1} or ${name2}, not both`);
-  }
 }
 
 /**

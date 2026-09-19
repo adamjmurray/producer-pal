@@ -6,9 +6,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { setupDeviceParamMocks } from "./read-device-test-helpers.ts";
-import { readDevice } from "../read-device.ts";
+import { readOneDevice } from "../read-device.ts";
 
-describe("readDevice param-values include option", () => {
+describe("readOneDevice param-values include option", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
@@ -194,7 +194,7 @@ describe("readDevice param-values include option", () => {
   });
 });
 
-describe("readDevice params include option (lightweight)", () => {
+describe("readOneDevice params include option (lightweight)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
@@ -203,7 +203,7 @@ describe("readDevice params include option (lightweight)", () => {
   it("should return only id and name for params include", () => {
     setupDeviceParamMocks();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "device-123",
       include: ["params"],
     });
@@ -222,10 +222,10 @@ describe("readDevice params include option (lightweight)", () => {
  * @returns The whole read result plus its parameter list, cast for property assertions
  */
 function readDeviceParamValues(): {
-  result: ReturnType<typeof readDevice>;
+  result: ReturnType<typeof readOneDevice>;
   params: Record<string, unknown>[];
 } {
-  const result = readDevice({
+  const result = readOneDevice({
     id: "device-123",
     include: ["param-values"],
   });
@@ -239,7 +239,7 @@ function readDeviceParamValues(): {
 // Some of Live's stock params display a bare number and nothing else. What those
 // measure is recorded in known-param-units.ts and reported here, so a model has
 // something to write back.
-describe("readDevice recorded units", () => {
+describe("readOneDevice recorded units", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
@@ -263,7 +263,10 @@ describe("readDevice recorded units", () => {
       strForValue: (value) => String(Number(value)),
     });
 
-    const result = readDevice({ id: "device-123", include: ["param-values"] });
+    const result = readOneDevice({
+      id: "device-123",
+      include: ["param-values"],
+    });
     const [param] = (result as { parameters: Record<string, unknown>[] })
       .parameters;
 
@@ -311,7 +314,10 @@ describe("readDevice recorded units", () => {
       strForValue: (value) => `${Number(value)} ct`,
     });
 
-    const result = readDevice({ id: "device-123", include: ["param-values"] });
+    const result = readOneDevice({
+      id: "device-123",
+      include: ["param-values"],
+    });
     const [param] = (result as { parameters: Record<string, unknown>[] })
       .parameters;
 

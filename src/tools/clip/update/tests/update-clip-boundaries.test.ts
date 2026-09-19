@@ -72,7 +72,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
-  it("should warn when firstStart provided for non-looping clips", async () => {
+  it("reports firstStart on a non-looping clip's own entry", async () => {
     setupMidiClipMock(mocks.clip123, {
       looping: 0,
     });
@@ -85,11 +85,12 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       looping: false,
     });
 
-    expect(capturedWarnings()).toContain(
-      "firstStart parameter ignored for non-looping clip t0/s0 (id 123)",
-    );
-
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(capturedWarnings()).toHaveLength(0);
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      reason: "firstStart ignored: the clip is not looping",
+    });
   });
 
   it("should set end_marker for non-looping clips", async () => {

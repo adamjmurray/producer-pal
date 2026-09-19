@@ -16,6 +16,7 @@
  */
 
 import { registerNodeRoute } from "../../rpc/node-request-protocol.ts";
+import { requireString } from "../../rpc/route-string-args.ts";
 import {
   readGlobalContext,
   writeGlobalContext,
@@ -54,13 +55,7 @@ function readRoute(): GlobalContextRouteResult {
  * @returns The stored content after the write
  */
 function writeRoute(args: unknown): GlobalContextRouteResult {
-  const content = (args as { content?: unknown } | null)?.content;
-
-  if (typeof content !== "string") {
-    throw new Error("content must be a string");
-  }
-
-  writeGlobalContext(content);
+  writeGlobalContext(requireString(args, "content"));
 
   return { content: readGlobalContext() };
 }

@@ -65,7 +65,7 @@ documented in the tool description rather than surfaced.
 3. **Excluded source tracks:** any track whose device chain has no audio-bearing
    device (no instrument, no audio effect) is omitted from
    `available_input_routing_types`. Pure-MIDI tracks with only MIDI effects are
-   excluded. Attempted writes should warn-and-skip:
+   excluded. An attempted write is refused with the reason
    `"Track 'foo' cannot be a sidechain source — it has no audio-bearing devices"`.
 
 4. **Channel options vary by source:**
@@ -252,8 +252,8 @@ free-form, or boolean, so it contributes no static `paramOptions`.
 
 5. **The `"User"` category may be empty.** When no user IRs are imported,
    `ir_file_list` returns `["<empty>"]` (a sentinel single-element array, not a
-   true empty array). Treat as "no files available" and warn-and-skip if
-   `irFile` is requested.
+   true empty array). Treat as "no files available" and refuse an `irFile` write
+   with that reason.
 
 6. **Underscore ↔ space translation is one-way safe.** All 10 category names use
    underscores as word separators (no literal underscores). Implementation:

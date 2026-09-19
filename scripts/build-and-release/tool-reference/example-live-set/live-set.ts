@@ -17,7 +17,7 @@ import { registerExampleClips } from "./clips.ts";
 import { registerExampleDevices } from "./devices.ts";
 import { ID } from "./ids.ts";
 import { registerExampleTracks } from "./tracks.ts";
-import { liveSetMethods } from "./writes.ts";
+import { liveSetMethods } from "./write-methods.ts";
 
 /**
  * Build the whole example Live Set in the mock registry.

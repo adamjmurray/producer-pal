@@ -32,8 +32,8 @@ right feature; the wrong cost right now. `useChat` holds exactly one of
 everything, all keyed to whatever is on screen: the client (disposed by
 `clearConversation`), the abort controller, the turn-ticket dispenser, the
 retry/rate-limit state, and `setMessages` as the stream's only sink. The
-overlapping-turn machinery in `streaming-helpers.ts` exists to make the losing
-turn a no-op, not to let two run, so this inverts it rather than extending it.
+overlapping-turn machinery in `run-chat-turn.ts` exists to make the losing turn
+a no-op, not to let two run, so this inverts it rather than extending it.
 Reaching a finished feature needs, at minimum:
 
 - client ownership moved out of `clearConversation` and onto the turn;

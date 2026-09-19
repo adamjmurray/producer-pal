@@ -9,14 +9,16 @@ import {
   type ConversationPanelState,
 } from "#webui/components/AppShell";
 import {
+  type EnqueueMessageHandler,
   type MessageOverrides,
   type RateLimitState,
+  type SendMessageHandler,
 } from "#webui/hooks/chat/use-chat-types";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
-import { type BranchNavState } from "#webui/lib/conversation-branch-helpers";
+import { type BranchNavState } from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatStart } from "./ChatStart";
-import { ChatInput } from "./controls/ChatInput";
+import { ChatInput } from "./controls/composer/ChatInput";
 import { type HeaderInfo } from "./controls/header/HeaderActions";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
 import { ToolLimitNotice } from "./controls/ToolLimitNotice";
@@ -32,8 +34,8 @@ interface ChatScreenProps {
   isCompacting?: boolean;
   rateLimitState: RateLimitState | null;
   toolLimitReached: boolean;
-  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
-  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  handleSend: SendMessageHandler;
+  enqueueMessage: EnqueueMessageHandler;
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
   handleRetry: (messageIndex: number) => Promise<void>;
@@ -51,6 +53,8 @@ interface ChatScreenProps {
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
   onOpenContext: () => void;
+  /** Open the context editor's Instructions tab (the system prompt). */
+  onOpenInstructions: () => void;
   onStop: () => void;
   showTimestamps: boolean;
   showTokenUsage: boolean;
@@ -116,6 +120,7 @@ export function ChatScreen(props: ChatScreenProps) {
     onOpenToolsSettings,
     onOpenConnectionSettings,
     onOpenContext,
+    onOpenInstructions,
     onStop,
     showTimestamps,
     showTokenUsage,
@@ -139,7 +144,45 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenConnectionSettings={onOpenConnectionSettings}
       onOpenContext={onOpenContext}
     >
-      <div className="flex-1 overflow-y-auto">
+      {/* The composer is first in the DOM so Tab reaches the input, Send and
+          the other composer controls without walking every button and link in
+          the transcript; `order` puts it back below the transcript on screen.
+          Screen readers follow the DOM, so they meet the composer first too. */}
+      <div className="order-2 flex flex-col">
+        {rateLimitState?.isRetrying && (
+          <RateLimitIndicator
+            retryAttempt={rateLimitState.attempt}
+            maxAttempts={rateLimitState.maxAttempts}
+            retryDelayMs={rateLimitState.delayMs}
+            onCancel={onStop}
+          />
+        )}
+
+        {toolLimitReached && !isAssistantResponding && (
+          <ToolLimitNotice
+            onContinue={() =>
+              void handleSend(
+                "Please continue from where you left off.",
+                currentOverrides,
+              )
+            }
+            disabled={isAssistantResponding}
+          />
+        )}
+
+        <ChatInput
+          handleSend={handleSend}
+          onEnqueue={enqueueMessage}
+          isAssistantResponding={isAssistantResponding}
+          hasError={conversationHasError(messages)}
+          isCompacting={isCompacting}
+          onStop={onStop}
+          thinking={thinking}
+          onThinkingChange={setThinking}
+        />
+      </div>
+
+      <div className="order-1 flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <ChatStart
             mcpStatus={mcpStatus}
@@ -165,41 +208,10 @@ export function ChatScreen(props: ChatScreenProps) {
             requestedModel={headerInfo.activeModel}
             branchNav={branchNav}
             systemInstruction={systemInstruction}
+            onOpenInstructions={onOpenInstructions}
           />
         )}
       </div>
-
-      {rateLimitState?.isRetrying && (
-        <RateLimitIndicator
-          retryAttempt={rateLimitState.attempt}
-          maxAttempts={rateLimitState.maxAttempts}
-          retryDelayMs={rateLimitState.delayMs}
-          onCancel={onStop}
-        />
-      )}
-
-      {toolLimitReached && !isAssistantResponding && (
-        <ToolLimitNotice
-          onContinue={() =>
-            void handleSend(
-              "Please continue from where you left off.",
-              currentOverrides,
-            )
-          }
-          disabled={isAssistantResponding}
-        />
-      )}
-
-      <ChatInput
-        handleSend={handleSend}
-        onEnqueue={enqueueMessage}
-        isAssistantResponding={isAssistantResponding}
-        hasError={conversationHasError(messages)}
-        isCompacting={isCompacting}
-        onStop={onStop}
-        thinking={thinking}
-        onThinkingChange={setThinking}
-      />
     </AppShell>
   );
 }

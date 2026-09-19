@@ -16,7 +16,7 @@ import {
   setupLiveSet,
   setupTrack,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-tiling-test-helpers.ts";
-import { createClipsForLength } from "../helpers/duplicate-helpers.ts";
+import { createClipsForLength } from "../helpers/clip/arrangement-length.ts";
 
 /** An 8-bar source clip at the top of the arrangement. */
 const SOURCE_LENGTH = 32;
@@ -100,6 +100,7 @@ function setupShortenOverHoldingArea(): {
       // Shortening drops a temp clip at the new end, truncating the copy there.
       create_midi_clip: (position: unknown) => {
         registerHoldingClip(position as number);
+        setupArrangementClip("301", 0, {}, 3);
 
         return ["id", "301"];
       },
@@ -233,6 +234,8 @@ function setupTrackTrackingItsClips(): LiveAPI {
               at;
           }
         }
+
+        setupArrangementClip("temp", 0, {}, clipIds.length + 1);
 
         return ["id", "temp"];
       },

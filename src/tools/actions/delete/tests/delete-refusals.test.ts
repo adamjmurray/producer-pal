@@ -8,6 +8,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  mockNonExistentObjects,
   registerMockObject,
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
@@ -113,23 +114,43 @@ describe("deleteObject when Live refuses the delete", () => {
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
-  it.each(REFUSALS)("reports a $name that survives the delete", (refusal) => {
+  // The one target it was given was not deleted, so the call did nothing and
+  // says why as an error.
+  it.each(REFUSALS)("refuses a lone $name that survives", (refusal) => {
     const { type, id, path, setup } = refusal;
 
     setup();
 
-    expect(deleteObject({ id: id, type })).toStrictEqual({
-      id,
-      path,
-      type,
-      deleted: false,
-    });
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(() => deleteObject({ id, type })).toThrow(
       `${type} ${path} (id ${id}) still exists, so Live did not delete it`,
     );
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("reports deleted true once Live does remove the object", () => {
+  it("keeps a surviving object's slot when another target was named", () => {
+    setupSceneMocks({ scene_0: livePath.scene(0) });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      methods: { delete_scene: () => null },
+    });
+    mockNonExistentObjects();
+
+    expect(
+      deleteObject({ id: "scene_0, already_gone", type: "scene" }),
+    ).toStrictEqual([
+      {
+        id: "scene_0",
+        path: "s0",
+        type: "scene",
+        ok: false,
+        reason: "scene s0 (id scene_0) still exists, so Live did not delete it",
+      },
+      { id: "already_gone", type: "scene", reason: "nothing to delete" },
+    ]);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("says nothing extra once Live does remove the object", () => {
     setupTrackMocks({ track_1: String(livePath.track(1)) });
     registerMockObject("live_set", { path: livePath.liveSet });
 
@@ -137,7 +158,6 @@ describe("deleteObject when Live refuses the delete", () => {
       id: "track_1",
       deletedPath: "t1",
       type: "track",
-      deleted: true,
     });
     expect(warnSpy).not.toHaveBeenCalled();
   });

@@ -16,14 +16,14 @@ Per file:
 | `live-api-extensions.ts` (279)     | 81.72%   | **98.92%** | 3 (from 51)       |
 | `code-exec-v8-protocol.ts` (43)    | 23.26%   | **95.35%** | 2 (from 33)       |
 | `node-request-v8-protocol.ts` (35) | 97.14%   | **100%**   | 0 (from 1)        |
-| `live-api-path-utils.ts` (37)      | 97.30%   | **91.89%** | 3 (all one cause) |
+| `live-api-id-or-path.ts` (37)      | 97.30%   | **91.89%** | 3 (all one cause) |
 
 All test-only — no product code was touched. `live-api-adapter.ts` is excluded
 as the V8 bundle entry point (it emits `outlet(0, "started")` and registers Max
 message handlers at import), the same rationale `mcpServer` uses for
 `mcp-server.ts`.
 
-`live-api-path-utils.ts` _drops_ against its baseline without a single test
+`live-api-id-or-path.ts` _drops_ against its baseline without a single test
 being removed: two of its three survivors were classified `Timeout` (which
 counts as killed) in the first run and `Survived` in the second. The second
 reading is the honest one — see the noise note below.
@@ -86,7 +86,7 @@ and running the suite, then confirming the root cause in isolation:
 
 | Mutant                                               | Why it can't be killed                                                                                                                                                                                                |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `live-api-path-utils.ts:33` (×3)                     | Emptying/skipping the `typeof idOrPath === "number"` branch falls through to `/^\d+$/.test(idOrPath)`, which coerces the number and returns the identical `id N`. Only unreachable inputs (negatives, floats) differ. |
+| `live-api-id-or-path.ts:33` (×3)                     | Emptying/skipping the `typeof idOrPath === "number"` branch falls through to `/^\d+$/.test(idOrPath)`, which coerces the number and returns the identical `id N`. Only unreachable inputs (negatives, floats) differ. |
 | `live-api-extensions.ts:132` `startsWith`→`endsWith` | The branch only runs when `/^\d+$/.test(val)`, and an all-digit string can contain neither `"id "` prefix nor suffix — both sides are always false.                                                                   |
 | `live-api-extensions.ts:159` `<`→`<=`                | `getChildIds` steps `i += 2` and reads `idArray[i] === "id"`; the extra iteration reads index `length`, which is `undefined` and never `"id"`.                                                                        |
 | `live-api-extensions.ts:330` `matches.length === 0`  | `path.match(/devices (\d+)/g)` returns `null`, never `[]`, so the length arm is unreachable behind `!matches`.                                                                                                        |

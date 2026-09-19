@@ -10,9 +10,10 @@ last non-`src/tools/` code triaged this pass. Full pass — Stryker 9.6.1, Node
 
 All test-only. Per-file movement (survivors from → to): `silent-wav-generator`
 37.0% → 92.6% (17 → 2), `compact-parser` 90.9% → 98.9% (16 → 2), `config` 83.3%
-→ 100%, `v8-max-console` 97.2% → 100%, `v8-sleep` 92.3% → 100%, `pitch` 89.2% →
-91.8% (25 → 19), `version-check` 75.3% → 79.5% (18 → 15). `compact-serializer`,
-`error-utils`, `live-api-path-builders`, `mcp-response-utils` were already 100%.
+→ 100%, `v8-max-console` 97.2% → 100%, `v8-wait-until` 92.3% → 100%, `pitch`
+89.2% → 91.8% (25 → 19), `version-check` 75.3% → 79.5% (18 → 15).
+`compact-serializer`, `error-message`, `live-api-path-builders`, `mcp-responses`
+were already 100%.
 
 Two dominant levers here (different from the write/read tiers' warn-and-skip
 gap):
@@ -78,4 +79,4 @@ Stryker-limited), no real gaps:
 | `isValidNoteName` / `noteNameToMidi` regex anchors + multi-digit octave             | `pitch.test.ts`                |
 | `stepInScale` strict `< 0` / `> 127` MIDI-boundary clamps (sparse-scale cases)      | `pitch.test.ts`                |
 | `warn` multi-arg outlet join + Dict-without-`stringify` optional chaining           | `v8-max-console.test.ts`       |
-| `waitUntil` schedules a Task delay between polls (not a busy loop)                  | `v8-sleep.test.ts`             |
+| `waitUntil` schedules a Task delay between polls (not a busy loop)                  | `v8-wait-until.test.ts`        |

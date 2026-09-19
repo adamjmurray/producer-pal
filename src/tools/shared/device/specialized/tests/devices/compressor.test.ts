@@ -11,7 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedOptions,
@@ -37,6 +37,7 @@ import {
   routingProp,
 } from "./compressor-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 // ---------------------------------------------------------------------------
 // sidechainSourceTrackId — read
@@ -201,7 +202,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns and skips when the track is not in available routing types", () => {
+  it("refuses when the track is not in available routing types", () => {
     registerLiveSetTracks();
 
     // Register a track not included in available types
@@ -212,14 +213,13 @@ describe("Compressor sidechainSourceTrackId write", () => {
 
     const device = registerCompressor();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "sidechainSourceTrackId", "t3"),
-    ).toStrictEqual([]);
+      "sidechainSourceTrackId",
+      "cannot be a sidechain source",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("cannot be a sidechain source"),
-    );
   });
 
   it("clears to No Input when value is 'null'", () => {
@@ -262,35 +262,33 @@ describe("Compressor sidechainSourceTrackId write", () => {
     );
   });
 
-  it("warns and skips when the track id does not exist", () => {
+  it("refuses when the track id does not exist", () => {
     registerLiveSetTracks();
     mockNonExistentObjects();
     const device = registerCompressor();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "sidechainSourceTrackId", "999"),
-    ).toStrictEqual([]);
+      "sidechainSourceTrackId",
+      "does not exist",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("does not exist"),
-    );
   });
 
-  it("warns and skips clearing when No Input is not in available types", () => {
+  it("refuses clearing when No Input is not in available types", () => {
     registerLiveSetTracks();
     const device = registerCompressor({
       availableTypes: [DRIFT_ENTRY, AUDIO_FX_ENTRY],
     });
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "sidechainSourceTrackId", "null"),
-    ).toStrictEqual([]);
+      "sidechainSourceTrackId",
+      '"No Input"',
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('"No Input"'),
-    );
   });
 });
 
@@ -389,35 +387,32 @@ describe("Compressor sidechainChannel write", () => {
     );
   });
 
-  it("warns and skips for an unavailable channel name", () => {
+  it("refuses an unavailable channel name", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    expect(
+    expectWriteRefused(
       applySpecializedParamWrite(device, "sidechainChannel", "Bogus Channel"),
-    ).toStrictEqual([]);
+      "sidechainChannel",
+      "not a valid sidechainChannel",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid sidechainChannel"),
-    );
   });
 
-  it("warning message includes available channel names", () => {
+  it("names the available channels in the reason", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
 
-    applySpecializedParamWrite(device, "sidechainChannel", "Unknown");
-
-    // The full channel catalog, comma-separated.
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        `Available: ${DEFAULT_AVAILABLE_CHANNELS.map((c) => c.display_name).join(", ")}`,
-      ),
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "sidechainChannel", "Unknown"),
+      "sidechainChannel",
+      // The full channel catalog, comma-separated.
+      `Available: ${DEFAULT_AVAILABLE_CHANNELS.map((c) => c.display_name).join(", ")}`,
     );
   });
 
-  it("warns and skips (no throw) when channels are unavailable", () => {
+  it("refuses (no throw) when channels are unavailable", () => {
     // Register channels as a raw empty array so getProperty() unwraps to null —
     // exercises the readAvailableChannels `?? []` fallback.
     registerMockObject("comp-1", {
@@ -429,12 +424,13 @@ describe("Compressor sidechainChannel write", () => {
     });
     const device = LiveAPI.from("id comp-1");
 
-    applySpecializedParamWrite(device, "sidechainChannel", "Post FX");
+    expectWriteRefused(
+      applySpecializedParamWrite(device, "sidechainChannel", "Post FX"),
+      "sidechainChannel",
+      "not a valid sidechainChannel",
+    );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a valid sidechainChannel"),
-    );
   });
 });
 
@@ -619,7 +615,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({ id: "comp-1", include: ["params"] });
+    const result = readOneDevice({ id: "comp-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "sidechainSourceTrackId",
@@ -636,7 +632,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "comp-1",
       include: ["params", "options"],
     });
@@ -651,7 +647,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({ id: "comp-1", include: ["params"] });
+    const result = readOneDevice({ id: "comp-1", include: ["params"] });
 
     expect(result.options).toBeUndefined();
   });
@@ -660,7 +656,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "comp-1",
       include: ["params", "options"],
     });

@@ -222,6 +222,43 @@ describe("ppal-create-clip", () => {
     expect(arrangementStartOf(arrangementClip)).toBe("41|1");
   });
 
+  it("accepts n<count>bar as an alias for <count>bar in the length field", async () => {
+    // Untaught tolerance (ADR-0018): a model reaching for the n sigil out of
+    // habit gets the bar length it asked for.
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
+        length: "n2bar",
+      },
+    });
+    const clip = parseToolResult<CreateClipResult>(result);
+
+    await sleep(100);
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: clip.id, include: ["timing"] },
+    });
+    const readClip = parseToolResult<ReadClipResult>(verify);
+
+    expect(readClip.length).toBe("2bar");
+  });
+
+  it("refuses an n-fraction bar length (fraction and bar count are different things)", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s7`,
+        length: "n3/4bar",
+      },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain(
+      "an n fraction and a bar count are different things",
+    );
+  });
+
   it("refuses a clip the track cannot hold", async () => {
     // Live declines a create it can't do without raising, and the arrangement
     // create calls answer with another object — the Live Set (id 1). Reported

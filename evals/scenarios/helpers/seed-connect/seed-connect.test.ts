@@ -6,7 +6,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
 import { type EvalSession } from "../../eval-session.ts";
-import { runMessageTurns } from "../../run-scenario-helpers.ts";
+import { runMessageTurns } from "../../run-scenario/message-turns.ts";
 import {
   CONNECT_MESSAGE,
   CONNECT_TOOL,
@@ -39,6 +39,7 @@ function scenario(
   return {
     id: "test",
     description: "test",
+    tags: ["workflow"],
     liveSet: "basic-midi-4-track",
     messages,
     assertions: [],

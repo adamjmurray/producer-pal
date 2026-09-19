@@ -11,12 +11,12 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   type CreatedClip,
   type TilingContext,
-} from "./helpers/arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-clips.ts";
 import { adjustClipPreRoll } from "./arrangement-tiling-holding.ts";
 import {
   clearArrangementRange,

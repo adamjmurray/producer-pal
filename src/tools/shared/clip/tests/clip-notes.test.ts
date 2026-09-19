@@ -6,9 +6,23 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getClipNoteCount,
+  rawNotesToCopiedNotes,
+  rawNotesToNoteEvents,
   readAllClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
+
+const RAW_NOTE = {
+  note_id: 7,
+  pitch: 60,
+  start_time: 0,
+  duration: 1,
+  velocity: 100,
+  probability: 1,
+  velocity_deviation: 0,
+  mute: 1,
+  release_velocity: 77,
+};
 
 function makeClip(callReturn: string): LiveAPI {
   return {
@@ -104,5 +118,39 @@ describe("removeAllClipNotes", () => {
       -4,
       12,
     );
+  });
+});
+
+describe("rawNotesToNoteEvents", () => {
+  it("drops note_id, mute and release_velocity", () => {
+    expect(rawNotesToNoteEvents([RAW_NOTE])).toStrictEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+});
+
+describe("rawNotesToCopiedNotes", () => {
+  it("keeps mute and release_velocity, and drops only note_id", () => {
+    // note_id still goes: a stale id re-fed on a later write lands on the note
+    // it was read from.
+    const [copied] = rawNotesToCopiedNotes([RAW_NOTE]);
+
+    expect(copied).toStrictEqual({
+      pitch: 60,
+      start_time: 0,
+      duration: 1,
+      velocity: 100,
+      probability: 1,
+      velocity_deviation: 0,
+      mute: 1,
+      release_velocity: 77,
+    });
   });
 });

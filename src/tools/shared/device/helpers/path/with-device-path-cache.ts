@@ -66,7 +66,7 @@ export function withDevicePathCache<T>(fn: () => T): T {
  * @param path - Live API path
  * @returns The object at that path
  */
-export function cachedDevicePath(path: string): LiveAPI {
+export function liveApiAtDevicePath(path: string): LiveAPI {
   if (cache == null || path.startsWith("id ")) {
     return LiveAPI.from(path);
   }

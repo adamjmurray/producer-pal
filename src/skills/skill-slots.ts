@@ -22,6 +22,7 @@ import {
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
+import { pluginsAndMaxDevices } from "#src/skills/fragments/devices/plugins-and-max-devices.ts";
 import {
   objectPaths,
   objectPathsBasic,
@@ -105,6 +106,7 @@ export const SKILL_SLOT_NAMES = [
   "transforms-basic",
   "library",
   DEVICES,
+  "plugins-and-max-devices",
   "devices-write",
   "specialized-devices",
   ARRANGEMENT,
@@ -197,7 +199,17 @@ export interface SkillSlotDef {
   alwaysOn?: boolean;
 }
 
-/** The overridable skills fragments, keyed by their stable slot name. */
+/**
+ * The overridable skills fragments, keyed by their stable slot name. This is
+ * where a fragment's body is declared; `builtinFragments()` reads it, so the
+ * editor and the assembled document can't drift apart.
+ *
+ * Subjects that grew past a file or two get a fragments/ subfolder — transforms
+ * and devices so far. A file inside one keeps its full fragment name
+ * (`transforms/transforms-core.ts`), stutter and all: that name is the include
+ * ref and the user's override slot, so shortening it to match the folder would
+ * hide the one thing a reader needs to match up.
+ */
 export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   standard: {
     title: "Full skills (standard)",
@@ -269,6 +281,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Device paths and what can't be reached inside a VST/AU plug-in — what every device task needs, whichever direction it goes.",
     builtIn: devices,
+  },
+
+  "plugins-and-max-devices": {
+    title: "Devices: loading plug-ins & Max devices",
+    description:
+      "Loading VST/AU plug-ins and Max for Live devices with create-device, found through library search. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode. Needs the devices guide it sits under.",
+    builtIn: pluginsAndMaxDevices,
   },
 
   "devices-write": {

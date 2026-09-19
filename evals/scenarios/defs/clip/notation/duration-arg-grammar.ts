@@ -28,7 +28,7 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-scenario-helpers.ts";
+import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-tool-constants.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const LIVE_SET = "basic-midi-4-track";
@@ -102,6 +102,7 @@ function assertLengthArg(
  */
 export const durationArgGrammar: EvalScenario = {
   id: "duration-arg-grammar",
+  tags: ["notation"],
   description:
     "Clip lengths use the duration-arg grammar: 1bar+n/4 (6/8), 4bar, n/4",
   kind: "capability",

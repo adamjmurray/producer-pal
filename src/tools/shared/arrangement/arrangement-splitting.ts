@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -17,13 +17,13 @@ import {
   createAndDeleteTempClip,
   EPSILON,
   type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import {
   holdingAreaStartAfter,
   holdingAreaStartOnTrack,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   rescanSplitClips,
   type SplitClipRange,
@@ -435,6 +435,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
  * @param clips - Array to update with fresh clips after splitting
  * @param _context - Internal context object
  * @param mode - Whether positions are song-timeline or clip-relative
+ * @returns The pieces each cut clip became, by the id it was cut at
  */
 export function performSplitting(
   arrangementClips: LiveAPI[],
@@ -442,7 +443,7 @@ export function performSplitting(
   clips: LiveAPI[],
   _context: SplittingContext,
   mode: SplitMode,
-): void {
+): Map<string, LiveAPI[]> {
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
   const usedPoints = new Set<number>();
@@ -511,5 +512,5 @@ export function performSplitting(
     warnUnusedSplitPoints(splitPoints, usedPoints, mode);
   }
 
-  rescanSplitClips(splitClipRanges, clips);
+  return rescanSplitClips(splitClipRanges, clips);
 }

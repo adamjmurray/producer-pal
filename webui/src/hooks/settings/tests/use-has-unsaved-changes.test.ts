@@ -12,7 +12,7 @@ import {
   type AppearanceSettings,
   useHasUnsavedChanges,
 } from "#webui/hooks/settings/use-has-unsaved-changes";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
 const appearance: AppearanceSettings = {

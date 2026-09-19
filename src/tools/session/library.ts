@@ -23,7 +23,7 @@ import {
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { runSearchBatch } from "./library-search-batch-helpers.ts";
+import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
 
 // deviceKind doubles as the plugin category filter for listPlugins. Only the
@@ -442,14 +442,23 @@ function candidateFilters(args: LibraryArgs): object {
 /**
  * Invoke a Node-side route and unwrap the response, throwing on failure
  * so the MCP error path renders a clean message instead of leaking the
- * RPC envelope shape to the LLM.
+ * RPC envelope shape to the LLM. Every route also gets the running Live
+ * version, which Node uses to pick that install's library database.
  *
  * @param route - Route name registered on Node side
  * @param routeArgs - Arguments to pass to the route
  * @returns Route's success payload
  */
 async function callRoute<T>(route: string, routeArgs: object): Promise<T> {
-  const response = await requestNode<T>(route, routeArgs);
+  // Node can't ask Live anything, and it needs the running major to pick the
+  // right Live database when two majors are installed (see live-db-path.ts).
+  // Read per call rather than caching: a LiveAPI object must not outlive the
+  // request, and the call is cheap.
+  // Live 12.4 returns "12.4", which V8 coerces to a number; force string.
+  const liveVersion = String(
+    LiveAPI.from("live_app").call("get_version_string"),
+  );
+  const response = await requestNode<T>(route, { ...routeArgs, liveVersion });
 
   if (!response.success || !response.result) {
     throw new Error(`${route} failed: ${response.error ?? "unknown error"}`);

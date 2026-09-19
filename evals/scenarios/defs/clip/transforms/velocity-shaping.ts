@@ -20,10 +20,8 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import {
-  assertNotesRead,
-  TOOL_UPDATE_CLIP,
-} from "../helpers/clip-scenario-helpers.ts";
+import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import { TOOL_UPDATE_CLIP } from "../helpers/clip-tool-constants.ts";
 
 /**
  * Everything a model wrote to place notes in one turn: `transforms`, `notes`
@@ -180,6 +178,7 @@ function assertReRandomizingSnare(): EvalAssertion {
 
 export const velocityShaping: EvalScenario = {
   id: "velocity-shaping",
+  tags: ["transforms"],
   description: "Write drum velocities by hand: per-note crescendo, then vA-B",
   kind: "capability",
   requires: { transforms: true },

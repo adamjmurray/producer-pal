@@ -44,17 +44,27 @@ function registerParam(isEnabled: number): RegisteredMockObject {
 // set, reports success, and ignores it, so an unguarded write would tell the
 // model the param changed when nothing happened.
 describe("updateDevice - disabled params", () => {
-  it("warns and skips a param a rack macro controls", () => {
+  it("reports a param a rack macro controls in its own entry", () => {
     const param = registerParam(0);
 
-    updateDevice({ id: "dev1", params: [{ name: "Volume", value: "0.8" }] });
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ name: "Volume", value: "0.8" }],
+    });
 
     expect(param.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        't0/d0 (id dev1) param "Volume" (id vol) is disabled',
-      ),
-    );
+    expect(result).toStrictEqual({
+      id: "dev1",
+      path: "t0/d0",
+      params: [
+        {
+          name: "Volume",
+          ok: false,
+          reason: expect.stringContaining("is disabled and was not changed"),
+        },
+      ],
+    });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("writes the param when nothing is mapped to it", () => {

@@ -12,10 +12,10 @@
  */
 import { describe, expect, it } from "vitest";
 import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../e2e-test-set.ts";
 import {
   type DeviceInfo,
   KIT,
-  RACKS_TEST_PATH,
   readKitPads,
 } from "./helpers/racks-test-helpers.ts";
 

@@ -34,7 +34,8 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ```
 path     := ( root ( "/" segment )* )? coord?
 root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
-segment  := "s"<n> | "l"<n> | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
+segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "d+" | "c"<n> | "c+" | "rc"<n>
+           | "p"<note> | "p*" | "inst" | "mfx"<n> | "afx"<n>
 coord    := "[" position "]"
 position := <bar|beat> | "loc:" <locator>
 ```
@@ -51,17 +52,38 @@ list-length check, which would otherwise call one destination two and refuse a
 call for a mismatch that isn't there. Peeling the coordinate off first leaves a
 body with no brackets, so splitting that on `/` needs no depth of its own.
 
-The `+` roots name a place rather than a thing, so only the create tools take
-one, and only as a whole path — `t+/s0` names nothing yet. On create, `t2`
-inserts at 2 while `t+` appends. `rt<n>` is refused there: Live always adds a
-return track at the end, so a path naming a position it can't honor would
-silently create the track somewhere else.
+A `+` names a place rather than a thing, so it is taken only by the tool that
+creates that kind of object, and a `+` root is a whole path — `t+/s0` names
+nothing yet. On create, `t2` inserts at 2 while `t+` appends. `rt<n>` is refused
+there: Live always adds a return track at the end, so a path naming a position
+it can't honor would silently create the track somewhere else.
 
 Segments have to nest the way Live does, and a path that doesn't is a parse
 error rather than a missing object later: a track holds devices, a device holds
 chains, return chains, and drum pads, and each of those holds devices. A drum
 pad also takes a `c<n>`, picking among the chains that share its note. So
-`t0/c0` and `t0/d0/d1` are rejected.
+`t0/c0` and `t0/d0/d1` are rejected. `c+` goes wherever a `c<n>` may, but only
+last: the chain it appends is empty, so nothing can hang below it.
+
+**A device can also be addressed by type.** `inst` is the container's
+instrument, `mfx<n>` its n-th MIDI effect, `afx<n>` its n-th audio effect —
+0-based and counted within that type, because Live keeps a device list sorted
+MIDI effects → instrument → audio effects. These sit anywhere a `d<n>` may and
+nest by the same rules. `inst` takes no index: a container holds at most one
+instrument. A rack counts as one device of its own type, so `t0/inst` on a track
+holding a Drum Rack is the rack, never something inside it. Return and main
+tracks hold only audio effects, so `inst` and `mfx<n>` never resolve there.
+Nothing to resolve — no instrument, an index past the last effect of that type —
+is reported once, on the target: the miss says what the container does hold
+(`nothing at path "t2/afx2": t2 has 2 audio effects (afx0-afx1)`). `instrument`,
+`midifx<n>` and `audiofx<n>` also parse: tolerated, and deliberately documented
+nowhere but here.
+
+**Input only — a result never emits one.** Spelling `afx<n>` off a Live path
+needs a device-list read on the per-object hot path, where `d<n>` comes free
+from string manipulation. Making them canonical is a separate decision that
+needs a measurement
+([ADR-0041](decisions/0041-device-type-segments-are-input-only.md)).
 
 | Path           | Names                             | Live API                               |
 | -------------- | --------------------------------- | -------------------------------------- |
@@ -74,12 +96,19 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 | `s+`           | a new scene, appended             | —                                      |
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
+| `t0/l+`        | a new take lane, appended         | —                                      |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
+| `t0/d+`        | a new device, appended            | —                                      |
+| `t0/inst`      | the track's instrument            | the `devices N` whose `type` is 1      |
+| `t0/mfx0`      | its first MIDI effect             | the first `devices N` with `type` 4    |
+| `t0/afx1`      | its second audio effect           | the second `devices N` with `type` 2   |
 | `t0/d0/c1`     | rack chain                        | `... chains 1`                         |
+| `t0/d0/c+`     | a new rack chain, appended        | —                                      |
 | `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                  |
 | `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                     |
 | `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1         |
 | `t0/d0/pC1/c1` | one layer of a drum pad           | `... chains N` with that `in_note`     |
+| `t0/d0/pC1/c+` | a new layer on that pad           | —                                      |
 | `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0`  |
 | `t0[5\|1]`     | arrangement clip on the main lane | `tracks 0 arrangement_clips N`         |
 | `t0/l1[5\|1]`  | arrangement clip on a take lane   | `... take_lanes 1 arrangement_clips N` |
@@ -88,11 +117,36 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 Chains auto-create when referenced (up to 16), except the catch-all pad: Live
 clamps a drum chain's `in_note` to 0-127, so a `p*` chain can't be made and a
 write that would create one refuses instead. An existing one still resolves.
-Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
+Depth changes nothing: a pad on a Drum Rack nested in another rack's pad
+(`t0/d0/pC1/c0/d0/pD1`) creates its chain the same way. Take lanes auto-create
+up to the index named, capped at `MAX_TAKE_LANES`.
 
-A `+` is a root — `t+`, `rt+`, `s+` — and only the tool that creates that kind
-of object accepts one. Every other path names something that exists, or an index
-a tool fills in up to (a take lane, a chain).
+A `+` is accepted only by the tool that creates that kind of object: `t+`, `rt+`
+and `s+` by the create tools, `l+` by `ppal-update-track`, because a take lane
+is an aspect of its track rather than an object a tool makes on its own
+([ADR-0043](decisions/0043-a-plus-belongs-to-the-tool-that-creates-the-object.md)).
+`c+` is the chain's, taken by the tools that make chains: `ppal-create-device`,
+`ppal-duplicate` and `ppal-update-device`
+([ADR-0045](decisions/0045-c-plus-appends-a-rack-chain.md)). `d+` is the
+device's, taken by those same three
+([ADR-0046](decisions/0046-d-plus-appends-a-device.md)). Every other path must
+name something that already exists, or an index a tool fills in up to. A tool
+that only reads or writes an existing object refuses a `+` and says which tool
+takes it.
+
+`t0/d+` appends a device to the track, `t0/d0/c0/d+` to that chain, and `d<n>`
+inserts at n. A bare container (`t0`, `t0/d0/c0`, `t0/d0/pC1`) appends too — it
+is what results and reads spell a container as — but `d+` is the spelling to
+teach, since it says what happens. One marker covers every device type: Live's
+`insert_device` appends within the section for the device's own type, so nothing
+has to say which.
+
+Live's `insert_chain` only ever appends, so neither `c+` nor `c<n>` can mean
+"insert at n": `c<n>` fills in the chains up to n, and `c+` adds one past the
+last. Rack return chains can't be created at all. A `c+` on a Drum Rack is
+refused and points at the pad spelling — a new, empty chain has no note, so it
+would land on the catch-all pad and sound on every note no pad claims. On a pad
+(`t0/d0/pC1/c+`) it appends a layer, which does have a note.
 
 ## Song-timeline positions
 
@@ -114,6 +168,13 @@ into it — see Tolerance below.
 **Song timeline only.** `create-clip`'s `start` and `firstStart` are
 clip-relative and must not accept `loc:`.
 
+**A missing locator is reported where the spelling puts it.** Inside a `[...]`
+coordinate it is that entry's own miss: the clip the entry was written for says
+`not moved: ...` on its own entry, the rest of the batch still moves, and a lone
+clip throws (ADR-0042). `arrangementStart` and `arrangementSplit` are read as
+one list before anything moves — the same as a malformed bar|beat in them — so a
+missing name there refuses the call, on every tool that takes them.
+
 Managing locators is separate and unchanged: `update-live-set`'s
 `locatorOperation` / `locatorId` / `locatorTime` / `locatorName` treat a locator
 as an object to create, delete or rename, not as a coordinate.
@@ -129,7 +190,8 @@ occupy the location.
 | `rt0`, `mt`               | ❌ no clip slots | ✅        | ✅     | —      |
 | `s3`                      | ❌               | ❌        | —      | ✅     |
 | `t0/s3`                   | ✅ clip slot     | ❌        | —      | —      |
-| `t0/l1`                   | ✅ arrangement   | ❌        | —      | —      |
+| `t0/l1`                   | ✅ arrangement   | ❌        | ✅     | —      |
+| `t0/l+`                   | ❌ update-track  | ❌        | ✅     | —      |
 | `t0/d1` and below         | ❌               | ✅        | —      | —      |
 | `t0[5\|1]`, `t0/l1[5\|1]` | ✅ arrangement   | ❌        | —      | —      |
 | `[5\|1]`                  | ✅ arrangement   | ❌        | —      | —      |
@@ -148,7 +210,7 @@ name either or both:
 
 | Path       | As a source             | As a destination                    |
 | ---------- | ----------------------- | ----------------------------------- |
-| `t0[5\|1]` | the clip starting there | that lane, that position            |
+| `t0[5\|1]` | the clip covering there | that lane, that position            |
 | `t0`       | ❌ names many clips     | that lane, keep the clip's position |
 | `[5\|1]`   | ❌ names many clips     | keep the clip's lane, that position |
 
@@ -159,9 +221,10 @@ errors there.
 **Complete as a source.** A partial path names more than one clip, so a tool
 addressing a specific clip refuses it. Both partials work as destinations.
 
-`t0[5|1]` means **starts at**, not covers: a clip running from 3|1 through bar 6
-is not at `[5|1]`. That path resolves to nothing, and the call warns and skips
-like any other target that isn't there (ADR-0035).
+`t0[5|1]` resolves to the clip **covering** `5|1`, even if it started earlier —
+a clip running from 3|1 through bar 6 is at `[5|1]`. When no clip covers the
+position, the path resolves to nothing and the target is reported like any other
+that isn't there (ADR-0042).
 
 ### Which lists pair and which broadcast
 
@@ -190,27 +253,50 @@ excludes the main lane, so `l0` is the first take lane and the segment index is
 the Live API index like every other segment.
 
 `takeLane` (1-based, `0` = main) is a hidden alias mapping `N → l(N-1)` and
-`0 → no segment`. `takeLaneName` is deprecated with no replacement: naming a
-lane is a property of the lane, not an address, and not a clip-tool concern.
+`0 → no segment`. `takeLaneName` is deprecated: naming a lane is a property of
+the lane, not an address, so it belongs to the lane's own target —
+`ppal-update-track` with `path: "t2/l0"` and `name`.
+
+**The lanes themselves are `ppal-update-track`'s.** A lane path there names a
+lane to write to: `t2/l<n>` fills in the lanes up to that index, `t2/l+` appends
+one, and each `l+` in the list appends its own. `name` is the only param a lane
+takes, and every other one the call sent is reported on the lane's entry rather
+than refusing the call. A whole call is refused up front when its lanes would
+put a track over the cap — lanes can't be deleted, so a half-run list would
+strand the ones it made. `ppal-read-track` takes a lane path too, answering with
+the lane and, with the `arrangement-clips` include, its clips. Both tools take a
+lane's `id` as well, so the id either one reports goes straight back as a
+target.
 
 **Writes to and from a lane re-create the clip**, because Live's arrangement
 duplicate handles neither direction: `TakeLane` has no duplicate API, and
 `Track.duplicate_clip_to_arrangement` silently no-ops when the _source_ is a
 take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
-(promote) by reading the notes and building a new clip — MIDI only, and envelope
-automation is dropped.
+(promote) by rebuilding the clip from its notes, or from its sample for audio;
+envelope automation is dropped, and a warped audio clip's markers reset. A
+`duplicate` with `type: "track"` and a lane destination copies a whole lane the
+same way — clips only, so the devices, routing, mixer settings and session clips
+a new-track copy carries stay behind. Its source is a track (`t2`, its main
+lane) or a lane (`t2/l0`, or that lane's id); `t2/l+` names no source, and a
+lane can't copy onto itself. A lane source with a bare track destination (`t2`,
+its own track or another) promotes the whole lane onto that track's main lane,
+replacing the clips already at those positions; it makes no lane, so its entry
+reports the track's path with no `created`. A track source has no such
+destination — a bare `toPath` there is the new-track copy's, and is ignored.
 
-**A lane is one-way**: nothing removes a take lane or a clip on one. A move off
-a lane gets as close as Live allows — `update-clip` copies the content to the
-destination (another lane, another track, or a session slot) and then empties
-the original in place, leaving a muted `(moved) ...` placeholder it warns the
-user to delete. MIDI really empties — the notes go. Audio can't: a clip's sample
-can't be swapped, and writing a silent clip over it fails too, because an
-arrangement clip's extent can't be stretched from the LOM (`end_marker` and
-`loop_end` accept the write, `end_time` doesn't follow). So an audio take is
-only muted. Everything else that needs the original gone (`arrangementSplit`,
-`arrangementLength`, `ppal-delete`) still warns and skips. Deleting and comping
-stay in Live's UI.
+**A lane is one-way**: nothing removes a take lane or a clip on one. A move of a
+lane clip gets as close as Live allows — `update-clip` copies the content to the
+destination (a new position on the same lane, another lane, another track, or a
+session slot) and then empties the original in place, leaving a muted
+`(moved) ...` placeholder the clip's own result entry says to delete. MIDI
+really empties — the notes go. Audio can't: a clip's sample can't be swapped,
+and writing a silent clip over it fails too, because an arrangement clip's
+extent can't be stretched from the LOM (`end_marker` and `loop_end` accept the
+write, `end_time` doesn't follow). So an audio take is only muted. Everything
+else that needs the original gone still refuses it: `arrangementSplit` and
+`arrangementLength` report a `reason` on the clip's entry and change nothing,
+and `ppal-delete` reports the clip `ok: false`. Deleting and comping stay in
+Live's UI.
 
 ## Tolerance
 
@@ -224,14 +310,16 @@ Four tiers, in order of preference.
    `trackType` and `trackIndex` on `read-track` and `select`, `sceneIndex` on
    `read-scene`, `select` and `create-scene`, and `trackIndex` on
    `create-track`. `create-track`'s `type: "return"` goes the same way, trimmed
-   out of the published enum but still accepted — `rt+` asks for one now.
-   `arrangementStart` on `create-clip`, `update-clip` and `duplicate` joins them
-   once the coordinate ships — a deprecation with a long runway, not a permanent
-   alias: it is a name we coined, so a model that never reads it in the Skills
-   has no reason to emit it, and the runway is for people scripting Live.
-   `trackIndex` and `sceneIndex` on the _clip_ tools are permanent aliases, not
-   part of that migration: models reach for them unprompted, and catching the
-   guess beats a round trip. See
+   out of the published enum but still accepted — `rt+` asks for one now. So
+   does `count` on `create-track` and `create-scene`: a repeated path entry says
+   the same thing and can name a different place per object. `arrangementStart`
+   on `create-clip`, `update-clip` and `duplicate` joins them once the
+   coordinate ships — a deprecation with a long runway, not a permanent alias:
+   it is a name we coined, so a model that never reads it in the Skills has no
+   reason to emit it, and the runway is for people scripting Live. `trackIndex`
+   and `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
+   migration: models reach for them unprompted, and catching the guess beats a
+   round trip. See
    [hidden-param.ts](../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
@@ -249,20 +337,20 @@ Four tiers, in order of preference.
 4. **Never pick one.** Honoring one param and dropping the other is the silent
    wrong-target bug this grammar exists to prevent. What to do instead depends
    on what the param names:
-   - **A source — throw.** Where the call acts on one target (`read-clip`,
-     `read-device`, `read-track`, `read-scene`, `update-device`, `playback`'s
+   - **A source — throw.** Where the call acts on one target (`playback`'s
      `play-scene`), two params naming different things has no answer, so it
      errors. Naming the same target twice over is not a conflict: `play-scene`
-     with `t0/s1,t2/s1` fires scene 1, and `read-clip` takes an `id` that sits
-     at the `path`.
+     with `t0/s1,t2/s1` fires scene 1.
    - **A set — union.** Where the call already acts on a list (`delete`,
-     `duplicate`, `update-clip`, `update-track`, `update-scene`, `playback`'s
-     clip actions), `id` and `path` both name members of it, so the targets
-     combine. `delete` and `playback` also collapse duplicates, because firing
-     or deleting an object twice is a different Live call than doing it once.
-     The update tools don't: writing the same value twice lands the same way,
-     and a slot per entry is what keeps a paired `name` or `color` list aligned.
-     Neither does `duplicate` — a source named twice is two copies.
+     `duplicate`, `update-clip`, `update-track`, `update-scene`,
+     `update-device`, the four read tools, `playback`'s clip actions), `id` and
+     `path` both name members of it, so the targets combine. `delete` and
+     `playback` also collapse duplicates, because firing or deleting an object
+     twice is a different Live call than doing it once. The update tools don't:
+     writing the same value twice lands the same way, and a slot per entry is
+     what keeps a paired `name` or `color` list aligned. Neither does
+     `duplicate` — a source named twice is two copies — nor the reads, whose
+     entry per target is what lines the results up with the call.
 
 ## Results
 
@@ -278,7 +366,9 @@ names a different track, so it addresses nothing worth calling again. `path`
 means the target outlived the call — a drum pad, whose 128 slots are permanent,
 so a delete clears its chains and leaves the slot. The rack then reads exactly
 as it would for a pad that was never filled; see
-[ADR-0034](decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md).
+[ADR-0034](decisions/0034-a-drum-pad-is-a-slot-chains-are-layers.md). There is
+no `deleted` flag: the key is the answer, and a target the call couldn't delete
+says so as a skip.
 
 | Object                 | Result                        |
 | ---------------------- | ----------------------------- |
@@ -391,17 +481,34 @@ list making the same point several times over only gets told once.
 ## Lists of paths
 
 A path param takes a comma-separated list (`paths` is accepted as a plural
-spelling wherever `path` is). Two shapes are refused rather than half-applied:
+spelling wherever `path` is).
 
-- **A list that reads through its own inserts.** Inserting a device renumbers
-  the chain, so `path: "t0/d1,t0/d2"` would put both new devices at d1 and d2
-  and push the originals past them — the second entry never lands where it was
-  named. Refused before anything is created. Entries naming different chains are
-  fine, and appending an audio effect renumbers nothing, so that stays allowed.
-- **Several tracks or scenes from a path list.** Insertion points move:
-  inserting at `t1` shifts everything after it, so every entry past the first
-  would be in coordinates the caller never wrote. `count` says "consecutively
-  from here", which can't drift, and is what the create tools take.
+**Every target named gets an entry, in the order named.** A target the call
+couldn't carry out keeps its slot as `{ id | path, ok: false, reason }`, under
+the param that named it and spelled as the caller wrote it — reads and writes
+alike. `ok` is on skips only, and a skip is never also a warning. One target is
+unwrapped and throws instead, having nothing to report. A target that needed no
+work (a `delete` of something already gone) is not a skip: its normal entry
+carries a `reason` and no `ok`. See
+[ADR-0042](decisions/0042-a-skipped-target-keeps-its-slot.md).
+
+**Creating tracks and scenes reads the list in the caller's coordinates.** Every
+entry names a place in the Set as the caller read it, so `t+,t+,t+` appends
+three tracks and `t2,t2` inserts two at 2, the second landing after the first.
+An entry can move a new object an earlier entry already made, so each result
+reports where that object ended up rather than the index Live was asked for.
+`count` is the retired spelling of a repeated path, and is refused alongside a
+list.
+
+One shape is refused rather than half-applied:
+
+- **A device list that reads through its own inserts.** Inserting a device
+  renumbers the chain, so `path: "t0/d1,t0/d2"` would put both new devices at d1
+  and d2 and push the originals past them — the second entry never lands where
+  it was named. Refused before anything is created. Entries naming different
+  chains are fine, and appending an audio effect renumbers nothing, so that
+  stays allowed. Tracks and scenes have no such case: they sit in one flat list
+  each, so the tool can work out every final position up front.
 
 ## Not paths
 
@@ -413,8 +520,9 @@ device, named there by `name` or `id`.
 One second spelling did grow anyway: a `params` name may carry a path prefix, so
 `{name: "c0/d0/Volume"}` on `t1/d0` writes a nested device's param. It is
 load-bearing for a drum pad `sample` write, whose target device does not exist
-yet and so can't be addressed as a path. Whether the general form should survive
-is open.
+yet and so can't be addressed as a path — at any depth, so the prefix may cross
+into a rack nested in a pad (`pC1/c0/d0/pD1/sample`). Whether the general form
+should survive is open.
 
 **Locators as objects.** `loc:` names a point in time. Creating, deleting and
 renaming a locator stays on `update-live-set`'s own params — that is object

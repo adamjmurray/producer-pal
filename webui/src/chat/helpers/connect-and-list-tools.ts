@@ -6,7 +6,7 @@
 // The one step every MCP → SDK tool bridge starts with: connect, read the
 // catalog, and don't strand the transport if the catalog read fails. Three
 // bridges (chat, OpenAI Realtime, Gemini Live) share it, and it lives here rather
-// than in mcp-client-helpers.ts so their tests can keep mocking the connect —
+// than in mcp-client-connection.ts so their tests can keep mocking the connect —
 // a mock never intercepts a call made through a same-module binding.
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -15,7 +15,7 @@ import {
   type McpToolDefinition,
   createConnectedMcpClient,
   filterEnabledTools,
-} from "#webui/chat/helpers/mcp-client-helpers";
+} from "#webui/chat/helpers/mcp-client-connection";
 
 /** A connected MCP client plus the filtered tool catalog it reported. */
 export interface McpConnection {

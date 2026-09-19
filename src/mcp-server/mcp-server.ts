@@ -14,8 +14,10 @@ import { registerMemoryNodeRoutes } from "./helpers/memory/memory-node-routes.ts
 import { registerCustomSkillsNodeRoutes } from "./helpers/skills-custom/custom-skills-node-routes.ts";
 import { registerLibraryRoutes } from "./live-library/library-routes.ts";
 import * as console from "./node-for-max-logger.ts";
+import { registerRemoteScriptRoutes } from "./rpc/remote-script/remote-script-routes.ts";
 
 registerLibraryRoutes();
+registerRemoteScriptRoutes();
 registerGlobalContextNodeRoutes();
 registerMemoryNodeRoutes();
 registerCustomSkillsNodeRoutes();

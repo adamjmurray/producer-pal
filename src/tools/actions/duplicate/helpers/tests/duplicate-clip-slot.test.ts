@@ -10,9 +10,9 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
-import { copyLabels } from "../sources/duplicate-label-helpers.ts";
-import { duplicateClipSlot } from "../clip/duplicate-clip-slot-helpers.ts";
+import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
+import { copyLabels } from "../sources/copy-labels.ts";
+import { duplicateClipSlot } from "../clip/duplicate-clip-slot.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Source clip, in slot 0/0 */
@@ -114,34 +114,40 @@ describe("duplicateClipSlot", () => {
 
   // Live's duplicate_clip_to returns success and copies nothing on a type
   // mismatch, so without this the result names a clip that was never made.
-  it("warns and skips a MIDI clip duplicated to an audio track", () => {
+  it("reports a MIDI clip aimed at an audio track on the slot's entry", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destIsMidi: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 56) was not duplicated: track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
-    );
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      reason:
+        "track t1 (id live_set/tracks/1) is audio; a MIDI clip needs a MIDI track",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
 
-  it("warns and skips an audio clip duplicated to a MIDI track", () => {
+  it("reports an audio clip aimed at a MIDI track on the slot's entry", () => {
     setupSlotDuplication({ clipIsMidi: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 56) was not duplicated: track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
-    );
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      reason:
+        "track t1 (id live_set/tracks/1) is MIDI; an audio clip needs an audio track",
+    });
   });
 
   // A frozen track still reports has_midi_input, so the type check passes and
   // Live refuses the copy anyway.
-  it("warns and skips a duplicate to a frozen track", () => {
+  it("reports a frozen destination track on the slot's entry", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destIsFrozen: 1 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 56) was not duplicated: track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
-    );
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      reason: "track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
+    });
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
 
@@ -150,21 +156,19 @@ describe("duplicateClipSlot", () => {
 
     // is_frozen is falsy, so the frozen guard must not fire (kills its
     // forced-true mutant).
-    expect(duplicateClipSlot(0, 0, 1, 0)).not.toBeNull();
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("is frozen"),
-    );
+    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("ok");
   });
 
   // Without the landing check this walks into getMinimalClipInfo with an
   // unresolvable clip and throws an internal path error.
-  it("warns instead of failing when no clip lands in the destination", () => {
+  it("reports instead of failing when no clip lands in the destination", () => {
     setupSlotDuplication({ copyLands: false });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 56) was not duplicated: no clip landed at t1/s0",
-    );
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      reason: "Live made no copy there",
+    });
   });
 
   // The destination already holds a clip, so a path lookup finds one either
@@ -175,10 +179,11 @@ describe("duplicateClipSlot", () => {
       copyLands: false,
     });
 
-    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toBeNull();
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 56) was not duplicated: no clip landed at t1/s0",
-    );
+    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      reason: "Live made no copy there",
+    });
     // The clip that was already there is not the copy, so it keeps its name.
     expect(occupant?.set).not.toHaveBeenCalled();
   });
@@ -198,7 +203,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
     vi.clearAllMocks();
   });
 
-  it("leaves the copies Live declined out of the results", async () => {
+  it("keeps the slot of a copy Live declined in the results", async () => {
     setupSlotDuplication();
 
     // Track 2 is frozen, so its copy is skipped while track 1's still lands.
@@ -220,6 +225,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
         ],
         arrangementTargets: [],
         arrangementPositions: [],
+        arrangementRefusals: [],
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,
@@ -231,9 +237,134 @@ describe("duplicateClipWithPositions to clip slots", () => {
       {},
     );
 
-    expect(result).toStrictEqual([{ id: COPY_ID, path: "t1/s0" }]);
-    expect(capturedWarnings()).toContain(
-      "clip t0/s0 (id 56) was not duplicated: track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
-    );
+    expect(result).toStrictEqual([
+      { id: COPY_ID, path: "t1/s0" },
+      {
+        path: "t2/s0",
+        ok: false,
+        reason: "track t2 (id live_set/tracks/2) is frozen; unfreeze it first",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
+
+describe("duplicateClipSlot with a missing slot or clip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws error when source clip slot does not exist", () => {
+    (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+      sourceExists: false,
+      sourceHasClip: false,
+      destExists: true,
+    });
+
+    expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
+      "no clip slot at t0/s0",
+    );
+  });
+
+  it("throws error when source clip slot has no clip", () => {
+    (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+      sourceExists: true,
+      sourceHasClip: false,
+      destExists: true,
+    });
+
+    expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow("no clip at t0/s0");
+  });
+
+  it("reports a destination clip slot that does not exist", () => {
+    // Per destination, so the copies a multi-slot toPath already made survive.
+    (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+      sourceExists: true,
+      sourceHasClip: true,
+      destExists: false,
+    });
+
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      reason: "no clip slot there",
+    });
+  });
+});
+
+interface ClipSlotMockOptions {
+  sourceExists: boolean;
+  sourceHasClip: boolean;
+  destExists: boolean;
+}
+
+interface ClipSlotMockLiveAPIInstance {
+  path: string;
+  exists: () => boolean;
+  getProperty: (prop: string) => boolean | null;
+  child: (name: string) => ClipSlotMockLiveAPIInstance;
+  id: string;
+}
+
+interface ClipSlotMockLiveAPIConstructor {
+  new (path: string): ClipSlotMockLiveAPIInstance;
+  from: (
+    idOrPath: string | { toString: () => string },
+  ) => ClipSlotMockLiveAPIInstance;
+}
+
+/**
+ * Helper to create a mock LiveAPI class for clip slot duplication tests
+ * @param options - Mock configuration options
+ * @param options.sourceExists - Whether source clip slot exists
+ * @param options.sourceHasClip - Whether source has a clip
+ * @param options.destExists - Whether destination clip slot exists
+ * @returns Mock LiveAPI constructor
+ */
+function createClipSlotMockLiveAPI({
+  sourceExists,
+  sourceHasClip,
+  destExists,
+}: ClipSlotMockOptions): ClipSlotMockLiveAPIConstructor {
+  class MockLiveAPI implements ClipSlotMockLiveAPIInstance {
+    path: string;
+
+    constructor(path: string) {
+      this.path = path;
+    }
+
+    static from(idOrPath: string | { toString: () => string }): MockLiveAPI {
+      return new MockLiveAPI(String(idOrPath));
+    }
+
+    child(name: string): MockLiveAPI {
+      return new MockLiveAPI(`${this.path} ${name}`);
+    }
+
+    exists(): boolean {
+      if (this.path.includes("tracks 0 clip_slots 0")) {
+        return sourceExists;
+      }
+
+      if (this.path.includes("tracks 1 clip_slots 0")) {
+        return destExists;
+      }
+
+      return true;
+    }
+
+    getProperty(prop: string): boolean | null {
+      if (prop === "has_clip" && this.path.includes("tracks 0 clip_slots 0")) {
+        return sourceHasClip;
+      }
+
+      return null;
+    }
+
+    get id(): string {
+      return this.path.replaceAll(" ", "/");
+    }
+  }
+
+  return MockLiveAPI;
+}

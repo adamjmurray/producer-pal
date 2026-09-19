@@ -9,38 +9,40 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   findLocator,
   getLocatorId,
-} from "#src/tools/shared/locator/locator-helpers.ts";
-import { parseTimeSignature, validateTempo } from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/locator/locators.ts";
+import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
-  applyScale,
-  applyTempo,
-  cleanupTempClip,
-  extendSongIfNeeded,
-} from "./helpers/update-live-set-helpers.ts";
+  attemptLocator,
+  type LocatorTarget,
+  locatorTargets,
+} from "./helpers/locator-targets.ts";
 import {
   deleteLocator,
   renameLocator,
   stopPlaybackIfNeeded,
   validateLocatorOperation,
   waitForPlayheadPosition,
-} from "./helpers/update-live-set-locator-helpers.ts";
+} from "./helpers/locator-updates.ts";
+import {
+  cleanupTempClip,
+  extendSongIfNeeded,
+} from "./helpers/song-extension.ts";
+import {
+  applyScale,
+  applyTempo,
+  applyTimeSignature,
+} from "./helpers/tempo-and-scale-updates.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;
   timeSignature?: string;
   scale?: string;
   locatorOperation?: string;
-  locatorId?: string;
-  locatorTime?: string;
-  locatorName?: string;
-}
-
-interface LocatorOperationOptions {
-  locatorOperation: string;
   locatorId?: string;
   locatorTime?: string;
   locatorName?: string;
@@ -64,9 +66,9 @@ type UpdateLiveSetContext = Partial<ToolContext> & { silenceWavPath?: string };
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.scale - Scale in format "Root ScaleName"
  * @param args.locatorOperation - Locator operation: "create", "delete", or "rename"
- * @param args.locatorId - Locator ID for delete/rename
- * @param args.locatorTime - Bar|beat position for create/delete/rename
- * @param args.locatorName - Name for create/rename, or name filter for delete
+ * @param args.locatorId - Locator ID(s) for delete/rename, comma-separated
+ * @param args.locatorTime - Bar|beat position(s) for create/delete/rename, comma-separated
+ * @param args.locatorName - Name(s) for create/rename, or name filter(s) for delete
  * @param context - Internal context object with silenceWavPath for audio clips
  * @returns Updated Live Set information
  */
@@ -88,6 +90,17 @@ export async function updateLiveSet(
     locatorName,
   });
 
+  // Split the locator lists before anything is written: an unreadable list is
+  // refused with the Set untouched.
+  const targets =
+    locatorOperation == null
+      ? []
+      : locatorTargets(locatorOperation, {
+          locatorId,
+          locatorTime,
+          locatorName,
+        });
+
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   // optimistic result object that only include properties that are actually set
@@ -108,9 +121,7 @@ export async function updateLiveSet(
   }
 
   if (parsedTimeSignature != null) {
-    liveSet.set("signature_numerator", parsedTimeSignature.numerator);
-    liveSet.set("signature_denominator", parsedTimeSignature.denominator);
-    result.timeSignature = `${parsedTimeSignature.numerator}/${parsedTimeSignature.denominator}`;
+    applyTimeSignature(liveSet, parsedTimeSignature, result);
   }
 
   if (scale != null) {
@@ -154,50 +165,85 @@ export async function updateLiveSet(
 
   // Handle locator operations
   if (locatorOperation != null) {
-    const locatorResult = await handleLocatorOperation(
+    result.locator = await handleLocatorOperations(
       liveSet,
-      {
-        locatorOperation,
-        locatorId,
-        locatorTime,
-        locatorName,
-      },
+      locatorOperation,
+      targets,
       context,
     );
-
-    result.locator = locatorResult;
   }
 
   return result;
 }
 
 /**
- * Handle locator operations (create, delete, rename)
+ * Run the operation on every locator the call named, in order.
  * @param liveSet - The live_set LiveAPI object
- * @param options - Operation options
- * @param options.locatorOperation - "create", "delete", or "rename"
- * @param options.locatorId - Locator ID for delete/rename
- * @param options.locatorTime - Bar|beat position
- * @param options.locatorName - Name for create/rename or name filter for delete
+ * @param operation - "create", "delete", or "rename"
+ * @param targets - One target per locator named
  * @param context - Context object with silenceWavPath
- * @returns Result of the locator operation
+ * @returns The locator's result when one was named, otherwise one entry each
  */
-async function handleLocatorOperation(
+async function handleLocatorOperations(
   liveSet: LiveAPI,
-  {
-    locatorOperation,
-    locatorId,
-    locatorTime,
-    locatorName,
-  }: LocatorOperationOptions,
+  operation: string,
+  targets: LocatorTarget[],
   context: UpdateLiveSetContext,
-): Promise<Record<string, unknown>> {
+): Promise<unknown> {
   const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
   const timeSigDenominator = liveSet.getProperty(
     "signature_denominator",
   ) as number;
 
-  switch (locatorOperation) {
+  const entries: Array<Record<string, unknown>> = [];
+
+  // Sequential: each operation moves the playhead, so they can't overlap.
+  for (const target of targets) {
+    const run = (): Promise<Record<string, unknown>> =>
+      runLocatorOperation(
+        liveSet,
+        operation,
+        { ...target, timeSigNumerator, timeSigDenominator },
+        context,
+      );
+
+    entries.push(
+      targets.length > 1 ? await attemptLocator(target, run) : await run(),
+    );
+  }
+
+  return unwrapSingleResult(entries);
+}
+
+/**
+ * Run one locator operation (create, delete, rename)
+ * @param liveSet - The live_set LiveAPI object
+ * @param operation - "create", "delete", or "rename"
+ * @param options - The locator and the song meter its position is read in
+ * @param options.locatorId - Locator ID for delete/rename
+ * @param options.locatorTime - Bar|beat position
+ * @param options.locatorName - Name for create/rename or name filter for delete
+ * @param options.timeSigNumerator - Time signature numerator
+ * @param options.timeSigDenominator - Time signature denominator
+ * @param context - Context object with silenceWavPath
+ * @returns Result of the locator operation
+ */
+async function runLocatorOperation(
+  liveSet: LiveAPI,
+  operation: string,
+  {
+    locatorId,
+    locatorTime,
+    locatorName,
+    timeSigNumerator,
+    timeSigDenominator,
+  }: LocatorTarget & {
+    timeSigNumerator: number;
+    timeSigDenominator: number;
+  },
+  context: UpdateLiveSetContext,
+): Promise<Record<string, unknown>> {
+  switch (operation) {
     case "create":
       return await createLocator(
         liveSet,
@@ -221,7 +267,7 @@ async function handleLocatorOperation(
         timeSigDenominator,
       });
     default:
-      throw new Error(`Unknown locator operation: ${locatorOperation}`);
+      throw new Error(`Unknown locator operation: ${operation}`);
   }
 }
 
@@ -247,11 +293,10 @@ async function createLocator(
   context: UpdateLiveSetContext,
 ): Promise<Record<string, unknown>> {
   if (locatorTime == null) {
-    console.warn("locatorTime is required for create operation");
-
     return {
       operation: "skipped",
-      reason: "missing_locatorTime",
+      ok: false,
+      reason: "create needs locatorTime",
     };
   }
 
@@ -266,13 +311,9 @@ async function createLocator(
   const existing = findLocator(liveSet, { timeInBeats: targetBeats });
 
   if (existing) {
-    console.warn(
-      `Locator already exists at ${locatorTime} (id: ${getLocatorId(existing.index)}), skipping create`,
-    );
-
     return {
       operation: "skipped",
-      reason: "locator_exists",
+      reason: `a locator is already at ${locatorTime}`,
       time: locatorTime,
       existingId: getLocatorId(existing.index),
     };

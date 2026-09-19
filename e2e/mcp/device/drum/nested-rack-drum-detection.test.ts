@@ -31,7 +31,7 @@ import {
   sleep,
   trackIndexFromPath,
 } from "../../mcp-test-helpers.ts";
-import { RACKS_TEST_PATH } from "../helpers/racks-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });
 

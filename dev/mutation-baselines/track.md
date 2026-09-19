@@ -36,20 +36,20 @@ to **every** tool domain going forward:
 
 Per-file scores after triage:
 
-| File                           | Score  | Survived |
-| ------------------------------ | ------ | -------- |
-| `track-routing-helpers.ts`     | 96.88% | 2        |
-| `read-track.ts`                | 88.76% | 18       |
-| `update-track.ts`              | 87.69% | 31       |
-| `read-track-helpers.ts`        | 86.18% | 30       |
-| `create-track.ts`              | 85.34% | 17       |
-| `read-track-device-helpers.ts` | 58.49% | 18       |
+| File                                                          | Score  | Survived |
+| ------------------------------------------------------------- | ------ | -------- |
+| `track-routing.ts`                                            | 96.88% | 2        |
+| `read-track.ts`                                               | 88.76% | 18       |
+| `update-track.ts`                                             | 87.69% | 31       |
+| `track-clips.ts` + `track-optional-fields.ts` (then one file) | 86.18% | 30       |
+| `create-track.ts`                                             | 85.34% | 17       |
+| `track-devices.ts`                                            | 58.49% | 18       |
 
-`read-track-device-helpers.ts` is the low outlier by design, not weak testing:
-most of its survivors are **equivalent mutants**. `categorizeDevices` splits
-devices into midi-effect / instrument / audio-effect buckets, but its sole
-consumer (`read-track.ts`'s drum-map path) immediately re-flattens them — so
-mutating which bucket a device lands in cannot change any observable output.
+`track-devices.ts` is the low outlier by design, not weak testing: most of its
+survivors are **equivalent mutants**. `categorizeDevices` splits devices into
+midi-effect / instrument / audio-effect buckets, but its sole consumer
+(`read-track.ts`'s drum-map path) immediately re-flattens them — so mutating
+which bucket a device lands in cannot change any observable output.
 
 ## Gaps closed (track)
 

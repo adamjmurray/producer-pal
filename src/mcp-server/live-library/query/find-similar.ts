@@ -5,7 +5,7 @@
 
 /**
  * Rank library samples by audio similarity to a seed sample, using Live's
- * `fe_values` feature vectors (see fe-values-helpers.ts / the spike).
+ * `fe_values` feature vectors (see feature-vectors.ts / the spike).
  *
  * findSimilar is `search` re-ranked by cosine distance to the seed instead of
  * by use_count: the same filters (tags, kind, type, source, inFolder) constrain
@@ -37,7 +37,7 @@ import {
   cosineSimilarity,
   decodeFeatureVector,
   vectorNorm,
-} from "./fe-values-helpers.ts";
+} from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
 
 /** Default top-K for findSimilar — a focused shortlist, not search's broad 50. */

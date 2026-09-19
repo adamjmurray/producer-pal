@@ -14,7 +14,7 @@ import {
 import {
   haltedToolStatus,
   unwrapToolResultText,
-} from "#webui/components/chat/assistant/helpers/tool-call-halted-helpers";
+} from "#webui/components/chat/assistant/helpers/tool-call-halted-status";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { truncateString } from "#webui/lib/utils/truncate-string";

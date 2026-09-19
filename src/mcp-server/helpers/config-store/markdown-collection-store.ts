@@ -145,6 +145,19 @@ export function slugifyCollectionName(name: string): string {
 }
 
 /**
+ * Order entries alphabetically by name — every collection's order today, and the
+ * one a new collection should reach for.
+ *
+ * @param entries - The freshly-read entries to sort
+ * @returns A new array, sorted by name
+ */
+export function sortByName<Entry extends CollectionEntry>(
+  entries: Entry[],
+): Entry[] {
+  return entries.toSorted((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * One index line for an entry: `- \`name\` — description`, or just the backticked
  * slug when the description is blank. Shared by every collection's index.
  *

@@ -7,9 +7,9 @@ import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts"
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   applyNotesToClip,
-  getClipLocationInfo,
   getClipNoteCount,
-} from "#src/tools/clip/code-exec/code-exec-helpers.ts";
+} from "#src/tools/clip/code-exec/clip-notes-exchange.ts";
+import { getClipLocationInfo } from "#src/tools/clip/code-exec/code-execution-context.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**

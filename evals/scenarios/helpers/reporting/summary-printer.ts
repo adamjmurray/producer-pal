@@ -21,7 +21,10 @@ import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
 import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
-import { buildMultiTrialParts, formatParts } from "../trials/trial-helpers.ts";
+import {
+  buildMultiTrialParts,
+  formatParts,
+} from "../trials/multi-trial-runs.ts";
 
 /**
  * Print summary of all results

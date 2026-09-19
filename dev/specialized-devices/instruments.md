@@ -264,10 +264,11 @@ Writable via `update-device`'s `params` arg:
   `sample` field (discovery view, e.g. scanning every pad in a drum rack); the
   full `include: ["params"]` set also includes it.
 - `gainDb` (float dB) — the loaded sample's gain, using the same linear↔dB
-  mapping as track/clip gain (`gain-utils`). Reads/writes only when a single
-  sample is loaded (warn-and-skip otherwise). A normal pseudo-param: appears in
-  `include: ["params"]`, **not** in the focused `include: ["sample"]` view.
-  Multi-sample state is conveyed by the read-only `multiSampleMode` param.
+  mapping as track/clip gain (`gain-conversion`). Reads/writes only when a
+  single sample is loaded (refused with a reason otherwise). A normal
+  pseudo-param: appears in `include: ["params"]`, **not** in the focused
+  `include: ["sample"]` view. Multi-sample state is conveyed by the read-only
+  `multiSampleMode` param.
 - `playbackMode` (enum: `"classic"` | `"one-shot"` | `"slicing"`) — maps to int
   0/1/2.
 - `slicingPlaybackMode` (enum: `"mono"` | `"poly"` | `"thru"`) — maps to int
@@ -291,8 +292,8 @@ Actions via `update-device`'s new `actions: string[]` arg:
 **Skipped:**
 
 - `can_warp_as` / `can_warp_double` / `can_warp_half` — state-dependent
-  capability flags; let LLM attempt the action and warn on failure rather than
-  surface the flags.
+  capability flags; let the LLM attempt the action and read the refusal off its
+  own result entry rather than surface the flags.
 - `playing_position` / `playing_position_enabled` — realtime, not useful for
   Producer Pal's batch model.
 - `pad_slicing` — niche.
@@ -306,8 +307,8 @@ Actions via `update-device`'s new `actions: string[]` arg:
 1. **Warp/crop actions operate on the active region** (`S Start` to
    `S Start + S Length`), not the whole sample. Skill instructions should make
    this clear so the LLM sets markers first when targeting a sub-region.
-2. **`sample` writes likely fail when `multiSampleMode = true`** — warn-and-skip
-   on failure.
+2. **`sample` writes likely fail when `multiSampleMode = true`** — refuse the
+   write with that reason.
 3. **`voices` is a discrete set, not a continuous range.** Use Zod literal union
    (`z.union([z.literal(1), z.literal(2), ...])`) so out-of-set values are
    rejected at schema level. Probe: setting 9/11/13/15/17-19/21-23/25-31 all
@@ -388,7 +389,7 @@ Modulation matrix support:
 - **Source count: 13** (indices 0..12 valid). Index 13+ returns int sentinel
   `1`. **There is no `_list` property exposing source names** — the source
   index→name mapping is hard-coded from the Wavetable UI (verified 2026-05-22;
-  `MOD_SOURCES` in `wavetable-modulation-helpers.ts`):
+  `MOD_SOURCES` in `wavetable-modulation.ts`):
   `Amp, Env 2, Env 3, LFO 1, LFO 2, Vel, Key, PB, Press, Mod, Rand, Note PB, Slide`.
 - **`set_modulation_value(0, 0, 0.5)` then `get_modulation_value(0, 0)`
   round-trips correctly** (read back 0.5). Cleanup `set(.., 0)` clears the cell.
@@ -504,7 +505,7 @@ target).
 5. **Targets are auto-registered.** `setModulation` defensively calls
    `add_parameter_to_modulation_matrix` when the target name isn't already in
    the matrix, then resolves its index (`ensureModulationTarget` in
-   `wavetable-modulation-helpers.ts`). Callers don't need a separate
+   `wavetable-modulation.ts`). Callers don't need a separate
    `addModulationTarget` in the common case.
 6. **No "remove target" function documented.** Cleanup of an unused target row
    is unclear (set all cells to 0? leave it?). Decide policy at implementation —

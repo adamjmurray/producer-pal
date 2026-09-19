@@ -21,18 +21,18 @@ code touched.
 
 Per-file scores after triage:
 
-| File                              | Score  | Survived | Notes                          |
-| --------------------------------- | ------ | -------- | ------------------------------ |
-| `library.ts`                      | 97.59% | 6        | sort/filter/reason gaps closed |
-| `playback.ts`                     | 95.71% | 6        |                                |
-| `library-search-batch-helpers.ts` | 94.55% | 3        |                                |
-| `read-samples.ts`                 | 94.44% | 4        |                                |
-| `playback-helpers.ts`             | 94.00% | 6        |                                |
-| `select.ts`                       | 89.78% | 19       |                                |
-| `select-helpers.ts`               | 86.56% | 34       |                                |
-| `select-id-helpers.ts`            | 86.27% | 7        |                                |
-| `select-response-helpers.ts`      | 82.64% | 19       |                                |
-| `library-query-schema.ts`         | 38.10% | 13       | prose/equivalent — see below   |
+| File                      | Score  | Survived | Notes                          |
+| ------------------------- | ------ | -------- | ------------------------------ |
+| `library.ts`              | 97.59% | 6        | sort/filter/reason gaps closed |
+| `playback.ts`             | 95.71% | 6        |                                |
+| `library-search-batch.ts` | 94.55% | 3        |                                |
+| `read-samples.ts`         | 94.44% | 4        |                                |
+| `arrangement-playback.ts` | 94.00% | 6        |                                |
+| `select.ts`               | 89.78% | 19       |                                |
+| `selection-updates.ts`    | 86.56% | 34       |                                |
+| `select-id-resolution.ts` | 86.27% | 7        |                                |
+| `select-responses.ts`     | 82.64% | 19       |                                |
+| `library-query-schema.ts` | 38.10% | 13       | prose/equivalent — see below   |
 
 `library-query-schema.ts` is the low outlier by design, not weak testing: it is
 mostly a Zod schema whose 11 surviving `.describe("…")` mutations are the same

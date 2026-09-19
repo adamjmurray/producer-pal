@@ -3,16 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import {
+  forgetRequestMemo,
+  requestMemo,
+} from "#src/live-api-adapter/live-api-release.ts";
+import { assertDefined } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
-import { fromLiveApiId } from "#src/tools/shared/utils.ts";
+import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   type ChainSegmentFn,
   buildDrumPadPath,
   extractDevicePath,
 } from "./device-path-builders.ts";
-import { cachedDevicePath } from "./with-device-path-cache.ts";
+import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 export type DrumPadTargetType = "chain" | "device";
 
@@ -195,15 +200,48 @@ function padNoteToInNote(drumPadNote: string): number | null {
 }
 
 /**
+ * The {@link requestMemo} key for a rack's chain list.
+ * @param rack - The drum rack device
+ * @returns The memo key
+ */
+function rackChainsMemoKey(rack: LiveAPI): string {
+  return `drum-rack-chains ${rack.path}`;
+}
+
+/**
+ * Every chain on a rack, in rack order. Memoized per request: resolving one
+ * pad of an N-pad kit builds every chain to read its `in_note`, so an
+ * unmemoized scan made building a kit quadratic in pad count.
+ *
+ * A chain inserted or deleted on the rack mid-request goes stale here — every
+ * such site must call {@link invalidateRackChains} on the same rack.
+ * @param rack - The drum rack device
+ * @returns The rack's chains, in rack order
+ */
+function allChainsOnRack(rack: LiveAPI): LiveAPI[] {
+  return requestMemo(rackChainsMemoKey(rack), () => rack.getChildren("chains"));
+}
+
+/**
+ * Forget a rack's memoized chain list. Call this right after inserting or
+ * deleting a chain on the rack, so the next {@link chainsForInNote} in the same
+ * request sees the change instead of the pre-write list.
+ * @param rack - The drum rack device a chain was just inserted into or deleted from
+ */
+export function invalidateRackChains(rack: LiveAPI): void {
+  forgetRequestMemo(rackChainsMemoKey(rack));
+}
+
+/**
  * Every chain a drum rack routes to one pad.
  * @param rack - The drum rack device
  * @param inNote - The pad's in_note (-1 for the catch-all)
  * @returns The chains, in rack order
  */
 export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
-  return rack
-    .getChildren("chains")
-    .filter((c) => c.getProperty("in_note") === inNote);
+  return allChainsOnRack(rack).filter(
+    (c) => c.getProperty("in_note") === inNote,
+  );
 }
 
 /**
@@ -247,12 +285,12 @@ export function drumRackOfPad(pad: LiveAPI): LiveAPI {
  */
 export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
   return (livePathThroughChain, index) => {
-    // cachedDevicePath, not LiveAPI.from: a caller resolving the same path
+    // liveApiAtDevicePath, not LiveAPI.from: a caller resolving the same path
     // (input resolution, then this for the result) shares the one build.
     const chain =
       livePathThroughChain === leaf.path
         ? leaf
-        : cachedDevicePath(livePathThroughChain);
+        : liveApiAtDevicePath(livePathThroughChain);
 
     if (chain.type !== "DrumChain") {
       return `c${index}`;
@@ -265,7 +303,7 @@ export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
       return `c${index}`;
     }
 
-    const rack = cachedDevicePath(
+    const rack = liveApiAtDevicePath(
       livePathThroughChain.replace(CHAINS_TAIL, ""),
     );
     const layer = chainsForInNote(rack, inNote).findIndex(
@@ -443,7 +481,7 @@ export function resolveDrumPadFromPath(
   drumPadNote: string,
   remainingSegments: string[],
 ): DrumPadResolution {
-  const device = cachedDevicePath(liveApiPath);
+  const device = liveApiAtDevicePath(liveApiPath);
 
   if (!device.exists()) {
     return { target: null, targetType: "chain" };
@@ -458,12 +496,16 @@ export function resolveDrumPadFromPath(
   // Chain index from first remaining segment if it's a 'c' prefix (defaults to 0)
   let chainIndexWithinNote = 0;
   let nextSegmentStart = 0;
+  let appendsChain = false;
 
   if (remainingSegments.length > 0) {
     const firstSegment = assertDefined(remainingSegments[0], "first segment");
 
     // Only consume segment if it's a chain index (c prefix)
-    if (firstSegment.startsWith("c")) {
+    if (firstSegment === NEW_CHAIN) {
+      appendsChain = true;
+      nextSegmentStart = 1;
+    } else if (firstSegment.startsWith("c")) {
       chainIndexWithinNote = Number.parseInt(firstSegment.slice(1));
 
       if (Number.isNaN(chainIndexWithinNote)) {
@@ -475,6 +517,16 @@ export function resolveDrumPadFromPath(
   }
 
   const matchingChains = chainsForInNote(device, targetInNote);
+
+  // "c+" names the layer after the pad's last, so it misses by construction —
+  // only a caller that creates chains can do anything with it.
+  if (appendsChain) {
+    return {
+      target: null,
+      targetType: "chain",
+      chainCount: matchingChains.length,
+    };
+  }
 
   if (
     chainIndexWithinNote < 0 ||

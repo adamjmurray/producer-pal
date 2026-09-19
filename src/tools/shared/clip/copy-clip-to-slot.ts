@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { toLiveApiId } from "../utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * Copies a session clip into another slot, reporting the copy only when Live

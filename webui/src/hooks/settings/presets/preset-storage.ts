@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isNotation } from "#src/shared/notation";
-import { isValidProvider } from "#webui/hooks/settings/settings-helpers";
+import { isValidProvider } from "#webui/hooks/settings/helpers/provider-settings";
 import {
   enabledToolsDiverge,
   isEnabledToolsMap,

@@ -17,7 +17,7 @@ import {
 import {
   DEFAULT_TURN_DETECTION,
   type TurnDetectionSettings,
-} from "#webui/hooks/settings/helpers/turn-detection-helpers";
+} from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 describe("config-builders", () => {
   describe("isAlwaysOnThinkingModel", () => {

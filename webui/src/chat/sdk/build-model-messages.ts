@@ -5,10 +5,12 @@
 
 import { type ReasoningPart } from "@ai-sdk/provider-utils";
 import {
+  type FilePart,
   type ModelMessage,
   type TextPart,
   type ToolCallPart,
   type ToolResultPart,
+  type UserModelMessage,
 } from "ai";
 import { type ChatMessage } from "./types";
 
@@ -49,7 +51,9 @@ export type DanglingToolReason = "canceled" | "failed";
  * directly after it — Gemini and Mistral reject two user turns in a row (only
  * Anthropic/OpenAI tolerate it). Folding them into a single user turn keeps the
  * wire format valid for every provider while the UI still renders them
- * separately (the divider plus the user bubble).
+ * separately (the divider plus the user bubble). Merging also has to survive
+ * attached images, whose turn carries a content ARRAY rather than a string —
+ * see {@link mergeUserContent}.
  * @param history - Chat history to convert
  * @param includeReasoning - When true, re-emit captured signed reasoning blocks
  *   on assistant messages (only valid when the request enables thinking — see
@@ -81,10 +85,10 @@ export function buildModelMessages(
     if (msg.role === "user") {
       const last = messages.at(-1);
 
-      if (last?.role === "user" && typeof last.content === "string") {
-        last.content = `${last.content}\n\n${msg.content}`;
+      if (last?.role === "user") {
+        last.content = mergeUserContent(last.content, buildUserContent(msg));
       } else {
-        messages.push({ role: "user", content: msg.content });
+        messages.push({ role: "user", content: buildUserContent(msg) });
       }
 
       continue;
@@ -99,6 +103,82 @@ export function buildModelMessages(
   }
 
   return messages;
+}
+
+/** A user ModelMessage's content: plain text, or parts. */
+type UserContent = UserModelMessage["content"];
+
+/**
+ * Build one user turn's content. Attached images become image parts ahead of
+ * the text; an images-only message emits no text part, because providers reject
+ * an empty one. With no images the content stays a plain string, so a chat
+ * without attachments sends exactly the shape it always did.
+ * @param msg - The user chat message
+ * @returns Content for the user ModelMessage
+ */
+function buildUserContent(msg: ChatMessage): UserContent {
+  if (!msg.images?.length) {
+    return msg.content;
+  }
+
+  // A file part with an image media type, not the (deprecated) image part.
+  const parts: Array<FilePart | TextPart> = msg.images.map((image) => ({
+    type: "file",
+    mediaType: image.mediaType,
+    data: { type: "data", data: image.data },
+  }));
+
+  if (msg.content) {
+    parts.push({ type: "text", text: msg.content });
+  }
+
+  return parts;
+}
+
+/**
+ * Fold a user turn into the one already on the wire: every image first, in
+ * order, then a single text part joining both texts. Two image-less turns stay
+ * a plain string.
+ * @param existing - Content of the user message already pushed
+ * @param incoming - Content of the user message being merged in
+ * @returns The combined content
+ */
+function mergeUserContent(
+  existing: UserContent,
+  incoming: UserContent,
+): UserContent {
+  const before = splitUserContent(existing);
+  const after = splitUserContent(incoming);
+  const images = [...before.images, ...after.images];
+  const text = [before.text, after.text].filter(Boolean).join("\n\n");
+
+  if (images.length === 0) {
+    return text;
+  }
+
+  return [...images, ...(text ? [{ type: "text" as const, text }] : [])];
+}
+
+/**
+ * Split a user content value into its images and its joined text.
+ * @param content - String or parts content
+ * @returns The image parts and the combined text
+ */
+function splitUserContent(content: UserContent): {
+  images: FilePart[];
+  text: string;
+} {
+  if (typeof content === "string") {
+    return { images: [], text: content };
+  }
+
+  return {
+    images: content.filter((part): part is FilePart => part.type === "file"),
+    text: content
+      .filter((part): part is TextPart => part.type === "text")
+      .map((part) => part.text)
+      .join("\n\n"),
+  };
 }
 
 /**

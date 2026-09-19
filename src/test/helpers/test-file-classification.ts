@@ -23,7 +23,7 @@ export const PLAYWRIGHT_SUITE_SUFFIXES = [".spec.ts", ".spec.tsx"];
 /**
  * Suffixes naming a whole test suite, or the case table one iterates. These are
  * the files that get the relaxed 650-line budget; the rest of the
- * classification keeps the standard 325.
+ * classification keeps the standard 375.
  */
 export const TEST_SUITE_SUFFIXES = [
   ...VITEST_SUITE_SUFFIXES,

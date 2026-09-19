@@ -298,6 +298,41 @@ describe("duplicate - scene duplication", () => {
       );
     });
 
+    it("puts color on a scene's arrangement copies", async () => {
+      setupArrangementSceneMocks(1);
+
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      const clip = registerArrangementClip(0, 0, 16);
+
+      await duplicate({
+        type: "scene",
+        id: "scene1",
+        toPath: "[5|1]",
+        color: "#00ff00",
+      });
+
+      expectSceneDupAtBeat(track0, 16);
+      // Color, like name, lands on the clip the copy places.
+      expect(clip.set).toHaveBeenCalledWith("color", 0x00ff00);
+    });
+
+    it("refuses a scene toPath that names no arrangement position", async () => {
+      setupArrangementSceneMocks();
+
+      // A scene's only destination is an arrangement position — a session
+      // path names something a scene copy can't land on, so the call is
+      // refused up front rather than silently duplicating into the session.
+      await expect(
+        duplicate({ type: "scene", id: "scene1", toPath: "t0/s5" }),
+      ).rejects.toThrow(
+        'toPath "t0/s5" names no arrangement position; a scene\'s ' +
+          'only destination is one, written as "[5|1]"',
+      );
+    });
+
     it("refuses a scene position spelled on both params", async () => {
       setupArrangementSceneMocks();
 
@@ -435,6 +470,33 @@ describe("duplicate - scene duplication", () => {
         "t0[5|1]",
         "t0[9|1]",
       ]);
+    });
+
+    it("warns and ignores count when several arrangementStart positions are named", async () => {
+      setupArrangementSceneMocks(1);
+
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      registerArrangementClip(0, 0, 16);
+      registerArrangementClip(0, 1, 32);
+
+      // Two positions named, count says 2 as well — one copy per position,
+      // same as the clip path's "count ignored for clips" warning.
+      const result = (await duplicate({
+        type: "scene",
+        id: "scene1",
+        arrangementStart: "5|1, 9|1",
+        count: 2,
+      })) as DuplicateSceneResult[];
+
+      expect(result).toHaveLength(2);
+      expectSceneDupAtBeat(track0, 16);
+      expectSceneDupAtBeat(track0, 32);
+      expect(capturedWarnings()).toContain(
+        "count ignored for scenes: one copy per position — list more in toPath",
+      );
     });
 
     it("should handle empty scenes gracefully", async () => {

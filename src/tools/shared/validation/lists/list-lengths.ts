@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { splitPathEntries } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { plural } from "./plural.ts";
 
 /**
  * The whole-call check that two comma-separated params agree on how many
@@ -177,20 +178,4 @@ function countEntries(value: string, isPath = false): number {
   }
 
   return entries.length;
-}
-
-/**
- * "1 entry", "3 copies", "2 tracks" — a trailing y becomes -ies.
- * @param count - How many
- * @param noun - The singular noun
- * @returns The counted phrase
- */
-function plural(count: number, noun: string): string {
-  if (count === 1) {
-    return `${count} ${noun}`;
-  }
-
-  const plur = noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`;
-
-  return `${count} ${plur}`;
 }

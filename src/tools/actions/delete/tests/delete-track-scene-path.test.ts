@@ -35,7 +35,6 @@ describe("deleteObject by track and scene path", () => {
       id: "track_2",
       deletedPath: "t1",
       type: "track",
-      deleted: true,
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -47,7 +46,6 @@ describe("deleteObject by track and scene path", () => {
       id: "ret_0",
       deletedPath: "rt0",
       type: "track",
-      deleted: true,
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_return_track", 0);
   });
@@ -59,7 +57,6 @@ describe("deleteObject by track and scene path", () => {
       id: "scene_3",
       deletedPath: "s2",
       type: "scene",
-      deleted: true,
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 2);
   });
@@ -75,31 +72,45 @@ describe("deleteObject by track and scene path", () => {
     // Deletes highest index first so the earlier delete doesn't shift the
     // later one, but results come back in the order named: id before path.
     expect(result).toStrictEqual([
-      { id: "track_1", deletedPath: "t0", type: "track", deleted: true },
-      { id: "track_2", deletedPath: "t1", type: "track", deleted: true },
+      { id: "track_1", deletedPath: "t0", type: "track" },
+      { id: "track_2", deletedPath: "t1", type: "track" },
     ]);
   });
 
-  it("reports a path that names nothing rather than dropping it", () => {
+  // An empty place is a delete that needed no work: what was asked for has
+  // already happened, so the entry says so and the call is not refused.
+  it("reports a path that names nothing as nothing to delete", () => {
     mockNonExistentObjects();
 
     expect(deleteObject({ path: "s9", type: "scene" })).toStrictEqual({
       path: "s9",
       type: "scene",
-      deleted: false,
+      reason: "nothing to delete",
     });
-    expect(capturedWarnings()).toContain('nothing at path "s9"');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("reports a path that names the wrong kind of object", () => {
-    expect(deleteObject({ path: "t0/s1", type: "track" })).toStrictEqual({
-      path: "t0/s1",
-      type: "track",
-      deleted: false,
-    });
-    expect(capturedWarnings()).toContain(
+  it("refuses a lone path that names the wrong kind of object", () => {
+    expect(() => deleteObject({ path: "t0/s1", type: "track" })).toThrow(
       'invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
     );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps a wrong-kind path in its slot beside a track it deleted", () => {
+    setupTrackMocks({ track_1: String(livePath.track(0)) });
+
+    expect(deleteObject({ path: "t0/s1, t0", type: "track" })).toStrictEqual([
+      {
+        path: "t0/s1",
+        type: "track",
+        ok: false,
+        reason:
+          'invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
+      },
+      { id: "track_1", deletedPath: "t0", type: "track" },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("refuses to delete the main track, which Live has no call for", () => {
@@ -108,15 +119,10 @@ describe("deleteObject by track and scene path", () => {
       type: "Track",
     });
 
-    expect(deleteObject({ path: "mt", type: "track" })).toStrictEqual({
-      id: "main",
-      path: "mt",
-      type: "track",
-      deleted: false,
-    });
-    expect(liveSet.call).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
-      "Live has no way to delete the main track mt (id main), skipping",
+    expect(() => deleteObject({ path: "mt", type: "track" })).toThrow(
+      "Live has no way to delete the main track mt (id main)",
     );
+    expect(liveSet.call).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

@@ -95,7 +95,7 @@ numbers are needed.
 If a response somehow needs more than 100 chunks (~3 MB), Producer Pal refuses
 to send a corrupt blob. It replaces the payload with a clear "response too
 large" error instead. (You can find the chunking logic in
-[`mcp-response-utils.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/mcp-response-utils.ts).)
+[`mcp-responses.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/mcp-responses.ts).)
 
 ## Problem 2: getting warnings onto the right response
 

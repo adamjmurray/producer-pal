@@ -12,6 +12,8 @@ import {
   type RegisteredMockObject,
   clearMockRegistry,
   lookupMockObject,
+  mockNonExistentObjects,
+  registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -23,7 +25,9 @@ import {
   type SplittingCallState,
 } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { stubSplitRescan } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
-import { planClipUpdate } from "#src/tools/clip/update/helpers/update-clip-prep-helpers.ts";
+import { resolveClipTargets } from "#src/tools/clip/update/helpers/entries/clip-targets.ts";
+import { planClipUpdate } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
+import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 
@@ -96,7 +100,7 @@ describe("updateClip - splitting smoke tests", () => {
     );
   });
 
-  it("splits nothing, and says nothing, for a blank arrangementSplit", async () => {
+  it("splits nothing, and says only that it was dropped, for a blank arrangementSplit", async () => {
     const clipId = "clip_1";
     const consoleSpy = vi.spyOn(console, "warn");
 
@@ -109,10 +113,11 @@ describe("updateClip - splitting smoke tests", () => {
       expect.any(String),
       expect.any(Number),
     );
-    // Complaining about the format of a param that named nothing sends the
-    // model looking for a problem with a value it never meant to send.
-    expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit"),
+    // The one thing said about it is that it was dropped. Complaining about the
+    // format of a param that named nothing sends the model looking for a
+    // problem with a value it never meant to send.
+    expect(consoleSpy).toHaveBeenCalledExactlyOnceWith(
+      "blank arrangementSplit ignored — leave it out instead",
     );
   });
 
@@ -174,28 +179,161 @@ describe("updateClip - splitting smoke tests", () => {
     expect(resultIds).not.toContain("0");
   });
 
-  it("should warn and skip splitting for a take-lane clip", async () => {
-    const clipId = "take_lane_clip";
-    const consoleSpy = vi.spyOn(console, "warn");
+  // A split answers with several clips under one target, so every piece takes
+  // the name that target asked for — never the next target's.
+  it("gives every piece of a split its own target's name", async () => {
+    setupClipSplittingMocks("clip_1");
+    mockNonExistentObjects();
 
-    // A take-lane arrangement clip cannot be split via
-    // duplicate_clip_to_arrangement, so it is warned-and-skipped.
-    setupTakeLaneClipMocks(clipId);
-
-    const result = await updateClip(
-      {
-        id: clipId,
-        arrangementSplit: "2|1",
-      },
+    await updateClip(
+      { id: "clip_1", path: "t9/s9", arrangementSplit: "2|1", name: "a,b" },
       {},
     );
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementSplit ignored for take-lane clip"),
+    expect(lookupMockObject("clip_1")?.set).toHaveBeenCalledWith("name", "a");
+    expect(lookupMockObject("dup_2")?.set).toHaveBeenCalledWith("name", "a");
+  });
+
+  // Beside one target a comma-bearing value is that target's name, commas and
+  // all — the same reading update-track gives a lone target — so every piece
+  // takes it whole rather than one entry each.
+  it("gives every piece a one-target name list whole", async () => {
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    setupClipSplittingMocks("clip_1");
+
+    await updateClip(
+      { id: "clip_1", arrangementSplit: "2|1", name: "a,b,c" },
+      {},
+    );
+
+    for (const id of ["clip_1", "dup_2"]) {
+      expect(lookupMockObject(id)?.set).toHaveBeenCalledWith("name", "a,b,c");
+    }
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  // The cut is work that landed, so each piece keeps its entry even when the
+  // only other param was one the clip could do nothing with. Without that every
+  // piece skips, they collapse onto the one target they share, and a lone
+  // target throws after the clip was already cut.
+  it("keeps every piece of a split whose other param the clip ignored", async () => {
+    setupClipSplittingMocks("clip_1", { looping: false });
+
+    const result = await updateClip(
+      { id: "clip_1", arrangementSplit: "2|1", firstStart: "1|2" },
+      {},
     );
     const results = Array.isArray(result) ? result : [result];
 
-    expect(results.map((r) => r.id)).toContain(clipId);
+    expect(results.length).toBeGreaterThan(1);
+
+    for (const entry of results) {
+      expect("ok" in entry).toBe(false);
+      expect(entry.reason).toBe("firstStart ignored: the clip is not looping");
+    }
+  });
+
+  // A take-lane arrangement clip cannot be split via
+  // duplicate_clip_to_arrangement. Nothing else was asked of it, so the lone
+  // target's reason is the error.
+  it("refuses a split aimed at a take-lane clip", async () => {
+    const clipId = "take_lane_clip";
+
+    setupTakeLaneClipMocks(clipId);
+
+    await expect(
+      updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
+    ).rejects.toThrow(
+      "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
+    );
+  });
+
+  // A cut whose pieces the rescan can't find leaves the target with no clip at
+  // all. One target never comes back as no entries — and a lone one throws.
+  it("refuses a target whose split left no clip behind", async () => {
+    const clipId = "clip_1";
+
+    setupClipSplittingMocks(clipId);
+
+    // The only clip the track reports afterwards starts far outside the span
+    // the cut clip occupied, so no piece buckets into it.
+    registerMockObject("elsewhere", {
+      path: livePath.track(0).arrangementClip(5),
+      type: "Clip",
+      properties: { start_time: 999, is_arrangement_clip: 1 },
+    });
+
+    const trackMock = lookupMockObject("track_0", livePath.track(0));
+    const origGet = trackMock?.get.getMockImplementation();
+
+    trackMock?.get.mockImplementation((prop: string) =>
+      prop === "arrangement_clips"
+        ? ["id", "elsewhere"]
+        : (origGet?.(prop) ?? [0]),
+    );
+
+    await expect(
+      updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
+    ).rejects.toThrow("not updated: no clip was left to update");
+  });
+
+  // A split answers with several clips under one target. A piece whose own
+  // update fails used to vanish, because a sibling with results spoke for the
+  // target: the failure has to show up on the target's entry.
+  it("says so on the target's entry when one split piece fails", async () => {
+    const clipId = "clip_1";
+
+    setupClipSplittingMocks(clipId);
+
+    // The first piece keeps the original id, so failing its note read fails
+    // that piece alone.
+    const piece = lookupMockObject(clipId);
+    const origCall = piece?.call.getMockImplementation();
+
+    piece?.call.mockImplementation((method: string, ...args: unknown[]) => {
+      if (method === "get_notes_extended") {
+        throw new Error("Live refused the note read");
+      }
+
+      return origCall?.(method, ...args);
+    });
+
+    const result = await updateClip(
+      { id: clipId, arrangementSplit: "2|1", transforms: "velocity *= 2" },
+      {},
+    );
+
+    // The piece that did answer carries what the one that didn't had to say.
+    expect(result).toStrictEqual({
+      id: "dup_2",
+      noteCount: 0,
+      path: "t0[2|1]",
+      reason:
+        "transforms ignored: the clip has no notes; Live refused the note read",
+    });
+  });
+
+  // The same call with a name to write: the rename lands, so the clip keeps a
+  // real entry with the reason on it.
+  it("reports the split it skipped on the clip's own entry", async () => {
+    const clipId = "take_lane_clip";
+
+    setupTakeLaneClipMocks(clipId);
+
+    const result = await updateClip(
+      { id: clipId, arrangementSplit: "2|1", name: "Still Renamed" },
+      {},
+    );
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: clipId,
+        reason:
+          "arrangementSplit ignored for a take-lane clip; split it in Live's UI",
+      }),
+    );
   });
 
   it("should not warn about split on a take-lane clip when split is not given", async () => {
@@ -261,6 +399,9 @@ describe("updateClip - loc: song positions", () => {
     );
   });
 
+  // Not a reason on the clip's entry, unlike the same miss inside a toPath
+  // coordinate: this list is read as a whole before anything moves, the way a
+  // malformed bar|beat in it is, and create-clip and duplicate refuse it too.
   it("throws, naming arrangementStart, when the locator is not found", async () => {
     setupWithLocators();
 
@@ -403,8 +544,9 @@ describe("planClipUpdate - the pieces a split makes", () => {
     setupClipSplittingMocks("clip_1");
 
     const plan = planClipUpdate({
-      requestedIds: ["clip_1"],
+      targets: resolveClipTargets({ id: "clip_1" }),
       arrangementSplit: "2|1",
+      reasons: newClipReasons(),
       context: {},
     });
 

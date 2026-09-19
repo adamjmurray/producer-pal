@@ -2,8 +2,12 @@
 
 - **Status:** Superseded in part by
   [ADR-0036](0036-paths-address-tracks-and-scenes.md) — the scoping to clips and
-  devices only — and by [ADR-0037](0037-arrangement-time-is-part-of-the-path.md)
-  — arrangement clips and locators. The grammar itself stands.
+  devices only — by [ADR-0037](0037-arrangement-time-is-part-of-the-path.md) —
+  arrangement clips and locators — and by
+  [ADR-0043](0043-a-plus-belongs-to-the-tool-that-creates-the-object.md), which
+  brought `l+` back on ppal-update-track, and by
+  [ADR-0045](0045-c-plus-appends-a-rack-chain.md), which added `c+`. The grammar
+  itself stands.
 - **Date logged:** 2026-08-16
 
 ## Context

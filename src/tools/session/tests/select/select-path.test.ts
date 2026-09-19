@@ -7,7 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -21,12 +23,18 @@ import {
   setupSongViewMock,
 } from "./select-test-helpers.ts";
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { selectSharedUtilsMockBody } =
-    await import("./select-test-helpers.ts");
+vi.mock(
+  import("#src/tools/shared/helpers/live-api-values.ts"),
+  async (importOriginal) => {
+    const { selectLiveApiValuesMockBody } =
+      await import("./select-test-helpers.ts");
 
-  return selectSharedUtilsMockBody(await importOriginal());
-});
+    return selectLiveApiValuesMockBody(await importOriginal());
+  },
+);
+
+/** Bar 5 in 4/4, the position the arrangement cases below name. */
+const BAR_5 = 16;
 
 // One param covers all three shapes select can act on. Which one a path names
 // is decided by the grammar, not by which param the caller reached for.
@@ -68,6 +76,69 @@ describe("select path param", () => {
       "id device_at_path",
     );
     expect(result.selectedDevice?.path).toBe("t1/d0");
+  });
+
+  // A trailing `inst` is a device, not something inside a rack, so select
+  // reaches for the device rather than a rack target.
+  it("selects a device named by type", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: ["id", "device_at_path"] },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(1)) + " devices 0",
+      type: "Device",
+      properties: { type: 1 },
+    });
+    const songView = setupSongViewMock();
+
+    const result = select({ path: "t1/inst" });
+
+    expect(songView.call).toHaveBeenCalledWith(
+      "select_device",
+      "id device_at_path",
+    );
+    // select echoes the spelling the call reached the device by.
+    expect(result.selectedDevice?.path).toBe("t1/inst");
+  });
+
+  // The refusal says what the track does hold, and is the only thing said
+  // about it.
+  it("refuses a device path whose type segment names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    mockNonExistentObjects();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: ["id", "device_at_path"] },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(1)) + " devices 0",
+      type: "Device",
+      properties: { type: 2 },
+    });
+
+    expect(() => select({ path: "t1/inst" })).toThrow(
+      'no device at "t1/inst": t1 has no instrument',
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("refuses a chain path whose type segment names nothing", () => {
+    mockNonExistentObjects();
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { devices: ["id", "device_at_path"] },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(1)) + " devices 0",
+      type: "Device",
+      properties: { type: 2 },
+    });
+
+    expect(() => select({ path: "t1/inst/c0" })).toThrow(
+      'no chain at "t1/inst/c0": t1 has no instrument',
+    );
   });
 
   it("selects a bare track", () => {
@@ -422,15 +493,11 @@ describe("select path param", () => {
     expect(() => select({ id: "clip_0_3", path: "t0/s3" })).not.toThrow();
   });
 
-  it("rejects an arrangement position, naming the clip there as the way in", () => {
-    expect(() => select({ path: "t0[1|1]" })).toThrow(
-      /an arrangement position is not selectable; select the clip there by id/,
-    );
-  });
-
+  // A take lane holds many clips at many spots. Naming one of those spots is
+  // selectable — see the arrangement-position cases below — the bare lane isn't.
   it("rejects a take lane, which names no one thing to select", () => {
     expect(() => select({ path: "t0/l1" })).toThrow(
-      /a take lane is not selectable/,
+      /a take lane is not selectable; name a spot on it as "t<track>\/l<lane>\[5\|1\]"/,
     );
   });
 
@@ -541,5 +608,206 @@ function registerIdConflictObjects(): void {
   registerMockObject("device_mt", {
     path: livePath.masterTrack().device(1),
     type: "Device",
+  });
+}
+
+// A spot on the timeline is a target of its own: the arrangement start marker
+// goes there whether or not a clip is sitting on it.
+describe("select by arrangement position", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetSelectTestState();
+  });
+
+  it("selects the clip covering the position, and shows it", () => {
+    setupTrackMock("clip_arr");
+    setupMainLaneClip("clip_arr", BAR_5);
+
+    const songView = setupSongViewMock();
+    const appView = setupAppViewMock();
+    const liveSet = setupLiveSetMock();
+
+    const result = select({ path: "t0[5|1]" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("start_time", BAR_5);
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_0");
+    expect(songView.set).toHaveBeenCalledWith("detail_clip", "id clip_arr");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(appView.call).toHaveBeenCalledWith("focus_view", "Detail/Clip");
+    expect(result).toStrictEqual({
+      view: "arrangement",
+      selectedTrack: { id: "track_0", path: "t0", type: "midi" },
+      selectedClip: { id: "clip_arr", path: "t0[5|1]" },
+    });
+  });
+
+  // The marker is the point of the call, so an empty spot is a success, not a
+  // near miss — there is nothing to warn about.
+  it("moves the marker and selects the track when nothing is there", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    setupTrackMock("clip_arr");
+    setupMainLaneClip("clip_arr", 0);
+
+    const songView = setupSongViewMock();
+    const appView = setupAppViewMock();
+    const liveSet = setupLiveSetMock();
+
+    const result = select({ path: "t0[5|1]" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("start_time", BAR_5);
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_0");
+    expect(songView.set).not.toHaveBeenCalledWith(
+      "detail_clip",
+      expect.anything(),
+    );
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(result).toStrictEqual({
+      view: "arrangement",
+      selectedTrack: { id: "track_0", path: "t0", type: "midi" },
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // An explicit view beats the clip's own, the way it does for a clip named by
+  // id — and with nothing to say about it, there is no warning.
+  it("keeps an explicit session view", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    setupTrackMock("clip_arr");
+    setupMainLaneClip("clip_arr", BAR_5);
+
+    const songView = setupSongViewMock();
+    const appView = setupAppViewMock();
+    const liveSet = setupLiveSetMock();
+
+    const result = select({ path: "t0[5|1]", view: "session" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("start_time", BAR_5);
+    expect(songView.set).toHaveBeenCalledWith("detail_clip", "id clip_arr");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).not.toHaveBeenCalledWith("show_view", "Arranger");
+    expect(result.view).toBe("session");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("takes a position on a take lane", () => {
+    setupTrackMock();
+    setupTakeLaneClip("clip_take", BAR_5);
+
+    const songView = setupSongViewMock();
+    const liveSet = setupLiveSetMock();
+
+    const result = select({ path: "t0/l1[5|1]" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("start_time", BAR_5);
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_0");
+    expect(result.selectedClip).toStrictEqual({
+      id: "clip_take",
+      path: "t0/l1[5|1]",
+    });
+  });
+
+  // A lane the track doesn't have holds no clip, so the empty result would
+  // otherwise read as "nothing recorded there". The spot itself is still a
+  // target, so the call lands and the warning says what it couldn't reach.
+  it("warns for a take lane that isn't there, and still moves the marker", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    mockNonExistentObjects();
+    setupTrackMock();
+
+    const songView = setupSongViewMock();
+    const appView = setupAppViewMock();
+    const liveSet = setupLiveSetMock();
+
+    const result = select({ path: "t0/l9[5|1]" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("start_time", BAR_5);
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_0");
+    expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(result.selectedClip).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      'take lane "l9" does not exist on track "t0"; ' +
+        "selected the track and moved the start marker to 5|1",
+    );
+  });
+
+  it("refuses a position with no lane, which names one spot per track", () => {
+    setupLiveSetMock();
+
+    expect(() => select({ path: "[5|1]" })).toThrow(
+      /a song position with no lane names a clip on every track/,
+    );
+  });
+
+  // The id and the path are written to Live separately, so honoring both would
+  // select one clip and move the marker to another one's spot.
+  it("refuses an id naming a clip off the spot the path names", () => {
+    setupTrackMock("clip_arr");
+    setupMainLaneClip("clip_arr", BAR_5);
+    setupLiveSetMock();
+    registerMockObject("clip_other", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+
+    expect(() => select({ id: "id clip_other", path: "t0[5|1]" })).toThrow(
+      "path and id name different targets",
+    );
+  });
+});
+
+/**
+ * The Live Set, whose meter reads the position and whose start marker moves.
+ * @returns The registered mock, for its `set` spy
+ */
+function setupLiveSetMock(): RegisteredMockObject {
+  return registerMockObject("live_set", {
+    path: livePath.liveSet,
+    type: "Song",
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+}
+
+/**
+ * Track 0, with the arrangement clips it answers with.
+ * @param clipIds - The clips on the track, in order
+ */
+function setupTrackMock(...clipIds: string[]): void {
+  registerMockObject("track_0", {
+    path: livePath.track(0),
+    type: "Track",
+    properties: { arrangement_clips: children(...clipIds), has_midi_input: 1 },
+  });
+}
+
+/**
+ * A one-bar clip on track 0's main arrangement lane.
+ * @param id - The clip's id
+ * @param startTime - Where it starts, in Ableton beats
+ */
+function setupMainLaneClip(id: string, startTime: number): void {
+  registerMockObject(id, {
+    path: livePath.track(0).arrangementClip(0),
+    type: "Clip",
+    properties: { start_time: startTime, end_time: startTime + 4 },
+  });
+}
+
+/**
+ * A one-bar clip on take lane 1 of track 0.
+ * @param id - The clip's id
+ * @param startTime - Where it starts, in Ableton beats
+ */
+function setupTakeLaneClip(id: string, startTime: number): void {
+  registerMockObject(id, {
+    path: livePath.track(0).takeLane(1).arrangementClip(0),
+    type: "Clip",
+    properties: { start_time: startTime, end_time: startTime + 4 },
+  });
+  registerMockObject("lane_1", {
+    path: livePath.track(0).takeLane(1),
+    properties: { arrangement_clips: children(id) },
   });
 }

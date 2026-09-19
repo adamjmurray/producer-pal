@@ -10,6 +10,7 @@ import { defineConfig } from "rolldown";
 import { replacePlugin } from "rolldown/plugins";
 import { BUILD_SHA } from "./build-sha.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
+import { embedRemoteScript } from "./rolldown-plugin-embed-remote-script.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
 import {
   stubBuildStats,
@@ -130,6 +131,7 @@ export default defineConfig([
       ...stubPlugins,
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
+      embedRemoteScript(), // Inline the Python remote script, same reason
       addLicenseHeader({ includeThirdPartyLicenses: true }),
     ],
   },

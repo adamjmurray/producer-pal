@@ -19,12 +19,12 @@ import {
   type CheckSummary,
 } from "../assertions/index.ts";
 import { type EvalSession } from "../eval-session.ts";
-import { isQuietMode } from "./output-config.ts";
+import { isQuietMode } from "./quiet-mode.ts";
 import { maybeInjectReflection } from "./self-reflection.ts";
 import {
   runCorrectnessAssertion,
   toCheckSummaries,
-} from "../run-scenario-helpers.ts";
+} from "../run-scenario/message-turns.ts";
 import {
   type EvalAssertion,
   type EvalScenario,

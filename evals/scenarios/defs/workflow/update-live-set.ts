@@ -7,12 +7,13 @@
  * Scenario: Update Live Set global properties and delete a track
  */
 
-import { trackNames } from "../live-set-helpers.ts";
+import { trackNames } from "../track-names.ts";
 import { type EvalScenario } from "../../types.ts";
-import { assertNamesTarget } from "../path/path-scenario-helpers.ts";
+import { assertNamesTarget } from "../path/path-assertions.ts";
 
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
+  tags: ["workflow"],
   description: "Update Live Set global properties and delete a track",
   kind: "regression",
   liveSet: "basic-midi-4-track",

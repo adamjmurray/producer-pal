@@ -3,14 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
   enumParam,
+  readNumberByIndex,
+  readNumberProp,
   writeIntFromSet,
   writeIntInRange,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import {
   type PseudoParam,
   type SpecializedDeviceSpec,
@@ -21,7 +22,7 @@ import {
   MOD_SOURCES,
   readModulations,
   setModulationAction,
-} from "./wavetable-modulation-helpers.ts";
+} from "./wavetable-modulation.ts";
 
 // Wavetable (WavetableDevice, class_name "InstrumentVector"). See
 // dev/specialized-devices/instruments.md.
@@ -54,27 +55,6 @@ const OSC_ENGINES = ["None", "Fm", "Classic", "Modern"] as const;
 // index 0-7 → these counts; 8+ silently reverts. unison_voice_count, by
 // contrast, IS a raw count (range 2-8).
 const POLY_VOICES = [2, 3, 4, 5, 6, 7, 8, 16] as const;
-
-/**
- * Read poly_voices and map its catalog index to the actual voice count.
- * (poly_voices stores an index into POLY_VOICES, not the count itself.)
- * @param device - LiveAPI device object
- * @returns The voice count (2,3,4,5,6,7,8,16), or undefined
- */
-function readPolyVoices(device: LiveAPI): number | undefined {
-  const index = device.getProperty("poly_voices") as number;
-
-  return POLY_VOICES[index];
-}
-
-/**
- * Read unison_voice_count as a plain number (it stores the raw count).
- * @param device - LiveAPI device object
- * @returns The unison voice count, or undefined
- */
-function readUnisonVoiceCount(device: LiveAPI): number | undefined {
-  return device.getProperty("unison_voice_count") as number | undefined;
-}
 
 /**
  * Build a pair of category + wavetable pseudo-params for one oscillator.
@@ -122,16 +102,12 @@ function buildOscParams(
       const index = list.indexOf(String(value));
 
       if (index < 0) {
-        console.warn(
-          `"${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`,
-        );
-
-        return false;
+        return `"${String(value)}" is not a valid ${categoryName}. Available: ${list.join(", ")}`;
       }
 
       device.set(categoryProp, index);
 
-      return true;
+      return null;
     },
   };
 
@@ -148,16 +124,12 @@ function buildOscParams(
       const index = list.indexOf(String(value));
 
       if (index < 0) {
-        console.warn(
-          `"${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`,
-        );
-
-        return false;
+        return `"${String(value)}" is not a valid ${wavetableName}. Available: ${list.join(", ")}`;
       }
 
       device.set(wavetableIndexProp, index);
 
-      return true;
+      return null;
     },
   };
 
@@ -200,7 +172,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     {
       name: "polyVoices",
       options: POLY_VOICES,
-      read: readPolyVoices,
+      read: (device) => readNumberByIndex(device, "poly_voices", POLY_VOICES),
       write: (device, value) =>
         writeIntFromSet(
           device,
@@ -215,7 +187,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     {
       name: "unisonVoiceCount",
       options: "2-8",
-      read: readUnisonVoiceCount,
+      read: (device) => readNumberProp(device, "unison_voice_count"),
       write: (device, value) =>
         writeIntInRange(
           device,

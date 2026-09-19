@@ -17,7 +17,7 @@ import {
 } from "#webui/lib/rate-limit";
 import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
 import { type UIMessage } from "#webui/types/messages";
-import { handleMessageStream } from "./streaming-helpers";
+import { handleMessageStream } from "#webui/hooks/chat/helpers/streaming/run-chat-turn";
 
 interface UseExecuteWithRetryDeps<
   TClient extends ChatClient<TMessage>,
@@ -31,7 +31,7 @@ interface UseExecuteWithRetryDeps<
   setRateLimitState: (state: RateLimitState | null) => void;
 }
 
-interface ExecuteWithRetryArgs<TMessage> {
+export interface ExecuteWithRetryArgs<TMessage> {
   /** Runs the turn's FIRST attempt, sending the user's message. */
   executeStream: () => AsyncIterable<TMessage[]>;
   /**
@@ -42,25 +42,18 @@ interface ExecuteWithRetryArgs<TMessage> {
   resumeStream: () => AsyncIterable<TMessage[]>;
   getHistory: () => TMessage[];
   /**
-   * Whether the turn that started this still holds the current ticket —
-   * runChatTurn dispenses it and hands it down through the turn's setup.
-   *
-   * Stop re-enables the composer while the stopped turn is still unwinding, so a
-   * newer turn can take the shared refs below — the abort controller AND
-   * retryAbortRef — out from under this one. Once that happens the
-   * aborted-signal checks are reading the NEW turn's controllers and stop
-   * protecting anything, so everything that paints or persists checks the ticket
-   * instead.
+   * Whether the turn that started this still holds runChatTurn's ticket. A
+   * newer turn can take the shared abort refs out from under a stopped one, at
+   * which point the aborted-signal checks are reading the NEW turn's
+   * controllers and protect nothing — so everything that paints or persists
+   * checks the ticket instead.
    */
   stillCurrent: () => boolean;
   /**
-   * Whether the turn is still current AND hasn't been stopped — beginTurn's
-   * check, closed over this turn's own controller rather than the shared ref.
-   *
-   * Stop doesn't throw: the SDK answers an aborted signal by emitting an `abort`
-   * part and closing the stream, so a stopped turn ends the loop below normally.
-   * This is the only thing that tells the success return apart from a real
-   * completion, and the caller drains its queued follow-ups on success.
+   * Whether the turn is still current AND hasn't been stopped, closed over this
+   * turn's own controller. Stop doesn't throw — the SDK emits an `abort` part
+   * and closes the stream — so this is the only thing that tells a stopped turn
+   * apart from a real completion, which is what drains queued follow-ups.
    */
   stillLive: () => boolean;
 }

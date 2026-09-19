@@ -11,9 +11,6 @@ import {
   type ToolResultWithWarnings,
 } from "../../mcp-test-helpers.ts";
 
-export const RACKS_TEST_PATH =
-  "e2e/live-sets/racks-test Project/racks-test.als";
-
 /** The Drum Rack carrying the macro mappings, nested in an Instrument Rack. */
 export const KIT = "t0/d0/c0/d0";
 
@@ -45,7 +42,10 @@ export interface DeviceInfo {
 export interface ParamEntryResult {
   name: string;
   value?: unknown;
-  /** Why the write landed nowhere, when it didn't */
+  /** False only on a param nothing was written to */
+  ok?: boolean;
+  /** Why the write landed nowhere, or why the value that landed isn't the one
+   * asked for */
   reason?: string;
 }
 

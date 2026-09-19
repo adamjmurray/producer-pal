@@ -8,13 +8,13 @@
 // keeps the clip's position, and `[5|1]` keeps its lane. Sources take neither
 // partial; see dev/Object-Paths.md, "Complete and partial".
 
-import { paramNamesSomething } from "#src/tools/shared/utils.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { type ObjectPath } from "../object-path.ts";
 import {
   parseObjectPathList,
   requireClipPath,
   type ClipPath,
-} from "./object-path-helpers.ts";
+} from "./object-paths.ts";
 
 /** One destination: the lane it named, the position it named, or both. */
 export interface ClipDestinationPath {

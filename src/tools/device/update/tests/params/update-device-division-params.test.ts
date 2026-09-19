@@ -81,16 +81,24 @@ describe("updateDevice - division params", () => {
     });
   });
 
-  it("should log error for invalid division value", () => {
+  it("reports an invalid division value in the param's entry", () => {
     const result = updateDevice({
       id: "123",
       params: [{ name: "793", value: "1/128" }],
     });
 
-    expect(capturedWarnings()).toContain(
-      't0/d0 (id 123) param "Rate" (id 793): "1/128" is not a valid division option',
-    );
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/d0",
+      params: [
+        {
+          name: "793",
+          ok: false,
+          reason: '"1/128" is not a valid division option',
+        },
+      ],
+    });
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

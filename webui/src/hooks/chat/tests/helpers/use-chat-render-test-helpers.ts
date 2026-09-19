@@ -9,8 +9,8 @@ import {
   type RenderHookResult,
 } from "@testing-library/preact";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
 import {
-  type ConversationLockedSettings,
   type UseChatProps,
   type UseChatReturn,
 } from "#webui/hooks/chat/use-chat-types";

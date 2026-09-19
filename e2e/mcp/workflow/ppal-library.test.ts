@@ -14,12 +14,16 @@
  *
  * Run with: npm run e2e:mcp -- ppal-library
  */
-import { dirname, resolve } from "node:path";
+import { readdir } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { liveDatabaseDir } from "#src/mcp-server/live-library/live-db-path.ts";
+import { openLiveDb } from "#src/mcp-server/live-library/live-db.ts";
 import {
   isToolError,
   parseToolResult,
+  readLiveVersion,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -101,6 +105,65 @@ async function findDuplicates(
   return parseToolResult<LibraryFindDuplicatesResult>(
     await callLibrary({ action: "findDuplicates", ...args }),
   );
+}
+
+/** Live's database directory, or null on a platform that has none. */
+const DB_DIR = liveDatabaseDir();
+
+/** Tags to compare. Small enough to stay well inside the tool's limit clamp. */
+const TAG_LIMIT = 25;
+
+/**
+ * The highest-numbered `Live-files-*.db` belonging to a Live major.
+ *
+ * @param major - Live major version
+ * @returns Absolute path, or null when that major has no DB here
+ */
+async function filesDbForMajor(major: number): Promise<string | null> {
+  if (DB_DIR == null) {
+    return null;
+  }
+
+  const entries = await readdir(DB_DIR).catch(() => []);
+  const versions = entries
+    .map((name) =>
+      Number.parseInt(/^Live-files-(\d+)\.db$/.exec(name)?.[1] ?? "", 10),
+    )
+    // The leading digits of the DB number are the major (12300 -> 12).
+    .filter((version) => Math.floor(version / 1000) === major)
+    .toSorted((a, b) => b - a);
+  const best = versions[0];
+
+  return best == null ? null : join(DB_DIR, `Live-files-${best}.db`);
+}
+
+/**
+ * Read the top tags straight from a DB file, the way list-tags.ts does.
+ *
+ * @param dbPath - Absolute path to a Live files DB
+ * @returns Tags with counts, ordered count desc then name asc
+ */
+async function readTagsDirectly(
+  dbPath: string,
+): Promise<Array<{ name: string; count: number }>> {
+  const db = await openLiveDb(dbPath);
+
+  try {
+    const rows = db
+      .prepare(
+        `SELECT kw.name AS name, COUNT(*) AS cnt
+         FROM keywords k
+         JOIN files kw ON kw.file_id = k.keyw_id
+         GROUP BY k.keyw_id
+         ORDER BY cnt DESC, kw.name ASC
+         LIMIT ?`,
+      )
+      .all(TAG_LIMIT) as unknown as Array<{ name: string; cnt: number }>;
+
+    return rows.map((row) => ({ name: row.name, count: row.cnt }));
+  } finally {
+    db.close();
+  }
 }
 
 describe("ppal-library", () => {
@@ -380,6 +443,26 @@ describe("ppal-library", () => {
       const result = await callLibrary({ action: "bogus" });
 
       expect(isToolError(result)).toBe(true);
+    });
+  });
+
+  // Live keeps one files DB per major and only refreshes the one belonging to
+  // the install that is running. A lookup that picked another major's DB —
+  // higher-numbered, or newer on disk — would read stale tags here.
+  describe.skipIf(DB_DIR == null)("database selection", () => {
+    it("reads the running Live major's files database", async (test) => {
+      const major = Number.parseInt(await readLiveVersion(ctx.client!), 10);
+      const dbPath = await filesDbForMajor(major);
+
+      if (dbPath == null) {
+        test.skip(`no Live-files DB for Live ${major} on this machine`);
+      } else {
+        const expected = await readTagsDirectly(dbPath);
+        const result = await listTags({ limit: TAG_LIMIT });
+
+        expect(result.dbAvailable).toBe(true);
+        expect(result.tags).toStrictEqual(expected);
+      }
     });
   });
 });

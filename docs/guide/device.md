@@ -29,8 +29,9 @@ error message.
 The Context tab holds your **project context**: notes about this Live Set (its
 genre, structure, track layout, and the rules you want AI to follow) included in
 every conversation. It is saved in this project's Producer Pal device, so it
-travels with the Live Set (and is gone if you delete the device). AI can read
-and edit these notes too.
+travels with the Live Set, and mirrored to a file in your Live Project folder,
+so it survives deleting or upgrading the device. AI can read and edit these
+notes too.
 
 - **Context text area** - Your project-specific notes and preferences
 - **Open Editor** - Open the context editor in a larger view in your web browser

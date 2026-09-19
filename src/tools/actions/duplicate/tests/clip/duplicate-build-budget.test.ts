@@ -10,7 +10,7 @@
 // them, so one object of each serves the call.
 
 import { describe, expect, it } from "vitest";
-import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import "../duplicate-mocks-test-helpers.ts";
@@ -22,15 +22,6 @@ import {
 import { registerMockObject as registerDuplicateMock } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
 const COPIES = 6;
-
-/**
- * How many times the call resolved a target of this shape.
- * @param shape - Target shape, indices replaced with `*`
- * @returns Resolution count
- */
-function resolves(shape: string): number {
-  return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
-}
 
 describe("duplicate build budget", () => {
   it("resolves the source slot and the destination track once for a session batch", async () => {

@@ -18,7 +18,13 @@ import { resolve } from "node:path";
 import { declick, normalize, writeWav } from "../lib/audio-io.mjs";
 import { parseArgs } from "../lib/cli.mjs";
 
-const { opt, int } = parseArgs();
+const USAGE = `Usage: node examples/example-kit.mjs [options]
+
+  --out <dir>        output directory (default ./drum-kit)
+  --sr <rate>        sample rate, 8000–192000 (default 44100)
+  --track <path>     MIDI track to insert the Drum Rack on (default t0)
+  --help, -h         show this help`;
+const { opt, int } = parseArgs(USAGE);
 const OUT = resolve(opt("--out", "./drum-kit"));
 const SR = int("--sr", 44100, 8000, 192000);
 const TRACK = opt("--track", "t0"); // insertion path; must be a MIDI track

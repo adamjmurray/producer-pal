@@ -18,16 +18,17 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where it goes: 't+' appends, 't<index>' inserts there (t0 is the first track, so a user's \"track 3\" is t2), 'rt+' adds a return track",
+        "where it goes: 't+' appends, 't<index>' inserts there (t0 is the first track, so a user's \"track 3\" is t2), 'rt+' adds a return track. Comma-separated for several, one entry per track, in order (e.g. 't+,t+,t+' appends three, 't2,t2' inserts two at 2)",
       smallModel:
         "'t+' to append, or 't<index>' to insert there (t0 is the first track, so a user's \"track 3\" is t2)",
     }),
     trackIndex: deprecatedParam(z.coerce.number().int().min(-1).optional(), {
       replacedBy: "path",
     }),
-    count: param(z.coerce.number().int().min(1).default(1), {
-      default: "number to create",
-      smallModel: null,
+    count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
+      replacedBy: "path",
+      example: "t+,t+,t+",
+      note: "path names every track, so repeat it once per track instead of counting",
     }),
     name: param(z.string().optional(), {
       default: "name for all, or comma-separated one per track, in order",

@@ -176,6 +176,14 @@ export function defaultMockCall(
     // every fractional one.
     case "str_for_value":
       return Number(Number(args[0]).toPrecision(6));
+    // Live returns ["id", N] from these on success. A blanket null here would
+    // put every uncovered test on the failure branch by accident.
+    case "create_scene":
+    case "insert_chain":
+    case "create_midi_clip":
+      return ["id", "999"];
+    case "guess_playback_length":
+      return 4;
     default:
       if (_simulateDeletes) {
         applyMockDelete(method, args, path);
@@ -264,9 +272,13 @@ function effectiveInNote(chain: RegisteredMockObject): unknown {
  * A fresh lookup misses it, but anything already holding it keeps the stale id
  * — only its path clears and its property reads dry up. `confirmDeleted` in
  * `tools/actions/delete/delete.ts` depends on that split.
+ *
+ * Exported for the fixtures whose own `call` implementations destroy something
+ * — an arrangement create clears the range it writes to — since those never
+ * reach {@link defaultMockCall} and so aren't covered by simulateMockDeletes.
  * @param idOrPath - The object's ID or path
  */
-function deleteMockObject(idOrPath: string): void {
+export function deleteMockObject(idOrPath: string): void {
   const mock = lookupMockObject(idOrPath, idOrPath);
 
   if (!mock) {

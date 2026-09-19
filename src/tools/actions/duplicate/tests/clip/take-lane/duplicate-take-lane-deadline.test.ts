@@ -1,0 +1,195 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import "../../duplicate-mocks-test-helpers.ts";
+import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
+import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+
+// Capture the deadline warning, which shares the outlet with the take-lane ones
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  error: vi.fn(),
+  log: vi.fn(),
+  warn: vi.fn(),
+}));
+
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import {
+  registerArrangementSource,
+  registerLiveSet,
+} from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
+import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+
+const NOTE = {
+  pitch: 60,
+  start_time: 0,
+  duration: 1,
+  velocity: 100,
+  probability: 1,
+  velocity_deviation: 0,
+};
+
+/** What the clock reports. Copying is what moves it, so a stop is deterministic. */
+let now = 0;
+
+/**
+ * Register the live set and a MIDI source on track 0's main lane.
+ * @param copyCostMs - How much clock time one copy's note read burns
+ */
+function registerSource(copyCostMs: number): void {
+  registerLiveSet();
+  registerArrangementSource(true, [NOTE], {
+    getNotesExtended: () => {
+      now += copyCostMs;
+
+      return JSON.stringify({ notes: [NOTE] });
+    },
+  });
+}
+
+/** The warning naming what a deadline stop didn't reach. */
+function unreachedWarning(): string | undefined {
+  return vi
+    .mocked(consoleMock.warn)
+    .mock.calls.map(([message]) => String(message))
+    .find((message) => message.includes("Not duplicated"));
+}
+
+describe("duplicate to a take lane, cut short", () => {
+  beforeEach(() => {
+    now = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+  });
+
+  it("names the lane the unreached copies were headed for", async () => {
+    registerSource(2000);
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    const result = await duplicate(
+      {
+        type: "clip",
+        id: "src_clip",
+        toPath: "t1/l0",
+        arrangementStart: "1|1,5|1",
+      },
+      { deadline: 1000 },
+    );
+
+    // The one copy that fit landed on the lane the warning goes on to name; the
+    // destination it never reached keeps its slot.
+    expect(result).toStrictEqual([
+      { id: "tl_clip_1", path: "t1/l0[1|1]" },
+      {
+        path: "t1/l0[5|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+    ]);
+    expect(unreachedWarning()).toBe(
+      "Ran out of time after duplicating 1 of 2. " +
+        "Not duplicated: t1/l0 5|1. Re-run for those positions.",
+    );
+  });
+
+  it("names a destination it skipped as well as one it never reached", async () => {
+    // A destination can be skipped without a copy — here the lane limit. The
+    // tally has to match what exists, or the caller reads a copy it never got,
+    // and a skipped one has to be named too or it is in neither half of the
+    // report: not among the copies that landed, not among the ones still ahead.
+    registerSource(2000);
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: MAX_TAKE_LANES });
+
+    const result = await duplicate(
+      {
+        type: "clip",
+        id: "src_clip",
+        toPath: `t1/l${MAX_TAKE_LANES},t1/l0,t1/l1`,
+        arrangementStart: "1|1,5|1,9|1",
+      },
+      { deadline: 1000 },
+    );
+
+    // One copy for three destinations: the first was refused, the third was
+    // never reached, and both keep their slots.
+    expect(result).toStrictEqual([
+      {
+        path: `t1/l${MAX_TAKE_LANES}[1|1]`,
+        ok: false,
+        reason: `take lane "l${MAX_TAKE_LANES}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+      },
+      // The mock's clip ids run off a counter every test shares, so the copy
+      // is matched by shape rather than by a number that shifts.
+      { id: expect.stringMatching(/^tl_clip_\d+$/), path: "t1/l0[5|1]" },
+      {
+        path: "t1/l1[9|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+    ]);
+    expect(unreachedWarning()).toBe(
+      "Ran out of time after duplicating 1 of 3. " +
+        `Not duplicated: t1/l${MAX_TAKE_LANES} 1|1, t1/l1 9|1. Re-run for those positions.`,
+    );
+  });
+
+  // One destination and no budget: nothing was made and there is no list for an
+  // entry to hold a place in, so the reason comes back as the error.
+  it("throws when the one destination it had no budget for got nothing", async () => {
+    registerSource(0);
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    now = 2000;
+
+    await expect(
+      duplicate(
+        {
+          type: "clip",
+          id: "src_clip",
+          toPath: "t1/l0",
+          arrangementStart: "1|1",
+        },
+        { deadline: 1000 },
+      ),
+    ).rejects.toThrow("the request ran out of time");
+  });
+
+  it("creates no lane at all when the budget is already gone", async () => {
+    // A lane can't be deleted, so making one and then placing nothing on it
+    // leaves permanent debris the caller has to clean up in Live by hand.
+    registerSource(0);
+
+    const track = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    now = 2000;
+
+    const result = await duplicate(
+      {
+        type: "clip",
+        id: "src_clip",
+        toPath: "t1/l0,t1/l1",
+        arrangementStart: "1|1",
+      },
+      { deadline: 1000 },
+    );
+
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(result).toStrictEqual([
+      {
+        path: "t1/l0[1|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+      {
+        path: "t1/l1[1|1]",
+        ok: false,
+        reason: "the request ran out of time; re-run for this destination",
+      },
+    ]);
+    expect(unreachedWarning()).toBe(
+      "Ran out of time after duplicating 0 of 2. " +
+        "Not duplicated: t1/l0 1|1, t1/l1 1|1. Re-run for those positions.",
+    );
+  });
+});

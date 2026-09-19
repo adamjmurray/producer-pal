@@ -6,7 +6,7 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   callLiveApi,

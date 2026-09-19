@@ -8,8 +8,8 @@ import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
-import { readScene } from "#src/tools/scene/read-scene.ts";
-import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
+import { readOneScene } from "#src/tools/scene/read-scene.ts";
+import { readLocators } from "#src/tools/shared/locator/locators.ts";
 import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
 import {
   type IncludeFlags,
@@ -17,7 +17,11 @@ import {
   READ_SONG_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import {
-  readTrack,
+  round2dp,
+  roundDisplayValue,
+} from "#src/tools/shared/helpers/rounding.ts";
+import {
+  readOneTrack,
   readTrackGeneric,
 } from "#src/tools/track/read/read-track.ts";
 
@@ -58,14 +62,14 @@ export function readLiveSet(
   const liveSetName = liveSet.getName();
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
-    tempo: liveSet.getProperty("tempo"),
+    tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
     timeSignature: liveSet.timeSignature,
   };
 
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
     result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
-      readScene(
+      readOneScene(
         {
           sceneIndex,
           include: trackInclude,
@@ -88,7 +92,7 @@ export function readLiveSet(
   // Tracks: full details or counts
   if (includeFlags.includeTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
-      readTrack(
+      readOneTrack(
         {
           trackIndex,
           include: trackInclude,
@@ -207,7 +211,7 @@ function sessionClipCounts(
 /**
  * Build include array to propagate to track/scene readers
  * @param flags - Parsed include flags
- * @returns Array of include options recognized by readTrack/readScene
+ * @returns Array of include options recognized by readOneTrack/readOneScene
  */
 function buildTrackInclude(flags: IncludeFlags): string[] {
   const include: string[] = [];

@@ -176,7 +176,7 @@ const UPDATE_CLIP_RESULT = { id: "44", path: "t4/s0" };
 
 // Quantization is MIDI-only, so an audio clip warns and skips it
 const QUANTIZE_WARNING =
-  "WARNING: quantize/quantizeGrid ignored for audio clip (id 44): quantization is MIDI-only";
+  "WARNING: quantize/quantizeGrid ignored for audio clip t4/s0 (id 44): quantization is MIDI-only";
 
 // Tool name constants to avoid duplicate string violations
 const TOOL_READ_TRACK = "ppal-read-track";
@@ -272,7 +272,7 @@ export const demoMessages: UIMessage[] = [
         },
         result: toolResult(
           UPDATE_CLIP_RESULT,
-          "WARNING: Requested clip id 44 color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+          "WARNING: Requested clip t4/s0 (id 44) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
           QUANTIZE_WARNING,
         ),
       },

@@ -41,6 +41,10 @@ vi.mock(import("../live-db.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
   ensureSqliteAvailable: vi.fn(),
 }));
+vi.mock(import("../live-db-path.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  setRunningLiveMajor: vi.fn(),
+}));
 
 const searchMod = await import("../query/library-search.ts");
 const similarMod = await import("../query/find-similar.ts");
@@ -49,6 +53,7 @@ const tagsMod = await import("../list-tags.ts");
 const categoriesMod = await import("../list-categories.ts");
 const pluginsMod = await import("../list-plugins.ts");
 const liveDbMod = await import("../live-db.ts");
+const dbPathMod = await import("../live-db-path.ts");
 
 describe("registerLibraryRoutes", () => {
   beforeEach(() => {
@@ -263,6 +268,71 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(duplicatesMod.findDuplicates).toHaveBeenCalledWith({});
+  });
+
+  it("records the running Live major from the liveVersion arg", async () => {
+    vi.mocked(tagsMod.listTags).mockResolvedValue({
+      dbAvailable: true,
+      tags: [],
+    });
+
+    await handleNodeRequest(
+      "req-major",
+      JSON.stringify({
+        route: "library.listTags",
+        args: { liveVersion: "12.4" },
+      }),
+    );
+
+    expect(dbPathMod.setRunningLiveMajor).toHaveBeenCalledWith(12);
+  });
+
+  it("records an unknown major when liveVersion is missing", async () => {
+    vi.mocked(tagsMod.listTags).mockResolvedValue({
+      dbAvailable: true,
+      tags: [],
+    });
+
+    await handleNodeRequest(
+      "req-major-missing",
+      JSON.stringify({ route: "library.listTags", args: null }),
+    );
+
+    expect(dbPathMod.setRunningLiveMajor).toHaveBeenCalledWith(null);
+  });
+
+  it("records the major when liveVersion arrives as a number", async () => {
+    vi.mocked(tagsMod.listTags).mockResolvedValue({
+      dbAvailable: true,
+      tags: [],
+    });
+
+    await handleNodeRequest(
+      "req-major-numeric",
+      JSON.stringify({
+        route: "library.listTags",
+        args: { liveVersion: 12.4 },
+      }),
+    );
+
+    expect(dbPathMod.setRunningLiveMajor).toHaveBeenCalledWith(12);
+  });
+
+  it("records an unknown major when liveVersion is not a number", async () => {
+    vi.mocked(tagsMod.listTags).mockResolvedValue({
+      dbAvailable: true,
+      tags: [],
+    });
+
+    await handleNodeRequest(
+      "req-major-garbage",
+      JSON.stringify({
+        route: "library.listTags",
+        args: { liveVersion: "not a version" },
+      }),
+    );
+
+    expect(dbPathMod.setRunningLiveMajor).toHaveBeenCalledWith(null);
   });
 
   it("fails the route (not a soft degrade) when the runtime lacks node:sqlite", async () => {

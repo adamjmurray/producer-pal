@@ -34,7 +34,7 @@ import {
   resolveInFolder,
   type SearchRow,
 } from "./candidate-query.ts";
-import { decodeFeatureVector } from "./fe-values-helpers.ts";
+import { decodeFeatureVector } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
 
 /** Default cap on duplicate groups returned (most-duplicated first). */

@@ -10,9 +10,13 @@ import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import {
+  coalesceQueuedMessages,
   useMessageQueue,
   type DrainedQueue,
 } from "#webui/hooks/chat/use-message-queue";
+
+const png = { mediaType: "image/png", data: "AAA" };
+const jpeg = { mediaType: "image/jpeg", data: "BBB" };
 
 /** Live handle to the hook under test, as returned by renderHook. */
 type QueueHandle = { current: ReturnType<typeof useMessageQueue> };
@@ -214,5 +218,51 @@ describe("useMessageQueue", () => {
 
     expect(queue.current.queueRef.current).toHaveLength(1);
     expect(queue.current.queueRef.current[0]?.text).toBe("stay");
+  });
+
+  it("queues a message's attached images with it", async () => {
+    const queue = renderQueue();
+
+    await act(() =>
+      queue.current.enqueueMessage({ text: "like this", images: [png] }),
+    );
+
+    expect(queue.current.queuedMessages[0]).toStrictEqual({
+      id: 0,
+      text: "like this",
+      images: [png],
+    });
+  });
+});
+
+describe("coalesceQueuedMessages", () => {
+  it("joins texts with blank lines and keeps every image in order", () => {
+    expect(
+      coalesceQueuedMessages([
+        { id: 0, text: "first", images: [png] },
+        { id: 1, text: "second", images: [jpeg] },
+      ]),
+    ).toStrictEqual({
+      text: "first\n\nsecond",
+      images: [png, jpeg],
+    });
+  });
+
+  it("drops blank texts so an image-only message adds no gap", () => {
+    expect(
+      coalesceQueuedMessages([
+        { id: 0, text: "", images: [png] },
+        { id: 1, text: "and this" },
+      ]),
+    ).toStrictEqual({ text: "and this", images: [png] });
+  });
+
+  it("carries no images key when nothing was attached", () => {
+    expect(
+      coalesceQueuedMessages([
+        { id: 0, text: "a" },
+        { id: 1, text: "b" },
+      ]),
+    ).toStrictEqual({ text: "a\n\nb" });
   });
 });

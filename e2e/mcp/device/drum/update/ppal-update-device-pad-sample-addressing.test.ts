@@ -40,22 +40,42 @@ const ctx = setupMcpTestContext();
  * @param rackPath - The Drum Rack's path
  * @param prefix - The pad prefix, as the caller spells it (e.g. "pD1/c1")
  * @param value - Absolute path of the sample to load
- * @returns The warnings the write produced
+ * @returns The `params` the result reports, and the warnings the write produced
  */
-async function writeSample(
+function writeSample(
   rackPath: string,
   prefix: string,
   value: string,
-): Promise<string[]> {
-  const { warnings } = await callWithWarnings(
+): Promise<SampleWriteResult> {
+  return updateParams({
+    path: rackPath,
+    params: [{ name: `${prefix}/sample`, value }],
+  });
+}
+
+/** What a `sample` write reports: one entry per param, plus any warnings. */
+interface SampleWriteResult {
+  params: ParamEntryResult[];
+  warnings: string[];
+}
+
+/**
+ * Send one update-device call and read back the `params` it reports.
+ * @param args - The tool arguments
+ * @returns The `params` the result reports, and the warnings the write produced
+ */
+async function updateParams(
+  args: Record<string, unknown>,
+): Promise<SampleWriteResult> {
+  const { data, warnings } = await callWithWarnings(
     ctx.client!,
     "ppal-update-device",
-    { path: rackPath, params: [{ name: `${prefix}/sample`, value }] },
+    args,
   );
 
   await sleep(200);
 
-  return warnings;
+  return { params: (data.params as ParamEntryResult[]) ?? [], warnings };
 }
 
 /**
@@ -73,6 +93,18 @@ async function sampleAt(path: string): Promise<string | undefined> {
 }
 
 /**
+ * The samples loaded on both layers of the D1 pad.
+ * @param rackPath - The Drum Rack's path
+ * @returns The two samples, in layer order
+ */
+function layerSamples(rackPath: string): Promise<Array<string | undefined>> {
+  return Promise.all([
+    sampleAt(`${rackPath}/pD1/c0/d0`),
+    sampleAt(`${rackPath}/pD1/c1/d0`),
+  ]);
+}
+
+/**
  * Write a sample by addressing the pad, one of its layers, or a device on it —
  * the spellings read-device hands back, rather than the rack's param-name
  * shortcut.
@@ -81,72 +113,72 @@ async function sampleAt(path: string): Promise<string | undefined> {
  * @param force - Whether to pass force:true
  * @returns The `params` the result reports, and the warnings the write produced
  */
-async function writeSampleByPath(
+function writeSampleByPath(
   path: string,
   value: string,
   force = false,
-): Promise<{ params: ParamEntryResult[]; warnings: string[] }> {
-  const { data, warnings } = await callWithWarnings(
-    ctx.client!,
-    "ppal-update-device",
-    {
-      path,
-      params: [{ name: "sample", value }],
-      ...(force && { force: true }),
-    },
-  );
-
-  await sleep(200);
-
-  return { params: (data.params as ParamEntryResult[]) ?? [], warnings };
+): Promise<SampleWriteResult> {
+  return updateParams({
+    path,
+    params: [{ name: "sample", value }],
+    ...(force && { force: true }),
+  });
 }
 
 describe("a pad holding several layers", () => {
   it("skips a write that names no layer, and lists the ones to name", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
-    const before = [
-      await sampleAt(`${rackPath}/pD1/c0/d0`),
-      await sampleAt(`${rackPath}/pD1/c1/d0`),
-    ];
+    const before = await layerSamples(rackPath);
 
-    const warnings = await writeSample(rackPath, "pD1", DRUM_LOOP_FILE);
+    const { params, warnings } = await writeSample(
+      rackPath,
+      "pD1",
+      DRUM_LOOP_FILE,
+    );
+    const reason = params[0]?.reason ?? "";
 
-    expect(
-      warnings.some(
-        (w) => w.includes("sample write SKIPPED") && w.includes("2 layers"),
-      ),
-    ).toBe(true);
+    expect(params[0]?.name).toBe("pD1/sample");
+    expect(params[0]?.ok).toBe(false);
+    expect(reason).toContain("sample write SKIPPED");
+    expect(reason).toContain("2 layers");
     // The retries are param names relative to the rack — what the caller
     // re-sends — not the pad's full path.
-    expect(
-      warnings.some(
-        (w) => w.includes('"pD1/c0/sample"') && w.includes('"pD1/c1/sample"'),
-      ),
-    ).toBe(true);
+    expect(reason).toContain('"pD1/c0/sample"');
+    expect(reason).toContain('"pD1/c1/sample"');
+    expect(warnings).toStrictEqual([]);
 
-    expect([
-      await sampleAt(`${rackPath}/pD1/c0/d0`),
-      await sampleAt(`${rackPath}/pD1/c1/d0`),
-    ]).toStrictEqual(before);
+    expect(await layerSamples(rackPath)).toStrictEqual(before);
   });
 
   // A device index names no layer, so it settles nothing here.
   it("skips a write that names only a device index", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
 
-    const warnings = await writeSample(rackPath, "pD1/d0", DRUM_LOOP_FILE);
+    const { params, warnings } = await writeSample(
+      rackPath,
+      "pD1/d0",
+      DRUM_LOOP_FILE,
+    );
 
-    expect(warnings.some((w) => w.includes("2 layers"))).toBe(true);
+    expect(params[0]?.ok).toBe(false);
+    expect(params[0]?.reason).toContain("2 layers");
+    expect(warnings).toStrictEqual([]);
   });
 
   it("writes the named layer and leaves the other alone", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
     const untouched = await sampleAt(`${rackPath}/pD1/c0/d0`);
 
-    expect(await writeSample(rackPath, "pD1/c1", DRUM_LOOP_FILE)).toStrictEqual(
-      [],
+    const { params, warnings } = await writeSample(
+      rackPath,
+      "pD1/c1",
+      DRUM_LOOP_FILE,
     );
 
+    expect(warnings).toStrictEqual([]);
+    expect(params).toStrictEqual([
+      { name: "pD1/c1/sample", value: DRUM_LOOP_FILE },
+    ]);
     expect(await sampleAt(`${rackPath}/pD1/c1/d0`)).toBe(DRUM_LOOP_FILE);
     expect(await sampleAt(`${rackPath}/pD1/c0/d0`)).toBe(untouched);
   });
@@ -161,15 +193,17 @@ describe("a device index that is not the pad's instrument", () => {
     await createTestDeviceAt(ctx.client!, "Arpeggiator", `${rackPath}/pC1/c0`);
 
     const loaded = await sampleAt(`${rackPath}/pC1/c0/d1`);
-    const warnings = await writeSample(rackPath, "pC1/d0", DRUM_LOOP_FILE);
+    const { params, warnings } = await writeSample(
+      rackPath,
+      "pC1/d0",
+      DRUM_LOOP_FILE,
+    );
+    const reason = params[0]?.reason ?? "";
 
-    expect(
-      warnings.some(
-        (w) =>
-          w.includes("d0 is not its instrument, which is at d1") &&
-          w.includes('"pC1/sample"'),
-      ),
-    ).toBe(true);
+    expect(params[0]?.ok).toBe(false);
+    expect(reason).toContain("d0 is not its instrument, which is at d1");
+    expect(reason).toContain('"pC1/sample"');
+    expect(warnings).toStrictEqual([]);
     expect(await sampleAt(`${rackPath}/pC1/c0/d1`)).toBe(loaded);
   });
 
@@ -178,7 +212,14 @@ describe("a device index that is not the pad's instrument", () => {
 
     await createTestDeviceAt(ctx.client!, "Arpeggiator", `${rackPath}/pC1/c0`);
 
-    expect(await writeSample(rackPath, "pC1/d1", KICK_FILE)).toStrictEqual([]);
+    const { params, warnings } = await writeSample(
+      rackPath,
+      "pC1/d1",
+      KICK_FILE,
+    );
+
+    expect(warnings).toStrictEqual([]);
+    expect(params).toStrictEqual([{ name: "pC1/d1/sample", value: KICK_FILE }]);
     expect(await sampleAt(`${rackPath}/pC1/c0/d1`)).toBe(KICK_FILE);
   });
 });
@@ -215,10 +256,7 @@ describe("a sample addressed by the pad's own path", () => {
   // get past it: which layer to replace is exactly what nobody has said.
   it("skips a stacked pad, naming the layer paths in the entry", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
-    const before = [
-      await sampleAt(`${rackPath}/pD1/c0/d0`),
-      await sampleAt(`${rackPath}/pD1/c1/d0`),
-    ];
+    const before = await layerSamples(rackPath);
 
     const { params, warnings } = await writeSampleByPath(
       `${rackPath}/pD1`,
@@ -227,14 +265,12 @@ describe("a sample addressed by the pad's own path", () => {
     );
 
     expect(params[0]?.name).toBe("sample");
+    expect(params[0]?.ok).toBe(false);
+    expect(params[0]?.reason).toContain("2 layers");
     expect(params[0]?.reason).toContain(`"${rackPath}/pD1/c0"`);
     expect(params[0]?.reason).toContain(`"${rackPath}/pD1/c1"`);
-    expect(warnings.some((w) => w.includes("2 layers"))).toBe(true);
-
-    expect([
-      await sampleAt(`${rackPath}/pD1/c0/d0`),
-      await sampleAt(`${rackPath}/pD1/c1/d0`),
-    ]).toStrictEqual(before);
+    expect(warnings).toStrictEqual([]);
+    expect(await layerSamples(rackPath)).toStrictEqual(before);
   });
 
   it("creates the Simpler on a pad that holds only a MIDI effect", async () => {
@@ -303,7 +339,8 @@ describe("a sample addressed by the device's own path", () => {
     // The redirect must not hand back a ready-to-run destructive call: the pad
     // call it names hits the swap guard, which is where force is offered.
     expect(reason).not.toContain("force:true");
-    expect(warnings.some((w) => w.includes("sample write SKIPPED"))).toBe(true);
+    expect(params[0]?.ok).toBe(false);
+    expect(warnings).toStrictEqual([]);
 
     // A device path never creates or replaces a device — not even under force.
     const devices = (await readDrumPad(ctx.client!, `${rackPath}/pE1`))

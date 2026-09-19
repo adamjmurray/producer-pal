@@ -267,6 +267,8 @@ export function tilingTrackMethods(): Record<
 > {
   let dupCount = 0;
 
+  setupClip("300", {});
+
   return {
     duplicate_clip_to_arrangement: () => {
       dupCount++;

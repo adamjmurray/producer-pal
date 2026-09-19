@@ -37,11 +37,13 @@ import {
   MSG_CONNECT,
   REQUIRES_MEMORY,
   TOOL_CONNECT,
+  seedContext,
+} from "./helpers/context-scenario-setup.ts";
+import {
   assertContextWrite,
   assertNoContextWrite,
   assertNoUnconfirmedWrite,
-  seedContext,
-} from "./context-scenario-helpers.ts";
+} from "./helpers/context-write-assertions.ts";
 
 /** Pre-existing documents, so "ask before replacing this" is the rule in force. */
 const EXISTING_PROJECT = "Working title: Nightshade. Deep house, 124 BPM.";
@@ -50,6 +52,7 @@ const EXISTING_GLOBAL =
 
 export const contextWriteLayerProject: EvalScenario = {
   id: "context-write-layer-project",
+  tags: ["context"],
   description:
     "Routes a this-Live-Set fact to project context, after confirming",
   kind: "regression",
@@ -98,6 +101,7 @@ export const contextWriteLayerProject: EvalScenario = {
 
 export const contextWriteLayerGlobal: EvalScenario = {
   id: "context-write-layer-global",
+  tags: ["context"],
   description: "Routes an always-applies preference to global context",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
@@ -133,6 +137,7 @@ export const contextWriteLayerGlobal: EvalScenario = {
 
 export const contextWriteLayerMemory: EvalScenario = {
   id: "context-write-layer-memory",
+  tags: ["context"],
   description: "Routes a situational user fact to memory, without being asked",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,

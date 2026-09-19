@@ -17,7 +17,7 @@ import {
   setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
-import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 function registerSimpler(opts: { multiSampleMode?: number } = {}) {
@@ -92,35 +92,35 @@ function registerOperator(): RegisteredMockObject {
 }
 
 /**
- * Assert a sample write warn-skipped: false returned, Live untouched, reason
- * relayed. False is what keeps the param out of the caller's `params` result,
- * so a skip that returned true would report a value nothing wrote.
- * @param wrote - What setSimplerSample returned
+ * Assert a sample write was refused: the reason came back, Live was untouched,
+ * and nothing warned. The reason is what becomes the param's own `ok: false`
+ * entry, so a refusal that answered null would report a value nothing wrote.
+ * @param refused - What setSimplerSample returned
  * @param device - The device mock the write was aimed at
- * @param reason - Substring the warning must contain
+ * @param reason - Substring the returned reason must contain
  */
-function expectSampleSkipped(
-  wrote: boolean,
+function expectSampleRefused(
+  refused: string | null,
   device: RegisteredMockObject,
   reason: string,
 ): void {
-  expect(wrote).toBe(false);
+  expect(refused).toStrictEqual(expect.stringContaining(reason));
   expect(device.call).not.toHaveBeenCalledWith(
     "replace_sample",
     expect.anything(),
   );
-  expect(capturedWarnings()).toContainEqual(expect.stringContaining(reason));
+  expect(capturedWarnings()).toStrictEqual([]);
 }
 
 describe("setSimplerSample", () => {
   it("calls replace_sample on Simpler with the file path", () => {
     const device = registerSimpler();
 
-    // True says the write ran, which is what puts a value in the caller's
-    // `params` result; a skip below must say false.
+    // Null says the write ran, which is what puts a value in the caller's
+    // `params` result; a refusal below must answer with its reason.
     expect(
       setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav"),
-    ).toBe(true);
+    ).toBeNull();
 
     expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
@@ -139,22 +139,22 @@ describe("setSimplerSample", () => {
     );
   });
 
-  it("warns and skips on non-Simpler devices, naming the device class", () => {
+  it("refuses a non-Simpler device, naming the device class", () => {
     const device = registerOperator();
 
-    expectSampleSkipped(
+    expectSampleRefused(
       setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav"),
       device,
       "'sample' only applies to Simpler devices (got Operator)",
     );
   });
 
-  it("warns and skips when Live is too old for replace_sample", () => {
+  it("refuses the write when Live is too old for replace_sample", () => {
     const device = registerSimpler();
 
     registerLiveApp("12.3.8");
 
-    expectSampleSkipped(
+    expectSampleRefused(
       setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav"),
       device,
       "'sample' requires Live 12.4",
@@ -171,30 +171,30 @@ describe("setSimplerSample", () => {
     expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
 
-  it("warns and skips on Simpler in multi-sample mode", () => {
+  it("refuses a Simpler in multi-sample mode", () => {
     const device = registerSimpler({ multiSampleMode: 1 });
 
-    expectSampleSkipped(
+    expectSampleRefused(
       setSimplerSample(LiveAPI.from("id simpler-1"), "/tmp/kick.wav"),
       device,
       "multi-sample mode",
     );
   });
 
-  it("warns and skips when the path is empty or whitespace", () => {
+  it("refuses an empty or whitespace path", () => {
     const device = registerSimpler();
 
-    expectSampleSkipped(
+    expectSampleRefused(
       setSimplerSample(LiveAPI.from("id simpler-1"), "   "),
       device,
       "non-empty file path",
     );
   });
 
-  it("warns and skips when the path is not absolute", () => {
+  it("refuses a path that is not absolute", () => {
     const device = registerSimpler();
 
-    expectSampleSkipped(
+    expectSampleRefused(
       setSimplerSample(LiveAPI.from("id simpler-1"), "relative/kick.wav"),
       device,
       "absolute file path",
@@ -206,7 +206,7 @@ describe("setSimplerSample", () => {
     // inside a relative path must NOT read as absolute.
     const device = registerSimpler();
 
-    expectSampleSkipped(
+    expectSampleRefused(
       setSimplerSample(LiveAPI.from("id simpler-1"), "relative/C:/kick.wav"),
       device,
       "absolute file path",
@@ -285,59 +285,54 @@ describe("setSimplerGain", () => {
   it("sets the loaded sample's gain, converting dB to linear", () => {
     const sample = registerSimplerWithSample();
 
-    expect(setSimplerGain(LiveAPI.from("id simpler-1"), 0)).toBe(true);
+    expect(setSimplerGain(LiveAPI.from("id simpler-1"), 0)).toBeNull();
 
     expect(sample.set).toHaveBeenCalledWith("gain", dbToLiveGain(0));
   });
 
-  it("warns and skips on a non-numeric value", () => {
+  it("refuses a non-numeric value", () => {
     const sample = registerSimplerWithSample();
 
-    expect(setSimplerGain(LiveAPI.from("id simpler-1"), Number("oops"))).toBe(
-      false,
-    );
+    expect(
+      setSimplerGain(LiveAPI.from("id simpler-1"), Number("oops")),
+    ).toStrictEqual(expect.stringContaining("'gainDb' must be a number"));
 
     expect(sample.set).not.toHaveBeenCalledWith("gain", expect.anything());
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("'gainDb' must be a number"),
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns and skips on non-Simpler devices", () => {
+  it("refuses a non-Simpler device", () => {
     const device = registerOperator();
 
-    expect(setSimplerGain(LiveAPI.from("id op-1"), 0)).toBe(false);
-
-    expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
+    expect(setSimplerGain(LiveAPI.from("id op-1"), 0)).toStrictEqual(
       expect.stringContaining("'gainDb' only applies to Simpler devices"),
     );
+
+    expect(device.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns and skips on Simpler in multi-sample mode", () => {
+  it("refuses a Simpler in multi-sample mode", () => {
     const device = registerSimpler({ multiSampleMode: 1 });
 
-    expect(setSimplerGain(LiveAPI.from("id simpler-1"), 0)).toBe(false);
-
-    expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
+    // The multi-sample guard must RETURN, not fall through into the
+    // loaded-sample probe below it, which would answer with the wrong reason.
+    expect(setSimplerGain(LiveAPI.from("id simpler-1"), 0)).toStrictEqual(
       expect.stringContaining("multi-sample mode"),
     );
-    // The multi-sample guard must RETURN, not fall through into the loaded-sample
-    // probe below it (which would emit a second, misleading warning).
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("requires a loaded sample"),
-    );
-  });
-
-  it("warns and skips when no sample is loaded", () => {
-    const device = registerSimpler();
-
-    expect(setSimplerGain(LiveAPI.from("id simpler-1"), 0)).toBe(false);
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContainEqual(
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses the write when no sample is loaded", () => {
+    const device = registerSimpler();
+
+    expect(setSimplerGain(LiveAPI.from("id simpler-1"), 0)).toStrictEqual(
       expect.stringContaining("'gainDb' requires a loaded sample"),
     );
+
+    expect(device.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

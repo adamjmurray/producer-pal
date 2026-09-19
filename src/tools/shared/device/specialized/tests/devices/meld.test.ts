@@ -8,13 +8,13 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 /**
  * Register a mock Meld device and return its LiveAPI.
@@ -116,28 +116,28 @@ describe("Meld pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("poly_voices", 6);
     });
 
-    it("warns and skips when polyVoices is above range (7)", () => {
+    it("refuses when polyVoices is above range (7)", () => {
       const device = registerMeld();
 
-      expect(applySpecializedParamWrite(device, "polyVoices", 7)).toStrictEqual(
-        [],
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "polyVoices", 7),
+        "polyVoices",
+        "polyVoices",
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("polyVoices"),
-      );
     });
 
-    it("warns and skips when polyVoices is below range (0)", () => {
+    it("refuses when polyVoices is below range (0)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "polyVoices", 0);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "polyVoices", 0),
+        "polyVoices",
+        "polyVoices",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("polyVoices"),
-      );
     });
   });
 
@@ -166,26 +166,28 @@ describe("Meld pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("unison_voices", 2);
     });
 
-    it("warns and skips when unisonVoices is above range (3)", () => {
+    it("refuses when unisonVoices is above range (3)", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 3);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "unisonVoices", 3),
+        "unisonVoices",
+        "unisonVoices",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("unisonVoices"),
-      );
     });
 
-    it("warns and skips when unisonVoices is a non-integer", () => {
+    it("refuses when unisonVoices is a non-integer", () => {
       const device = registerMeld();
 
-      applySpecializedParamWrite(device, "unisonVoices", 1.5);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "unisonVoices", 1.5),
+        "unisonVoices",
+        "unisonVoices",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("unisonVoices"),
-      );
     });
   });
 });
@@ -222,7 +224,7 @@ describe("Meld via read-device", () => {
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableMeld();
 
-    const result = readDevice({ id: "meld-1", include: ["params"] });
+    const result = readOneDevice({ id: "meld-1", include: ["params"] });
 
     expect(result.parameters).toStrictEqual([
       { name: "monoPoly", value: "mono" },
@@ -235,7 +237,7 @@ describe("Meld via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableMeld();
 
-    const result = readDevice({ id: "meld-1", include: ["options"] });
+    const result = readOneDevice({ id: "meld-1", include: ["options"] });
 
     expect(
       (result.options as Record<string, unknown>).paramOptions,

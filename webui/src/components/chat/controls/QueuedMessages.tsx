@@ -61,6 +61,9 @@ export function QueuedMessages({
             </div>
             <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
               queued
+              {qm.images?.length
+                ? ` · ${qm.images.length} image${qm.images.length === 1 ? "" : "s"}`
+                : ""}
             </span>
           </div>
           <div />

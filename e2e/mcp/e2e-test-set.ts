@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Fixtures the MCP e2e suites share: the default Live Set, its track indexes,
-// and the sample files tests load. Import these instead of writing the value
-// again — the Set's layout is described in e2e/live-sets/e2e-test-set-spec.md.
+// Fixtures the MCP e2e suites share: the Live Sets they open, the default Set's
+// track indexes, and the sample files tests load. Import these instead of
+// writing the value again; each Set's layout is in e2e/live-sets/*-spec.md.
 
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +13,10 @@ import { fileURLToPath } from "node:url";
 /** Opened before each test unless a suite names another Set. */
 export const LIVE_SET_PATH =
   "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";
+
+/** Nested racks, macro-mapped params, rack return chains. */
+export const RACKS_TEST_PATH =
+  "e2e/live-sets/racks-test Project/racks-test.als";
 
 /** t8 "9-MIDI": no clips, no devices, No Output. The scratch track. */
 export const EMPTY_MIDI_TRACK = 8;

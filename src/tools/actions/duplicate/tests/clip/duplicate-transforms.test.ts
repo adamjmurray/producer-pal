@@ -12,7 +12,7 @@ import {
   registerMockObject,
   registerSessionClipDuplication,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "#src/tools/actions/duplicate/helpers/clip/duplicate-transform-helpers.ts";
+import { applyTransformsToDuplicatedClips } from "#src/tools/actions/duplicate/helpers/clip/apply-clip-transforms.ts";
 
 // Capture warnings emitted for unsupported transforms/code usage
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -243,6 +243,55 @@ describe("duplicate - transforms/code", () => {
         },
         {},
       );
+    });
+
+    // A lone copy whose update can't be done throws rather than answering with
+    // an entry, and that throw would lose the copy this call already made.
+    it("reports a refused edit on the copy's own entry", async () => {
+      const createdObjects: object[] = [{ id: "a", path: "t0/s1" }];
+
+      updateClipMock.mockImplementationOnce(() => {
+        throw new Error("transform syntax error at position 0");
+      });
+
+      await applyTransformsToDuplicatedClips(
+        createdObjects,
+        "!!!bad!!!",
+        undefined,
+        {},
+      );
+
+      expect(createdObjects).toStrictEqual([
+        {
+          id: "a",
+          path: "t0/s1",
+          reason:
+            "the copy was made, but the edit wasn't: transform syntax error at position 0",
+        },
+      ]);
+    });
+
+    // The same refusal with more than one copy comes back as an entry, which
+    // carries its reason onto that copy.
+    it("carries a refused clip's reason onto its copy", async () => {
+      const createdObjects: object[] = [{ id: "a" }, { id: "b" }];
+
+      updateClipMock.mockReturnValueOnce([
+        { id: "a", noteCount: 1 },
+        { id: "b", ok: false, reason: "failed to update" },
+      ]);
+
+      await applyTransformsToDuplicatedClips(
+        createdObjects,
+        "velocity *= 2",
+        undefined,
+        {},
+      );
+
+      expect(createdObjects).toStrictEqual([
+        { id: "a", noteCount: 1 },
+        { id: "b", reason: "failed to update" },
+      ]);
     });
 
     it("is a no-op when there are no clips to transform", async () => {

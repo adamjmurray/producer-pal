@@ -158,6 +158,12 @@ Live, or make sure your standalone Max is up to date. See
 - Stack variations on [take lanes](/features#take-lanes): naming one lane twice
   in `toPath`, `toPath: "t2/l0[9|1],t2/l0[13|1]"`, stacks both takes on it. A
   lane per copy is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`
+- Copy a whole lane onto another lane with `type: "track"` and a lane `toPath`:
+  every clip at the position it already has, clips only (no devices, routing,
+  mixer settings, or session clips). The source is a track (its main lane) or a
+  take lane, by path (`t2/l0`) or by the lane's id
+- Promote a whole take lane with a bare track `toPath` (`t2`): a take-lane
+  source's clips land on that track's main lane, over the clips already there
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
@@ -196,7 +202,7 @@ limitation).
 ### Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
-- Create, rename, or delete arrangement locators
+- Create, rename, or delete arrangement locators, several per call
 
 <!--@include: ../_generated/ppal-update-live-set-schema.md-->
 
@@ -219,8 +225,11 @@ limitation).
 - Get detailed track information
 - View all clips in Session and Arrangement
 - List [take lanes](/features#take-lanes) and their clips (with the
-  `arrangement-clips` include)
+  `arrangement-clips` include), or read one lane on its own from a lane path
+  (`t2/l0`)
 - See devices, routing options, and drum pad mappings
+- See which instrument plays the track, including what's inside an Instrument
+  Rack: `Instrument Rack (Operator, Wavetable)`
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
 
@@ -235,6 +244,9 @@ limitation).
   letter)
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
+- Add and name [take lanes](/features#take-lanes) from a lane path: `t2/l+`
+  appends one, `t2/l2` names an existing lane (adding the lanes up to it), and
+  `name` is the only param a lane takes
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { fetchJson } from "#webui/utils/fetch-json";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 import { type DocRead, type UseDocReturn, useDoc } from "./use-doc";
 
@@ -53,15 +54,9 @@ async function writeConfigProjectContext(content: string): Promise<DocRead> {
  * @returns Parsed config response
  */
 async function fetchConfig(): Promise<ConfigResponse> {
-  const response = await fetch(getConfigUrl(), { cache: "no-store" });
-
-  if (!response.ok) {
-    throw new Error(
-      `Config request failed (${response.status} ${response.statusText})`,
-    );
-  }
-
-  return (await response.json()) as ConfigResponse;
+  return await fetchJson<ConfigResponse>(getConfigUrl(), {
+    label: "Config request",
+  });
 }
 
 /**

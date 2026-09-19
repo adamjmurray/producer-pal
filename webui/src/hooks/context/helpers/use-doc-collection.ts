@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { errorMessage } from "#src/shared/error-message";
 import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   deleteEntryRequest,
@@ -24,7 +24,7 @@ import {
   clearTimer,
   mergeEntry,
   removeEntry,
-} from "./doc-collection-helpers";
+} from "./doc-collection-entries";
 import {
   runGuardedRefresh,
   statusAfterFailedRefresh,

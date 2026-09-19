@@ -6,28 +6,40 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import {
-  readClip,
+  readOneClip,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
-import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
+import { sceneDisplayName } from "#src/tools/scene/helpers/scene-slots.ts";
 import {
   expandWildcardIncludes,
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedIdParam,
   namedParam,
-  stripFields,
-} from "#src/tools/shared/utils.ts";
+} from "#src/tools/shared/helpers/param-presence.ts";
+import {
+  round2dp,
+  roundDisplayValue,
+} from "#src/tools/shared/helpers/rounding.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  readFanOut,
+  type ReadResult,
+} from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import { sceneApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface ReadSceneArgs {
   sceneIndex?: number;
   id?: string;
+  /** Hidden alias for id */
+  ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   /** Hidden alias for id */
   sceneId?: string;
   include?: string[];
@@ -59,7 +71,33 @@ interface ReadSceneResult {
 type SceneClip = ReadClipResult & { trackName?: string };
 
 /**
- * Read comprehensive information about a scene
+ * Read comprehensive information about the scene(s) a call names
+ * @param args - The parameters
+ * @param args.id - Comma-separated scene IDs to read
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Comma-separated scene paths to read instead of ids
+ * @param args.paths - Hidden alias for path
+ * @param args.include - Array of data to include
+ * @param context - Internal context object (supplies the active notation)
+ * @returns One scene, or one entry per scene named
+ */
+export function readScene(
+  args: ReadSceneArgs = {},
+  context: Partial<ToolContext> = {},
+): ReadResult<ReadSceneResult> {
+  return readFanOut(
+    args,
+    {
+      object: "scene",
+      idAlias: "sceneId",
+      oneTargetParams: ["sceneIndex"],
+    },
+    (one) => readOneScene(one, context),
+  );
+}
+
+/**
+ * Read comprehensive information about one scene
  * @param args - The parameters
  * @param args.sceneIndex - Scene index (0-based)
  * @param args.id - Scene ID to directly access any scene
@@ -69,7 +107,7 @@ type SceneClip = ReadClipResult & { trackName?: string };
  * @param context - Internal context object (supplies the active notation)
  * @returns Result object with scene information
  */
-export function readScene(
+export function readOneScene(
   args: ReadSceneArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadSceneResult {
@@ -128,7 +166,7 @@ export function readScene(
 
   // Only include tempo/timeSignature when enabled
   if (isTempoEnabled) {
-    result.tempo = scene.getProperty("tempo");
+    result.tempo = roundDisplayValue(scene.getProperty("tempo"), round2dp);
   }
 
   if (isTimeSignatureEnabled) {
@@ -180,7 +218,7 @@ function readSceneClips(
   const clips: SceneClip[] = [];
 
   for (const [trackIndex] of liveSet.getChildIds("tracks").entries()) {
-    const clip: SceneClip = readClip(
+    const clip: SceneClip = readOneClip(
       {
         trackIndex,
         sceneIndex,

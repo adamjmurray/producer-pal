@@ -24,8 +24,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
+  parseToolResult,
   parseToolResultWithWarnings,
+  type ReadClipResult,
   SAMPLE_FILE,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -87,13 +90,11 @@ describe("arrangement clip moved to another lane", () => {
   it("re-creates the clip on a take lane", async () => {
     const source = await createClip("17|1", "On A Lane");
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${CHILD_TRACK}/l0`,
     });
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was re-created on t${CHILD_TRACK}/l`,
-    );
+    expect(moved.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
     expect(moved.path).toMatch(
       new RegExp(`^t${CHILD_TRACK}/l\\d+\\[17\\|1\\]$`),
     );
@@ -107,6 +108,36 @@ describe("arrangement clip moved to another lane", () => {
     ).toBeUndefined();
   });
 
+  // A re-create rebuilds the notes from scratch, so everything Live keeps per
+  // note has to be carried over by hand.
+  it("carries per-note state through a take-lane re-create", async () => {
+    await setConfig({ liveApiEnabled: true });
+    await sleep(50);
+
+    const source = await createClip("641|1", "Muted Note");
+
+    await writeOneMutedNote(source.id);
+
+    const before = await noteDicts(source.id);
+
+    expect(before).toHaveLength(1);
+    expect(before[0]!.mute).toBe(1);
+    expect(before[0]!.release_velocity).toBe(77);
+
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${CHILD_TRACK}/l0`,
+    });
+
+    expect(moved.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+
+    const after = await noteDicts(moved.id!);
+
+    expect(after[0]!.mute).toBe(1);
+    expect(after[0]!.release_velocity).toBe(77);
+    // Every note field comes across except note_id, which Live assigns itself.
+    expect(after).toStrictEqual(before);
+  });
+
   it("refuses a MIDI clip aimed at an audio track and keeps it where it is", async () => {
     const source = await createClip("21|1", "Wrong Track");
 
@@ -115,7 +146,7 @@ describe("arrangement clip moved to another lane", () => {
       source.id,
       { toPath: `t${AUDIO_TRACK}[25|1]` },
       [
-        `clip ${source.path} (id ${source.id}) was not moved: track t${AUDIO_TRACK} (id `,
+        `not moved: track t${AUDIO_TRACK} (id `,
         ") is audio; a MIDI clip needs a MIDI track",
       ],
     );
@@ -145,7 +176,7 @@ describe("arrangement clip moved to another lane", () => {
       ctx.client!,
       source.id,
       { toPath: `t${AUDIO_TRACK}/l0` },
-      `clip ${source.path} (id ${source.id}) was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
+      "not moved: it's an audio clip with no sample file; drag it in Live's UI",
     );
 
     expect(
@@ -161,18 +192,17 @@ describe("arrangement clip moved to another lane", () => {
 
     // A destination each: a coordinate in toPath is the clip's own position,
     // so one of them covers one clip and leaves the other unaimed.
-    const { warnings } = await updateClip(
+    const { data, warnings } = await updateClip(
       ctx.client!,
       `${first.id},${second.id}`,
       { toPath: `t${AUDIO_TRACK}[57|1],t${AUDIO_TRACK}[57|1]` },
     );
+    const entries = data as unknown as ReadClipResult[];
 
     // Both of them, not just one: a single refusal leaves a lone landing,
     // which wouldn't have warned about a stack even before the count was true.
-    for (const clip of [first, second]) {
-      expect(warnings.join(" ")).toContain(
-        `clip ${clip.path} (id ${clip.id}) was not moved: track t${AUDIO_TRACK} (id `,
-      );
+    for (const entry of entries) {
+      expect(entry.reason).toContain(`not moved: track t${AUDIO_TRACK} (id `);
     }
 
     expect(warnings.join(" ")).not.toContain("moved to the same position");
@@ -184,6 +214,57 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(second.id);
   });
 
+  // Take lanes are separate lanes: two clips at one position on different ones
+  // sit side by side, so the "same position" warning must not claim a stack.
+  it("doesn't warn about clips landing on different take lanes", async () => {
+    const first = await createClip("65|1", "Lane Zero");
+    const second = await createClip("69|1", "Lane One");
+
+    const { data, warnings } = await updateClip(
+      ctx.client!,
+      `${first.id},${second.id}`,
+      {
+        toPath: `t${CHILD_TRACK}/l0[85|1],t${CHILD_TRACK}/l1[85|1]`,
+      },
+    );
+    const entries = data as unknown as ReadClipResult[];
+    const landed = entries.map((entry) => entry.path);
+
+    // Both really did land, each on a lane of its own.
+    for (const path of landed) {
+      expect(path).toMatch(new RegExp(`^t${CHILD_TRACK}/l\\d+\\[85\\|1\\]$`));
+    }
+
+    expect(landed[0]).not.toBe(landed[1]);
+    expect(warnings.join(" ")).not.toContain("moved to the same position");
+  });
+
+  // One lane, one position: these really do overwrite each other, and the
+  // warning names the lane it happened on.
+  it("warns about clips landing on one take lane at one position", async () => {
+    const first = await createClip("77|1", "Stacked One");
+    const second = await createClip("89|1", "Stacked Two");
+
+    const { data, warnings } = await updateClip(
+      ctx.client!,
+      `${first.id},${second.id}`,
+      {
+        toPath: `t${CHILD_TRACK}/l2[93|1],t${CHILD_TRACK}/l2[93|1]`,
+      },
+    );
+    const entries = data as unknown as ReadClipResult[];
+
+    // Both moves ran, so the stack the warning names is real.
+    for (const entry of entries) {
+      expect(entry.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
+    }
+
+    // The lane is named: before this, the warning was charged to the track.
+    expect(warnings.join(" ")).toMatch(
+      new RegExp(`2 clips on t${CHILD_TRACK}/l\\d+ moved to the same position`),
+    );
+  });
+
   // The planner runs the clip being landed on first, trusting its declared move
   // to clear the span. Live turns that move down on arrival, so the span never
   // comes free — and the move waiting on it has to be called off, or it runs
@@ -192,17 +273,18 @@ describe("arrangement clip moved to another lane", () => {
     const mover = await createClip("73|1", "Waiting Mover");
     const blocker = await createClip("74|1", "Refused Blocker");
 
-    const { warnings } = await updateClip(
+    const { data } = await updateClip(
       ctx.client!,
       `${mover.id},${blocker.id}`,
       { toPath: `t${EMPTY_MIDI_TRACK}[74|1],t${MISSING_TRACK}[81|1]` },
     );
+    const [moverEntry, blockerEntry] = data as unknown as ReadClipResult[];
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${blocker.path} (id ${blocker.id}) was not moved: track t${MISSING_TRACK} does not exist`,
+    expect(blockerEntry?.reason).toContain(
+      `not moved: track t${MISSING_TRACK} does not exist`,
     );
-    expect(warnings.join(" ")).toContain(
-      `clip ${mover.path} (id ${mover.id}) was not moved: it would land on clip ${blocker.path} (id ${blocker.id}), which Live wouldn't move`,
+    expect(moverEntry?.reason).toContain(
+      `not moved: it would land on clip ${blocker.path} (id ${blocker.id}), which Live wouldn't move`,
     );
 
     // Both still where they started. Before this, the mover landed on 74|1 and
@@ -213,6 +295,55 @@ describe("arrangement clip moved to another lane", () => {
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "74|1"))?.id,
     ).toBe(blocker.id);
+  });
+
+  // A destination with a position but no lane is "same lane, other bar". It
+  // used to land on the track's main lane, promoting a clip off a lane the
+  // caller never mentioned.
+  it("moves a take-lane clip along its own lane", async () => {
+    const source = await createClip("601|1", "Stays On Lane", `/l0`);
+
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+      toPath: "[610|1]",
+    });
+
+    expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[610|1]`);
+    expect(moved.reason).toContain(`re-created on t${EMPTY_MIDI_TRACK}/l0`);
+    expect(warnings).toStrictEqual([]);
+
+    const placed = await readClipFully(ctx.client!, { id: moved.id });
+
+    expect(placed.name).toBe("Stays On Lane");
+    expect(placed.notes).toContain("C3");
+  });
+
+  // The shape that lost a clip: two clips on ONE track, one per lane, sharing a
+  // bare position. Both landing on the main lane meant the second wiped the
+  // first — through the form the docs call the safe one.
+  it("sends a main-lane and a take-lane clip to their own lanes", async () => {
+    const main = await createClip("621|1", "Main Lane");
+    const take = await createClip("625|1", "Take Lane", `/l0`);
+
+    const { data, warnings } = await updateClip(
+      ctx.client!,
+      `${main.id},${take.id}`,
+      { toPath: "[630|1]" },
+    );
+    const entries = data as unknown as ReadClipResult[];
+
+    expect(entries.map((entry) => entry.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}[630|1]`,
+      `t${EMPTY_MIDI_TRACK}/l0[630|1]`,
+    ]);
+    // Both survived: before this, the take clip landed on the main-lane one and
+    // the response still reported each of them as moved.
+    expect(
+      (await readClipFully(ctx.client!, { id: entries[0]!.id })).name,
+    ).toBe("Main Lane");
+    expect(
+      (await readClipFully(ctx.client!, { id: entries[1]!.id })).name,
+    ).toBe("Take Lane");
+    expect(warnings).toStrictEqual([]);
   });
 
   it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {
@@ -264,13 +395,11 @@ describe("arrangement clip moved to another lane", () => {
   it("marks an audio leftover only once when it is moved again", async () => {
     const source = await createAudioClip("13|1", "Audio Twice");
 
-    const { warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: first } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[17|1]`,
     });
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was muted instead of deleted`,
-    );
+    expect(first.reason).toContain("muted instead of deleted");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[21|1]`,
@@ -291,13 +420,11 @@ describe("arrangement clip moved to another lane", () => {
   it("moves an audio take off its lane, leaving the take muted", async () => {
     const source = await createAudioClip("5|1", "Audio Take");
 
-    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}[9|1]`,
     });
 
-    expect(warnings.join(" ")).toContain(
-      `clip ${source.path} (id ${source.id}) was muted instead of deleted`,
-    );
+    expect(moved.reason).toContain("muted instead of deleted");
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
 
@@ -391,4 +518,74 @@ async function createClip(
   // Warnings are tolerated: creating on a take lane always warns that the lane
   // is hidden until the track's arrow is expanded.
   return parseToolResultWithWarnings<CreateClipResult>(result).data;
+}
+
+/**
+ * Leave the clip holding one note, muted and with a distinctive release
+ * velocity.
+ *
+ * ppal-live-api passes only scalars, and a JSON string is how the dictionary
+ * `add_new_notes` wants gets through. Never use Live's older note protocol
+ * (select_all_notes/replace_selected_notes/notes/note/done) — it pops a modal
+ * dialog that stalls every Live call until someone dismisses it.
+ * @param clipId - The clip's Live API id
+ */
+async function writeOneMutedNote(clipId: string): Promise<void> {
+  const note = {
+    pitch: 64,
+    start_time: 1,
+    duration: 1,
+    velocity: 90,
+    mute: 1,
+    release_velocity: 77,
+  };
+
+  await ctx.client!.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        {
+          type: "call",
+          method: "remove_notes_extended",
+          args: [0, 128, 0, 4],
+        },
+        {
+          type: "call",
+          method: "add_new_notes",
+          args: [JSON.stringify({ notes: [note] })],
+        },
+      ],
+    },
+  });
+
+  await sleep(100);
+}
+
+/**
+ * A clip's notes as Live reports them, minus the note_id it assigns itself.
+ * @param clipId - The clip's Live API id
+ * @returns One dictionary per note, in Live's own shape
+ */
+async function noteDicts(
+  clipId: string,
+): Promise<Array<Record<string, number>>> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
+      ],
+    },
+  });
+
+  const [raw] = parseToolResult<{
+    results: Array<{ result: string }>;
+  }>(result).results;
+  const { notes } = JSON.parse(raw!.result) as {
+    notes: Array<Record<string, number>>;
+  };
+
+  return notes.map(({ note_id: _noteId, ...note }) => note);
 }

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +9,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "../read-device.ts";
+import { readOneDevice } from "../read-device.ts";
 
 /**
  * Setup device with two parameters for search testing
@@ -107,7 +108,7 @@ function setupTwoParamDevice(includeFullProps = false) {
   });
 }
 
-describe("readDevice paramSearch filtering", () => {
+describe("readOneDevice paramSearch filtering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
@@ -116,7 +117,7 @@ describe("readDevice paramSearch filtering", () => {
   it("should filter parameters by case-insensitive substring match", () => {
     setupTwoParamDevice();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "device-123",
       include: ["params"],
       paramSearch: "vol",
@@ -131,7 +132,7 @@ describe("readDevice paramSearch filtering", () => {
   it("should be case-insensitive when filtering", () => {
     setupTwoParamDevice();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "device-123",
       include: ["params"],
       paramSearch: "FILTER",
@@ -146,7 +147,7 @@ describe("readDevice paramSearch filtering", () => {
   it("should return empty array when no parameters match", () => {
     setupTwoParamDevice();
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "device-123",
       include: ["params"],
       paramSearch: "nonexistent",
@@ -158,7 +159,7 @@ describe("readDevice paramSearch filtering", () => {
   it("should work with param-values include", () => {
     setupTwoParamDevice(true); // Include full properties
 
-    const result = readDevice({
+    const result = readOneDevice({
       id: "device-123",
       include: ["param-values"],
       paramSearch: "vol",

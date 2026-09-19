@@ -14,7 +14,7 @@ import {
   type CreatedClip,
   EPSILON,
   type TilingContext,
-} from "./helpers/arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-clips.ts";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,

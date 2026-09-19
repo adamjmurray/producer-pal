@@ -7,7 +7,7 @@ import {
   enumParam,
   readBoolProp,
   writeBoolProp,
-} from "../specialized-device-param-helpers.ts";
+} from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Roar (RoarDevice, class_name "Roar"). Exposes its processing-topology

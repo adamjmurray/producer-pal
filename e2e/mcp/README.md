@@ -38,6 +38,22 @@ ENABLE_CODE_EXEC=true npm run e2e:mcp
 
 The suite skips itself when the variable is absent from the test environment.
 
+### Remote script tests
+
+The `device/create/ppal-create-device-browser.test.ts` suite loads Max for Live
+devices through the Producer Pal remote script, so it needs the script installed
+and selected as a control surface — see
+[remote-script/README.md](../../remote-script/README.md). It only runs when
+asked:
+
+```bash
+npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
+```
+
+That script is `e2e:mcp` with `E2E_REMOTE_SCRIPT=true`. Without the variable the
+suite skips itself. With it, a remote script that doesn't answer `/ping` fails
+the suite instead of skipping it.
+
 ### The direct Live API tool is off during e2e
 
 `ppal-live-api` is **not** available to an e2e test unless the test asks for it.
@@ -94,7 +110,7 @@ everything in it. Those specs are the reference for writing assertions.
 and the track holding the Producer Pal device. 8 scenes, 108 BPM, A minor.
 
 `setupMcpTestContext()` opens `e2e-test-set`. Pass `liveSetPath` for another,
-using the constant its helpers export:
+using the constant `e2e/mcp/e2e-test-set.ts` exports for it:
 
 ```ts
 const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });
@@ -140,7 +156,7 @@ e2e/mcp/
 ├── control/               # Playback, select, and the Direct Live API tool
 ├── device/                # Device tools (create, read, update)
 ├── live-set/              # Live Set tools (read, update)
-├── operations/            # Cross-resource tools (delete, duplicate)
+├── operations/            # delete, duplicate, and the result shape every write tool shares
 ├── scene/                 # Scene tools (create, read, update)
 ├── track/                 # Track tools (create, read, update)
 └── workflow/              # Workflow tools (connect, memory)
@@ -166,3 +182,6 @@ Either stop triggering it (use the replacement param) or switch that call to
 
 Deprecated and alias params warn on every call, so setup code should always use
 the current param.
+
+`operations/warning-inventory.test.ts` lists every warning that survives, and
+the calls that must raise none — add or remove one there too.

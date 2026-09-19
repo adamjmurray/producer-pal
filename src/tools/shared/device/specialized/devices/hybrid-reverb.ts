@@ -3,11 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import {
-  readBoolProp,
-  writeBoolProp,
-} from "../specialized-device-param-helpers.ts";
+import { readBoolProp, writeBoolProp } from "../specialized-param-access.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Hybrid Reverb (HybridReverbDevice). See
@@ -52,13 +48,15 @@ function readIrCategory(device: LiveAPI): string | undefined {
 
 /**
  * Write an IR category by name (space-separated). Translates to underscores,
- * finds the index in ir_category_list, and sets ir_category_index. Warns and
- * skips if not found.
+ * finds the index in ir_category_list, and sets ir_category_index.
  * @param device - LiveAPI device object
  * @param value - User-facing category name (spaces)
- * @returns True when the category was written, false when it was skipped
+ * @returns Why the category was refused, or null when it was written
  */
-function writeIrCategory(device: LiveAPI, value: string | number): boolean {
+function writeIrCategory(
+  device: LiveAPI,
+  value: string | number,
+): string | null {
   const list = readCategoryList(device);
   const raw = String(value).replaceAll(" ", "_");
   const index = list.indexOf(raw);
@@ -66,16 +64,12 @@ function writeIrCategory(device: LiveAPI, value: string | number): boolean {
   if (index < 0) {
     const available = list.map((s) => s.replaceAll("_", " ")).join(", ");
 
-    console.warn(
-      `"${value}" is not a valid irCategory. Available: ${available}`,
-    );
-
-    return false;
+    return `"${value}" is not a valid irCategory. Available: ${available}`;
   }
 
   device.set("ir_category_index", index);
 
-  return true;
+  return null;
 }
 
 /**
@@ -97,61 +91,55 @@ function readIrFile(device: LiveAPI): string | undefined {
 }
 
 /**
- * Write an IR file by name. Warns and skips if the file is not found in the
- * current category, or if the category has no files (sentinel only).
+ * Write an IR file by name. Refuses a file that isn't in the current category,
+ * or a category with no files (sentinel only).
  * @param device - LiveAPI device object
  * @param value - File name to select
- * @returns True when the file was written, false when it was skipped
+ * @returns Why the file was refused, or null when it was written
  */
-function writeIrFile(device: LiveAPI, value: string | number): boolean {
+function writeIrFile(device: LiveAPI, value: string | number): string | null {
   const list = readFileList(device);
 
   if (list.length === 1 && list[0] === EMPTY_FILE_SENTINEL) {
-    console.warn(`irFile cannot be set — current category has no files`);
-
-    return false;
+    return `irFile cannot be set — current category has no files`;
   }
 
   const fileName = String(value);
   const index = list.indexOf(fileName);
 
   if (index < 0) {
-    console.warn(`"${fileName}" is not a valid irFile in the current category`);
-
-    return false;
+    return `"${fileName}" is not a valid irFile in the current category`;
   }
 
   device.set("ir_file_index", index);
 
-  return true;
+  return null;
 }
 
 /**
- * Write a float IR shaping parameter. Warns and skips on non-finite input.
- * Live silently clamps out-of-range floats, so we just coerce and pass through.
+ * Write a float IR shaping parameter. Refuses non-finite input. Live silently
+ * clamps out-of-range floats, so we just coerce and pass through.
  * @param device - LiveAPI device object
  * @param property - Live API property name
  * @param value - Incoming value
- * @param paramName - Pseudo-param name for warning text
- * @returns True when the value was written, false when it was skipped
+ * @param paramName - Pseudo-param name for the reason text
+ * @returns Why the value was refused, or null when it was written
  */
 function writeIrFloat(
   device: LiveAPI,
   property: string,
   value: string | number,
   paramName: string,
-): boolean {
+): string | null {
   const n = Number(value);
 
   if (!Number.isFinite(n)) {
-    console.warn(`${paramName} must be a number (got "${value}")`);
-
-    return false;
+    return `${paramName} must be a number (got "${value}")`;
   }
 
   device.set(property, n);
 
-  return true;
+  return null;
 }
 
 export const hybridReverbSpec: SpecializedDeviceSpec = {

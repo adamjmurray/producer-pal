@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { type ChatMessage } from "#webui/chat/sdk/types";
+import { type ChatMessage, type UserMessage } from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -85,12 +85,12 @@ function buildSteppedStream(
  * Send a message through a new client with mocked stream parts.
  * Returns the final chat history snapshot.
  * @param parts - Stream parts to emit
- * @param message - User message text
+ * @param message - User message text, or text plus attached images
  * @returns Final chat history
  */
 async function sendWithParts(
   parts: Record<string, unknown>[],
-  message = "Hello",
+  message: UserMessage = "Hello",
 ): Promise<ChatMessage[]> {
   mockStreamParts(parts);
 
@@ -197,7 +197,7 @@ async function sendToolError(error: unknown): Promise<ChatMessage[]> {
  * Send a message with pre-seeded chat history using an empty stream.
  * Returns the streamText call arguments for assertion.
  * @param chatHistory - Pre-seeded chat history
- * @param message - User message text
+ * @param message - User message text, or text plus attached images
  * @returns The first call arguments passed to streamText
  */
 async function sendWithHistory(
@@ -315,6 +315,15 @@ describe("ChatSdkClient", () => {
       const last = await sendWithParts([]);
 
       expect(last).toStrictEqual([{ role: "user", content: "Hello" }]);
+    });
+
+    it("records attached images on the user turn", async () => {
+      const images = [{ mediaType: "image/png", data: "AAA" }];
+      const last = await sendWithParts([], { text: "match this", images });
+
+      expect(last).toStrictEqual([
+        { role: "user", content: "match this", images },
+      ]);
     });
 
     it("processes text-delta stream parts", async () => {

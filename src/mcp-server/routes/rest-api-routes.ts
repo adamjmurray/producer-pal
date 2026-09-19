@@ -6,8 +6,8 @@
 import { type Express, type Request, type Response } from "express";
 import { z, type ZodType } from "zod";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
-import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
@@ -21,7 +21,7 @@ import {
   unexpectedArgsWarning,
 } from "#src/tools/shared/tool-framework/unexpected-args.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
-import { paramNamesSomething } from "#src/tools/shared/utils.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,

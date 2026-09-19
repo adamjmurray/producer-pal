@@ -11,10 +11,12 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  extractToolResultText,
   getToolErrorMessage,
   isToolError,
   parseBatchResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -108,10 +110,10 @@ describe("ppal-create-scene", () => {
     const initial = parseToolResult<LiveSetResult>(initialResult);
     const initialSceneCount = initial.sceneCount ?? 0;
 
-    // Test 1: Create multiple scenes with count
+    // Test 1: Create multiple scenes with a path list
     const batchResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { path: "s5", count: 2 },
+      arguments: { path: "s5,s5" },
     });
     const batch = parseBatchResult<CreateSceneResult>(batchResult, 2);
 
@@ -123,7 +125,7 @@ describe("ppal-create-scene", () => {
     // Test 2: Create multiple scenes with name
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { path: "s7", count: 2, name: "Multi" },
+      arguments: { path: "s7,s7", name: "Multi" },
     });
     const multiName = parseToolResult<CreateSceneResult[]>(multiNameResult);
 
@@ -148,8 +150,7 @@ describe("ppal-create-scene", () => {
     const csvResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: {
-        path: "s9",
-        count: 2,
+        path: "s9,s9",
         name: "Intro,Verse",
         color: "#FF0000,#00FF00",
       },
@@ -280,11 +281,12 @@ describe("ppal-create-scene", () => {
   });
 
   /**
-   * The Set's scenes in order, by id. Ids stay with a scene as inserts move it,
-   * so they show whether a capture landed where it was asked to.
-   * @returns The scene ids, first to last
+   * The Set's scenes in order.
+   * @returns The scenes, first to last
    */
-  async function sceneIds(): Promise<string[]> {
+  async function allScenes(): Promise<
+    Array<{ id: string; name: string; path: string }>
+  > {
     const liveSet = parseToolResult<LiveSetResult>(
       await ctx.client!.callTool({
         name: "ppal-read-live-set",
@@ -292,7 +294,16 @@ describe("ppal-create-scene", () => {
       }),
     );
 
-    return (liveSet.scenes ?? []).map((scene) => scene.id);
+    return liveSet.scenes ?? [];
+  }
+
+  /**
+   * The Set's scenes in order, by id. Ids stay with a scene as inserts move it,
+   * so they show whether a new scene landed where it was asked to.
+   * @returns The scene ids, first to last
+   */
+  async function sceneIds(): Promise<string[]> {
+    return (await allScenes()).map((scene) => scene.id);
   }
 
   // capture_and_insert_scene inserts after the selected scene, so an index-N
@@ -360,6 +371,123 @@ describe("ppal-create-scene", () => {
     await ctx.client!.callTool({
       name: "ppal-playback",
       arguments: { action: "stop" },
+    });
+  });
+
+  // An index past the end of the scenes has no predecessor to select, so
+  // capture mode has to pad with empty scenes first, same as create mode.
+  it("pads with empty scenes when capturing past the end", async () => {
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", sceneIndex: 0 },
+    });
+    await sleep(1500);
+
+    const before = await sceneIds();
+    const targetIndex = before.length + 3;
+
+    const captured = parseToolResult<CaptureSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: {
+          path: `s${String(targetIndex)}`,
+          capture: true,
+          name: "CAP-PAST-END",
+        },
+      }),
+    );
+
+    expect(captured.path).toBe(`s${String(targetIndex)}`);
+
+    await sleep(100);
+    const after = await sceneIds();
+
+    expect(after).toHaveLength(targetIndex + 1);
+    expect(after[targetIndex]).toBe(captured.id);
+    expect(after.slice(0, before.length)).toStrictEqual(before);
+
+    // Cleanup: stop playback
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "stop" },
+    });
+  });
+
+  describe("path lists", () => {
+    it("appends one scene per entry", async () => {
+      const before = await sceneIds();
+      const batch = parseBatchResult<CreateSceneResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-scene",
+          arguments: { path: "s+,s+", name: "List A,List B" },
+        }),
+        2,
+      );
+
+      expect(batch.map((scene) => scene.path)).toStrictEqual([
+        `s${String(before.length)}`,
+        `s${String(before.length + 1)}`,
+      ]);
+
+      await sleep(100);
+      const appended = (await allScenes()).slice(before.length);
+
+      expect(appended.map((scene) => scene.name)).toStrictEqual([
+        "List A",
+        "List B",
+      ]);
+    });
+
+    // The second entry names the place the first one just took, so it lands
+    // after it: list order is creation order, top to bottom.
+    it("inserts two at one index in list order", async () => {
+      const before = await sceneIds();
+      const batch = parseBatchResult<CreateSceneResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-scene",
+          arguments: { path: "s1,s1", name: "Insert First,Insert Second" },
+        }),
+        2,
+      );
+
+      expect(batch.map((scene) => scene.path)).toStrictEqual(["s1", "s2"]);
+
+      await sleep(100);
+      const after = await sceneIds();
+      const newIds = batch.map((scene) => scene.id);
+
+      expect(after.slice(1, 3)).toStrictEqual(newIds);
+      // Dropping the two new scenes gives back the order the Set was in
+      expect(after.filter((id) => !newIds.includes(id))).toStrictEqual(before);
+    });
+
+    // count still works for a caller who hasn't moved to a list, and says so.
+    it("still repeats a single path for count", async () => {
+      const counted = parseToolResultWithWarnings<CreateSceneResult[]>(
+        await ctx.client!.callTool({
+          name: "ppal-create-scene",
+          arguments: { path: "s+", count: 2, name: "Counted" },
+        }),
+      );
+
+      expect(counted.data.map((scene) => scene.id)).toHaveLength(2);
+      expect(counted.warnings.join()).toContain('param "count" is deprecated');
+    });
+
+    it("refuses count sent with a path list", async () => {
+      const before = await sceneIds();
+      const text = extractToolResultText(
+        await ctx.client!.callTool({
+          name: "ppal-create-scene",
+          arguments: { path: "s+,s+", count: 2 },
+        }),
+      );
+
+      expect(text).toContain("count");
+      expect(text).toContain("path names 2");
+
+      await sleep(100);
+      expect(await sceneIds()).toStrictEqual(before);
     });
   });
 });

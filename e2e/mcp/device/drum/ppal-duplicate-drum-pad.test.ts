@@ -15,6 +15,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -173,7 +175,9 @@ describe("ppal-duplicate drum-pad", () => {
     ).toBe("KickB");
   });
 
-  it("skips an empty source pad with a warning", async () => {
+  // One destination and no copy: the reason comes back as an error rather than
+  // an empty array the caller has to notice is empty.
+  it("refuses an empty source pad", async () => {
     const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     const emptyId = (await readDrumPad(ctx.client!, `${rackPath}/pA1`)).id;
@@ -187,12 +191,50 @@ describe("ppal-duplicate drum-pad", () => {
       },
     });
 
-    expect(JSON.stringify(result)).toContain("is empty");
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("is empty");
 
     await sleep(150);
 
     expect(
       (await readDrumPad(ctx.client!, `${rackPath}/pE1`)).chains ?? [],
     ).toHaveLength(0);
+  });
+
+  // Two destinations named, two entries back: the bad one keeps its slot so the
+  // caller can pair the entries against the toPath they sent.
+  it("keeps a refused destination's slot beside the copy that landed", async () => {
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
+
+    const sourceId = (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).id;
+
+    const entries = parseToolResult<
+      { path?: string; ok?: boolean; reason?: string }[]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "drum-pad",
+          id: sourceId,
+          // A pad can't be copied onto itself, so the first destination lands
+          // nothing and the second one still gets its copy.
+          toPath: `${rackPath}/pC1,${rackPath}/pE1`,
+        },
+      }),
+    );
+
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toStrictEqual({
+      path: `${rackPath}/pC1`,
+      ok: false,
+      reason: expect.stringContaining("can't be copied onto itself"),
+    });
+    expect(entries[1]?.path).toBe(`${rackPath}/pE1`);
+
+    await sleep(150);
+
+    expect(
+      (await readDrumPad(ctx.client!, `${rackPath}/pE1`)).chains ?? [],
+    ).toHaveLength(1);
   });
 });

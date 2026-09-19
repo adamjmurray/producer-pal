@@ -23,7 +23,7 @@
 
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
+import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
 
 /**
@@ -38,6 +38,7 @@ const PAD_SAMPLE_PARAM = /^p[^/]+(?:\/c\d+)?(?:\/d\d+)?\/sample$/i;
 
 export const deviceDrumKit: EvalScenario = {
   id: "device-drum-kit",
+  tags: ["devices"],
   description:
     "Build a Drum Rack in one call with path-prefixed per-pad sample params",
   kind: "capability",

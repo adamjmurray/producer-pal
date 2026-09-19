@@ -8,12 +8,12 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { readDevice } from "#src/tools/device/read/read-device.ts";
+import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { expectWriteRefused } from "../refused-write-assertions.ts";
 
 // Default property values for a Drift device at factory defaults.
 const DRIFT_DEFAULTS = {
@@ -256,15 +256,16 @@ describe("Drift pseudo-params", () => {
       );
     });
 
-    it("warns and skips an invalid source label", () => {
+    it("refuses an invalid source label", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "lfoSource", "BogusSource");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "lfoSource", "BogusSource"),
+        "lfoSource",
+        "not a valid lfoSource",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid lfoSource"),
-      );
     });
   });
 
@@ -293,15 +294,16 @@ describe("Drift pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("mod_matrix_target_3_index", 11);
     });
 
-    it("warns and skips an invalid target label", () => {
+    it("refuses an invalid target label", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "mod1Target", "BogusTarget");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "mod1Target", "BogusTarget"),
+        "mod1Target",
+        "not a valid mod1Target",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid mod1Target"),
-      );
     });
   });
 
@@ -322,15 +324,16 @@ describe("Drift pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("voice_mode_index", 3);
     });
 
-    it("warns and skips an invalid voiceMode label", () => {
+    it("refuses an invalid voiceMode label", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceMode", "Quad");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "voiceMode", "Quad"),
+        "voiceMode",
+        "not a valid voiceMode",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("not a valid voiceMode"),
-      );
     });
   });
 
@@ -349,26 +352,28 @@ describe("Drift pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("voice_count_index", index);
     });
 
-    it("warns and skips a value not in the allowed set", () => {
+    it("refuses a value not in the allowed set", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceCount", 12);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "voiceCount", 12),
+        "voiceCount",
+        "voiceCount",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("voiceCount"),
-      );
     });
 
-    it("warns and skips a non-integer value", () => {
+    it("refuses a non-integer value", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "voiceCount", 8.5);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "voiceCount", 8.5),
+        "voiceCount",
+        "voiceCount",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("voiceCount"),
-      );
     });
   });
 
@@ -397,39 +402,42 @@ describe("Drift pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 0);
     });
 
-    it("warns and skips an out-of-range value (Live reverts, does not clamp)", () => {
+    it("refuses an out-of-range value (Live reverts, does not clamp)", () => {
       // pitch_bend_range max is 12; Live silently reverts >12 writes, so we
       // pre-validate rather than pass the value through.
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", 13);
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", 13),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
 
-    it("warns and skips a non-integer value", () => {
+    it("refuses a non-integer value", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", "1.5");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", "1.5"),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
 
-    it("warns and skips a non-numeric string", () => {
+    it("refuses a non-numeric string", () => {
       const device = registerDrift();
 
-      applySpecializedParamWrite(device, "pitchBendRange", "lots");
+      expectWriteRefused(
+        applySpecializedParamWrite(device, "pitchBendRange", "lots"),
+        "pitchBendRange",
+        "pitchBendRange",
+      );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("pitchBendRange"),
-      );
     });
   });
 });
@@ -472,7 +480,7 @@ describe("Drift via read-device", () => {
   it("includes all pseudo-params in parameters and omits modulations", () => {
     registerReadableDrift();
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "filterMod1Source",
@@ -500,7 +508,7 @@ describe("Drift via read-device", () => {
   it("includes all 15 pseudo-params", () => {
     registerReadableDrift();
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toHaveLength(15);
   });
@@ -508,7 +516,7 @@ describe("Drift via read-device", () => {
   it("reads 'None' target correctly via read-device", () => {
     registerReadableDrift({ mod_matrix_target_2_index: 0 });
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "mod2Target",
@@ -519,7 +527,7 @@ describe("Drift via read-device", () => {
   it("omits a free-slot source whose target is 'None' via read-device", () => {
     registerReadableDrift({ mod_matrix_target_2_index: 0 });
 
-    const result = readDevice({ id: "drift-1", include: ["params"] });
+    const result = readOneDevice({ id: "drift-1", include: ["params"] });
     const names = (result.parameters as Array<{ name: string }>).map(
       (p) => p.name,
     );
@@ -533,7 +541,7 @@ describe("Drift via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableDrift();
 
-    const result = readDevice({ id: "drift-1", include: ["options"] });
+    const result = readOneDevice({ id: "drift-1", include: ["options"] });
     const paramOptions = (result.options as Record<string, unknown>)
       .paramOptions as Record<string, unknown>;
 

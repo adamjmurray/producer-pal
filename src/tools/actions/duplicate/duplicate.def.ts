@@ -10,11 +10,9 @@ import {
   TAKE_LANE_NOTE,
 } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
@@ -39,19 +37,19 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "id(s) of the object(s) to duplicate, comma-separated for multiple",
+        "id(s) of the object(s) to duplicate, comma-separated for multiple " +
+          "(type 'track' also takes a take lane's id, which needs a lane or track toPath)",
       ),
 
-    ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
-        "(e.g. 't0', 's1', 't0/s1', 't0[5|1]', 't0/d0', 't0/d0/pC1')",
+        "(e.g. 't0', 's1', 't0/s1', 't0[5|1]', 't0/d0', 't0/d0/pC1'; 't0/l0' names a take lane, and needs a lane or track toPath)",
       smallModel:
         "path of the object to duplicate instead of id (e.g., 't0' or 't0/s1')",
     }),
 
-    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {
@@ -104,8 +102,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "section instead of counting bars; an arrangement track must match " +
         "the clip's MIDI/audio type); 't2/l0' = its first take lane, and lanes are created up to that " +
         "index; " +
-        "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
+        "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
+        "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); omitting toPath appends to the chain's own rack. " +
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
+        "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane, " +
+        "at the positions they already have. A track source copies its main lane, a 't2/l0' source that lane. " +
+        "A 't2/l0' source onto a bare 't2' promotes the lane's clips to the main lane, over the clips already there. " +
+        "Clips only, and the two tracks must match MIDI/audio type; name/color label the copies. " +
+        "A track copy needs no toPath otherwise. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
         "One destination covers every source and position; a list pairs one per copy, in order, and never cycles. " +
         "A clip slot, device or pad holds one object, so name one per copy",
@@ -141,7 +145,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     // Deprecated: naming a lane is a property of the lane, not something a
     // clip call should carry. Still honored for 2.2.0 callers.
     takeLaneName: deprecatedParam(z.string().optional(), {
-      guidance: "name the lane in Live",
+      guidance:
+        'name the lane with ppal-update-track (path "t0/l0" and the name)',
     }),
   },
 });

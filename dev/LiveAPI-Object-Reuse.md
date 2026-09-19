@@ -70,7 +70,7 @@ device through every index shift the tools can cause, at any depth:
 
 Live has no `delete_chain`, so a chain index under an instrument or MIDI effect
 rack cannot shift through the API at all; the drum rack row above uses the
-park-on-a-free-pad technique from `delete-chain-helpers.ts`.
+park-on-a-free-pad technique from `delete-drum-chain.ts`.
 
 Still not measured: the user editing the Set from the UI mid-request. Nothing
 suggests it differs, but it is inference.

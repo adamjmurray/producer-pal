@@ -8,7 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming/connect-client";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
@@ -19,12 +19,25 @@ import {
 } from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } =
-    await import("./helpers/use-chat-test-helpers");
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming/run-chat-turn"),
+  async () => {
+    const { runChatTurnMockBody } =
+      await import("./helpers/use-chat-test-helpers");
 
-  return await streamingHelpersMockBody();
-});
+    return await runChatTurnMockBody();
+  },
+);
+
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming/connect-client"),
+  async () => {
+    const { connectClientMockBody } =
+      await import("./helpers/use-chat-test-helpers");
+
+    return await connectClientMockBody();
+  },
+);
 
 /**
  * Send "Original message", then edit the resulting user message in place.

@@ -24,7 +24,7 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import { fourCC } from "./library-filters.ts";
 import {
