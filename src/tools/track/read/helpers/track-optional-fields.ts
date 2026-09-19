@@ -5,8 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/clip-resolution.ts";
-import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
-import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
+import { STATE } from "#src/tools/constants.ts";
 import { computeState } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
   readReturnTrackInfo,
@@ -244,27 +243,6 @@ export function readMixerProperties(
   }
 
   return result;
-}
-
-/**
- * Find the first instrument device on a track and return its class_display_name
- * @param devices - Array of LiveAPI device objects from track
- * @returns The instrument's class_display_name, or null if no instrument found
- */
-export function getInstrumentName(devices: LiveAPI[]): string | null {
-  for (const device of devices) {
-    const deviceType = getDeviceType(device);
-
-    if (
-      deviceType === DEVICE_TYPE.INSTRUMENT ||
-      deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
-      deviceType === DEVICE_TYPE.DRUM_RACK
-    ) {
-      return device.getProperty("class_display_name") as string;
-    }
-  }
-
-  return null;
 }
 
 /**

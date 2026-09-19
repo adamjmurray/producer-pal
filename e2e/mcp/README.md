@@ -110,7 +110,7 @@ everything in it. Those specs are the reference for writing assertions.
 and the track holding the Producer Pal device. 8 scenes, 108 BPM, A minor.
 
 `setupMcpTestContext()` opens `e2e-test-set`. Pass `liveSetPath` for another,
-using the constant its helpers export:
+using the constant `e2e/mcp/e2e-test-set.ts` exports for it:
 
 ```ts
 const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });

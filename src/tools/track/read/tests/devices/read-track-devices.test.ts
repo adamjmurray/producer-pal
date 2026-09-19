@@ -21,10 +21,10 @@ import {
   setupInstrumentRackOnTrack0,
   setupTrackWithDevices,
   setupTrackWithSingleRack,
-} from "./helpers/read-track-device-test-helpers.ts";
-import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
-import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
-import { readOneTrack } from "../read-track.ts";
+} from "../helpers/read-track-device-test-helpers.ts";
+import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+import { mockTrackProperties } from "../helpers/read-track-test-helpers.ts";
+import { readOneTrack } from "../../read-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("readOneTrack", () => {

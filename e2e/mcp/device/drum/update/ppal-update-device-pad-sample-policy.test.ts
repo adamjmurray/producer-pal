@@ -20,12 +20,12 @@ import {
   KICK_FILE,
   setupMcpTestContext,
 } from "../../../mcp-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../../../e2e-test-set.ts";
 import {
   callWithWarnings,
   type DeviceInfo,
   KIT,
   type ParamEntryResult,
-  RACKS_TEST_PATH,
   readKitPads,
 } from "../../helpers/racks-test-helpers.ts";
 

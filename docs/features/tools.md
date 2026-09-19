@@ -228,6 +228,8 @@ limitation).
   `arrangement-clips` include), or read one lane on its own from a lane path
   (`t2/l0`)
 - See devices, routing options, and drum pad mappings
+- See which instrument plays the track, including what's inside an Instrument
+  Rack: `Instrument Rack (Operator, Wavetable)`
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
 

@@ -20,7 +20,7 @@ import {
   setupMcpTestContext,
 } from "../../mcp-test-helpers.ts";
 import { callForParams } from "../helpers/device-param-test-helpers.ts";
-import { RACKS_TEST_PATH } from "../helpers/racks-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 
 /** The Instrument Rack whose Macro 1 and Macro 2 are both named "Drive". */
 const OUTER = "t0/d0";

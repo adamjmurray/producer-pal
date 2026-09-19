@@ -23,10 +23,10 @@ import {
   parseToolResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { RACKS_TEST_PATH } from "../e2e-test-set.ts";
 import {
   callWithWarnings,
   KIT,
-  RACKS_TEST_PATH,
   readReturnChains,
 } from "./helpers/racks-test-helpers.ts";
 

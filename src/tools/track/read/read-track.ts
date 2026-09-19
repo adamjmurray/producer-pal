@@ -42,6 +42,7 @@ import {
   readTakeLanes,
   type ReadTakeLaneResult,
 } from "./helpers/track-clips.ts";
+import { getInstrumentName } from "./helpers/instrument-name.ts";
 import {
   addOptionalBooleanProperties,
   addProducerPalHostInfo,
@@ -49,7 +50,6 @@ import {
   addSlotIndices,
   addStateIfNotDefault,
   drumModeForTrack,
-  getInstrumentName,
   handleNonExistentTrack,
   readMixerProperties,
 } from "./helpers/track-optional-fields.ts";

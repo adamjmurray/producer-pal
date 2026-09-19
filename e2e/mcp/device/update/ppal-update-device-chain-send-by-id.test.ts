@@ -17,11 +17,11 @@
  */
 import { describe, expect, it } from "vitest";
 import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
   callWithWarnings,
   KIT,
   padChain,
-  RACKS_TEST_PATH,
   readKitPads,
   readReturnChains,
 } from "../helpers/racks-test-helpers.ts";

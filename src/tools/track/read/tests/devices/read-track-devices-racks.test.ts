@@ -9,9 +9,9 @@ import {
   setupDrumRackMocks,
   setupEmptyRackMocks,
   setupTrackWithDevices,
-} from "./helpers/read-track-device-test-helpers.ts";
+} from "../helpers/read-track-device-test-helpers.ts";
 import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
-import { readOneTrack } from "../read-track.ts";
+import { readOneTrack } from "../../read-track.ts";
 
 describe("readOneTrack", () => {
   describe("devices - rack edge cases", () => {
