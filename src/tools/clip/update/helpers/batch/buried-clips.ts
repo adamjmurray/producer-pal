@@ -18,6 +18,7 @@ import {
   stillAtPath,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { appendReason } from "../entries/clip-reasons.ts";
+import { remainderFinder, type TrimmedLanding } from "./trimmed-landings.ts";
 
 /** Where each clip sat before the call moved any of them, by id. */
 export type ClipAddresses = ReadonlyMap<string, string | undefined>;
@@ -25,24 +26,44 @@ export type ClipAddresses = ReadonlyMap<string, string | undefined>;
 /** What became of a clip another clip in the call was moved onto. */
 const BURIED = "another clip in this call was moved onto it";
 
+/** What became of a clip a shorter landing only covered the front of. */
+const TRIMMED = "trimmed: another clip in this call landed on its start";
+
+/** What the batch has to check its entries against. */
+export interface BuriedClipsCheck {
+  /** The call's clip entries, marked in place. */
+  results: ClipResult[];
+  /** Whether the call writes anywhere a clip could be sitting. */
+  clearsSpans: boolean;
+  /** Clips the call clears once their own overwrite has landed. */
+  heldBack: ReadonlySet<string> | undefined;
+  /** Where a landing a later one trimmed left its remainder, by entry id. */
+  trims: ReadonlyMap<string, TrimmedLanding>;
+}
+
 /**
  * Mark every entry whose clip is no longer where the result put it. Checked by
  * reading each id back, not by comparing the paths the call reported: a clip
  * can be cleared by one that starts somewhere else.
- * @param results - The call's clip entries, marked in place
- * @param clearsSpans - Whether the call writes anywhere a clip could be sitting
- * @param heldBack - Clips the call clears once their own overwrite has landed
+ * @param check - The entries and what the call's moves did
+ * @param check.results - The call's clip entries, marked in place
+ * @param check.clearsSpans - Whether the call writes anywhere a clip could sit
+ * @param check.heldBack - Clips the call clears once their overwrite has landed
+ * @param check.trims - Where a trimmed landing left its remainder, by entry id
  */
-export function markBuriedClips(
-  results: ClipResult[],
-  clearsSpans: boolean,
-  heldBack: ReadonlySet<string> | undefined,
-): void {
+export function markBuriedClips({
+  results,
+  clearsSpans,
+  heldBack,
+  trims,
+}: BuriedClipsCheck): void {
   // The read-back costs a look-up per entry, so most calls skip it: one that
   // clears nothing buries nothing, and a lone entry has no sibling.
   if (!clearsSpans || results.length < 2) {
     return;
   }
+
+  const findRemainder = remainderFinder();
 
   for (const entry of results) {
     const { path } = entry;
@@ -58,9 +79,48 @@ export function markBuriedClips(
       continue;
     }
 
+    // Gone from where it was doesn't mean gone: a shorter landing takes only
+    // the front off, which re-creates the rest under a new id.
+    if (reportTrimmedSurvivor(entry, trims.get(entry.id), findRemainder)) {
+      continue;
+    }
+
     entry.deleted = true;
     appendReason(entry, BURIED);
   }
+}
+
+/**
+ * Point an entry at what is left of its clip, when a later landing took only
+ * the front off it. The trim re-creates the clip, so the id the entry reported
+ * is gone either way — finding the remainder where the trim would have left it
+ * is what tells a survivor from a buried clip.
+ * @param entry - The entry whose clip is no longer where it was
+ * @param trim - What a trim would have left, or undefined for no trim
+ * @param findRemainder - Looks the remainder up on its lane
+ * @returns True when the remainder is there and the entry now names it
+ */
+function reportTrimmedSurvivor(
+  entry: ClipResult,
+  trim: TrimmedLanding | undefined,
+  findRemainder: (trim: TrimmedLanding) => LiveAPI | null,
+): boolean {
+  if (trim == null) {
+    return false;
+  }
+
+  const remainder = findRemainder(trim);
+  const path = remainder == null ? null : objectPathForApi(remainder);
+
+  if (remainder == null || path == null) {
+    return false;
+  }
+
+  entry.id = remainder.id;
+  entry.path = path;
+  appendReason(entry, TRIMMED);
+
+  return true;
 }
 
 /**

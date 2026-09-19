@@ -20,6 +20,12 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerArrangementClip,
+  registerLiveSet,
+  registerStackingTrack,
+  stackedLaneClips,
+} from "./stacking-track-test-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -29,14 +35,6 @@ const BURIED = "another clip in this call was moved onto it";
 
 /** The clip the main-lane duplicate lands, so a test can name it. */
 const LANDED = "landed";
-
-/** A 4/4 Live Set, which every arrangement path spelling needs. */
-function registerLiveSet(): void {
-  registerMockObject("live_set", {
-    path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
-}
 
 /**
  * Seed a take lane and hand back the clips on it.
@@ -54,33 +52,6 @@ function seedTakeLane(spans: Array<{ start: number; end: number }>): string[] {
         livePath.track(0).takeLane(0).arrangementClip(index),
       )?.id as string,
   );
-}
-
-/**
- * A main-lane MIDI clip on track 0.
- * @param id - The id to register it under
- * @param index - Its place in the track's arrangement_clips
- * @param start - Its start, in beats
- * @param end - Its end, in beats
- */
-function registerArrangementClip(
-  id: string,
-  index: number,
-  start: number,
-  end: number,
-): void {
-  registerMockObject(id, {
-    path: livePath.track(0).arrangementClip(index),
-    type: "Clip",
-    properties: {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: start,
-      end_time: end,
-      signature_numerator: 4,
-      signature_denominator: 4,
-    },
-  });
 }
 
 /**
@@ -272,6 +243,110 @@ describe("a clip the call holds back for an overwrite", () => {
     expect(result[1]?.id).toBe(LANDED);
     expect(capturedWarnings()).toStrictEqual([
       "2 clips on t0 moved to the same position - later clips will overwrite earlier ones",
+    ]);
+  });
+});
+
+/**
+ * Move every clip on the simulated track.
+ * @param lengths - The clips' lengths in beats, in call order
+ * @param starts - Where each one goes, in call order (default bar 101)
+ * @returns The call's entries, in call order
+ */
+async function moveAll(
+  lengths: number[],
+  starts?: string[],
+): Promise<ClipResult[]> {
+  const ids = registerStackingTrack(lengths);
+
+  return (await updateClip({
+    id: ids.join(","),
+    arrangementStart: (starts ?? ids.map(() => "101|1")).join(","),
+  })) as ClipResult[];
+}
+
+describe("a survivor a shorter clip landed on", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // The 2 landing on top of the 8 trims its front instead of burying it, and
+  // the trim gives it a new id — which used to read as "gone".
+  it("reports where the trim left it, not as deleted", async () => {
+    const result = await moveAll([4, 8, 2]);
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[1]).toStrictEqual({
+      id: expect.any(String),
+      path: "t0[101|3]",
+      reason: "trimmed: another clip in this call landed on its start",
+    });
+    expect(result[2]?.path).toBe("t0[101|1]");
+    expect(result[2]?.deleted).toBeUndefined();
+    // The trim re-created it, so the entry has to name the clip that is there.
+    expect(stackedLaneClips()).toContain(result[1]?.id);
+  });
+
+  // Survivors descend in length, but a non-survivor can outlast a later,
+  // shorter one: the 12 trims the 40 without being long enough to bury the 20.
+  it("reports the trim when a non-survivor sits between the lengths", async () => {
+    const result = await moveAll([20, 40, 12]);
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[1]?.deleted).toBeUndefined();
+    expect(result[1]?.path).toBe("t0[104|1]");
+    expect(result[2]?.deleted).toBeUndefined();
+  });
+
+  // The remainder is only a prediction until something is found there: a later
+  // clip landing across the whole stack leaves nothing to report.
+  it("still reports a trimmed clip a later landing then buried", async () => {
+    const result = await moveAll([8, 2, 16], ["101|1", "101|1", "100|1"]);
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.reason).toContain(BURIED);
+    expect(result[1]?.deleted).toBe(true);
+    expect(result[2]?.path).toBe("t0[100|1]");
+    expect(result[2]?.deleted).toBeUndefined();
+  });
+
+  // Everything in a group starts at the same beat, so a landing from another
+  // group can start exactly where the remainder was predicted. Only the end
+  // tells them apart: the trim leaves it where it was.
+  it("does not mistake a landing at the trim point for the remainder", async () => {
+    const result = await moveAll([8, 2, 12], ["101|1", "101|1", "101|3"]);
+
+    expect(result[0]?.deleted).toBe(true);
+    expect(result[0]?.reason).toContain(BURIED);
+    expect(result[1]?.path).toBe("t0[101|1]");
+    expect(result[2]?.path).toBe("t0[101|3]");
+  });
+
+  // Same shape, but the landing at the trim point is short enough to leave
+  // something: the remainder is past it, still ending where it always did.
+  it("follows a remainder a second landing pushed further along", async () => {
+    const result = await moveAll([8, 2, 4], ["101|1", "101|1", "101|3"]);
+
+    expect(result[0]?.deleted).toBeUndefined();
+    expect(result[0]?.path).toBe("t0[102|3]");
+    expect(result[0]?.reason).toContain("trimmed:");
+    expect(stackedLaneClips()).toContain(result[0]?.id);
+    expect(result[2]?.path).toBe("t0[101|3]");
+  });
+
+  // Every clip survives, so every one but the last is trimmed by the next.
+  it("reports each clip of a descending stack", async () => {
+    const result = await moveAll([8, 4, 2]);
+
+    expect(result.map((entry) => entry.deleted)).toStrictEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(result.map((entry) => entry.path)).toStrictEqual([
+      "t0[102|1]",
+      "t0[101|3]",
+      "t0[101|1]",
     ]);
   });
 });

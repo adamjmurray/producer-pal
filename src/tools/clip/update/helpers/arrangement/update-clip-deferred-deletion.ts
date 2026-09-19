@@ -175,7 +175,7 @@ function buriedByLanding(
     return false;
   }
 
-  for (const id of group.landed) {
+  for (const id of group.landed.keys()) {
     const landedLength = survivorLengths.get(id);
 
     if (landedLength != null && landedLength >= heldLength) {

@@ -64,6 +64,29 @@ export function arrangementPositionTarget(
 }
 
 /**
+ * The clips on one lane. A take lane answers with its own; the main lane is the
+ * track's list minus anything sitting on a lane, so `t0[5|1]` can never match a
+ * take at the same time however Live answers `arrangement_clips` on a track
+ * that has lanes.
+ *
+ * The scan builds a LiveAPI per clip on the lane, so a caller looking several
+ * things up holds the result rather than calling again.
+ * @param lane - The lane the path named
+ * @returns The clips on that lane, in Live's order
+ */
+export function clipsOnLane(lane: ArrangementLane): LiveAPI[] {
+  if (lane.kind === "take-lane") {
+    return LiveAPI.from(
+      livePath.track(lane.trackIndex).takeLane(lane.laneIndex),
+    ).getChildren("arrangement_clips");
+  }
+
+  return LiveAPI.from(livePath.track(lane.trackIndex))
+    .getChildren("arrangement_clips")
+    .filter((clip) => !isTakeLaneClip(clip));
+}
+
+/**
  * Whether a clip covers a position. A clip's end is exclusive, so a clip
  * ending exactly at the position loses to one starting there.
  * @param clip - The candidate arrangement clip
@@ -114,24 +137,4 @@ function positionBeats(
   } catch (error) {
     throw pathError(paramName, formatObjectPath(path), errorMessage(error));
   }
-}
-
-/**
- * The clips on one lane. A take lane answers with its own; the main lane is the
- * track's list minus anything sitting on a lane, so `t0[5|1]` can never match a
- * take at the same time however Live answers `arrangement_clips` on a track
- * that has lanes.
- * @param lane - The lane the path named
- * @returns The clips on that lane, in Live's order
- */
-function clipsOnLane(lane: ArrangementLane): LiveAPI[] {
-  if (lane.kind === "take-lane") {
-    return LiveAPI.from(
-      livePath.track(lane.trackIndex).takeLane(lane.laneIndex),
-    ).getChildren("arrangement_clips");
-  }
-
-  return LiveAPI.from(livePath.track(lane.trackIndex))
-    .getChildren("arrangement_clips")
-    .filter((clip) => !isTakeLaneClip(clip));
 }

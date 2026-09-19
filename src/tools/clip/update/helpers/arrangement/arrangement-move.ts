@@ -27,6 +27,7 @@ import {
 } from "./update-clip-deferred-deletion.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
 import {
+  forgetLandedLength,
   recordLandedClip,
   tallyMovedClip,
   type MoveGroup,
@@ -175,7 +176,10 @@ export function handleArrangementStartOperation({
 
   // The copy is confirmed here, which is what releases any clip this call held
   // back for this lane and position.
-  recordLandedClip(movedClipGroups, landing, targetBeats, clip.id);
+  recordLandedClip(movedClipGroups, landing, targetBeats, clip.id, {
+    id: newClip.id,
+    length: landedLength(newClip),
+  });
 
   // Clear the original to complete the move. For a self-overlapping move the
   // holding placement already trimmed it (or fully replaced it on a zero-offset
@@ -269,6 +273,10 @@ export function handleArrangementOperations({
   let finalNoteResult = noteResult;
 
   if (arrangementLengthBeats != null) {
+    // The copy's length was recorded as it landed, and the resize is about to
+    // move its end.
+    forgetLandedLength(movedClipGroups, clip.id);
+
     const results = handleArrangementLengthOperation({
       clip: currentClip,
       isAudioClip,
@@ -311,6 +319,19 @@ export function handleArrangementOperations({
       ),
     );
   }
+}
+
+/**
+ * A copy's arrangement length, read the moment it lands, before a later clip
+ * in this call can trim it (batch/trimmed-landings.ts).
+ * @param clip - The copy the placement just made
+ * @returns Its length in beats, or null when Live answered with neither edge
+ */
+function landedLength(clip: LiveAPI): number | null {
+  const start = clip.getProperty("start_time") as number;
+  const end = clip.getProperty("end_time") as number;
+
+  return Number.isFinite(start) && Number.isFinite(end) ? end - start : null;
 }
 
 /**

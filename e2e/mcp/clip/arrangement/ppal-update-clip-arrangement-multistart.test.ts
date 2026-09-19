@@ -58,17 +58,25 @@ async function createArrangementClip(
  * @returns Parsed clips and warnings
  */
 function parseUpdateResults(result: unknown): {
-  clips: Array<{ id: string; deleted?: boolean }>;
+  clips: UpdatedClip[];
   warnings: string[];
 } {
   const { data, warnings } = parseToolResultWithWarnings<
-    { id: string; deleted?: boolean } | Array<{ id: string; deleted?: boolean }>
+    UpdatedClip | UpdatedClip[]
   >(result);
 
   return {
     clips: Array.isArray(data) ? data : [data],
     warnings,
   };
+}
+
+/** What one clip's entry says about the move. */
+interface UpdatedClip {
+  id: string;
+  path?: string;
+  reason?: string;
+  deleted?: boolean;
 }
 
 /**
@@ -82,7 +90,7 @@ async function moveClipsTo(
   sources: [position: string, length: string][],
   toPath: string,
 ): Promise<{
-  clips: { id: string; deleted?: boolean }[];
+  clips: UpdatedClip[];
   finalClips: ReadClipResult[];
 }> {
   const ids: string[] = [];
@@ -108,6 +116,18 @@ async function moveClipsTo(
   );
 
   return { clips, finalClips };
+}
+
+/**
+ * Assert each entry's `deleted` flag, in call order.
+ * @param clips - The move's per-clip entries
+ * @param deleted - The expected flag per entry
+ */
+function expectDeleted(
+  clips: UpdatedClip[],
+  deleted: (true | undefined)[],
+): void {
+  expect(clips.map((clip) => clip.deleted)).toStrictEqual(deleted);
 }
 
 describe("ppal-update-clip arrangement multistart", () => {
@@ -157,10 +177,7 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     // Every target gets an entry, in the order the call named them. A is the
     // non-survivor, and says so rather than going unmentioned.
-    expect(clips).toHaveLength(3);
-    expect(clips[0]?.deleted).toBe(true);
-    expect(clips[1]?.deleted).toBeUndefined();
-    expect(clips[2]?.deleted).toBeUndefined();
+    expectDeleted(clips, [true, undefined, undefined]);
 
     // Verify final state: 2 clips on track
     expect(finalClips).toHaveLength(2);
@@ -182,10 +199,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     );
 
     // A is the only non-survivor, and B's landing is what buries it.
-    expect(clips).toHaveLength(3);
-    expect(clips[0]?.deleted).toBe(true);
-    expect(clips[1]?.deleted).toBeUndefined();
-    expect(clips[2]?.deleted).toBeUndefined();
+    expectDeleted(clips, [true, undefined, undefined]);
 
     // B underneath, C stacked on its front — A gone, nothing left at 301|1.
     expect(finalClips).toHaveLength(2);
@@ -226,11 +240,68 @@ describe("ppal-update-clip arrangement multistart", () => {
       "[270|1]",
     );
 
-    // All survive: C(2)>0, B(4)>2, A(8)>4
-    expect(clips).toHaveLength(3);
+    // All survive: C(2)>0, B(4)>2, A(8)>4. Each of the first two is trimmed by
+    // the next, which re-creates it — trimmed is not deleted, and the entry
+    // has to name the clip that is really there.
+    expectDeleted(clips, [undefined, undefined, undefined]);
+    // C sits at the target; A's remainder starts a bar in, B's half a bar in.
+    expect(clips.map((clip) => clip.path)).toStrictEqual([
+      `t${EMPTY_MIDI_TRACK}[271|1]`,
+      `t${EMPTY_MIDI_TRACK}[270|3]`,
+      `t${EMPTY_MIDI_TRACK}[270|1]`,
+    ]);
+    expect(clips[0]?.reason).toContain("trimmed:");
+    expect(clips[1]?.reason).toContain("trimmed:");
+    expect(clips[2]?.reason).toBeUndefined();
 
     // 3 clips on track, stacked at target position
     expect(finalClips).toHaveLength(3);
     expect(arrangementStartOf(finalClips[0]!)).toBe("270|1");
+    // Every reported id is one of the clips that ended up on the track.
+    const onTrack = finalClips.map((clip) => clip.id);
+
+    for (const clip of clips) {
+      expect(onTrack).toContain(clip.id);
+    }
+  });
+
+  // A second group lands right where A's remainder is predicted to start.
+  // A(8) at 401|1 is trimmed to 403|1 by B(2); C(12) lands at 403|1 too, and
+  // buries the remainder outright. C must not be mistaken for A.
+  it("reports a remainder buried by another group as deleted", async () => {
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["381|1", "2bar"],
+        ["385|1", "n/2"],
+        ["389|1", "3bar"],
+      ],
+      "[401|1],[401|1],[401|3]",
+    );
+
+    expectDeleted(clips, [true, undefined, undefined]);
+    expect(clips[0]?.id).not.toBe(clips[2]?.id);
+
+    expect(finalClips).toHaveLength(2);
+  });
+
+  // Same shape with a shorter C(4): it trims A's remainder again instead of
+  // burying it, so A's entry has to follow the remainder past C.
+  it("follows a remainder trimmed again by another group", async () => {
+    const { clips, finalClips } = await moveClipsTo(
+      [
+        ["421|1", "2bar"],
+        ["425|1", "n/2"],
+        ["429|1", "1bar"],
+      ],
+      "[441|1],[441|1],[441|3]",
+    );
+
+    expectDeleted(clips, [undefined, undefined, undefined]);
+    expect(clips[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}[442|3]`);
+    expect(clips[0]?.reason).toContain("trimmed:");
+    expect(clips[0]?.id).not.toBe(clips[2]?.id);
+
+    expect(finalClips).toHaveLength(3);
+    expect(finalClips.map((clip) => clip.id)).toContain(clips[0]?.id);
   });
 });

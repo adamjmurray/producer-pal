@@ -320,8 +320,9 @@ describe("arrangement-move", () => {
           moveGroupKey({ trackIndex, takeLane: null }, 64),
           {
             landing: { trackIndex, takeLane: null },
+            startBeats: 64,
             count: 2,
-            landed: new Set<string>(),
+            landed: new Map(),
             deferred: [],
           },
         ],
@@ -374,6 +375,8 @@ describe("arrangement-move", () => {
         .mockReturnValue({
           id: "new999",
           exists: () => true,
+          // Live answers with no edges for a clip this stub never placed.
+          getProperty: () => null,
         } as unknown as LiveAPI);
 
       const mockClip = {
@@ -754,8 +757,9 @@ function groupHoldingOneClipBack(landed: string, clipExists = true) {
       GROUP,
       {
         landing: { trackIndex: 0, takeLane: null },
+        startBeats: TARGET_BEATS,
         count: 1,
-        landed: new Set([landed]),
+        landed: new Map([[landed, { id: MOVED, length: 16 }]]),
         deferred: [
           {
             clip: {

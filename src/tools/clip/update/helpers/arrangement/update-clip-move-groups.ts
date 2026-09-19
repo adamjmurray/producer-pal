@@ -20,13 +20,27 @@ export interface DeferredDeletion {
   result: ClipResult;
 }
 
+/** The copy one clip's placement left here. */
+export interface LandedClip {
+  /** The copy Live made, which is the id that clip's entry reports. */
+  id: string;
+  /**
+   * Its arrangement length as it landed, or null when nothing can be concluded
+   * from it (unreadable, or the call resized it afterwards). See
+   * batch/trimmed-landings.ts for what the length is for.
+   */
+  length: number | null;
+}
+
 /** The clips a call lands on one lane at one position. */
 export interface MoveGroup {
   /** The track and lane they land on. */
   landing: ArrangementTrack;
+  /** The position they land at, in beats. */
+  startBeats: number;
   count: number;
-  /** Ids of the clips whose placement actually landed here. */
-  landed: Set<string>;
+  /** What each clip's placement landed here, by source id, in landing order. */
+  landed: Map<string, LandedClip>;
   /** Clips waiting to see whether the overwrite really happens. */
   deferred: DeferredDeletion[];
 }
@@ -70,14 +84,36 @@ export function tallyMovedClip(
  * @param landing - The track and lane the clip landed on
  * @param startBeats - The position it landed at, in beats
  * @param sourceClipId - Id of the clip that was moved here
+ * @param copy - The copy it landed, as it was before anything trimmed it
  */
 export function recordLandedClip(
   groups: Map<string, MoveGroup>,
   landing: ArrangementTrack,
   startBeats: number,
   sourceClipId: string,
+  copy: LandedClip,
 ): void {
-  moveGroupFor(groups, landing, startBeats).landed.add(sourceClipId);
+  moveGroupFor(groups, landing, startBeats).landed.set(sourceClipId, copy);
+}
+
+/**
+ * Drop a landing's length, for a call that changed it after the copy landed.
+ * Nothing else knows the new geometry, so the group is left to the read-back
+ * rather than described from a length that is no longer true.
+ * @param groups - Counts per group
+ * @param sourceClipId - Id of the clip that was moved
+ */
+export function forgetLandedLength(
+  groups: Map<string, MoveGroup>,
+  sourceClipId: string,
+): void {
+  for (const group of groups.values()) {
+    const landed = group.landed.get(sourceClipId);
+
+    if (landed != null) {
+      landed.length = null;
+    }
+  }
 }
 
 /**
@@ -125,8 +161,9 @@ function moveGroupFor(
   const key = moveGroupKey(landing, startBeats);
   const group = groups.get(key) ?? {
     landing,
+    startBeats,
     count: 0,
-    landed: new Set<string>(),
+    landed: new Map<string, LandedClip>(),
     deferred: [],
   };
 

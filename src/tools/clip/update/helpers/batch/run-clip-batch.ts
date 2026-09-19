@@ -35,6 +35,7 @@ import {
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./process-single-clip-update.ts";
+import { trimmedLandings } from "./trimmed-landings.ts";
 
 /** Every param one update-clip call carries, as the tool received them. */
 export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
@@ -208,11 +209,12 @@ export async function runClipBatch({
     skips.settle(i, resultsPerClip[i]);
   }
 
-  markBuriedClips(
-    resultsPerClip.flat(),
-    clears,
-    plan.overwrites?.nonSurvivorIds,
-  );
+  markBuriedClips({
+    results: resultsPerClip.flat(),
+    clearsSpans: clears,
+    heldBack: plan.overwrites?.nonSurvivorIds,
+    trims: trimmedLandings(movedClipGroups),
+  });
 
   return groupResultsBySlot(resultsPerClip, plan.slots);
 }
