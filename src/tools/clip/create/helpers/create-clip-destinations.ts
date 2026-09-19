@@ -40,11 +40,20 @@ export interface ArrangementPosition extends ArrangementTrack {
   arrangementStart: string;
 }
 
+/** Where one destination sits in the two buckets below. */
+export interface DestinationRef {
+  view: "session" | "arrangement";
+  /** Index into clipSlots or arrangementPositions. */
+  index: number;
+}
+
 export interface ClipDestinations {
   /** Clip slots, in order. */
   clipSlots: ClipSlotPosition[];
   /** Arrangement clips, one per track/position pair. */
   arrangementPositions: ArrangementPosition[];
+  /** Every destination, in the order the call named it. */
+  order: DestinationRef[];
 }
 
 /** The destination params as the tool received them. */
@@ -64,12 +73,19 @@ export interface ClipDestinationParams {
 interface ArrangementTrackTarget extends ArrangementTrack {
   /** The `[...]` position, or null when the entry carried none. */
   position: string | null;
+  /** Where the call named this destination, counting both kinds together. */
+  ordinal: number;
 }
 
 interface SplitDestinations {
   clipSlots: ClipSlotPosition[];
+  /** Where the call named each clip slot, alongside the arrangement ones. */
+  slotOrdinals: number[];
   tracks: ArrangementTrackTarget[];
 }
+
+/** An arrangement clip, still carrying the destination ordinal it came from. */
+type OrderedArrangementPosition = ArrangementPosition & { ordinal: number };
 
 /**
  * Resolves where a create-clip call's clips go.
@@ -95,16 +111,23 @@ export function resolveCreateClipDestinations(
     "arrangementStart",
   );
 
-  const { clipSlots, tracks } =
+  const { clipSlots, slotOrdinals, tracks } =
     path != null
       ? splitPathDestinations(path, params)
       : legacyDestinations(slot, params, arrangementStarts.length > 0);
+  const paired = pairTracksWithStarts(
+    applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length),
+    arrangementStarts,
+  );
 
   return {
     clipSlots,
-    arrangementPositions: pairTracksWithStarts(
-      applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length),
-      arrangementStarts,
+    arrangementPositions: paired.map(
+      ({ ordinal: _ordinal, ...position }) => position,
+    ),
+    order: destinationOrder(
+      slotOrdinals,
+      paired.map((position) => position.ordinal),
     ),
   };
 }
@@ -133,6 +156,7 @@ function splitPathDestinations(
   }
 
   const clipSlots: ClipSlotPosition[] = [];
+  const slotOrdinals: number[] = [];
   const tracks: ArrangementTrackTarget[] = [];
   // The lane is settled before the locators are resolved, so a refusal quotes
   // the position the caller wrote rather than the bar|beat it names.
@@ -141,24 +165,57 @@ function splitPathDestinations(
     lane: entry.lane ?? noTrack(entry.position),
   }));
 
-  for (const { lane, position } of resolveDestinationPositions(entries, {
-    paramName: "path",
-  })) {
+  for (const [ordinal, { lane, position }] of resolveDestinationPositions(
+    entries,
+    { paramName: "path" },
+  ).entries()) {
     if (lane.kind === "slot") {
       clipSlots.push({
         trackIndex: lane.trackIndex,
         sceneIndex: lane.sceneIndex,
       });
+      slotOrdinals.push(ordinal);
     } else {
       tracks.push({
         trackIndex: lane.trackIndex,
         takeLane: takeLaneFromPath(lane),
         position,
+        ordinal,
       });
     }
   }
 
-  return { clipSlots, tracks };
+  return { clipSlots, slotOrdinals, tracks };
+}
+
+/**
+ * Every destination in the order the call named it, so the result's entries
+ * pair with the call position for position (ADR-0042).
+ * @param slotOrdinals - Where the call named each clip slot
+ * @param arrangementOrdinals - Where the call named each arrangement clip
+ * @returns One ref per destination, in call order
+ */
+function destinationOrder(
+  slotOrdinals: number[],
+  arrangementOrdinals: number[],
+): DestinationRef[] {
+  const refs = [
+    ...slotOrdinals.map((ordinal, index) => ({
+      ordinal,
+      view: "session" as const,
+      index,
+    })),
+    ...arrangementOrdinals.map((ordinal, index) => ({
+      ordinal,
+      view: "arrangement" as const,
+      index,
+    })),
+  ];
+
+  // Stable, so several positions sharing one destination keep their own order.
+  refs.sort((a, b) => a.ordinal - b.ordinal);
+
+  return refs.map(({ view, index }) => ({ view, index }));
 }
 
 /**
@@ -233,10 +290,10 @@ function legacyDestinations(
 ): SplitDestinations {
   const { trackIndex, sceneIndex } = params;
   const clipSlots = slot == null ? [] : parseSlotList(slot, "slot");
-  // The params path replaced never carried a position of their own.
 
+  // The params path replaced never carried a position of their own.
   if (trackIndex == null && sceneIndex == null) {
-    return { clipSlots, tracks: [] };
+    return sessionOnly(clipSlots);
   }
 
   if (trackIndex == null) {
@@ -253,10 +310,10 @@ function legacyDestinations(
         'trackIndex/sceneIndex ignored — "slot" already names the session destination',
       );
 
-      return { clipSlots, tracks: [] };
+      return sessionOnly(clipSlots);
     }
 
-    return { clipSlots: [{ trackIndex, sceneIndex }], tracks: [] };
+    return sessionOnly([{ trackIndex, sceneIndex }]);
   }
 
   // trackIndex alone means the arrangement, but only a position says where on
@@ -266,12 +323,34 @@ function legacyDestinations(
       `trackIndex ignored — an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
     );
 
-    return { clipSlots, tracks: [] };
+    return sessionOnly(clipSlots);
   }
 
   return {
-    clipSlots,
-    tracks: [{ trackIndex, takeLane: null, position: null }],
+    ...sessionOnly(clipSlots),
+    tracks: [
+      {
+        trackIndex,
+        takeLane: null,
+        position: null,
+        ordinal: clipSlots.length,
+      },
+    ],
+  };
+}
+
+/**
+ * Destinations from the params path replaced, which name one kind each: the
+ * clip slots come first, and the arrangement track — when there is one —
+ * follows them.
+ * @param slots - The clip slots the call named
+ * @returns The split, with no arrangement track
+ */
+function sessionOnly(slots: ClipSlotPosition[]): SplitDestinations {
+  return {
+    clipSlots: slots,
+    slotOrdinals: slots.map((_slot, ordinal) => ordinal),
+    tracks: [],
   };
 }
 
@@ -291,7 +370,7 @@ function legacyDestinations(
 function pairTracksWithStarts(
   tracks: ArrangementTrackTarget[],
   arrangementStarts: string[],
-): ArrangementPosition[] {
+): OrderedArrangementPosition[] {
   if (tracks.length === 0) {
     if (arrangementStarts.length > 0) {
       throw new Error(

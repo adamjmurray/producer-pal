@@ -40,7 +40,7 @@ export const arrangementWrite = `### Clip Destinations
 
 One grammar names where a clip goes, counting from 0 throughout: \`t2/s0\` is the third track in the first scene, \`t2[5|1]\` is bar 5 on that track's arrangement, and \`t2/l0[5|1]\` is bar 5 on its first take lane. The \`[...]\` is a song position: bar|beat in song meter, or \`loc:<locator name or id>\` — name the locator when the user names a section (\`t2[loc:Chorus]\`), so the clip still lands right if they move it. An arrangement destination needs both halves on create. create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
 
-create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time.
+create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time. One entry comes back per destination, in the order the list names them, and \`name\`/\`color\` pair the same way; a destination that got no clip holds its place as \`ok: false\` with a reason.
 
 \`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot (\`t0/s1\`) or an arrangement clip's own spot (\`t0[5|1]\`) instead of \`id\`, so knowing where a clip is saves reading it first just to learn its id. \`t0[5|1]\` resolves to the clip covering bar 5, even if it started earlier. Write results report the clip's \`path\` beside its \`id\`, so a follow-up call can use it without re-reading.
 

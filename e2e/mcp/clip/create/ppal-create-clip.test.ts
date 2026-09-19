@@ -15,7 +15,9 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -263,21 +265,17 @@ describe("ppal-create-clip", () => {
     // Live declines a create it can't do without raising, and the arrangement
     // create calls answer with another object — the Live Set (id 1). Reported
     // as created, that id aimed every follow-up call at the Live Set. So the
-    // track is checked before the create, and the warning names it.
+    // track is checked before the create. One destination, so the refusal comes
+    // back as the call's error rather than an entry (ADR-0042).
     const midiOnAudio = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: { path: `t${AUDIO_TRACK}[61|1]`, name: "empty" },
     });
 
-    const midiResult =
-      parseToolResultWithWarnings<CreateClipResult[]>(midiOnAudio);
-
-    expect(midiResult.data).toStrictEqual([]);
-    expect(midiResult.warnings).toContainEqual(
-      expect.stringMatching(
-        new RegExp(
-          `^WARNING: Failed to create clip at t${AUDIO_TRACK}\\[61\\|1\\]: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
-        ),
+    expect(isToolError(midiOnAudio)).toBe(true);
+    expect(getToolErrorMessage(midiOnAudio)).toMatch(
+      new RegExp(
+        `track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track`,
       ),
     );
 
@@ -289,15 +287,10 @@ describe("ppal-create-clip", () => {
       },
     });
 
-    const audioResult =
-      parseToolResultWithWarnings<CreateClipResult[]>(audioOnMidi);
-
-    expect(audioResult.data).toStrictEqual([]);
-    expect(audioResult.warnings).toContainEqual(
-      expect.stringMatching(
-        new RegExp(
-          `^WARNING: Failed to create clip at t${EMPTY_MIDI_TRACK}\\[61\\|1\\]: track t${EMPTY_MIDI_TRACK} \\(id \\d+\\) is MIDI; an audio clip needs an audio track$`,
-        ),
+    expect(isToolError(audioOnMidi)).toBe(true);
+    expect(getToolErrorMessage(audioOnMidi)).toMatch(
+      new RegExp(
+        `track t${EMPTY_MIDI_TRACK} \\(id \\d+\\) is MIDI; an audio clip needs an audio track`,
       ),
     );
 
@@ -308,15 +301,10 @@ describe("ppal-create-clip", () => {
       arguments: { path: `t${AUDIO_TRACK}/s2` },
     });
 
-    const slotResult =
-      parseToolResultWithWarnings<CreateClipResult[]>(midiOnAudioSlot);
-
-    expect(slotResult.data).toStrictEqual([]);
-    expect(slotResult.warnings).toContainEqual(
-      expect.stringMatching(
-        new RegExp(
-          `^WARNING: Failed to create clip at t${AUDIO_TRACK}/s2: track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track$`,
-        ),
+    expect(isToolError(midiOnAudioSlot)).toBe(true);
+    expect(getToolErrorMessage(midiOnAudioSlot)).toMatch(
+      new RegExp(
+        `track t${AUDIO_TRACK} \\(id \\d+\\) is audio; a MIDI clip needs a MIDI track`,
       ),
     );
   });

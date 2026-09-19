@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   type PairedLabels,
   pairLabels,
@@ -13,9 +14,15 @@ import {
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import { resolveCreateClipDestinations } from "./helpers/create-clip-destinations.ts";
+import {
+  resolveCreateClipDestinations,
+  type DestinationRef,
+} from "./helpers/create-clip-destinations.ts";
 import { prepareClipData } from "./helpers/clip-data-preparation.ts";
-import { createClips } from "./helpers/create-clips-loop.ts";
+import {
+  createClips,
+  type CreatedClipEntry,
+} from "./helpers/create-clips-loop.ts";
 import { type ClipResultObject } from "./helpers/created-clip-result.ts";
 import {
   resolveClipTimingContext,
@@ -163,7 +170,7 @@ export async function createClip(
     { path, slot, trackIndex, sceneIndex, takeLane },
     arrangementStart,
   );
-  const { clipSlots, arrangementPositions } = destinations;
+  const { clipSlots, arrangementPositions, order } = destinations;
 
   validatePositions(destinations);
 
@@ -193,11 +200,7 @@ export async function createClip(
     transformString,
   );
 
-  const { parsedNames, parsedColors } = clipLabels(
-    name,
-    color,
-    clipSlots.length + arrangementPositions.length,
-  );
+  const { parsedNames, parsedColors } = clipLabels(name, color, order.length);
 
   // Before any clip or take lane exists: a position that won't parse has to
   // stop the call while there is still nothing to report.
@@ -209,57 +212,51 @@ export async function createClip(
 
   // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap
   // replaces existing clips, like the main lane.
-  const takeLanes = resolveCreateClipTakeLanes(
-    takeLaneName,
+  const { lanes: takeLanes, dropped: droppedTakeLanes } =
+    resolveCreateClipTakeLanes(takeLaneName, arrangementPositions);
+
+  const createdClips = await createClips({
+    order,
+    takeLanes,
+    droppedTakeLanes,
+    tracks,
+    clipSlots,
     arrangementPositions,
-  );
-
-  // Create session clips first, then arrangement (order gives arrangement focus priority)
-  const clipsForView = (
-    view: "session" | "arrangement",
-    nameStartIndex: number,
-  ) =>
-    createClips({
-      view,
-      takeLanes,
-      tracks,
-      clipSlots,
-      arrangementPositions,
-      baseName: name,
-      parsedNames,
-      parsedColors,
-      nameStartIndex,
-      initialClipLength,
-      liveSet,
-      startBeats: timing.startBeats,
-      endBeats: timing.endBeats,
-      firstStartBeats: timing.firstStartBeats,
-      looping,
-      color,
-      timeSigNumerator: timing.timeSigNumerator,
-      timeSigDenominator: timing.timeSigDenominator,
-      timeSignature,
-      notationString,
-      notes,
-      transformString,
-      songTimeSigNumerator: timing.songTimeSigNumerator,
-      songTimeSigDenominator: timing.songTimeSigDenominator,
-      length,
-      sampleFile,
-      // Set once per request by the V8 adapter (see buildRequestContext).
-      deadline: _context.deadline,
-      code,
-      ...audio,
-    });
-
-  const createdClips = [
-    ...(await clipsForView("session", 0)),
-    ...(await clipsForView("arrangement", clipSlots.length)),
-  ];
+    baseName: name,
+    parsedNames,
+    parsedColors,
+    initialClipLength,
+    liveSet,
+    startBeats: timing.startBeats,
+    endBeats: timing.endBeats,
+    firstStartBeats: timing.firstStartBeats,
+    looping,
+    color,
+    timeSigNumerator: timing.timeSigNumerator,
+    timeSigDenominator: timing.timeSigDenominator,
+    timeSignature,
+    notationString,
+    notes,
+    transformString,
+    songTimeSigNumerator: timing.songTimeSigNumerator,
+    songTimeSigDenominator: timing.songTimeSigDenominator,
+    length,
+    sampleFile,
+    // Set once per request by the V8 adapter (see buildRequestContext).
+    deadline: _context.deadline,
+    code,
+    ...audio,
+  });
 
   noteIgnoredFirstStart(createdClips, timing.firstStartIgnored);
 
-  return finalizeCreatedClips(createdClips, auto, clipSlots, focus);
+  return finalizeCreatedClips({
+    entries: createdClips,
+    order,
+    auto,
+    clipSlots,
+    focus,
+  });
 }
 
 /**
@@ -333,32 +330,78 @@ function normalizeTransforms(transformString: string | null): string | null {
   return transformString?.trim() ? transformString : null;
 }
 
+interface FinalizeArgs {
+  /** One entry per destination, in call order */
+  entries: CreatedClipEntry[];
+  order: DestinationRef[];
+  auto: string | null;
+  clipSlots: ClipSlotPosition[];
+  focus: boolean | undefined;
+}
+
 /**
  * Handle auto-playback and focus for the created clips, then unwrap the result.
- * @param createdClips - All created clip result objects
- * @param auto - Automatic playback action
- * @param clipSlots - Parsed clip slot positions
- * @param focus - Whether to select the last created clip
+ * @param args - The call's entries and the params that act on them
+ * @param args.entries - One entry per destination, in call order
+ * @param args.order - Every destination, in the order the call named it
+ * @param args.auto - Automatic playback action
+ * @param args.clipSlots - Parsed clip slot positions
+ * @param args.focus - Whether to select the last created clip
  * @returns Single clip object when one, array when multiple
+ * @throws Error when the call named one destination and it got no clip
  */
-function finalizeCreatedClips(
-  createdClips: ClipResultObject[],
-  auto: string | null,
-  clipSlots: ClipSlotPosition[],
-  focus: boolean | undefined,
-): ClipResultObject | ClipResultObject[] {
+function finalizeCreatedClips({
+  entries,
+  order,
+  auto,
+  clipSlots,
+  focus,
+}: FinalizeArgs): CreatedClipEntry | CreatedClipEntry[] {
+  // A lone destination that got no clip has no list for an entry to hold a
+  // place in, so its reason goes back as the error it would have been.
+  const refusal = loneRefusal(entries);
+
+  if (refusal != null) {
+    throw new Error(refusal);
+  }
+
   // Handle automatic playback (session clips only, guard inside handles no-op)
   handleAutoPlayback(auto, "session", clipSlots);
 
-  // Focus last created clip: arrangement clips are after session clips, so
-  // arrangement gets priority (the arrangement is where the final song lives)
-  if (focus && createdClips.length > 0) {
-    const lastClip = createdClips.at(-1) as ClipResultObject;
+  // Focus one clip: arrangement gets priority over the session whatever order
+  // the call named them in (the arrangement is where the final song lives).
+  const lastClip =
+    lastClipInView(entries, order, "arrangement") ??
+    lastClipInView(entries, order, "session");
 
+  if (focus && lastClip != null) {
     focusSelect({ id: lastClip.id, detailView: "clip" });
   }
 
-  return unwrapSingleResult(createdClips);
+  return unwrapSingleResult(entries);
+}
+
+/**
+ * The last clip the call made in one view.
+ * @param entries - One entry per destination, in call order
+ * @param order - Every destination, in the order the call named it
+ * @param view - "session" or "arrangement"
+ * @returns The clip, or null when the call made none there
+ */
+function lastClipInView(
+  entries: CreatedClipEntry[],
+  order: DestinationRef[],
+  view: "session" | "arrangement",
+): ClipResultObject | null {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i] as CreatedClipEntry;
+
+    if (order[i]?.view === view && !("ok" in entry)) {
+      return entry;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -388,7 +431,7 @@ function clipLabels(
  * @param ignored - Whether firstStart was sent for clips that won't loop
  */
 function noteIgnoredFirstStart(
-  createdClips: ClipResultObject[],
+  createdClips: CreatedClipEntry[],
   ignored: boolean,
 ): void {
   if (!ignored) {
@@ -396,6 +439,9 @@ function noteIgnoredFirstStart(
   }
 
   for (const clip of createdClips) {
-    clip.reason = "firstStart ignored: set looping: true to use it";
+    // A destination that got no clip already says why in its own reason.
+    if (!("ok" in clip)) {
+      clip.reason = "firstStart ignored: set looping: true to use it";
+    }
   }
 }

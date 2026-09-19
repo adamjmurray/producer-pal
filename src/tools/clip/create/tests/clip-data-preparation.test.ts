@@ -82,33 +82,36 @@ describe("prepareClipData", () => {
   });
 });
 
-describe("createClip - failure warnings (createClipAtIndex catch)", () => {
+describe("createClip - skip entries (createClipAtIndex catch)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("warns with the clip slot position when a session clip fails to create", async () => {
+  it("addresses a failed session clip by its clip slot", async () => {
     registerMockObject("live-set", {
       path: livePath.liveSet,
-      properties: { ...FOUR_FOUR, scenes: children("scene_0") },
+      properties: { ...FOUR_FOUR, scenes: children("scene_0", "scene_1") },
     });
     registerMockObject("track-0", { path: livePath.track(0) });
+
     // has_clip: 1 makes prepareSessionClipSlot throw inside processClipIteration.
-    registerMockObject("clip-slot-0-0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 1 },
-    });
+    for (const sceneIndex of [0, 1]) {
+      registerMockObject(`clip-slot-0-${sceneIndex}`, {
+        path: livePath.track(0).clipSlot(sceneIndex),
+        properties: { has_clip: 1 },
+      });
+    }
 
-    await createClip({ slot: "0/0", notes: "C3 1|1" });
+    const result = await createClip({ slot: "0/0,0/1", notes: "C3 1|1" });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to create clip at t0/s0:"),
-    );
     // No bar|beat position: a clip slot doesn't have one.
-    expect(capturedWarnings()).not.toContainEqual(expect.stringContaining("|"));
+    expect(result).toStrictEqual([
+      { path: "t0/s0", ok: false, reason: "a clip already exists at t0/s0" },
+      { path: "t0/s1", ok: false, reason: "a clip already exists at t0/s1" },
+    ]);
   });
 
-  it("warns with the arrangement position when an arrangement clip fails to create", async () => {
+  it("addresses a failed arrangement clip by its position", async () => {
     registerMockObject("live-set", {
       path: livePath.liveSet,
       properties: FOUR_FOUR,
@@ -122,18 +125,36 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
       },
     });
 
-    await createClip({
+    const result = await createClip({
       trackIndex: 0,
-      arrangementStart: "1|1",
+      arrangementStart: "1|1,3|1",
       notes: "C3 1|1",
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to create clip at t0[1|1]:"),
-    );
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("/s"),
-    );
+    expect(result).toStrictEqual([
+      { path: "t0[1|1]", ok: false, reason: "boom" },
+      { path: "t0[3|1]", ok: false, reason: "boom" },
+    ]);
+  });
+
+  // A lone destination has no list for an entry to hold a place in (ADR-0042).
+  it("throws when the call named one destination and it got no clip", async () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: FOUR_FOUR,
+    });
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      methods: {
+        create_midi_clip: () => {
+          throw new Error("boom");
+        },
+      },
+    });
+
+    await expect(
+      createClip({ trackIndex: 0, arrangementStart: "1|1", notes: "C3 1|1" }),
+    ).rejects.toThrow("boom");
   });
 });
 

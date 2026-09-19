@@ -131,9 +131,16 @@ target, so no entry exists yet to carry them.
   normal entry rather than a skip — `deleted: true` and the address it had:
   nothing the call asked of it landed, but that it is gone is news no skip can
   carry.
-- **create-clip says it on the clip it made.** A `firstStart` the call can't use
-  — it only lands alongside `looping: true` — is a `reason` on that clip's entry
-  rather than a warning, and no `ok`: the clip exists.
+- **create-clip answers per destination named.** Its `path` list, clip slots and
+  arrangement positions mixed, comes back one entry per destination in the order
+  the call named them, and `name`/`color` pair by that place — it used to answer
+  every clip slot first and the arrangement after. A destination that got no
+  clip holds its slot as a skip: an occupied clip slot, a track that won't take
+  the clip, a create Live declined, a take lane past the cap, one the deadline
+  never reached. The deadline warning only says how far the call got. A
+  `firstStart` the call can't use — it only lands alongside `looping: true` — is
+  a `reason` on that clip's entry rather than a warning, and no `ok`: the clip
+  exists.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `reason` on the lane's own entry, which otherwise reads like any other hit.

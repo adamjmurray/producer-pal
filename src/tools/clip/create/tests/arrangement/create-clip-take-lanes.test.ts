@@ -9,6 +9,7 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { takeLaneCapacityMessage } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
   expectOneLaneWithClipsAt,
@@ -398,16 +399,19 @@ describe("createClip take lane paths", () => {
       path: `t0/l${MAX_TAKE_LANES},t1`,
       arrangementStart: "1|1",
       notes: "C3",
-    })) as { path?: string };
+    })) as Array<{ path?: string; ok?: false; reason?: string }>;
 
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    // Only t1's clip was made, so the result collapses to that one object.
-    expect(result.path).toBe("t1[1|1]");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
-    );
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`take lane "t0/l${MAX_TAKE_LANES}" was skipped`),
+    // The lane that didn't fit keeps its place, and says why there instead of
+    // in a warning (ADR-0042).
+    expect(result[0]).toStrictEqual({
+      path: `t0/l${MAX_TAKE_LANES}[1|1]`,
+      ok: false,
+      reason: takeLaneCapacityMessage(MAX_TAKE_LANES),
+    });
+    expect(result[1]?.path).toBe("t1[1|1]");
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("skipping"),
     );
   });
 
@@ -438,22 +442,22 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     // path would resolve a real lane instead of returning an empty map.
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: null },
     ]);
 
-    expect(result.size).toBe(0);
+    expect(lanes.size).toBe(0);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   it("resolves a lane per destination and reports it as a path", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
     ]);
 
-    expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
+    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
     );
@@ -465,13 +469,13 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     const track0 = registerTakeLaneTrack({ initialLanes: 0 });
     const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
       { trackIndex: 1, arrangementStart: "2|1", takeLane: 0 },
       { trackIndex: 0, arrangementStart: "3|1", takeLane: 0 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
+    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t1/l0"]);
     // The keys alone can't catch a lost dedup — Map.set on a key that's already
     // there adds no key. The append count is what proves t0's second position
     // reused the lane its first one made.
@@ -483,12 +487,12 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("creates one lane when the path names it twice", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
       { trackIndex: 0, arrangementStart: "5|1", takeLane: 0 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l0"]);
+    expect([...lanes.keys()]).toStrictEqual(["t0/l0"]);
     expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
@@ -499,14 +503,14 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("keeps distinct lanes on the same track apart", () => {
     registerTakeLaneTrack({ initialLanes: 3 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
       { trackIndex: 0, arrangementStart: "2|1", takeLane: 2 },
     ]);
 
-    expect([...result.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
-    expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    expect(result.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
+    expect([...lanes.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
+    expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
+    expect(lanes.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
   });
 
   // A destination past the cap is dropped, and the ones alongside it still
@@ -514,14 +518,18 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   it("skips the destination past the cap and keeps the others", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes(null, [
+    const { lanes, dropped } = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: MAX_TAKE_LANES - 1 },
       { trackIndex: 0, arrangementStart: "2|1", takeLane: MAX_TAKE_LANES },
     ]);
 
-    expect([...result.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES - 1}`]);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`skipping "t0/l${MAX_TAKE_LANES}"`),
+    expect([...lanes.keys()]).toStrictEqual([`t0/l${MAX_TAKE_LANES - 1}`]);
+    // Handed back rather than warned: the destination's own entry reports it.
+    expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toStrictEqual(
+      expect.stringContaining(`${MAX_TAKE_LANES}`),
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("skipping"),
     );
   });
 });

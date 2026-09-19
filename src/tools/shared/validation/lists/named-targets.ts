@@ -87,6 +87,20 @@ export function namedEarlierReason(earlier: NamedTarget): string {
   return `already named as ${address} earlier in this call`;
 }
 
+/**
+ * The reason a lone target that got nothing done throws with, since there is no
+ * list for its entry to hold a place in (ADR-0042).
+ * @param entries - The call's result entries, in call order
+ * @returns The reason, or null when the call named more than one target or did its work
+ */
+export function loneRefusal(entries: object[]): string | null {
+  const [only] = entries;
+
+  return entries.length === 1 && only != null && "ok" in only
+    ? (only as TargetSkip).reason
+    : null;
+}
+
 // --- Helpers below main exports ---
 
 /**

@@ -107,22 +107,23 @@ describe("createClip - arrangement view", () => {
 
   // Live refuses this without reporting anything, so create-clip checks the
   // destination track first and words the refusal itself.
-  it("warns and skips a clip aimed at a frozen track", async () => {
+  it("refuses a clip aimed at a frozen track", async () => {
     const warn = vi.spyOn(console, "warn");
     const { track } = setupArrangementClipMocks();
 
     track.properties.is_frozen = 1;
 
-    const result = await createClip({
-      trackIndex: 0,
-      arrangementStart: "3|1",
-      notes: "C3 1|1",
-    });
+    // One destination, so the refusal goes back as the error it would have been
+    // all along rather than an entry with nothing around it (ADR-0042).
+    await expect(
+      createClip({
+        trackIndex: 0,
+        arrangementStart: "3|1",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow("track t0 (id track-0) is frozen; unfreeze it first");
 
-    expect(result).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledWith(
-      "Failed to create clip at t0[3|1]: track t0 (id track-0) is frozen; unfreeze it first",
-    );
+    expect(warn).not.toHaveBeenCalled();
     expect(track.call).not.toHaveBeenCalledWith(
       "create_midi_clip",
       expect.anything(),
@@ -178,7 +179,7 @@ describe("createClip - arrangement view", () => {
     ).rejects.toThrow("track 99 does not exist");
   });
 
-  it("should emit warning and return empty array when arrangement clip creation fails", async () => {
+  it("refuses each position in its own entry when the create fails", async () => {
     mockNonExistentObjects();
 
     registerMockObject("track-0", {
@@ -188,15 +189,16 @@ describe("createClip - arrangement view", () => {
       },
     });
 
-    // Runtime errors during clip creation are now warnings, not fatal errors
     const result = await createClip({
       trackIndex: 0,
-      arrangementStart: "1|1",
+      arrangementStart: "1|1,3|1",
       notes: "C4 1|1",
     });
 
-    // Should return empty array (no clips created)
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { path: "t0[1|1]", ok: false, reason: "Live created no clip at t0" },
+      { path: "t0[3|1]", ok: false, reason: "Live created no clip at t0" },
+    ]);
   });
 
   it("should throw when arrangementStart names no track", async () => {
@@ -298,7 +300,10 @@ describe("createClip - arrangement view", () => {
       methods: { create_midi_clip: () => ["id", "arr_clip_t2"] },
     });
 
-    registerMockObject("arr_clip_t2", { properties: { length: 4 } });
+    registerMockObject("arr_clip_t2", {
+      path: livePath.track(2).arrangementClip(0),
+      properties: { length: 4 },
+    });
 
     await createClip({
       trackIndex: 2,

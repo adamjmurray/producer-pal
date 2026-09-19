@@ -24,10 +24,17 @@ import {
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import {
+  skipEntry,
+  type TargetSkip,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
-import { type ArrangementPosition } from "./create-clip-destinations.ts";
+import {
+  type ArrangementPosition,
+  type DestinationRef,
+} from "./create-clip-destinations.ts";
 import { processClipIteration } from "./clip-iteration.ts";
 import { type ClipResultObject } from "./created-clip-result.ts";
 import {
@@ -36,14 +43,17 @@ import {
 } from "./clip-transform.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
+/** One entry of a create-clip result: a clip, or the destination it never got. */
+export type CreatedClipEntry = ClipResultObject | TargetSkip;
+
 export interface CreateClipsParams {
-  view: string;
+  /** Every destination, in the order the call named it */
+  order: DestinationRef[];
   clipSlots: ClipSlotPosition[];
   arrangementPositions: ArrangementPosition[];
   baseName: string | null;
   parsedNames: ListEntries | null;
   parsedColors: ListEntries | null;
-  nameStartIndex: number;
   initialClipLength: number;
   liveSet: LiveAPI;
   startBeats: number | null;
@@ -66,6 +76,8 @@ export interface CreateClipsParams {
   code: string | null;
   /** Take lane per arrangement destination; no entry means the main lane */
   takeLanes: Map<string, LiveAPI>;
+  /** Why each take lane that didn't fit was left out, by destination label */
+  droppedTakeLanes: Map<string, string>;
   /** Every destination track, resolved once for the call */
   tracks: Map<number, LiveAPI>;
   /** Requested audio warp state, or null to keep Live's own choice */
@@ -79,19 +91,18 @@ export interface CreateClipsParams {
 }
 
 /**
- * Creates clips by iterating over positions for a single view
+ * Creates one clip per destination, in the order the call named them. A
+ * destination that got no clip keeps its place as a skip entry (ADR-0042).
  * @param params - All parameters for clip creation
- * @returns Array of created clips
+ * @returns One entry per destination, in call order
  */
 export async function createClips(
   params: CreateClipsParams,
-): Promise<ClipResultObject[]> {
-  const { view, clipSlots, arrangementPositions, deadline } = params;
-  const createdClips: ClipResultObject[] = [];
-  const count =
-    view === "session" ? clipSlots.length : arrangementPositions.length;
+): Promise<CreatedClipEntry[]> {
+  const { order, deadline } = params;
+  const entries: CreatedClipEntry[] = [];
 
-  // Constant transform inputs for this view; read the scale mask once (it is a
+  // Constant transform inputs for the call; read the scale mask once (it is a
   // Live Set global). Per-clip context (index/count/position) is applied below.
   const transformInputs: ClipTransformInputs = {
     notes: params.notes,
@@ -105,18 +116,64 @@ export async function createClips(
       params.transformString != null ? readLiveSetScaleMask() : undefined,
   };
 
-  for (let i = 0; i < count; i++) {
+  for (const [index, ref] of order.entries()) {
     if (isDeadlineExceeded(deadline ?? null)) {
-      console.warn(
-        `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
-      );
+      refuseUnreached(params, entries, index);
       break;
     }
 
-    await createClipAtIndex(params, transformInputs, i, createdClips);
+    entries.push(await createClipAtIndex(params, transformInputs, ref, index));
   }
 
-  return createdClips;
+  return entries;
+}
+
+/**
+ * The destinations the deadline never reached, each refused in its own entry so
+ * the warning only has to say how far the call got.
+ * @param params - All parameters for clip creation
+ * @param entries - The entries so far, appended to
+ * @param step - How many destinations the loop reached
+ */
+function refuseUnreached(
+  params: CreateClipsParams,
+  entries: CreatedClipEntry[],
+  step: number,
+): void {
+  for (const ref of params.order.slice(step)) {
+    entries.push(
+      destinationSkip(
+        params,
+        ref,
+        "not created: the request ran out of time; re-run for this clip",
+      ),
+    );
+  }
+
+  console.warn(
+    `Ran out of time after creating ${step} of ${params.order.length} clips. ` +
+      `Re-run for the clips whose entries say so.`,
+  );
+}
+
+/**
+ * The entry a destination that got no clip keeps in the result.
+ * @param params - All parameters for clip creation
+ * @param ref - Which destination it is
+ * @param reason - Why it got no clip, in the words a lone destination would throw
+ * @returns The skip entry, addressed the way a clip there would report itself
+ */
+function destinationSkip(
+  params: CreateClipsParams,
+  ref: DestinationRef,
+  reason: string,
+): TargetSkip {
+  const position = clipPositionLabel(
+    ref.view,
+    resolveIterationPosition(params, ref),
+  );
+
+  return skipEntry({ param: "path", value: position }, reason);
 }
 
 interface IterationPosition {
@@ -128,42 +185,34 @@ interface IterationPosition {
 }
 
 /**
- * Create one clip at index `i`; warns instead of throwing so the loop carries on.
+ * Create the clip one destination asked for, keeping a failure for that
+ * destination's own entry to report so the loop carries on.
  * @param params - All parameters for clip creation
- * @param transformInputs - Constant transform inputs for this view
- * @param i - 0-based iteration index within the view
- * @param createdClips - Accumulator the created clip is pushed onto
+ * @param transformInputs - Constant transform inputs for the call
+ * @param ref - Which destination this is
+ * @param index - The destination's place in the call
+ * @returns The clip, or the skip entry standing in for it
  */
 async function createClipAtIndex(
   params: CreateClipsParams,
   transformInputs: ClipTransformInputs,
-  i: number,
-  createdClips: ClipResultObject[],
-): Promise<void> {
-  const { view, baseName, parsedNames, parsedColors, nameStartIndex, code } =
-    params;
+  ref: DestinationRef,
+  index: number,
+): Promise<CreatedClipEntry> {
+  const { view } = ref;
+  const { baseName, parsedNames, parsedColors, code } = params;
 
   // clip.index/clip.count (transforms and code-exec) span the whole create
-  // batch, not just this view: a single call mixing clip slots and
-  // arrangement positions runs createClips once per view, so the global index
-  // is nameStartIndex + i (session view starts at 0, arrangement at
-  // clipSlots.length) and the count is the combined total. This mirrors the
-  // continuous indexing already used for names/colors below.
-  const globalIndex = nameStartIndex + i;
-  const totalCount =
-    params.clipSlots.length + params.arrangementPositions.length;
-
-  const clipName = getNameForIndex(
-    baseName ?? undefined,
-    globalIndex,
-    parsedNames,
-  );
+  // batch: the index is the destination's place in the call, the same place
+  // its name and color come from below.
+  const totalCount = params.order.length;
+  const clipName = getNameForIndex(baseName ?? undefined, index, parsedNames);
   const clipColor = getColorForIndex(
     params.color ?? undefined,
-    globalIndex,
+    index,
     parsedColors,
   );
-  const pos = resolveIterationPosition(params, i);
+  const pos = resolveIterationPosition(params, ref);
   const position = clipPositionLabel(view, pos);
 
   // Apply the transform with this clip's context (clipseq/clip.index/etc.).
@@ -177,11 +226,11 @@ async function createClipAtIndex(
     clipLength,
     transformedCount,
   } = withClipWarningLabel(
-    `clip ${position}${ordinalSuffix(globalIndex, totalCount)}`,
+    `clip ${position}${ordinalSuffix(index, totalCount)}`,
     () =>
       resolveClipTransform(
         transformInputs,
-        globalIndex,
+        index,
         totalCount,
         pos.arrangementStartBeats,
       ),
@@ -224,7 +273,7 @@ async function createClipAtIndex(
       params.sampleFile,
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
-      takeLaneFor(params.takeLanes, pos),
+      takeLaneFor(params, pos),
       {
         warping: params.warping,
         gainDb: params.gainDb,
@@ -235,14 +284,12 @@ async function createClipAtIndex(
       params.tracks.get(pos.trackIndex) ?? null,
     );
 
-    createdClips.push(clipResult);
-
     // Apply code execution to the newly created clip
     if (code != null) {
       const noteCount = await applyCodeToSingleClip(
         clipResult.id,
         code,
-        globalIndex,
+        index,
         totalCount,
       );
 
@@ -250,10 +297,10 @@ async function createClipAtIndex(
         clipResult.noteCount = noteCount;
       }
     }
+
+    return clipResult;
   } catch (error) {
-    console.warn(
-      `Failed to create clip at ${position}: ${errorMessage(error)}`,
-    );
+    return skipEntry({ param: "path", value: position }, errorMessage(error));
   }
 }
 
@@ -282,17 +329,17 @@ function clipPositionLabel(view: string, pos: IterationPosition): string {
 }
 
 /**
- * Resolve the track/scene or arrangement position for iteration index `i`.
+ * Resolve the track/scene or arrangement position one destination names.
  * @param params - All parameters for clip creation
- * @param i - 0-based iteration index within the view
- * @returns Position info for this iteration
+ * @param ref - Which destination it is
+ * @returns Position info for this destination
  */
 function resolveIterationPosition(
   params: CreateClipsParams,
-  i: number,
+  ref: DestinationRef,
 ): IterationPosition {
-  if (params.view === "session") {
-    const slot = params.clipSlots[i] as ClipSlotPosition;
+  if (ref.view === "session") {
+    const slot = params.clipSlots[ref.index] as ClipSlotPosition;
 
     return {
       trackIndex: slot.trackIndex,
@@ -304,7 +351,7 @@ function resolveIterationPosition(
   }
 
   const { trackIndex, arrangementStart, takeLane } = params
-    .arrangementPositions[i] as ArrangementPosition;
+    .arrangementPositions[ref.index] as ArrangementPosition;
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer (matching the single-clip create path), not
@@ -326,26 +373,29 @@ function resolveIterationPosition(
 
 /**
  * The take lane a position's clip goes on.
- * @param lanes - Resolved take lanes, keyed by destination
+ * @param params - All parameters for clip creation
  * @param position - The position being created
  * @returns The lane, or null for the main lane
  */
 function takeLaneFor(
-  lanes: Map<string, LiveAPI>,
+  params: CreateClipsParams,
   position: IterationPosition,
 ): LiveAPI | null {
   if (position.takeLane == null) {
     return null;
   }
 
-  const lane = lanes.get(takeLaneLabel(position));
+  const label = takeLaneLabel(position);
+  const lane = params.takeLanes.get(label);
 
-  // A destination whose lane didn't fit warned during resolution and has no
-  // entry. Fail this clip — the loop catches it and carries on — rather than
-  // falling back to the main lane, which would put the clip somewhere the
-  // caller didn't ask for.
+  // A destination whose lane didn't fit has none to write to. Fail this clip —
+  // the loop turns it into this destination's own entry — rather than falling
+  // back to the main lane, which would put the clip somewhere the caller
+  // didn't ask for.
   if (lane == null) {
-    throw new Error(`take lane "${takeLaneLabel(position)}" was skipped`);
+    throw new Error(
+      params.droppedTakeLanes.get(label) ?? `take lane "${label}" was skipped`,
+    );
   }
 
   return lane;

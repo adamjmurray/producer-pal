@@ -125,17 +125,3 @@ export function clipEntriesInCallOrder(
     return results;
   });
 }
-
-/**
- * The reason a lone target that got nothing done throws with, since there is no
- * list for its entry to hold a place in.
- * @param entries - The call's result entries, in call order
- * @returns The reason, or null when the call named more than one target or did its work
- */
-export function loneRefusal(entries: ClipEntry[]): string | null {
-  const [only] = entries;
-
-  return entries.length === 1 && only != null && "ok" in only
-    ? only.reason
-    : null;
-}

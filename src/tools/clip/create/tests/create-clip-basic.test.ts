@@ -304,6 +304,29 @@ describe("createClip - basic validation and time signatures", () => {
     ]);
   });
 
+  // A destination that got no clip already says why, so the firstStart note
+  // must not overwrite its reason.
+  it("leaves a skipped destination's own reason alone", async () => {
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { signature_numerator: 4, signature_denominator: 4 },
+      clipSlot: { has_clip: 1 },
+    });
+    registerEmptyClipSlot(1);
+
+    const result = (await createClip({
+      slot: "0/0,0/1",
+      notes: "C4 1|1",
+      firstStart: "1|2",
+      looping: false,
+    })) as Array<{ reason?: string }>;
+
+    expect(result.map((entry) => entry.reason)).toStrictEqual([
+      "a clip already exists at t0/s0",
+      "firstStart ignored: set looping: true to use it",
+    ]);
+  });
+
   it("sets playing_position when firstStart is used with looping clips", async () => {
     const { clip } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },

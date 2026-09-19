@@ -71,12 +71,13 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated one per position, in order (clip slots first, then arrangement)",
+        "name for all, or comma-separated one per position, in the order path names them",
       smallModel: "clip name",
     }),
 
     color: param(z.string().optional(), {
-      default: "#RRGGBB for all, or comma-separated one per position, in order",
+      default:
+        "#RRGGBB for all, or comma-separated one per position, in the order path names them",
       smallModel: "#RRGGBB",
     }),
 

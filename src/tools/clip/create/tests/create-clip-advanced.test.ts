@@ -240,6 +240,20 @@ describe("createClip - advanced features", () => {
       );
     });
 
+    // The focus guard (`lastClip != null` → dropped) would select a skip entry,
+    // which has no id.
+    it("selects nothing when no destination got a clip", async () => {
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        clipSlot: { has_clip: 1 },
+      });
+
+      const result = await createClip({ slot: "0/0,0/0", focus: true });
+
+      expect(result).toHaveLength(2);
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
     it("should not call select when focus=false", async () => {
       setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
@@ -314,6 +328,34 @@ describe("createClip - advanced features", () => {
         id: "arrangement_clip",
         path: "t0[1|1]",
       });
+    });
+
+    // N destinations named, N entries back, in the order named (ADR-0042) —
+    // not clip slots first and the arrangement after.
+    it("answers in the order path names the destinations", async () => {
+      setupDualMocks();
+
+      const result = await createClip({ path: "t0[1|1],t0/s0" });
+
+      expect(result).toStrictEqual([
+        { id: "arrangement_clip", path: "t0[1|1]" },
+        { id: "live_set/tracks/0/clip_slots/0/clip", path: "t0/s0" },
+      ]);
+    });
+
+    it("pairs name and color with the destination's place in the call", async () => {
+      const { sessionClip, arrangementClip } = setupDualMocks();
+
+      await createClip({
+        path: "t0[1|1],t0/s0",
+        name: "Arr,Session",
+        color: "#FF0000,#00FF00",
+      });
+
+      expect(arrangementClip.set).toHaveBeenCalledWith("name", "Arr");
+      expect(arrangementClip.set).toHaveBeenCalledWith("color", 16711680);
+      expect(sessionClip.set).toHaveBeenCalledWith("name", "Session");
+      expect(sessionClip.set).toHaveBeenCalledWith("color", 65280);
     });
 
     it("spans clip.index/clip.count across the full session+arrangement batch", async () => {

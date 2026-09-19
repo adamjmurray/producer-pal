@@ -23,7 +23,9 @@ describe("createClip - deadline exceeded", () => {
     vi.mocked(isDeadlineExceeded).mockReturnValue(false);
   });
 
-  it("should stop creating clips when deadline is exceeded", async () => {
+  // Every destination the call never reached says so in its own entry, so the
+  // warning only reports how far the call got (ADR-0042).
+  it("refuses every destination when the deadline is already up", async () => {
     setupArrangementClipMocks();
 
     // Deadline exceeded before creating any clips
@@ -38,9 +40,15 @@ describe("createClip - deadline exceeded", () => {
       { timeoutMs: 1 },
     );
 
-    expect(result).toStrictEqual([]);
+    const reason =
+      "not created: the request ran out of time; re-run for this clip";
+
+    expect(result).toStrictEqual([
+      { path: "t0[1|1]", ok: false, reason },
+      { path: "t0[3|1]", ok: false, reason },
+    ]);
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Deadline exceeded"),
+      expect.stringContaining("Ran out of time after creating 0 of 2 clips"),
     );
   });
 
@@ -75,15 +83,23 @@ describe("createClip - deadline exceeded", () => {
       { timeoutMs: 100 },
     );
 
-    // Only first clip created (unwrapSingleResult returns single object)
-    expect(result).toStrictEqual({
-      length: "1bar",
-      path: "t0[1|1]",
-      id: "arrangement_clip",
-      noteCount: 1,
-    });
+    // The second destination keeps its slot, saying why it got no clip.
+    expect(result).toStrictEqual([
+      {
+        length: "1bar",
+        path: "t0[1|1]",
+        id: "arrangement_clip",
+        noteCount: 1,
+      },
+      {
+        path: "t0[3|1]",
+        ok: false,
+        reason:
+          "not created: the request ran out of time; re-run for this clip",
+      },
+    ]);
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Deadline exceeded after creating 1 of 2"),
+      expect.stringContaining("Ran out of time after creating 1 of 2"),
     );
   });
 });

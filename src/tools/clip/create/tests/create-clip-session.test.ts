@@ -159,31 +159,27 @@ describe("createClip - session view", () => {
   // Regression: Live declines a create without raising, and the clip that isn't
   // there reads back as id "0". Reported as created, that id poisoned every
   // follow-up call. The track holds the clip's own kind here, so the pre-flight
-  // below passes and this is the backstop firing on its own.
+  // below passes and this is the backstop firing on its own. One destination
+  // throws rather than reporting, since there is no list to hold its entry.
   it.each([
     ["a MIDI clip", {}, {}],
     ["an audio clip", { sampleFile: "/tmp/kick.wav" }, { has_midi_input: 0 }],
-  ])(
-    "warns and skips %s Live declined to create",
-    async (_what, extra, trackProps) => {
-      const warn = vi.spyOn(console, "warn");
+  ])("refuses %s Live declined to create", async (_what, extra, trackProps) => {
+    const warn = vi.spyOn(console, "warn");
 
-      mockNonExistentObjects();
-      setupLiveSet();
-      setupTrack(0, trackProps);
-      registerMockObject("clip-slot-0-0", {
-        path: livePath.track(0).clipSlot(0),
-        properties: { has_clip: 0 },
-      });
+    mockNonExistentObjects();
+    setupLiveSet();
+    setupTrack(0, trackProps);
+    registerMockObject("clip-slot-0-0", {
+      path: livePath.track(0).clipSlot(0),
+      properties: { has_clip: 0 },
+    });
 
-      const result = await createClip({ path: "t0/s0", ...extra });
-
-      expect(result).toStrictEqual([]);
-      expect(warn).toHaveBeenCalledWith(
-        "Failed to create clip at t0/s0: Live created no clip at t0/s0",
-      );
-    },
-  );
+    await expect(createClip({ path: "t0/s0", ...extra })).rejects.toThrow(
+      "Live created no clip at t0/s0",
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
 
   // Live refuses these without reporting anything, so create-clip checks the
   // destination track first and words the refusal itself.
@@ -200,26 +196,21 @@ describe("createClip - session view", () => {
       {},
       "track t0 (id track-0) is MIDI; an audio clip needs an audio track",
     ],
-  ])(
-    "warns and skips a clip aimed at %s",
-    async (_what, extra, trackProps, reason) => {
-      const warn = vi.spyOn(console, "warn");
+  ])("refuses a clip aimed at %s", async (_what, extra, trackProps, reason) => {
+    const warn = vi.spyOn(console, "warn");
 
-      setupLiveSet();
-      setupTrack(0, trackProps);
-      const { clipSlot } = setupSessionClip(0, 0, {
-        clipProperties: { length: 4 },
-      });
+    setupLiveSet();
+    setupTrack(0, trackProps);
+    const { clipSlot } = setupSessionClip(0, 0, {
+      clipProperties: { length: 4 },
+    });
 
-      const result = await createClip({ path: "t0/s0", ...extra });
-
-      expect(result).toStrictEqual([]);
-      expect(warn).toHaveBeenCalledWith(
-        `Failed to create clip at t0/s0: ${reason}`,
-      );
-      expect(clipSlot.call).not.toHaveBeenCalled();
-    },
-  );
+    await expect(createClip({ path: "t0/s0", ...extra })).rejects.toThrow(
+      reason,
+    );
+    expect(warn).not.toHaveBeenCalled();
+    expect(clipSlot.call).not.toHaveBeenCalled();
+  });
 
   it("should create a single clip with notes", async () => {
     const { clipSlot, clip } = setupDefaultSessionClip();
@@ -417,46 +408,49 @@ describe("createClip - session view", () => {
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
   });
 
-  it("should emit warning and return empty array if clip already exists", async () => {
+  it("throws when the one slot it names already holds a clip", async () => {
     setupLiveSet();
     setupTrack(0);
     const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
 
-    const result = await createClip({
-      slot: "0/0",
-      name: "This Should Fail",
-    });
+    await expect(
+      createClip({ slot: "0/0", name: "This Should Fail" }),
+    ).rejects.toThrow("a clip already exists at t0/s0");
 
     expect(clipSlot.call).not.toHaveBeenCalledWith(
       "create_clip",
       expect.anything(),
     );
-    expect(result).toStrictEqual([]);
   });
 
-  it("should emit warning and return empty array if sceneIndex exceeds maximum", async () => {
-    setupLiveSet();
-    setupTrack(0);
-
-    const result = await createClip({
-      slot: `0/${MAX_AUTO_CREATED_SCENES}`,
-      name: "This Should Fail",
-    });
-
-    expect(result).toStrictEqual([]);
-  });
-
-  it("returns an empty array (does not select) when focus=true but no clips are created", async () => {
-    // The existing clip makes creation warn-and-skip, so 0 clips are created.
-    // The focus guard `createdClips.length > 0` (→ true / → >= 0 mutants) would
-    // then select createdClips.at(-1) — which is undefined — and throw.
-    setupLiveSet();
+  // The occupied slot keeps its place, so the entries still pair with the call.
+  it("refuses an occupied slot in its own entry and creates the rest", async () => {
+    setupLiveSet({ scenes: children("scene0") });
     setupTrack(0);
     setupSessionClip(0, 0, { hasClip: 1 });
+    const { clip } = setupSessionClip(0, 1, {
+      clipId: "clip_0_1",
+      clipProperties: { length: 4 },
+    });
 
-    const result = await createClip({ slot: "0/0", focus: true });
+    const result = await createClip({ path: "t0/s0,t0/s1" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { path: "t0/s0", ok: false, reason: "a clip already exists at t0/s0" },
+      { id: clip.id, path: "t0/s1" },
+    ]);
+  });
+
+  it("throws when sceneIndex exceeds the auto-create maximum", async () => {
+    setupLiveSet();
+    setupTrack(0);
+
+    await expect(
+      createClip({
+        slot: `0/${MAX_AUTO_CREATED_SCENES}`,
+        name: "This Should Fail",
+      }),
+    ).rejects.toThrow("out of range");
   });
 });
 

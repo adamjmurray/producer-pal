@@ -17,9 +17,9 @@ import {
   type ClipEntry,
   clipEntriesInCallOrder,
   type ClipTargets,
-  loneRefusal,
   resolveClipTargets,
 } from "./helpers/entries/clip-targets.ts";
+import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { planClipUpdate, warnBlankArgs } from "./helpers/plan-clip-update.ts";
 import {
   refuseRegionWithDuplicateLoop,

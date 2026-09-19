@@ -127,9 +127,19 @@ it was given. A copy that landed but isn't what you asked for (a chain short a
 device, a pad copy that layered onto chains already there) carries a `reason`
 and no `ok`.
 
-**`ppal-create-clip` says it on the clip's entry too.** A `firstStart` sent
-without `looping: true` used to warn (and, with `looping` left out, was dropped
-without a word); the created clip now carries
+**`ppal-create-clip` answers per destination named.** A `path` list mixing clip
+slots and arrangement positions used to come back clip slots first and the
+arrangement after; it now comes back in the order you named them, and `name` and
+`color` pair with that place. A destination that got no clip (an occupied clip
+slot, a track that won't take the clip, a create Live declined, a take lane past
+the cap, one the request ran out of time for) used to drop out of the array with
+a warning, and now holds its slot as `{path, ok: false, reason}`. Where that was
+the only destination you named, the reason comes back as the call's error
+instead of an empty array.
+
+It says the rest on the clip's entry too: a `firstStart` sent without
+`looping: true` used to warn (and, with `looping` left out, was dropped without
+a word); the created clip now carries
 `reason: "firstStart ignored: set looping: true to use it"` and no `ok`, since
 the clip was made.
 

@@ -133,31 +133,34 @@ export function validateArrangementPositions(
   }
 }
 
+/** The lanes a call's destinations resolved to, and the ones that didn't. */
+export interface CreateClipTakeLanes {
+  /** Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes */
+  lanes: Map<string, LiveAPI>;
+  /** Why each lane that doesn't fit was left out, by {@link takeLaneLabel} */
+  dropped: Map<string, string>;
+}
+
 /**
  * Resolve the take lane each arrangement destination names, auto-creating lanes
  * as needed. Like the main lane, creating over an existing clip
  * replaces/truncates it (no overlap guard). A destination whose lane doesn't
- * fit is warned and left out, so the clips around it still get made.
+ * fit is left out with its reason, which the destination's own result entry
+ * reports, so the clips around it still get made.
  * @param takeLaneName - Deprecated: name for a newly created lane
  * @param arrangementPositions - Resolved arrangement destinations
- * @returns Take lane LiveAPI keyed by {@link takeLaneLabel}, empty for main lanes
+ * @returns The resolved lanes, and why each dropped one didn't fit
  */
 export function resolveCreateClipTakeLanes(
   takeLaneName: string | null,
   arrangementPositions: ArrangementPosition[],
-): Map<string, LiveAPI> {
+): CreateClipTakeLanes {
   const lanes = new Map<string, LiveAPI>();
 
   // Lanes are permanent (Live has no delete), so pick the whole call's
   // destinations before creating a lane on any of it — otherwise a cap failure
   // on the last destination strands empty lanes on all the earlier ones.
   const { fitting, dropped } = takeLaneTargetsThatFit(arrangementPositions);
-
-  // create-clip has no entry for a clip it never made, so a lane that doesn't
-  // fit is said out loud here.
-  for (const [label, reason] of dropped) {
-    console.warn(`skipping "${label}" — ${reason}`);
-  }
 
   // Resolve once per destination rather than once per clip.
   for (const position of fitting) {
@@ -180,7 +183,7 @@ export function resolveCreateClipTakeLanes(
     );
   }
 
-  return lanes;
+  return { lanes, dropped };
 }
 
 // --- Helpers below main exports ---
