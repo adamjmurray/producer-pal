@@ -163,6 +163,37 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
       );
       expect(await trackCount()).toBe(before);
     });
+
+    // The Set under test already has Producer Pal — that's how these tests
+    // reach Live at all. The tool refuses on its own; the remote script's own
+    // guard needs a direct request, since the tool never reaches it.
+    it("refuses a second Producer Pal device", async () => {
+      const before = await trackCount();
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "Producer_Pal", path: "t0/d+" },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        "cannot create the Producer Pal device",
+      );
+      expect(await trackCount()).toBe(before);
+    });
+
+    it("remote script refuses a second Producer Pal device", async () => {
+      const before = await trackCount();
+      const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
+      const response = await fetch(`http://127.0.0.1:${port}/load`, {
+        method: "POST",
+        body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
+      });
+      const body = (await response.json()) as { error?: string };
+
+      expect(response.status).toBe(409);
+      expect(body.error).toContain("Producer Pal is already in this Live Set");
+      expect(await trackCount()).toBe(before);
+    });
   },
 );
 

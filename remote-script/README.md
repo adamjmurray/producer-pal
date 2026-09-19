@@ -105,6 +105,10 @@ A `path` that doesn't exist is a 404 listing what is there.
 
 Params work as query string or JSON body; the body wins.
 
+**One Producer Pal per Set**: loading `Producer_Pal` into a Set that already has
+it is a 409 naming the track that has it. Only each track's top-level devices
+are checked, so one inside a rack doesn't count.
+
 **Name matching**: exact name wins, ignoring case and a `.amxd`/`.adg`/`.adv`
 suffix. With no exact hit it falls back to substring. More than one hit is a 409
 listing candidate paths — pass one back as `path`. A plugin installed in more

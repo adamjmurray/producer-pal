@@ -27,6 +27,9 @@ MFL_FOLDER_KINDS = {
     "Max MIDI Effect": "midi-effect",
 }
 
+# A Live Set can only have one Producer Pal device.
+PRODUCER_PAL_NAME = "producer_pal"
+
 # Plugins often exist as AU, VST and VST3 under the same name, so ambiguity is
 # normal - report the candidates instead of guessing.
 MAX_CANDIDATES = 25
@@ -72,6 +75,10 @@ def load(bridge, params):
     item, path = _find_loadable(root, devices_only, params)
     kind = _item_kind(item_type, path)
     song = bridge.song
+
+    if _is_producer_pal(item.name):
+        _refuse_second_producer_pal(song)
+
     default_track_type = TRACK_TYPE_FOR_KIND.get(kind, UNKNOWN_KIND_TRACK_TYPE)
     track = _target_track(song, params, default_track_type)
 
@@ -86,6 +93,36 @@ def load(bridge, params):
         # can lag a request behind.
         "devices": [device.name for device in track.devices],
     }
+
+
+def _is_producer_pal(name):
+    """True for the Producer Pal device, any case, with or without .amxd."""
+    text = str(name or "").strip().lower()
+    if text.endswith(".amxd"):
+        text = text[: -len(".amxd")]
+    return text == PRODUCER_PAL_NAME
+
+
+def _refuse_second_producer_pal(song):
+    """Raise 409 when the Set already has Producer Pal, before anything loads.
+
+    Top-level devices only: descending into every rack on every load costs more
+    than the rare nested device is worth.
+    """
+    tracks = [("track %s" % i, track) for i, track in enumerate(song.tracks)]
+    tracks += [
+        ("return track %s" % i, track)
+        for i, track in enumerate(song.return_tracks)
+    ]
+    tracks.append(("master track", song.master_track))
+
+    for label, track in tracks:
+        if any(_is_producer_pal(device.name) for device in track.devices):
+            raise RouteError(
+                409,
+                "Producer Pal is already in this Live Set, on %s %r - a Set can "
+                "only have one" % (label, track.name),
+            )
 
 
 def _item_kind(item_type, path):
