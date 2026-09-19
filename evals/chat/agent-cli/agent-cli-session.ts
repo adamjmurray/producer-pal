@@ -16,6 +16,7 @@ import { connectMcp } from "../mcp.ts";
 import { printStepUsage } from "../shared/formatting.ts";
 import { type TurnResult } from "../shared/types.ts";
 import { spawnAgentCli } from "./agent-cli-spawn.ts";
+import { turnTiming } from "./agent-cli-stream.ts";
 import {
   type AgentCliTransport,
   DEFAULT_AGENT_CLI_SYSTEM_PROMPT,
@@ -79,9 +80,17 @@ export async function createAgentCliSession(
         model,
         ...(sessionId != null ? { resumeSessionId: sessionId } : {}),
       });
-      const parsed = transport.parseStream(
-        await spawnAgentCli(transport, args, message, { cwd: sessionDir }),
-      );
+      const startedAt = performance.now();
+      const stdout = await spawnAgentCli(transport, args, message, {
+        cwd: sessionDir,
+      });
+      const elapsedMs = performance.now() - startedAt;
+      const parsed = transport.parseStream(stdout);
+      // A transport that reports its own model time wins. Otherwise fall back
+      // to the wall clock, which also covers CLI startup and tool execution, so
+      // it reads lower than the model actually generated.
+      const timing =
+        parsed.timing ?? turnTiming(parsed.usage?.outputTokens, elapsedMs);
 
       // eslint-disable-next-line require-atomic-updates -- turns run sequentially
       if (parsed.sessionId != null) {
@@ -97,14 +106,16 @@ export async function createAgentCliSession(
       if (usage != null) {
         // These CLIs report usage once per turn, not per step, so there is one
         // line per turn rather than one per tool round-trip.
-        printStepUsage(usage, prevUsage, true);
+        printStepUsage(usage, prevUsage, true, timing);
         prevUsage = usage;
       }
 
       return {
         text: parsed.text,
         toolCalls: parsed.toolCalls,
-        ...(parsed.usage != null ? { stepUsages: [parsed.usage] } : {}),
+        ...(parsed.usage != null
+          ? { stepUsages: [parsed.usage], stepTimings: [timing ?? {}] }
+          : {}),
       };
     },
     close: async () => {

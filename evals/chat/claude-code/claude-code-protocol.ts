@@ -17,13 +17,14 @@
  * instructions. What survives is a plain Producer Pal assistant.
  */
 
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   type AgentStreamState,
   parseAgentCliStream,
   recordToolResult,
   tokenCount,
   toToolArguments,
+  turnTiming,
 } from "../agent-cli/agent-cli-stream.ts";
 import {
   type AgentCliArgsInput,
@@ -206,6 +207,7 @@ function handleEvent(
     }
   } else if (event.type === "result") {
     state.usage = mapClaudeUsage(event.usage);
+    state.timing = claudeCodeTiming(event, state.usage);
     state.error ??= permissionDenialError(event.permission_denials);
     state.error ??= resultError(event);
   }
@@ -437,6 +439,28 @@ function stripMcpPrefix(name: string): string {
   return name.startsWith(MCP_TOOL_PREFIX)
     ? name.slice(MCP_TOOL_PREFIX.length)
     : name;
+}
+
+/**
+ * Read the turn's generation speed off the result event.
+ *
+ * `duration_api_ms` is the time spent in model calls, so tool execution is
+ * already out of it — unlike `duration_ms`, which covers the whole turn.
+ *
+ * @param event - The result event
+ * @param usage - Usage mapped from that same event
+ * @returns Step timing, or undefined when the rate isn't measurable
+ */
+function claudeCodeTiming(
+  event: Record<string, unknown>,
+  usage: TokenUsage | undefined,
+): StepTiming | undefined {
+  const durationMs =
+    typeof event.duration_api_ms === "number"
+      ? event.duration_api_ms
+      : undefined;
+
+  return turnTiming(usage?.outputTokens, durationMs);
 }
 
 /**

@@ -211,6 +211,22 @@ export function toStepTiming(
 }
 
 /**
+ * Derive a generation rate from a token count and how long it took.
+ * @param outputTokens - Tokens generated
+ * @param durationMs - Milliseconds the generation took
+ * @returns Tokens per second, or undefined when either input is unusable
+ */
+export function tokensPerSecond(
+  outputTokens: number | undefined,
+  durationMs: number | undefined,
+): number | undefined {
+  const tokens = measured(outputTokens);
+  const ms = measured(durationMs);
+
+  return tokens != null && ms != null ? tokens / (ms / 1000) : undefined;
+}
+
+/**
  * Keep a measurement only when it is a finite, positive number.
  * @param value - Candidate measurement
  * @returns The value, or undefined when it can't be trusted

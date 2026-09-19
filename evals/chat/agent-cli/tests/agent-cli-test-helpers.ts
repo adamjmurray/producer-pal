@@ -103,6 +103,9 @@ export function codexTurnStdout(threadId: string, text: string): string {
   ]);
 }
 
+/** Model time the Claude Code fixture reports, for a 2 tok/s turn. */
+const CLAUDE_FIXTURE_DURATION_API_MS = 2000;
+
 /**
  * Build a one-tool Claude Code turn in the same shape as codexTurnStdout.
  *
@@ -156,6 +159,7 @@ export function claudeTurnStdout(sessionId: string, text: string): string {
       is_error: false,
       result: text,
       session_id: sessionId,
+      duration_api_ms: CLAUDE_FIXTURE_DURATION_API_MS,
       usage: { input_tokens: 10, output_tokens: 4 },
     },
   ]);

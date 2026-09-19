@@ -9,6 +9,7 @@ import { NOTATIONS } from "#src/shared/notation";
 import {
   type ChatClientConfig,
   toStepTiming,
+  tokensPerSecond,
   toTokenUsage,
 } from "#webui/chat/sdk/types";
 
@@ -166,5 +167,19 @@ describe("toStepTiming", () => {
     ],
   ])("%s", (_label, performance, expected) => {
     expect(toStepTiming(performance)).toStrictEqual(expected);
+  });
+});
+
+describe("tokensPerSecond", () => {
+  it.each([
+    ["a measurable rate", 14, 2000, 7],
+    ["no token count", undefined, 2000, undefined],
+    ["a zero token count", 0, 2000, undefined],
+    ["no duration", 14, undefined, undefined],
+    ["a zero duration", 14, 0, undefined],
+    ["a negative duration", 14, -2000, undefined],
+    ["a non-finite duration", 14, Number.NaN, undefined],
+  ])("%s", (_label, outputTokens, durationMs, expected) => {
+    expect(tokensPerSecond(outputTokens, durationMs)).toBe(expected);
   });
 });

@@ -251,7 +251,7 @@ takes a step limit we can rely on, so the transports count the model's actions
 the turn goes past the shared budget in `evals/shared/step-budget.ts`. The run
 then fails as a blown budget in seconds rather than as a five-minute timeout.
 
-Two caveats when comparing a subscription-CLI run against anything else:
+Three caveats when comparing a subscription-CLI run against anything else:
 
 - **Token counts are not comparable across transports.** Each vendor defines
   `input_tokens` differently: Codex reports the total (its `cached_input_tokens`
@@ -260,6 +260,11 @@ Two caveats when comparing a subscription-CLI run against anything else:
   `claude-code` turn that processed ~38k tokens prints `tokens: 18` — everything
   else was a cache read. The mapping deliberately matches the `anthropic` AI SDK
   path so the two Anthropic routes agree; it does NOT line up with `codex-code`.
+- **Generation speed is one figure per turn.** Claude Code reports the time it
+  spent in model calls, so its `tok/s` excludes tool execution. Codex reports no
+  duration, so its rate is the whole turn on the wall clock — CLI startup and
+  tool execution included — and reads lower than the model actually generated.
+  Neither reports a time to first token.
 - **Session files outlive the run.** Claude Code keys its on-disk session store
   by working directory, and each eval session uses a fresh temp directory that
   `close()` removes. The transcript under `~/.claude/projects/` stays behind,

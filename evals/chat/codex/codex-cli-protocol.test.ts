@@ -166,6 +166,9 @@ describe("parseCodexStream", () => {
       cacheReadTokens: 80,
       reasoningTokens: 5,
     });
+    // `turn.completed` carries no duration, so the session falls back to the
+    // wall clock rather than the transport reporting a rate.
+    expect(parsed.timing).toBeUndefined();
   });
 
   it("pairs an id-less started/completed item into one call", () => {
