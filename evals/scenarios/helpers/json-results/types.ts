@@ -139,9 +139,9 @@ export interface JsonToolCall {
 
 /** Generation speed, combined over the model calls it covers. */
 export interface JsonStepTiming {
-  /** Total output tokens over the summed generation time, so a long step counts
-   *  for more than a short one. Model response time only: waiting for the first
-   *  token and running tools are both outside it. */
+  /** Total output tokens over the summed model response time, so a long step
+   *  counts for more than a short one. Includes the wait for the first token;
+   *  running tools is outside it. */
   outputTokensPerSecond?: number;
   /** Mean time to first token across the steps the SDK could measure, in ms. */
   timeToFirstTokenMs?: number;

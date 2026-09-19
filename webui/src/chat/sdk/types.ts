@@ -169,9 +169,10 @@ export interface StepTiming {
   /** Milliseconds from the model call starting to its first generated chunk. */
   timeToFirstTokenMs?: number;
   /**
-   * Output tokens per second after the first chunk. Measured over the model
-   * response alone, so tool execution and the wait for the first token are both
-   * outside it.
+   * Output tokens over the whole model response, including the wait for the
+   * first chunk. Tool execution is outside it. Not the rate after the first
+   * chunk: a model that hides its reasoning and answers in one burst makes
+   * that one read as tens of thousands.
    */
   outputTokensPerSecond?: number;
 }
@@ -179,7 +180,7 @@ export interface StepTiming {
 /** The `performance` fields of a step result that {@link toStepTiming} reads. */
 export interface StepPerformance {
   timeToFirstOutputMs?: number | undefined;
-  outputTokensPerSecond?: number | undefined;
+  effectiveOutputTokensPerSecond?: number | undefined;
 }
 
 /**
@@ -195,7 +196,9 @@ export function toStepTiming(
   performance: StepPerformance | undefined,
 ): StepTiming | undefined {
   const timeToFirstTokenMs = measured(performance?.timeToFirstOutputMs);
-  const outputTokensPerSecond = measured(performance?.outputTokensPerSecond);
+  const outputTokensPerSecond = measured(
+    performance?.effectiveOutputTokensPerSecond,
+  );
 
   if (timeToFirstTokenMs == null && outputTokensPerSecond == null) {
     return undefined;

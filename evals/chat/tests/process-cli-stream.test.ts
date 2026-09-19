@@ -292,7 +292,7 @@ describe("processCliStream — step usage line", () => {
         { type: "text-delta", text: "hi" },
         finishStep(12300, {
           timeToFirstOutputMs: 1200,
-          outputTokensPerSecond: 42,
+          effectiveOutputTokensPerSecond: 42,
         }),
       ]),
       { showUsage: true },

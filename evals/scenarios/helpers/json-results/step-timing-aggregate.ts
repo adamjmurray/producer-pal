@@ -13,7 +13,7 @@ import { type JsonStepTiming } from "./types.ts";
 /**
  * Combine the step timings of the given turns.
  *
- * The rate is token-weighted: each step's generation time is recovered as
+ * The rate is token-weighted: each step's response time is recovered as
  * `outputTokens / outputTokensPerSecond`, and the totals are divided. Averaging
  * the rates themselves would let a two-token step outvote a thousand-token one.
  * Steps the SDK could not measure drop out of both totals.

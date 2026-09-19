@@ -130,22 +130,22 @@ describe("toTokenUsage", () => {
 });
 
 describe("toStepTiming", () => {
-  // The SDK divides by a duration that can be zero and clamps the resulting
-  // Infinity to 0, so a 0 means "couldn't measure" and must be dropped.
+  // The SDK clamps an unmeasurable rate to 0, so a 0 means "couldn't measure"
+  // and must be dropped.
   it.each([
     [
       "keeps both measurements",
-      { timeToFirstOutputMs: 1234, outputTokensPerSecond: 42.7 },
+      { timeToFirstOutputMs: 1234, effectiveOutputTokensPerSecond: 42.7 },
       { timeToFirstTokenMs: 1234, outputTokensPerSecond: 42.7 },
     ],
     [
       "drops a zeroed rate",
-      { timeToFirstOutputMs: 900, outputTokensPerSecond: 0 },
+      { timeToFirstOutputMs: 900, effectiveOutputTokensPerSecond: 0 },
       { timeToFirstTokenMs: 900 },
     ],
     [
       "drops a zeroed time to first token",
-      { timeToFirstOutputMs: 0, outputTokensPerSecond: 30 },
+      { timeToFirstOutputMs: 0, effectiveOutputTokensPerSecond: 30 },
       { outputTokensPerSecond: 30 },
     ],
     ["no performance data at all", undefined, undefined],
@@ -155,13 +155,13 @@ describe("toStepTiming", () => {
       "non-finite values",
       {
         timeToFirstOutputMs: Number.NaN,
-        outputTokensPerSecond: Number.POSITIVE_INFINITY,
+        effectiveOutputTokensPerSecond: Number.POSITIVE_INFINITY,
       },
       undefined,
     ],
     [
       "negative values",
-      { timeToFirstOutputMs: -5, outputTokensPerSecond: -1 },
+      { timeToFirstOutputMs: -5, effectiveOutputTokensPerSecond: -1 },
       undefined,
     ],
   ])("%s", (_label, performance, expected) => {

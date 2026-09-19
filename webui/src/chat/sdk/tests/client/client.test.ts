@@ -572,7 +572,7 @@ describe("ChatSdkClient", () => {
         text: "Hi",
         performance: {
           timeToFirstOutputMs: 1200,
-          outputTokensPerSecond: 42.4,
+          effectiveOutputTokensPerSecond: 42.4,
         },
       });
 
