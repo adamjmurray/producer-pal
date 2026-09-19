@@ -40,6 +40,16 @@ export function copyClipToSlot(
 }
 
 /**
+ * How a result says a copy landed on the clip a slot already held. One wording
+ * for every tool that copies into a slot.
+ * @param destPath - The slot the copy landed in
+ * @returns The note for that copy's entry
+ */
+export function clipOverwriteNote(destPath: string): string {
+  return `overwrote the existing clip at ${destPath}`;
+}
+
+/**
  * Says why a track won't take a copy of a clip, for a warning the caller words
  * itself. Live declines these copies without reporting anything, so checking
  * first is the only way to name the reason.

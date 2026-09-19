@@ -15,6 +15,7 @@
 // under a new id hands its reasons back with {@link moveClipReasons}.
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 
 /** What the clips of one call have to say beyond their own results. */
 export interface ClipReasons {
@@ -70,7 +71,7 @@ export function noteClipOverwrite(
   clipId: string,
   destPath: string,
 ): void {
-  noteClipReason(reasons, clipId, `overwrote the existing clip at ${destPath}`);
+  noteClipReason(reasons, clipId, clipOverwriteNote(destPath));
 }
 
 /**

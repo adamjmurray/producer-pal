@@ -188,13 +188,22 @@ describe("duplicateClipSlot", () => {
     expect(occupant?.set).not.toHaveBeenCalled();
   });
 
-  it("reports the copy when it replaces the clip already in the slot", () => {
+  // The copy destroys the clip that was there, so the entry has to say so —
+  // the same wording update-clip's slot move uses.
+  it("says the copy replaced the clip already in the slot", () => {
     setupSlotDuplication({ destHasClip: 1 });
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       id: COPY_ID,
       path: "t1/s0",
+      reason: "overwrote the existing clip at t1/s0",
     });
+  });
+
+  it("says nothing about overwriting when the slot was empty", () => {
+    setupSlotDuplication({ destHasClip: 0 });
+
+    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("reason");
   });
 });
 

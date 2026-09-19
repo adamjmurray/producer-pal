@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clipCopyBlocker,
+  clipOverwriteNote,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -125,6 +126,10 @@ export function duplicateClipSlot(
     return skippedCopy(destination, blocker);
   }
 
+  // Read before the copy: the clip that was there is gone once it lands, and
+  // the entry has to say the copy replaced it.
+  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
+
   // Compares the destination's clip before and after, so a declined copy can't
   // be reported as a success (and the slot's original clip can't be renamed).
   const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
@@ -135,8 +140,13 @@ export function duplicateClipSlot(
 
   newClip.setAll({ name, color });
 
-  // Return the new clip info directly
-  return getMinimalClipInfo(newClip);
+  const copy = getMinimalClipInfo(newClip);
+
+  if (destinationWasOccupied) {
+    copy.reason = clipOverwriteNote(destination);
+  }
+
+  return copy;
 }
 
 /**

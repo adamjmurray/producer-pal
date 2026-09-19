@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { appendReason } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { collectClipResults } from "./overwritten-copies.ts";
@@ -41,9 +42,10 @@ export async function applyTransformsToDuplicatedClips(
 
   if (!Array.isArray(updated)) {
     // The copies are made and reported; only the edit didn't run, so each one
-    // carries the reason rather than the whole duplicate failing.
+    // carries the reason rather than the whole duplicate failing. Appended, so
+    // a copy that replaced a clip still says so.
     for (const clip of clipResults) {
-      clip.reason = updated;
+      appendReason(clip, updated);
     }
 
     return;
@@ -69,7 +71,7 @@ export async function applyTransformsToDuplicatedClips(
 
     // A copy the update couldn't edit has a reason of its own to carry.
     if (stats?.reason != null) {
-      clip.reason = stats.reason;
+      appendReason(clip, stats.reason);
     }
   }
 }
