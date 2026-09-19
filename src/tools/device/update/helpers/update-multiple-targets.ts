@@ -66,19 +66,25 @@ type ResolvedTarget =
 /** An object's own last path segment, so the rest of the path is its container. */
 const OWN_SEGMENT = /\/[^/]+$/;
 
+/** One entry per target, except where null means one value covers them all. */
+export interface TargetLists {
+  names: ListEntries | null;
+  colors: ListEntries | null;
+  /** Where each target moves, undefined where the call named nowhere */
+  destinations: Array<string | undefined>;
+}
+
 /**
  * Update every target the call named, resolving each by the param that named it
  * @param items - The targets, each tagged with the param it came from
- * @param updateOptions - Options to pass to updateTarget
- * @param parsedNames - Comma-separated names array, or null
- * @param parsedColors - Comma-separated colors array, or null
+ * @param updateOptions - Options to pass to updateTarget, minus the per-target lists
+ * @param lists - The name, color and destination lists, paired with the targets
  * @returns The result when one target was named, otherwise one entry per target
  */
 export function updateMultipleTargets(
   items: NamedTarget[],
   updateOptions: UpdateTargetOptions,
-  parsedNames: ListEntries | null,
-  parsedColors: ListEntries | null,
+  lists: TargetLists,
 ): WriteResult<Record<string, unknown>> {
   return writeFanOut(items, ({ param, value }, i) => {
     // Resolution throws for a path that names nothing a target can sit in, and
@@ -94,8 +100,9 @@ export function updateMultipleTargets(
 
     const options: UpdateTargetOptions = {
       ...updateOptions,
-      name: getNameForIndex(updateOptions.name, i, parsedNames),
-      color: getColorForIndex(updateOptions.color, i, parsedColors),
+      name: getNameForIndex(updateOptions.name, i, lists.names),
+      color: getColorForIndex(updateOptions.color, i, lists.colors),
+      toPath: lists.destinations[i],
     };
 
     const result =

@@ -7,11 +7,14 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import {
   namedIdParam,
+  namedParam,
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
@@ -41,7 +44,7 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
  * @param args.ids - Hidden alias for id
  * @param args.path - Device/chain/drum-pad path
  * @param args.paths - Hidden alias for path
- * @param args.toPath - Move device to this path (devices only)
+ * @param args.toPath - Where to move, one destination per target (devices only)
  * @param args.name - Display name (not drum pads)
  * @param args.params - {name, value} entries to set (devices, plus `sample` on
  *   a drum pad or one of its layers)
@@ -124,8 +127,8 @@ export function updateDevice(
   } else {
     // Every list in the call is checked together, before any of them is split:
     // once one is split nothing knows whether the others are lists at all.
-    // toPath is left out — it is one destination for the whole call, not a
-    // per-device list.
+    // toPath is left out — moveDestinations owns it, so a lone destination
+    // against several targets is refused rather than broadcast.
     validateListLengths([
       {
         param: targetParamLabel({ ids, path }),
@@ -142,9 +145,10 @@ export function updateDevice(
       name,
       color,
     });
+    const destinations = moveDestinations(toPath, items.length);
 
+    // No toPath here: each target takes the destination at its own position.
     const updateOptions: UpdateTargetOptions = {
-      toPath,
       name,
       params,
       actions,
@@ -165,12 +169,11 @@ export function updateDevice(
       force,
     };
 
-    result = updateMultipleTargets(
-      items,
-      updateOptions,
-      parsedNames,
-      parsedColors,
-    );
+    result = updateMultipleTargets(items, updateOptions, {
+      names: parsedNames,
+      colors: parsedColors,
+      destinations,
+    });
   }
 
   if (focus && result != null) {
@@ -182,6 +185,37 @@ export function updateDevice(
   }
 
   return result;
+}
+
+/**
+ * One destination per target, refused before anything moves when they don't
+ * pair. A destination never covers several targets: a device slot holds one
+ * object. Repeats are fine — move_device inserts rather than overwrites.
+ * @param toPath - The destination(s), comma-separated
+ * @param count - How many targets the call names
+ * @returns One destination per target, undefined where the call named none
+ */
+function moveDestinations(
+  toPath: string | undefined,
+  count: number,
+): Array<string | undefined> {
+  const named = namedParam(toPath, "toPath");
+
+  if (named == null) {
+    return Array.from({ length: count }, () => undefined);
+  }
+
+  const entries = targetEntries(named, "toPath");
+
+  if (entries.length !== count) {
+    throw new Error(
+      `toPath names ${plural(entries.length, "destination")} but the call ` +
+        `names ${plural(count, "target")}. A destination holds one object, ` +
+        `so toPath must name one per target, in order.`,
+    );
+  }
+
+  return entries;
 }
 
 /**

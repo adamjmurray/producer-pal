@@ -14,7 +14,9 @@
  * destination it was given.
  *
  * The `d+` suite below is the other half: only real Live says where an append
- * lands, since a default track preset may already have put devices there.
+ * lands, since a default track preset may already have put devices there. The
+ * last suite pairs a batch's destinations with its devices, which needs the
+ * same live read.
  *
  * Run with: npm run e2e:mcp -- ppal-device-move-refused
  */
@@ -214,6 +216,96 @@ describe.each([
     await sleep(200);
 
     expect(await readDeviceCount(ctx.client!, to)).toBe(before + 1);
+  });
+});
+
+interface MovedDevice {
+  id: string;
+  path: string;
+}
+
+/**
+ * A fresh track holding two audio effects, for a batch to move.
+ * @returns The track index and its two device ids, in device order
+ */
+async function twoDevices(): Promise<{ track: number; ids: string[] }> {
+  const track = await createMidiTrack(ctx.client!);
+  const first = await createTestDevice(ctx.client!, "Reverb", `t${track}`);
+  const second = await createTestDevice(ctx.client!, "Utility", `t${track}`);
+
+  await sleep(150);
+
+  return { track, ids: [first, second] };
+}
+
+// A device slot holds one object, so a destination never covers several
+// devices: they pair 1:1, and a mismatch is refused before anything moves.
+describe("toPath paired with the devices a move names", () => {
+  it("sends each device to the destination at its own position", async () => {
+    const { ids } = await twoDevices();
+    const left = await createMidiTrack(ctx.client!);
+    const right = await createMidiTrack(ctx.client!);
+    const leftBefore = await readDeviceCount(ctx.client!, left);
+    const rightBefore = await readDeviceCount(ctx.client!, right);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: ids.join(","), toPath: `t${left}/d+,t${right}/d+` },
+    });
+
+    expect(parseToolResult<MovedDevice[]>(result)).toStrictEqual([
+      { id: ids[0], path: `t${left}/d${leftBefore}` },
+      { id: ids[1], path: `t${right}/d${rightBefore}` },
+    ]);
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, left)).toBe(leftBefore + 1);
+    expect(await readDeviceCount(ctx.client!, right)).toBe(rightBefore + 1);
+  });
+
+  // Live inserts rather than overwrites, so a repeat costs nothing: the second
+  // append lands after the first.
+  it("appends both devices for a repeated d+ destination", async () => {
+    const { ids } = await twoDevices();
+    const to = await createMidiTrack(ctx.client!);
+    const before = await readDeviceCount(ctx.client!, to);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: ids.join(","), toPath: `t${to}/d+,t${to}/d+` },
+    });
+
+    expect(parseToolResult<MovedDevice[]>(result)).toStrictEqual([
+      { id: ids[0], path: `t${to}/d${before}` },
+      { id: ids[1], path: `t${to}/d${before + 1}` },
+    ]);
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, to)).toBe(before + 2);
+  });
+
+  it("refuses one destination for two devices and moves nothing", async () => {
+    const { track, ids } = await twoDevices();
+    const to = await createMidiTrack(ctx.client!);
+    const sourceBefore = await readDeviceCount(ctx.client!, track);
+    const destinationBefore = await readDeviceCount(ctx.client!, to);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: ids.join(","), toPath: `t${to}/d+` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "toPath names 1 destination but the call names 2 targets",
+    );
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, track)).toBe(sourceBefore);
+    expect(await readDeviceCount(ctx.client!, to)).toBe(destinationBefore);
   });
 });
 

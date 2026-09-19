@@ -448,7 +448,12 @@ describe("updateDevice - a toPath that does not resolve", () => {
       'device not moved: Device at path "t0/d1/c0" does not support chains',
     ],
   ])("renames both devices and warns about %s", (toPath, warning) => {
-    const result = updateDevice({ id: "123,456", toPath, name: "X" });
+    // One destination per device: a destination never covers both.
+    const result = updateDevice({
+      id: "123,456",
+      toPath: `${toPath},${toPath}`,
+      name: "X",
+    });
 
     expect(capturedWarnings()).toContainEqual(expect.stringContaining(warning));
     expect(first.set).toHaveBeenCalledWith("name", "X");
