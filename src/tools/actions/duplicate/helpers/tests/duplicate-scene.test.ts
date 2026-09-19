@@ -10,6 +10,7 @@ import {
   children,
   type RegisteredMockObject,
   registerClipSlot,
+  registerLiveSetWithThreeTracks,
   registerMockObject,
 } from "../duplicate-test-helpers.ts";
 import {
@@ -68,10 +69,7 @@ describe("duplicate-scene", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
-    });
+    registerLiveSetWithThreeTracks();
   });
 
   describe("calculateSceneLength", () => {

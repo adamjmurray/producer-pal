@@ -24,6 +24,16 @@ function mockLiveSetWithTracks(trackIds: string[] = ["track-1"]): LiveAPI {
   } as unknown as LiveAPI;
 }
 
+/**
+ * Answer `LiveAPI.from` with these objects, and null for any other id.
+ * @param objectsById - The object each id resolves to
+ */
+function mockLiveApiFrom(objectsById: Record<string, unknown>): void {
+  g.LiveAPI = {
+    from: vi.fn((id: string) => objectsById[id] ?? null),
+  };
+}
+
 describe("song-extension", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,15 +75,10 @@ describe("song-extension", () => {
         call: vi.fn().mockReturnValue("id 999"),
       };
 
-      g.LiveAPI = {
-        from: vi
-          .fn()
-          .mockImplementation((id) =>
-            id === "track-1"
-              ? mockMidiTrack
-              : { id: "999", exists: () => true, type: "Clip" },
-          ),
-      };
+      mockLiveApiFrom({
+        "track-1": mockMidiTrack,
+        "id 999": { id: "999", exists: () => true, type: "Clip" },
+      });
 
       const mockLiveSet = {
         getProperty: vi.fn().mockReturnValue(100), // song_length 100 < 200
@@ -87,25 +92,9 @@ describe("song-extension", () => {
     });
 
     it("should create MIDI clip when MIDI track is available", () => {
-      const mockMidiTrack = {
-        getProperty: vi.fn().mockReturnValue(1), // has_midi_input = 1
-        call: vi.fn().mockReturnValue("id 999"),
-      };
-      const mockTempClip = { id: "999", exists: () => true, type: "Clip" };
+      const { mockMidiTrack, mockTempClip } = midiTrackCreatingClip999();
 
-      g.LiveAPI = {
-        from: vi.fn().mockImplementation((id) => {
-          if (id === "track-1") {
-            return mockMidiTrack;
-          }
-
-          if (id === "id 999") {
-            return mockTempClip;
-          }
-
-          return null;
-        }),
-      };
+      mockLiveApiFrom({ "track-1": mockMidiTrack, "id 999": mockTempClip });
 
       const mockLiveSet = mockLiveSetWithTracks();
 
@@ -136,19 +125,7 @@ describe("song-extension", () => {
         type: "LiveSet",
       };
 
-      g.LiveAPI = {
-        from: vi.fn().mockImplementation((id) => {
-          if (id === "track-1") {
-            return mockMidiTrack;
-          }
-
-          if (id === "id 1") {
-            return mockLiveSetObject;
-          }
-
-          return null;
-        }),
-      };
+      mockLiveApiFrom({ "track-1": mockMidiTrack, "id 1": mockLiveSetObject });
 
       const mockLiveSet = mockLiveSetWithTracks();
 
@@ -171,19 +148,10 @@ describe("song-extension", () => {
         slot: mockSlot,
       });
 
-      g.LiveAPI = {
-        from: vi.fn().mockImplementation((id) => {
-          if (id === "track-1") {
-            return mockAudioTrack;
-          }
-
-          if (id === "id 888") {
-            return mockArrangementClip;
-          }
-
-          return null;
-        }),
-      };
+      mockLiveApiFrom({
+        "track-1": mockAudioTrack,
+        "id 888": mockArrangementClip,
+      });
 
       const mockLiveSet = mockLiveSetWithTracks();
 
@@ -229,29 +197,13 @@ describe("song-extension", () => {
       const mockAudioTrack = {
         getProperty: vi.fn().mockReturnValue(0), // audio track
       };
-      const mockMidiTrack = {
-        getProperty: vi.fn().mockReturnValue(1), // MIDI track
-        call: vi.fn().mockReturnValue("id 999"),
-      };
-      const mockTempClip = { id: "999", exists: () => true, type: "Clip" };
+      const { mockMidiTrack, mockTempClip } = midiTrackCreatingClip999();
 
-      g.LiveAPI = {
-        from: vi.fn().mockImplementation((id) => {
-          if (id === "audio-track") {
-            return mockAudioTrack;
-          }
-
-          if (id === "midi-track") {
-            return mockMidiTrack;
-          }
-
-          if (id === "id 999") {
-            return mockTempClip;
-          }
-
-          return null;
-        }),
-      };
+      mockLiveApiFrom({
+        "audio-track": mockAudioTrack,
+        "midi-track": mockMidiTrack,
+        "id 999": mockTempClip,
+      });
 
       const mockLiveSet = mockLiveSetWithTracks(["audio-track", "midi-track"]);
 
@@ -319,3 +271,21 @@ describe("song-extension", () => {
     });
   });
 });
+
+/**
+ * A MIDI track whose create_midi_clip hands back clip 999, and that clip.
+ * @returns The track and the clip it creates
+ */
+function midiTrackCreatingClip999(): {
+  mockMidiTrack: { getProperty: Mock; call: Mock };
+  mockTempClip: { id: string; exists: () => boolean; type: string };
+} {
+  return {
+    mockMidiTrack: {
+      // has_midi_input = 1
+      getProperty: vi.fn().mockReturnValue(1),
+      call: vi.fn().mockReturnValue("id 999"),
+    },
+    mockTempClip: { id: "999", exists: () => true, type: "Clip" },
+  };
+}

@@ -12,6 +12,7 @@ import {
   createTrackResult,
   createTrackResultArray,
   expectDeleteDeviceCalls,
+  registerBareTrackDuplication,
   registerDuplicatedTrackSlots,
   registerMockObject,
   setupProducerPalDeviceMocks,
@@ -25,15 +26,7 @@ import {
 
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-    });
-
-    registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
+    const { liveSet } = registerBareTrackDuplication();
 
     const result = await duplicate({ type: "track", id: "track1" });
 
@@ -42,14 +35,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate multiple tracks with same name", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-    });
-    const track1 = registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
+    const { liveSet, newTrack: track1 } = registerBareTrackDuplication();
     const track2 = registerMockObject("live_set/tracks/2", {
       path: livePath.track(2),
       properties: { devices: [], clip_slots: [], arrangement_clips: [] },
@@ -457,12 +443,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should apply color when duplicating a track", async () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    const newTrack = registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
-    });
+    const { newTrack } = registerBareTrackDuplication();
 
     const result = await duplicate({
       type: "track",

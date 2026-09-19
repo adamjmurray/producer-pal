@@ -20,6 +20,21 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { mockWorkingDeviceMoves } from "../update-device-test-helpers.ts";
 
+/**
+ * A destination track holding the given devices, plus a live_set whose
+ * move_device actually relocates.
+ * @param trackIndex - The track the move is aimed at
+ * @param deviceIds - What that track already holds
+ */
+function registerDestination(trackIndex: number, ...deviceIds: string[]): void {
+  mockWorkingDeviceMoves();
+  registerMockObject(`track-${String(trackIndex)}`, {
+    path: livePath.track(trackIndex),
+    type: "Track",
+    properties: { devices: children(...deviceIds) },
+  });
+}
+
 describe("moveDeviceToPath", () => {
   let device: RegisteredMockObject;
 
@@ -159,12 +174,7 @@ describe("moveDeviceToPath", () => {
   it("refuses an index past the end, which Live would drop in silence", () => {
     // Live takes 0 through the container's device count and ignores anything
     // higher without a word, so this can only be caught before the call.
-    mockWorkingDeviceMoves();
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("resident-0", "resident-1") },
-    });
+    registerDestination(1, "resident-0", "resident-1");
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d9")).toStrictEqual({
       outcome: "refused",
@@ -177,12 +187,7 @@ describe("moveDeviceToPath", () => {
   it("catches an index past the end within the device's own container", () => {
     // The containment check below cannot see this one: a device moving inside
     // its own container is already in the list that check reads.
-    mockWorkingDeviceMoves();
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      type: "Track",
-      properties: { devices: children("device-0") },
-    });
+    registerDestination(0, "device-0");
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t0/d9")).toStrictEqual({
       outcome: "refused",
@@ -193,12 +198,7 @@ describe("moveDeviceToPath", () => {
   });
 
   it("allows the index equal to the count, which appends", () => {
-    mockWorkingDeviceMoves();
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("resident-0", "resident-1") },
-    });
+    registerDestination(1, "resident-0", "resident-1");
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d2").outcome).toBe(
       "moved",

@@ -190,6 +190,51 @@ export async function expectQueryDegradesOnBrokenDb(
 }
 
 /**
+ * Assert a `source: "sampleFolder"` query explains itself instead of returning
+ * a silently empty set. sampleFolder files aren't in Live's fe_values index, so
+ * the query can only ever match nothing.
+ *
+ * @param runQuery - Runs the library query under test and returns its result
+ * @param matches - Pulls the result's match list (groups, items, ...)
+ * @returns The query result, for any further assertions
+ */
+export async function expectSampleFolderExplained<
+  T extends { reason?: string },
+>(runQuery: () => Promise<T>, matches: (result: T) => unknown[]): Promise<T> {
+  const result = await runQuery();
+
+  expect(matches(result)).toStrictEqual([]);
+  expect(result.reason).toContain("sampleFolder");
+
+  return result;
+}
+
+/**
+ * Point the DB finder at nothing and assert the query degrades to
+ * `dbAvailable: false` with the standard reason rather than throwing.
+ *
+ * @param dbPathMod - The mocked `live-db-path` module
+ * @param dbPathMod.findLiveFilesDbPath - Mocked finder, pointed at nothing
+ * @param runQuery - Runs the library query under test and returns its result
+ * @returns The query result, for any further assertions
+ */
+export async function expectQueryDegradesWithoutDb<
+  T extends { dbAvailable?: boolean; reason?: string },
+>(
+  dbPathMod: { findLiveFilesDbPath: (...args: never[]) => unknown },
+  runQuery: () => Promise<T>,
+): Promise<T> {
+  vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
+
+  const result = await runQuery();
+
+  expect(result.dbAvailable).toBe(false);
+  expect(result.reason).toBe("Live database not found");
+
+  return result;
+}
+
+/**
  * Wire up beforeAll/beforeEach/afterEach/afterAll hooks for a Live-library DB test:
  * creates the fixture, mocks `findLiveFilesDbPath` to return its path, and cleans up.
  *

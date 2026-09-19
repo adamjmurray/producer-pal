@@ -14,6 +14,7 @@ import {
 } from "#webui/chat/sdk/build-model-messages";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { AssistantToolCall } from "#webui/components/chat/assistant/tool-calls/AssistantToolCall";
+import { expectDisclosureClasses } from "#webui/components/chat/assistant/tests/disclosure-assertions";
 
 const TEST_TOOL_NAMES: Record<string, string> = {
   "ppal-read-live-set": "Read Live Set",
@@ -51,11 +52,8 @@ describe("AssistantToolCall", () => {
 
     it("has correct base styling classes", () => {
       render(<AssistantToolCall {...defaultProps} />);
-      const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-zinc-200");
-      expect(details!.className).toContain("dark:bg-zinc-700");
-      expect(details!.className).toContain("font-mono");
+      expectDisclosureClasses("font-mono");
     });
   });
 

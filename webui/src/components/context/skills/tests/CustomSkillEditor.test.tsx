@@ -18,6 +18,7 @@ import {
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
+import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
 import { makeManualGuard } from "#webui/components/context/collection/leave-guard-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
@@ -289,11 +290,8 @@ describe("CustomSkillEditor external update banner", () => {
       }),
     );
 
-    expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
+    reloadStaleEntry(BANNER_TEXT);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
-
-    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
     expect(
       screen.getByRole("textbox", { name: /Instructions/ }),
     ).toHaveProperty("value", "Voice with 9ths now.");

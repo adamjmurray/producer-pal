@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { mixerPathIds } from "#src/test/mocks/mock-registry-helpers.ts";
 import {
   createOutputOnlyRoutingMock,
   createSimpleRoutingMock,
@@ -81,9 +82,7 @@ describe("readOneTrack", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
           [String(livePath.track(0))]: "track1",
-          [livePath.track(0).mixerDevice()]: "mixer_1",
-          [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
-          [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
+          ...mixerPathIds(livePath.track(0)),
           [String(livePath.track(0).device(0))]: "synth1",
           [String(livePath.track(0).device(1))]: "effect1",
           [livePath.track(0).clipSlot(0).clip()]: "clip1",

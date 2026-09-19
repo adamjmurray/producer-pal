@@ -7,7 +7,7 @@
  * Used by both read-track and read-live-set tests.
  */
 
-interface RoutingMockProperties {
+export interface RoutingMockProperties {
   available_input_routing_channels?: string[];
   available_input_routing_types?: string[];
   available_output_routing_channels?: string[];

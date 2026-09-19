@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findSimilar } from "../../query/find-similar.ts";
 import {
   expectQueryDegradesOnBrokenDb,
+  expectQueryDegradesWithoutDb,
+  expectSampleFolderExplained,
   setupLibraryFixtureLifecycle,
   STALENESS_RISK,
 } from "../fixtures/library-fixture.ts";
@@ -143,25 +145,18 @@ describe("findSimilar", () => {
   });
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {
-    // sampleFolder files aren't in Live's fe_values index, so this can only ever
-    // match nothing — explain it instead of returning an unexplained empty set.
-    const result = await findSimilar({
-      similarTo: SEED_KICK,
-      source: "sampleFolder",
-    });
-
-    expect(result.items).toStrictEqual([]);
-    expect(result.reason).toContain("sampleFolder");
+    await expectSampleFolderExplained(
+      () => findSimilar({ similarTo: SEED_KICK, source: "sampleFolder" }),
+      (r) => r.items,
+    );
   });
 
   it("degrades to dbAvailable:false when the Live DB is missing", async () => {
-    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
+    const result = await expectQueryDegradesWithoutDb(dbPathMod, () =>
+      findSimilar({ similarTo: SEED_KICK }),
+    );
 
-    const result = await findSimilar({ similarTo: SEED_KICK });
-
-    expect(result.dbAvailable).toBe(false);
     expect(result.seed.found).toBe(false);
-    expect(result.reason).toBe("Live database not found");
   });
 
   it("degrades to dbAvailable:false when a query throws", async () => {

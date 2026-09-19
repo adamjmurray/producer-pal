@@ -10,31 +10,28 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
 } from "../../helpers/notes/note-transforms.ts";
-import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
+import {
+  makeNotesMockClip,
+  rawNote,
+  registerScaledLiveSet,
+} from "./notes-mock-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type ClipReasons,
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 
+/**
+ * A clip that answers getProperty out of a table, and 0 for anything else.
+ * @param props - What the clip reports
+ * @returns A stand-in for a LiveAPI clip
+ */
+function clipReading(props: Record<string, number>) {
+  return { getProperty: vi.fn((prop: string) => props[prop] ?? 0) };
+}
+
 function createSessionClipMock(length = 8) {
-  return {
-    getProperty: vi.fn((prop: string) => {
-      if (prop === "length") {
-        return length;
-      }
-
-      if (prop === "is_midi_clip") {
-        return 1;
-      }
-
-      if (prop === "is_arrangement_clip") {
-        return 0;
-      }
-
-      return 0;
-    }),
-  };
+  return clipReading({ length, is_midi_clip: 1, is_arrangement_clip: 0 });
 }
 
 describe("note-transforms", () => {
@@ -56,15 +53,7 @@ describe("note-transforms", () => {
     });
 
     it("includes scalePitchClassMask when scale is active", () => {
-      registerMockObject("live_set", {
-        path: "live_set",
-        type: "Song",
-        properties: {
-          scale_mode: 1,
-          root_note: 0,
-          scale_intervals: [0, 2, 4, 5, 7, 9, 11], // C major
-        },
-      });
+      registerScaledLiveSet([0, 2, 4, 5, 7, 9, 11]); // C major
 
       const mockClip = createSessionClipMock();
 
@@ -76,23 +65,11 @@ describe("note-transforms", () => {
     it("scales clipDuration by timeSigDenominator/4 for a non-4 denominator (session)", () => {
       // At 4/8, a content length of 6 Ableton (quarter-note) beats is 6 * (8/4)
       // = 12 musical beats. A `/` mutation would give 6 / 2 = 3.
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "length") {
-            return 6;
-          }
-
-          if (prop === "is_midi_clip") {
-            return 1;
-          }
-
-          if (prop === "is_arrangement_clip") {
-            return 0;
-          }
-
-          return 0;
-        }),
-      };
+      const mockClip = clipReading({
+        length: 6,
+        is_midi_clip: 1,
+        is_arrangement_clip: 0,
+      });
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
 
@@ -109,22 +86,17 @@ describe("note-transforms", () => {
         properties: { tempo: 120 },
       });
 
-      const mockClip = {
-        getProperty: vi.fn(
-          (prop: string) =>
-            ({
-              length: 16,
-              is_midi_clip: 0,
-              is_arrangement_clip: 0,
-              warping: 0,
-              looping: 0,
-              start_marker: 0,
-              end_marker: 4, // seconds, while unwarped
-              sample_rate: 48000,
-              sample_length: 4 * 48000,
-            })[prop] ?? 0,
-        ),
-      };
+      const mockClip = clipReading({
+        length: 16,
+        is_midi_clip: 0,
+        is_arrangement_clip: 0,
+        warping: 0,
+        looping: 0,
+        start_marker: 0,
+        end_marker: 4, // seconds, while unwarped
+        sample_rate: 48000,
+        sample_length: 4 * 48000,
+      });
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
 
@@ -134,27 +106,12 @@ describe("note-transforms", () => {
     it("scales clipDuration and arrangementStart by timeSigDenominator/4 (arrangement)", () => {
       // At 4/8: arrangementStart = start_time 4 * (8/4) = 8 (a `/` gives 2);
       // clipDuration = (end_time 10 - start_time 4) * 2 = 12 (a `/` gives 3).
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "is_arrangement_clip") {
-            return 1;
-          }
-
-          if (prop === "start_time") {
-            return 4;
-          }
-
-          if (prop === "end_time") {
-            return 10;
-          }
-
-          if (prop === "length") {
-            return 8;
-          }
-
-          return 0;
-        }),
-      };
+      const mockClip = clipReading({
+        is_arrangement_clip: 1,
+        start_time: 4,
+        end_time: 10,
+        length: 8,
+      });
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
 
@@ -163,27 +120,12 @@ describe("note-transforms", () => {
     });
 
     it("uses arrangement length (end_time - start_time) for arrangement clips", () => {
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "is_arrangement_clip") {
-            return 1;
-          }
-
-          if (prop === "start_time") {
-            return 4;
-          } // starts at beat 4
-
-          if (prop === "end_time") {
-            return 20;
-          } // ends at beat 20
-
-          if (prop === "length") {
-            return 8;
-          } // content length (shorter)
-
-          return 0;
-        }),
-      };
+      const mockClip = clipReading({
+        is_arrangement_clip: 1,
+        start_time: 4,
+        end_time: 20,
+        length: 8, // content length, shorter than the arrangement span
+      });
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
 
@@ -481,16 +423,8 @@ describe("note-transforms", () => {
 
   describe("buildClipContext - chromatic scale", () => {
     it("returns undefined scalePitchClassMask for chromatic scale", () => {
-      registerMockObject("live_set", {
-        path: "live_set",
-        type: "Song",
-        properties: {
-          scale_mode: 1,
-          root_note: 0,
-          // All 12 intervals = chromatic
-          scale_intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-        },
-      });
+      // All 12 intervals = chromatic
+      registerScaledLiveSet([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
       const mockClip = createSessionClipMock(4);
 

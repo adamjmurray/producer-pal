@@ -18,6 +18,20 @@ describe("param-reading", () => {
   const mockGet = vi.fn();
   const mockCall = vi.fn();
 
+  const createMockParamApi = (id: string) =>
+    ({
+      id,
+      get: mockGet,
+      getProperty: (prop: string) => mockGet(prop)?.[0],
+      getName: () => String(mockGet("name")?.[0] ?? ""),
+      getPropertyList: (prop: string) => {
+        const result: unknown = mockGet(prop);
+
+        return Array.isArray(result) ? result : [];
+      },
+      call: mockCall,
+    }) as unknown as LiveAPI;
+
   describe("state maps", () => {
     it("PARAM_STATE_MAP maps state codes to labels", () => {
       expect(PARAM_STATE_MAP[0]).toBe("active");
@@ -37,111 +51,56 @@ describe("param-reading", () => {
       vi.clearAllMocks();
     });
 
-    it("returns id and name for a parameter", () => {
-      mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") {
-          return ["Volume"];
-        }
+    // An all-digit name comes back from Live as a number, and the else-branch
+    // return used to pass that raw number straight through.
+    it.each([
+      [
+        "a parameter",
+        "param_1",
+        "Volume" as unknown,
+        "Volume" as unknown,
+        "Volume",
+      ],
+      [
+        "an all-digit name",
+        "param_1b",
+        5678 as unknown,
+        5678 as unknown,
+        "5678",
+      ],
+      [
+        "a renamed rack macro",
+        "param_2",
+        "Reverb",
+        "Macro 1",
+        "Reverb (Macro 1)",
+      ],
+    ])(
+      "reads id and name for %s",
+      (_case, id, name, originalName, expected) => {
+        mockGet.mockImplementation((prop: string) => {
+          if (prop === "name") {
+            return [name];
+          }
 
-        if (prop === "original_name") {
-          return ["Volume"];
-        }
+          if (prop === "original_name") {
+            return [originalName];
+          }
 
-        return [0];
-      });
+          return [0];
+        });
 
-      const mockParamApi = {
-        id: "param_1",
-        get: mockGet,
-        getProperty: (prop: string) => mockGet(prop)?.[0],
-        getName: () => String(mockGet("name")?.[0] ?? ""),
-      };
+        const result = readParameterBasic(createMockParamApi(id));
 
-      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
-
-      expect(result).toStrictEqual({
-        id: "param_1",
-        name: "Volume",
-      });
-    });
-
-    it("reports an all-digit parameter name as a string", () => {
-      // A rack macro name equal to its original_name too — the else-branch
-      // return used to pass that raw number straight through.
-      mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") {
-          return [5678];
-        }
-
-        if (prop === "original_name") {
-          return [5678];
-        }
-
-        return [0];
-      });
-
-      const mockParamApi = {
-        id: "param_1b",
-        get: mockGet,
-        getProperty: (prop: string) => mockGet(prop)?.[0],
-        getName: () => String(mockGet("name")?.[0] ?? ""),
-      };
-
-      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
-
-      expect(result).toStrictEqual({
-        id: "param_1b",
-        name: "5678",
-      });
-    });
-
-    it("formats name with original_name for rack macros", () => {
-      mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") {
-          return ["Reverb"];
-        }
-
-        if (prop === "original_name") {
-          return ["Macro 1"];
-        }
-
-        return [0];
-      });
-
-      const mockParamApi = {
-        id: "param_2",
-        get: mockGet,
-        getProperty: (prop: string) => mockGet(prop)?.[0],
-        getName: () => String(mockGet("name")?.[0] ?? ""),
-      };
-
-      const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
-
-      expect(result).toStrictEqual({
-        id: "param_2",
-        name: "Reverb (Macro 1)",
-      });
-    });
+        expect(result).toStrictEqual({ id, name: expected });
+      },
+    );
   });
 
   describe("readParameter", () => {
     beforeEach(() => {
       vi.clearAllMocks();
     });
-
-    const createMockParamApi = (id: string) =>
-      ({
-        id,
-        get: mockGet,
-        getProperty: (prop: string) => mockGet(prop)?.[0],
-        getName: () => String(mockGet("name")?.[0] ?? ""),
-        getPropertyList: (prop: string) => {
-          const result: unknown = mockGet(prop);
-
-          return Array.isArray(result) ? result : [];
-        },
-        call: mockCall,
-      }) as unknown as LiveAPI;
 
     // Helper to setup mockGet mock for parameter tests
     interface ParamMockProps {
@@ -154,6 +113,7 @@ describe("param-reading", () => {
       max?: number;
       isEnabled?: number;
       valueItems?: string[];
+      displayValue?: string;
     }
 
     // Helper to setup mockCall with a value-to-label map for str_for_value
@@ -191,6 +151,7 @@ describe("param-reading", () => {
         max = 1,
         isEnabled = 1,
         valueItems,
+        displayValue,
       } = props;
 
       mockGet.mockImplementation((prop: string) => {
@@ -234,6 +195,10 @@ describe("param-reading", () => {
           return valueItems;
         }
 
+        if (prop === "display_value" && displayValue != null) {
+          return [displayValue];
+        }
+
         return [0];
       });
     };
@@ -241,41 +206,8 @@ describe("param-reading", () => {
     it("reads quantized parameter with value_items", () => {
       const valueItems = ["Off", "On", "Auto"];
 
-      mockGet.mockImplementation((prop) => {
-        if (prop === "name") {
-          return ["Mode"];
-        }
-
-        if (prop === "original_name") {
-          return ["Mode"];
-        }
-
-        if (prop === "state") {
-          return [0];
-        } // active
-
-        if (prop === "automation_state") {
-          return [0];
-        } // none
-
-        if (prop === "is_quantized") {
-          return [1];
-        }
-
-        if (prop === "value") {
-          return [1];
-        } // "On"
-
-        if (prop === "value_items") {
-          return valueItems;
-        }
-
-        if (prop === "is_enabled") {
-          return [1];
-        }
-
-        return [0];
-      });
+      // value 1 is "On"
+      setupParamMock({ name: "Mode", isQuantized: 1, value: 1, valueItems });
 
       const result = readParameter(createMockParamApi("param_3"));
 
@@ -448,51 +380,7 @@ describe("param-reading", () => {
     });
 
     it("reads parameter with unparseable labels using display_value", () => {
-      setupParamMock({ name: "Mode" });
-
-      mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") {
-          return ["Mode"];
-        }
-
-        if (prop === "original_name") {
-          return ["Mode"];
-        }
-
-        if (prop === "state") {
-          return [0];
-        }
-
-        if (prop === "automation_state") {
-          return [0];
-        }
-
-        if (prop === "is_quantized") {
-          return [0];
-        }
-
-        if (prop === "value") {
-          return [0.5];
-        }
-
-        if (prop === "min") {
-          return [0];
-        }
-
-        if (prop === "max") {
-          return [1];
-        }
-
-        if (prop === "is_enabled") {
-          return [1];
-        }
-
-        if (prop === "display_value") {
-          return ["Repitch"];
-        }
-
-        return [0];
-      });
+      setupParamMock({ name: "Mode", displayValue: "Repitch" });
 
       mockCall.mockImplementation(() => "Repitch");
 

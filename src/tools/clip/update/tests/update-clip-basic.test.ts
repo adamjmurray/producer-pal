@@ -20,6 +20,7 @@ import { type BlankArgs } from "#src/tools/clip/update/helpers/plan-clip-update.
 import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import * as sessionHelpers from "#src/tools/clip/update/helpers/move/position-operations.ts";
 import {
+  expectNotesWritten,
   mockMergeNoteTracking,
   setupAudioClipMock,
   setupMidiClipMock,
@@ -55,6 +56,12 @@ describe("updateClip - Basic operations", () => {
   beforeEach(() => {
     mocks = setupUpdateClipMocks();
   });
+
+  /** The clip was put into 6/8. */
+  function expectSixEight(): void {
+    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
+  }
 
   // One pitch for every clip in the call, so a per-clip skip would repeat the
   // same message down the list — and the per-clip wrapper would swallow it.
@@ -411,8 +418,7 @@ describe("updateClip - Basic operations", () => {
       timeSignature: "6/8",
     });
 
-    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
+    expectSixEight();
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
@@ -425,19 +431,10 @@ describe("updateClip - Basic operations", () => {
       notes: "v80 n/2 C4 1|1 v120 n/4 D4 1|3",
     });
 
-    expect(mocks.clip123.call).toHaveBeenCalledWith(
-      "remove_notes_extended",
-      0,
-      128,
-      expect.any(Number),
-      expect.any(Number),
-    );
-    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        createNote({ pitch: 72, velocity: 80, duration: 2 }),
-        createNote({ pitch: 74, velocity: 120, start_time: 2 }),
-      ],
-    });
+    expectNotesWritten(mocks.clip123, [
+      createNote({ pitch: 72, velocity: 80, duration: 2 }),
+      createNote({ pitch: 74, velocity: 120, start_time: 2 }),
+    ]);
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
@@ -460,8 +457,7 @@ describe("updateClip - Basic operations", () => {
       ],
     });
 
-    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
+    expectSixEight();
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 

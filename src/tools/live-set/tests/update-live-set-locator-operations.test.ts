@@ -4,8 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -78,29 +76,8 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should skip creation if locator already exists at position", async () => {
-      liveSet.get.mockImplementation((prop: string) => {
-        if (prop === "signature_numerator") {
-          return [4];
-        }
-
-        if (prop === "signature_denominator") {
-          return [4];
-        }
-
-        if (prop === "is_playing") {
-          return [0];
-        }
-
-        if (prop === "cue_points") {
-          return children("existing_cue");
-        }
-
-        return [0];
-      });
-
-      registerMockObject("existing_cue", {
-        path: livePath.cuePoint(0),
-        properties: { time: 16, name: "Existing" },
+      setupLocatorMocks(liveSet, {
+        cuePoints: [{ id: "existing_cue", time: 16, name: "Existing" }],
       });
 
       const result = await updateLiveSet({
@@ -175,37 +152,12 @@ describe("updateLiveSet - locator operations", () => {
     });
 
     it("should delete all locators by name", async () => {
-      liveSet.get.mockImplementation((prop: string) => {
-        if (prop === "signature_numerator") {
-          return [4];
-        }
-
-        if (prop === "signature_denominator") {
-          return [4];
-        }
-
-        if (prop === "is_playing") {
-          return [0];
-        }
-
-        if (prop === "cue_points") {
-          return children("cue1", "cue2", "cue3");
-        }
-
-        return [0];
-      });
-
-      registerMockObject("cue1", {
-        path: livePath.cuePoint(0),
-        properties: { time: 0, name: "Verse" },
-      });
-      registerMockObject("cue2", {
-        path: livePath.cuePoint(1),
-        properties: { time: 16, name: "Chorus" },
-      });
-      registerMockObject("cue3", {
-        path: livePath.cuePoint(2),
-        properties: { time: 32, name: "Verse" },
+      setupLocatorMocks(liveSet, {
+        cuePoints: [
+          { id: "cue1", time: 0, name: "Verse" },
+          { id: "cue2", time: 16, name: "Chorus" },
+          { id: "cue3", time: 32, name: "Verse" },
+        ],
       });
 
       const result = await updateLiveSet({

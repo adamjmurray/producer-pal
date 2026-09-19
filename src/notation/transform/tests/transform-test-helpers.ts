@@ -38,6 +38,52 @@ export function expectVelocitiesAfter(
 }
 
 /**
+ * Two C3 quarter notes back to back, on beats 1 and 2 — the smallest input
+ * where a merge has something to glue and a repeat has something to collide
+ * with.
+ */
+export const TOUCHING_C3_PAIR: Partial<NoteEvent>[] = [
+  { pitch: 60, start_time: 0, duration: 1 },
+  { pitch: 60, start_time: 1, duration: 1 },
+];
+
+/** Three C3 quarter notes back to back, on beats 1, 2 and 3. */
+export const TOUCHING_C3_TRIO: Partial<NoteEvent>[] = [
+  ...TOUCHING_C3_PAIR,
+  { pitch: 60, start_time: 2, duration: 1 },
+];
+
+/**
+ * Builds notes from `input`, runs a transforms string over them, and asserts
+ * the resulting notes in order — each expected entry is matched with
+ * `objectContaining`, so properties the transform leaves alone stay unspelled.
+ * Comparing the whole list also pins the note count, which is the point for
+ * transforms that add or remove notes.
+ *
+ * @param input - Per-note property overrides for the input notes
+ * @param transformString - The transforms string to apply
+ * @param expected - Expected properties of each resulting note, in order
+ * @param meter - Time signature as [numerator, denominator]; defaults to 4/4
+ * @returns The transformed notes, for any further assertions
+ */
+export function expectTransformedNotes(
+  input: Partial<NoteEvent>[],
+  transformString: string,
+  expected: Partial<NoteEvent>[],
+  meter: [numerator: number, denominator: number] = [4, 4],
+): NoteEvent[] {
+  const notes = createTestNotes(input);
+
+  applyTransforms(notes, transformString, meter[0], meter[1]);
+
+  expect(notes).toStrictEqual(
+    expected.map((props) => expect.objectContaining(props)),
+  );
+
+  return notes;
+}
+
+/**
  * Asserts a note list matches the given [start_time, duration] pairs in order,
  * ignoring the properties each piece inherits from its parent note.
  *

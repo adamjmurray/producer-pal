@@ -75,6 +75,31 @@ describe("updateClip - moving a row of arrangement clips", () => {
       .map((call) => call[2] as number);
   }
 
+  /**
+   * The response a back-to-front row move hands back: one entry per id the
+   * caller named, in that order, holding the copy Live made for it.
+   * @param paths - The destination paths, in the caller's order
+   * @returns The expected result entries
+   */
+  function movedRow(
+    paths: string[],
+  ): Array<{ id: string | undefined; path: string }> {
+    return paths.map((path, index) => ({
+      id: copies[paths.length - 1 - index],
+      path,
+    }));
+  }
+
+  /**
+   * The middle clip used to be cleared before its turn, and the dead object
+   * read as a session clip.
+   */
+  function expectNoSessionClipWarning(): void {
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("session clip"),
+    );
+  }
+
   beforeEach(() => {
     setupTrack([
       { id: "113", start: 0, end: 16 },
@@ -92,16 +117,8 @@ describe("updateClip - moving a row of arrangement clips", () => {
     // Back-to-front, so no move clears a clip the loop has yet to reach.
     expect(movedTo()).toStrictEqual([48, 32, 16]);
     // The response still pairs 1:1 with the ids the caller named.
-    expect(result).toStrictEqual([
-      { id: copies[2], path: "t0[5|1]" },
-      { id: copies[1], path: "t0[9|1]" },
-      { id: copies[0], path: "t0[13|1]" },
-    ]);
-    // The middle clip used to be cleared before its turn, and the dead object
-    // read as a session clip.
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("session clip"),
-    );
+    expect(result).toStrictEqual(movedRow(["t0[5|1]", "t0[9|1]", "t0[13|1]"]));
+    expectNoSessionClipWarning();
   });
 
   // arrangementLength broadcasts, so one value covers every id. Reading it as
@@ -115,14 +132,8 @@ describe("updateClip - moving a row of arrangement clips", () => {
     });
 
     expect(movedTo().slice(0, 3)).toStrictEqual([48, 32, 16]);
-    expect(result).toStrictEqual([
-      { id: copies[2], path: "t0[5|1]" },
-      { id: copies[1], path: "t0[9|1]" },
-      { id: copies[0], path: "t0[13|1]" },
-    ]);
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("session clip"),
-    );
+    expect(result).toStrictEqual(movedRow(["t0[5|1]", "t0[9|1]", "t0[13|1]"]));
+    expectNoSessionClipWarning();
   });
 
   it("keeps a row shifting four bars earlier working", async () => {

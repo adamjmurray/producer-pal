@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { argText } from "./arg-text.ts";
+import { argText } from "../arg-text.ts";
 
 /**
  * Whether a "#RRGGBB" reads as red or as blue. Live's palette holds several of

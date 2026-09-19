@@ -33,13 +33,16 @@ const DRUM_CHORD_NOTES = [
 const DRUM_MODE_OUTPUT = "v100 n/16 C1 1|1,3\nE1 1|1";
 const MELODIC_MODE_OUTPUT = "v100 n/16 C1 E1 1|1\nC1 1|3";
 
-/** A one-bar 4/4 MIDI clip, the shape DRUM_CHORD_NOTES is read out of. */
-const DRUM_CHORD_CLIP_PROPS = {
+/** A one-bar 4/4 MIDI clip: the shape most of these reads start from. */
+const ONE_BAR_MIDI_CLIP = {
   is_midi_clip: 1,
   signature_numerator: 4,
   signature_denominator: 4,
   length: 4,
 };
+
+/** The same clip as audio. */
+const ONE_BAR_AUDIO_CLIP = { ...ONE_BAR_MIDI_CLIP, is_midi_clip: 0 };
 
 // Set up a standalone 4/4 MIDI clip holding DRUM_CHORD_NOTES in slot 0/0, then
 // read its notes. `readOverrides` tweaks the readOneClip args (e.g. drumMode).
@@ -50,7 +53,7 @@ function readDrumChordNotes(
     trackIndex: 0,
     sceneIndex: 0,
     notes: DRUM_CHORD_NOTES,
-    clipProps: DRUM_CHORD_CLIP_PROPS,
+    clipProps: ONE_BAR_MIDI_CLIP,
   });
 
   return readOneClip({
@@ -97,13 +100,7 @@ describe("readOneClip - include flag gating", () => {
     setupMidiClipMock({
       trackIndex: 0,
       sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 1,
-        color: 16711680, // 0xFF0000
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
+      clipProps: { ...ONE_BAR_MIDI_CLIP, color: 16711680 }, // 0xFF0000
     });
 
     const withColor = readOneClip({
@@ -119,13 +116,7 @@ describe("readOneClip - include flag gating", () => {
     setupMidiClipMock({
       trackIndex: 0,
       sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 1,
-        color: 16711680,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
+      clipProps: { ...ONE_BAR_MIDI_CLIP, color: 16711680 },
     });
 
     const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
@@ -139,12 +130,7 @@ describe("readOneClip - include flag gating", () => {
     const clip = setupAudioClipMock({
       trackIndex: 0,
       sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
+      clipProps: ONE_BAR_AUDIO_CLIP,
     });
 
     setupNotesMock(clip, [createTestNote({ pitch: 60, startTime: 0 })]);
@@ -166,10 +152,7 @@ describe("readOneClip - include flag gating", () => {
       trackIndex: 0,
       sceneIndex: 0,
       clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
+        ...ONE_BAR_MIDI_CLIP,
         gain: 0.9,
         file_path: "/Users/x/kick.wav",
         pitch_coarse: 3,
@@ -196,10 +179,7 @@ describe("readOneClip - include flag gating", () => {
       trackIndex: 0,
       sceneIndex: 0,
       clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
+        ...ONE_BAR_MIDI_CLIP,
         looping: 1,
         loop_start: 0,
         loop_end: 4,
@@ -225,12 +205,7 @@ describe("readOneClip - include flag gating", () => {
       trackIndex: 0,
       sceneIndex: 0,
       notes: [createTestNote({ pitch: 60, startTime: 0 })],
-      clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
+      clipProps: ONE_BAR_MIDI_CLIP,
     });
 
     const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
@@ -245,10 +220,7 @@ describe("readOneClip - include flag gating", () => {
       trackIndex: 0,
       sceneIndex: 0,
       clipProps: {
-        is_midi_clip: 0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
+        ...ONE_BAR_AUDIO_CLIP,
         gain: 0.9,
         file_path: "/Users/x/kick.wav",
         pitch_coarse: 3,
@@ -276,13 +248,7 @@ describe("readOneClip - include flag gating", () => {
     setupAudioClipMock({
       trackIndex: 0,
       sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        gain: 0.4,
-      },
+      clipProps: { ...ONE_BAR_AUDIO_CLIP, gain: 0.4 },
     });
 
     const result = readOneClip({
@@ -299,13 +265,10 @@ describe("readOneClip - include flag gating", () => {
       clipId: "arr_clip",
       path: livePath.track(2).arrangementClip(0),
       clipProps: {
-        is_midi_clip: 1,
+        ...ONE_BAR_MIDI_CLIP,
         is_arrangement_clip: 1,
         start_time: 8,
         end_time: 12,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
       },
     });
     registerMockObject("live-set", {
@@ -326,12 +289,7 @@ describe("readOneClip - include flag gating", () => {
     setupMidiClipMock({
       trackIndex: 0,
       sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
+      clipProps: ONE_BAR_MIDI_CLIP,
     });
 
     const result = readOneClip({ trackIndex: 0, sceneIndex: 0, include: [] });
@@ -399,7 +357,7 @@ describe("readOneClip - drum mode resolution", () => {
         trackIndex,
         sceneIndex: 0,
         notes: DRUM_CHORD_NOTES,
-        clipProps: DRUM_CHORD_CLIP_PROPS,
+        clipProps: ONE_BAR_MIDI_CLIP,
       });
     }
 
@@ -424,7 +382,7 @@ describe("readOneClip - drum mode resolution", () => {
       trackIndex: 0,
       sceneIndex: 0,
       notes: DRUM_CHORD_NOTES,
-      clipProps: DRUM_CHORD_CLIP_PROPS,
+      clipProps: ONE_BAR_MIDI_CLIP,
     });
 
     inOneRequest(() => {

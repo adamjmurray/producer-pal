@@ -10,7 +10,13 @@ import {
   testNote,
   createTestNotes,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
-import { warnSpyWithNote, warnSpyWithNotes } from "./transform-test-helpers.ts";
+import {
+  expectTransformedNotes,
+  TOUCHING_C3_PAIR,
+  TOUCHING_C3_TRIO,
+  warnSpyWithNote,
+  warnSpyWithNotes,
+} from "./transform-test-helpers.ts";
 
 // Asserts a merge tolerance is rejected: the two well-separated notes pass
 // through unchanged and a warning containing `message` is emitted.
@@ -313,43 +319,37 @@ describe("note-count operations (ratchet/merge)", () => {
 
   describe("merge", () => {
     it("spans consecutive same-pitch notes into one", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, duration: 1 },
-        { pitch: 60, start_time: 1, duration: 1 },
-      ]);
-
-      applyTransforms(notes, "merge()", 4, 4);
-
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
-      ]);
+      expectTransformedNotes(
+        [
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 1, duration: 1 },
+        ],
+        "merge()",
+        [{ pitch: 60, start_time: 0, duration: 2 }],
+      );
     });
 
     it("spans across gaps between same-pitch notes (span-all)", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, duration: 1 },
-        { pitch: 60, start_time: 3, duration: 1 }, // gap from 1..3
-      ]);
-
-      applyTransforms(notes, "merge()", 4, 4);
-
       // one note spanning the earliest onset to the latest offset
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ pitch: 60, start_time: 0, duration: 4 }),
-      ]);
+      expectTransformedNotes(
+        [
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 3, duration: 1 }, // gap from 1..3
+        ],
+        "merge()",
+        [{ pitch: 60, start_time: 0, duration: 4 }],
+      );
     });
 
     it("spans overlapping same-pitch notes", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, duration: 2 },
-        { pitch: 60, start_time: 1, duration: 2 }, // overlaps, ends at 3
-      ]);
-
-      applyTransforms(notes, "merge()", 4, 4);
-
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ pitch: 60, start_time: 0, duration: 3 }),
-      ]);
+      expectTransformedNotes(
+        [
+          { pitch: 60, start_time: 0, duration: 2 },
+          { pitch: 60, start_time: 1, duration: 2 }, // overlaps, ends at 3
+        ],
+        "merge()",
+        [{ pitch: 60, start_time: 0, duration: 3 }],
+      );
     });
 
     it("keeps different pitches independent", () => {
@@ -367,16 +367,14 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("takes dynamics from the earliest note in each group", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 1, duration: 1, velocity: 80 },
-        { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-      ]);
-
-      applyTransforms(notes, "merge()", 4, 4);
-
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ start_time: 0, velocity: 100, duration: 2 }),
-      ]);
+      expectTransformedNotes(
+        [
+          { pitch: 60, start_time: 1, duration: 1, velocity: 80 },
+          { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
+        ],
+        "merge()",
+        [{ start_time: 0, velocity: 100, duration: 2 }],
+      );
     });
 
     it("merges only notes matching a selector, leaving the rest alone", () => {
@@ -395,76 +393,73 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("keeps the run end when a later note is fully contained", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, duration: 3 },
-        { pitch: 60, start_time: 1, duration: 1 }, // sits inside the first
-      ]);
-
-      applyTransforms(notes, "merge()", 4, 4);
-
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ pitch: 60, start_time: 0, duration: 3 }),
-      ]);
+      expectTransformedNotes(
+        [
+          { pitch: 60, start_time: 0, duration: 3 },
+          { pitch: 60, start_time: 1, duration: 1 }, // sits inside the first
+        ],
+        "merge()",
+        [{ pitch: 60, start_time: 0, duration: 3 }],
+      );
     });
 
     describe("gap tolerance", () => {
       it("merge(0) glues touching notes and splits on a gap", () => {
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 1 },
-          { pitch: 60, start_time: 1, duration: 1 }, // touches the first
-          { pitch: 60, start_time: 3, duration: 1 }, // gap from 2..3
-        ]);
-
-        applyTransforms(notes, "merge(0)", 4, 4);
-
-        expect(notes).toStrictEqual([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
-          expect.objectContaining({ pitch: 60, start_time: 3, duration: 1 }),
-        ]);
+        expectTransformedNotes(
+          [
+            { pitch: 60, start_time: 0, duration: 1 },
+            { pitch: 60, start_time: 1, duration: 1 }, // touches the first
+            { pitch: 60, start_time: 3, duration: 1 }, // gap from 2..3
+          ],
+          "merge(0)",
+          [
+            { pitch: 60, start_time: 0, duration: 2 },
+            { pitch: 60, start_time: 3, duration: 1 },
+          ],
+        );
       });
 
       it("merge(0) still merges overlapping notes", () => {
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 2 },
-          { pitch: 60, start_time: 1, duration: 2 }, // overlaps, ends at 3
-        ]);
-
-        applyTransforms(notes, "merge(0)", 4, 4);
-
-        expect(notes).toStrictEqual([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 3 }),
-        ]);
+        expectTransformedNotes(
+          [
+            { pitch: 60, start_time: 0, duration: 2 },
+            { pitch: 60, start_time: 1, duration: 2 }, // overlaps, ends at 3
+          ],
+          "merge(0)",
+          [{ pitch: 60, start_time: 0, duration: 3 }],
+        );
       });
 
       it("merge(n/8) glues notes within an eighth-note gap, splits on a wider gap", () => {
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 1 }, // ends at 1
-          { pitch: 60, start_time: 1.5, duration: 1 }, // gap 0.5 (an 8th) -> merges, ends 2.5
-          { pitch: 60, start_time: 4, duration: 1 }, // gap 1.5 -> new run
-        ]);
-
-        applyTransforms(notes, "merge(n/8)", 4, 4);
-
-        expect(notes).toStrictEqual([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2.5 }),
-          expect.objectContaining({ pitch: 60, start_time: 4, duration: 1 }),
-        ]);
+        expectTransformedNotes(
+          [
+            { pitch: 60, start_time: 0, duration: 1 }, // ends at 1
+            { pitch: 60, start_time: 1.5, duration: 1 }, // gap 0.5 (an 8th) -> merges, ends 2.5
+            { pitch: 60, start_time: 4, duration: 1 }, // gap 1.5 -> new run
+          ],
+          "merge(n/8)",
+          [
+            { pitch: 60, start_time: 0, duration: 2.5 },
+            { pitch: 60, start_time: 4, duration: 1 },
+          ],
+        );
       });
 
       it("merge(n/8) tolerance is meter-invariant (same eighth in 6/8)", () => {
         // n/8 is 0.5 Ableton beats in any meter; a 0.5-beat gap still merges in 6/8.
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 1 }, // ends at 1
-          { pitch: 60, start_time: 1.5, duration: 0.5 }, // gap 0.5 -> merges, ends 2
-          { pitch: 60, start_time: 3, duration: 1 }, // gap 1 -> new run
-        ]);
-
-        applyTransforms(notes, "merge(n/8)", 6, 8);
-
-        expect(notes).toStrictEqual([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
-          expect.objectContaining({ pitch: 60, start_time: 3, duration: 1 }),
-        ]);
+        expectTransformedNotes(
+          [
+            { pitch: 60, start_time: 0, duration: 1 }, // ends at 1
+            { pitch: 60, start_time: 1.5, duration: 0.5 }, // gap 0.5 -> merges, ends 2
+            { pitch: 60, start_time: 3, duration: 1 }, // gap 1 -> new run
+          ],
+          "merge(n/8)",
+          [
+            { pitch: 60, start_time: 0, duration: 2 },
+            { pitch: 60, start_time: 3, duration: 1 },
+          ],
+          [6, 8],
+        );
       });
 
       it("warns and skips a non-zero bare-number tolerance", () => {
@@ -480,10 +475,8 @@ describe("note-count operations (ratchet/merge)", () => {
       });
 
       it("warns about extra arguments and uses the first", () => {
-        const { warn, notes } = warnSpyWithNotes([
-          { pitch: 60, start_time: 0, duration: 1 },
-          { pitch: 60, start_time: 1, duration: 1 }, // touches -> merges under merge(0)
-        ]);
+        // The pair touches, so it merges under merge(0).
+        const { warn, notes } = warnSpyWithNotes(TOUCHING_C3_PAIR);
 
         applyTransforms(notes, "merge(0, n/8)", 4, 4);
 
@@ -558,11 +551,7 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("a transform after merge sees the rebuilt note.count", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0, duration: 1 },
-        { pitch: 60, start_time: 1, duration: 1 },
-        { pitch: 60, start_time: 2, duration: 1 },
-      ]);
+      const notes = createTestNotes(TOUCHING_C3_TRIO);
 
       // 3 same-pitch notes merge to 1, so note.count is 1 afterward
       applyTransforms(notes, "merge()\nvelocity = note.count * 10", 4, 4);

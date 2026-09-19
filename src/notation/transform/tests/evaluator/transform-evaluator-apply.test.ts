@@ -676,25 +676,22 @@ probability += -0.2`;
       expect(applyTransforms(notes, "velocity += 10", 4, 4)).toBeUndefined();
     });
 
-    it("returns count of all notes when no selector is used", () => {
-      const notes = createTestNotes([
+    // C3=60, E3=64, G3=67 on beats 1-3: the selector reaches the first two.
+    const cMajorTriad = (): NoteEvent[] =>
+      createTestNotes([
         { pitch: 60, start_time: 0 },
         { pitch: 64, start_time: 1 },
         { pitch: 67, start_time: 2 },
       ]);
 
-      expect(applyTransforms(notes, "velocity += 10", 4, 4)).toBe(3);
+    it("returns count of all notes when no selector is used", () => {
+      expect(applyTransforms(cMajorTriad(), "velocity += 10", 4, 4)).toBe(3);
     });
 
     it("returns count of matched notes with pitch selector", () => {
-      const notes = createTestNotes([
-        { pitch: 60, start_time: 0 },
-        { pitch: 64, start_time: 1 },
-        { pitch: 67, start_time: 2 },
-      ]);
-
-      // C3=60, E3=64 — matches pitches 60 and 64, not 67
-      expect(applyTransforms(notes, "C3-E3: velocity += 10", 4, 4)).toBe(2);
+      expect(
+        applyTransforms(cMajorTriad(), "C3-E3: velocity += 10", 4, 4),
+      ).toBe(2);
     });
 
     it("counts deleted notes as transformed", () => {

@@ -385,6 +385,11 @@ describe("endsOnAssistantTurn", () => {
 describe("buildModelMessages with attached images", () => {
   const png = { mediaType: "image/png", data: "AAA" };
   const jpeg = { mediaType: "image/jpeg", data: "BBB" };
+  const filePart = (image: { mediaType: string; data: string }) => ({
+    type: "file",
+    mediaType: image.mediaType,
+    data: { type: "data", data: image.data },
+  });
 
   it("sends images as image parts ahead of the text", () => {
     const result = buildModelMessages([
@@ -395,16 +400,8 @@ describe("buildModelMessages with attached images", () => {
       {
         role: "user",
         content: [
-          {
-            type: "file",
-            mediaType: "image/png",
-            data: { type: "data", data: "AAA" },
-          },
-          {
-            type: "file",
-            mediaType: "image/jpeg",
-            data: { type: "data", data: "BBB" },
-          },
+          filePart(png),
+          filePart(jpeg),
           { type: "text", text: "match this groove" },
         ],
       },
@@ -416,18 +413,7 @@ describe("buildModelMessages with attached images", () => {
       { role: "user", content: "", images: [png] },
     ]);
 
-    expect(result).toStrictEqual([
-      {
-        role: "user",
-        content: [
-          {
-            type: "file",
-            mediaType: "image/png",
-            data: { type: "data", data: "AAA" },
-          },
-        ],
-      },
-    ]);
+    expect(result).toStrictEqual([{ role: "user", content: [filePart(png)] }]);
   });
 
   it("merges consecutive user turns when the first carries images", () => {
@@ -440,11 +426,7 @@ describe("buildModelMessages with attached images", () => {
       {
         role: "user",
         content: [
-          {
-            type: "file",
-            mediaType: "image/png",
-            data: { type: "data", data: "AAA" },
-          },
+          filePart(png),
           { type: "text", text: "like this\n\nbut slower" },
         ],
       },
@@ -465,11 +447,7 @@ describe("buildModelMessages with attached images", () => {
       {
         role: "user",
         content: [
-          {
-            type: "file",
-            mediaType: "image/jpeg",
-            data: { type: "data", data: "BBB" },
-          },
+          filePart(jpeg),
           { type: "text", text: "summary of earlier turns\n\nlike this" },
         ],
       },
@@ -486,16 +464,8 @@ describe("buildModelMessages with attached images", () => {
       {
         role: "user",
         content: [
-          {
-            type: "file",
-            mediaType: "image/png",
-            data: { type: "data", data: "AAA" },
-          },
-          {
-            type: "file",
-            mediaType: "image/jpeg",
-            data: { type: "data", data: "BBB" },
-          },
+          filePart(png),
+          filePart(jpeg),
           { type: "text", text: "and this" },
         ],
       },
@@ -509,21 +479,7 @@ describe("buildModelMessages with attached images", () => {
     ]);
 
     expect(result).toStrictEqual([
-      {
-        role: "user",
-        content: [
-          {
-            type: "file",
-            mediaType: "image/png",
-            data: { type: "data", data: "AAA" },
-          },
-          {
-            type: "file",
-            mediaType: "image/jpeg",
-            data: { type: "data", data: "BBB" },
-          },
-        ],
-      },
+      { role: "user", content: [filePart(png), filePart(jpeg)] },
     ]);
   });
 });

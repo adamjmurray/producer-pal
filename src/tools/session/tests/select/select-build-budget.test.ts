@@ -23,6 +23,7 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
+  registerFilledSlotObjects,
   resetSelectTestState,
   setupAppViewMock,
   setupSongViewMock,
@@ -67,16 +68,7 @@ function setupSet(): void {
     path: livePath.track(0).device(1),
     type: "Device",
   });
-  registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
-  registerMockObject("clipslot_0_3", {
-    path: livePath.track(0).clipSlot(3),
-    type: "ClipSlot",
-    properties: { has_clip: 1 },
-  });
-  registerMockObject("clip_0_3", {
-    path: livePath.track(0).clipSlot(3).clip(),
-    type: "Clip",
-  });
+  registerFilledSlotObjects();
 }
 
 describe("select build budget", () => {

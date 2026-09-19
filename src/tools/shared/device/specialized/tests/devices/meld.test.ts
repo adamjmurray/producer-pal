@@ -6,8 +6,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
 import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
@@ -16,25 +18,12 @@ import {
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
 import { expectWriteRefused } from "../refused-write-assertions.ts";
 
-/**
- * Register a mock Meld device and return its LiveAPI.
- * @param properties - Property overrides (merged onto Meld defaults)
- * @returns The Meld LiveAPI object
- */
-function registerMeld(properties: Record<string, unknown> = {}): LiveAPI {
-  registerMockObject("meld-1", {
-    type: "MeldDevice",
-    properties: {
-      class_display_name: "Meld",
-      mono_poly: 0,
-      poly_voices: 1,
-      unison_voices: 0,
-      ...properties,
-    },
-  });
-
-  return LiveAPI.from("id meld-1");
-}
+const registerMeld = specializedDeviceMock("meld-1", "MeldDevice", {
+  class_display_name: "Meld",
+  mono_poly: 0,
+  poly_voices: 1,
+  unison_voices: 0,
+});
 
 describe("Meld pseudo-params", () => {
   describe("read", () => {
@@ -195,31 +184,11 @@ describe("Meld pseudo-params", () => {
 // Integration through the read-device tool: confirms pseudo-params surface in
 // the `parameters` output and that Meld contributes no modulations/options.
 describe("Meld via read-device", () => {
-  /**
-   * Register a fully-readable mock Meld instrument by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableMeld(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("meld-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Meld",
-        class_display_name: "Meld",
-        type: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        mono_poly: 0,
-        poly_voices: 3,
-        unison_voices: 1,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableMeld = readableDeviceMock("meld-1", "Meld", 1, {
+    mono_poly: 0,
+    poly_voices: 3,
+    unison_voices: 1,
+  });
 
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableMeld();

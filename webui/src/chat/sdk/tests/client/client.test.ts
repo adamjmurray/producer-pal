@@ -39,6 +39,8 @@ import {
   detectToolLimitReached,
 } from "#webui/chat/sdk/client";
 import {
+  buildSteppedStream,
+  connectToolCallHistory,
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
@@ -61,28 +63,6 @@ async function sendAndGetClient(
   }
 
   return client;
-}
-
-/**
- * Build a stream that completes the given number of steps and ends with the
- * given overall finishReason.
- * @param steps - Number of finish-step parts to emit
- * @param finishReason - finishReason for the final finish part
- * @returns Stream parts array
- */
-function buildSteppedStream(
-  steps: number,
-  finishReason: string,
-): Record<string, unknown>[] {
-  const parts: Record<string, unknown>[] = [];
-
-  for (let i = 0; i < steps; i++) {
-    parts.push({ type: "finish-step" });
-  }
-
-  parts.push({ type: "finish", finishReason });
-
-  return parts;
 }
 
 /**
@@ -628,26 +608,10 @@ describe("ChatSdkClient", () => {
     });
 
     it("converts history with tool calls to model messages", async () => {
-      // Pre-seed history with assistant message containing tool calls
-      const chatHistory: ChatMessage[] = [
-        { role: "user", content: "Connect" },
-        {
-          role: "assistant",
-          content: "Connecting",
-          toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-          toolResults: [
-            {
-              id: "tc1",
-              name: "ppal-connect",
-              args: {},
-              result: "OK",
-              isError: false,
-            },
-          ],
-        },
-      ];
-
-      const callArgs = await sendWithHistory(chatHistory, "What happened?");
+      const callArgs = await sendWithHistory(
+        connectToolCallHistory("OK"),
+        "What happened?",
+      );
 
       // 4 messages: user, assistant (with tool calls), tool (results), new user
       expect(callArgs.messages).toHaveLength(4);
@@ -664,17 +628,7 @@ describe("ChatSdkClient", () => {
       // missing, and the turn's reconcile never ran. Sending again must still
       // pair the tool-call with a result, or Anthropic/OpenAI reject the request
       // (400) — and it must not claim a cancellation it can't know about.
-      const chatHistory: ChatMessage[] = [
-        { role: "user", content: "Connect" },
-        {
-          role: "assistant",
-          content: "Connecting",
-          toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-          // no toolResults — persisted mid-tool
-        },
-      ];
-
-      const callArgs = await sendWithHistory(chatHistory, "Retry");
+      const callArgs = await sendWithHistory(connectToolCallHistory(), "Retry");
 
       // user, assistant (tool-call), tool (synthesized result), new user
       expect(callArgs.messages).toHaveLength(4);

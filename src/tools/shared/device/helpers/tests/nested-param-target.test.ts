@@ -158,6 +158,26 @@ function registerEffectThenSimpler(): RegisteredMockObject {
   return chain;
 }
 
+/**
+ * A rack with one C1 pad chain whose device slot auto-creates a Simpler.
+ * @param deviceIds - What the chain already holds
+ * @returns The chain mock
+ */
+function registerInsertablePadChain(
+  deviceIds: string[] = [],
+): RegisteredMockObject {
+  registerRack(["chain-c1"]);
+
+  return registerDrumChain("chain-c1", 36, deviceIds, {
+    insert_device: () => ["id", "new-simpler"],
+  });
+}
+
+/** The Simpler an insert on that chain hands back. */
+function registerCreatedSimpler(): void {
+  registerDevice("new-simpler", "Simpler", "SimplerDevice");
+}
+
 /** The nested pad the writes below address: D1 on the rack in the C1 pad. */
 const NESTED_PAD = "pC1/c0/d0/pD1";
 const D1 = 38;
@@ -223,7 +243,7 @@ function registerEmptyNestedPad(): NestedRacks {
   registerDrumChain("inner-chain", D1, [], {
     insert_device: () => ["id", "new-simpler"],
   });
-  registerDevice("new-simpler", "Simpler", "SimplerDevice");
+  registerCreatedSimpler();
 
   return racks;
 }
@@ -361,12 +381,9 @@ describe("resolveDrumChainSampleTarget", () => {
   });
 
   it("creates a Simpler on an empty chain", () => {
-    registerRack(["chain-c1"]);
-    const chain = registerDrumChain("chain-c1", 36, [], {
-      insert_device: () => ["id", "new-simpler"],
-    });
+    const chain = registerInsertablePadChain();
 
-    registerDevice("new-simpler", "Simpler", "SimplerDevice");
+    registerCreatedSimpler();
 
     const target = resolveDrumChainSampleTarget(
       LiveAPI.from("id chain-c1"),
@@ -393,10 +410,7 @@ describe("resolveDrumChainSampleTarget", () => {
   });
 
   it("skips another instrument with the same reason the rack shortcut gives", () => {
-    registerRack(["chain-c1"]);
-    const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-      insert_device: () => ["id", "new-simpler"],
-    });
+    const chain = registerInsertablePadChain(["ds-1"]);
 
     registerDevice("ds-1", "DrumSampler");
 
@@ -409,13 +423,10 @@ describe("resolveDrumChainSampleTarget", () => {
   });
 
   it("swaps that instrument for a Simpler under force", () => {
-    registerRack(["chain-c1"]);
-    const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-      insert_device: () => ["id", "new-simpler"],
-    });
+    const chain = registerInsertablePadChain(["ds-1"]);
 
     registerDevice("ds-1", "DrumSampler");
-    registerDevice("new-simpler", "Simpler", "SimplerDevice");
+    registerCreatedSimpler();
 
     const target = resolveDrumChainSampleTarget(
       LiveAPI.from("id chain-c1"),
@@ -434,12 +445,9 @@ describe("resolveNestedParamTarget", () => {
 
   describe("sample write to a drum-pad slot", () => {
     it("creates a Simpler on an empty pad", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, [], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain();
 
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       const target = resolveSampleTarget("pC1/d0");
 
@@ -460,10 +468,7 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("skips a non-Simpler instrument without force, leaving it intact", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["ds-1"]);
 
       registerDevice("ds-1", "DrumSampler");
 
@@ -487,13 +492,10 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("replaces a non-Simpler instrument with a Simpler under force, and says so", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["ds-1"]);
 
       registerDevice("ds-1", "DrumSampler");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       const target = resolveSampleTarget("pC1/d0", true);
 
@@ -508,13 +510,10 @@ describe("resolveNestedParamTarget", () => {
     // force is not device-specific: any instrument whose sample the Live API
     // can't set is swappable, not just the DrumSampler that motivated the guard.
     it("skips any other instrument without force, and swaps it under force", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["op-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["op-1"]);
 
       registerDevice("op-1", "Operator");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expectSkipped(resolveSampleTarget("pC1/d0"), "it holds an Operator");
       expectNoDeviceInserted(chain);
@@ -526,13 +525,10 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("skips a multi-sample Simpler without force, and swaps it under force", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ms-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["ms-1"]);
 
       registerMultiSampleSimpler("ms-1");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expectSkipped(
         resolveSampleTarget("pC1/d0"),
@@ -558,14 +554,11 @@ describe("resolveNestedParamTarget", () => {
     });
 
     it("deletes the instrument's own index under force, not device 0", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["arp-1", "op-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["arp-1", "op-1"]);
 
       registerMidiEffect("arp-1", "Arpeggiator");
       registerDevice("op-1", "Operator");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expect(deviceOf(resolveSampleTarget("pC1", true))?.id).toBe(
         "new-simpler",
@@ -620,25 +613,19 @@ describe("resolveNestedParamTarget", () => {
     // Nothing is there to contradict the index, and refusing would break the
     // build flow that loads a whole rack in one call.
     it("creates a Simpler on an empty pad whatever device index is written", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, [], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain();
 
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       expect(deviceOf(resolveSampleTarget("pC1/d9"))?.id).toBe("new-simpler");
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
     });
 
     it("creates a Simpler on a pad holding only MIDI effects", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["arp-1"], {
-        insert_device: () => ["id", "new-simpler"],
-      });
+      const chain = registerInsertablePadChain(["arp-1"]);
 
       registerMidiEffect("arp-1", "Arpeggiator");
-      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+      registerCreatedSimpler();
 
       const target = resolveSampleTarget("pC1/d0");
 

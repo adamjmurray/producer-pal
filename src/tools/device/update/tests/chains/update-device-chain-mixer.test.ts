@@ -51,6 +51,24 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     });
   });
 
+  /**
+   * Write -12 dB to the chain's one send, on a send Live leaves at `kept`.
+   * @param kept - The level the send ends up holding
+   * @returns What updateDevice reported
+   */
+  function writeSendKeeping(kept: number): unknown {
+    keepsParamValue(send, kept);
+
+    const result = updateDevice({
+      id: "chain-0",
+      sends: [{ return: "a", gainDb: -12 }],
+    });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+
+    return result;
+  }
+
   it("sets a chain's own gain and pan", () => {
     // Live kept a different gain and the pan asked for (its float32 noise is
     // the same value), so only the gain has anything to report.
@@ -95,14 +113,8 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
 
   // A level Live changed was invisible to the model that asked for it.
   it("reports a send whose level Live changed, keyed by its return", () => {
-    keepsParamValue(send, -11.98);
+    const result = writeSendKeeping(-11.98);
 
-    const result = updateDevice({
-      id: "chain-0",
-      sends: [{ return: "a", gainDb: -12 }],
-    });
-
-    expect(send.set).toHaveBeenCalledWith("display_value", -12);
     expect(result).toStrictEqual({
       id: "chain-0",
       path: "t0/d0/c0",
@@ -118,15 +130,10 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   it("says nothing about a send that took the level asked for", () => {
-    keepsParamValue(send, -12);
-
-    const result = updateDevice({
+    expect(writeSendKeeping(-12)).toStrictEqual({
       id: "chain-0",
-      sends: [{ return: "a", gainDb: -12 }],
+      path: "t0/d0/c0",
     });
-
-    expect(send.set).toHaveBeenCalledWith("display_value", -12);
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
   });
 
   it("reports the sendGainDb/sendReturn pair under sends as well", () => {

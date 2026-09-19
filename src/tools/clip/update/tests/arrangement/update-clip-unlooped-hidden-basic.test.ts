@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertSourceClipEndMarker,
+  expectExtendedInPlace,
   mockContext,
   setupArrangementClipPath,
   setupArrangementMidiClipMock,
@@ -111,14 +112,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
       mockContext,
     );
 
-    // end_marker should NOT be shrunk from 20 to 14
-    expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
-
-    // loop_end set: loopStart(0) + target(14) = 14.0
-    expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
-
-    // Single clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
+    // end_marker stays at 20; loop_end lands on loopStart(0) + target(14).
+    expectExtendedInPlace(clip, result, clipId, 14.0);
   });
 });

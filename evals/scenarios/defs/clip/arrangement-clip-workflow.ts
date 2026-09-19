@@ -16,6 +16,7 @@ import {
   callNamesArrangementPosition,
   clipStarts,
 } from "../arrangement-readback.ts";
+import { requireToolCall } from "./helpers/clip-turn-readers.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;
@@ -129,12 +130,7 @@ export const arrangementClipWorkflow: EvalScenario = {
       type: "custom",
       description: "ppal-create-clip names an arrangement position",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 1);
-        const createCall = calls.find((c) => c.name === "ppal-create-clip");
-
-        if (!createCall) {
-          throw new Error("ppal-create-clip not found");
-        }
+        const createCall = requireToolCall(turns, 1, "ppal-create-clip");
 
         if (!callNamesArrangementPosition(createCall.args, "path")) {
           throw new Error(

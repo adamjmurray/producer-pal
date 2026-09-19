@@ -10,6 +10,7 @@ import { EditorView } from "@codemirror/view";
 import { act, render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "#webui/components/chat/controls/composer/ChatInput";
+import { chatInputProps } from "#webui/components/chat/controls/composer/tests/chat-input-props";
 
 /**
  * The chat input's live CodeMirror view.
@@ -51,15 +52,7 @@ function placeholderText(): string | null {
   return document.querySelector(".cm-placeholder")?.textContent ?? null;
 }
 
-const defaultProps = {
-  handleSend: vi.fn(),
-  onEnqueue: vi.fn(),
-  isAssistantResponding: false,
-  hasError: false,
-  onStop: vi.fn(),
-  thinking: "Default",
-  onThinkingChange: vi.fn(),
-};
+const defaultProps = chatInputProps();
 
 describe("ChatInput", () => {
   describe("rendering", () => {

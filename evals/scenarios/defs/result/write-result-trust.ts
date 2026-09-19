@@ -112,63 +112,71 @@ function assertNoReadBack(): EvalAssertion {
 }
 
 /**
+ * Assemble one arm: connect, then the single write, graded by "no read-back"
+ * plus a read proving the write landed (a model that wrote nothing reads
+ * nothing and would pass vacuously).
+ *
+ * @param arm - Ids, the turn-1 ask, and the read-back's include/verdict/message
+ * @returns The assembled eval scenario
+ */
+function trustArm(arm: {
+  id: string;
+  description: string;
+  ask: string;
+  include?: string[];
+  expect: (track: TrackRead) => boolean;
+  explain: (track: TrackRead) => string;
+}): EvalScenario {
+  return {
+    ...TRUST_SCENARIO,
+    id: arm.id,
+    tags: ["results"],
+    description: arm.description,
+
+    messages: ["Connect to Ableton Live", arm.ask],
+
+    assertions: [
+      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+      { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
+      assertNoReadBack(),
+
+      {
+        type: "state",
+        tool: TOOL_READ_TRACK,
+        args: {
+          trackIndex: BASS,
+          ...(arm.include && { include: arm.include }),
+        },
+        expect: (result) => arm.expect(result as TrackRead),
+        explain: (result) => arm.explain(result as TrackRead),
+      },
+    ],
+  };
+}
+
+/**
  * The silent arm. A `name` write comes back as a bare `{id, path}` — the
  * result mentions neither the name asked for nor the one Live stored.
+ * One instruction, nothing to report back, nothing to plan.
  */
-export const writeTrustSilentResult: EvalScenario = {
-  ...TRUST_SCENARIO,
+export const writeTrustSilentResult: EvalScenario = trustArm({
   id: "write-trust-silent-result",
-  tags: ["results"],
   description: "Accept a rename whose result says nothing about the name",
-
-  messages: [
-    "Connect to Ableton Live",
-    // One instruction, nothing to report back, nothing to plan.
-    `Rename the Bass track to ${NEW_NAME}.`,
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
-    assertNoReadBack(),
-
-    // Guards against a vacuous pass: a model that wrote nothing reads nothing.
-    {
-      type: "state",
-      tool: TOOL_READ_TRACK,
-      args: { trackIndex: BASS },
-      expect: (result) => (result as TrackRead).name === NEW_NAME,
-      explain: (result) =>
-        `expected the track named ${NEW_NAME}, got ${(result as TrackRead).name ?? "nothing"}`,
-    },
-  ],
-};
+  ask: `Rename the Bass track to ${NEW_NAME}.`,
+  expect: (track) => track.name === NEW_NAME,
+  explain: (track) =>
+    `expected the track named ${NEW_NAME}, got ${track.name ?? "nothing"}`,
+});
 
 /**
  * The echoing arm, and the one that stops being measurable once the reporting
  * goes conditional: a `gainDb` write reports the value read back off the track.
  */
-export const writeTrustEchoedResult: EvalScenario = {
-  ...TRUST_SCENARIO,
+export const writeTrustEchoedResult: EvalScenario = trustArm({
   id: "write-trust-echoed-result",
-  tags: ["results"],
   description: "Accept a gain change whose result echoes the gain",
-
-  messages: ["Connect to Ableton Live", `Set the Bass track to ${NEW_DB} dB.`],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
-    assertNoReadBack(),
-
-    {
-      type: "state",
-      tool: TOOL_READ_TRACK,
-      args: { trackIndex: BASS, include: ["mixer"] },
-      expect: (result) =>
-        Math.abs(((result as TrackRead).gainDb ?? 0) - NEW_DB) <= DB_TOLERANCE,
-      explain: (result) =>
-        `expected ${NEW_DB} dB, got ${(result as TrackRead).gainDb ?? 0}`,
-    },
-  ],
-};
+  ask: `Set the Bass track to ${NEW_DB} dB.`,
+  include: ["mixer"],
+  expect: (track) => Math.abs((track.gainDb ?? 0) - NEW_DB) <= DB_TOLERANCE,
+  explain: (track) => `expected ${NEW_DB} dB, got ${track.gainDb ?? 0}`,
+});

@@ -56,6 +56,20 @@ beforeEach(async () => {
   await resetConversationsDb();
 });
 
+/**
+ * Save a record, render the hook, then delete it so an undo is pending.
+ * @returns The saved record and the hook result
+ */
+async function deleteIntoPendingUndo() {
+  const record = await saveVoiceRecord({ title: "Doomed" });
+  const result = renderWithUndo();
+
+  await waitForEffects();
+  await act(() => result.current.persistence.deleteConversation(record.id));
+
+  return { record, result };
+}
+
 describe("useVoicePersistence undo", () => {
   it("offers a deleted voice conversation back, transcript intact", async () => {
     const record = await saveVoiceRecord({
@@ -87,11 +101,8 @@ describe("useVoicePersistence undo", () => {
   });
 
   it("drops a pending undo that a wipe would have taken anyway", async () => {
-    const record = await saveVoiceRecord({ title: "Doomed" });
-    const result = renderWithUndo();
+    const { result } = await deleteIntoPendingUndo();
 
-    await waitForEffects();
-    await act(() => result.current.persistence.deleteConversation(record.id));
     expect(result.current.undoDelete.undoNotification).not.toBeNull();
 
     await act(() => result.current.persistence.deleteAllConversations());
@@ -102,12 +113,7 @@ describe("useVoicePersistence undo", () => {
   // An undo record is the only copy left of a deleted conversation, so a wipe
   // that never happened must not be what destroys it.
   it("keeps a pending undo when the wipe itself fails", async () => {
-    const record = await saveVoiceRecord({ title: "Doomed" });
-    const result = renderWithUndo();
-
-    await waitForEffects();
-    await act(() => result.current.persistence.deleteConversation(record.id));
-
+    const { result } = await deleteIntoPendingUndo();
     const wipe = vi
       .spyOn(conversationDb, "deleteAllConversations")
       .mockRejectedValue(new Error("quota"));

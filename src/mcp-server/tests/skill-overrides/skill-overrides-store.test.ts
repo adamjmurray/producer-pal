@@ -20,7 +20,10 @@ import {
   barbeatStandardWrite,
 } from "#src/skills/notation/barbeat-standard.ts";
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
-import { useTempConfigDir } from "../config-dir-test-helpers.ts";
+import {
+  expectProvenanceFrontmatter,
+  useTempConfigDir,
+} from "../config-dir-test-helpers.ts";
 
 const getDir = useTempConfigDir();
 
@@ -152,10 +155,7 @@ describe("writeSkillOverride", () => {
     writeSkillOverride("midi-json", { content: "custom notes" });
     const raw = readFileSync(slotPath("midi-json"), "utf8");
 
-    expect(raw.startsWith("---\n")).toBe(true);
-    expect(raw).toContain(`producerPalVersion: ${VERSION}`);
-    expect(raw).toContain("builtInHash: ");
-    expect(raw.trimEnd().endsWith("custom notes")).toBe(true);
+    expectProvenanceFrontmatter(raw, "custom notes");
   });
 
   it("resets the slot (deletes the file) when given blank content", () => {

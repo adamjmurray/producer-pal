@@ -454,12 +454,33 @@ export function setupRoutingMocks(
 /**
  * The scaffold a "duplicate a bare track" case needs: the source track, the
  * live_set, and the empty track 1 the copy lands on.
+ * @returns The live_set and the new track, for their spies
  */
-export function registerBareTrackDuplication(): void {
+export function registerBareTrackDuplication(): {
+  liveSet: RegisteredMockObject;
+  newTrack: RegisteredMockObject;
+} {
   registerMockObject("track1", { path: livePath.track(0) });
-  registerMockObject("live_set", { path: livePath.liveSet });
-  registerMockObject(NEW_TRACK_ID, {
+
+  const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+  const newTrack = registerMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+  });
+
+  return { liveSet, newTrack };
+}
+
+/**
+ * The Live Set these cases duplicate within: three tracks, ids 10 through 12.
+ * @param properties - Extra Live Set properties merged over the tracks
+ * @returns The registered Live Set mock
+ */
+export function registerLiveSetWithThreeTracks(
+  properties: Record<string, unknown> = {},
+): RegisteredMockObject {
+  return registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { tracks: children("10", "11", "12"), ...properties },
   });
 }

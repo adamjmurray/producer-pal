@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type LibrarySearchResult } from "#src/mcp-server/live-library/library-types.ts";
 import { library } from "../library.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -25,6 +26,18 @@ vi.mock(import("../read-samples.ts"), async (importOriginal) => {
 const protocolMock =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
 const readSamplesMock = await import("../read-samples.ts");
+
+/**
+ * Narrow a library result to the search shape the sample tests read from.
+ * @param result - What the library tool returned
+ */
+function assertItems(
+  result: Awaited<ReturnType<typeof library>>,
+): asserts result is LibrarySearchResult {
+  if (!("items" in result)) {
+    throw new Error("expected items");
+  }
+}
 
 /**
  * Stub the library.search route with the given items.
@@ -100,9 +113,7 @@ async function expectFolderScanSkipped(
 
   const result = await library(filter, { sampleFolder: "/samples/" });
 
-  if (!("items" in result)) {
-    throw new Error("expected items");
-  }
+  assertItems(result);
 
   expect(result.items.find((i) => i.source === "sampleFolder")).toBeUndefined();
   expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
@@ -121,9 +132,7 @@ async function libraryWithFailedScan(thrown: unknown) {
 
   const result = await library({}, { sampleFolder: "/samples/" });
 
-  if (!("items" in result)) {
-    throw new Error("expected items");
-  }
+  assertItems(result);
 
   return result;
 }
@@ -199,9 +208,7 @@ describe("library tool — action dispatch", () => {
 
     const result = await library({ query: "kick" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
   });
@@ -317,9 +324,7 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     const kick = result.items.find((i) => i.source === "sampleFolder");
 
@@ -343,9 +348,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     const kicks = result.items.filter((i) => i.name === "kick.wav");
 
@@ -363,9 +366,7 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(
       result.items.find((i) => i.source === "sampleFolder"),
@@ -382,9 +383,7 @@ describe("library tool — folder scan integration", () => {
 
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
     // Folder-only requests bypass the DB; dbAvailable should be absent
@@ -401,9 +400,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.dbAvailable).toBe(true);
     // Neither the folder scan nor the DB supplied a reason, so the merged
@@ -463,9 +460,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, {});
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items).toHaveLength(1);
   });
@@ -485,9 +480,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({ limit: 2 }, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items).toHaveLength(2);
   });
@@ -515,9 +508,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     // Folder partition first (alphabetical tiebreaker at useCount=0),
     // then DB partition (useCount desc).
@@ -538,9 +529,7 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
@@ -551,9 +540,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({ limit: 0 }, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items).toHaveLength(2);
   });
@@ -584,9 +571,7 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     // Folder partition first, each partition sorted alphabetically.
     expect(result.items.map((i) => i.name)).toStrictEqual([
@@ -623,9 +608,7 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     // Folder partition sorted by name (no mod_date metadata), then DB
     // partition in upstream mod_date order.
@@ -646,9 +629,7 @@ describe("library tool — folder scan integration", () => {
       { sampleFolder: "/samples/" },
     );
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
@@ -659,9 +640,7 @@ describe("library tool — folder scan integration", () => {
     // "you need to configure a sample folder".
     const result = await library({ source: "sampleFolder" }, {});
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items).toHaveLength(0);
     expect(result.reason).toMatch(/sample folder not configured/i);
@@ -681,9 +660,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.dbAvailable).toBe(false);
     expect(result.reason).toBe("Live database not found");
@@ -719,9 +696,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     const item = result.items.find((i) => i.path.endsWith("snare.wav"));
 
@@ -737,9 +712,7 @@ describe("library tool — folder scan integration", () => {
 
     const result = await library({}, { sampleFolder: "/samples/" });
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     // A top-level sample has no folder segment of its own, so its parent is
     // the configured sample folder itself ("/samples/" → "samples").
@@ -759,9 +732,7 @@ describe("library tool — sort ordering (DB partition)", () => {
 
     const result = await library({}, {});
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items.map((i) => i.name)).toStrictEqual([
       "a.wav", // useCount 3
@@ -775,9 +746,7 @@ describe("library tool — sort ordering (DB partition)", () => {
 
     const result = await library({ sort: "name" }, {});
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     expect(result.items.map((i) => i.name)).toStrictEqual([
       "a.wav",
@@ -791,9 +760,7 @@ describe("library tool — sort ordering (DB partition)", () => {
 
     const result = await library({ sort: "mod_date" }, {});
 
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    assertItems(result);
 
     // The DB partition is not all-sampleFolder, so mod_date keeps the upstream
     // (SQL-provided) order rather than re-sorting by name or use_count.

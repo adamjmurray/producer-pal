@@ -549,63 +549,31 @@ describe("a clip held back for an overwrite", () => {
   it("does not clear it for a landing by a clip outside its group", () => {
     // A tiling clip can land on the same track and position without being one
     // of the clips whose length made this one a non-survivor.
-    const { movedClipGroups, result, sourceTrack } =
-      groupHoldingOneClipBack("outsider");
-
-    flushDeferredDeletions(movedClipGroups, planBuryingFirst());
-
-    expect(result).toStrictEqual({ id: FIRST, deleted: false });
-    expect(sourceTrack.call).not.toHaveBeenCalled();
-    expect(movedClipGroups.get(GROUP)?.count).toBe(1);
+    expectHeldClipKept(flushHeldBack("outsider", planBuryingFirst()));
   });
 
   it("skips the delete when the landing already cleared it away", () => {
-    const { movedClipGroups, result, sourceTrack } = groupHoldingOneClipBack(
+    const { result, sourceTrack, count } = flushHeldBack(
       SECOND,
+      planBuryingFirst(),
       false,
     );
-
-    flushDeferredDeletions(movedClipGroups, planBuryingFirst());
 
     expect(result).toStrictEqual({ id: FIRST, deleted: true });
     expect(sourceTrack.call).not.toHaveBeenCalled();
     // Still counted: the clip is gone either way.
-    expect(movedClipGroups.get(GROUP)?.count).toBe(2);
+    expect(count).toBe(2);
   });
 
   // Survivors descend in length, but a non-survivor can outlast a later, shorter
   // one: lengths [20, 40, 12] leave the 20 a non-survivor while the 12 survives.
   // The 12 landing buries only 12 of its 20 beats, so it settles nothing.
   it("does not clear it for a landing too short to bury it", () => {
-    const { movedClipGroups, result, sourceTrack } =
-      groupHoldingOneClipBack(SECOND);
-
-    flushDeferredDeletions(movedClipGroups, {
-      nonSurvivorIds: new Set([FIRST]),
-      survivorLengthsByGroup: new Map([[GROUP, new Map([[SECOND, 12]])]]),
-      lengthById: new Map([
-        [FIRST, 20],
-        [SECOND, 12],
-      ]),
-    });
-
-    expect(result).toStrictEqual({ id: FIRST, deleted: false });
-    expect(sourceTrack.call).not.toHaveBeenCalled();
-    expect(movedClipGroups.get(GROUP)?.count).toBe(1);
+    expectHeldClipKept(flushHeldBack(SECOND, planBurying(20, 12)));
   });
 
   it("clears it for a landing exactly as long as it is", () => {
-    const { movedClipGroups, result, sourceTrack } =
-      groupHoldingOneClipBack(SECOND);
-
-    flushDeferredDeletions(movedClipGroups, {
-      nonSurvivorIds: new Set([FIRST]),
-      survivorLengthsByGroup: new Map([[GROUP, new Map([[SECOND, 20]])]]),
-      lengthById: new Map([
-        [FIRST, 20],
-        [SECOND, 20],
-      ]),
-    });
+    const { result, sourceTrack } = flushHeldBack(SECOND, planBurying(20, 20));
 
     expect(result).toStrictEqual({ id: FIRST, deleted: true });
     expect(sourceTrack.call).toHaveBeenCalledWith(
@@ -617,24 +585,20 @@ describe("a clip held back for an overwrite", () => {
   // The failed placement cleared the target range before the copy it never
   // made, and this clip was sitting in it.
   it("reports a held-back clip the failed placement destroyed anyway", () => {
-    const { movedClipGroups, result, sourceTrack } = groupHoldingOneClipBack(
+    const { result, sourceTrack, count } = flushHeldBack(
       "outsider",
+      planBuryingFirst(),
       false,
     );
-
-    flushDeferredDeletions(movedClipGroups, planBuryingFirst());
 
     expect(result).toStrictEqual({ id: FIRST, deleted: true });
     expect(sourceTrack.call).not.toHaveBeenCalled();
     // Nothing landed, so it stacked with nothing.
-    expect(movedClipGroups.get(GROUP)?.count).toBe(1);
+    expect(count).toBe(1);
   });
 
   it("clears nothing when the call planned no overwrite at all", () => {
-    const { movedClipGroups, result, sourceTrack } =
-      groupHoldingOneClipBack(SECOND);
-
-    flushDeferredDeletions(movedClipGroups, undefined);
+    const { result, sourceTrack } = flushHeldBack(SECOND, undefined);
 
     expect(result).toStrictEqual({ id: FIRST, deleted: false });
     expect(sourceTrack.call).not.toHaveBeenCalled();
@@ -735,14 +699,64 @@ function deletedIds(track: RegisteredMockObject): string[] {
  * @returns The overwrite plan
  */
 function planBuryingFirst(): OverwritePlan {
+  return planBurying(8, 16);
+}
+
+/**
+ * A plan where FIRST is the non-survivor and SECOND's landing is what decides
+ * whether FIRST gets buried.
+ * @param firstLength - FIRST's length, in beats
+ * @param survivorLength - SECOND's landing length, in beats
+ * @returns The overwrite plan
+ */
+function planBurying(
+  firstLength: number,
+  survivorLength: number,
+): OverwritePlan {
   return {
     nonSurvivorIds: new Set([FIRST]),
-    survivorLengthsByGroup: new Map([[GROUP, new Map([[SECOND, 16]])]]),
+    survivorLengthsByGroup: new Map([
+      [GROUP, new Map([[SECOND, survivorLength]])],
+    ]),
     lengthById: new Map([
-      [FIRST, 8],
-      [SECOND, 16],
+      [FIRST, firstLength],
+      [SECOND, survivorLength],
     ]),
   };
+}
+
+/**
+ * The held clip survived the landing: its entry says so, nothing was deleted,
+ * and the group still counts just the one clip.
+ * @param flushed - What the flush left behind
+ */
+function expectHeldClipKept(flushed: ReturnType<typeof flushHeldBack>): void {
+  expect(flushed.result).toStrictEqual({ id: FIRST, deleted: false });
+  expect(flushed.sourceTrack.call).not.toHaveBeenCalled();
+  expect(flushed.count).toBe(1);
+}
+
+/**
+ * Flush the deferred deletes of a group holding FIRST back, and report what
+ * the flush left behind.
+ * @param landed - The clip that landed at the destination
+ * @param plan - The overwrite plan, or undefined when the call planned none
+ * @param clipExists - Whether the held clip survived the landing
+ * @returns Its entry, its source track, and how many clips the group counts
+ */
+function flushHeldBack(
+  landed: string,
+  plan: OverwritePlan | undefined,
+  clipExists = true,
+) {
+  const { movedClipGroups, result, sourceTrack } = groupHoldingOneClipBack(
+    landed,
+    clipExists,
+  );
+
+  flushDeferredDeletions(movedClipGroups, plan);
+
+  return { result, sourceTrack, count: movedClipGroups.get(GROUP)?.count };
 }
 
 function groupHoldingOneClipBack(landed: string, clipExists = true) {

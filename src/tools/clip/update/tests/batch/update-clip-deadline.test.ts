@@ -42,6 +42,39 @@ function setupSessionMidiClip(clip: RegisteredMockObject): void {
   });
 }
 
+/**
+ * The entry a clip gets when the batch ran out of time before reaching it.
+ * @param id - The clip id the caller named
+ * @returns The expected result entry
+ */
+function outOfTime(id: string): Record<string, unknown> {
+  return {
+    id,
+    ok: false,
+    reason: "not updated: the request ran out of time; re-run for this clip",
+  };
+}
+
+/**
+ * Rename two clips with the deadline running out after the first one.
+ * @param mocks - Registered clip mocks
+ * @returns The updateClip response
+ */
+async function updateTwoClipsCutShort(
+  mocks: UpdateClipMocks,
+): Promise<unknown> {
+  setupTwoMidiClips(mocks);
+
+  vi.mocked(isDeadlineExceeded)
+    .mockReturnValueOnce(false)
+    .mockReturnValueOnce(true);
+
+  return await updateClip(
+    { id: "123, 456", name: "Updated" },
+    { timeoutMs: 100 },
+  );
+}
+
 describe("updateClip - deadline exceeded", () => {
   let mocks: UpdateClipMocks;
 
@@ -80,72 +113,30 @@ describe("updateClip - deadline exceeded", () => {
     );
 
     // No clips were updated, and each one says so in its own entry.
-    expect(result).toStrictEqual([
-      {
-        id: "123",
-        ok: false,
-        reason:
-          "not updated: the request ran out of time; re-run for this clip",
-      },
-      {
-        id: "456",
-        ok: false,
-        reason:
-          "not updated: the request ran out of time; re-run for this clip",
-      },
-    ]);
+    expect(result).toStrictEqual([outOfTime("123"), outOfTime("456")]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
     );
   });
 
   it("gives every clip a cut-short batch did not reach its own entry", async () => {
-    setupTwoMidiClips(mocks);
-
-    vi.mocked(isDeadlineExceeded)
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true);
-
-    const result = await updateClip(
-      { id: "123, 456", name: "Updated" },
-      { timeoutMs: 100 },
-    );
+    const result = await updateTwoClipsCutShort(mocks);
 
     // A bare count doesn't say which id to re-run; the entry does, in the slot
     // the caller named it at.
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0" },
-      {
-        id: "456",
-        ok: false,
-        reason:
-          "not updated: the request ran out of time; re-run for this clip",
-      },
+      outOfTime("456"),
     ]);
   });
 
   it("should process some clips before deadline is exceeded", async () => {
-    setupTwoMidiClips(mocks);
-
-    // Allow first clip, then exceed deadline
-    vi.mocked(isDeadlineExceeded)
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true);
-
-    const result = await updateClip(
-      { id: "123, 456", name: "Updated" },
-      { timeoutMs: 100 },
-    );
+    const result = await updateTwoClipsCutShort(mocks);
 
     // Only the first clip was updated; the second holds its slot.
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0" },
-      {
-        id: "456",
-        ok: false,
-        reason:
-          "not updated: the request ran out of time; re-run for this clip",
-      },
+      outOfTime("456"),
     ]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Ran out of time after updating 1 of 2 clips"),

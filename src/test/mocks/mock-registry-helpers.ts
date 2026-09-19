@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Mock, vi } from "vitest";
-import { type PathLike } from "#src/shared/live-api-path-builders.ts";
+import {
+  type PathLike,
+  type TrackPath,
+} from "#src/shared/live-api-path-builders.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   MockSequence,
@@ -237,4 +240,24 @@ function createCallMock(
 
     return fallbackCall(method, args, mock.path);
   }) as Mock;
+}
+
+/**
+ * Path→id entries for one track's mixer device, volume, and panning, as a
+ * path-mapped mock setup wants them.
+ * @param trackPath - The track whose mixer these belong to
+ * @param suffix - Tells one track's mixer ids apart from another's
+ * @returns Entries to spread into a pathIdMap
+ */
+export function mixerPathIds(
+  trackPath: TrackPath,
+  suffix: string | number = 1,
+): Record<string, string> {
+  const mixer = trackPath.mixerDevice();
+
+  return {
+    [mixer]: `mixer_${String(suffix)}`,
+    [`${mixer} volume`]: `volume_param_${String(suffix)}`,
+    [`${mixer} panning`]: `panning_param_${String(suffix)}`,
+  };
 }

@@ -34,6 +34,25 @@ export function expectTakeLaneMidiClip(
   ).toHaveBeenCalledWith("create_midi_clip", start, length);
 }
 
+/**
+ * Assert the track created exactly one take lane, and that lane was told to
+ * make a clip at each of the given starts.
+ * @param track - The track the lane was created on
+ * @param starts - Expected clip starts, in beats
+ * @param laneIndex - The take lane that got the clips
+ */
+export function expectOneLaneWithClipsAt(
+  track: RegisteredMockObject,
+  starts: number[],
+  laneIndex = 0,
+): void {
+  expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
+
+  for (const start of starts) {
+    expectTakeLaneMidiClip(laneIndex, start);
+  }
+}
+
 export interface TakeLaneTrackOptions {
   trackIndex?: number;
   /** Number of pre-existing (empty) take lanes */

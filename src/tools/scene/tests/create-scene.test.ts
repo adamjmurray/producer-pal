@@ -15,6 +15,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { expectSceneSetToRed34 } from "./scene-assertions.ts";
 import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -63,13 +64,7 @@ describe("createScene", () => {
     });
 
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 1);
-    expect(scene1.set).toHaveBeenCalledWith("name", "New Scene");
-    expect(scene1.set).toHaveBeenCalledWith("color", 16711680);
-    expect(scene1.set).toHaveBeenCalledWith("tempo", 120);
-    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
+    expectSceneSetToRed34(scene1, "New Scene", 120);
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",

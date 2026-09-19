@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { registerScaledLiveSet } from "./notes-mock-test-helpers.ts";
 import {
   mockMergeNoteTracking,
   setupMidiClipMock,
@@ -156,15 +156,7 @@ describe("updateClip - transforms read the Live Set's scale", () => {
   // cover each way of asking for one: transforms, preTransforms, and notes
   // merged alongside a transform.
   beforeEach(() => {
-    registerMockObject("live_set", {
-      path: "live_set",
-      type: "Song",
-      properties: {
-        scale_mode: 1,
-        root_note: 0,
-        scale_intervals: [0, 2, 4, 5, 7, 9, 11], // C major
-      },
-    });
+    registerScaledLiveSet([0, 2, 4, 5, 7, 9, 11]); // C major
     mocks = setupUpdateClipMocks();
     setupMidiClipMock(mocks.clip123, { length: 4 });
     // C#3, which is out of C major.

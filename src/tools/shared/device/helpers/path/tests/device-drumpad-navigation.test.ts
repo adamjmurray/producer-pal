@@ -32,6 +32,28 @@ import {
 
 const RACK_PATH = "live_set tracks 0 devices 0";
 
+const CHAIN_PATH = `${RACK_PATH} chains 0`;
+
+/**
+ * A rack holding one chain, on whichever pad `inNote` names.
+ * @param inNote - The chain's in_note (-1 for the catch-all)
+ * @returns The chain
+ */
+function registerChainOn(inNote: number): LiveAPI {
+  registerMockObject("rack", {
+    path: RACK_PATH,
+    type: "RackDevice",
+    properties: { chains: ["id", "chain-0"] },
+  });
+  registerMockObject("chain-0", {
+    path: CHAIN_PATH,
+    type: "DrumChain",
+    properties: { in_note: inNote },
+  });
+
+  return LiveAPI.from(CHAIN_PATH);
+}
+
 /**
  * Register a rack device plus a single C1 (in_note 36) drum chain that holds two
  * devices. Enough surface to drive both navigators: the rack exposes chains,
@@ -332,31 +354,9 @@ describe("drumPadIdsByNote", () => {
 });
 
 describe("drumChainSegmentNamer", () => {
-  const CHAIN_PATH = `${RACK_PATH} chains 0`;
-
   beforeEach(() => {
     clearMockRegistry();
   });
-
-  /**
-   * A rack holding one chain, on whichever pad `inNote` names.
-   * @param inNote - The chain's in_note (-1 for the catch-all)
-   * @returns The chain
-   */
-  function registerChainOn(inNote: number): LiveAPI {
-    registerMockObject("rack", {
-      path: RACK_PATH,
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-0"] },
-    });
-    registerMockObject("chain-0", {
-      path: CHAIN_PATH,
-      type: "DrumChain",
-      properties: { in_note: inNote },
-    });
-
-    return LiveAPI.from(CHAIN_PATH);
-  }
 
   it("names a chain by the pad it sounds on", () => {
     const chain = registerChainOn(36);
@@ -411,23 +411,12 @@ describe("drumChainSegmentNamer", () => {
 });
 
 describe("warnRackRelativeDrumChainSpelling", () => {
-  const CHAIN_PATH = `${RACK_PATH} chains 0`;
-
   beforeEach(() => {
     clearMockRegistry();
   });
 
   it("warns with the pad-relative spelling for a rack-relative drum chain", () => {
-    registerMockObject("rack", {
-      path: RACK_PATH,
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-0"] },
-    });
-    registerMockObject("chain-0", {
-      path: CHAIN_PATH,
-      type: "DrumChain",
-      properties: { in_note: 36 },
-    });
+    registerChainOn(36);
 
     warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
 
@@ -458,16 +447,7 @@ describe("warnRackRelativeDrumChainSpelling", () => {
   // A comma-separated toPath naming several drum chains must not repeat the
   // lesson once per target.
   it("warns once per request, not once per call", () => {
-    registerMockObject("rack", {
-      path: RACK_PATH,
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-0"] },
-    });
-    registerMockObject("chain-0", {
-      path: CHAIN_PATH,
-      type: "DrumChain",
-      properties: { in_note: 36 },
-    });
+    registerChainOn(36);
 
     warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));
     warnRackRelativeDrumChainSpelling(LiveAPI.from(CHAIN_PATH));

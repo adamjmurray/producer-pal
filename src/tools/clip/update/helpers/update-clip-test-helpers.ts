@@ -468,6 +468,46 @@ export function assertBoundaryDetection(
 }
 
 /**
+ * The note write a clip gets: everything in the window removed, then the given
+ * list added. The window varies with clip length; clip-notes.test.ts pins it.
+ * @param clip - The clip mock
+ * @param notes - The notes that should have been added
+ */
+export function expectNotesWritten(
+  clip: RegisteredMockObject,
+  notes: unknown[],
+): void {
+  expect(clip.call).toHaveBeenCalledWith(
+    "remove_notes_extended",
+    0,
+    128,
+    expect.any(Number),
+    expect.any(Number),
+  );
+  expect(clip.call).toHaveBeenCalledWith("add_new_notes", { notes });
+}
+
+/**
+ * A clip holding more content than the target extends in place: end_marker is
+ * left alone, loop_end moves to the target, and one clip comes back
+ * (unwrapSingleResult hands a one-element array back as a single object).
+ * @param clip - The clip mock
+ * @param result - The updateClip response
+ * @param clipId - The clip id the response should name
+ * @param loopEnd - Where loop_end should land, in beats
+ */
+export function expectExtendedInPlace(
+  clip: RegisteredMockObject,
+  result: unknown,
+  clipId: string,
+  loopEnd: number,
+): void {
+  expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+  expect(clip.set).toHaveBeenCalledWith("loop_end", loopEnd);
+  expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
+}
+
+/**
  * Stand in for what rescanSplitClips sees after a split: the track's
  * arrangement_clips answers with one real fresh clip plus a non-existent one
  * (id "0") that the exists() filter has to drop.

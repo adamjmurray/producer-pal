@@ -15,6 +15,10 @@ import {
   handleNodeRequest,
   registerNodeRoute,
 } from "./node-request-protocol.ts";
+import {
+  type ParsedNodeResponse,
+  parseSentNodeResponse,
+} from "../tests/config-dir-test-helpers.ts";
 
 vi.mock(import("../node-for-max-logger.ts"), () => ({
   log: vi.fn(),
@@ -23,30 +27,8 @@ vi.mock(import("../node-for-max-logger.ts"), () => ({
   error: vi.fn(),
 }));
 
-type ParsedNodeResponse = {
-  success: boolean;
-  result?: unknown;
-  error?: string;
-};
-
-/**
- * Reassemble and parse the response JSON sent via the chunked Max.outlet call.
- *
- * @returns Parsed response object
- */
-function parseSentResponse(): ParsedNodeResponse {
-  const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
-
-  expect(name).toBe("node_response");
-
-  const delimiterIndex = rest.indexOf(END_OF_CHUNKS);
-
-  expect(delimiterIndex).toBeGreaterThanOrEqual(0);
-
-  const chunks = rest.slice(0, delimiterIndex) as string[];
-
-  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
-}
+const parseSentResponse = (): ParsedNodeResponse<unknown> =>
+  parseSentNodeResponse<unknown>();
 
 describe("node-request-protocol", () => {
   beforeEach(() => {

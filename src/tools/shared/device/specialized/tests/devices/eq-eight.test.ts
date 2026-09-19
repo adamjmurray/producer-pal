@@ -6,8 +6,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
 import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
@@ -15,24 +17,11 @@ import {
 } from "../../specialized-device-registry.ts";
 import { expectWriteRefused } from "../refused-write-assertions.ts";
 
-/**
- * Register a mock EQ Eight device and return its LiveAPI.
- * @param properties - Property overrides (merged onto EQ Eight defaults)
- * @returns The EQ Eight LiveAPI object
- */
-function registerEqEight(properties: Record<string, unknown> = {}): LiveAPI {
-  registerMockObject("eq8-1", {
-    type: "Eq8Device",
-    properties: {
-      class_display_name: "EQ Eight",
-      global_mode: 0,
-      oversample: 0,
-      ...properties,
-    },
-  });
-
-  return LiveAPI.from("id eq8-1");
-}
+const registerEqEight = specializedDeviceMock("eq8-1", "Eq8Device", {
+  class_display_name: "EQ Eight",
+  global_mode: 0,
+  oversample: 0,
+});
 
 describe("EQ Eight pseudo-params", () => {
   describe("read", () => {
@@ -171,30 +160,10 @@ describe("EQ Eight pseudo-params", () => {
 // Integration through the read-device tool: confirms pseudo-params surface in
 // the `parameters` output and that EQ Eight contributes no modulations/options.
 describe("EQ Eight via read-device", () => {
-  /**
-   * Register a fully-readable mock EQ Eight device by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableEqEight(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("eq8-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "EQ Eight",
-        class_display_name: "EQ Eight",
-        type: 2,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        global_mode: 1,
-        oversample: 0,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableEqEight = readableDeviceMock("eq8-1", "EQ Eight", 2, {
+    global_mode: 1,
+    oversample: 0,
+  });
 
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableEqEight();

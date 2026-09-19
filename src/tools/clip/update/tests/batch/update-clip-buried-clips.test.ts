@@ -93,21 +93,34 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
   });
 }
 
+/**
+ * Seed a take lane, then send both of its clips to bar 5 so the second lands
+ * on top of the first.
+ * @param spans - Each clip's arrangement span, in beats
+ * @returns The two clip ids and the response, one entry per id
+ */
+async function collideAtBarFive(
+  spans: Array<{ start: number; end: number }>,
+): Promise<{ first?: string; second?: string; result: ClipResult[] }> {
+  const [first, second] = seedTakeLane(spans);
+  const result = (await updateClip({
+    id: `${first},${second}`,
+    toPath: "t0/l0[5|1],t0/l0[5|1]",
+  })) as ClipResult[];
+
+  return { first, second, result };
+}
+
 describe("updateClip reports a clip the batch buried", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("reports the take-lane clip a sibling was re-created on top of", async () => {
-    const [first, second] = seedTakeLane([
+    const { second, result } = await collideAtBarFive([
       { start: 0, end: 4 },
       { start: 16, end: 20 },
     ]);
-
-    const result = (await updateClip({
-      id: `${first},${second}`,
-      toPath: "t0/l0[5|1],t0/l0[5|1]",
-    })) as ClipResult[];
 
     // The mover landed at bar 5; the clip that was sitting there is gone, named
     // by the address it had, and says nothing about being a session clip.
@@ -146,16 +159,11 @@ describe("updateClip reports a clip the batch buried", () => {
   });
 
   it("marks a clip that landed and a later sibling then buried", async () => {
-    const [first, second] = seedTakeLane([
+    // Both land on bar 5: the first is re-created there, the second over it.
+    const { result } = await collideAtBarFive([
       { start: 0, end: 4 },
       { start: 32, end: 36 },
     ]);
-
-    // Both land on bar 5: the first is re-created there, the second over it.
-    const result = (await updateClip({
-      id: `${first},${second}`,
-      toPath: "t0/l0[5|1],t0/l0[5|1]",
-    })) as ClipResult[];
 
     // The first mover's own copy is what the second one cleared, so its entry
     // names an id that is gone by the time the call answers.

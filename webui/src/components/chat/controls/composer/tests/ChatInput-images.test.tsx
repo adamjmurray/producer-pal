@@ -10,6 +10,7 @@ import { EditorView } from "@codemirror/view";
 import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatInput } from "#webui/components/chat/controls/composer/ChatInput";
+import { chatInputProps } from "#webui/components/chat/controls/composer/tests/chat-input-props";
 import {
   MAX_IMAGES_PER_MESSAGE,
   NOT_AN_IMAGE_MESSAGE,
@@ -18,15 +19,7 @@ import {
 
 const DROP_OVERLAY_TEXT = "Drop images to attach";
 
-const defaultProps = {
-  handleSend: vi.fn(),
-  onEnqueue: vi.fn(),
-  isAssistantResponding: false,
-  hasError: false,
-  onStop: vi.fn(),
-  thinking: "Default",
-  onThinkingChange: vi.fn(),
-};
+const defaultProps = chatInputProps();
 
 /**
  * A real file the browser's FileReader can read.

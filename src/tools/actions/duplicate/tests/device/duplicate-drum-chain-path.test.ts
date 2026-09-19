@@ -10,6 +10,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { registerLayeredDrumRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
@@ -27,31 +28,13 @@ import {
 } from "#src/tools/device/update/helpers/move-device.ts";
 
 const DRUM_RACK = livePath.track(0).device(0);
-/** in_note per rack chain: C1 (36) layered twice, D1 (38) once. */
-const CHAIN_NOTES = [36, 38, 36];
 
 describe("duplicate — drum chain path spelling", () => {
   beforeEach(() => {
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("track-0", { path: livePath.track(0) });
-    registerMockObject("drum-rack", {
-      path: DRUM_RACK,
-      type: "RackDevice",
-      properties: {
-        class_name: "DrumGroupDevice",
-        chains: children("chain-0", "chain-1", "chain-2"),
-        can_have_drum_pads: 1,
-        return_chains: [],
-      },
+    registerLayeredDrumRack({
+      rackProperties: { class_name: "DrumGroupDevice", return_chains: [] },
     });
-
-    for (const [index, inNote] of CHAIN_NOTES.entries()) {
-      registerMockObject(`chain-${index}`, {
-        path: livePath.track(0).device(0).chain(index),
-        type: "DrumChain",
-        properties: { in_note: inNote, devices: children() },
-      });
-    }
   });
 
   // The mocked move stands in for Live: it relocates the copy into the

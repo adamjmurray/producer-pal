@@ -13,6 +13,14 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 
+/** Locators the list tests start from. */
+const INTRO_VERSE = [
+  { time: 0, name: "Intro" },
+  { time: 16, name: "Verse" },
+];
+
+const INTRO_VERSE_DROP = [...INTRO_VERSE, { time: 32, name: "Drop" }];
+
 describe("updateLiveSet - locator lists", () => {
   let liveSet: RegisteredMockObject;
 
@@ -80,11 +88,7 @@ describe("updateLiveSet - locator lists", () => {
 
   describe("delete and rename", () => {
     it("deletes every locator the call names", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Intro" },
-        { time: 16, name: "Verse" },
-        { time: 32, name: "Drop" },
-      ]);
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
 
       const result = await updateLiveSet({
         locatorOperation: "delete",
@@ -99,11 +103,7 @@ describe("updateLiveSet - locator lists", () => {
     });
 
     it("deletes by each name the call lists", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Intro" },
-        { time: 16, name: "Verse" },
-        { time: 32, name: "Drop" },
-      ]);
+      const set = simulateLocators(liveSet, INTRO_VERSE_DROP);
 
       const result = await updateLiveSet({
         locatorOperation: "delete",
@@ -118,16 +118,9 @@ describe("updateLiveSet - locator lists", () => {
     });
 
     it("renames each locator to its own name", async () => {
-      const set = simulateLocators(liveSet, [
-        { time: 0, name: "Intro" },
-        { time: 16, name: "Verse" },
-      ]);
+      const set = simulateLocators(liveSet, INTRO_VERSE);
 
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorId: "locator-0,locator-1",
-        locatorName: "Head,Chorus",
-      });
+      const result = await renameBothLocators();
 
       expect(result.locator).toStrictEqual([
         { operation: "renamed", id: "locator-0", name: "Head" },
@@ -253,10 +246,7 @@ describe("updateLiveSet - locator lists", () => {
     });
 
     it("reports a locator Live wouldn't rename", async () => {
-      simulateLocators(liveSet, [
-        { time: 0, name: "Intro" },
-        { time: 16, name: "Verse" },
-      ]);
+      simulateLocators(liveSet, INTRO_VERSE);
 
       const second = lookupMockObject(undefined, livePath.cuePoint(1));
 
@@ -264,11 +254,7 @@ describe("updateLiveSet - locator lists", () => {
         throw new Error("Live refused the write");
       });
 
-      const result = await updateLiveSet({
-        locatorOperation: "rename",
-        locatorId: "locator-0,locator-1",
-        locatorName: "Head,Chorus",
-      });
+      const result = await renameBothLocators();
 
       expect(result.locator).toStrictEqual([
         { operation: "renamed", id: "locator-0", name: "Head" },
@@ -396,4 +382,18 @@ function simulateLocators(
         name: cue.properties.name as string,
       })),
   };
+}
+
+/**
+ * Rename both locators in one call: locator-0 to Head, locator-1 to Chorus.
+ * @returns What the rename reported
+ */
+async function renameBothLocators(): Promise<
+  Awaited<ReturnType<typeof updateLiveSet>>
+> {
+  return await updateLiveSet({
+    locatorOperation: "rename",
+    locatorId: "locator-0,locator-1",
+    locatorName: "Head,Chorus",
+  });
 }

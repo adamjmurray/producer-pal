@@ -101,10 +101,7 @@ describe("readOneTrack", () => {
         include: ["routings", "available-routings"],
       });
 
-      expect(result.availableInputRoutingChannels).toStrictEqual([]);
-      expect(result.availableInputRoutingTypes).toStrictEqual([]);
-      expect(result.availableOutputRoutingChannels).toStrictEqual([]);
-      expect(result.availableOutputRoutingTypes).toStrictEqual([]);
+      expectNoAvailableRoutings(result);
       expect(result.inputRoutingChannel).toBeNull();
       expect(result.inputRoutingType).toBeNull();
       expect(result.outputRoutingChannel).toBeNull();
@@ -179,10 +176,7 @@ describe("readOneTrack", () => {
       expect(result.monitoringState).toBe("unknown");
 
       // Other routing properties should still work
-      expect(result.availableInputRoutingChannels).toStrictEqual([]);
-      expect(result.availableInputRoutingTypes).toStrictEqual([]);
-      expect(result.availableOutputRoutingChannels).toStrictEqual([]);
-      expect(result.availableOutputRoutingTypes).toStrictEqual([]);
+      expectNoAvailableRoutings(result);
     });
 
     it("omits monitoring state for tracks that cannot be armed", () => {
@@ -211,3 +205,16 @@ describe("readOneTrack", () => {
     });
   });
 });
+
+/**
+ * Assert every available-routing list came back empty.
+ * @param result - The track read
+ */
+function expectNoAvailableRoutings(
+  result: ReturnType<typeof readOneTrack>,
+): void {
+  expect(result.availableInputRoutingChannels).toStrictEqual([]);
+  expect(result.availableInputRoutingTypes).toStrictEqual([]);
+  expect(result.availableOutputRoutingChannels).toStrictEqual([]);
+  expect(result.availableOutputRoutingTypes).toStrictEqual([]);
+}

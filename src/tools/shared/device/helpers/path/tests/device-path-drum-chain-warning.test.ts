@@ -29,6 +29,25 @@ function registerDrumRack(): void {
   });
 }
 
+/**
+ * A plain (non-drum) rack whose one chain is addressed rack-relatively.
+ * @param chainProperties - Extra properties on the chain
+ */
+function registerPlainRack(
+  chainProperties: Record<string, unknown> = {},
+): void {
+  registerMockObject("rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: { chains: children("chain-0"), can_have_drum_pads: 0 },
+  });
+  registerMockObject("chain-0", {
+    path: livePath.track(0).device(0).chain(0),
+    type: "Chain",
+    properties: chainProperties,
+  });
+}
+
 describe("input resolution warns about rack-relative drum chain spelling", () => {
   it("warns when resolving a chain by its rack-relative index", () => {
     registerDrumRack();
@@ -56,15 +75,7 @@ describe("input resolution warns about rack-relative drum chain spelling", () =>
   });
 
   it("stays quiet for a chain under a non-drum rack", () => {
-    registerMockObject("rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: children("chain-0"), can_have_drum_pads: 0 },
-    });
-    registerMockObject("chain-0", {
-      path: livePath.track(0).device(0).chain(0),
-      type: "Chain",
-    });
+    registerPlainRack();
 
     resolvePathToLiveApi("t0/d0/c0");
 
@@ -90,16 +101,7 @@ describe("input resolution warns about rack-relative drum chain spelling", () =>
   });
 
   it("stays quiet inserting into a plain, non-drum rack chain", () => {
-    registerMockObject("rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: children("chain-0"), can_have_drum_pads: 0 },
-    });
-    registerMockObject("chain-0", {
-      path: livePath.track(0).device(0).chain(0),
-      type: "Chain",
-      properties: { devices: children() },
-    });
+    registerPlainRack({ devices: children() });
 
     resolveInsertionPath("t0/d0/c0");
 

@@ -10,6 +10,7 @@ import {
   expectDeleteDeviceCalls,
   type RegisteredMockObject,
   registerDuplicatedTrackSlots,
+  registerLiveSetWithThreeTracks,
   registerMockObject,
 } from "../duplicate-test-helpers.ts";
 import { duplicateTrack } from "../sources/duplicate-track.ts";
@@ -27,18 +28,12 @@ describe("duplicate-track", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
-    });
+    registerLiveSetWithThreeTracks();
   });
 
   describe("duplicateTrack", () => {
     it("should duplicate a track and return basic info", () => {
-      const liveSet = registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
-      });
+      const liveSet = registerLiveSetWithThreeTracks();
 
       const newTrack = registerMockObject("live_set/tracks/1", {
         path: livePath.track(1),
@@ -350,13 +345,9 @@ describe("duplicate-track", () => {
     it("should collect arrangement clips when withoutClips is false", () => {
       const arrClipId = "arr_clip_456";
 
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: {
-          tracks: ["id", "10", "id", "11", "id", "12"],
-          signature_numerator: 4,
-          signature_denominator: 4,
-        },
+      registerLiveSetWithThreeTracks({
+        signature_numerator: 4,
+        signature_denominator: 4,
       });
       registerMockObject("live_set/tracks/1", {
         path: livePath.track(1),

@@ -183,6 +183,14 @@ describe("updateClip - a toPath coordinate", () => {
   // The shape a lowered toPath can't express: rewriting "[9|1]" as an empty
   // lane makes the middle entry name nothing, and a target list with a hole in
   // it is refused.
+  /** Re-seed the clips with a "Chorus" locator at beat 32 in the Set. */
+  function seedChorusLocator(): void {
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
+    });
+    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+  }
+
   it("reads a bare coordinate in the middle of a list", async () => {
     await updateClip({ id: "100,101,102", toPath: "t3[5|1],[9|1],t3" });
 
@@ -191,10 +199,7 @@ describe("updateClip - a toPath coordinate", () => {
   });
 
   it("resolves a locator inside the coordinate", async () => {
-    setupCuePointMocksRegistry({
-      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
-    });
-    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+    seedChorusLocator();
 
     await updateClip({ id: "100", toPath: "t2[loc:Chorus]" });
 
@@ -204,10 +209,7 @@ describe("updateClip - a toPath coordinate", () => {
   // An entry that doesn't parse costs its own move and keeps its turn, so the
   // locator beside it still resolves against the right clip.
   it("resolves a locator beside an entry that won't parse", async () => {
-    setupCuePointMocksRegistry({
-      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
-    });
-    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+    seedChorusLocator();
 
     await updateClip({ id: "100,101", toPath: "tX,t2[loc:Chorus]" });
 
@@ -255,10 +257,7 @@ describe("updateClip - a toPath coordinate", () => {
   // the clip's entry and the batch keeps going. It used to warn "clip not
   // moved" and drop every destination in the call.
   it("reports a locator the Set doesn't have on the clip's entry", async () => {
-    setupCuePointMocksRegistry({
-      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
-    });
-    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+    seedChorusLocator();
 
     const result = await updateClip({
       id: "100,101",

@@ -167,10 +167,67 @@ function bareId(arg: unknown): string {
   return String(arg).replace(/^id /, "");
 }
 
+export interface ContinuousParamSpec {
+  /** What Live reports as `name`; an all-digit name comes back as a number */
+  name?: unknown;
+  /** Live's unrenamed name, defaulting to `name` */
+  originalName?: unknown;
+  /** Register no `original_name` at all, the way some params read back */
+  omitOriginalName?: boolean;
+  /** The param's position on the device at t0/d0, when it needs a path */
+  index?: number;
+  value?: number;
+  min?: number;
+  max?: number;
+  /** What `str_for_value` answers; the default is Live's rounded percent */
+  display?: (value: unknown) => string;
+}
+
+/**
+ * Register a continuous (non-quantized) DeviceParameter mock.
+ *
+ * Giving an `index` also gives it a path under the device at t0/d0: a param's
+ * path names its device, so the write path can tell a param of the addressed
+ * device from one of some other device's.
+ * @param id - Mock object ID
+ * @param spec - What the param reports, over the defaults
+ * @returns The registered mock object
+ */
+export function registerContinuousParam(
+  id: string,
+  spec: ContinuousParamSpec = {},
+): RegisteredMockObject {
+  const name = spec.name ?? `Param ${id}`;
+  const properties: Record<string, unknown> = {
+    name,
+    is_quantized: 0,
+    value: spec.value ?? 0,
+    min: spec.min ?? 0,
+    max: spec.max ?? 1,
+  };
+
+  if (!spec.omitOriginalName) {
+    properties.original_name = spec.originalName ?? name;
+  }
+
+  return registerMockObject(id, {
+    path:
+      spec.index == null
+        ? undefined
+        : livePath.track(0).device(0).parameter(spec.index),
+    type: spec.index == null ? undefined : "DeviceParameter",
+    properties,
+    methods: {
+      str_for_value:
+        spec.display ??
+        ((value: unknown) => `${Math.round(Number(value) * 100)} %`),
+    },
+  });
+}
+
 /**
  * Register a continuous parameter mock with default properties, on the device
- * at t0/d0. A param's path names its device, so the write path can tell a param
- * of the addressed device from one of some other device's.
+ * at t0/d0.
  * @param id - Mock object ID
  * @param index - The param's position on the device
  * @returns The registered mock object
@@ -179,24 +236,35 @@ export function registerParamMock(
   id: string,
   index: number,
 ): RegisteredMockObject {
-  const name = `Param ${id}`;
-
-  return registerMockObject(id, {
-    path: livePath.track(0).device(0).parameter(index),
-    type: "DeviceParameter",
-    properties: {
-      name,
-      original_name: name,
-      is_quantized: 0,
-      value: 0.5,
-      min: 0,
-      max: 1,
-    },
+  return registerContinuousParam(id, {
+    index,
+    value: 0.5,
     // Two decimals, like a real display: a label carries far less precision
     // than the raw value, which is what makes a write verifiable at all.
-    methods: {
-      str_for_value: (_value: unknown) => Number(_value).toFixed(2),
-    },
+    display: (value: unknown) => Number(value).toFixed(2),
+  });
+}
+
+/**
+ * Register a Drum Rack at t0/d0 whose one pad chain sits on C1 (MIDI 36).
+ * @param padDeviceIds - Ids of the devices already on the pad chain
+ * @param chainMethods - Methods the chain answers, such as `insert_device`
+ * @returns The pad chain mock
+ */
+export function registerDrumRackPadChain(
+  padDeviceIds: string[] = [],
+  chainMethods?: Record<string, (...args: unknown[]) => unknown>,
+): RegisteredMockObject {
+  registerMockObject("drum-rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
+  });
+
+  return registerMockObject("chain-c1", {
+    type: "DrumChain",
+    properties: { in_note: 36, devices: children(...padDeviceIds) },
+    methods: chainMethods,
   });
 }
 

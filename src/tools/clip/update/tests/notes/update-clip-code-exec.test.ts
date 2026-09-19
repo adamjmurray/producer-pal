@@ -11,6 +11,7 @@ import {
   codeExecFailure,
 } from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 import {
+  expectNotesWritten,
   setupUpdateClipMocks,
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -57,18 +58,7 @@ describe("updateClip - code execution", () => {
       0,
     );
 
-    // applyNotesToClip should have been called (removes + adds notes)
-    expect(mocks.clip123.call).toHaveBeenCalledWith(
-      "remove_notes_extended",
-      0,
-      128,
-      // Window varies with clip length; clip-notes.test.ts pins it exactly.
-      expect.any(Number),
-      expect.any(Number),
-    );
-    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: notes.map(toLiveApiNote),
-    });
+    expectNotesWritten(mocks.clip123, notes.map(toLiveApiNote));
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });

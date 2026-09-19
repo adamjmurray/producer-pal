@@ -11,6 +11,8 @@ import {
   createConversationStore,
   type SaveSnapshot,
 } from "#webui/lib/conversations/conversation-store";
+import { vi } from "vitest";
+import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
 
 /**
  * Create a test ConversationRecord with sensible defaults.
@@ -75,5 +77,31 @@ function sharedDefaults(): ConversationSummary {
     smallModelMode: null,
     totalUsage: null,
     sessionType: "text",
+  };
+}
+
+/**
+ * Create a mock conversation manager whose methods all resolve.
+ * @param overrides - Fields to override on the manager
+ * @returns A complete mock manager
+ */
+export function createMockConversationsManager(
+  overrides: Partial<UseConversationsReturn> = {},
+): UseConversationsReturn {
+  return {
+    conversations: [],
+    activeConversationId: null,
+    notification: null,
+    dismissNotification: vi.fn(),
+    saveCurrentConversation: vi.fn().mockResolvedValue(undefined),
+    switchConversation: vi.fn().mockResolvedValue(undefined),
+    startNewConversation: vi.fn().mockResolvedValue(undefined),
+    deleteConversation: vi.fn().mockResolvedValue(undefined),
+    deleteAllConversations: vi.fn().mockResolvedValue(undefined),
+    deleteUnbookmarkedConversations: vi.fn().mockResolvedValue(undefined),
+    renameConversation: vi.fn().mockResolvedValue(undefined),
+    toggleBookmark: vi.fn().mockResolvedValue(undefined),
+    refreshList: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
   };
 }

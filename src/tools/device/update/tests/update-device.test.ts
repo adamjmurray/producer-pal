@@ -230,26 +230,34 @@ describe("updateDevice", () => {
       });
     });
 
-    it("reports an invalid enum value in the param's entry", () => {
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "791", value: "InvalidValue" }],
-      });
+    // Neither a word nor a bare index is a label here, and a bare index used to
+    // skip the enum branch and binary-search a garbage raw value.
+    it.each(["InvalidValue", "1"])(
+      "reports %s as an invalid enum value, with the options",
+      (value) => {
+        const result = updateDevice({
+          id: "123",
+          params: [{ name: "791", value }],
+        });
 
-      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({
-        id: "123",
-        path: "t0/d0",
-        params: [
-          {
-            name: "791",
-            ok: false,
-            reason: '"InvalidValue" is not valid. Options: Repitch, Fade, Jump',
-          },
-        ],
-      });
-      expect(capturedWarnings()).toHaveLength(0);
-    });
+        expect(param791.set).not.toHaveBeenCalledWith(
+          "value",
+          expect.anything(),
+        );
+        expect(result).toStrictEqual({
+          id: "123",
+          path: "t0/d0",
+          params: [
+            {
+              name: "791",
+              ok: false,
+              reason: `"${value}" is not valid. Options: Repitch, Fade, Jump`,
+            },
+          ],
+        });
+        expect(capturedWarnings()).toHaveLength(0);
+      },
+    );
 
     it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
       // A quantized selector whose labels are numbers (e.g. a "1"/"2"/"4"/"8"
@@ -279,29 +287,6 @@ describe("updateDevice", () => {
         path: "t0/d0",
         params: [{ id: "793", name: "Retrigger", value: "4" }],
       });
-    });
-
-    it("reports a numeric input that matches no quantized label", () => {
-      // A bare index that isn't a label (value_items are words) must come back
-      // with the options, not silently binary-search a garbage raw value.
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "791", value: "1" }],
-      });
-
-      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(result).toStrictEqual({
-        id: "123",
-        path: "t0/d0",
-        params: [
-          {
-            name: "791",
-            ok: false,
-            reason: '"1" is not valid. Options: Repitch, Fade, Jump',
-          },
-        ],
-      });
-      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 

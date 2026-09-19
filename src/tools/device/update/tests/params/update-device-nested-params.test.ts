@@ -11,6 +11,7 @@ import {
   expectValueSet,
   livePath,
   paramsOf,
+  registerContinuousParam,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -66,6 +67,39 @@ function registerDrumRackWithDrumSamplerOnC1(): RegisteredMockObject {
 // one read-device prints. All three have to say the same thing about the same
 // write.
 
+/**
+ * A Drum Rack whose first chain holds one device carrying one parameter.
+ * @param deviceClass - The nested device's class_display_name
+ * @param paramId - Mock id of the parameter on it
+ * @param withPaths - Give the chain and device their own Live paths
+ */
+function registerRackWithNestedDevice(
+  deviceClass: string,
+  paramId: string,
+  withPaths = false,
+): void {
+  const chainPath = livePath.track(0).device(0).chain(0);
+
+  registerMockObject("drum-rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: { chains: ["id", "reg-chain"], can_have_drum_pads: 1 },
+  });
+  registerMockObject("reg-chain", {
+    path: withPaths ? chainPath : undefined,
+    type: "Chain",
+    properties: { devices: ["id", "reg-dev"] },
+  });
+  registerMockObject("reg-dev", {
+    path: withPaths ? chainPath.device(0) : undefined,
+    type: "Device",
+    properties: {
+      class_display_name: deviceClass,
+      parameters: children(paramId),
+    },
+  });
+}
+
 describe("updateDevice - path-prefixed pseudo-params", () => {
   it("loads a sample into a drum pad by addressing the rack", () => {
     const chain = registerDrumRackWithC1();
@@ -107,19 +141,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     // "Dry/Wet". The "/" must NOT route this to path-prefixed pseudo-param
     // handling (which would split it into prefix "Dry" + param "Wet" and drop
     // the write); it has to resolve as an ordinary DeviceParameter by name.
-    const param = registerMockObject("drywet-param", {
-      properties: {
-        name: "Dry/Wet",
-        original_name: "Dry/Wet",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    const param = registerContinuousParam("drywet-param", { name: "Dry/Wet" });
 
     updateDevice({ id: "dev1", params: [{ name: "Dry/Wet", value: "50" }] });
 
@@ -139,16 +161,9 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
         parameters: children("macro-param"),
       },
     });
-    const macro = registerMockObject("macro-param", {
-      properties: {
-        name: "Macro 1",
-        original_name: "Macro 1",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (v: unknown) => `${Number(v)} %` },
+    const macro = registerContinuousParam("macro-param", {
+      name: "Macro 1",
+      display: (v) => `${Number(v)} %`,
     });
 
     const result = updateDevice({
@@ -173,35 +188,9 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
   });
 
   it("warns that a general path-prefixed param is deprecated, but still writes it", () => {
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: ["id", "reg-chain"], can_have_drum_pads: 1 },
-    });
-    registerMockObject("reg-chain", {
-      type: "Chain",
-      properties: { devices: ["id", "reg-dev"] },
-    });
-    registerMockObject("reg-dev", {
-      type: "Device",
-      properties: {
-        class_display_name: "Operator",
-        parameters: children("reg-param"),
-      },
-    });
-    const param = registerMockObject("reg-param", {
-      properties: {
-        name: "Volume",
-        original_name: "Volume",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    registerRackWithNestedDevice("Operator", "reg-param");
+
+    const param = registerContinuousParam("reg-param", { name: "Volume" });
 
     updateDevice({
       path: "t0/d0",
@@ -235,40 +224,11 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     // deprecation warning's advice is built by a DIFFERENT split (from the
     // left, splitForAdvice) so it still names a path and name that work,
     // even though this particular write can't succeed either way.
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: ["id", "reg-chain"], can_have_drum_pads: 1 },
-    });
-    registerMockObject("reg-chain", {
-      // An explicit path, not just a place in the rack's chains list: the
-      // follow-up call below addresses it by path, which looks the object up
-      // by that literal path rather than walking the chains/devices lists.
-      path: livePath.track(0).device(0).chain(0),
-      type: "Chain",
-      properties: { devices: ["id", "reg-dev"] },
-    });
-    registerMockObject("reg-dev", {
-      path: livePath.track(0).device(0).chain(0).device(0),
-      type: "Device",
-      properties: {
-        class_display_name: "Reverb",
-        parameters: children("drywet-param"),
-      },
-    });
-    const param = registerMockObject("drywet-param", {
-      properties: {
-        name: "Dry/Wet",
-        original_name: "Dry/Wet",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    // With paths: the follow-up call below addresses the chain by path, which
+    // looks the object up by that literal path rather than walking the
+    // chains/devices lists.
+    registerRackWithNestedDevice("Reverb", "drywet-param", true);
+    const param = registerContinuousParam("drywet-param", { name: "Dry/Wet" });
 
     const result = updateDevice({
       path: "t0/d0",

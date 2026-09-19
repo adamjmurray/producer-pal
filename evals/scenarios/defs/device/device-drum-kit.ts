@@ -23,7 +23,10 @@
 
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
+import {
+  SAMPLE_FOLDER_CONFIG,
+  sampleBrowseAssertionHead,
+} from "../helpers/sample-browse-setup.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
 
 /**
@@ -44,9 +47,7 @@ export const deviceDrumKit: EvalScenario = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
 
-  config: {
-    sampleFolder: resolveSamplesPath("samples"),
-  },
+  config: SAMPLE_FOLDER_CONFIG,
 
   messages: [
     "Connect to Ableton Live",
@@ -55,9 +56,7 @@ export const deviceDrumKit: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
-    { type: "tool_called", tool: "ppal-create-track", turn: 2 },
+    ...sampleBrowseAssertionHead(),
     { type: "tool_called", tool: "ppal-create-device", turn: 2 },
 
     // One device call must carry >= 2 distinct pad-path sample params, accepted.

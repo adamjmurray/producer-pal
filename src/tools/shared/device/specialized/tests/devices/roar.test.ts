@@ -6,8 +6,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
 import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
@@ -15,24 +17,11 @@ import {
 } from "../../specialized-device-registry.ts";
 import { expectWriteRefused } from "../refused-write-assertions.ts";
 
-/**
- * Register a mock Roar device and return its LiveAPI.
- * @param properties - Property overrides (merged onto Roar defaults)
- * @returns The Roar LiveAPI object
- */
-function registerRoar(properties: Record<string, unknown> = {}): LiveAPI {
-  registerMockObject("roar-1", {
-    type: "RoarDevice",
-    properties: {
-      class_display_name: "Roar",
-      routing_mode_index: 0,
-      env_listen: 0,
-      ...properties,
-    },
-  });
-
-  return LiveAPI.from("id roar-1");
-}
+const registerRoar = specializedDeviceMock("roar-1", "RoarDevice", {
+  class_display_name: "Roar",
+  routing_mode_index: 0,
+  env_listen: 0,
+});
 
 describe("Roar pseudo-params", () => {
   describe("read", () => {
@@ -123,30 +112,10 @@ describe("Roar pseudo-params", () => {
 // Integration through the read-device tool: confirms pseudo-params surface in
 // the `parameters` output and that Roar contributes no modulations/options.
 describe("Roar via read-device", () => {
-  /**
-   * Register a fully-readable mock Roar device by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableRoar(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("roar-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Roar",
-        class_display_name: "Roar",
-        type: 2,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        routing_mode_index: 3,
-        env_listen: 1,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableRoar = readableDeviceMock("roar-1", "Roar", 2, {
+    routing_mode_index: 3,
+    env_listen: 1,
+  });
 
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableRoar();

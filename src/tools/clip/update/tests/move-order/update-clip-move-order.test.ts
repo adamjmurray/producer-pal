@@ -68,6 +68,17 @@ function orderMoves(
 const clipReason = (clipId: string): string =>
   joinedClipReason(reasons, clipId);
 
+/**
+ * Two adjacent 4-bar clips on t0, at 1|1 and 5|1.
+ * @returns The clips as the update loop sees them
+ */
+function registerAdjacentPair(): LiveAPI[] {
+  return registerRow([
+    { id: "113", start: 0, end: 16 },
+    { id: "114", start: 16, end: 32 },
+  ]);
+}
+
 describe("orderArrangementMoves", () => {
   // Three 4-bar clips at 1|1, 5|1, 9|1.
   const row: RowClip[] = [
@@ -105,10 +116,7 @@ describe("orderArrangementMoves", () => {
   });
 
   it("blocks both moves when two clips trade positions", () => {
-    const clips = registerRow([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 16, end: 32 },
-    ]);
+    const clips = registerAdjacentPair();
 
     const { blockedIds } = orderMoves(clips, moves({ "113": 16, "114": 0 }));
 
@@ -202,10 +210,7 @@ describe("orderArrangementMoves", () => {
   // A short destination list pads the rest with nulls, so the clips past the
   // last one are sitting targets for the ones that did get a destination.
   it("refuses a move onto a clip the destination list ran out for", () => {
-    const clips = registerRow([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 16, end: 32 },
-    ]);
+    const clips = registerAdjacentPair();
     const destinations = new Map<string, ClipPath>([
       ["113", { kind: "track", trackIndex: 0 }],
     ]);
@@ -218,45 +223,31 @@ describe("orderArrangementMoves", () => {
     expect(blockedIds).toStrictEqual(new Set(["113"]));
   });
 
-  // moveIntent returns null for a slot destination the same way it does for a
-  // clip going nowhere, but this clip does free its span: it is re-created in
-  // the slot and the original deleted. Treating it as a permanent occupant
-  // would refuse the move below for no reason.
-  it("lets a move follow a clip leaving the arrangement for a slot", () => {
-    const clips = registerRow([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 32, end: 48 },
-    ]);
-    const destinations = new Map<string, ClipPath>([
-      ["113", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
-    ]);
+  // moveIntent returns null for either destination the same way it does for a
+  // clip going nowhere, but this clip does free its span: it is re-created at
+  // the destination and the original deleted. Treating it as a permanent
+  // occupant would refuse the move below for no reason.
+  it.each<[string, ClipPath]>([
+    ["a slot", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
+    ["a take lane", lane(0)],
+  ])(
+    "lets a move follow a clip leaving the arrangement for %s",
+    (_label, destination) => {
+      const clips = registerRow([
+        { id: "113", start: 0, end: 16 },
+        { id: "114", start: 32, end: 48 },
+      ]);
+      const destinations = new Map<string, ClipPath>([["113", destination]]);
 
-    const { order, blockedIds } = orderMoves(
-      clips,
-      moves({ "114": 0 }, destinations),
-    );
+      const { order, blockedIds } = orderMoves(
+        clips,
+        moves({ "114": 0 }, destinations),
+      );
 
-    expect(order).toStrictEqual([0, 1]);
-    expect(blockedIds).toStrictEqual(new Set());
-  });
-
-  it("lets a move follow a clip leaving for a take lane", () => {
-    const clips = registerRow([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 32, end: 48 },
-    ]);
-    const destinations = new Map<string, ClipPath>([
-      ["113", { kind: "take-lane", trackIndex: 0, laneIndex: 0 }],
-    ]);
-
-    const { order, blockedIds } = orderMoves(
-      clips,
-      moves({ "114": 0 }, destinations),
-    );
-
-    expect(order).toStrictEqual([0, 1]);
-    expect(blockedIds).toStrictEqual(new Set());
-  });
+      expect(order).toStrictEqual([0, 1]);
+      expect(blockedIds).toStrictEqual(new Set());
+    },
+  );
 
   it("cascades across tracks", () => {
     const source = registerRow([{ id: "113", start: 0, end: 16 }], 0);
@@ -357,10 +348,7 @@ describe("orderArrangementMoves", () => {
   });
 
   it("refuses the resize too when it refuses the move", () => {
-    const clips = registerRow([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 16, end: 32 },
-    ]);
+    const clips = registerAdjacentPair();
 
     const { blockedIds } = orderMoves(
       clips,

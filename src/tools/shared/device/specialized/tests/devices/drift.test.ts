@@ -6,8 +6,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
 import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
@@ -35,19 +37,11 @@ const DRIFT_DEFAULTS = {
   pitch_bend_range: 2,
 };
 
-/**
- * Register a mock Drift device and return its LiveAPI.
- * @param properties - Property overrides (merged onto Drift defaults)
- * @returns The Drift LiveAPI object
- */
-function registerDrift(properties: Record<string, unknown> = {}): LiveAPI {
-  registerMockObject("drift-1", {
-    type: "DriftDevice",
-    properties: { ...DRIFT_DEFAULTS, ...properties },
-  });
-
-  return LiveAPI.from("id drift-1");
-}
+const registerDrift = specializedDeviceMock(
+  "drift-1",
+  "DriftDevice",
+  DRIFT_DEFAULTS,
+);
 
 describe("Drift pseudo-params", () => {
   describe("read source slots", () => {
@@ -445,37 +439,18 @@ describe("Drift pseudo-params", () => {
 // Integration through the read-device tool: confirms pseudo-params surface in
 // the `parameters` output and that Drift contributes no modulations/options.
 describe("Drift via read-device", () => {
-  /**
-   * Register a fully-readable mock Drift instrument by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableDrift(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("drift-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Drift",
-        type: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        ...DRIFT_DEFAULTS,
-        voice_mode_index: 1,
-        voice_count_index: 2,
-        pitch_bend_range: 4,
-        mod_matrix_filter_source_1_index: 2,
-        // All three free slots have active targets so every free-slot source is
-        // present (see the omit-when-None case below).
-        mod_matrix_target_1_index: 6,
-        mod_matrix_target_2_index: 7,
-        mod_matrix_target_3_index: 9,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableDrift = readableDeviceMock("drift-1", "Drift", 1, {
+    ...DRIFT_DEFAULTS,
+    voice_mode_index: 1,
+    voice_count_index: 2,
+    pitch_bend_range: 4,
+    mod_matrix_filter_source_1_index: 2,
+    // All three free slots have active targets so every free-slot source is
+    // present (see the omit-when-None case below).
+    mod_matrix_target_1_index: 6,
+    mod_matrix_target_2_index: 7,
+    mod_matrix_target_3_index: 9,
+  });
 
   it("includes all pseudo-params in parameters and omits modulations", () => {
     registerReadableDrift();

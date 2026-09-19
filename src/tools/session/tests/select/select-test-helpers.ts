@@ -406,3 +406,20 @@ export function setupTrackOnlyViewState(): void {
     highlightedClipSlot: { exists: false },
   });
 }
+
+/**
+ * Scene 3 and track 0's third slot, filled with a clip — the target the path
+ * and build-budget cases select by slot.
+ */
+export function registerFilledSlotObjects(): void {
+  registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
+  registerMockObject("clipslot_0_3", {
+    path: livePath.track(0).clipSlot(3),
+    type: "ClipSlot",
+    properties: { has_clip: 1 },
+  });
+  registerMockObject("clip_0_3", {
+    path: livePath.track(0).clipSlot(3).clip(),
+    type: "Clip",
+  });
+}

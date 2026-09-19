@@ -14,6 +14,7 @@ import { applySpecializedActions } from "../../specialized-device-registry.ts";
 import {
   buildModMethods,
   registerWavetable,
+  registerWavetableAddingTarget,
 } from "./wavetable-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -131,18 +132,7 @@ describe("modulation target resolution", () => {
   it("does not report a failure when an auto-added target lands in slot 0", () => {
     // The matrix starts empty, so the added target resolves to index 0 — the
     // post-add check must accept it rather than report "could not add".
-    const targets: string[] = [];
-    const device = registerWavetable(
-      {},
-      {
-        ...buildModMethods(targets),
-        add_parameter_to_modulation_matrix: () => {
-          targets.push("Osc 1 Pos");
-
-          return null;
-        },
-      },
-    );
+    const device = registerWavetableAddingTarget();
 
     const results = applySpecializedActions(device, [
       "setModulation('Osc 1 Pos', 'LFO 1', 0.5)",

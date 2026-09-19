@@ -13,6 +13,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { updateScene } from "../update-scene.ts";
+import { expectSceneSetToRed34 } from "./scene-assertions.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -53,13 +54,7 @@ describe("updateScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(scene1.set).toHaveBeenCalledWith("name", "Updated Scene");
-    expect(scene1.set).toHaveBeenCalledWith("color", 16711680);
-    expect(scene1.set).toHaveBeenCalledWith("tempo", 140);
-    expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
-    expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
+    expectSceneSetToRed34(scene1, "Updated Scene", 140);
     expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 

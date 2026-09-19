@@ -29,6 +29,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { registerInstrumentRackFixture } from "./helpers/instrument-rack-fixture.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
@@ -53,41 +54,21 @@ const INSTRUMENT_WALK_OBJECTS = CHAIN_COUNT * 2;
  * throws away.
  */
 function setupRackWithoutDrumRack(): void {
-  const chainIds = Array.from(
-    { length: CHAIN_COUNT },
-    (_, i) => `rackChain${String(i)}`,
-  );
-
   setupTrackMock({
     trackId: "track1",
     properties: mockTrackProperties({ devices: children("instrumentRack") }),
   });
-  registerMockObject("instrumentRack", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: {
-      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      can_have_chains: 1,
-      can_have_drum_pads: 0,
-      class_name: "InstrumentGroupDevice",
-      chains: children(...chainIds),
-      return_chains: [],
-    },
+
+  const chainIds = registerInstrumentRackFixture({
+    chainCount: CHAIN_COUNT,
+    chainDeviceIds: (i) => [
+      `rackInstrument${String(i)}`,
+      `rackEffect${String(i)}a`,
+      `rackEffect${String(i)}b`,
+    ],
   });
 
-  for (const [i, chainId] of chainIds.entries()) {
-    registerMockObject(chainId, {
-      path: livePath.track(0).device(0).chain(i),
-      type: "Chain",
-      properties: {
-        name: `Chain ${String(i)}`,
-        devices: children(
-          `rackInstrument${String(i)}`,
-          `rackEffect${String(i)}a`,
-          `rackEffect${String(i)}b`,
-        ),
-      },
-    });
+  for (const i of chainIds.keys()) {
     registerChainDevices(i);
   }
 }

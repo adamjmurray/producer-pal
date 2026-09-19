@@ -17,6 +17,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import {
+  registerCarryLiveSet,
+  registerSourceChain,
+  registerSourceRack,
+} from "./chain-copy-fixtures.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
@@ -38,39 +43,9 @@ function setupRackWithDevices(): void {
     (_, i) => `src-dev-${String(i)}`,
   );
 
-  registerMockObject("live_set", {
-    path: livePath.liveSet,
-    properties: { tracks: children("track-0") },
-    methods: {
-      duplicate_track: () => null,
-      delete_track: () => null,
-      move_device: () => null,
-    },
-  });
-  registerMockObject("track-0", { path: livePath.track(0) });
-
-  registerMockObject("rack-0", {
-    path: RACK,
-    type: "RackDevice",
-    properties: {
-      class_name: "InstrumentGroupDevice",
-      has_macro_mappings: 0,
-      return_chains: [],
-      chains: children("chain-0", "chain-new"),
-    },
-    methods: { insert_chain: () => ["id", "chain-new"] },
-  });
-
-  registerMockObject("chain-0", {
-    path: `${RACK} chains 0`,
-    type: "Chain",
-    properties: {
-      name: "Source",
-      mute: 0,
-      solo: 0,
-      devices: children(...deviceIds),
-    },
-  });
+  registerCarryLiveSet();
+  registerSourceRack({ chainIds: ["chain-0", "chain-new"] });
+  registerSourceChain(deviceIds);
 
   // Where the copy lands. It reports the moved devices so every move reads back
   // as landed, which is what keeps the loop going for the whole count. The

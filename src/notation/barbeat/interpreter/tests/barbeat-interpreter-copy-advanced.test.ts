@@ -6,7 +6,26 @@
 import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/**
+ * Assert the note a bar copy left at `index`: `pitch` starting at `start`
+ * (Ableton beats), everything else at the createNote defaults.
+ *
+ * @param result - The interpreted notes
+ * @param index - Position in the result
+ * @param pitch - Expected MIDI pitch
+ * @param start - Expected start_time in Ableton beats
+ */
+function expectNoteAt(
+  result: NoteEvent[],
+  index: number,
+  pitch: number,
+  start: number,
+): void {
+  expect(result[index]).toStrictEqual(createNote({ pitch, start_time: start }));
+}
 
 describe("bar|beat interpretNotation() - advanced bar copy", () => {
   describe("bar copy", () => {
@@ -17,22 +36,11 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // Should have: bar 1 (C3), bar 2 (D3), bars 3-10 (4 complete tiles of C3+D3)
         expect(result).toHaveLength(10); // 1 + 1 + 8 = 10 notes
 
-        // Bar 1: C3
-        expect(result[0]).toStrictEqual(createNote());
-        // Bar 2: D3
-        expect(result[1]).toStrictEqual(
-          createNote({ pitch: 62, start_time: 4 }),
-        );
-        // Bar 3: C3 (tile starts)
-        expect(result[2]).toStrictEqual(createNote({ start_time: 8 }));
-        // Bar 4: D3
-        expect(result[3]).toStrictEqual(
-          createNote({ pitch: 62, start_time: 12 }),
-        );
-        // Bar 10: D3 (last bar of 4th tile)
-        expect(result[9]).toStrictEqual(
-          createNote({ pitch: 62, start_time: 36 }),
-        );
+        expectNoteAt(result, 0, 60, 0); // bar 1: C3
+        expectNoteAt(result, 1, 62, 4); // bar 2: D3
+        expectNoteAt(result, 2, 60, 8); // bar 3: C3, where the tile starts
+        expectNoteAt(result, 3, 62, 12); // bar 4: D3
+        expectNoteAt(result, 9, 62, 36); // bar 10: D3, last bar of the 4th tile
       });
 
       it("tiles 2-bar pattern unevenly across 7 bars (@3-9=1-2)", () => {
@@ -83,15 +91,9 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
           36, // bar 10
         ]);
 
-        // Verify specific bars for correctness
-        // Bar 3: C3
-        expect(result[2]).toStrictEqual(createNote({ start_time: 8 }));
-        // Bar 4: D3
-        expect(result[3]).toStrictEqual(
-          createNote({ pitch: 62, start_time: 12 }),
-        );
-        // Bar 7: C3 (after skipping bars 5 and 6)
-        expect(result[4]).toStrictEqual(createNote({ start_time: 24 }));
+        expectNoteAt(result, 2, 60, 8); // bar 3: C3
+        expectNoteAt(result, 3, 62, 12); // bar 4: D3
+        expectNoteAt(result, 4, 60, 24); // bar 7: C3, after skipping bars 5-6
       });
 
       it("skips overlapping source bars at beginning of destination (@1-10=3-4)", () => {

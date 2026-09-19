@@ -27,7 +27,7 @@
  */
 
 import { argText } from "../arg-text.ts";
-import { colorReads } from "../color-reads.ts";
+import { colorReads } from "../helpers/color-reads.ts";
 import { clipStarts, asArrangementTrack } from "../arrangement-readback.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { listEntries } from "../path/path-assertions.ts";

@@ -247,14 +247,26 @@ describe("RemoteScriptTab", () => {
     );
   });
 
-  it("reports an HTML error page as a failed install", async () => {
+  it.each([
+    {
+      what: "reports an HTML error page as a failed install",
+      body: "<html>Not Found</html>",
+      status: 404,
+      contentType: "text/html",
+      expected: "Install failed (404)",
+    },
+    {
+      what: "reports a truncated JSON error body by status",
+      body: '{"error":',
+      status: 500,
+      contentType: "application/json",
+      expected: "Install failed (500)",
+    },
+  ])("$what", async ({ body, status, contentType, expected }) => {
     await renderTab();
 
     fetchMock.mockResolvedValueOnce(
-      new Response("<html>Not Found</html>", {
-        status: 404,
-        headers: { "Content-Type": "text/html" },
-      }),
+      new Response(body, { status, headers: { "Content-Type": contentType } }),
     );
     fireEvent.click(screen.getByTestId("remote-script-install"));
 
@@ -262,25 +274,7 @@ describe("RemoteScriptTab", () => {
       screen.getByTestId("remote-script-error"),
     );
 
-    expect(error.textContent).toBe("Install failed (404)");
-  });
-
-  it("reports a truncated JSON error body by status", async () => {
-    await renderTab();
-
-    fetchMock.mockResolvedValueOnce(
-      new Response('{"error":', {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    fireEvent.click(screen.getByTestId("remote-script-install"));
-
-    const error = await waitForHookState(() =>
-      screen.getByTestId("remote-script-error"),
-    );
-
-    expect(error.textContent).toBe("Install failed (500)");
+    expect(error.textContent).toBe(expected);
   });
 
   it("refuses to guess the path when a 200 leaves it out", async () => {

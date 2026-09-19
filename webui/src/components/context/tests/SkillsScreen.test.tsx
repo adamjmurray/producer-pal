@@ -15,7 +15,7 @@ import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
-import { slot } from "./skill-slot-test-helpers";
+import { slot } from "./helpers/skill-slot-test-helpers";
 
 // Stub the CodeMirror editor to a textarea seeded with the override, so tests
 // can drive onChange/onBlur (the autosave path) without CodeMirror.

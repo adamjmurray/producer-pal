@@ -8,8 +8,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  LAYERED_CHAIN_NOTES,
+  registerLayeredDrumRack,
+} from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 import { createDevice } from "../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -17,29 +20,16 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warnOnce: vi.fn(),
 }));
 
-/** in_note per rack chain: C1 (36) layered twice, D1 (38) once. */
-const CHAIN_NOTES = [36, 38, 36];
-
 describe("createDevice — drum chain path spelling", () => {
   beforeEach(() => {
-    registerMockObject("track-0", { path: livePath.track(0) });
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        chains: children("chain-0", "chain-1", "chain-2"),
-        can_have_drum_pads: 1,
-      },
+    registerLayeredDrumRack({
+      chainMethods: (index) => ({
+        insert_device: () => ["id", `device-in-chain-${String(index)}`],
+      }),
     });
 
-    for (const [index, inNote] of CHAIN_NOTES.entries()) {
-      registerMockObject(`chain-${index}`, {
-        path: livePath.track(0).device(0).chain(index),
-        type: "DrumChain",
-        properties: { in_note: inNote, devices: children() },
-        methods: { insert_device: () => ["id", `device-in-chain-${index}`] },
-      });
-      registerMockObject(`device-in-chain-${index}`, {
+    for (const index of LAYERED_CHAIN_NOTES.keys()) {
+      registerMockObject(`device-in-chain-${String(index)}`, {
         path: livePath.track(0).device(0).chain(index).device(0),
       });
     }

@@ -24,6 +24,7 @@ import {
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
 import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryEditor";
+import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
@@ -639,11 +640,8 @@ describe("MemoryEntryEditor — external update banner", () => {
     const { rerender } = renderEditor({ collection, entry: EXISTING });
 
     rerender(editorElement({ collection, entry: updated }));
-    expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
+    reloadStaleEntry(BANNER_TEXT);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
-
-    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
     expect(screen.getByRole("textbox", { name: /Description/ })).toHaveProperty(
       "value",
       "updated by the assistant",

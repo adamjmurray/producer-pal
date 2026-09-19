@@ -605,6 +605,25 @@ describe("device-reader", () => {
       expect(params).toContainEqual({ name: "sample", value: "/tmp/kick.wav" });
     });
 
+    // What a plain instrument stand-in answers; anything unasked reads null,
+    // the way getProperty does for a property the device does not have.
+    function instrumentProps(
+      className: string,
+      extra: Record<string, unknown> = {},
+    ): (prop: string) => unknown {
+      const props: Record<string, unknown> = {
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        can_have_chains: false,
+        can_have_drum_pads: false,
+        class_display_name: className,
+        name: className,
+        is_active: 1,
+        ...extra,
+      };
+
+      return (prop: string) => props[prop] ?? null;
+    }
+
     function makeSimplerDevice(opts: {
       multiSampleMode?: number;
       samplePath?: string;
@@ -617,37 +636,9 @@ describe("device-reader", () => {
       return {
         id: "simpler_1",
         path: "live_set tracks 0 devices 0",
-        getProperty: (prop: string) => {
-          if (prop === "type") {
-            return LIVE_API_DEVICE_TYPE_INSTRUMENT;
-          }
-
-          if (prop === "can_have_chains") {
-            return false;
-          }
-
-          if (prop === "can_have_drum_pads") {
-            return false;
-          }
-
-          if (prop === "class_display_name") {
-            return DEVICE_CLASS.SIMPLER;
-          }
-
-          if (prop === "name") {
-            return DEVICE_CLASS.SIMPLER;
-          }
-
-          if (prop === "is_active") {
-            return 1;
-          }
-
-          if (prop === "multi_sample_mode") {
-            return opts.multiSampleMode ?? 0;
-          }
-
-          return null;
-        },
+        getProperty: instrumentProps(DEVICE_CLASS.SIMPLER, {
+          multi_sample_mode: opts.multiSampleMode ?? 0,
+        }),
         getName: () => DEVICE_CLASS.SIMPLER,
         getChildren: (kind: string) => {
           if (kind === "sample" && opts.samplePath) {
@@ -679,33 +670,7 @@ describe("device-reader", () => {
       return {
         id: "op_1",
         path: "live_set tracks 0 devices 0",
-        getProperty: (prop: string) => {
-          if (prop === "type") {
-            return LIVE_API_DEVICE_TYPE_INSTRUMENT;
-          }
-
-          if (prop === "can_have_chains") {
-            return false;
-          }
-
-          if (prop === "can_have_drum_pads") {
-            return false;
-          }
-
-          if (prop === "class_display_name") {
-            return "Operator";
-          }
-
-          if (prop === "name") {
-            return "Operator";
-          }
-
-          if (prop === "is_active") {
-            return 1;
-          }
-
-          return null;
-        },
+        getProperty: instrumentProps("Operator"),
         getName: () => "Operator",
         getChildren: () => [],
       };

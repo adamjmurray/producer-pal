@@ -9,6 +9,7 @@ import "../../duplicate-mocks-test-helpers.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
 import {
+  expectOneLaneWithClipsAt,
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,
 } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
@@ -641,13 +642,7 @@ describe("duplicate take lane", () => {
       arrangementStart: "1|1,2|1,3|1",
     });
 
-    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-
-    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
-
-    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 4, 4);
-    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+    expectOneLaneWithClipsAt(track, [0, 4, 8]);
   });
 
   // A take-lane SOURCE only ever gets read, so lane→lane needs nothing special —

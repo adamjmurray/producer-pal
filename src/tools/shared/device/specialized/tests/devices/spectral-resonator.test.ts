@@ -6,8 +6,10 @@
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  readableDeviceMock,
+  specializedDeviceMock,
+} from "../specialized-device-mocks.ts";
 import { readOneDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
@@ -16,30 +18,19 @@ import {
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
 import { expectWriteRefused } from "../refused-write-assertions.ts";
 
-/**
- * Register a mock Spectral Resonator device and return its LiveAPI.
- * @param properties - Property overrides (merged onto Spectral Resonator defaults)
- * @returns The Spectral Resonator LiveAPI object
- */
-function registerSpectralResonator(
-  properties: Record<string, unknown> = {},
-): LiveAPI {
-  registerMockObject("spectral-resonator-1", {
-    type: "SpectralResonatorDevice",
-    properties: {
-      class_display_name: "Spectral Resonator",
-      midi_gate: 0,
-      mono_poly: 0,
-      pitch_bend_range: 0,
-      mod_mode: 0,
-      pitch_mode: 0,
-      polyphony: 0,
-      ...properties,
-    },
-  });
-
-  return LiveAPI.from("id spectral-resonator-1");
-}
+const registerSpectralResonator = specializedDeviceMock(
+  "spectral-resonator-1",
+  "SpectralResonatorDevice",
+  {
+    class_display_name: "Spectral Resonator",
+    midi_gate: 0,
+    mono_poly: 0,
+    pitch_bend_range: 0,
+    mod_mode: 0,
+    pitch_mode: 0,
+    polyphony: 0,
+  },
+);
 
 describe("Spectral Resonator pseudo-params", () => {
   describe("read", () => {
@@ -342,34 +333,19 @@ describe("Spectral Resonator pseudo-params", () => {
 // the `parameters` output and that Spectral Resonator contributes no
 // modulations/options.
 describe("Spectral Resonator via read-device", () => {
-  /**
-   * Register a fully-readable mock Spectral Resonator audio effect by ID.
-   * @param properties - Property overrides
-   */
-  function registerReadableSpectralResonator(
-    properties: Record<string, unknown> = {},
-  ): void {
-    registerMockObject("spectral-resonator-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Spectral Resonator",
-        class_display_name: "Spectral Resonator",
-        type: 2,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: [],
-        midi_gate: 1,
-        mono_poly: 1,
-        pitch_bend_range: 12,
-        mod_mode: 2,
-        pitch_mode: 1,
-        polyphony: 3,
-        ...properties,
-      },
-    });
-  }
+  const registerReadableSpectralResonator = readableDeviceMock(
+    "spectral-resonator-1",
+    "Spectral Resonator",
+    2,
+    {
+      midi_gate: 1,
+      mono_poly: 1,
+      pitch_bend_range: 12,
+      mod_mode: 2,
+      pitch_mode: 1,
+      polyphony: 3,
+    },
+  );
 
   it("includes all six pseudo-params in parameters and omits modulations", () => {
     registerReadableSpectralResonator();

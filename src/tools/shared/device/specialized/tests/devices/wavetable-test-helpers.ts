@@ -120,3 +120,24 @@ export function expectModulationNotSet(
   ]);
   expect(capturedWarnings()).toStrictEqual([]);
 }
+
+/**
+ * A Wavetable whose modulation matrix starts empty and gains "Osc 1 Pos" once
+ * the action adds it, so the post-add re-resolve finds it in slot 0.
+ * @returns The Wavetable LiveAPI object
+ */
+export function registerWavetableAddingTarget(): LiveAPI {
+  const targets: string[] = [];
+
+  return registerWavetable(
+    {},
+    {
+      ...buildModMethods(targets),
+      add_parameter_to_modulation_matrix: () => {
+        targets.push("Osc 1 Pos");
+
+        return null;
+      },
+    },
+  );
+}

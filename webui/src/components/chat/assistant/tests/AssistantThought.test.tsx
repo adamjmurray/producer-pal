@@ -9,6 +9,7 @@
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { AssistantThought } from "#webui/components/chat/assistant/AssistantThought";
+import { expectDisclosureClasses } from "#webui/components/chat/assistant/tests/disclosure-assertions";
 
 const LONG_CONTENT = "A".repeat(81);
 const MULTI_LINE = "First line\nSecond line\nThird line";
@@ -24,11 +25,8 @@ describe("AssistantThought", () => {
 
     it("has correct styling classes", () => {
       render(<AssistantThought content="Test thought" isOpen={false} />);
-      const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-zinc-200");
-      expect(details!.className).toContain("dark:bg-zinc-700");
-      expect(details!.className).toContain("border-emerald-500");
+      expectDisclosureClasses("border-emerald-500");
     });
   });
 

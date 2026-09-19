@@ -22,16 +22,7 @@
 import { getAllToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import { argText } from "../arg-text.ts";
-import {
-  MSG_CONNECT,
-  TOOL_CONNECT,
-  TOOL_CREATE_CLIP,
-  TOOL_UPDATE_CLIP,
-} from "../clip/helpers/clip-tool-constants.ts";
-import { assertArrangementClipNamed } from "./path-assertions.ts";
-
-/** Lead is track 3 in basic-midi-4-track. */
-const LEAD_TRACK_INDEX = 3;
+import { arrangementRenameScenario } from "../helpers/arrangement-rename-scenario.ts";
 
 const CLIP_NAME = "Long One";
 
@@ -65,30 +56,11 @@ function assertLearnedFromTheWarning(turn: number): EvalAssertion {
   };
 }
 
-export const pathArrangementStartsAt: EvalScenario = {
+export const pathArrangementStartsAt: EvalScenario = arrangementRenameScenario({
   id: "path-arrangement-starts-at",
-  tags: ["paths"],
   description: "Recover when a coordinate names a bar the clip only covers",
-  kind: "capability",
-  liveSet: "basic-midi-4-track",
-
-  messages: [
-    MSG_CONNECT,
-    "Create a 4-bar clip in the arrangement on the Lead track, starting at bar 1.",
-    `Rename the arrangement clip that's playing at bar 3 to "${CLIP_NAME}".`,
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-
-    assertLearnedFromTheWarning(2),
-    assertArrangementClipNamed({
-      trackIndex: LEAD_TRACK_INDEX,
-      name: CLIP_NAME,
-    }),
-
-    { type: "token_usage", maxTokens: 2_500 },
-  ],
-};
+  renameMessage: `Rename the arrangement clip that's playing at bar 3 to "${CLIP_NAME}".`,
+  name: CLIP_NAME,
+  assertions: [assertLearnedFromTheWarning(2)],
+  maxTokens: 2_500,
+});

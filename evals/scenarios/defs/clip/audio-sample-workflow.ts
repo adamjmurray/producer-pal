@@ -7,7 +7,10 @@
  * Scenario: Browse samples, create audio clip, modify audio properties
  */
 
-import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
+import {
+  SAMPLE_FOLDER_CONFIG,
+  sampleBrowseAssertionHead,
+} from "../helpers/sample-browse-setup.ts";
 import { type EvalScenario } from "../../types.ts";
 
 export const audioSampleWorkflow: EvalScenario = {
@@ -20,9 +23,7 @@ export const audioSampleWorkflow: EvalScenario = {
   // can't anticipate — hallucinations, misleading prose, extra steps.
   judgeAdvisory: true,
 
-  config: {
-    sampleFolder: resolveSamplesPath("samples"),
-  },
+  config: SAMPLE_FOLDER_CONFIG,
 
   messages: [
     "Connect to Ableton Live",
@@ -35,14 +36,10 @@ export const audioSampleWorkflow: EvalScenario = {
   ],
 
   assertions: [
-    // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    // Turns 0-2: connect, browse the samples, make the audio track
+    ...sampleBrowseAssertionHead(),
 
-    // Turn 1: Sample browsing (ppal-library is the modern sample-search tool)
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
-
-    // Turn 2: New audio track + audio clip with the sample
-    { type: "tool_called", tool: "ppal-create-track", turn: 2 },
+    // Turn 2: the audio clip carrying the sample
     { type: "tool_called", tool: "ppal-create-clip", turn: 2 },
 
     // Turn 3: Audio property updates

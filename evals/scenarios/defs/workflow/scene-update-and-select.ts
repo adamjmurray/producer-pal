@@ -12,7 +12,7 @@
  */
 
 import { argText } from "../arg-text.ts";
-import { colorReads } from "../color-reads.ts";
+import { colorReads } from "../helpers/color-reads.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import { assertNamesTarget } from "../path/path-assertions.ts";
 

@@ -52,6 +52,25 @@ function expectSceneDupAtBeat(
   );
 }
 
+/**
+ * One session scene whose clip sits in track 0's first slot, plus the two
+ * arrangement clips a copy to beats 16 and 32 lands as.
+ * @returns The track the copies are made on
+ */
+function setupSceneCopiedToBeats16And32(): ReturnType<
+  typeof registerTrackWithArrangementDup
+> {
+  setupArrangementSceneMocks(1);
+  registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+  const track0 = registerTrackWithArrangementDup(0);
+
+  registerArrangementClip(0, 0, 16);
+  registerArrangementClip(0, 1, 32);
+
+  return track0;
+}
+
 describe("duplicate - scene duplication", () => {
   // has_clip can still be set on a slot Live hands back nothing for, so the
   // scan checks the clip itself before reporting it.
@@ -461,14 +480,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("places a single scene at comma-separated arrangementStart positions", async () => {
-      setupArrangementSceneMocks(1);
-
-      registerClipSlot(0, 0, true, createStandardMidiClipMock());
-
-      const track0 = registerTrackWithArrangementDup(0);
-
-      registerArrangementClip(0, 0, 16);
-      registerArrangementClip(0, 1, 32);
+      const track0 = setupSceneCopiedToBeats16And32();
 
       // Regression: a comma-separated arrangementStart threw for scenes while it
       // worked for clips. Both explicit positions are now honored: 5|1 -> beat
@@ -490,14 +502,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("warns and ignores count when several arrangementStart positions are named", async () => {
-      setupArrangementSceneMocks(1);
-
-      registerClipSlot(0, 0, true, createStandardMidiClipMock());
-
-      const track0 = registerTrackWithArrangementDup(0);
-
-      registerArrangementClip(0, 0, 16);
-      registerArrangementClip(0, 1, 32);
+      const track0 = setupSceneCopiedToBeats16And32();
 
       // Two positions named, count says 2 as well — one copy per position,
       // same as the clip path's "count ignored for clips" warning.

@@ -24,6 +24,22 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
  *
  * @param error - The message its path setter throws
  */
+/**
+ * Open a scope and build two track objects through `getChildren`, the path that
+ * creates LiveAPI objects the caller never asked for by name.
+ *
+ * @returns The two children `getChildren("tracks")` built
+ */
+function getChildrenInNewScope(): LiveAPI[] {
+  beginLiveApiScope();
+
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
+
+  return liveSet.getChildren("tracks");
+}
+
 function trackUnclearable(error: string): void {
   trackLiveApiObject({
     set path(_value: string) {
@@ -126,13 +142,7 @@ describe("live-api release", () => {
   });
 
   it("tracks the objects getChildren builds", () => {
-    beginLiveApiScope();
-
-    const liveSet = LiveAPI.from(livePath.liveSet);
-
-    liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
-
-    const children = liveSet.getChildren("tracks");
+    const children = getChildrenInNewScope();
 
     expect(children.map((child) => child.path)).toStrictEqual(["id 1", "id 2"]);
 
@@ -375,13 +385,7 @@ describe("live-api release", () => {
   });
 
   it("pools the objects getChildren built", () => {
-    beginLiveApiScope();
-
-    const liveSet = LiveAPI.from(livePath.liveSet);
-
-    liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
-
-    const children = liveSet.getChildren("tracks");
+    const children = getChildrenInNewScope();
 
     endLiveApiScope();
     beginLiveApiScope();

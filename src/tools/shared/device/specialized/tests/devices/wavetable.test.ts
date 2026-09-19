@@ -25,6 +25,7 @@ import {
   PARAM_IDS,
   registerStandardParamMocks,
   registerWavetable,
+  registerWavetableAddingTarget,
 } from "./wavetable-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { expectWriteRefused } from "../refused-write-assertions.ts";
@@ -489,18 +490,7 @@ describe("Wavetable actions — addModulationTarget", () => {
   it("calls add_parameter_to_modulation_matrix for a known param", () => {
     // The add has to land in the matrix: the action re-resolves the target
     // afterwards and reports a target the matrix still doesn't hold.
-    const targets: string[] = [];
-    const device = registerWavetable(
-      {},
-      {
-        ...buildModMethods(targets),
-        add_parameter_to_modulation_matrix: () => {
-          targets.push("Osc 1 Pos");
-
-          return null;
-        },
-      },
-    );
+    const device = registerWavetableAddingTarget();
 
     const results = applySpecializedActions(device, [
       "addModulationTarget('Osc 1 Pos')",

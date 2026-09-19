@@ -18,7 +18,7 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
-import { trackNames } from "../track-names.ts";
+import { trackNames } from "../helpers/track-names.ts";
 import { assertCallResult, assertPathArg } from "./path-assertions.ts";
 
 const TOOL_CREATE_TRACK = "ppal-create-track";

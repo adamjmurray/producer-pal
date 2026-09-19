@@ -19,6 +19,7 @@ import Max from "max-api";
 import { afterEach, beforeEach, expect, vi } from "vitest";
 import { type CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { handleNodeRequest } from "#src/mcp-server/rpc/node-request-protocol.ts";
 import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
 
@@ -128,10 +129,10 @@ export function putJson(
   return fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
 }
 
-/** The parsed `{ content }` payload every V8↔Node RPC route sends back. */
-export interface ParsedNodeResponse {
+/** The parsed payload a V8↔Node RPC route sends back. */
+export interface ParsedNodeResponse<TResult = { content?: string }> {
   success: boolean;
-  result?: { content?: string };
+  result?: TResult;
   error?: string;
 }
 
@@ -142,15 +143,20 @@ export interface ParsedNodeResponse {
  *
  * @returns The parsed node response
  */
-export function parseSentNodeResponse(): ParsedNodeResponse {
+export function parseSentNodeResponse<
+  TResult = { content?: string },
+>(): ParsedNodeResponse<TResult> {
   const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
 
   expect(name).toBe("node_response");
 
   const delimiterIndex = rest.indexOf(END_OF_CHUNKS);
+
+  expect(delimiterIndex).toBeGreaterThanOrEqual(0);
+
   const chunks = rest.slice(0, delimiterIndex) as string[];
 
-  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
+  return JSON.parse(chunks.join("")) as ParsedNodeResponse<TResult>;
 }
 
 /**
@@ -169,6 +175,21 @@ export async function dispatchNodeRoute(
   await handleNodeRequest("id", JSON.stringify({ route, args }));
 
   return parseSentNodeResponse();
+}
+
+/**
+ * Assert a config-dir store wrote provenance frontmatter above the body: the
+ * file opens with a `---` block carrying the version it was forked at and the
+ * built-in's hash, and ends with the content the caller saved.
+ *
+ * @param raw - The file's contents as written to disk
+ * @param body - The content the store was asked to save
+ */
+export function expectProvenanceFrontmatter(raw: string, body: string): void {
+  expect(raw.startsWith("---\n")).toBe(true);
+  expect(raw).toContain(`producerPalVersion: ${VERSION}`);
+  expect(raw).toContain("builtInHash: ");
+  expect(raw.trimEnd().endsWith(body)).toBe(true);
 }
 
 /**

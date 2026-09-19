@@ -10,46 +10,44 @@ import {
   expectParamRefused,
   livePath,
   paramsOf,
+  registerContinuousParam,
   registerMockObject,
   updateDevice,
 } from "../../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/**
+ * Register the device under test at t0/d0, holding the given params.
+ * @param paramIds - Parameter mock ids, in the device's parameter order
+ */
+function registerDevice(...paramIds: string[]): void {
+  registerMockObject("123", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children(...paramIds) },
+  });
+}
 
 describe("updateDevice - params by name", () => {
   let paramFreq: RegisteredMockObject;
   let paramMacro: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        parameters: children("p-freq", "p-macro"),
-      },
+    registerDevice("p-freq", "p-macro");
+
+    paramFreq = registerContinuousParam("p-freq", {
+      name: "Filter Freq",
+      value: 500,
+      min: 20,
+      max: 20000,
+      display: (v) => `${String(v)} Hz`,
     });
 
-    paramFreq = registerMockObject("p-freq", {
-      properties: {
-        name: "Filter Freq",
-        original_name: "Filter Freq",
-        is_quantized: 0,
-        value: 500,
-        min: 20,
-        max: 20000,
-      },
-      methods: { str_for_value: (v: unknown) => `${String(v)} Hz` },
-    });
-
-    paramMacro = registerMockObject("p-macro", {
-      properties: {
-        name: "Reverb",
-        original_name: "Macro 1",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (v: unknown) => String(v) },
+    paramMacro = registerContinuousParam("p-macro", {
+      name: "Reverb",
+      originalName: "Macro 1",
+      value: 0.5,
+      display: (v) => String(v),
     });
   });
 
@@ -64,25 +62,13 @@ describe("updateDevice - params by name", () => {
 
   it("resolves a param whose name is all-digit (Live reports it as a number)", () => {
     // `.toLowerCase()` on that used to throw during the name match.
-    const paramDigits = registerMockObject("p-digits", {
-      properties: {
-        name: 5678,
-        original_name: 5678,
-        is_quantized: 0,
-        value: 1,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (v: unknown) => String(v) },
+    const paramDigits = registerContinuousParam("p-digits", {
+      name: 5678,
+      value: 1,
+      display: (v) => String(v),
     });
 
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        parameters: children("p-freq", "p-macro", "p-digits"),
-      },
-    });
+    registerDevice("p-freq", "p-macro", "p-digits");
 
     updateDevice({ id: "123", params: [{ name: "5678", value: "0.5" }] });
 
@@ -93,24 +79,14 @@ describe("updateDevice - params by name", () => {
     // A param with no original_name property reads back undefined from
     // getProperty. The formatted-name fallback must read that as "" — if it
     // read "undefined" instead, this search would find nothing.
-    const paramNoOriginal = registerMockObject("p-no-original", {
-      properties: {
-        name: "Drive",
-        is_quantized: 0,
-        value: 0.2,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (v: unknown) => String(v) },
+    const paramNoOriginal = registerContinuousParam("p-no-original", {
+      name: "Drive",
+      omitOriginalName: true,
+      value: 0.2,
+      display: (v) => String(v),
     });
 
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        parameters: children("p-freq", "p-macro", "p-no-original"),
-      },
-    });
+    registerDevice("p-freq", "p-macro", "p-no-original");
 
     updateDevice({ id: "123", params: [{ name: "Drive ()", value: "1" }] });
 
@@ -180,40 +156,25 @@ describe("updateDevice - a name that matches more than one param", () => {
   let stereoWidth: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { parameters: children("94", "95") },
-    });
+    registerDevice("94", "95");
 
     // Corpus really does expose two params called "Width": a filter bandwidth
     // and a stereo width.
-    bandwidth = registerMockObject("94", {
-      path: livePath.track(0).device(0).parameter(1),
-      type: "DeviceParameter",
-      properties: {
-        name: "Width",
-        original_name: "Width",
-        is_quantized: 0,
-        value: 5,
-        min: 0.5,
-        max: 9,
-      },
-      methods: { str_for_value: (v: unknown) => String(v) },
+    bandwidth = registerContinuousParam("94", {
+      index: 1,
+      name: "Width",
+      value: 5,
+      min: 0.5,
+      max: 9,
+      display: (v) => String(v),
     });
 
-    stereoWidth = registerMockObject("95", {
-      path: livePath.track(0).device(0).parameter(2),
-      type: "DeviceParameter",
-      properties: {
-        name: "Width",
-        original_name: "Width",
-        is_quantized: 0,
-        value: 50,
-        min: 0,
-        max: 100,
-      },
-      methods: { str_for_value: (v: unknown) => `${String(v)} %` },
+    stereoWidth = registerContinuousParam("95", {
+      index: 2,
+      name: "Width",
+      value: 50,
+      max: 100,
+      display: (v) => `${String(v)} %`,
     });
   });
 
@@ -256,16 +217,11 @@ describe("updateDevice - a name that matches more than one param", () => {
       properties: { parameters: children("94", "95", "p-dry") },
     });
 
-    const dryWet = registerMockObject("p-dry", {
-      properties: {
-        name: "Dry/Wet",
-        original_name: "Dry/Wet",
-        is_quantized: 0,
-        value: 50,
-        min: 0,
-        max: 100,
-      },
-      methods: { str_for_value: (v: unknown) => `${String(v)} %` },
+    const dryWet = registerContinuousParam("p-dry", {
+      name: "Dry/Wet",
+      value: 50,
+      max: 100,
+      display: (v) => `${String(v)} %`,
     });
 
     updateDevice({
@@ -283,21 +239,12 @@ describe("updateDevice - a name that matches more than one param", () => {
   // so this ambiguity is a second code path with the same answer.
   it("refuses a slash-named param two params answer to", () => {
     for (const id of ["94", "95"]) {
-      const param = registerMockObject(id, {
-        path: livePath
-          .track(0)
-          .device(0)
-          .parameter(Number(id) - 93),
-        type: "DeviceParameter",
-        properties: {
-          name: "Dry/Wet",
-          original_name: "Dry/Wet",
-          is_quantized: 0,
-          value: 50,
-          min: 0,
-          max: 100,
-        },
-        methods: { str_for_value: (v: unknown) => `${String(v)} %` },
+      const param = registerContinuousParam(id, {
+        index: Number(id) - 93,
+        name: "Dry/Wet",
+        value: 50,
+        max: 100,
+        display: (v) => `${String(v)} %`,
       });
 
       expect(param.set).not.toHaveBeenCalled();
@@ -322,36 +269,22 @@ describe("updateDevice - two rack macros renamed the same", () => {
   let macro2: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { parameters: children("m1", "m2") },
-    });
+    registerDevice("m1", "m2");
 
     // Live lets two macros carry the same name. Only the raw names collide —
     // read-device names them apart by their original_name.
-    macro1 = registerMockObject("m1", {
-      properties: {
-        name: "Drive",
-        original_name: "Macro 1",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 127,
-      },
-      methods: { str_for_value: (v: unknown) => String(v) },
+    macro1 = registerContinuousParam("m1", {
+      name: "Drive",
+      originalName: "Macro 1",
+      max: 127,
+      display: (v) => String(v),
     });
 
-    macro2 = registerMockObject("m2", {
-      properties: {
-        name: "Drive",
-        original_name: "Macro 2",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 127,
-      },
-      methods: { str_for_value: (v: unknown) => String(v) },
+    macro2 = registerContinuousParam("m2", {
+      name: "Drive",
+      originalName: "Macro 2",
+      max: 127,
+      display: (v) => String(v),
     });
   });
 

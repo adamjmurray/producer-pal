@@ -13,7 +13,10 @@ import {
   writeSystemPrompt,
 } from "#src/mcp-server/helpers/system-prompt-store.ts";
 import { VERSION } from "#src/shared/config.ts";
-import { useTempConfigDir } from "../config-dir-test-helpers.ts";
+import {
+  expectProvenanceFrontmatter,
+  useTempConfigDir,
+} from "../config-dir-test-helpers.ts";
 
 const getDir = useTempConfigDir();
 
@@ -58,10 +61,7 @@ describe("writeSystemPrompt", () => {
     writeSystemPrompt("custom prompt");
     const raw = readFileSync(promptPath(), "utf8");
 
-    expect(raw.startsWith("---\n")).toBe(true);
-    expect(raw).toContain(`producerPalVersion: ${VERSION}`);
-    expect(raw).toContain("builtInHash: ");
-    expect(raw.trimEnd().endsWith("custom prompt")).toBe(true);
+    expectProvenanceFrontmatter(raw, "custom prompt");
   });
 
   it("writes system-prompt.md without touching the global context file", () => {

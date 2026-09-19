@@ -6,7 +6,10 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { drumPatternNotes } from "../../barbeat-test-helpers.ts";
+import {
+  drumPatternNotes,
+  expectEmptyInputFormatsEmpty,
+} from "../../barbeat-test-helpers.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 import { pitchName } from "../helpers/barbeat-serializer-state.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
@@ -14,9 +17,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("formatNotation() core", () => {
   it("returns empty string for empty input", () => {
-    expect(formatNotation([])).toBe("");
-    expect(formatNotation(null)).toBe("");
-    expect(formatNotation(undefined)).toBe("");
+    expectEmptyInputFormatsEmpty(formatNotation);
   });
 
   it("formats simple notes with defaults", () => {

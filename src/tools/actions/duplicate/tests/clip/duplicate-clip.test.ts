@@ -23,11 +23,20 @@ import {
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+/**
+ * The session clip on t0 that every copy in this suite is made from.
+ * @param properties - Properties the clip reports
+ */
+function registerSourceClip(properties?: Record<string, unknown>): void {
+  registerMockObject("clip1", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties,
+  });
+}
+
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", async () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
+    registerSourceClip();
     await expect(duplicate({ type: "clip", id: "clip1" })).rejects.toThrow(
       'clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
@@ -133,9 +142,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("refuses when toPath and toSlot both name a destination", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      registerSourceClip();
 
       await expect(
         duplicate({
@@ -189,10 +196,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("places the copy on toPath's track instead of the source's own", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       const track0 = registerTrackWithArrangementDup(0);
       const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
@@ -227,10 +231,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("cycles one position across several toPath tracks", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
       const track3 = registerTrackWithArrangementDup(3, { has_midi_input: 1 });
@@ -271,10 +272,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("cycles one toPath track across several positions", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
 
@@ -307,10 +305,7 @@ describe("duplicate - clip duplication", () => {
     // It never cycled — two copies were made for three positions asked for.
     // Now the uneven call is refused before any copy is made.
     it("refuses uneven destinations and positions", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       registerTrackWithArrangementDup(2, { has_midi_input: 1 });
       registerTrackWithArrangementDup(3, { has_midi_input: 1 });
@@ -331,9 +326,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("rejects a bare track in toPath with no position, naming both options", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      registerSourceClip();
 
       await expect(
         duplicate({ type: "clip", id: "clip1", toPath: "t2" }),
@@ -370,10 +363,7 @@ describe("duplicate - clip duplication", () => {
     // The point of parsing paths before touching Live: a list whose last entry
     // is malformed must not leave copies from the earlier entries behind.
     it("creates nothing when a later toPath entry is malformed", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
 
@@ -392,10 +382,7 @@ describe("duplicate - clip duplication", () => {
     // An empty toPath list means "the source clip's own track" downstream, which
     // is the overwrite-the-source failure toPath exists to prevent.
     it("creates nothing for a toPath that was sent but names nothing", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       const track0 = registerTrackWithArrangementDup(0, { has_midi_input: 1 });
 
@@ -415,10 +402,7 @@ describe("duplicate - clip duplication", () => {
     // the source's own track as if toPath were omitted, and say the param named
     // nothing so the caller can tell the destination came from us.
     it("copies to the source track for a toPath sent as null, and says so", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       const track0 = registerTrackWithArrangementDup(0, { has_midi_input: 1 });
 
@@ -451,9 +435,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      registerSourceClip();
 
       await expect(
         duplicate({
@@ -474,9 +456,7 @@ describe("duplicate - clip duplication", () => {
       // Regression (#21): the no-length arrangement-duplicate path pushed a
       // phantom clip when Ableton silently failed the dup (["id", 0]), unlike its
       // siblings in arrangement-tiling and update-clip which guard with exists().
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      registerSourceClip();
 
       // Same shape as registerTrackWithArrangementDup, but the dup silently fails.
       registerMockObject("live_set/tracks/0", {
@@ -534,9 +514,7 @@ describe("duplicate - clip duplication", () => {
       // it must NOT skip with an empty result.
       clearClipAtDuplicateTargetMock.mockReturnValueOnce(false);
 
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      registerSourceClip();
       registerTrackWithArrangementDup(0);
 
       const result = await duplicate({
@@ -553,9 +531,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      registerSourceClip();
       registerTrackWithArrangementDup(0);
       registerArrangementClip(0, 0, 8);
 
@@ -648,10 +624,7 @@ describe("duplicate - clip duplication", () => {
     it("names the track of each copy a cut-short fan-out did not reach", async () => {
       // One position across several tracks: without the track, the warning is
       // the same position three times and a caller re-runs tracks that finished.
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
+      registerSourceClip({ is_midi_clip: 1 });
 
       registerTrackWithArrangementDup(1, { has_midi_input: 1 });
       registerTrackWithArrangementDup(2, { has_midi_input: 1 });

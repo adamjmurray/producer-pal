@@ -84,6 +84,22 @@ function setup(over: DepsOverrides = {}) {
   return { result, runWithChat, invalidateCompactionUndo, adapter };
 }
 
+type ConversationActions = ReturnType<typeof useConversationActions>;
+
+/**
+ * Render the hook over a mock client whose raw history is already populated.
+ * @param chatHistory - Raw history the client starts with
+ * @param messages - On-screen messages the hook sees
+ * @returns The mock client plus the hook result and spies
+ */
+function setupWithHistory(chatHistory: TestMessage[], messages: UIMessage[]) {
+  const client = new MockChatClient();
+
+  client.chatHistory = chatHistory;
+
+  return { client, ...setup({ client, messages }) };
+}
+
 describe("useConversationActions guards", () => {
   it("handleEdit bails before forking when there is no history to slice", async () => {
     // Both a live client and pending restore history are absent, so
@@ -118,16 +134,13 @@ describe("useConversationActions guards", () => {
     // A send that failed before the client saw it (no API key) leaves a row
     // whose raw index points past the end of the client's history. Retry must
     // still fork from the text on screen instead of silently doing nothing.
-    const client = new MockChatClient();
-
-    client.chatHistory = [
-      { role: "user", content: "first" },
-      { role: "assistant", content: "reply" },
-    ];
-    const { result, runWithChat } = setup({
-      client,
-      messages: [userMessage(2, "never sent")],
-    });
+    const { client, result, runWithChat } = setupWithHistory(
+      [
+        { role: "user", content: "first" },
+        { role: "assistant", content: "reply" },
+      ],
+      [userMessage(2, "never sent")],
+    );
 
     await act(async () => {
       await result.current.handleRetry(0);
@@ -140,70 +153,50 @@ describe("useConversationActions guards", () => {
     });
   });
 
-  it("handleRetry re-sends the original message's images", async () => {
-    const images = [{ mediaType: "image/png", data: "AAA" }];
-    const client = new MockChatClient();
-
-    client.chatHistory = [
-      { role: "user", content: "match this", images },
-      { role: "assistant", content: "reply" },
-    ];
-
-    const { result } = setup({ client, messages: [userMessage(0)] });
-
-    await act(async () => {
-      await result.current.handleRetry(0);
-    });
-
-    // The fork truncates to index 0, so the re-sent turn is the only one left.
-    expect(client.chatHistory).toContainEqual({
-      role: "user",
+  it.each([
+    {
+      what: "handleRetry re-sends the original message's images",
+      images: [{ mediaType: "image/png", data: "AAA" }],
+      sent: "match this",
+      message: userMessage(0),
+      run: async (actions: ConversationActions) => await actions.handleRetry(0),
       content: "match this",
-      images,
-    });
-  });
-
-  it("handleEdit keeps the original message's images", async () => {
-    const images = [{ mediaType: "image/webp", data: "BBB" }];
-    const client = new MockChatClient();
-
-    client.chatHistory = [
-      { role: "user", content: "match this", images },
-      { role: "assistant", content: "reply" },
-    ];
-
-    const { result } = setup({ client, messages: [userMessage(0)] });
-
-    await act(async () => {
-      await result.current.handleEdit(0, "match this, but slower");
-    });
-
-    expect(client.chatHistory).toContainEqual({
-      role: "user",
+    },
+    {
+      what: "handleEdit keeps the original message's images",
+      images: [{ mediaType: "image/webp", data: "BBB" }],
+      sent: "match this",
+      message: userMessage(0),
+      run: async (actions: ConversationActions) =>
+        await actions.handleEdit(0, "match this, but slower"),
       content: "match this, but slower",
-      images,
-    });
-  });
-
-  it("handleRetry re-sends an image-only message that has no text", async () => {
-    const images = [{ mediaType: "image/png", data: "AAA" }];
-    const client = new MockChatClient();
-
-    client.chatHistory = [{ role: "user", content: "", images }];
-
-    const { result, runWithChat } = setup({
-      client,
-      messages: [userMessage(0, "")],
-    });
+    },
+    {
+      what: "handleRetry re-sends an image-only message that has no text",
+      images: [{ mediaType: "image/png", data: "AAA" }],
+      sent: "",
+      message: userMessage(0, ""),
+      run: async (actions: ConversationActions) => await actions.handleRetry(0),
+      content: "",
+    },
+  ])("$what", async ({ images, sent, message, run, content }) => {
+    const { client, result, runWithChat } = setupWithHistory(
+      [
+        { role: "user", content: sent, images },
+        { role: "assistant", content: "reply" },
+      ],
+      [message],
+    );
 
     await act(async () => {
-      await result.current.handleRetry(0);
+      await run(result.current);
     });
 
     expect(runWithChat).toHaveBeenCalled();
+    // The fork truncates to index 0, so the re-sent turn is the only one left.
     expect(client.chatHistory).toContainEqual({
       role: "user",
-      content: "",
+      content,
       images,
     });
   });
@@ -211,13 +204,10 @@ describe("useConversationActions guards", () => {
   it("handleRetry bails when the raw entry yields no user message", async () => {
     // The raw history slot resolves to an assistant turn, so extractUserMessage
     // returns undefined and there is nothing to re-send.
-    const client = new MockChatClient();
-
-    client.chatHistory = [{ role: "assistant", content: "hi" }];
-    const { result, runWithChat } = setup({
-      client,
-      messages: [userMessage(0)],
-    });
+    const { result, runWithChat } = setupWithHistory(
+      [{ role: "assistant", content: "hi" }],
+      [userMessage(0)],
+    );
 
     await act(async () => {
       await result.current.handleRetry(0);

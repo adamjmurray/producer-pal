@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { expect } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import {
@@ -18,6 +19,21 @@ export const drumPatternNotes = expectedDrumPatternNotes() as NoteEvent[];
 
 export const drumPatternNotation =
   "v100 n/16 C1 v80-100 p0.8 Gb1 1|1\np0.6 Gb1 1|1.5\nv90 p1 D1 v100 p0.9 Gb1 1|2";
+
+/**
+ * Assert a serializer answers every "nothing to format" input with an empty
+ * string. Shared by the serializer's own tests and the re-export shim's
+ * backward-compatibility tests, which must agree on it.
+ *
+ * @param format - The formatNotation function under test
+ */
+export function expectEmptyInputFormatsEmpty(
+  format: (notes: NoteEvent[] | null | undefined) => string,
+): void {
+  expect(format([])).toBe("");
+  expect(format(null)).toBe("");
+  expect(format(undefined)).toBe("");
+}
 
 /**
  * A simple kick (C1) / snare (D1) drum pattern: kicks on beats 1 and 3, snares

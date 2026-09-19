@@ -145,24 +145,7 @@ describe("updateClip - Note updates", () => {
   it("should overlay new notes onto a clip (default merge)", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    // Mock empty existing notes, then return added notes on subsequent calls
-    let addedNotes: unknown[] = [];
-
-    mocks.clip123.call.mockImplementation(
-      (method: string, ...args: unknown[]) => {
-        if (method === "add_new_notes") {
-          const arg = args[0] as { notes?: unknown[] } | undefined;
-
-          addedNotes = arg?.notes ?? [];
-        } else if (method === "get_notes_extended") {
-          return JSON.stringify({
-            notes: addedNotes,
-          });
-        }
-
-        return {};
-      },
-    );
+    mockMergeNoteTracking(mocks.clip123);
 
     const result = await updateClip({
       id: "123",
@@ -177,23 +160,9 @@ describe("updateClip - Note updates", () => {
   it("merges midi-json notes onto existing notes", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    // Seed with an existing C3; capture the merged write so the post-merge
+    // Seed with an existing C3; the merged write is captured, so the post-merge
     // note count reads back the combined set.
-    let currentNotes: unknown[] = [DEFAULT_C3_NOTE];
-
-    mocks.clip123.call.mockImplementation(
-      (method: string, ...args: unknown[]) => {
-        if (method === "add_new_notes") {
-          const arg = args[0] as { notes?: unknown[] } | undefined;
-
-          currentNotes = arg?.notes ?? [];
-        } else if (method === "get_notes_extended") {
-          return JSON.stringify({ notes: currentNotes });
-        }
-
-        return {};
-      },
-    );
+    mockMergeNoteTracking(mocks.clip123, [DEFAULT_C3_NOTE]);
 
     const result = await updateClip(
       {

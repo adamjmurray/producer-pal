@@ -11,6 +11,15 @@ import { describe, expect, it } from "vitest";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
 import { AssistantMessage } from "#webui/components/chat/assistant/AssistantMessage";
 
+/**
+ * A completed tool part.
+ * @param name - Tool name
+ * @returns The part
+ */
+function toolPart(name: string): UIPart {
+  return { type: "tool", name, args: {}, result: "ok" };
+}
+
 describe("AssistantMessage", () => {
   describe("basic rendering", () => {
     it("renders container with correct classes", () => {
@@ -357,7 +366,7 @@ describe("AssistantMessage", () => {
 
   describe("step-usage parts", () => {
     const stepUsageParts: UIPart[] = [
-      { type: "tool", name: "t", args: {}, result: "ok" },
+      toolPart("t"),
       { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
       { type: "text", content: "Done" },
     ];
@@ -373,7 +382,7 @@ describe("AssistantMessage", () => {
 
     it("appends generation speed to a timed step", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 6078, outputTokens: 33 },
@@ -408,7 +417,7 @@ describe("AssistantMessage", () => {
 
     it("shows reasoning tokens in step-usage when present", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 6078, outputTokens: 335, reasoningTokens: 225 },
@@ -424,7 +433,7 @@ describe("AssistantMessage", () => {
 
     it("shows cached tokens in step-usage when present", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 9100, outputTokens: 40, cacheReadTokens: 9000 },
@@ -440,7 +449,7 @@ describe("AssistantMessage", () => {
 
     it("shows new content tokens when prevStepUsage is provided", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
+        toolPart("t"),
         {
           type: "step-usage",
           usage: { inputTokens: 10000, outputTokens: 200 },
@@ -462,12 +471,12 @@ describe("AssistantMessage", () => {
 
     it("builds prev usage map across multiple step-usage parts", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
+        toolPart("t1"),
         {
           type: "step-usage",
           usage: { inputTokens: 5000, outputTokens: 100 },
         },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
+        toolPart("t2"),
         {
           type: "step-usage",
           usage: { inputTokens: 10200, outputTokens: 200 },
@@ -485,11 +494,7 @@ describe("AssistantMessage", () => {
 
   describe("tool call grouping", () => {
     it("groups 3+ consecutive tool parts into a single disclosure", () => {
-      const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-        { type: "tool", name: "t3", args: {}, result: "ok" },
-      ];
+      const parts: UIPart[] = [toolPart("t1"), toolPart("t2"), toolPart("t3")];
 
       render(<AssistantMessage parts={parts} />);
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
@@ -504,10 +509,7 @@ describe("AssistantMessage", () => {
     });
 
     it("does not group fewer than 3 consecutive tool parts", () => {
-      const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-      ];
+      const parts: UIPart[] = [toolPart("t1"), toolPart("t2")];
 
       render(<AssistantMessage parts={parts} />);
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
@@ -517,10 +519,10 @@ describe("AssistantMessage", () => {
 
     it("renders step-usage outside the group when showTokenUsage is true", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
+        toolPart("t1"),
         { type: "step-usage", usage: { inputTokens: 100, outputTokens: 50 } },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-        { type: "tool", name: "t3", args: {}, result: "ok" },
+        toolPart("t2"),
+        toolPart("t3"),
       ];
 
       const { container } = render(
@@ -532,11 +534,11 @@ describe("AssistantMessage", () => {
 
     it("text parts break tool groups", () => {
       const parts: UIPart[] = [
-        { type: "tool", name: "t1", args: {}, result: "ok" },
-        { type: "tool", name: "t2", args: {}, result: "ok" },
-        { type: "tool", name: "t3", args: {}, result: "ok" },
+        toolPart("t1"),
+        toolPart("t2"),
+        toolPart("t3"),
         { type: "text", content: "Done" },
-        { type: "tool", name: "t4", args: {}, result: "ok" },
+        toolPart("t4"),
       ];
 
       render(<AssistantMessage parts={parts} />);

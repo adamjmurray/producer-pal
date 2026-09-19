@@ -31,28 +31,15 @@
  */
 
 import { argText } from "../../arg-text.ts";
-import { getToolCalls } from "../../../assertions/index.ts";
+import { type EvalScenario, type EvalTurnResult } from "../../../types.ts";
+import { READ_DRUM_NOTES } from "../helpers/clip-tool-constants.ts";
 import {
-  type EvalAssertion,
-  type EvalScenario,
-  type EvalTurnResult,
-} from "../../../types.ts";
-import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
-import {
-  MSG_CONNECT,
-  READ_DRUM_NOTES,
-  TOOL_CONNECT,
-  TOOL_UPDATE_CLIP,
-} from "../helpers/clip-tool-constants.ts";
-
-const LIVE_SET = "basic-with-drum-and-lead-clips";
-
-type SlmPath =
-  | "pretransforms-shorthand"
-  | "transforms-direct"
-  | "notes-contamination"
-  | "two-call"
-  | "unrecognized";
+  type ClassifiedPath,
+  NOTES_V0,
+  type PathGrade,
+  pretransformsScenario,
+  readRewriteEdit,
+} from "./pretransforms-classification.ts";
 
 /**
  * Classify how a small model performed a clear/remap edit at `turn`.
@@ -64,20 +51,12 @@ type SlmPath =
 function classifySlmPath(
   turns: EvalTurnResult[],
   turn: number,
-): { path: SlmPath; evidence: string } {
-  const calls = getToolCalls(turns, turn).filter(
-    (c) => c.name === TOOL_UPDATE_CLIP,
-  );
+): ClassifiedPath {
+  const { calls, reach } = readRewriteEdit(turns, turn);
 
   if (calls.length === 0) {
     return { path: "unrecognized", evidence: "no update-clip calls" };
   }
-
-  const reach = calls.find(
-    (c) =>
-      c.args.preTransforms != null &&
-      argText(c.args.preTransforms).trim() !== "",
-  );
 
   if (reach) {
     return {
@@ -105,9 +84,7 @@ function classifySlmPath(
 
   // No preTransforms — did the model try to encode the clear inside notes
   // (the contamination failure)? A `v0` token in notes is the tell.
-  const notesV0 = calls.find((c) =>
-    /(^|\s)v0(\s|$)/.test(argText(c.args.notes)),
-  );
+  const notesV0 = calls.find((c) => NOTES_V0.test(argText(c.args.notes)));
 
   if (notesV0) {
     return {
@@ -129,65 +106,25 @@ function classifySlmPath(
   };
 }
 
-/**
- * Record the SLM path classification. Passes unless nothing recognizable
- * happened; the classification is the comparison signal.
- *
- * @param turn - Turn index of the edit
- * @returns Custom assertion recording the SLM path
- */
-function recordSlmPath(turn: number): EvalAssertion {
-  return {
-    type: "custom",
-    description: `classify SLM preTransforms reach at turn ${turn}`,
-    assert: (turns) => {
-      const { path, evidence } = classifySlmPath(turns, turn);
+/** The grade shared by both SLM scenarios. */
+const SLM_GRADE: PathGrade = {
+  label: "SLM preTransforms reach",
+  classify: classifySlmPath,
+  failure: "SLM did not perform a recognizable edit",
+};
 
-      console.log(`    [slm-path@turn${turn}] path=${path} — ${evidence}`);
-
-      if (path === "unrecognized") {
-        throw new Error(`SLM did not perform a recognizable edit: ${evidence}`);
-      }
-
-      return true;
-    },
-  };
-}
-
-/**
- * Build an SLM preTransforms scenario. The two SLM cases (region clear, drum
- * remap) share an identical scaffold — connect, read drum notes, edit, classify
- * the path — and differ only in the edit instruction, so they are assembled
- * from one builder.
- *
- * @param spec - the per-scenario fields
- * @param spec.id - unique scenario id
- * @param spec.description - human-readable description
- * @param spec.editInstruction - the turn-2 user message that triggers the edit
- * @returns the assembled SLM EvalScenario
- */
+// The two SLM cases share a scaffold and differ only in the edit instruction.
 function buildSlmScenario(spec: {
   id: string;
   description: string;
   editInstruction: string;
 }): EvalScenario {
-  return {
-    id: spec.id,
-    description: spec.description,
-    kind: "capability",
-    tags: ["transforms"],
-    liveSet: LIVE_SET,
-
-    messages: [MSG_CONNECT, READ_DRUM_NOTES, spec.editInstruction],
-
-    assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      assertNotesRead(1),
-      { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-      recordSlmPath(2),
-      { type: "token_usage", maxTokens: 2_500 },
-    ],
-  };
+  return pretransformsScenario({
+    ...spec,
+    readMessage: READ_DRUM_NOTES,
+    grade: SLM_GRADE,
+    maxTokens: 2_500,
+  });
 }
 
 /**

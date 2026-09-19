@@ -19,7 +19,7 @@ import {
   lastSuccessfulToolCall,
   parsedToolResult,
 } from "../../../assertions/index.ts";
-import { type EvalTurnResult } from "../../../types.ts";
+import { type EvalTurnResult, type ToolCall } from "../../../types.ts";
 import { TOOL_CREATE_CLIP } from "./clip-tool-constants.ts";
 
 /**
@@ -283,4 +283,31 @@ export async function clearClipSlots(
       arguments: { id: ids.join(","), type: "clip" },
     });
   }
+}
+
+/**
+ * A turn's call to `toolName`: the first one, or with `pick: "last"` the one
+ * that stands after a retry. Throws when there is none — that is what fails the
+ * calling assertion, so the message is the report.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index to search
+ * @param toolName - Tool name to look for
+ * @param pick - Which matching call to return; defaults to the first
+ * @returns The matching call
+ */
+export function requireToolCall(
+  turns: EvalTurnResult[],
+  turn: number,
+  toolName: string,
+  pick: "first" | "last" = "first",
+): ToolCall {
+  const calls = getToolCalls(turns, turn).filter((c) => c.name === toolName);
+  const call = pick === "last" ? calls.at(-1) : calls[0];
+
+  if (!call) {
+    throw new Error(`${toolName} not found in turn ${turn}`);
+  }
+
+  return call;
 }

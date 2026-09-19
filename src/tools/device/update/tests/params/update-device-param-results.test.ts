@@ -10,12 +10,33 @@ import {
   expectParamRefused,
   livePath,
   paramsOf,
+  registerContinuousParam,
   registerDeviceWithParams,
+  registerDrumRackPadChain,
   registerMockObject,
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+/**
+ * Register a Simpler at t0/d0 with a kick sample already loaded.
+ * @returns The Simpler and its sample mocks
+ */
+function registerSimplerWithSample(): {
+  simpler: RegisteredMockObject;
+  sample: RegisteredMockObject;
+} {
+  const simpler = registerSimplerDevice();
+  const sample = registerMockObject("kick-sample", {
+    type: "Sample",
+    properties: { file_path: "/Library/kick.aif", gain: 0.5 },
+  });
+
+  simpler.properties.sample = children("kick-sample");
+
+  return { simpler, sample };
+}
 
 // Glue Compressor's Attack: seven reachable values across a range that looks
 // continuous, so a request between steps lands on one of them.
@@ -68,32 +89,12 @@ describe("updateDevice - written param values", () => {
   });
 
   it("names a path-prefixed param by the path it was addressed with", () => {
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
-    });
-    registerMockObject("chain-c1", {
-      type: "DrumChain",
-      properties: { in_note: 36, devices: children("pad-dev") },
-    });
+    registerDrumRackPadChain(["pad-dev"]);
     registerMockObject("pad-dev", {
       type: "Device",
       properties: { parameters: children("pad-vol") },
     });
-    registerMockObject("pad-vol", {
-      properties: {
-        name: "Volume",
-        original_name: "Volume",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    registerContinuousParam("pad-vol", { name: "Volume" });
 
     const result = updateDevice({
       path: "t0/d0",
@@ -133,15 +134,7 @@ describe("updateDevice - written param values", () => {
   // The entry sits in the rack's result, but the lookup happened on the pad's
   // own device, so "this device" would name the wrong one.
   it("names the device a path-prefixed miss was looked up on", () => {
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
-    });
-    registerMockObject("chain-c1", {
-      type: "DrumChain",
-      properties: { in_note: 36, devices: children("pad-dev") },
-    });
+    registerDrumRackPadChain(["pad-dev"]);
     registerMockObject("pad-dev", {
       path: `${livePath.track(0).device(0)} chains 0 devices 0`,
       type: "Device",
@@ -258,19 +251,7 @@ describe("updateDevice - written param values", () => {
   });
 
   it("reads params back after a macro variation recall overwrites them", () => {
-    const macro = registerMockObject("macro-1", {
-      properties: {
-        name: "Macro 1",
-        original_name: "Macro 1",
-        is_quantized: 0,
-        value: 0,
-        min: 0,
-        max: 1,
-      },
-      methods: {
-        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
-      },
-    });
+    const macro = registerContinuousParam("macro-1", { name: "Macro 1" });
 
     registerMockObject("rack", {
       path: livePath.track(0).device(0),
@@ -313,13 +294,8 @@ describe("updateDevice - written param values", () => {
   });
 
   it("reports the value a pseudo-param reads back, not the one written", () => {
-    const simpler = registerSimplerDevice();
-    const sample = registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
+    const { simpler, sample } = registerSimplerWithSample();
 
-    simpler.properties.sample = children("kick-sample");
     // The device reports the file it resolved to, not the string it was
     // handed: an entry echoing the written value would not match.
     simpler.call.mockImplementation((method: string) => {
@@ -342,13 +318,8 @@ describe("updateDevice - written param values", () => {
   });
 
   it("reads a pseudo-param back after a later write in the call changes it", () => {
-    const simpler = registerSimplerDevice();
-    const sample = registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
+    const { simpler, sample } = registerSimplerWithSample();
 
-    simpler.properties.sample = children("kick-sample");
     sample.set.mockImplementation((property: string, value: unknown) => {
       sample.properties[property] = value;
     });
@@ -434,13 +405,7 @@ describe("updateDevice - written param values", () => {
   });
 
   it("reports a reason when a sample write leaves the old sample loaded", () => {
-    const simpler = registerSimplerDevice();
-
-    registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
-    simpler.properties.sample = children("kick-sample");
+    registerSimplerWithSample();
 
     // An absolute path naming no file: Live takes `replace_sample`, loads
     // nothing, and leaves the sample that was already there.
@@ -466,13 +431,7 @@ describe("updateDevice - written param values", () => {
   });
 
   it("reports a sample reloaded from its own path as a value, not a failure", () => {
-    const simpler = registerSimplerDevice();
-
-    registerMockObject("kick-sample", {
-      type: "Sample",
-      properties: { file_path: "/Library/kick.aif", gain: 0.5 },
-    });
-    simpler.properties.sample = children("kick-sample");
+    registerSimplerWithSample();
 
     // Reloading the loaded sample leaves the path where it was, so only the
     // value the call asked for tells this apart from a write that never landed.

@@ -15,34 +15,35 @@ import {
   updateDevice,
   writesThroughSets,
 } from "../update-device-test-helpers.ts";
+import {
+  LAYERED_CHAIN_NOTES,
+  registerLayeredDrumRack,
+} from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
   warnOnce: vi.fn(),
 }));
 
-/** in_note per rack chain: C1 (36) layered twice, D1 (38) once. */
-const CHAIN_NOTES = [36, 38, 36];
+/** A plain device on its own track, outside the drum rack. */
+function registerPlainDevice(): void {
+  registerMockObject("track-1", { path: livePath.track(1) });
+  registerMockObject("plain-dev", {
+    path: livePath.track(1).device(0),
+    type: "PluginDevice",
+  });
+}
 
 describe("updateDevice — drum chain path spelling", () => {
   beforeEach(() => {
-    registerMockObject("track-0", { path: livePath.track(0) });
-    registerMockObject("drum-rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        chains: children("chain-0", "chain-1", "chain-2"),
-        can_have_drum_pads: 1,
-      },
+    registerLayeredDrumRack({
+      chainProperties: (index) => ({
+        devices: children(`dev-${String(index)}`),
+      }),
     });
 
-    for (const [index, inNote] of CHAIN_NOTES.entries()) {
-      registerMockObject(`chain-${index}`, {
-        path: livePath.track(0).device(0).chain(index),
-        type: "DrumChain",
-        properties: { in_note: inNote, devices: children(`dev-${index}`) },
-      });
-      registerMockObject(`dev-${index}`, {
+    for (const index of LAYERED_CHAIN_NOTES.keys()) {
+      registerMockObject(`dev-${String(index)}`, {
         path: livePath.track(0).device(0).chain(index).device(0),
         type: "PluginDevice",
       });
@@ -104,11 +105,7 @@ describe("updateDevice — drum chain path spelling", () => {
   });
 
   it("leaves a device outside a drum rack alone", () => {
-    registerMockObject("track-1", { path: livePath.track(1) });
-    registerMockObject("plain-dev", {
-      path: livePath.track(1).device(0),
-      type: "PluginDevice",
-    });
+    registerPlainDevice();
 
     expect(updateDevice({ path: "t1/d0", name: "Reverb" })).toStrictEqual({
       id: "plain-dev",
@@ -194,11 +191,7 @@ describe("updateDevice — drum chain path spelling", () => {
   // was honoured rather than appended past it.
   it("spells a moved device through the pad path the toPath named", () => {
     mockWorkingDeviceMoves();
-    registerMockObject("track-1", { path: livePath.track(1) });
-    registerMockObject("plain-dev", {
-      path: livePath.track(1).device(0),
-      type: "PluginDevice",
-    });
+    registerPlainDevice();
 
     expect(
       updateDevice({ path: "t1/d0", toPath: "t0/d0/pC1/c1/d0" }),

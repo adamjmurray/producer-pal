@@ -13,7 +13,10 @@ import { parseToolResult } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalScenario } from "../../../types.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
-import { getTransforms } from "../helpers/clip-turn-readers.ts";
+import {
+  getTransforms,
+  requireToolCall,
+} from "../helpers/clip-turn-readers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -79,12 +82,7 @@ export const melodyTransforms: EvalScenario = {
       type: "custom",
       description: "pitch transposition uses step() with correct amounts",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 3);
-        const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
-
-        if (!updateCall) {
-          throw new Error("ppal-update-clip not found in turn 3");
-        }
+        const updateCall = requireToolCall(turns, 3, TOOL_UPDATE_CLIP, "last");
 
         const transforms = argText(updateCall.args.transforms);
 

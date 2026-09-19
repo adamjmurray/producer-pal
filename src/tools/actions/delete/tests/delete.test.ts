@@ -138,13 +138,7 @@ describe("deleteObject", () => {
   // Saves a read-then-delete round trip: a caller that knows where the clip is
   // shouldn't have to read it first just to learn its id.
   it("should delete clips addressed by path", () => {
-    registerMockObject("clip_0_0", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-    });
-    const track0 = registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-    });
+    const track0 = registerClipInFirstSlot();
 
     const result = deleteObject({ path: "t0/s0", type: "clip" });
 
@@ -158,13 +152,7 @@ describe("deleteObject", () => {
 
   // `path` takes a list too, so the plural is the same guess `ids` is.
   it("still deletes by the paths alias", () => {
-    registerMockObject("clip_0_0", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-    });
-    const track0 = registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-    });
+    const track0 = registerClipInFirstSlot();
 
     deleteObject({ paths: "t0/s0", type: "clip" });
 
@@ -631,3 +619,16 @@ describe("deleteObject", () => {
 
   // Device deletion tests are in delete-device.test.js
 });
+
+/**
+ * A clip in track 0's first session slot.
+ * @returns The track mock the delete call runs through
+ */
+function registerClipInFirstSlot(): RegisteredMockObject {
+  registerMockObject("clip_0_0", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    type: "Clip",
+  });
+
+  return registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
+}

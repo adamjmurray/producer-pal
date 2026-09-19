@@ -18,6 +18,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
+import {
+  type DrumKitFixture,
+  registerChainRack,
+  registerDrumKit,
+} from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
 
@@ -25,29 +30,16 @@ const CHAINS = 8;
 
 /** A track holding one rack of CHAINS empty chains. */
 function setupRack(): void {
-  registerMockObject("track-0", {
-    path: livePath.track(0),
-    properties: { devices: children("rack") },
-    methods: { insert_device: () => ["id", "newdev"] },
-  });
-  registerMockObject("rack", {
-    path: livePath.track(0).device(0),
-    properties: {
-      chains: children(
-        ...Array.from({ length: CHAINS }, (_, i) => `chain${String(i)}`),
-      ),
-      can_have_chains: 1,
-      can_have_drum_pads: 0,
-    },
-  });
-
-  for (let i = 0; i < CHAINS; i++) {
-    registerMockObject(`chain${String(i)}`, {
-      path: livePath.track(0).device(0).chain(i),
+  registerChainRack({
+    trackIndex: 0,
+    rackId: "rack",
+    chainIds: Array.from({ length: CHAINS }, (_, i) => `chain${String(i)}`),
+    trackMethods: { insert_device: () => ["id", "newdev"] },
+    chainOptions: () => ({
       properties: { devices: children() },
       methods: { insert_device: () => ["id", "newdev"] },
-    });
-  }
+    }),
+  });
 
   registerMockObject("newdev", {
     path: livePath.track(0).device(0).chain(0).device(0),
@@ -55,87 +47,35 @@ function setupRack(): void {
 }
 
 const PAD_NOTES = ["C1", "D1", "E1", "F1"];
-const FIRST_NOTE = 36;
-
-/**
- * A track holding a Drum Rack whose pads already carry a chain each. Live gives
- * a rack all 128 pads whatever the kit holds, so the fixture does too.
- */
-function setupKit(): void {
-  const padIds = Array.from({ length: 128 }, (_, note) => `pad${String(note)}`);
-  const chainIds = PAD_NOTES.map((_, i) => `kitchain${String(i)}`);
-
-  registerMockObject("track-1", {
-    path: livePath.track(1),
-    properties: { devices: children("kit") },
-  });
-  registerMockObject("kit", {
-    path: livePath.track(1).device(0),
-    properties: {
-      can_have_chains: 1,
-      can_have_drum_pads: 1,
-      drum_pads: children(...padIds),
-      chains: children(...chainIds),
-    },
-  });
-
-  for (const [note, padId] of padIds.entries()) {
-    registerMockObject(padId, {
-      path: `${livePath.track(1).device(0).toString()} drum_pads ${String(note)}`,
-      properties: { note },
-    });
-  }
-
-  for (const [i, chainId] of chainIds.entries()) {
-    registerMockObject(chainId, {
-      path: livePath.track(1).device(0).chain(i),
-      properties: { in_note: FIRST_NOTE + i * 2, devices: children() },
-      methods: { insert_device: () => ["id", "newdev"] },
-    });
-  }
-}
-
 const PAD_NOTES_8 = ["C1", "D1", "E1", "F1", "G1", "A1", "B1", "C2"];
 
+const SMALL_KIT: DrumKitFixture = {
+  trackIndex: 1,
+  kitId: "kit",
+  padIdPrefix: "pad",
+  chainIds: PAD_NOTES.map((_, i) => `kitchain${String(i)}`),
+};
+
+// A second kit on its own track, so its build budget can be checked
+// independently of the 4-pad one.
+const BIG_KIT: DrumKitFixture = {
+  trackIndex: 2,
+  kitId: "bigkit",
+  padIdPrefix: "bigpadid",
+  chainIds: PAD_NOTES_8.map((_, i) => `bigkitchain${String(i)}`),
+};
+
 /**
- * An 8-pad kit on a second track, so its build budget can be checked
- * independently of the 4-pad kit above.
+ * Register a Drum Rack whose pads already carry a chain each.
+ * @param kit - Which kit to build
  */
-function setupKit8(): void {
-  const padIds = Array.from(
-    { length: 128 },
-    (_, note) => `bigpadid${String(note)}`,
-  );
-  const chainIds = PAD_NOTES_8.map((_, i) => `bigkitchain${String(i)}`);
-
-  registerMockObject("track-2", {
-    path: livePath.track(2),
-    properties: { devices: children("bigkit") },
-  });
-  registerMockObject("bigkit", {
-    path: livePath.track(2).device(0),
-    properties: {
-      can_have_chains: 1,
-      can_have_drum_pads: 1,
-      drum_pads: children(...padIds),
-      chains: children(...chainIds),
-    },
-  });
-
-  for (const [note, padId] of padIds.entries()) {
-    registerMockObject(padId, {
-      path: `${livePath.track(2).device(0).toString()} drum_pads ${String(note)}`,
-      properties: { note },
-    });
-  }
-
-  for (const [i, chainId] of chainIds.entries()) {
-    registerMockObject(chainId, {
-      path: livePath.track(2).device(0).chain(i),
-      properties: { in_note: FIRST_NOTE + i * 2, devices: children() },
+function setupKit(kit: DrumKitFixture): void {
+  registerDrumKit({
+    ...kit,
+    chainOptions: () => ({
       methods: { insert_device: () => ["id", "newdev"] },
-    });
-  }
+    }),
+  });
 }
 
 describe("createDevice build budget", () => {
@@ -168,7 +108,7 @@ describe("createDevice build budget", () => {
   // Building a kit in one call is the recommended usage, and every pad path
   // used to resolve the rack twice over.
   it("resolves the rack once for a whole kit of pad paths", async () => {
-    setupKit();
+    setupKit(SMALL_KIT);
 
     await createDevice({
       deviceName: "Reverb",
@@ -183,7 +123,7 @@ describe("createDevice build budget", () => {
   // (16 extra chain builds for this 4-pad kit), on top of what actually
   // creating each device already costs.
   it("reads a kit's chains once for order validation, not once per pad", async () => {
-    setupKit();
+    setupKit(SMALL_KIT);
 
     await createDevice({
       deviceName: "Reverb",
@@ -197,7 +137,7 @@ describe("createDevice build budget", () => {
   });
 
   it("reads an 8-pad kit's chains once for order validation, not once per pad", async () => {
-    setupKit8();
+    setupKit(BIG_KIT);
 
     await createDevice({
       deviceName: "Reverb",

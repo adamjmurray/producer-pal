@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findDuplicates } from "../../query/find-duplicates.ts";
 import {
   expectQueryDegradesOnBrokenDb,
+  expectQueryDegradesWithoutDb,
+  expectSampleFolderExplained,
   setupLibraryFixtureLifecycle,
   STALENESS_RISK,
 } from "../fixtures/library-fixture.ts";
@@ -99,22 +101,16 @@ describe("findDuplicates", () => {
   });
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {
-    // sampleFolder files aren't in Live's fe_values index, so this can only ever
-    // match nothing — explain it instead of returning an unexplained empty set.
-    const result = await findDuplicates({ source: "sampleFolder" });
+    const result = await expectSampleFolderExplained(
+      () => findDuplicates({ source: "sampleFolder" }),
+      (r) => r.groups,
+    );
 
     expect(result.dbAvailable).toBe(true);
-    expect(result.groups).toStrictEqual([]);
-    expect(result.reason).toContain("sampleFolder");
   });
 
   it("degrades to dbAvailable:false when the Live DB is missing", async () => {
-    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
-
-    const result = await findDuplicates({});
-
-    expect(result.dbAvailable).toBe(false);
-    expect(result.reason).toBe("Live database not found");
+    await expectQueryDegradesWithoutDb(dbPathMod, () => findDuplicates({}));
   });
 
   it("degrades to dbAvailable:false when a query throws", async () => {

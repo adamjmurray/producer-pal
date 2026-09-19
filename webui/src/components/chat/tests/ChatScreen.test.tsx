@@ -11,6 +11,7 @@ import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
+import { conversationPanelProps } from "#webui/components/chat/tests/conversation-panel-props";
 
 vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
   useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
@@ -62,23 +63,11 @@ describe("ChatScreen", () => {
     showTimestamps: true,
     showTokenUsage: false,
     conversationPanel: {
+      ...conversationPanelProps(),
       conversations: [],
-      activeConversationId: null,
-      searchQuery: "",
-      matchedIds: null,
-      onSearchChange: vi.fn(),
       isOpen: false,
       onToggle: vi.fn(),
-      onSelect: vi.fn(),
       onNew: vi.fn(),
-      onDelete: vi.fn(),
-      onExportItem: vi.fn(),
-      onRename: vi.fn(),
-      onToggleBookmark: vi.fn(),
-      onExport: vi.fn(),
-      onImport: vi.fn(),
-      notification: null,
-      onDismissNotification: vi.fn(),
     },
   };
 

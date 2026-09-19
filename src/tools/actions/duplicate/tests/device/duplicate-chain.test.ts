@@ -27,8 +27,23 @@ import {
   moveDeviceToPath as moveDeviceToPathMock,
 } from "#src/tools/device/update/helpers/move-device.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+import {
+  registerSourceChain,
+  registerSourceRack,
+} from "./chain-copy-fixtures.ts";
 
 const RACK = livePath.track(0).device(0);
+
+/**
+ * Register the one device on the source chain, plus the temp track's copy of
+ * it that the carry takes across.
+ */
+function registerCarriedDevice(): void {
+  registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
+  registerMockObject("temp-device", {
+    path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
+  });
+}
 
 /**
  * Register a rack holding one chain, and the chain insert_chain will produce.
@@ -50,28 +65,9 @@ function setupRack(
 
   registerMockObject("live_set", { path: livePath.liveSet });
 
-  const rack = registerMockObject("rack-0", {
-    path: RACK,
-    type: "RackDevice",
-    properties: {
-      class_name: className,
-      has_macro_mappings: hasMacroMappings,
-      return_chains: [],
-    },
-    // insert_chain hands back the new chain's id.
-    methods: { insert_chain: () => ["id", "chain-new"] },
-  });
+  const rack = registerSourceRack({ className, hasMacroMappings });
 
-  registerMockObject("chain-0", {
-    path: `${RACK} chains 0`,
-    type: "Chain",
-    properties: {
-      name: "Source",
-      mute: 0,
-      solo: 0,
-      devices: children(...deviceIds),
-    },
-  });
+  registerSourceChain(deviceIds);
 
   const created = registerMockObject("chain-new", {
     path: `${RACK} chains 1`,
@@ -218,10 +214,7 @@ describe("duplicate - chain", () => {
     setupRack({ deviceIds: ["d-0"] });
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
     vi.mocked(moveDeviceToPathMock).mockReturnValue({ outcome: "refused" });
 
     await duplicate({ type: "chain", id: "chain-0" });
@@ -246,10 +239,7 @@ describe("duplicate - chain", () => {
       path: `${RACK} chains 1 mixer_device volume`,
     });
 
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
 
     await duplicate({ type: "chain", id: "chain-0" });
 
@@ -280,10 +270,7 @@ describe("duplicate - chain", () => {
       type: "Chain",
       properties: { name: "", mute: 0, solo: 0, devices: [] },
     });
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
 
     await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" });
 
@@ -533,10 +520,7 @@ describe("duplicate - chain", () => {
   it("reports a chain whose devices could not all be copied across", async () => {
     setupRack({ deviceIds: ["d-0"] });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
-    registerMockObject("temp-device", {
-      path: `${livePath.track(1)} devices 0 chains 0 devices 0`,
-    });
+    registerCarriedDevice();
 
     vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({
       outcome: "unresolvable",

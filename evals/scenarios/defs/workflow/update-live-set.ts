@@ -7,7 +7,7 @@
  * Scenario: Update Live Set global properties and delete a track
  */
 
-import { trackNames } from "../track-names.ts";
+import { trackNames } from "../helpers/track-names.ts";
 import { type EvalScenario } from "../../types.ts";
 import { assertNamesTarget } from "../path/path-assertions.ts";
 

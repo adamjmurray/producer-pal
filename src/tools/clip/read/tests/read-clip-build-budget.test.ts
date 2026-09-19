@@ -28,8 +28,8 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerInstrumentRackFixture } from "#src/tools/track/read/tests/helpers/instrument-rack-fixture.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { inOneRequest } from "./read-clip-test-helpers.ts";
 
 /** How many chains the throwaway rack carries. */
@@ -62,35 +62,11 @@ const NOTES = [
  * drum rack anywhere, holding CLIP_COUNT MIDI clips in its first session slots.
  */
 function setupTrackWithClips(): void {
-  const chainIds = Array.from(
-    { length: CHAIN_COUNT },
-    (_, i) => `rackChain${String(i)}`,
-  );
-
   registerMockObject("track-0", {
     path: livePath.track(0),
     properties: { devices: children("instrumentRack") },
   });
-  registerMockObject("instrumentRack", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: {
-      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      can_have_chains: 1,
-      can_have_drum_pads: 0,
-      class_name: "InstrumentGroupDevice",
-      chains: children(...chainIds),
-      return_chains: [],
-    },
-  });
-
-  for (const [i, chainId] of chainIds.entries()) {
-    registerMockObject(chainId, {
-      path: livePath.track(0).device(0).chain(i),
-      type: "Chain",
-      properties: { name: `Chain ${String(i)}`, devices: children() },
-    });
-  }
+  registerInstrumentRackFixture({ chainCount: CHAIN_COUNT });
 
   for (let sceneIndex = 0; sceneIndex <= EMPTY_CLIP_SCENE; sceneIndex++) {
     const notes = sceneIndex === EMPTY_CLIP_SCENE ? [] : NOTES;

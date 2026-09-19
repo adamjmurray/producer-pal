@@ -38,6 +38,19 @@ describe("errors that never reach a route", () => {
     return { response, text: await response.text() };
   }
 
+  /**
+   * Assert a 400 came back as JSON carrying an `error` string — not as
+   * finalhandler's HTML page, which is what leaked the stack trace.
+   *
+   * @param response - The response under test
+   * @param text - Its body, already read as text
+   */
+  function expectJsonBadRequest(response: Response, text: string): void {
+    expect(response.status).toBe(400);
+    expect(text).not.toContain("<!DOCTYPE html>");
+    expect(JSON.parse(text).error).toStrictEqual(expect.any(String));
+  }
+
   it.each([
     ["malformed JSON", "{bad", 400],
     ["a bare string", '"hi"', 400],
@@ -71,9 +84,7 @@ describe("errors that never reach a route", () => {
     });
     const text = await response.text();
 
-    expect(response.status).toBe(400);
-    expect(text).not.toContain("<!DOCTYPE html>");
-    expect(JSON.parse(text).error).toStrictEqual(expect.any(String));
+    expectJsonBadRequest(response, text);
   });
 
   // A 404 goes through finalhandler, which the error chain never sees.
@@ -104,8 +115,6 @@ describe("errors that never reach a route", () => {
   it("answers JSON for malformed JSON on the MCP endpoint", async () => {
     const { response, text } = await postRaw("/mcp", "{bad");
 
-    expect(response.status).toBe(400);
-    expect(text).not.toContain("<!DOCTYPE html>");
-    expect(JSON.parse(text).error).toStrictEqual(expect.any(String));
+    expectJsonBadRequest(response, text);
   });
 });

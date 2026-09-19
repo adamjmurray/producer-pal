@@ -45,6 +45,28 @@ const MASTER_TRACK_MOCK = {
   devices: [],
 };
 
+/**
+ * A Live Set holding no tracks and no scenes, just a master track.
+ * @param liveSetProps - The Live Set's own properties
+ */
+function setupTracklessLiveSet(liveSetProps: Record<string, unknown>): void {
+  setupLiveSetPathMappedMocks({
+    liveSetId: "live_set",
+    pathIdMap: {
+      [String(livePath.masterTrack())]: "master1",
+    },
+    objects: {
+      LiveSet: {
+        tracks: [],
+        return_tracks: children(),
+        scenes: [],
+        ...liveSetProps,
+      },
+      [String(livePath.masterTrack())]: MASTER_TRACK_MOCK,
+    },
+  });
+}
+
 describe("readLiveSet - basic reading", () => {
   it("returns live set information with tracks and scenes", () => {
     setupLiveSetPathMappedMocks({
@@ -224,23 +246,7 @@ describe("readLiveSet - basic reading", () => {
 
   it("reports an all-digit Live Set name as a string", () => {
     // Live hands back an all-digit project name as a number, not a string.
-    setupLiveSetPathMappedMocks({
-      liveSetId: "live_set",
-      pathIdMap: {
-        [String(livePath.masterTrack())]: "master1",
-      },
-      objects: {
-        LiveSet: {
-          name: 5678,
-          scale_mode: 0,
-          tempo: 100,
-          tracks: [],
-          return_tracks: children(),
-          scenes: [],
-        },
-        [String(livePath.masterTrack())]: MASTER_TRACK_MOCK,
-      },
-    });
+    setupTracklessLiveSet({ name: 5678, scale_mode: 0, tempo: 100 });
 
     const result = readLiveSet({ include: [] });
 
@@ -248,29 +254,17 @@ describe("readLiveSet - basic reading", () => {
   });
 
   it("handles when no tracks or scenes exist", () => {
-    setupLiveSetPathMappedMocks({
-      liveSetId: "live_set",
-      pathIdMap: {
-        [String(livePath.masterTrack())]: "master1",
-      },
-      objects: {
-        LiveSet: {
-          name: "Empty Live Set",
-          is_playing: 0,
-          back_to_arranger: 1,
-          scale_mode: 0,
-          scale_name: "Minor",
-          root_note: 2,
-          scale_intervals: [0, 2, 3, 5, 7, 8, 10],
-          signature_numerator: 3,
-          signature_denominator: 4,
-          tempo: 100,
-          tracks: [],
-          return_tracks: children(),
-          scenes: [],
-        },
-        [String(livePath.masterTrack())]: MASTER_TRACK_MOCK,
-      },
+    setupTracklessLiveSet({
+      name: "Empty Live Set",
+      is_playing: 0,
+      back_to_arranger: 1,
+      scale_mode: 0,
+      scale_name: "Minor",
+      root_note: 2,
+      scale_intervals: [0, 2, 3, 5, 7, 8, 10],
+      signature_numerator: 3,
+      signature_denominator: 4,
+      tempo: 100,
     });
 
     const result = readLiveSet({

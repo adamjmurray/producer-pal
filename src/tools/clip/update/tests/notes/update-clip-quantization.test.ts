@@ -186,7 +186,23 @@ describe("handleQuantization", () => {
     expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 2, 1);
   });
 
-  it.each([
+  /**
+   * Quantize with a grid string and check the value Live was handed.
+   * @param gridString - The grid the caller wrote
+   * @param expectedValue - Live's grid enum value
+   */
+  function expectGridValue(gridString: string, expectedValue: number): void {
+    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+
+    handleQuantization(mockClip, reasons, {
+      quantize: 1,
+      quantizeGrid: gridString,
+    });
+
+    expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
+  }
+
+  it.each<[string, number]>([
     ["1/4", 1],
     ["1/8", 2],
     ["1/8T", 3],
@@ -195,38 +211,14 @@ describe("handleQuantization", () => {
     ["1/16T", 6],
     ["1/16+1/16T", 7],
     ["1/32", 8],
-  ])(
-    "should work with grid value %s (maps to %i)",
-    (gridString, expectedValue) => {
-      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+  ])("should work with grid value %s (maps to %i)", expectGridValue);
 
-      handleQuantization(mockClip, reasons, {
-        quantize: 1,
-        quantizeGrid: gridString,
-      });
-
-      expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
-    },
-  );
-
-  it.each([
+  it.each<[string, number]>([
     ["n/4", 1],
     ["n/8", 2],
     ["n/12", 3],
     ["n/16", 5],
     ["n/24", 6],
     ["n/32", 8],
-  ])(
-    "should bridge n/N alias %s to grid value %i",
-    (gridString, expectedValue) => {
-      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-
-      handleQuantization(mockClip, reasons, {
-        quantize: 1,
-        quantizeGrid: gridString,
-      });
-
-      expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
-    },
-  );
+  ])("should bridge n/N alias %s to grid value %i", expectGridValue);
 });
