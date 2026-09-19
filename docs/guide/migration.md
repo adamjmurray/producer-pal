@@ -165,6 +165,12 @@ something already gone is not, since nothing was left to do.
 `ppal-update-live-set`'s locator result also carries prose in `reason` now, in
 place of slugs like `locator_not_found`.
 
+**`ppal-update-live-set` refuses a `scale` it can't read.** A misspelled root or
+scale name used to be dropped with a warning while the rest of the call landed,
+which read as a success. It is now an error, raised before anything in the call
+is written, naming the roots and scale names Live accepts. `tempo` in the same
+tool has always worked this way.
+
 ### Three values read differently without the field changing
 
 - **An all-digit name is a string.** A track named `5678` used to serialize as

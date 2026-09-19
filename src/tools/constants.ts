@@ -126,6 +126,12 @@ export const LIVE_API_VIEW_NAMES = {
   DETAIL_DEVICE_CHAIN: "Detail/DeviceChain",
 } as const;
 
+// Said by every scale a call can't be read from. Naming the valid values is not
+// enough on its own, the same way it isn't for tempo: a model told what's valid
+// picks the nearest one and reports a scale nobody asked for as done.
+export const SCALE_REFUSAL =
+  "Do not substitute a different scale; tell the user theirs is not one Live has.";
+
 export const VALID_SCALE_NAMES = [
   "Major",
   "Minor",

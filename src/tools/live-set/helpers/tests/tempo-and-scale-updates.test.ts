@@ -21,7 +21,6 @@ vi.mock(import("#src/shared/pitch.ts"), async (importOriginal) => {
 });
 
 import { pitchClassToNumber } from "#src/shared/pitch.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** A live_set mock that stores what applyScale writes and reads it back. */
 function mockLiveSetWithScaleState(): LiveAPI {
@@ -52,36 +51,54 @@ describe("tempo-and-scale-updates", () => {
     it("should parse valid scale string", () => {
       const result = parseScale("C Major");
 
-      expect(result).toStrictEqual({ scaleRoot: "C", scaleName: "Major" });
+      expect(result).toStrictEqual({
+        scaleRoot: "C",
+        scaleName: "Major",
+        scaleRootNumber: 0,
+      });
     });
 
     it("should handle case-insensitive root notes", () => {
       const result = parseScale("f# minor");
 
-      expect(result).toStrictEqual({ scaleRoot: "F#", scaleName: "Minor" });
+      expect(result).toStrictEqual({
+        scaleRoot: "F#",
+        scaleName: "Minor",
+        scaleRootNumber: 6,
+      });
     });
 
     it("should resolve an enharmonic root to its canonical spelling", () => {
       expect(parseScale("Cb Major")).toStrictEqual({
         scaleRoot: "B",
         scaleName: "Major",
+        scaleRootNumber: 11,
       });
       expect(parseScale("e# minor")).toStrictEqual({
         scaleRoot: "F",
         scaleName: "Minor",
+        scaleRootNumber: 5,
       });
     });
 
     it("should handle Bb (flat notation)", () => {
       const result = parseScale("Bb Dorian");
 
-      expect(result).toStrictEqual({ scaleRoot: "Bb", scaleName: "Dorian" });
+      expect(result).toStrictEqual({
+        scaleRoot: "Bb",
+        scaleName: "Dorian",
+        scaleRootNumber: 10,
+      });
     });
 
     it("should handle extra whitespace", () => {
       const result = parseScale("  D   Mixolydian  ");
 
-      expect(result).toStrictEqual({ scaleRoot: "D", scaleName: "Mixolydian" });
+      expect(result).toStrictEqual({
+        scaleRoot: "D",
+        scaleName: "Mixolydian",
+        scaleRootNumber: 2,
+      });
     });
 
     it("should throw for invalid format - single word", () => {
@@ -93,7 +110,11 @@ describe("tempo-and-scale-updates", () => {
     it("should join a multi-word scale name with a space", () => {
       const result = parseScale("C Whole Tone");
 
-      expect(result).toStrictEqual({ scaleRoot: "C", scaleName: "Whole Tone" });
+      expect(result).toStrictEqual({
+        scaleRoot: "C",
+        scaleName: "Whole Tone",
+        scaleRootNumber: 0,
+      });
     });
 
     it("should throw for invalid root note, listing the valid roots", () => {
@@ -179,35 +200,22 @@ describe("tempo-and-scale-updates", () => {
   });
 
   describe("applyScale", () => {
-    it("should disable scale mode when empty string is passed", () => {
+    it("should disable scale mode when no scale is passed", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { scale?: string } = {};
 
-      const respelled = applyScale(mockLiveSet, "", result);
+      const respelled = applyScale(mockLiveSet, null, result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 0);
       expect(result.scale).toBe("");
       expect(respelled).toBeNull();
     });
 
-    it("should warn and skip without throwing for an invalid scale string", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { scale?: string } = {};
-
-      // parseScale throws for these; applyScale must catch, warn, and skip.
-      for (const scale of ["invalid", "H Major", "C Foo"]) {
-        expect(() => applyScale(mockLiveSet, scale, result)).not.toThrow();
-      }
-
-      expect(mockLiveSet.set).not.toHaveBeenCalled();
-      expect(result.scale).toBeUndefined();
-    });
-
     it("should set scale properties for valid scale string", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      applyScale(mockLiveSet, "C Major", result);
+      applyScale(mockLiveSet, parseScale("C Major"), result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 0);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Major");
@@ -221,7 +229,7 @@ describe("tempo-and-scale-updates", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      const respelled = applyScale(mockLiveSet, "F# Minor", result);
+      const respelled = applyScale(mockLiveSet, parseScale("F# Minor"), result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
@@ -236,7 +244,11 @@ describe("tempo-and-scale-updates", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
       const result: { scale?: string } = {};
 
-      const respelled = applyScale(mockLiveSet, "Bb Dorian", result);
+      const respelled = applyScale(
+        mockLiveSet,
+        parseScale("Bb Dorian"),
+        result,
+      );
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
@@ -253,28 +265,18 @@ describe("tempo-and-scale-updates", () => {
       } as unknown as LiveAPI;
       const result: { scale?: string } = {};
 
-      const respelled = applyScale(mockLiveSet, "C Major", result);
+      const respelled = applyScale(mockLiveSet, parseScale("C Major"), result);
 
       expect(result.scale).toBe("C Major");
       expect(respelled).toBeNull();
     });
 
-    it("should warn and return when pitchClassToNumber returns null", () => {
-      // Defensive branch when pitchClassToNumber returns null
-      // for a scale root that parseScale accepted. Mock pitchClassToNumber
-      // to return null to trigger this branch.
-      const mock = vi.mocked(pitchClassToNumber);
+    it("refuses a root that canonicalizes but has no pitch class", () => {
+      // Defensive: canonicalizeScaleRoot accepted the root, so the second
+      // lookup can only disagree if the two ever drift apart.
+      vi.mocked(pitchClassToNumber).mockReturnValueOnce(null);
 
-      mock.mockReturnValueOnce(null);
-
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { scale?: string } = {};
-
-      applyScale(mockLiveSet, "C Major", result);
-
-      expect(mockLiveSet.set).not.toHaveBeenCalled();
-      expect(result.scale).toBeUndefined();
-      expect(capturedWarnings()).toContain("invalid scale root: C");
+      expect(() => parseScale("C Major")).toThrow("Invalid scale root 'C'");
     });
   });
 });

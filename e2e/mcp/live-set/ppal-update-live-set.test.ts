@@ -224,6 +224,32 @@ describe("ppal-update-live-set", () => {
     });
   });
 
+  // The scale covers the whole call, so one we can't read used to leave a
+  // warning on a result that otherwise read as a success.
+  it("refuses a scale it can't read, and writes nothing else in the call", async () => {
+    const { originalTempo } = await readLiveSetOriginals();
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: { tempo: originalTempo + 7, scale: "C Nonesuch" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+
+    const message = getToolErrorMessage(refused);
+
+    expect(message).toContain("Invalid scale name 'Nonesuch'");
+    expect(message).toContain("Valid scales: Major");
+    expect(message).toContain("Do not substitute a different scale");
+
+    await sleep(100);
+    const after = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: {},
+    });
+
+    expect(parseToolResult<ReadResult>(after).tempo).toBe(originalTempo);
+  });
+
   it("creates, renames, and deletes locators", async () => {
     // Locator IDs are positional and assignment only sticks against real Live,
     // so this exercises the full create/rename/delete cycle end-to-end. The set

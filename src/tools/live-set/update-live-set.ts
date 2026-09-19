@@ -36,6 +36,7 @@ import {
   applyScale,
   applyTempo,
   applyTimeSignature,
+  parseScale,
 } from "./helpers/tempo-and-scale-updates.ts";
 
 interface UpdateLiveSetArgs {
@@ -114,6 +115,10 @@ export async function updateLiveSet(
   const parsedTimeSignature =
     timeSignature != null ? parseTimeSignature(timeSignature) : null;
 
+  // The scale covers the whole call, so one we can't read is refused here too,
+  // with the Set untouched. An empty string means disable, not a bad scale.
+  const parsedScale = scale == null || scale === "" ? null : parseScale(scale);
+
   validateTempo(tempo);
 
   if (tempo != null) {
@@ -125,38 +130,25 @@ export async function updateLiveSet(
   }
 
   if (scale != null) {
-    const respelledRoot = applyScale(liveSet, scale, result);
+    const respelledRoot = applyScale(liveSet, parsedScale, result);
+    const meta = [
+      parsedScale == null
+        ? "Scale disabled for selected clips and defaults for new clips."
+        : "Scale applied to selected clips and defaults for new clips.",
+    ];
 
-    // applyScale warns and skips invalid input without setting result.scale.
-    // result.scale === "" means the scale was DISABLED (not applied), so the
-    // note must describe that distinctly rather than claiming a scale was
-    // applied.
-    if (result.scale != null) {
-      result.$meta ??= [];
-
-      const meta = result.$meta as string[];
-
+    // Without this, a model that asked for F# sees Gb come back and retries,
+    // thinking the write failed.
+    if (respelledRoot != null) {
       meta.push(
-        result.scale === ""
-          ? "Scale disabled for selected clips and defaults for new clips."
-          : "Scale applied to selected clips and defaults for new clips.",
+        `Scale roots are spelled with flats, so ${respelledRoot.requestedRoot} comes back as ${respelledRoot.storedRoot} — same scale, set correctly.`,
       );
-
-      // Without this, a model that asked for F# sees Gb come back and retries,
-      // thinking the write failed.
-      if (respelledRoot != null) {
-        meta.push(
-          `Scale roots are spelled with flats, so ${respelledRoot.requestedRoot} comes back as ${respelledRoot.storedRoot} — same scale, set correctly.`,
-        );
-      }
     }
+
+    result.$meta = meta;
   }
 
-  // Include scalePitches only when a non-empty scale was actually applied
-  // (result.scale is unset when applyScale skipped invalid input).
-  const shouldIncludeScalePitches = result.scale != null && result.scale !== "";
-
-  if (shouldIncludeScalePitches) {
+  if (parsedScale != null) {
     const rootNote = liveSet.getProperty("root_note") as number;
     const scaleIntervals = liveSet.getProperty("scale_intervals") as number[];
 

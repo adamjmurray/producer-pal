@@ -203,23 +203,24 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual(D_MAJOR_RESULT);
   });
 
-  it("should warn and skip an invalid scale without throwing", async () => {
-    // Mirrors the update-tool contract: invalid scale is skipped, not thrown,
-    // so other updates in the same call still apply and no scale meta/pitches
-    // are reported.
+  it("refuses a scale it can't read, naming what Live accepts", async () => {
     for (const scale of ["invalid", "H Major", "C Foo", "Major"]) {
-      const result = await updateLiveSet({ scale });
-
-      expect(result).toStrictEqual({ id: "live_set_id" });
-      expect(liveSet.set).not.toHaveBeenCalledWith("scale_mode", 1);
+      await expect(updateLiveSet({ scale })).rejects.toThrow(
+        /do not substitute a different scale/i,
+      );
     }
+
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
-  it("should apply tempo even when the scale in the same call is invalid", async () => {
-    const result = await updateLiveSet({ tempo: 120, scale: "bad" });
+  it("writes nothing else in the call when the scale can't be read", async () => {
+    // The scale covers the whole call, so a partial result the model may read
+    // as a whole one is worse than a refusal it can retry.
+    await expect(
+      updateLiveSet({ tempo: 120, timeSignature: "6/8", scale: "bad" }),
+    ).rejects.toThrow("Scale must be in format 'Root ScaleName'");
 
-    expect(liveSet.set).toHaveBeenCalledWith("tempo", 120);
-    expect(result).toStrictEqual({ id: "live_set_id" });
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
   it("should update scale with different root note", async () => {
@@ -271,10 +272,6 @@ describe("updateLiveSet", () => {
     const disabled = await updateLiveSet({ scale: "" });
 
     expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
-
-    const invalid = await updateLiveSet({ scale: "H Major" });
-
-    expect(invalid.$meta).toBeUndefined();
   });
 
   it("should handle case insensitive scale input and normalize the output", async () => {

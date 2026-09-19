@@ -8,8 +8,7 @@ import {
   numberToPitchClass,
   pitchClassToNumber,
 } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
+import { SCALE_REFUSAL, VALID_SCALE_NAMES } from "#src/tools/constants.ts";
 import {
   type PublishedValue,
   differsAtPublishedResolution,
@@ -24,6 +23,16 @@ const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>
 const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
   name.toLowerCase(),
 );
+
+/** A scale string Live can hold, read out of the caller's spelling. */
+export interface ParsedScale {
+  /** The root's canonical spelling, which keeps the caller's sharp or flat */
+  scaleRoot: string;
+  /** The scale name as Live spells it */
+  scaleName: string;
+  /** The root's pitch class, which is all Live stores */
+  scaleRootNumber: number;
+}
 
 /**
  * Apply tempo to live set, with validation. Reported only when Live kept a
@@ -74,9 +83,9 @@ export function applyTimeSignature(
 }
 
 /**
- * Apply scale to live set, with validation
+ * Apply a scale to the live set, or disable it.
  * @param liveSet - The live_set object
- * @param scale - Scale string (e.g., "C Major") or empty string to disable
+ * @param parsed - The scale, already read by parseScale, or null to disable it
  * @param result - Result object to update
  * @param result.scale - Scale property to set
  * @returns Both root spellings when the root is reported under a different name
@@ -84,37 +93,17 @@ export function applyTimeSignature(
  */
 export function applyScale(
   liveSet: LiveAPI,
-  scale: string,
+  parsed: ParsedScale | null,
   result: { scale?: string },
 ): { requestedRoot: string; storedRoot: string } | null {
-  if (scale === "") {
+  if (parsed == null) {
     liveSet.set("scale_mode", 0);
     result.scale = "";
 
     return null;
   }
 
-  // Warn and skip on an invalid scale rather than throwing, so other updates in
-  // the same call (e.g. tempo) still apply and the tool returns a partial result
-  // instead of a hard error. parseScale's messages are already descriptive.
-  let parsed: { scaleRoot: string; scaleName: string };
-
-  try {
-    parsed = parseScale(scale);
-  } catch (error) {
-    console.warn(error instanceof Error ? error.message : String(error));
-
-    return null;
-  }
-
-  const { scaleRoot, scaleName } = parsed;
-  const scaleRootNumber = pitchClassToNumber(scaleRoot);
-
-  if (scaleRootNumber == null) {
-    console.warn(`invalid scale root: ${scaleRoot}`);
-
-    return null;
-  }
+  const { scaleRoot, scaleName, scaleRootNumber } = parsed;
 
   liveSet.set("root_note", scaleRootNumber);
   liveSet.set("scale_name", scaleName);
@@ -135,20 +124,20 @@ export function applyScale(
 }
 
 /**
- * Parses a combined scale string like "C Major" into root note and scale name
+ * Reads a combined scale string like "C Major". Refuses one it can't read: the
+ * scale covers the whole call, so a value nothing can be done with is an error
+ * rather than a warning attached to a result that reads as a success.
  * @param scaleString - Scale in format "Root ScaleName"
- * @returns Parsed components
+ * @returns The root's spelling and pitch class, and the scale name Live stores
+ * @throws Error naming what Live accepts when the string isn't one of them
  */
-export function parseScale(scaleString: string): {
-  scaleRoot: string;
-  scaleName: string;
-} {
+export function parseScale(scaleString: string): ParsedScale {
   const trimmed = scaleString.trim();
   const parts = trimmed.split(/\s+/);
 
   if (parts.length < 2) {
     throw new Error(
-      `Scale must be in format 'Root ScaleName' (e.g., 'C Major'), got: ${scaleString}`,
+      `Scale must be in format 'Root ScaleName' (e.g., 'C Major'), got: ${scaleString}. ${SCALE_REFUSAL}`,
     );
   }
 
@@ -157,10 +146,12 @@ export function parseScale(scaleString: string): {
   const scaleName = scaleNameParts.join(" ");
   const scaleNameLower = scaleName.toLowerCase();
   const canonicalRoot = canonicalizeScaleRoot(scaleRoot);
+  const scaleRootNumber =
+    canonicalRoot == null ? null : pitchClassToNumber(canonicalRoot);
 
-  if (canonicalRoot == null) {
+  if (canonicalRoot == null || scaleRootNumber == null) {
     throw new Error(
-      `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
+      `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}. ${SCALE_REFUSAL}`,
     );
   }
 
@@ -168,13 +159,14 @@ export function parseScale(scaleString: string): {
 
   if (scaleNameIndex === -1) {
     throw new Error(
-      `Invalid scale name '${scaleName}'. Valid scales: ${VALID_SCALE_NAMES.join(", ")}`,
+      `Invalid scale name '${scaleName}'. Valid scales: ${VALID_SCALE_NAMES.join(", ")}. ${SCALE_REFUSAL}`,
     );
   }
 
   return {
     scaleRoot: canonicalRoot,
     scaleName: VALID_SCALE_NAMES[scaleNameIndex] as string,
+    scaleRootNumber,
   };
 }
 
