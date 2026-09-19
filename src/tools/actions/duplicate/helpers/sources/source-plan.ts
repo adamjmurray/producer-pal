@@ -7,13 +7,12 @@
 // single-source logic once per source, in order, and concatenates — so the only
 // thing to settle here is how the destinations are shared out.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import {
-  pairValues,
-  type PairLabels,
-} from "#src/tools/shared/validation/lists/list-pairing.ts";
+  requireDestinationPerSource,
+  requireSameLength,
+} from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   namedTargets,
   type NamedTarget,
@@ -53,9 +52,8 @@ interface SourcePlanArgs {
   arrangementStart: string | undefined;
   /**
    * Whether the copies land on the arrangement, where a destination is a
-   * position rather than a slot. Both spellings of one — a positioned `toPath`,
-   * and a bare track with `arrangementStart` — pair across the sources the same
-   * way.
+   * position rather than a slot. Both spellings — a positioned `toPath`, and a
+   * bare track with `arrangementStart` — pair across the sources the same way.
    */
   onArrangement: boolean;
   /** How a `path` entry resolves, when the type's own lookup isn't it: a track
@@ -97,21 +95,23 @@ export function planSources({
     ];
   }
 
+  // The params that named the sources, for an error about how many there are.
+  const named = [...new Set(sources.map((source) => source.named.param))].join(
+    "/",
+  );
+
   // toSlot only ever named a clip slot, so a call using it lands in the session
   // however the position params read — and shares its destinations out below.
   if (onArrangement && !pathNamesSomething(toSlot)) {
-    return arrangementShares(sources, toPath, arrangementStart);
+    return arrangementShares(sources, toPath, arrangementStart, named);
   }
 
   // toPath and toSlot can't both name a destination (resolveClipDestinations
   // refuses that), so at most one of these does any splitting.
-  const paths = shareDestinations(toPath, sources.length, "toPath");
-  const slots = shareDestinations(toSlot, sources.length, "toSlot");
-  const shared = Math.min(paths.length, slots.length);
+  const paths = shareDestinations(toPath, sources, "toPath", named);
+  const slots = shareDestinations(toSlot, sources, "toSlot", named);
 
-  // A source with no destination left has nowhere to copy to, so it drops out
-  // rather than piling onto a slot another source already claimed.
-  return sources.slice(0, shared).map((source, i) => ({
+  return sources.map((source, i) => ({
     ...source,
     toPath: paths[i],
     toSlot: slots[i],
@@ -122,9 +122,8 @@ export function planSources({
 /**
  * Resolves where each source's clip copies go.
  *
- * Sources that name the same destination share one resolution, so the warnings
- * it raises — a clip slot that contradicts arrangementStart, an entry that
- * named nothing — are raised once for the call rather than once per source.
+ * Sources naming the same destination share one resolution, so the warnings it
+ * raises are raised once for the call rather than once per source.
  * @param sources - The shares to resolve, in order
  * @param hasArrangementParams - Whether arrangementStart was given
  * @returns One destination set per source, in the same order
@@ -165,38 +164,29 @@ interface SourceTarget {
 /**
  * Shares an arrangement destination out across the sources: one entry covers
  * them all, a list gives one per source in order, and nothing cycles
- * (ADR-0031). Both params that can carry the destination pair the same way, so
- * `toPath: "t0[1|1],t0[17|1]"` and `toPath: "t0"` with
- * `arrangementStart: "1|1,17|1"` put the same source at the same bar.
+ * (ADR-0031). Both params that can carry it pair the same way, so
+ * `toPath: "t0[1|1],t0[17|1]"` matches `toPath: "t0"` with `"1|1,17|1"`.
  * @param sources - The sources, in call order
  * @param toPath - Destination path(s)
  * @param arrangementStart - Position(s), already resolved to bar|beat
- * @returns One share per source the destinations reached
+ * @param named - The params that named the sources, for an error message
+ * @returns One share per source
  */
 function arrangementShares(
   sources: SourceTarget[],
   toPath: string | undefined,
   arrangementStart: string | undefined,
+  named: string,
 ): SourceShare[] {
-  const paths = perSource(pathEntries(toPath, "toPath"), sources.length, {
-    param: "toPath",
-    noun: "destination",
-    item: "source",
-    shortfall: "were not copied",
-  });
+  const count = { param: named, count: sources.length };
+  const paths = perSource(pathEntries(toPath, "toPath"), "toPath", count);
   const starts = perSource(
     targetEntries(arrangementStart, "arrangementStart"),
-    sources.length,
-    {
-      param: "arrangementStart",
-      noun: "position",
-      item: "source",
-      shortfall: "were not copied",
-    },
+    "arrangementStart",
+    count,
   );
-  const shared = Math.min(paths.length, starts.length);
 
-  return sources.slice(0, shared).map((source, i) => ({
+  return sources.map((source, i) => ({
     ...source,
     toPath: paths[i],
     toSlot: undefined,
@@ -205,26 +195,30 @@ function arrangementShares(
 }
 
 /**
- * One list param's share per source, warning when the counts disagree.
+ * One list param's share per source: one entry covers them all, a list names
+ * one each, and any other count is refused. An arrangement position holds any
+ * number of clips, so a lone entry broadcasts here where a slot's can't.
  * @param entries - The param's entries, in call order
- * @param sources - How many sources the call copies
- * @param labels - What to call the param and its entries in a warning
- * @returns One entry per source the param reached, shorter when it ran out
+ * @param param - The param's name, for an error message
+ * @param sources - What named the sources, and how many there are
+ * @returns One entry per source
  */
 function perSource(
   entries: string[],
-  sources: number,
-  labels: PairLabels,
+  param: string,
+  sources: { param: string; count: number },
 ): (string | undefined)[] {
   // An unsent param reaches every source: a clip with no toPath lands on its
   // own track, and a position can come from toPath instead of arrangementStart.
   if (entries.length === 0) {
-    return Array.from({ length: sources });
+    return Array.from({ length: sources.count });
   }
 
-  // A short list pads with nulls, and only at the end, so dropping them leaves
-  // the sources it reached — the rest have nowhere to go.
-  return pairValues(entries, sources, labels).filter((entry) => entry != null);
+  requireSameLength({ param, count: entries.length }, sources);
+
+  return entries.length === 1
+    ? Array.from({ length: sources.count }, () => entries[0])
+    : entries;
 }
 
 /**
@@ -232,10 +226,9 @@ function perSource(
  * objects, so they add up. Each keeps the spelling the caller wrote, which is
  * how an entry names a source that has no destination of its own.
  *
- * A path that names nothing refuses the call. `delete` keeps such a miss and
- * reports the object undeleted, but a duplicate leaves copies behind, and every
- * one already made is something the caller has to clean up by hand before
- * retrying — so nothing starts until every source is known (ADR-0035).
+ * A path that names nothing refuses the call. `delete` reports such a miss as
+ * undeleted, but a duplicate leaves copies behind for the caller to clean up by
+ * hand, so nothing starts until every source is known (ADR-0035).
  * @param type - Object type to duplicate, which says how a path resolves
  * @param id - Source id(s), comma-separated for multiple
  * @param path - Source path(s), comma-separated for multiple
@@ -272,47 +265,37 @@ function sourceTargets(
  * Shares a slot-shaped destination list out across the sources: each source
  * takes the same number of destinations, in the order they were written.
  *
- * A destination that holds one object can't be broadcast — every source after
- * the first would overwrite the one before it — so the list has to name as many
- * places as the call makes copies. That is already the rule for one source; a
- * source list only makes it bite more often.
+ * A destination that holds one object can't be broadcast — the next source
+ * would overwrite the last — so a list that doesn't divide evenly is refused
+ * before the first copy, which the caller would have to undo by hand
+ * (ADR-0035).
  * @param value - The raw destination param, comma-separated for multiple
- * @param sources - How many sources the call copies
+ * @param sources - The sources, in call order
  * @param label - Param name for messages
- * @returns One share per source, or fewer when there weren't enough to go round
+ * @param named - The params that named the sources, for an error message
+ * @returns One share per source
  */
 function shareDestinations(
   value: string | undefined,
-  sources: number,
+  sources: SourceTarget[],
   label: string,
+  named: string,
 ): (string | undefined)[] {
   const entries = pathEntries(value, label);
 
   // Nothing to share out. The branch decides whether it can do without one.
   if (entries.length === 0) {
-    return Array.from({ length: sources });
+    return Array.from({ length: sources.length });
   }
 
-  if (entries.length < sources) {
-    console.warn(
-      `${label} names ${entries.length} destination(s) for ${sources} sources, ` +
-        `and each needs its own — the last ${sources - entries.length} source(s) were skipped`,
-    );
+  requireDestinationPerSource(
+    { param: label, count: entries.length },
+    { param: named, count: sources.length },
+  );
 
-    return entries;
-  }
+  const each = entries.length / sources.length;
 
-  const each = Math.floor(entries.length / sources);
-  const spare = entries.length % sources;
-
-  if (spare > 0) {
-    console.warn(
-      `the last ${spare} ${label} destination(s) went unused — ` +
-        `${sources} sources take ${each} each`,
-    );
-  }
-
-  return Array.from({ length: sources }, (_, i) =>
+  return Array.from({ length: sources.length }, (_, i) =>
     entries.slice(i * each, (i + 1) * each).join(","),
   );
 }

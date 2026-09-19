@@ -72,7 +72,10 @@ list in the call — and keeps ADR-0031's warning.
 Two tools can't check their raw args. update-clip's `id` and `path` name
 different clips and add up, so it passes the sum as a count and never compares
 the two. duplicate shares its destinations out across the sources first, so its
-check (`requireSameLength`) runs where the copies are planned.
+check (`requireSameLength`) runs where the copies are planned. A clip slot,
+device or pad holds one object, so duplicate's destination list never
+broadcasts: `requireDestinationPerSource` refuses one that doesn't divide evenly
+across the sources, before the first copy is made.
 
 See ADR-0035.
 

@@ -61,7 +61,7 @@ A clip another clip in the same call was moved onto comes back with \`deleted: t
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 Duplicating a *scene* to the arrangement uses \`toPath: "[5|1]"\` — a scene copy lands a clip on every track, so it has no lane of its own to name.
 
-duplicate's \`id\` takes a list, copying each source in turn: \`count\` applies to every one. One destination covers every source too, so \`id: "c1,c2,c3"\` with \`toPath: "[5|1]"\` drops all three at bar 5 on their own tracks; a list pairs one destination per source, in order, and never cycles — \`toPath: "t0[1|1],t0[17|1],t0[33|1]"\` gives each source its own bar, and so does \`toPath: "t0"\` with \`arrangementStart: "1|1,17|1,33|1"\`. \`name\`/\`color\` and \`clip.index\` count across every copy, not per source.
+duplicate's \`id\` takes a list, copying each source in turn: \`count\` applies to every one. One arrangement position covers every source too, so \`id: "c1,c2,c3"\` with \`toPath: "[5|1]"\` drops all three at bar 5 on their own tracks; a list pairs one destination per source, in order, and never cycles — \`toPath: "t0[1|1],t0[17|1],t0[33|1]"\` gives each source its own bar, and so does \`toPath: "t0"\` with \`arrangementStart: "1|1,17|1,33|1"\`. A clip slot holds one clip, so it never covers more than one source: give each source its own, or the call is refused. \`name\`/\`color\` and \`clip.index\` count across every copy, not per source.
 
 ### Take Lanes (Arrangement Variations)
 

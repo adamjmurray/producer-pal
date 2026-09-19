@@ -13,7 +13,6 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
-  parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
@@ -91,6 +90,20 @@ describe("ppal-duplicate with a source list", () => {
         arguments: { id, include: ["notes"] },
       }),
     );
+  }
+
+  /**
+   * Assert a slot is still empty, after a call that should have changed
+   * nothing.
+   * @param path - The clip slot to read
+   */
+  async function expectNoClipAt(path: string): Promise<void> {
+    const slot = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path },
+    });
+
+    expect(JSON.stringify(slot)).toContain(`no clip at ${path}`);
   }
 
   it("gives each source its own clip slot", async () => {
@@ -301,36 +314,45 @@ describe("ppal-duplicate with a source list", () => {
     await sleep(100);
 
     // Nothing ran: the id source did not get copied either.
-    const slot = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { path: `t${EMPTY_MIDI_TRACK}/s6` },
-    });
-
-    expect(JSON.stringify(slot)).toContain(
-      `no clip at t${EMPTY_MIDI_TRACK}/s6`,
-    );
+    await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
   });
 
   // A clip slot holds one clip, so the second source can't be broadcast onto
-  // the slot the first one claimed.
-  it("warns and skips the sources a short toPath doesn't reach", async () => {
+  // the slot the first one claimed. Nothing has run yet, so the call is refused
+  // whole rather than leaving a copy behind for the caller to clean up.
+  it("refuses a toPath too short for the sources", async () => {
     const [firstId, secondId] = await createSources();
 
-    const { data, warnings } = parseToolResultWithWarnings<DuplicateClipResult>(
-      await duplicateClips({
-        id: `${firstId},${secondId}`,
-        toPath: `t${EMPTY_MIDI_TRACK}/s6`,
-      }),
-    );
+    const result = await duplicateClips({
+      id: `${firstId},${secondId}`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s6`,
+    });
 
-    expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
-    expect(warnings.join("\n")).toContain(
-      "toPath names 1 destination(s) for 2 sources",
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 1 destination but id names 2 sources",
     );
 
     await sleep(100);
 
-    // The first source landed; the second was skipped rather than pasted over it.
-    expect((await readClip(data.id)).notes).toContain("C3");
+    // Not even the first source was copied.
+    await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+  });
+
+  // The other half of the same mismatch: destinations that don't divide across
+  // the sources leave one naming a place no copy goes.
+  it("refuses destinations that don't divide across the sources", async () => {
+    const [firstId, secondId] = await createSources();
+
+    const result = await duplicateClips({
+      id: `${firstId},${secondId}`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s6,t${CHILD_TRACK}/s6,t${EMPTY_MIDI_TRACK}/s7`,
+    });
+
+    expect(JSON.stringify(result)).toContain(
+      "toPath names 3 destinations but id names 2 sources",
+    );
+
+    await sleep(100);
+    await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
   });
 });

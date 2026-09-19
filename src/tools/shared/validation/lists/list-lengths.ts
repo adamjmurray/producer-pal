@@ -40,10 +40,9 @@ export interface ListArg {
  * Refuse a call whose comma-separated params name different numbers of entries.
  *
  * A param naming one entry covers every item and never conflicts, so only lists
- * of 2 or more are compared. Between two real lists a length mismatch has no
- * reading that isn't a mistake: the shorter one leaves items unset and the
- * longer one names items that aren't there. Nothing has run yet, so the model
- * retries with a corrected call and loses no work.
+ * of 2 or more are compared. Between two real lists a mismatch has no reading
+ * that isn't a mistake: one leaves items unset, the other names items that
+ * aren't there. Nothing has run yet, so a corrected retry loses no work.
  * @param args - The list params this call accepts, in the order to report them
  * @throws Error when two comma-bearing params name different counts
  */
@@ -82,8 +81,7 @@ export function validateListLengths(args: ListArg[]): void {
  *
  * For the lists a whole-call check can't reach: duplicate shares its
  * destinations out across the sources first, so the counts that have to agree
- * are the per-source ones, not the raw params. Still pre-flight — it runs while
- * the copies are being planned, before any is made.
+ * are the per-source ones, not the raw params. Still before any copy is made.
  * @param a - The first list's param name and entry count
  * @param b - The second list's param name and entry count
  * @throws Error when both name more than one entry and the counts differ
@@ -104,10 +102,33 @@ export function requireSameLength(
 }
 
 /**
- * Whether an arg is a list at all. A value with no comma in it covers every
- * item and never conflicts. One with a comma is a list even when a trailing
- * comma leaves it a single entry — "A," against two items is a short list, not
- * one value covering both.
+ * Refuse a destination list that can't be shared out evenly across the sources:
+ * a destination holds one copy, so a lone one never broadcasts the way a name
+ * does. Still before any copy is made.
+ * @param destinations - The destination param's name and entry count
+ * @param sources - What named the sources, and how many there are
+ * @throws Error when the destinations don't divide evenly across the sources
+ */
+export function requireDestinationPerSource(
+  destinations: { param: string; count: number },
+  sources: { param: string; count: number },
+): void {
+  if (destinations.count % sources.count === 0) {
+    return;
+  }
+
+  throw new Error(
+    `${destinations.param} names ${plural(destinations.count, "destination")} ` +
+      `but ${sources.param} names ${plural(sources.count, "source")}. A ` +
+      `destination holds one copy, so name one per source, or the same ` +
+      `number for each.`,
+  );
+}
+
+/**
+ * Whether an arg is a list at all. A value with no comma covers every item and
+ * never conflicts. One with a comma is a list even when a trailing comma leaves
+ * it a single entry — "A," against two items is a short list, not one value.
  * @param arg - The list param
  * @returns True when the arg has to agree with the other lists
  */

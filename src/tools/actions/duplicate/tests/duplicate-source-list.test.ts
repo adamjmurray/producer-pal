@@ -204,43 +204,56 @@ describe("duplicate - a list of sources", () => {
       ]);
     });
 
-    // A slot holds one clip, so a source with no slot of its own is dropped
-    // rather than written over the slot another source already claimed.
-    it("skips the sources a short toPath doesn't reach", async () => {
+    // One source is the whole call, so the per-source rule never applies to it
+    // and count keeps working the way it always did.
+    it("leaves a lone source with one destination alone", async () => {
       registerTwoSlotSources([[2, 0]]);
 
       const result = await duplicate({
         type: "clip",
-        id: "clipA,clipB",
+        id: "clipA",
+        count: 3,
         toPath: "t2/s0",
       });
 
       expect(result).toStrictEqual({ id: "clipA-in-t2s0", path: "t2/s0" });
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "toPath names 1 destination(s) for 2 sources, and each needs its own",
-        ),
+      expect(capturedWarnings().join("\n")).toContain(
+        "count ignored for clips",
       );
     });
 
-    it("warns about the destinations left over", async () => {
+    // A slot holds one clip, so the second source can't share the first's.
+    // Nothing has been copied yet, and every copy that had landed would be the
+    // caller's to clean up, so the call is refused rather than trimmed.
+    it("refuses a toPath too short for the sources", async () => {
+      registerTwoSlotSources([[2, 0]]);
+
+      await expect(
+        duplicate({ type: "clip", id: "clipA,clipB", toPath: "t2/s0" }),
+      ).rejects.toThrow(
+        "toPath names 1 destination but id names 2 sources. A destination " +
+          "holds one copy, so name one per source, or the same number for each.",
+      );
+      // Nothing ran: the source with a slot of its own wasn't copied either.
+      expect(
+        registerMockObject("live_set/tracks/0/clip_slots/0", {}).call,
+      ).not.toHaveBeenCalledWith("duplicate_clip_to", expect.anything());
+    });
+
+    it("refuses destinations that don't divide across the sources", async () => {
       registerTwoSlotSources([
         [2, 0],
         [3, 0],
         [4, 0],
       ]);
 
-      await duplicate({
-        type: "clip",
-        id: "clipA,clipB",
-        toPath: "t2/s0,t3/s0,t4/s0",
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "the last 1 toPath destination(s) went unused — 2 sources take 1 each",
-        ),
-      );
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          toPath: "t2/s0,t3/s0,t4/s0",
+        }),
+      ).rejects.toThrow("toPath names 3 destinations but id names 2 sources");
     });
 
     it("counts names and colors across every copy, not per source", async () => {
@@ -435,52 +448,38 @@ describe("duplicate - a list of sources", () => {
       ]);
     });
 
-    // Neither list cycles, so a count that doesn't match is a mistake worth a
-    // word: the copies the two lists agree on are made, and the rest are not.
-    it("warns and skips the sources a short toPath doesn't reach", async () => {
+    // Neither list cycles, so a count matching neither one source nor all of
+    // them has no reading. Nothing has run, so the call is refused whole.
+    it("refuses a toPath too short for the sources", async () => {
       registerArrangementSources("clipA", "clipB", "clipC");
       registerTrackThatClearsOnDup(3, { has_midi_input: 1 });
 
-      const result = await duplicate({
-        type: "clip",
-        id: "clipA,clipB,clipC",
-        toPath: "t3[5|1],t3[9|1]",
-      });
-
-      expect(result).toStrictEqual([
-        {
-          id: "live_set tracks 3 arrangement_clips 0",
-          path: "t3[5|1]",
-        },
-        {
-          id: "live_set tracks 3 arrangement_clips 1",
-          path: "t3[9|1]",
-        },
-      ]);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "toPath: 2 destinations for 3 sources; the sources past the last " +
-            "destination were not copied",
-        ),
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB,clipC",
+          toPath: "t3[5|1],t3[9|1]",
+        }),
+      ).rejects.toThrow(
+        "toPath names 2 entries but id names 3 entries. Comma-separated " +
+          "params must name the same number of entries, or one value that " +
+          "covers them all.",
       );
     });
 
-    it("warns about the positions left over", async () => {
+    it("refuses more positions than there are sources", async () => {
       registerArrangementSources("clipA", "clipB");
       registerTrackThatClearsOnDup(2, { has_midi_input: 1 });
 
-      await duplicate({
-        type: "clip",
-        id: "clipA,clipB",
-        toPath: "t2",
-        arrangementStart: "5|1,9|1,13|1",
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "arrangementStart: 3 positions for 2 sources; the extra positions " +
-            "went unused",
-        ),
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          toPath: "t2",
+          arrangementStart: "5|1,9|1,13|1",
+        }),
+      ).rejects.toThrow(
+        "arrangementStart names 3 entries but id names 2 entries",
       );
     });
 

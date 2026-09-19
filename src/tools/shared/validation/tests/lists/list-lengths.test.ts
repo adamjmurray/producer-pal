@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countListEntries,
+  requireDestinationPerSource,
   requireSameLength,
   validateListLengths,
 } from "#src/tools/shared/validation/lists/list-lengths.ts";
@@ -137,6 +138,47 @@ describe("requireSameLength", () => {
         { param: "arrangementStart", count: 3 },
       ),
     ).toThrow("toPath names 2 entries but arrangementStart names 3 entries.");
+  });
+});
+
+describe("requireDestinationPerSource", () => {
+  it("takes one destination per source, and a whole number each", () => {
+    expect(() =>
+      requireDestinationPerSource(
+        { param: "toPath", count: 3 },
+        { param: "id", count: 3 },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      requireDestinationPerSource(
+        { param: "toPath", count: 6 },
+        { param: "id", count: 3 },
+      ),
+    ).not.toThrow();
+  });
+
+  // A destination holds one copy, so a lone one never broadcasts the way a
+  // name does — that is the whole difference from requireSameLength.
+  it("refuses a lone destination for several sources", () => {
+    expect(() =>
+      requireDestinationPerSource(
+        { param: "toPath", count: 1 },
+        { param: "id/path", count: 2 },
+      ),
+    ).toThrow(
+      "toPath names 1 destination but id/path names 2 sources. A destination " +
+        "holds one copy, so name one per source, or the same number for each.",
+    );
+  });
+
+  it("refuses destinations that don't divide evenly", () => {
+    expect(() =>
+      requireDestinationPerSource(
+        { param: "toSlot", count: 5 },
+        { param: "path", count: 2 },
+      ),
+    ).toThrow("toSlot names 5 destinations but path names 2 sources.");
   });
 });
 
