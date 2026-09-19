@@ -96,11 +96,14 @@ export function resolveArrangementParams<
  * The loop fields a playback result carries.
  *
  * A result never says back what the call told it, and it can't check: a written
- * `live_set loop` answers a read in the same request with the value from before
- * the write. So a call that wrote the loop reports only what the caller didn't
- * say — the end that slid because they named the other, and the bounds a
- * play-arrangement will loop over. A call that wrote none of it reports the
- * loop that governs the playback it just started, read off the Live Set.
+ * `live_set loop` answers a read with the value from before the write until
+ * about 25 ms after the request returns, and V8 can't wait for it. So a call
+ * that wrote the loop reports only what the caller didn't say — the end that
+ * slid because they named the other, and the bounds a play-arrangement will
+ * loop over. A call that wrote none of it reports the loop that governs the
+ * playback it just started, read off the Live Set. That read is stale only when
+ * another request wrote the loop inside the window, which takes a parallel
+ * tool call — a model round-trip is far longer, so it's left alone.
  * @param liveSet - The live_set LiveAPI object
  * @param action - The playback action that just ran
  * @param timeline - The timeline params, with locators already folded in
