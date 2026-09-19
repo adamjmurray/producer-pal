@@ -9,21 +9,18 @@
  *
  * Usage: npm run remote-script:install
  *
- * Reads ABLETON_USER_LIBRARY from .env (see .env.example). Live only scans
+ * Reads ABLETON_USER_LIBRARY from .env (see .env.example). The device installs
+ * the same files from its own bundle; this is the dev shortcut. Live only scans
  * Remote Scripts at startup, so restart Live afterwards.
  */
 
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
-import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+  RemoteScriptInstallError,
+  installRemoteScript,
+} from "#src/mcp-server/rpc/remote-script/remote-script-install.ts";
 
-// Live imports the script by folder name, so it must be a valid Python name.
-const SCRIPT_NAME = "Producer_Pal";
-
-const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const sourceDir = join(rootDir, "remote-script", SCRIPT_NAME);
-const userLibrary = process.env.ABLETON_USER_LIBRARY?.replace(/^~/, homedir());
+// installRemoteScript expands a leading "~" and checks the folder.
+const userLibrary = process.env.ABLETON_USER_LIBRARY;
 
 if (!userLibrary) {
   console.error(
@@ -32,22 +29,19 @@ if (!userLibrary) {
   process.exit(1);
 }
 
-if (!existsSync(userLibrary)) {
-  console.error(`ABLETON_USER_LIBRARY does not exist: ${userLibrary}`);
+try {
+  const { path } = installRemoteScript(userLibrary);
+
+  console.log(`Installed to ${path}`);
+} catch (error) {
+  console.error(
+    error instanceof RemoteScriptInstallError
+      ? `ABLETON_USER_LIBRARY: ${error.message}`
+      : String(error),
+  );
   process.exit(1);
 }
 
-const destDir = join(userLibrary, "Remote Scripts", SCRIPT_NAME);
-
-// Replace the whole folder so removed modules and stale bytecode don't linger.
-rmSync(destDir, { recursive: true, force: true });
-mkdirSync(destDir, { recursive: true });
-cpSync(sourceDir, destDir, {
-  recursive: true,
-  filter: (source) => basename(source) !== "__pycache__",
-});
-
-console.log(`Installed to ${destDir}`);
 console.log(
   "If you haven't already, enable the Producer Pal control script in Live's MIDI settings.",
 );

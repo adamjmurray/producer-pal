@@ -17,7 +17,7 @@ import {
   VoiceSettings,
   type VoiceSettingsProps,
 } from "./helpers/VoiceSettings";
-import { TestConnectionButton } from "./TestConnectionButton";
+import { TestConnectionButton } from "./helpers/TestConnectionButton";
 
 /** Connection settings plus every prop forwarded verbatim to `VoiceSettings`. */
 interface ConnectionTabProps extends VoiceSettingsProps {

@@ -10,15 +10,20 @@ To open or create a Set with Producer Pal in it, use the
 
 ## Install
 
-Set `ABLETON_USER_LIBRARY` in `.env` (see `.env.example`), then:
+Users install from the Chat UI's **Settings → Remote Script** tab. See
+[the guide](https://producer-pal.org/guide/remote-script).
+
+From a checkout, set `ABLETON_USER_LIBRARY` in `.env` (see `.env.example`),
+then:
 
 ```sh
 npm run remote-script:install
 ```
 
-That replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart Live** (it
-only scans Remote Scripts at startup), then pick **Producer_Pal** under Settings
-→ Link, Tempo & MIDI → Control Surface. Leave Input and Output as None.
+Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
+Live** (it only scans Remote Scripts at startup), then pick **Producer_Pal**
+under Settings → Link, Tempo & MIDI → Control Surface. Leave Input and Output as
+None.
 
 The folder name must be a valid Python name: Live runs `import <folder>`, so a
 space breaks it.
@@ -80,7 +85,8 @@ Plugins aren't flagged as devices by Live, so `plugin` lists everything.
 
 ### `GET /ping`
 
-Liveness + Live version.
+Liveness, Live's version, and this script's (`script_version`, from
+`version.py`, which the build stamps with the Producer Pal release).
 
 ### `GET /list`
 

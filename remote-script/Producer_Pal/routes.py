@@ -6,6 +6,7 @@
 """What the HTTP routes do. Every function here runs on Live's main thread."""
 
 from . import browser
+from .version import VERSION
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
 # use MIDI: Live refuses an instrument on an audio track and makes a track of
@@ -52,7 +53,7 @@ def ping(bridge, params):
         app.get_minor_version(),
         app.get_bugfix_version(),
     )
-    return {"ok": True, "live_version": version}
+    return {"ok": True, "live_version": version, "script_version": VERSION}
 
 
 def list_items(bridge, params):

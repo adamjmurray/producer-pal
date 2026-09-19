@@ -259,6 +259,22 @@ This is why the built-in skills blob — historically assembled in the V8
 picture: the override files are only readable from Node, so `buildSkills` runs
 where the filesystem lives and the result is injected into `ppal-connect`.
 
+### The embedded remote script
+
+The chat UI can install Live's Producer Pal remote script (`remote-script/`),
+and the device is a frozen `.amxd` with no repo to copy from. So the Python
+sources ride inside the MCP server bundle:
+`config/rolldown-plugin-embed-remote-script.mjs` replaces
+`src/mcp-server/rpc/remote-script/embedded-remote-script.ts` with the files
+written out as literals, and stamps `version.py` with `package.json`'s version
+so an installed copy reports what installed it. The checked-in module reads the
+same files off disk, which is what tests and the dev installer use.
+
+Installing is Node-side filesystem work like any other: `GET /remote-script`
+reports where Live's User Library is (read from its browser database), what is
+installed there, and what `/ping` says is running; `POST /remote-script/install`
+writes the folder.
+
 ### Per-request assembly
 
 Three settings vary per caller rather than per device. Each rides an HTTP

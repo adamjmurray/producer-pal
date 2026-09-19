@@ -151,21 +151,47 @@ export function remoteScriptRequest({
   });
 }
 
+/** What `/ping` reports. Versions are null on a script too old to send them. */
+export interface RemoteScriptPing {
+  running: boolean;
+  liveVersion: string | null;
+  scriptVersion: string | null;
+}
+
 /**
- * Whether the remote script is running. Never throws.
- * @returns True when it answered its ping
+ * Ask the remote script whether it's running, and which Live and script
+ * versions it is. Never throws.
+ * @returns The ping reply, all-null when nothing answered
  */
-export async function pingRemoteScript(): Promise<boolean> {
+export async function remoteScriptPing(): Promise<RemoteScriptPing> {
   try {
     const reply = await remoteScriptRequest({
       route: "/ping",
       timeoutMs: PING_TIMEOUT_MS,
     });
 
-    return reply.available && reply.status === 200 && reply.body.ok === true;
+    if (!reply.available || reply.status !== 200 || reply.body.ok !== true) {
+      return notRunning();
+    }
+
+    return {
+      running: true,
+      liveVersion: stringOrNull(reply.body.live_version),
+      scriptVersion: stringOrNull(reply.body.script_version),
+    };
   } catch {
-    return false;
+    return notRunning();
   }
+}
+
+/**
+ * Whether the remote script is running. Never throws.
+ * @returns True when it answered its ping
+ */
+export async function pingRemoteScript(): Promise<boolean> {
+  const ping = await remoteScriptPing();
+
+  return ping.running;
 }
 
 /**
@@ -180,6 +206,23 @@ export function replyError(reply: RemoteScriptAnswer): string {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * A ping reply for a remote script that isn't there.
+ * @returns The all-null reply
+ */
+function notRunning(): RemoteScriptPing {
+  return { running: false, liveVersion: null, scriptVersion: null };
+}
+
+/**
+ * Narrow a reply field to a string.
+ * @param value - The raw field
+ * @returns The string, or null when it isn't one
+ */
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
 
 /**
  * The remote script's port: PPAL_REMOTE_SCRIPT_PORT, else 3349. Read per call,

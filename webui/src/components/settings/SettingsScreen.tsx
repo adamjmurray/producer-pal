@@ -24,6 +24,7 @@ import {
 } from "./LockedSettingsNotice";
 import { PreferencesTab } from "./PreferencesTab";
 import { PresetsTab } from "./PresetsTab";
+import { RemoteScriptTab } from "./RemoteScriptTab";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
@@ -212,6 +213,8 @@ function SettingsTabContent(
           settingsConfigured={settings.settingsConfigured}
         />
       )}
+
+      {activeTab === "remote-script" && <RemoteScriptTab />}
 
       {activeTab === "preferences" && (
         <PreferencesTab

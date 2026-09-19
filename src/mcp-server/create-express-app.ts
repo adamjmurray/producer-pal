@@ -42,6 +42,7 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
+import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
 import { registerSkillsPreviewRoute } from "./routes/skills-preview-route.ts";
@@ -400,6 +401,7 @@ export function createExpressApp(): Express {
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
   registerSkillsPreviewRoute(app, () => config.tools);
+  registerRemoteScriptSetupRoutes(app);
   // Raw callLiveApi, not the enriched one: the briefing composes its own blocks
   // in worker order and must not inherit the user-facing connect enrichment.
   registerSubagentBriefingRoute(app, () => config, callLiveApi);
