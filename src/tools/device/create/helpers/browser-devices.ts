@@ -7,6 +7,7 @@
 // Producer Pal remote script loads each one from Live's browser onto a temp
 // track, and it moves from there to the path the call named.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
@@ -21,6 +22,12 @@ import { type ParamEntry } from "#src/tools/device/update/device-params-schema.t
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  type NamedTarget,
+  type TargetSkip,
+  skipEntry,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
+import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type CreateDeviceResult,
@@ -29,9 +36,7 @@ import {
   insertionPosition,
   insertRefusal,
   labelCreatedDevice,
-  requireCreatedDevices,
   resolveCreationTarget,
-  skipFailedPath,
 } from "./device-creation.ts";
 
 /** How often, and how many times, to look for the loaded device. */
@@ -41,51 +46,68 @@ interface BrowserDeviceArgs {
   item: BrowserItem;
   /** The device as the call named it, for errors and warnings */
   deviceName: string;
-  paths: string[];
+  targets: NamedTarget[];
   name: string | undefined;
   parsedNames: ListEntries | null;
   params: ParamEntry[] | undefined;
 }
 
 /**
- * Load a browser device at each path, one entry per path that worked.
+ * Load a browser device at every path the call named. `writeFanOut`'s rules,
+ * hand-rolled because each load has to be awaited.
  * @param args - The item, how the call named it, and the call's per-path args
  * @param args.item - What to load
  * @param args.deviceName - The device as the call named it
- * @param args.paths - Where each one goes
+ * @param args.targets - Where each one goes, in the order the call named them
  * @param args.name - The call's name arg
  * @param args.parsedNames - Comma-separated display names, or null
  * @param args.params - {name, value} entries applied to each device
- * @returns One entry per created device
+ * @returns The device when one path was named, otherwise one entry per path
  */
 export async function createBrowserDevices({
   item,
   deviceName,
-  paths,
+  targets,
   name,
   parsedNames,
   params,
-}: BrowserDeviceArgs): Promise<CreateDeviceResult[]> {
-  const results: CreateDeviceResult[] = [];
+}: BrowserDeviceArgs): Promise<WriteResult<CreateDeviceResult>> {
+  const createOne = async (
+    target: NamedTarget,
+    index: number,
+  ): Promise<CreateDeviceResult> => {
+    const { device, entry } = await createAtPath(
+      item,
+      deviceName,
+      target.value,
+    );
 
-  for (const [i, path] of paths.entries()) {
+    return labelCreatedDevice(
+      device,
+      entry,
+      getNameForIndex(name, index, parsedNames),
+      params,
+    );
+  };
+
+  // A lone path throws, as a native insert does: nothing was created, so
+  // there is no list for an entry to hold a place in. A blank `path` was
+  // already refused, so there is always at least one target.
+  if (targets.length < 2) {
+    return await createOne(targets[0] as NamedTarget, 0);
+  }
+
+  const entries: Array<CreateDeviceResult | TargetSkip> = [];
+
+  for (const [i, target] of targets.entries()) {
     try {
-      const { device, entry } = await createAtPath(item, deviceName, path);
-
-      results.push(
-        labelCreatedDevice(
-          device,
-          entry,
-          getNameForIndex(name, i, parsedNames),
-          params,
-        ),
-      );
+      entries.push(await createOne(target, i));
     } catch (error) {
-      skipFailedPath(error, deviceName, path, paths.length);
+      entries.push(skipEntry(target, errorMessage(error)));
     }
   }
 
-  return requireCreatedDevices(results, deviceName);
+  return entries;
 }
 
 /**
@@ -261,10 +283,8 @@ function moveIntoPlace(
   // The container was resolved before the load, and a held object never reads
   // as gone, so anything but "moved" is Live turning the move down.
   if (move.outcome !== "moved") {
-    const refusal = insertRefusal(deviceName, target.position, path);
-
     throw new Error(
-      move.reason == null ? refusal : `${refusal}: ${move.reason}`,
+      insertRefusal(deviceName, target.position, path, move.reason),
     );
   }
 }

@@ -169,14 +169,23 @@ describe("createDevice insertion order", () => {
   it("leaves an entry whose rack is missing to the insert loop", async () => {
     mockNonExistentObjects();
 
-    await expect(
-      createDevice({
+    expect(
+      await createDevice({
         path: "t9/d0/pC1/d1,t9/d0/pD1/d1",
         deviceName: "Utility",
       }),
-    ).rejects.toThrow(
-      'could not create "Utility" at any of the specified paths',
-    );
+    ).toStrictEqual([
+      {
+        path: "t9/d0/pC1/d1",
+        ok: false,
+        reason: 'container at path "t9/d0/pC1/d1" does not exist',
+      },
+      {
+        path: "t9/d0/pD1/d1",
+        ok: false,
+        reason: 'container at path "t9/d0/pD1/d1" does not exist',
+      },
+    ]);
   });
 
   it("allows two different drum pads in one rack", async () => {
@@ -196,7 +205,14 @@ describe("createDevice insertion order", () => {
   it("leaves an entry that names no container to the insert loop", async () => {
     expect(
       await createDevice({ path: "s0,t0/d1", deviceName: "Utility" }),
-    ).toStrictEqual({ id: "created-0", path: "t0/d1" });
+    ).toStrictEqual([
+      {
+        path: "s0",
+        ok: false,
+        reason: expect.stringContaining("a scene holds no devices"),
+      },
+      { id: "created-0", path: "t0/d1" },
+    ]);
   });
 
   // The track holds two devices, so d99 is past the end and the insert appends

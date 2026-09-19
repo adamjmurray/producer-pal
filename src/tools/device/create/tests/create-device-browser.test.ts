@@ -193,15 +193,20 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     expect(result.params).toHaveLength(1);
   });
 
-  it("creates one per path, skipping a path that fails and warning why", async () => {
+  it("creates one per path, keeping a failed path's slot", async () => {
     mockNonExistentObjects();
 
     expect(
       await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+,t9/d+" }),
-    ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
-    expect(capturedWarnings()).toStrictEqual([
-      'Failed to create "Pro-Q 4" at path "t9/d+": container at path "t9/d+" does not exist',
+    ).toStrictEqual([
+      { id: "loaded-1", path: "t0/d1" },
+      {
+        path: "t9/d+",
+        ok: false,
+        reason: 'container at path "t9/d+" does not exist',
+      },
     ]);
+    expect(capturedWarnings()).toStrictEqual([]);
     // The bad path fails before it makes a temp track.
     expectCleanedUp(1);
   });

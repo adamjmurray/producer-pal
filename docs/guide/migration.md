@@ -133,6 +133,14 @@ without a word); the created clip now carries
 `reason: "firstStart ignored: set looping: true to use it"` and no `ok`, since
 the clip was made.
 
+**`ppal-create-device` keeps a failed path's slot.** It used to drop the path
+and warn, and threw when every path failed. A call naming two or more paths now
+returns one entry each, in order, with a path it couldn't create at holding its
+slot as `{path, ok: false, reason}`, including when that is all of them. A
+single path still throws. Its refusal also names the cause when Live gives none:
+an instrument aimed at a chain that already has one reads
+`could not insert "Operator" at end in path "t3/d+": the destination already has an instrument, and only one is allowed`.
+
 **`ppal-update-device` reports a param the object can't take on its entry.**
 `gainDb`, `pan`, `mute`, `solo`, `sends` and the rest sent to an object with no
 use for them used to warn once per param. The target's entry now carries

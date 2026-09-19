@@ -12,11 +12,13 @@ import {
   invalidateDevicePathCache,
   withDevicePathCache,
 } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
-import {
-  targetEntries,
-  unwrapSingleResult,
-} from "#src/tools/shared/helpers/target-entries.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type WriteResult,
+  writeFanOut,
+} from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
@@ -29,10 +31,9 @@ import {
   createdDeviceEntry,
   insertionPosition,
   insertRefusal,
+  insertRefusalCause,
   labelCreatedDevice,
-  requireCreatedDevices,
   resolveCreationTarget,
-  skipFailedPath,
 } from "./helpers/device-creation.ts";
 import { validateInsertionOrder } from "./helpers/device-insertion-order.ts";
 
@@ -88,7 +89,7 @@ function validateListModeArgs(args: {
 export async function createDevice(
   { deviceName, path, name, params, focus }: CreateDeviceArgs = {},
   _context: Partial<ToolContext> = {},
-): Promise<typeof VALID_DEVICES | CreateDeviceResult | CreateDeviceResult[]> {
+): Promise<typeof VALID_DEVICES | WriteResult<CreateDeviceResult>> {
   // List mode: return valid devices when deviceName is omitted
   if (deviceName == null) {
     validateListModeArgs({ path, name, params });
@@ -110,17 +111,18 @@ export async function createDevice(
   ]);
 
   const paths = targetEntries(path, "path");
+  const targets = paths.map((value): NamedTarget => ({ param: "path", value }));
 
   // Every path in the batch climbs the same prefix — sixteen `t0/d0/c<n>`
   // paths share track 0 and the rack. Resolve each one once for the whole call,
   // so the order check reads the same objects the inserts go on to use. The
   // cache can't span an await, so browser loads resolve their paths uncached.
-  const results =
+  const result =
     browserItem == null
       ? withDevicePathCache(() =>
           createDevicesAtPaths(
             deviceName,
-            paths,
+            targets,
             name,
             checkedNames(paths, deviceName, name),
             paramEntries,
@@ -129,7 +131,7 @@ export async function createDevice(
       : await createBrowserDevices({
           item: browserItem,
           deviceName,
-          paths,
+          targets,
           name,
           parsedNames: withDevicePathCache(() =>
             checkedNames(paths, deviceName, name),
@@ -137,13 +139,32 @@ export async function createDevice(
           params: paramEntries,
         });
 
-  if (focus && results.length > 0) {
-    const lastResult = results.at(-1) as CreateDeviceResult;
+  if (focus) {
+    // Focus follows the call, not a target, so it lands on the last device the
+    // call actually created — a skip has no device to select.
+    const lastCreated = createdEntries(result).at(-1);
 
-    focusSelect({ id: lastResult.id, detailView: "device" });
+    if (lastCreated != null) {
+      focusSelect({ id: lastCreated.id, detailView: "device" });
+    }
   }
 
-  return unwrapSingleResult(results);
+  return result;
+}
+
+/**
+ * The devices a call created, dropping the targets it skipped.
+ * @param result - What the fan-out returned
+ * @returns The created devices, in the order the call named them
+ */
+function createdEntries(
+  result: WriteResult<CreateDeviceResult>,
+): CreateDeviceResult[] {
+  const entries = Array.isArray(result) ? result : [result];
+
+  return entries.filter(
+    (entry): entry is CreateDeviceResult => !("ok" in entry),
+  );
 }
 
 /**
@@ -219,35 +240,27 @@ function checkedNames(
 }
 
 /**
- * Create device at multiple paths, collecting results
+ * Create a device at every path the call named.
  * @param deviceName - Device name
- * @param paths - Array of device paths
+ * @param targets - One target per path, in the order the call named them
  * @param baseName - Base display name
  * @param parsedNames - Comma-separated display names, or null
  * @param params - {name, value} entries applied to each created device
- * @returns Array of results for successfully created devices
+ * @returns The device when one path was named, otherwise one entry per path
  */
 function createDevicesAtPaths(
   deviceName: string,
-  paths: string[],
+  targets: NamedTarget[],
   baseName: string | undefined,
   parsedNames: ListEntries | null,
   params: ParamEntry[] | undefined,
-): CreateDeviceResult[] {
-  const results: CreateDeviceResult[] = [];
+): WriteResult<CreateDeviceResult> {
+  return writeFanOut(targets, (target, i) => {
+    const { device, entry } = createDeviceAtPath(deviceName, target.value);
+    const displayName = getNameForIndex(baseName, i, parsedNames);
 
-  for (const [i, path] of paths.entries()) {
-    try {
-      const { device, entry } = createDeviceAtPath(deviceName, path);
-      const displayName = getNameForIndex(baseName, i, parsedNames);
-
-      results.push(labelCreatedDevice(device, entry, displayName, params));
-    } catch (error) {
-      skipFailedPath(error, deviceName, path, paths.length);
-    }
-  }
-
-  return requireCreatedDevices(results, deviceName);
+    return labelCreatedDevice(device, entry, displayName, params);
+  });
 }
 
 /**
@@ -286,11 +299,18 @@ function createDeviceAtPath(
   const device = id ? LiveAPI.from(`id ${id}`) : null;
 
   if (!id || !device?.exists()) {
-    // Live refuses a second instrument in a chain that already has one, and
-    // this is how that arrives: no id back, no device. Re-running a drum kit
-    // build fails every pad this way. That's Live, not a bug — an audio effect
-    // on the same chains succeeds.
-    throw new Error(insertRefusal(deviceName, target.position, path));
+    // Live refuses an insert by giving back no id and no device. The usual
+    // cause is a second instrument in a chain that already has one — that's
+    // Live, not a bug, and an audio effect on the same chains succeeds — so
+    // name it when the container shows it.
+    throw new Error(
+      insertRefusal(
+        deviceName,
+        target.position,
+        path,
+        insertRefusalCause(deviceName, container),
+      ),
+    );
   }
 
   return { device, entry: createdDeviceEntry(id, device, target) };

@@ -12,7 +12,10 @@ import {
   sourceChain,
   warnIfChainMixerLeftBehind,
 } from "#src/tools/shared/device/helpers/chain-mixer.ts";
-import { deviceHasInstrument } from "#src/tools/shared/device/helpers/chain-info.ts";
+import {
+  ONE_INSTRUMENT_PER_CHAIN,
+  deviceHasInstrument,
+} from "#src/tools/shared/device/helpers/chain-info.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   type InsertionPathResolution,
@@ -234,6 +237,6 @@ function refusalReason(
 ): string | undefined {
   return deviceHasInstrument(device) &&
     container.someChild("devices", deviceHasInstrument)
-    ? "the destination already has an instrument, and only one is allowed"
+    ? ONE_INSTRUMENT_PER_CHAIN
     : undefined;
 }

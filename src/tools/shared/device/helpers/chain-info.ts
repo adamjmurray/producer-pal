@@ -10,6 +10,11 @@ import {
 } from "#src/tools/constants.ts";
 import { readChainMixer } from "./chain-mixer.ts";
 
+// Live allows one instrument per chain, and says so by refusing the write
+// without a reason. Shared so a move and a create name the same cause.
+export const ONE_INSTRUMENT_PER_CHAIN =
+  "the destination already has an instrument, and only one is allowed";
+
 export interface BuildChainInfoOptions {
   path?: string | null;
   devices?: Record<string, unknown>[];

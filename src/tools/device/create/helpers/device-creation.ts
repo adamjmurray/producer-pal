@@ -7,10 +7,14 @@
 // arrives: Live's insert_device for a native one, or a browser load moved into
 // place. Shared so both kinds resolve, warn, and fail alike.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
+import {
+  ONE_INSTRUMENT_PER_CHAIN,
+  deviceHasInstrument,
+} from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
   type ParamResult,
   refreshParamValues,
@@ -93,16 +97,40 @@ export function insertionPosition(
  * @param deviceName - The device, as the call named it
  * @param position - The index the path named, or null for an append
  * @param path - The path as the call wrote it
+ * @param cause - Why Live turned it down, when we can name it
  * @returns The message
  */
 export function insertRefusal(
   deviceName: string,
   position: number | null,
   path: string,
+  cause?: string | null,
 ): string {
   const positionDesc = position != null ? `position ${position}` : "end";
+  const refusal = `could not insert "${deviceName}" at ${positionDesc} in path "${path}"`;
 
-  return `could not insert "${deviceName}" at ${positionDesc} in path "${path}"`;
+  return cause == null ? refusal : `${refusal}: ${cause}`;
+}
+
+/**
+ * Why Live turned an insert down, when the container says it plainly enough.
+ * Live refuses a second instrument in a chain that already has one and gives
+ * back no id and no reason, so the caller sees only that the insert failed.
+ * @param deviceName - The device, as the call named it
+ * @param container - The track or chain it was headed for
+ * @returns The cause, or undefined when nothing obvious accounts for it
+ */
+export function insertRefusalCause(
+  deviceName: string,
+  container: LiveAPI,
+): string | undefined {
+  const isInstrument = (
+    VALID_DEVICES.instruments as readonly string[]
+  ).includes(deviceName);
+
+  return isInstrument && container.someChild("devices", deviceHasInstrument)
+    ? ONE_INSTRUMENT_PER_CHAIN
+    : undefined;
 }
 
 /**
@@ -153,45 +181,4 @@ export function labelCreatedDevice(
   }
 
   return entry;
-}
-
-/**
- * Skip a path that failed, or rethrow when it was the only one.
- * @param error - Why the path failed
- * @param deviceName - The device, as the call named it
- * @param path - The path that failed
- * @param pathCount - How many paths the call named
- */
-export function skipFailedPath(
-  error: unknown,
-  deviceName: string,
-  path: string,
-  pathCount: number,
-): void {
-  if (pathCount === 1) {
-    throw error;
-  }
-
-  console.warn(
-    `Failed to create "${deviceName}" at path "${path}": ${errorMessage(error)}`,
-  );
-}
-
-/**
- * The entries of a call, refusing one that created nothing.
- * @param results - One entry per path that worked
- * @param deviceName - The device, as the call named it
- * @returns The entries
- */
-export function requireCreatedDevices(
-  results: CreateDeviceResult[],
-  deviceName: string,
-): CreateDeviceResult[] {
-  if (results.length === 0) {
-    throw new Error(
-      `could not create "${deviceName}" at any of the specified paths`,
-    );
-  }
-
-  return results;
 }

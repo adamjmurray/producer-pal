@@ -182,6 +182,46 @@ describe("ppal-create-device", () => {
     expect(text).toContain("t1/d0");
   });
 
+  // The list used to come back one entry short with the failure in a warning,
+  // which reads as a call that did everything it was asked.
+  it("keeps a failed path's slot in a path list", async () => {
+    const trackIndex = await createTrack("midi");
+    const { data: results, warnings } = parseToolResultWithWarnings<
+      Array<CreateDeviceResult & Partial<TargetSkip>>
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Compressor",
+          path: `t99/d+,t${trackIndex}/d+`,
+        },
+      }),
+    );
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.path).toBe("t99/d+");
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.reason).toContain("t99");
+    expect(results[1]?.id).toBeDefined();
+    expect(results[1]?.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
+    expect(warnings).toHaveLength(0);
+  });
+
+  // Live turns the insert down without saying why, so the refusal has to name
+  // the cause or the model has nothing to act on.
+  it("names the instrument already there when Live refuses a second one", async () => {
+    // t1 has an instrument, and Live allows one per chain.
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "Operator", path: "t1/d+" },
+      }),
+    );
+
+    expect(text).toContain("could not insert");
+    expect(text).toContain("already has an instrument");
+  });
+
   // Aiming two devices at d1 and d2 used to land both at d1 and d2 and push
   // the two originals past them, so the second entry never went where it was
   // named. Refused up front now, before either one is created.
@@ -550,6 +590,13 @@ interface ListDevicesResult {
   instruments: string[];
   midiEffects: string[];
   audioEffects: string[];
+}
+
+/** The entry a target the call couldn't act on leaves in its place. */
+interface TargetSkip {
+  path: string;
+  ok: false;
+  reason: string;
 }
 
 interface CreateDeviceResult {
