@@ -13,6 +13,8 @@ import {
   buildClipResultObject,
   type ClipResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
+import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   objectPathForApi,
   stillAtPath,
@@ -118,9 +120,23 @@ function reportTrimmedSurvivor(
 
   entry.id = remainder.id;
   entry.path = path;
+  entry.arrangementLength = arrangementLengthOf(remainder);
   appendReason(entry, TRIMMED);
 
   return true;
+}
+
+/**
+ * How much of the arrangement a clip covers, as read-clip reports it.
+ * @param clip - The clip to measure
+ * @returns Its span as a duration
+ */
+function arrangementLengthOf(clip: LiveAPI): string {
+  const start = clip.getProperty("start_time") as number;
+  const end = clip.getProperty("end_time") as number;
+  const { numerator, denominator } = songMeter();
+
+  return abletonBeatsToDuration(end - start, numerator, denominator);
 }
 
 /**

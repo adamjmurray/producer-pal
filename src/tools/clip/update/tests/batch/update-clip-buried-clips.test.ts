@@ -279,6 +279,7 @@ describe("a survivor a shorter clip landed on", () => {
     expect(result[1]).toStrictEqual({
       id: expect.any(String),
       path: "t0[101|3]",
+      arrangementLength: "1bar+n/2",
       reason: "trimmed: another clip in this call landed on its start",
     });
     expect(result[2]?.path).toBe("t0[101|1]");
@@ -347,6 +348,12 @@ describe("a survivor a shorter clip landed on", () => {
       "t0[102|1]",
       "t0[101|3]",
       "t0[101|1]",
+    ]);
+    // Each trimmed entry reports what is left: 8 minus 4, then 4 minus 2.
+    expect(result.map((entry) => entry.arrangementLength)).toStrictEqual([
+      "1bar",
+      "n/2",
+      undefined,
     ]);
   });
 });

@@ -29,6 +29,8 @@ export interface ClipResult {
   path?: string;
   /** The length the clip ended up at, when the call moved it off the arg. */
   length?: string;
+  /** The span left on the arrangement, when the call cut it short. */
+  arrangementLength?: string;
   /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take

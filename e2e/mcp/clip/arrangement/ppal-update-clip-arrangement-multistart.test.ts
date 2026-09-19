@@ -77,6 +77,7 @@ interface UpdatedClip {
   path?: string;
   reason?: string;
   deleted?: boolean;
+  arrangementLength?: string;
 }
 
 /**
@@ -253,6 +254,12 @@ describe("ppal-update-clip arrangement multistart", () => {
     expect(clips[0]?.reason).toContain("trimmed:");
     expect(clips[1]?.reason).toContain("trimmed:");
     expect(clips[2]?.reason).toBeUndefined();
+    // A trimmed entry says how much is left: A(8) minus B(4), B(4) minus C(2).
+    expect(clips.map((clip) => clip.arrangementLength)).toStrictEqual([
+      "1bar",
+      "n/2",
+      undefined,
+    ]);
 
     // 3 clips on track, stacked at target position
     expect(finalClips).toHaveLength(3);
