@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
 import { remoteScriptPath } from "../../rpc/remote-script/remote-script-install.ts";
+import { makeScratchUserLibrary } from "../../rpc/remote-script/tests/remote-script-test-helpers.ts";
 import {
   type MarkdownRouteServer,
   errorOf,
@@ -53,7 +53,7 @@ function postInstall(body: unknown, origin?: string): Promise<Response> {
 }
 
 beforeEach(async () => {
-  scratchDir = mkdtempSync(join(tmpdir(), "ppal-remote-script-route-"));
+  scratchDir = makeScratchUserLibrary("route");
   findUserLibraryPath.mockResolvedValue(scratchDir);
   server = await startMarkdownRouteServer((app) => {
     registerRemoteScriptSetupRoutes(app);

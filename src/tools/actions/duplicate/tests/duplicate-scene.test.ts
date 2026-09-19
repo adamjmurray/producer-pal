@@ -19,6 +19,7 @@ import {
   registerArrangementClip,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { deleteMockObject } from "#src/test/mocks/mock-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface DuplicateClipResult {
@@ -52,6 +53,22 @@ function expectSceneDupAtBeat(
 }
 
 describe("duplicate - scene duplication", () => {
+  // has_clip can still be set on a slot Live hands back nothing for, so the
+  // scan checks the clip itself before reporting it.
+  it("leaves out a slot that says it has a clip but hands back none", async () => {
+    setupSessionSceneMocks();
+    deleteMockObject(livePath.track(1).clipSlot(1).clip());
+
+    const result = (await duplicate({
+      type: "scene",
+      id: "scene1",
+    })) as DuplicateSceneResult;
+
+    expect(result.clips).toStrictEqual([
+      { id: "live_set/tracks/0/clip_slots/1/clip", path: "t0/s1" },
+    ]);
+  });
+
   it("should duplicate a single scene to session view (default behavior)", async () => {
     const liveSet = setupSessionSceneMocks();
 

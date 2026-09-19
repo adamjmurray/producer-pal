@@ -33,6 +33,22 @@ function trackUnclearable(error: string): void {
 }
 
 /**
+ * Track an object whose path setter throws an Error carrying no message at
+ * all, standing in for a host throw that isn't shaped like a JS Error.
+ */
+function trackUnclearableWithoutMessage(): void {
+  trackLiveApiObject({
+    set path(_value: string) {
+      const error = new Error("dropped");
+
+      Object.defineProperty(error, "message", { value: undefined });
+
+      throw error;
+    },
+  } as unknown as LiveAPI);
+}
+
+/**
  * Track an object whose path setter silently does nothing, standing in for a
  * path write Live ignores rather than rejects.
  *
@@ -232,6 +248,20 @@ describe("live-api release", () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       "Failed to release 2 LiveAPI object(s): ",
+    );
+  });
+
+  // The count is the part the user can act on, so it still goes out — and
+  // without a message there is nothing to print in its place.
+  it("reports a failure whose error carries no message at all", () => {
+    beginLiveApiScope();
+
+    trackUnclearableWithoutMessage();
+
+    endLiveApiScope();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Failed to release 1 LiveAPI object(s): ",
     );
   });
 

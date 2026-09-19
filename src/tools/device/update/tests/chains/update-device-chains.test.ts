@@ -13,6 +13,7 @@ import {
 import { updateDevice } from "../../update-device.ts";
 import { mockWorkingDeviceMoves } from "../update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {
@@ -51,6 +52,16 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(chain.set).toHaveBeenCalledWith("solo", 1);
+      expect(result).toStrictEqual({ id: "456" });
+    });
+
+    it("should clear solo on a Chain", () => {
+      const result = updateDevice({
+        id: "456",
+        solo: false,
+      });
+
+      expect(chain.set).toHaveBeenCalledWith("solo", 0);
       expect(result).toStrictEqual({ id: "456" });
     });
 
@@ -402,6 +413,26 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
   }
 
+  /**
+   * Re-register chain 1 holding one resident device, so the destination is no
+   * longer empty and its fader belongs to what is already there.
+   * @param deviceProperties - Property overrides for the resident device
+   */
+  function registerOccupiedDestination(
+    deviceProperties?: Record<string, unknown>,
+  ): void {
+    registerMockObject("chain-1", {
+      path: rackPath.chain(1),
+      type: "Chain",
+      properties: { devices: children("resident-device") },
+    });
+    registerMockObject("resident-device", {
+      path: rackPath.chain(1).device(0),
+      type: "SimplerDevice",
+      properties: deviceProperties,
+    });
+  }
+
   it("carries the trim onto an untouched destination chain", () => {
     // chain-1 holds no devices and sits at defaults, so writing its fader
     // re-levels nothing — the trim follows the sound instead of stranding.
@@ -422,15 +453,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
   it("warns instead of overwriting a destination chain that holds devices", () => {
     // Its fader belongs to the devices already there; writing it would change
     // how they sound, which the caller never asked for.
-    registerMockObject("chain-1", {
-      path: rackPath.chain(1),
-      type: "Chain",
-      properties: { devices: children("resident-device") },
-    });
-    registerMockObject("resident-device", {
-      path: rackPath.chain(1).device(0),
-      type: "SimplerDevice",
-    });
+    registerOccupiedDestination();
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
@@ -535,6 +558,32 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     );
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain, which was"),
+    );
+  });
+
+  it("names why Live refused the move, when its state says", () => {
+    // Two instruments in one chain: Live drops the move without a word, and
+    // the destination's own contents are the only thing that says why.
+    registerMockObject("live-set", { path: livePath.liveSet });
+    registerMockObject("device-0", {
+      path: sourceChainPath.device(0),
+      type: "SimplerDevice",
+      properties: {
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        can_have_chains: 0,
+      },
+    });
+    registerOccupiedDestination({
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      can_have_chains: 0,
+    });
+    registerDestinationMixer();
+
+    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
+
+    expect(capturedWarnings()).toContain(
+      't0/d0/c0/d0 (id device-0) was not moved to "t0/d0/c1": the ' +
+        "destination already has an instrument, and only one is allowed",
     );
   });
 

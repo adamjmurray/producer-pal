@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
@@ -285,14 +286,13 @@ function validateParameters({
 
   // Cross-validation for track ID vs index (requires Live API calls)
   if (trackId != null && trackIndex != null) {
-    const trackPath = buildTrackPath(category, trackIndex);
+    // An index with a category that builds no path is already refused above.
+    const trackAPI = LiveAPI.from(
+      assertDefined(buildTrackPath(category, trackIndex), "track path"),
+    );
 
-    if (trackPath) {
-      const trackAPI = LiveAPI.from(trackPath);
-
-      if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
-        throw new Error("id and trackIndex refer to different tracks");
-      }
+    if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
+      throw new Error("id and trackIndex refer to different tracks");
     }
   }
 

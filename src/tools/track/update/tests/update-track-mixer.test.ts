@@ -430,6 +430,21 @@ describe("updateTrack - mixer properties", () => {
     ).toStrictEqual({ id: "123", path: "t0", panningMode: "split" });
   });
 
+  // Split is the mode a caller doesn't expect, so it is reported whichever of
+  // the three pan params reached for it — rightPan alone included.
+  it("reports split mode for a call that sent rightPan alone", () => {
+    const { rightSplitParam1 } = registerSplitPanParams();
+
+    splitMode();
+    keepsParamValue(rightSplitParam1, 0.5);
+
+    expect(updateTrack({ id: "123", rightPan: 0.5 })).toStrictEqual({
+      id: "123",
+      path: "t0",
+      panningMode: "split",
+    });
+  });
+
   it("reports the gain Live changed beside split pans that landed", () => {
     const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 

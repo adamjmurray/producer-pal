@@ -78,6 +78,20 @@ describe("ConversationItem", () => {
       expect(usage.textContent).toContain("9K cached");
     });
 
+    it("shows zeros when a usage record carries no token counts", () => {
+      // An old record, or one whose provider reported nothing: the row still
+      // renders rather than printing "undefined".
+      const { container } = renderItem({
+        conv: createTestSummary({ title: "Empty Usage", totalUsage: {} }),
+      });
+
+      const usage = container.querySelector(
+        '[title="token usage (input [cached] → output)"]',
+      ) as HTMLElement;
+
+      expect(usage.textContent).toBe("tokens: 0 → 0");
+    });
+
     it("omits token usage when totalUsage is null", () => {
       const { container } = renderItem({
         conv: createTestSummary({

@@ -169,6 +169,25 @@ describe("updateClip - code execution", () => {
     );
   });
 
+  // The clip update already landed before the code ran, so the throw is a
+  // reason on the clip's own entry rather than a refusal of the whole call.
+  it("keeps the update that landed when the code step throws", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockRejectedValue(
+      new Error("the code exec round trip died"),
+    );
+
+    const result = await updateClip({ id: "123", name: "Renamed", code: "x" });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      reason: "update stopped partway: the code exec round trip died",
+    });
+  });
+
   it("should tell executeNoteCode an arrangement clip is in no scene", async () => {
     setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,

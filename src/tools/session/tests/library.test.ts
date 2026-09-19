@@ -108,6 +108,26 @@ async function expectFolderScanSkipped(
   expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
 }
 
+/**
+ * Run library() over a sample folder whose scan throws.
+ * @param thrown - What the folder scan throws
+ * @returns The library result, narrowed to the items shape
+ */
+async function libraryWithFailedScan(thrown: unknown) {
+  vi.mocked(readSamplesMock.readSamples).mockImplementationOnce(() => {
+    throw thrown;
+  });
+  mockSearchRoute([]);
+
+  const result = await library({}, { sampleFolder: "/samples/" });
+
+  if (!("items" in result)) {
+    throw new Error("expected items");
+  }
+
+  return result;
+}
+
 describe("library tool — action dispatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -672,20 +692,20 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("surfaces a reason when the folder scan throws", async () => {
-    vi.mocked(readSamplesMock.readSamples).mockImplementationOnce(() => {
-      throw new Error("EACCES: permission denied");
-    });
-    mockSearchRoute([]);
-
-    const result = await library({}, { sampleFolder: "/samples/" });
-
-    if (!("items" in result)) {
-      throw new Error("expected items");
-    }
+    const result = await libraryWithFailedScan(
+      new Error("EACCES: permission denied"),
+    );
 
     expect(result.reason).toMatch(/sample folder scan failed.*EACCES/);
     // DB results should still flow through.
     expect(result.dbAvailable).toBe(true);
+  });
+
+  it("surfaces a reason when the folder scan throws a non-Error", async () => {
+    // Not an Error: the reason has to survive String() instead.
+    const result = await libraryWithFailedScan("no folder for you");
+
+    expect(result.reason).toBe("sample folder scan failed: no folder for you");
   });
 
   it("extracts the leaf filename from nested folder paths", async () => {

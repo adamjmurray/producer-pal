@@ -38,10 +38,9 @@ interface DrumPadSlot {
 
 /**
  * Whether a path-prefixed param name is the drum-pad `sample` shortcut — the
- * only path-prefixed param form that isn't deprecated. Every other prefixed
- * name is redundant with addressing the nested device by its own `path`; the
- * pad shortcut isn't, because the Simpler a sample write needs may not exist
- * yet to have a path.
+ * only path-prefixed form that isn't deprecated. Every other prefixed name is
+ * redundant with addressing the nested device by its own `path`; the pad
+ * shortcut isn't, because the Simpler a sample write needs may not exist yet.
  * @param prefix - The path segments before the param name, as the caller wrote them
  * @param paramName - The trailing param name
  * @returns Whether the prefix names a drum pad slot for a `sample` write
@@ -83,10 +82,11 @@ export function splitForAdvice(key: string): { path: string; name: string } {
   const segments = key.split("/");
   let index = 0;
 
-  while (
-    index < segments.length - 1 &&
-    PATH_SEGMENT.test(segments[index] ?? "")
-  ) {
+  for (const segment of segments.slice(0, -1)) {
+    if (!PATH_SEGMENT.test(segment)) {
+      break;
+    }
+
     index++;
   }
 
@@ -164,12 +164,10 @@ export function resolveNestedParamTarget(
 
 /**
  * Resolve (and, per policy, create/replace) the Simpler that holds one drum
- * chain's sample, for a `sample` write addressed to the pad itself rather than
- * to its rack. Same policy as the rack's `pC1/sample` shortcut — the pad is the
- * address, whichever way the caller spells it.
- *
- * Layer ambiguity is the caller's to settle: a chain names one layer already,
- * and a bare pad path is refused before it gets here.
+ * chain's sample, for a `sample` write addressed to the pad rather than to its
+ * rack. Same policy as the rack's `pC1/sample` shortcut — the pad is the
+ * address either way. Layer ambiguity is already settled here: a chain names
+ * one layer, and a bare pad path is refused before it gets this far.
  * @param chain - The DrumChain the write addressed
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
  * @returns The Simpler to write the sample to, or the reason there is none
@@ -202,9 +200,9 @@ function skip(reason: string): NestedParamTarget {
  * Parse a relative path prefix as a drum pad
  * (`[<walk>/]p<note>[/c<chain>][/d<device>]`). The pad is the last one on the
  * path; anything before it walks down to the rack holding it, so a rack nested
- * inside an outer pad addresses its own pads the same way. The chain index
- * defaults to 0, which the caller only accepts on a pad holding one layer.
- * Returns null for prefixes that name no pad, and for malformed indices.
+ * in an outer pad addresses its own pads the same way. The chain index defaults
+ * to 0, which the caller only accepts on a one-layer pad. Null for a prefix
+ * that names no pad, and for a malformed index.
  * @param segments - Non-empty path segments
  * @returns The parsed slot, or null
  */
@@ -239,8 +237,8 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
   }
 
   // A `d<N>` segment is accepted so read and write paths stay interchangeable.
-  // It never locates the instrument — that is found by device type — but it is
-  // checked against the one found, so a wrong index can't silently "work".
+  // It never locates the instrument (device type does) but is checked against
+  // the one found, so a wrong index can't silently "work".
   let deviceIndex: number | undefined;
   const deviceSegment = segments[index];
 

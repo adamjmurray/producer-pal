@@ -28,6 +28,34 @@ import { App } from "#webui/components/App";
 describe("App", () => {
   installAppTestSetup();
 
+  describe("opening settings on a specific tab", () => {
+    it("carries the tab a header indicator asks for", () => {
+      const setViewState = vi.fn();
+
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: false,
+          settingsTab: "connection",
+        },
+        setViewState,
+      });
+
+      const { container } = render(<App />);
+      const toolsButton = container.querySelector(
+        '[title="Tools settings"]',
+      ) as HTMLElement | null;
+
+      expect(toolsButton).not.toBeNull();
+      fireEvent.click(toolsButton!);
+
+      expect(setViewState).toHaveBeenCalledWith({
+        settingsOpen: true,
+        settingsTab: "tools",
+      });
+    });
+  });
+
   describe("screen routing", () => {
     it("renders ChatScreen when settings are configured", () => {
       render(<App />);

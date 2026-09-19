@@ -4,10 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import {
-  type ParamEntry,
-  paramEntryKey,
-} from "#src/tools/device/update/device-params-schema.ts";
+import { paramEntryKey } from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamResult,
   skippedParam,
@@ -59,11 +56,17 @@ const CHAIN_WRITE_PROPS = [
   ...PER_LAYER_PROPS,
 ] as const;
 
+/** One dropped `sample` entry, and where the call sent it. */
+interface SkippedSample {
+  index: number;
+  result: ParamResult;
+}
+
 export interface DrumPadUpdateResult extends NonDeviceWrites {
   /** The DrumPad's id, absent on a virtual pad that has no DrumPad object */
   id?: string;
-  /** The pad's path, so a whole-pad write names its target the way every other
-   * write result does. Absent on a virtual pad, which has nothing to name. */
+  /** The pad's path, as every other write result names its target. Absent on
+   * a virtual pad, which has nothing to name. */
   path?: string;
   /** The chains written to, absent when only the pad itself was touched */
   chainIds?: string[];
@@ -71,9 +74,8 @@ export interface DrumPadUpdateResult extends NonDeviceWrites {
 
 /**
  * Update a whole drum pad: the DrumPad object and every chain on it. Pad-wide
- * properties broadcast across the chains; the per-layer ones are skipped with a
- * warning once a pad holds more than one. A single-chain pad takes everything,
- * exactly as a chain path does.
+ * properties broadcast to the chains; the per-layer ones are skipped with a
+ * warning once a pad is stacked. A single-chain pad takes everything.
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
@@ -137,13 +139,9 @@ export function updateDrumPadGroup(
   const { ignored, ...mixer } = applyToChains(chains, chainOptions);
 
   const result: DrumPadUpdateResult = { ...mixer };
-  const skipped = ambiguous?.skipped ?? [];
 
-  if (skipped.length > 0) {
-    result.params = inRequestOrder(options.params ?? [], [
-      ...skipped,
-      ...(mixer.params ?? []),
-    ]);
+  if (ambiguous != null) {
+    result.params = inRequestOrder(ambiguous.skipped, mixer.params ?? []);
   }
 
   if (pad != null) {
@@ -160,29 +158,24 @@ export function updateDrumPadGroup(
 }
 
 /**
- * The entries in the order the call sent its params. The ambiguous samples are
- * taken out of the list before the rest are written, so the two sets come back
- * separately; each entry is matched to its request by the name it was sent under.
- * @param sent - The params list as the caller sent it
- * @param entries - Every entry the write produced
- * @returns The entries, in request order
+ * The entries in the order the call sent its params. The ambiguous samples were
+ * taken out before the rest were written, so put each back at the index it was
+ * sent at; the written entries are already in request order.
+ * @param skipped - The dropped samples, each with the index it was sent at
+ * @param written - The entries the write produced, in request order
+ * @returns Every entry, in request order
  */
 function inRequestOrder(
-  sent: ParamEntry[],
-  entries: ParamResult[],
+  skipped: SkippedSample[],
+  written: ParamResult[],
 ): ParamResult[] {
-  const sentAt = new Map(
-    sent.map((entry, index): [string, number] => [
-      paramEntryKey(entry).key.toLowerCase(),
-      index,
-    ]),
-  );
-  const position = (entry: ParamResult): number =>
-    sentAt.get(
-      (entry.name ?? ("id" in entry ? entry.id : null) ?? "").toLowerCase(),
-    ) ?? sent.length;
+  const merged = [...written];
 
-  return entries.toSorted((a, b) => position(a) - position(b));
+  for (const { index, result } of skipped) {
+    merged.splice(index, 0, result);
+  }
+
+  return merged;
 }
 
 /**
@@ -274,8 +267,7 @@ function broadcastOnly(options: UpdateTargetOptions): UpdateTargetOptions {
 }
 
 /**
- * Drop the per-layer properties from a stacked pad's update and say which chain
- * paths to use instead.
+ * Drop a stacked pad's per-layer properties, naming the chain paths instead.
  * @param options - Update options
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param padLabel - How the warning names the pad
@@ -316,8 +308,8 @@ function dropPerLayerProps(
 /**
  * Drop the `sample` entries of a stacked pad's `params` write and say which
  * layer to address instead. Which layer to load is the caller's to settle:
- * writing "the pad" would load whichever layer happens to be first, and under
- * `force` replace an instrument nobody named.
+ * writing "the pad" would load whichever layer is first, and under `force`
+ * replace an instrument nobody named.
  * @param options - Update options
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param chains - The pad's chains
@@ -328,11 +320,11 @@ function dropAmbiguousSamples(
   options: UpdateTargetOptions,
   padPath: string,
   chains: LiveAPI[],
-): { options: UpdateTargetOptions; skipped: ParamResult[] } | null {
+): { options: UpdateTargetOptions; skipped: SkippedSample[] } | null {
   const params = options.params ?? [];
-  const samples = params.filter((entry) =>
-    isSampleParam(paramEntryKey(entry).key),
-  );
+  const samples = params
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => isSampleParam(paramEntryKey(entry).key));
 
   if (samples.length === 0) {
     return null;
@@ -344,13 +336,16 @@ function dropAmbiguousSamples(
     chains.map((_, index) => `${padPath}/c${index}`),
   );
 
+  const sampleEntries = new Set(samples.map(({ entry }) => entry));
+
   return {
     options: {
       ...options,
-      params: params.filter((entry) => !samples.includes(entry)),
+      params: params.filter((entry) => !sampleEntries.has(entry)),
     },
-    skipped: samples.map((entry) =>
-      skippedParam(paramEntryKey(entry).key, reason),
-    ),
+    skipped: samples.map(({ entry, index }) => ({
+      index,
+      result: skippedParam(paramEntryKey(entry).key, reason),
+    })),
   };
 }

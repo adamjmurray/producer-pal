@@ -195,6 +195,15 @@ describe("createScene by path", () => {
       expect(liveSet.call).not.toHaveBeenCalled();
     });
 
+    it("refuses a path sent with sceneIndex", () => {
+      expect(() =>
+        createScene({ path: "s1", sceneIndex: 0, capture: true }),
+      ).toThrow(
+        "path says where the scene goes - don't send sceneIndex with it",
+      );
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
     it("refuses s0, which has no scene to insert after", () => {
       expect(() => createScene({ path: "s0", capture: true })).toThrow(
         "capture can't insert at s0 - it always inserts after an existing scene. Use s1 or later, or s+ to append",

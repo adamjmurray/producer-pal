@@ -50,6 +50,10 @@ interface RemoteScriptAnswers {
   load?: { success: boolean; result?: BrowserItemLoad; error?: string };
   /** Whether the loaded device shows up on the temp track */
   arrives?: boolean;
+  /** Whether the device that arrives reads as an instrument */
+  instrument?: boolean;
+  /** Runs once the device has landed, for state that changes mid-request */
+  afterLoad?: () => void;
 }
 
 /**
@@ -61,6 +65,8 @@ function answerRemoteScript({
   resolution = { available: true, item: ITEM },
   load = { success: true, result: { available: true } },
   arrives = true,
+  instrument = false,
+  afterLoad,
 }: RemoteScriptAnswers = {}): void {
   vi.mocked(requestNode).mockImplementation(async (route) => {
     if (route === REMOTE_SCRIPT_ROUTES.resolve) {
@@ -71,8 +77,14 @@ function answerRemoteScript({
       const devices = tempTrack.properties.devices as unknown[];
       const id = `loaded-${++loads}`;
 
-      registerMockObject(id, { path: TEMP_TRACK.device(devices.length / 2) });
+      registerMockObject(id, {
+        path: TEMP_TRACK.device(devices.length / 2),
+        ...(instrument
+          ? { properties: { type: 1, can_have_chains: 0 } }
+          : undefined),
+      });
       tempTrack.properties.devices = [...devices, "id", id];
+      afterLoad?.();
     }
 
     return load;
@@ -231,6 +243,16 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     );
   });
 
+  it("says so when the lookup fails without saying why", async () => {
+    vi.mocked(requestNode).mockResolvedValue({ success: false });
+
+    await expect(
+      createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+    ).rejects.toThrow(
+      `could not look up "Pro-Q 4" in Live's browser: no answer`,
+    );
+  });
+
   it("refuses when Live makes no track to load onto", async () => {
     liveSet.methods.create_midi_track = () => ["id", "0"];
 
@@ -350,6 +372,59 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" }),
       ).rejects.toThrow(`could not insert "Pro-Q 4" at end in path "t0/d+"`);
       expectCleanedUp();
+    });
+
+    it("naming why Live dropped it, when the move says", async () => {
+      // A second instrument on one track: the refusal carries a reason, and
+      // the caller gets it rather than a bare "could not insert".
+      liveSet.methods.move_device = () => null;
+      registerMockObject("existing", {
+        path: livePath.track(0).device(0),
+        properties: { type: 1, can_have_chains: 0 },
+      });
+      answerRemoteScript({ instrument: true });
+
+      await expect(
+        createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" }),
+      ).rejects.toThrow(
+        `could not insert "Pro-Q 4" at end in path "t0/d+": the destination ` +
+          `already has an instrument, and only one is allowed`,
+      );
+      expectCleanedUp();
+    });
+  });
+
+  describe("cleans up what it can", () => {
+    it("leaves the selection alone when Live named no selected track", async () => {
+      mockNonExistentObjects();
+      // No object at the view path, so Live's "nothing is selected" id.
+      registerMockObject("0", { path: livePath.view.selectedTrack });
+
+      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" });
+
+      expect(liveSet.methods.delete_track).toHaveBeenCalledWith(1);
+      expect(songView.set).not.toHaveBeenCalledWith(
+        "selected_track",
+        expect.anything(),
+      );
+    });
+
+    it("deletes no track when the temp track is already gone", async () => {
+      // The index is read at cleanup time, not at creation: another request
+      // may have removed the track while this one waited on the browser.
+      const dropTempTrack = () => {
+        tempTrack.path = "";
+      };
+
+      answerRemoteScript({ afterLoad: dropTempTrack });
+
+      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" });
+
+      expect(liveSet.methods.delete_track).not.toHaveBeenCalled();
+      expect(songView.set).toHaveBeenCalledWith(
+        "selected_track",
+        "id selected-track",
+      );
     });
   });
 });

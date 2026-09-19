@@ -342,10 +342,9 @@ function leafName(rel: string): string {
 }
 
 /**
- * Immediate parent folder display name for a sampleFolder item, mirroring
- * the `folder` field DB items carry. For a nested relative path the parent
- * is its last folder segment ("drums/kick.wav" → "drums"); for a top-level
- * file the parent is the configured sample folder's own basename.
+ * Immediate parent folder display name for a sampleFolder item, mirroring the
+ * `folder` field DB items carry: a nested path's last folder segment
+ * ("drums/kick.wav" → "drums"), else the sample folder's own basename.
  *
  * @param rel - Relative path like "drums/kick.wav"
  * @param sampleFolder - Absolute sample folder path (trailing slash)
@@ -358,11 +357,8 @@ function parentFolder(rel: string, sampleFolder: string): string {
     return leafName(rel.slice(0, idx));
   }
 
-  const trimmed = sampleFolder.endsWith("/")
-    ? sampleFolder.slice(0, -1)
-    : sampleFolder;
-
-  return leafName(trimmed);
+  // readSamples always hands back a trailing slash.
+  return leafName(sampleFolder.slice(0, -1));
 }
 
 /**

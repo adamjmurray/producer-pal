@@ -316,6 +316,22 @@ describe("StdioHttpBridge", () => {
       expect(bridge.httpClient).toBeNull();
     });
 
+    // Nothing to close when the transport threw before the client existed.
+    it("handles a failure before the client was built", async () => {
+      (StreamableHTTPClientTransport as unknown as Mock).mockImplementationOnce(
+        function () {
+          throw new Error("bad transport");
+        },
+      );
+
+      await expect(bridge._ensureHttpConnection()).rejects.toThrow(
+        "Failed to connect to Producer Pal MCP server at http://localhost:3350/mcp: bad transport",
+      );
+
+      expect(mockClient.close).not.toHaveBeenCalled();
+      expect(bridge.httpClient).toBeNull();
+    });
+
     it("reuses existing connection when connected", async () => {
       bridge.httpClient = mockClient;
       bridge.isConnected = true;

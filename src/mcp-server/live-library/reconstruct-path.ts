@@ -92,32 +92,30 @@ export function resolveAbsolutePaths(
   const rows = db.prepare(sql).all(...fileIds) as unknown as WalkRow[];
   // Group by root_id and assemble; rows are already depth-DESC per root
   // (i.e. root segment first, leaf last) thanks to the ORDER BY.
-  const segmentsByRoot = new Map<number, string[]>();
-  // Track the highest-depth row's parent_id per root. When the chain
-  // reached the actual root row, that parent_id is 0; if the recursion
-  // stopped at MAX_PARENT_DEPTH first, it's the parent_id of the
-  // truncation point (non-zero).
-  const headParentByRoot = new Map<number, number>();
+  // Per root: its segments, plus the highest-depth row's parent_id. When the
+  // chain reached the actual root row, that parent_id is 0; if the recursion
+  // stopped at MAX_PARENT_DEPTH first, it's the parent_id of the truncation
+  // point (non-zero).
+  const byRoot = new Map<number, { segs: string[]; headParent: number }>();
 
   for (const row of rows) {
-    let segs = segmentsByRoot.get(row.root_id);
+    let entry = byRoot.get(row.root_id);
 
-    if (!segs) {
-      segs = [];
-      segmentsByRoot.set(row.root_id, segs);
+    if (!entry) {
       // First row per root_id is the highest-depth (chain head) thanks
       // to ORDER BY depth DESC. Normalize NULL → 0 so the truncation
       // check below treats both as "reached root".
-      headParentByRoot.set(row.root_id, row.parent_id ?? 0);
+      entry = { segs: [], headParent: row.parent_id ?? 0 };
+      byRoot.set(row.root_id, entry);
     }
 
-    segs.push(row.name);
+    entry.segs.push(row.name);
   }
 
-  for (const [rootId, segs] of segmentsByRoot.entries()) {
+  for (const [rootId, { segs, headParent }] of byRoot.entries()) {
     const resolved: ResolvedPath = {
       path: joinPathSegments(segs),
-      truncated: (headParentByRoot.get(rootId) ?? 0) !== 0,
+      truncated: headParent !== 0,
     };
 
     // segs are root-first, leaf-last; the immediate parent folder is the

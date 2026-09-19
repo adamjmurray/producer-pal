@@ -7,6 +7,7 @@ interface LabelPattern {
   regex: RegExp;
   /** null for a shape that is a number but carries no unit, like a ratio. */
   unit: string | null;
+  /** Scales the matched number onto the unit; 1 when left out. */
   multiplier?: number;
   fixedValue?: number;
   isNoteName?: boolean;
@@ -20,22 +21,20 @@ interface LabelPattern {
 const LABEL_PATTERNS: LabelPattern[] = [
   // ms must precede s so "100ms" doesn't match the s-only pattern
   { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
-  { regex: /^([\d.]+)\s*hz$/i, unit: "Hz", multiplier: 1 },
-  { regex: /^([\d.]+)\s*ms$/i, unit: "ms", multiplier: 1 },
+  { regex: /^([\d.]+)\s*hz$/i, unit: "Hz" },
+  { regex: /^([\d.]+)\s*ms$/i, unit: "ms" },
   { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
-  { regex: /^([\d.-]+)\s*db$/i, unit: "dB", multiplier: 1 },
+  { regex: /^([\d.-]+)\s*db$/i, unit: "dB" },
   { regex: /^(-?inf)\s*db$/i, unit: "dB", fixedValue: -70 },
-  { regex: /^([\d.-]+)\s*(?:%|percent)$/i, unit: "%", multiplier: 1 },
+  { regex: /^([\d.-]+)\s*(?:%|percent)$/i, unit: "%" },
   {
     regex: /^([\d.-]+)\s*(?:°|deg|degrees?)$/i,
     unit: "degrees",
-    multiplier: 1,
   },
   // Live writes decimals on every one of these: "-1.68 st", "0.00 st".
   {
     regex: /^([+-]?[\d.]+)\s*(?:st|semis?|semitones?)$/i,
     unit: "semitones",
-    multiplier: 1,
   },
   // Cents stay cents. They are hundredths of a semitone, but a param displays
   // one or the other and a write is converted onto the scale the param shows,
@@ -43,20 +42,18 @@ const LABEL_PATTERNS: LabelPattern[] = [
   {
     regex: /^([+-]?[\d.]+)\s*(?:ct|cents?)$/i,
     unit: "cents",
-    multiplier: 1,
   },
   // Steps of the current scale, not of the chromatic one, so this is neither
   // semitones nor dimensionless (Auto Shift "Pitch Scale Deg.", Resonators).
   {
     regex: /^([+-]?[\d.]+)\s*(?:sd|scale ?degrees?)$/i,
     unit: "scale degrees",
-    multiplier: 1,
   },
   // Ratios. Live writes compression as "4.00 : 1" and expansion as "1 : 1.15",
   // so the number that means anything is whichever side isn't the 1. An end
   // like "inf : 1" matches neither and is left to the sentinel trim.
-  { regex: /^([\d.]+)\s*:\s*1(?:\.0+)?$/, unit: null, multiplier: 1 },
-  { regex: /^1(?:\.0+)?\s*:\s*([\d.]+)$/, unit: null, multiplier: 1 },
+  { regex: /^([\d.]+)\s*:\s*1(?:\.0+)?$/, unit: null },
+  { regex: /^1(?:\.0+)?\s*:\s*([\d.]+)$/, unit: null },
   { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
   { regex: /^(\d+)([lr])$/i, unit: "pan", isPan: true },
   { regex: /^(c)$/i, unit: "pan", fixedValue: 0 },
@@ -71,10 +68,9 @@ export interface ParsedLabel {
 /**
  * Read a parameter's display label. Always call this instead of
  * `param.call("str_for_value", ...)`: Max hands back a JS number, not a string,
- * whenever the label is a bare number with no unit or suffix (EQ Eight `Q`, Glue
- * Compressor `Attack`). Every consumer here wants a string, and an uncoerced
- * number silently fails `parseLabel`'s type guard, which drops the param back to
- * raw units on both the read and the write path.
+ * for a label that is a bare number (EQ Eight `Q`, Glue Compressor `Attack`),
+ * and an uncoerced number silently fails `parseLabel`'s type guard — which
+ * drops the param back to raw units on both the read and the write path.
  * @param paramApi - LiveAPI parameter object
  * @param rawValue - Raw value to render
  * @returns The display label
@@ -180,11 +176,10 @@ const ON_LABELS = new Set(["on", "true", "1"]);
  * The index an enum (quantized) param's value_items resolves to for an input
  * value, or -1 if none does.
  *
- * Matching is case-insensitive: the option list is closed, so there is no
- * ambiguity a stricter match would be protecting against. A two-option param
- * whose labels are an Off/On pair also accepts the booleans and 0/1 a model
- * plausibly sends for a toggle — `false`/`0` for Off, `true`/`1` for On —
- * since both arrive as strings after schema coercion.
+ * Matching is case-insensitive: the option list is closed, so a stricter match
+ * would protect against no ambiguity. A two-option param whose labels are an
+ * Off/On pair also accepts the `false`/`0` and `true`/`1` a model plausibly
+ * sends for a toggle, which arrive as strings after schema coercion.
  * @param valueItems - The param's value_items, in index order
  * @param inputValue - The value to resolve, as normalizeParamValue left it
  * @returns The matching index, or -1 if nothing matches

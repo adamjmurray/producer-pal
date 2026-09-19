@@ -421,6 +421,19 @@ describe("readOneDevice with drum pad path", () => {
     });
   });
 
+  it("carries the catch-all pad's chains when chains were asked for", () => {
+    setupCatchAllChainMocks();
+
+    const pad = readOneDevice({ path: "t1/d0/p*", include: ["chains"] });
+    const chains = pad.chains as { id: string; path: string }[];
+
+    expect(chains).toHaveLength(1);
+    expect(chains[0]?.id).toBe("catch-all");
+    expect(chains[0]?.path).toBe("t1/d0/p*/c0");
+    // The chains replace the count a chainless read reports.
+    expect(pad.chainCount).toBeUndefined();
+  });
+
   // read-device prints `p*/cN` for a catch-all chain, so it has to read one
   // back. There is no pad to resolve through — the chains come off the rack.
   it("reads back the catch-all chain path it prints", () => {

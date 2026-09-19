@@ -154,6 +154,31 @@ describe("ramp reach detection", () => {
     expect(warnings).toStrictEqual([]);
   });
 
+  it("stays quiet when the range has no span", () => {
+    // A range pinned to one instant (`2|3-2|3`) can match a chord, so two
+    // positions get through — but there is no span for a ramp to fall short of.
+    const { warnings } = reachWarnings("2|3-2|3: velocity = ramp(1, 127)", [
+      {
+        pitch: 60,
+        start_time: 6,
+        duration: 0.25,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+      {
+        pitch: 64,
+        start_time: 6,
+        duration: 0.25,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+    ]);
+
+    expect(warnings).toStrictEqual([]);
+  });
+
   it("stays quiet when the ramp line itself failed", () => {
     // transformedIndices is cumulative: the first line filling it must not make
     // the failed second line look like it applied something.

@@ -19,6 +19,7 @@
  */
 
 import { stat } from "node:fs/promises";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { detectStalenessRisk } from "../db-staleness.ts";
 import {
   clampLibraryLimit,
@@ -125,9 +126,7 @@ export async function librarySearch(
     return {
       dbAvailable: false,
       items: [],
-      reason: `Failed to read Live database: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      reason: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
 }
@@ -200,9 +199,10 @@ function buildSearchQuery(
 
   params.push(limit);
 
+  // buildCandidateWhere always emits at least the file_type filter.
   const sql = `SELECT ${CANDIDATE_COLUMNS}
                FROM ${CANDIDATE_FROM}
-               ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}
+               WHERE ${where.join(" AND ")}
                ORDER BY ${orderBy}
                LIMIT ?`;
 

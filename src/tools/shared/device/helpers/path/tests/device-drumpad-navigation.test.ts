@@ -13,6 +13,7 @@ import {
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   clearMockRegistry,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -23,6 +24,7 @@ import {
   findNestedDrumRack,
   invalidateRackChains,
   navigateRemainingSegments,
+  nestedDrumRackHint,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
   warnRackRelativeDrumChainSpelling,
@@ -505,7 +507,70 @@ describe("findNestedDrumRack", () => {
 
     expect(findNestedDrumRack(LiveAPI.from(RACK_PATH))).toBe(null);
   });
+
+  it("finds a kit a rack down from the one it was asked about", () => {
+    registerNestedRacks(1);
+
+    // The kit is not on the rack's own chain, so only the recursive step
+    // reaches it — and the caller gets the kit, not the rack holding it.
+    expect(findNestedDrumRack(LiveAPI.from(RACK_PATH))?.id).toBe("d1");
+  });
 });
+
+describe("nestedDrumRackHint", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("points a pad path at the kit nested under the device it named", () => {
+    registerNestedRacks(0);
+
+    expect(nestedDrumRackHint(RACK_PATH, "C1", ["c0"])).toContain("/pC1/c0");
+  });
+
+  it("says nothing about a device that isn't there", () => {
+    mockNonExistentObjects();
+
+    expect(nestedDrumRackHint(RACK_PATH, "C1")).toBe("");
+  });
+
+  it("says nothing about a device that holds no kit", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: [] },
+    });
+
+    expect(nestedDrumRackHint(RACK_PATH, "C1")).toBe("");
+  });
+});
+
+/**
+ * A chain of racks under RACK_PATH, with the drum rack at the given depth.
+ * @param kitDepth - How many racks down the drum rack sits
+ */
+function registerNestedRacks(kitDepth: number): void {
+  registerMockObject("rack", {
+    path: RACK_PATH,
+    type: "RackDevice",
+    properties: { chains: ["id", "c0"] },
+  });
+
+  for (let i = 0; i <= kitDepth; i++) {
+    registerMockObject(`c${String(i)}`, {
+      type: "Chain",
+      properties: { devices: ["id", `d${String(i)}`] },
+    });
+    registerMockObject(`d${String(i)}`, {
+      path: `${RACK_PATH} chains 0 devices 0`,
+      type: "RackDevice",
+      properties: {
+        can_have_drum_pads: i === kitDepth ? 1 : 0,
+        chains: ["id", `c${String(i + 1)}`],
+      },
+    });
+  }
+}
 
 describe("invalidateRackChains", () => {
   beforeEach(() => {

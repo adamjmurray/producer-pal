@@ -376,6 +376,33 @@ describe("note-transforms", () => {
       );
     });
 
+    // `preTransforms: "v0"` alone is how a clip is cleared without rewriting
+    // it, so the reason has to name the param that was actually sent.
+    it("names preTransforms alone when that is what was sent", () => {
+      const mockClip = {
+        id: "123",
+        getProperty: vi.fn(() => 4),
+        call: vi.fn((method: string) =>
+          method === "get_notes_extended"
+            ? JSON.stringify({ notes: [] })
+            : "[]",
+        ),
+      };
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        reasons,
+        "v0",
+        undefined,
+        4,
+        4,
+      );
+
+      expect(reasons.said.get("123")?.join("; ")).toBe(
+        "preTransforms ignored: the clip has no notes",
+      );
+    });
+
     it("should handle missing notes property from get_notes_extended", () => {
       const mockClip = {
         getProperty: vi.fn(() => 4),

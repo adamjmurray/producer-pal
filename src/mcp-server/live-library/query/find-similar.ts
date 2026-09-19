@@ -165,13 +165,13 @@ function rankCandidates(
   parentId: number | undefined,
 ): LibrarySimilarItem[] {
   const { where, params } = buildCandidateWhere(args, parentId);
-  // Assumes one fe_values row per file (the spike found this holds across
-  // the library); a file with multiple rows would be scored/ranked once per row.
-  // The seed side guards this with LIMIT 1 (see loadVector).
+  // Assumes one fe_values row per file; a second row would be scored and
+  // ranked again. The seed side guards this with LIMIT 1 (see loadVector).
+  // buildCandidateWhere always emits at least the file_type filter.
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data
                FROM ${CANDIDATE_FROM}
                JOIN fe_values fv ON fv.file_id = f.file_id
-               ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}`;
+               WHERE ${where.join(" AND ")}`;
   const rows = db.prepare(sql).all(...params) as unknown as CandidateRow[];
   const seedNorm = vectorNorm(seedVector);
 

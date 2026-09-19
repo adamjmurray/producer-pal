@@ -24,6 +24,23 @@ function rec(id: string, overrides: Partial<BranchRecord> = {}): BranchRecord {
 }
 
 /**
+ * A fork of `parent` that diverges at `forkedAtIndex`.
+ * @param id - Record id
+ * @param parent - The fork parent's id
+ * @param forkedAtIndex - Message index where this fork diverges
+ * @param createdAt - When the fork was created
+ * @returns A branch record for testing
+ */
+function forkOf(
+  id: string,
+  parent: string,
+  forkedAtIndex: number,
+  createdAt: number,
+): BranchRecord {
+  return rec(id, { forkParentId: parent, forkedAtIndex, createdAt });
+}
+
+/**
  * A trunk and one fork of it, the two-member family most of these cases use.
  * @param forkUpdatedAt - When the fork was last touched (the trunk is at 10)
  * @param bookmarked - Whether the trunk is bookmarked
@@ -202,11 +219,7 @@ describe("computeBranchPoints", () => {
 
   it("shows arrows when viewing a fork (trunk first)", () => {
     const a = rec("A");
-    const b = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 2000,
-    });
+    const b = forkOf("B", "A", 2, 2000);
 
     const points = computeBranchPoints("B", [a, b]);
 
@@ -217,11 +230,7 @@ describe("computeBranchPoints", () => {
 
   it("shows arrows when viewing the trunk", () => {
     const a = rec("A");
-    const b = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 2000,
-    });
+    const b = forkOf("B", "A", 2, 2000);
 
     const points = computeBranchPoints("A", [a, b]);
 
@@ -232,16 +241,8 @@ describe("computeBranchPoints", () => {
 
   it("orders forks at one point by creation time", () => {
     const a = rec("A");
-    const b = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 3000,
-    });
-    const c = rec("C", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 2000,
-    });
+    const b = forkOf("B", "A", 2, 3000);
+    const c = forkOf("C", "A", 2, 2000);
 
     const points = computeBranchPoints("B", [a, b, c]);
 
@@ -253,18 +254,24 @@ describe("computeBranchPoints", () => {
     });
   });
 
+  it("keeps the larger set when two divergences claim the same anchor", () => {
+    // B forked from A at index 2, and C forked from B at the same index. Both
+    // sets anchor there, so only one can own the arrows.
+    const a = rec("A");
+    const b = forkOf("B", "A", 2, 2000);
+    const c = forkOf("C", "B", 2, 3000);
+
+    const points = computeBranchPoints("B", [a, b, c]);
+
+    expect(points).toStrictEqual([
+      { anchorIndex: 2, siblingIds: ["A", "B"], currentIndex: 1 },
+    ]);
+  });
+
   it("exposes independent arrow sets for multiple fork points", () => {
     const a = rec("A");
-    const b = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 2000,
-    });
-    const c = rec("C", {
-      forkParentId: "A",
-      forkedAtIndex: 5,
-      createdAt: 3000,
-    });
+    const b = forkOf("B", "A", 2, 2000);
+    const c = forkOf("C", "A", 5, 3000);
 
     const points = computeBranchPoints("A", [a, b, c]);
 
@@ -275,16 +282,8 @@ describe("computeBranchPoints", () => {
   });
 
   it("pages between orphaned siblings without the deleted trunk", () => {
-    const b = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 2000,
-    });
-    const c = rec("C", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 3000,
-    });
+    const b = forkOf("B", "A", 2, 2000);
+    const c = forkOf("C", "A", 2, 3000);
 
     const points = computeBranchPoints("B", [b, c]);
 
@@ -302,16 +301,8 @@ describe("computeBranchPoints", () => {
   it("shows both the inbound and outbound sets for a mid-chain branch", () => {
     // A → B (at 2); B → C (at 4). Viewing B: it is a fork of A and a trunk of C.
     const a = rec("A");
-    const b = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 2,
-      createdAt: 2000,
-    });
-    const c = rec("C", {
-      forkParentId: "B",
-      forkedAtIndex: 4,
-      createdAt: 3000,
-    });
+    const b = forkOf("B", "A", 2, 2000);
+    const c = forkOf("C", "B", 4, 3000);
 
     const points = computeBranchPoints("B", [a, b, c]);
 

@@ -150,8 +150,7 @@ function processDrumRackChain(
 }
 
 /**
- * A drum chain as the caller will see it, with its own id, path, mixer and
- * either its devices or a count of them.
+ * A drum chain as the caller sees it: id, path, mixer, devices or their count.
  * @param chain - Chain object from drum rack
  * @param chainPath - The chain's path in Producer Pal's grammar
  * @param options - Processing options
@@ -321,10 +320,8 @@ export function updateDrumPadSoloStates(
 }
 
 /**
- * Process drum rack chains to build drum pads output
- * Uses chains with in_note property instead of drum_pads collection.
- * This correctly handles nested drum racks by following the actual device hierarchy.
- *
+ * Build a rack's drum pads by grouping its chains on in_note rather than
+ * reading drum_pads, which follows the real hierarchy a nested rack has.
  * @param device - Device object
  * @param deviceInfo - Device info to update
  * @param includeChains - Include chains data in drum pads
@@ -400,18 +397,15 @@ export function processDrumPads(
     processedDrumPads.push(drumPadInfo);
   }
 
-  // Sort drum pads: note-specific first (sorted by note), then catch-all
+  // Note pads in note order, then the catch-all — grouping by note above
+  // leaves one pad per note, so there is only ever one catch-all.
   processedDrumPads.sort((a, b) => {
     const aNote = a.note as number;
     const bNote = b.note as number;
 
-    if (aNote === -1 && bNote === -1) {
-      return 0;
-    }
-
     if (aNote === -1) {
       return 1;
-    } // catch-all at end
+    }
 
     if (bNote === -1) {
       return -1;

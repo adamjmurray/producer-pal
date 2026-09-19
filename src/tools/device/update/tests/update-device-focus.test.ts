@@ -60,6 +60,14 @@ describe("updateDevice - focus functionality", () => {
     expect(selectMock.get()).toHaveBeenCalledTimes(1);
   });
 
+  it("should not call select when nothing was written", () => {
+    // Two ids so the misses come back as skipped entries rather than throwing:
+    // focusing one would name an object the call never reached.
+    updateDevice({ id: "nope-1,nope-2", name: "Test", focus: true });
+
+    expect(selectMock.get()).not.toHaveBeenCalled();
+  });
+
   it("should not call select when focus=false", () => {
     updateDevice({ id: "123", name: "Test", focus: false });
 

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { postProcessDrumMap } from "../helpers/drum-map-post-processing.ts";
 import { readOneDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -243,5 +244,39 @@ describe("readOneDevice drum-map by target kind", () => {
     const devices = result.devices as Record<string, unknown>[];
 
     expect(devices[0]?.drumPads).toHaveLength(1);
+  });
+});
+
+describe("postProcessDrumMap", () => {
+  const options = {
+    includeDrumMap: true,
+    drumMapExplicit: true,
+    chainsForDrumMap: false,
+    includeDrumPads: false,
+  };
+
+  it("maps nothing for a chain that holds no devices", () => {
+    // A chain read at the depth limit reports a device count instead of the
+    // devices, so the map has nothing to search and must not be built.
+    const result = postProcessDrumMap(
+      { type: "Chain", deviceCount: 2 },
+      options,
+    );
+
+    expect(result.drumMap).toBeUndefined();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("leaves a kept pad alone when it carries no chains", () => {
+    // Only the pads of a rack read for the map carry chains; a pad already
+    // read without them takes no chainCount it never had.
+    const pad = { note: 36, pitch: "C1" };
+    const result = postProcessDrumMap(
+      { type: "drum-rack", drumPads: [pad], chains: [] },
+      { ...options, chainsForDrumMap: true, includeDrumPads: true },
+    );
+
+    expect(result.drumPads).toStrictEqual([{ note: 36, pitch: "C1" }]);
+    expect(result.chains).toBeUndefined();
   });
 });

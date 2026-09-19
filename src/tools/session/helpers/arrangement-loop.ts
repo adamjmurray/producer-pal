@@ -66,11 +66,8 @@ export function applyArrangementLoop(
 
   // Bounds with the loop off do nothing audible, so naming either turns it on.
   // An explicit loop still wins, so `loop: false` can set bounds for later.
-  const enableLoop = loop ?? (namesABound ? true : undefined);
-
-  if (enableLoop != null) {
-    liveSet.set("loop", enableLoop);
-  }
+  // Naming none of the three returned above, so there is always a value here.
+  liveSet.set("loop", loop ?? true);
 
   if (planned != null) {
     liveSet.set("loop_start", planned.plan.startBeats);

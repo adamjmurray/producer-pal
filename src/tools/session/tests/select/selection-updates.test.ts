@@ -14,6 +14,7 @@ import {
 import {
   buildTrackPath,
   updateClipSlotSelection,
+  updateDeviceSelection,
   updateHighlightedClipSlot,
   updateTrackSelection,
 } from "#src/tools/session/helpers/selection-updates.ts";
@@ -93,6 +94,36 @@ describe("selection-updates", () => {
       const result = updateTrackSelection({ songView: api, trackIndex: 1 });
 
       expect(result.selectedTrackId).toBe("id track-by-index");
+    });
+
+    it("selects nothing when no track is named at all", () => {
+      const { mock, api } = setupSongView();
+
+      expect(updateTrackSelection({ songView: api })).toStrictEqual({});
+      expect(mock.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateDeviceSelection", () => {
+    it("resolves a device path the caller hasn't already resolved", () => {
+      const { mock, api } = setupSongView();
+
+      registerMockObject("device-at-path", {
+        path: `${String(livePath.track(1))} devices 0`,
+        type: "Device",
+      });
+
+      const device = updateDeviceSelection({
+        songView: api,
+        devicePath: "t1/d0",
+        devicePathParam: "devicePath",
+      });
+
+      expect(device?.id).toBe("device-at-path");
+      expect(mock.call).toHaveBeenCalledWith(
+        "select_device",
+        "id device-at-path",
+      );
     });
   });
 

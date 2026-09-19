@@ -109,6 +109,29 @@ describe("remoteScriptRequest", () => {
     expect(await reply).toStrictEqual({ available: false });
   });
 
+  it("throws when the connection is dropped after it was taken", async () => {
+    await answerWith({ drop: true });
+
+    await expect(
+      remoteScriptRequest({ route: "/ping", timeoutMs: 5000 }),
+    ).rejects.toThrow(/socket hang up|ECONNRESET/);
+  });
+
+  it("uses the default port when PPAL_REMOTE_SCRIPT_PORT isn't set", async () => {
+    const remote = await answerWith({ body: { ok: true } });
+
+    delete process.env.PPAL_REMOTE_SCRIPT_PORT;
+
+    // Whatever is or isn't on the default port here, it isn't the stand-in,
+    // which is listening on a port of its own. Either outcome is fine; what
+    // matters is that the request didn't go to the port the env var named.
+    await remoteScriptRequest({ route: "/ping", timeoutMs: 200 }).catch(
+      () => null,
+    );
+
+    expect(remote.requests).toStrictEqual([]);
+  });
+
   it("throws when the answer is cut off", async () => {
     await answerWith({ cut: '{"ok":' });
 

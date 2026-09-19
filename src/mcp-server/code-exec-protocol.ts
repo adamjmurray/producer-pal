@@ -9,6 +9,7 @@
  */
 
 import Max from "max-api";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -49,7 +50,7 @@ export async function handleCodeExecRequest(
     code = request.code;
     globals = request.globals ?? {};
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     console.error(
       `Failed to parse code_exec_request: ${message} [requestId=${requestId}]`,

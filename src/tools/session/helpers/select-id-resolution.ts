@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
@@ -300,12 +301,8 @@ function assertChildrenShareATrack(filled: FilledSlots): void {
     return;
   }
 
-  const [first, ...rest] = children;
-
-  if (first == null) {
-    return;
-  }
-
+  const first = assertDefined(children[0], "first child on a track");
+  const rest = children.slice(1);
   const firstTrack = ownerTrackPath(first.id);
 
   if (firstTrack == null) {

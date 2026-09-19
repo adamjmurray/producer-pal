@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   mockNonExistentObjects,
@@ -211,12 +211,14 @@ describe("select id aliases", () => {
     ).toThrow("clipId and deviceId name different tracks");
   });
 
-  it("takes a clip and a device on the same track", () => {
+  /**
+   * Select a clip and a track-0 device together by id.
+   * @param clipPath - The clip's path, or undefined for a clip with no path
+   * @returns The select() result
+   */
+  const selectClipAndDevice = (clipPath?: PathLike) => {
     registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
-    registerMockObject("clip_123", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      type: "Clip",
-    });
+    registerMockObject("clip_123", { path: clipPath, type: "Clip" });
     registerMockObject("device_123", {
       path: livePath.track(0).device(0),
       type: "Device",
@@ -224,9 +226,18 @@ describe("select id aliases", () => {
     setupSongViewMock();
     setupAppViewMock();
 
+    return select({ clipId: "id clip_123", deviceId: "id device_123" });
+  };
+
+  // An id can resolve to an object whose path names no track at all. There is
+  // no track to disagree about, so the pair goes through.
+  it("takes a clip whose path names no track alongside a device", () => {
+    expect(selectClipAndDevice().selectedDevice).toBeDefined();
+  });
+
+  it("takes a clip and a device on the same track", () => {
     expect(
-      select({ clipId: "id clip_123", deviceId: "id device_123" })
-        .selectedDevice,
+      selectClipAndDevice(livePath.track(0).clipSlot(0).clip()).selectedDevice,
     ).toBeDefined();
   });
 

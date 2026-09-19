@@ -394,8 +394,9 @@ function insertKeywords(db: DatabaseSync): void {
  * Populate the metadata tables with a small `Category|Sub|Leaf` taxonomy for
  * listCategories tests. Leaf segments deliberately reuse existing keyword names
  * (Kick, Snare Hit, One Shot) so drill-down file counts resolve via the
- * keywords table; "Synth Bass" has no keyword (counts to nothing) and a bare
- * "Core Library" value (no pipe) must be excluded from the taxonomy.
+ * keywords table; "Synth Bass" has no keyword (counts to nothing), a bare
+ * "Core Library" value (no pipe) must be excluded from the taxonomy, and a
+ * trailing-pipe "Drums|" names no leaf to drill into.
  *
  * @param db - Open writable DB
  */
@@ -409,6 +410,7 @@ function insertMetadata(db: DatabaseSync): void {
   value.run(3, "Type|One Shot");
   value.run(4, "Core Library");
   value.run(5, "Sounds|Bass|Synth Bass");
+  value.run(6, "Drums|");
 
   const meta = db.prepare(
     "INSERT INTO metadata (file_id, key, value_id) VALUES (?, ?, ?)",
@@ -420,6 +422,7 @@ function insertMetadata(db: DatabaseSync): void {
   meta.run(2001, META_CKEY, 3); // Type|One Shot
   meta.run(2001, META_CKEY, 4); // Core Library (no pipe → excluded)
   meta.run(1001, META_CKEY, 5); // Sounds|Bass|Synth Bass (leaf has no keyword)
+  meta.run(1001, META_CKEY, 6); // Drums| (empty leaf → no tag to drill into)
 }
 
 /**

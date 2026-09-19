@@ -3,8 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
@@ -15,6 +14,7 @@ import {
 import { remoteScriptStatus } from "../remote-script-status.ts";
 import {
   type FakeRemoteScript,
+  makeScratchUserLibrary,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
 
@@ -50,7 +50,7 @@ function writeInstalledVersion(contents: string): void {
 }
 
 beforeEach(() => {
-  scratchDir = mkdtempSync(join(tmpdir(), "ppal-remote-script-status-"));
+  scratchDir = makeScratchUserLibrary("status");
   findUserLibraryPath.mockResolvedValue(scratchDir);
 });
 
@@ -107,6 +107,22 @@ describe("remoteScriptStatus", () => {
   it("offers an update when the installed version can't be read", async () => {
     installRemoteScript(scratchDir);
     writeInstalledVersion("# someone edited this\n");
+
+    const status = await remoteScriptStatus();
+
+    expect(status.installedVersion).toBeNull();
+    expect(status.updateAvailable).toBe(true);
+  });
+
+  it("offers an update when version.py can't be opened at all", async () => {
+    installRemoteScript(scratchDir);
+
+    // A directory where the file should be: readFileSync throws rather than
+    // returning text with no version line.
+    const versionFile = join(remoteScriptPath(scratchDir), "version.py");
+
+    rmSync(versionFile);
+    mkdirSync(versionFile);
 
     const status = await remoteScriptStatus();
 

@@ -46,6 +46,26 @@ describe("readOneClip location params through the tool schema", () => {
   });
 });
 
+/**
+ * Register a 4/4 Set whose track 1 holds one arrangement clip starting at 5|1.
+ */
+function setupArrangementClipAt5_1(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+  setupMidiClipMock({
+    path: livePath.track(1).arrangementClip(0),
+    clipId: "arr_clip",
+    clipProps: { name: "Verse", start_time: 16, is_arrangement_clip: 1 },
+  });
+  registerMockObject("track_1", {
+    path: livePath.track(1),
+    type: "Track",
+    properties: { arrangement_clips: children("arr_clip") },
+  });
+}
+
 describe("readOneClip path param", () => {
   it("reads the clip at a clip slot", () => {
     setupMidiClipMock({
@@ -89,25 +109,22 @@ describe("readOneClip path param", () => {
   // The round trip a result relies on: read-clip reports "t1[5|1]" for an
   // arrangement clip, and that same string reads it back.
   it("reads an arrangement clip by where it starts", () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
-    setupMidiClipMock({
-      path: livePath.track(1).arrangementClip(0),
-      clipId: "arr_clip",
-      clipProps: { name: "Verse", start_time: 16, is_arrangement_clip: 1 },
-    });
-    registerMockObject("track_1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { arrangement_clips: children("arr_clip") },
-    });
+    setupArrangementClipAt5_1();
 
     const result = readOneClip({ path: "t1[5|1]" });
 
     expect(result.name).toBe("Verse");
     expect(result.path).toBe("t1[5|1]");
+  });
+
+  // Two spellings of one clip is not a conflict; two clips is. The id check
+  // below reads the id, so only the path branch can catch this.
+  it("refuses an id naming a different clip than an arrangement path", () => {
+    setupArrangementClipAt5_1();
+
+    expect(() => readOneClip({ path: "t1[5|1]", id: "stale" })).toThrow(
+      'id "stale" and path "t1[5|1]" name different clips',
+    );
   });
 
   it("throws when no clip starts at the position named", () => {
@@ -223,6 +240,16 @@ describe("readOneClip path param", () => {
 
     expect(() => readOneClip({ path: "t1/s1", id: "stale" })).toThrow(
       "path and id name different clips; use one",
+    );
+  });
+
+  // An id naming nothing is the id check's error to report, not the slot
+  // check's — otherwise a dead id reads as a different clip than the path.
+  it("leaves an id naming nothing to the id check", () => {
+    mockNonExistentObjects();
+
+    expect(() => readOneClip({ path: "t1/s1", id: "ghost" })).toThrow(
+      'id "ghost" does not exist',
     );
   });
 

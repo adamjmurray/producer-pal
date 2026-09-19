@@ -9,7 +9,9 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { type SelectResult } from "#src/tools/session/select.ts";
 import {
+  addClipToResponse,
   buildClipResponseFromId,
   buildClipResponseFromSlot,
   buildDeviceResponseFromDevice,
@@ -255,6 +257,46 @@ describe("select-responses", () => {
       });
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe("addClipToResponse", () => {
+    it("leaves the clip off when the clip id names nothing", () => {
+      mockNonExistentObjects();
+
+      const result: SelectResult = {};
+
+      addClipToResponse(
+        result,
+        {
+          clipId: "id gone",
+          category: "regular",
+          hasArgs: true,
+          viewOnly: false,
+        },
+        false,
+      );
+
+      expect(result).toStrictEqual({});
+    });
+
+    it("leaves the clip off when the slot is empty", () => {
+      mockNonExistentObjects();
+
+      const result: SelectResult = {};
+
+      addClipToResponse(
+        result,
+        {
+          parsedClipSlot: { trackIndex: 0, sceneIndex: 5 },
+          category: "regular",
+          hasArgs: true,
+          viewOnly: false,
+        },
+        true,
+      );
+
+      expect(result).toStrictEqual({});
     });
   });
 

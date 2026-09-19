@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { paramsInputSchema } from "../../device-params-schema.ts";
+import {
+  paramEntryKey,
+  paramsInputSchema,
+} from "../../device-params-schema.ts";
 
 describe("paramsInputSchema", () => {
   it("parses a JSON-stringified array of entries", () => {
@@ -53,5 +56,30 @@ describe("paramsInputSchema", () => {
     expect(() => paramsInputSchema.parse([{ name: "Freq" }])).toThrow(
       "Invalid input: expected string, received undefined",
     );
+  });
+});
+
+describe("paramEntryKey", () => {
+  it("addresses by id when the entry carries one", () => {
+    expect(paramEntryKey({ id: "42", value: "1" })).toStrictEqual({
+      key: "42",
+      byId: true,
+    });
+  });
+
+  it("addresses by name when the entry carries one", () => {
+    expect(paramEntryKey({ name: "Volume", value: "1" })).toStrictEqual({
+      key: "Volume",
+      byId: false,
+    });
+  });
+
+  it("keys an entry with neither field as a blank name", () => {
+    // validateParamEntries refuses this shape, so the fallback only guards
+    // callers that key an entry before it has been validated.
+    expect(paramEntryKey({ value: "1" })).toStrictEqual({
+      key: "",
+      byId: false,
+    });
   });
 });

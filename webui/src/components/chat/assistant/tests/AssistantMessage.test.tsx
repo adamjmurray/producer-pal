@@ -8,7 +8,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { type UIPart } from "#webui/types/messages";
+import { type UIMessage, type UIPart } from "#webui/types/messages";
 import { AssistantMessage } from "#webui/components/chat/assistant/AssistantMessage";
 
 describe("AssistantMessage", () => {
@@ -150,6 +150,21 @@ describe("AssistantMessage", () => {
     });
   });
 
+  /**
+   * A spawn_subagent tool part carrying a worker transcript.
+   * @param subagentMessages - The worker transcript to attach
+   * @returns The parts list for one subagent call
+   */
+  const subagentParts = (subagentMessages: UIMessage[]): UIPart[] => [
+    {
+      type: "tool",
+      name: "spawn_subagent",
+      args: { task: "x" },
+      result: JSON.stringify("done"),
+      subagentMessages,
+    },
+  ];
+
   describe("subagent tool parts", () => {
     it("routes spawn_subagent to the subagent card, not the generic tool call", () => {
       const parts: UIPart[] = [
@@ -170,34 +185,60 @@ describe("AssistantMessage", () => {
     });
 
     it("renders the worker transcript from subagentMessages", () => {
-      const parts: UIPart[] = [
+      const parts = subagentParts([
         {
-          type: "tool",
-          name: "spawn_subagent",
-          args: { task: "x" },
-          result: JSON.stringify("done"),
-          subagentMessages: [
-            {
-              role: "user",
-              parts: [{ type: "text", content: "delegated task text" }],
-              rawHistoryIndex: 0,
-              timestamp: 0,
-            },
-            {
-              role: "model",
-              parts: [{ type: "text", content: "worker reply text" }],
-              rawHistoryIndex: 1,
-              timestamp: 0,
-            },
-          ],
+          role: "user",
+          parts: [{ type: "text", content: "delegated task text" }],
+          rawHistoryIndex: 0,
+          timestamp: 0,
         },
-      ];
+        {
+          role: "model",
+          parts: [{ type: "text", content: "worker reply text" }],
+          rawHistoryIndex: 1,
+          timestamp: 0,
+        },
+      ]);
 
       const { container } = render(<AssistantMessage parts={parts} />);
 
       expect(container.textContent).toContain("↳ subagent transcript");
       expect(container.textContent).toContain("delegated task text");
       expect(container.textContent).toContain("worker reply text");
+    });
+
+    it("shows an empty task when the model sent one that isn't text", () => {
+      const parts: UIPart[] = [
+        {
+          type: "tool",
+          name: "spawn_subagent",
+          args: { task: { steps: ["a", "b"] } },
+          result: JSON.stringify("done"),
+        },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.textContent).toContain("subagent");
+      expect(container.textContent).not.toContain("steps");
+    });
+
+    it("skips transcript user parts that carry no text", () => {
+      const parts = subagentParts([
+        {
+          role: "user",
+          parts: [
+            { type: "text", content: "kept" },
+            { type: "step-usage", usage: { inputTokens: 1 } },
+          ],
+          rawHistoryIndex: 0,
+          timestamp: 0,
+        },
+      ]);
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.textContent).toContain("kept");
     });
 
     it.each([

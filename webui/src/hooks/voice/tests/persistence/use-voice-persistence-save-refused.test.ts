@@ -13,9 +13,8 @@ import {
   loadConversation,
 } from "#webui/lib/conversation-db";
 import {
-  renderVoicePersistenceWithHistory,
+  loadSavedVoiceSession,
   resetConversationsDb,
-  saveVoiceRecord,
   userTextItem,
   waitForAutosave,
   waitForEffects,
@@ -31,15 +30,8 @@ describe("useVoicePersistence when the row is gone", () => {
   // refusing quietly would leave a session recording turns nothing keeps. The
   // user is still talking, so the banner is the only place they'd see it.
   it("shows a banner instead of going quiet when the save is refused", async () => {
-    const record = await saveVoiceRecord({
-      voiceHistory: [userTextItem("first turn")],
-    });
+    const { record, result, rerender } = await loadSavedVoiceSession();
 
-    window.location.hash = record.id;
-
-    const { result, rerender } = renderVoicePersistenceWithHistory();
-
-    await waitForEffects();
     expect(result.current.activeConversationId).toBe(record.id);
 
     // Another tab, with its own store, deletes the record out from under this

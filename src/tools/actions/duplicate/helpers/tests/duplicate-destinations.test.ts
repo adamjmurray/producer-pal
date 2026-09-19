@@ -12,6 +12,7 @@ import {
 import {
   hasArrangementPosition,
   inferDestination,
+  resolveArrangementPositions,
   resolveDestinationTargets,
 } from "../duplicate-destinations.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -25,6 +26,20 @@ describe("hasArrangementPosition", () => {
     // The `.trim() !== ""` guard: "   " must NOT be read as an arrangement start.
     expect(hasArrangementPosition("   ")).toBe(false);
     expect(hasArrangementPosition(undefined)).toBe(false);
+  });
+});
+
+describe("resolveArrangementPositions", () => {
+  it("reads a comma-separated list into beats", () => {
+    expect(resolveArrangementPositions("1|1,2|1", 4, 4)).toStrictEqual([0, 4]);
+  });
+
+  // Callers cycle the list against the destination tracks, so an empty one
+  // would copy to an undefined position instead of copying nothing.
+  it("refuses a list that parses to no positions", () => {
+    expect(() => resolveArrangementPositions("   ", 4, 4)).toThrow(
+      "arrangementStart has no valid bar|beat positions",
+    );
   });
 });
 

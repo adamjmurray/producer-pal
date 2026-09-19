@@ -93,6 +93,35 @@ describe("updateDevice - params addressed by id", () => {
     expect(capturedWarnings()).toHaveLength(0);
   });
 
+  it('falls back to "another object" for an owner the grammar can\'t spell', () => {
+    // Live spells every device parameter under a track, so this only guards a
+    // path the path grammar can't read — the refusal must still name where the
+    // param lives rather than reading "id 55 is on , not ...".
+    const foreign = registerMockObject("55", {
+      path: "live_set some_future_holder 0 parameters 0",
+      ...continuousParam("Elsewhere"),
+    });
+
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ id: "55", value: "0.75" }],
+    });
+
+    expect(foreign.set).not.toHaveBeenCalled();
+    expect(result).toStrictEqual({
+      id: "dev1",
+      path: "t0/d0",
+      params: [
+        {
+          id: "55",
+          ok: false,
+          reason:
+            "id 55 is on another object, not t0/d0 (id dev1), so it was not written",
+        },
+      ],
+    });
+  });
+
   it("reports a refused value under the id", () => {
     const result = updateDevice({
       id: "dev1",

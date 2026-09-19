@@ -17,6 +17,7 @@ import {
   setupProducerPalDeviceMocks,
   setupRoutingMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import {
   capturedWarnings,
   clearCapturedWarnings,
@@ -123,6 +124,30 @@ describe("duplicate - track duplication", () => {
       id: "live_set/tracks/1",
       path: "t1",
       clips: [{ id: "live_set/tracks/1/clip_slots/0/clip", path: "t1/s0" }],
+    });
+  });
+
+  // Live hands back an id list, not objects: an entry that resolves to nothing
+  // has no clip to report, and reporting it would invent one.
+  it("leaves out an arrangement clip id that resolves to nothing", async () => {
+    mockNonExistentObjects();
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerDuplicatedTrackSlots([], ["arrClip0", "ghostClip"]);
+    registerMockObject("arrClip0", {
+      path: livePath.track(1).arrangementClip(0),
+      properties: { is_arrangement_clip: 1, start_time: 0 },
+    });
+
+    const result = await duplicate({ type: "track", id: "track1" });
+
+    expect(result).toStrictEqual({
+      id: "live_set/tracks/1",
+      path: "t1",
+      clips: [{ id: "arrClip0", path: "t1[1|1]" }],
     });
   });
 

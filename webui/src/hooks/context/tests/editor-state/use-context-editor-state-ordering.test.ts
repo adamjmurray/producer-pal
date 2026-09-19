@@ -463,4 +463,56 @@ describe("useContextEditorState write ordering", () => {
       expect(save).toHaveBeenCalledWith("typed after clear");
     });
   });
+  describe("a failed write that a newer edit has already moved past", () => {
+    it("keeps the draft typed during a Clear that then failed", async () => {
+      const { clear, resolveClear, result, clearPromise } =
+        await startHeldClear();
+
+      await typeDraft(result, "typed during clear");
+
+      await act(async () => {
+        resolveClear(false);
+        await clearPromise;
+      });
+      await drainMicrotasks();
+
+      // The rollback puts the markers back only when the editor still holds the
+      // content the failed write staged. Here the user has typed past it, so
+      // that draft is what stays — dirty, against the baseline that survived.
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(result.current.getContent()).toBe("typed during clear");
+      expect(result.current.dirty).toBe(true);
+    });
+
+    it("does not retry a failed save the user has already typed past", async () => {
+      const { save, resolveCall } = deferredSaveQueue();
+      const { result } = renderReadyEditor({ save });
+
+      await typeDraft(result, "a");
+      await flushDebounceWindow();
+      expect(save).toHaveBeenCalledTimes(1);
+
+      // A blur flush of newer text moves the baseline to "b" while "a" is still
+      // on the wire.
+      await typeDraft(result, "b");
+      await act(() => {
+        result.current.handleBlur();
+      });
+
+      await act(async () => {
+        resolveCall(0, false);
+        await Promise.resolve();
+      });
+      await drainMicrotasks();
+
+      // "a" is stale, so its failure schedules nothing: retrying it would write
+      // text the user has already replaced.
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+        await Promise.resolve();
+      });
+
+      expect(save.mock.calls.map((call) => call[0])).toStrictEqual(["a", "b"]);
+    });
+  });
 });

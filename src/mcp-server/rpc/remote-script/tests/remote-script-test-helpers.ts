@@ -3,8 +3,20 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync } from "node:fs";
 import http from "node:http";
 import { type AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+/**
+ * Make a throwaway directory to stand in for the User Library.
+ * @param label - Names the directory, so a leaked one says which test left it
+ * @returns The new directory's path
+ */
+export function makeScratchUserLibrary(label: string): string {
+  return mkdtempSync(join(tmpdir(), `ppal-remote-script-${label}-`));
+}
 
 /** One request the stand-in remote script received. */
 export interface ReceivedRequest {
@@ -14,11 +26,15 @@ export interface ReceivedRequest {
   body: unknown;
 }
 
-/** A JSON answer with a status, raw text, text cut off mid-answer, or null to never answer. */
+/**
+ * A JSON answer with a status, raw text, text cut off mid-answer, a dropped
+ * connection before any reply, or null to never answer.
+ */
 export type FakeAnswer =
   | { status?: number; body: unknown }
   | { raw: string }
   | { cut: string }
+  | { drop: true }
   | null;
 
 export interface FakeRemoteScript {
@@ -87,6 +103,12 @@ function respond(res: http.ServerResponse, answer: FakeAnswer): void {
 
   if ("raw" in answer) {
     res.end(answer.raw);
+
+    return;
+  }
+
+  if ("drop" in answer) {
+    res.destroy();
 
     return;
   }

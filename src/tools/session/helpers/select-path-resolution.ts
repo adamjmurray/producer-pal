@@ -6,6 +6,7 @@
 // Reading select's `path` param. One grammar covers every shape select can act
 // on, so the kind the path parses to picks the target.
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import {
@@ -221,7 +222,14 @@ function assertIdAgrees(
   const track = target.impliedTrack ?? trackNamedDirectly(target);
 
   if (trackId != null && track != null) {
-    assertSameObject(trackId, buildTrackPath(track.category, track.trackIndex));
+    // A track a path named always carries whatever index its category needs.
+    assertSameObject(
+      trackId,
+      assertDefined(
+        buildTrackPath(track.category, track.trackIndex),
+        "track path from a path target",
+      ),
+    );
   }
 
   if (deviceId != null && track != null) {
@@ -307,11 +315,7 @@ function assertDeviceOnTrack(deviceId: string, track: ImpliedTrack): void {
  * @param id - The id the caller passed
  * @param path - Where the path says that object is
  */
-function assertSameObject(id: string, path: PathLike | null): void {
-  if (path == null) {
-    return;
-  }
-
+function assertSameObject(id: string, path: PathLike): void {
   const object = LiveAPI.from(path);
 
   // A path naming nothing is the existence checks' problem, not this one's.

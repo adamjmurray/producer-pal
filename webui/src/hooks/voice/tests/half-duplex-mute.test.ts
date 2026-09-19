@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TransportEvent } from "@openai/agents/realtime";
 import { describe, expect, it, vi } from "vitest";
 import {
   beginHalfDuplexMute,
@@ -31,6 +32,23 @@ function endDeps(
     isMutedRef: { current: overrides.isMutedRef ?? false },
     responseActiveRef: { current: overrides.responseActiveRef ?? false },
     audioPlayingRef: { current: overrides.audioPlayingRef ?? false },
+  };
+}
+
+/**
+ * Build a transport-event deps bag with audio mid-playback and no auto-mute.
+ * @param mute - The session's mute spy
+ * @returns A TransportEventDeps bag
+ */
+function transportDeps(mute: (muted: boolean) => void): TransportEventDeps {
+  return {
+    ...endDeps(mute, { autoMutedRef: false, audioPlayingRef: true }),
+    halfDuplex: true,
+    setAssistantThinking: vi.fn(),
+    setAssistantSpeaking: vi.fn(),
+    setError: vi.fn(),
+    setRateLimitedUntil: vi.fn(),
+    autoRetryAttemptsRef: { current: 0 },
   };
 }
 
@@ -136,15 +154,7 @@ describe("recovering from a missed buffer-stopped event", () => {
     // and with it stuck the Mute button is hidden, so the user can't unmute by
     // hand either.
     const mute = vi.fn();
-    const deps: TransportEventDeps = {
-      ...endDeps(mute, { autoMutedRef: false, audioPlayingRef: true }),
-      halfDuplex: true,
-      setAssistantThinking: vi.fn(),
-      setAssistantSpeaking: vi.fn(),
-      setError: vi.fn(),
-      setRateLimitedUntil: vi.fn(),
-      autoRetryAttemptsRef: { current: 0 },
-    };
+    const deps = transportDeps(mute);
 
     handleTransportEvent({ type: "response.created" }, deps);
 
@@ -154,5 +164,21 @@ describe("recovering from a missed buffer-stopped event", () => {
 
     expect(mute).toHaveBeenLastCalledWith(false);
     expect(deps.autoMutedRef.current).toBe(false);
+  });
+});
+
+describe("transport events the UI has no flag for", () => {
+  it("leaves every status flag alone", () => {
+    const mute = vi.fn();
+    const deps = transportDeps(mute);
+
+    handleTransportEvent(
+      { type: "conversation.item.created" } as TransportEvent,
+      deps,
+    );
+
+    expect(deps.audioPlayingRef.current).toBe(true);
+    expect(deps.setAssistantSpeaking).not.toHaveBeenCalled();
+    expect(deps.setAssistantThinking).not.toHaveBeenCalled();
   });
 });

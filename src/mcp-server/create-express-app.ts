@@ -440,9 +440,8 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // requestBody normalizes a missing/non-object body to {} so a bodyless POST
-  // /config (no Content-Type: application/json) is a benign no-op update
-  // instead of a TypeError → 500.
+  // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
+  // /config is a benign no-op update instead of a TypeError → 500.
   const incoming = requestBody(req) as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
@@ -480,19 +479,12 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   if (incoming.liveApiEnabled !== undefined) {
-    const next = Boolean(incoming.liveApiEnabled);
-    const beforeTools = config.tools;
+    applyLiveApiEnabled(Boolean(incoming.liveApiEnabled));
 
-    applyLiveApiEnabled(next);
-
-    if (config.tools !== beforeTools) {
-      outlets.push(() =>
-        Max.outlet("config", "tools", JSON.stringify(config.tools)),
-      );
-    }
-
-    outlets.push(() =>
-      Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+    // The whitelist is rebuilt either way, so it goes out with the flag.
+    outlets.push(
+      () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      () => Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
     );
   }
 

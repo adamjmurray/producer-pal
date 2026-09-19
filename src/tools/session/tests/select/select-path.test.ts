@@ -691,6 +691,19 @@ describe("select by arrangement position", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  // Nothing disagrees: the id names the very clip sitting on that spot.
+  it("takes a clipId naming the clip the position covers", () => {
+    setupTrackMock("clip_arr");
+    setupMainLaneClip("clip_arr", BAR_5);
+    setupSongViewMock();
+    setupAppViewMock();
+    setupLiveSetMock();
+
+    expect(
+      select({ path: "t0[5|1]", clipId: "id clip_arr" }).selectedClip,
+    ).toStrictEqual({ id: "clip_arr", path: "t0[5|1]" });
+  });
+
   it("takes a position on a take lane", () => {
     setupTrackMock();
     setupTakeLaneClip("clip_take", BAR_5);

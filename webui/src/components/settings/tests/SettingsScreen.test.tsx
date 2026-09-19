@@ -641,4 +641,37 @@ describe("SettingsScreen", () => {
       expect(screen.queryByText(/models$/)).toBeNull();
     });
   });
+  describe("dialog chrome and the remaining tabs", () => {
+    it("shakes the dialog when a blocked close asks for attention", () => {
+      const { container } = render(
+        <SettingsScreen {...defaultProps} shake={true} />,
+      );
+
+      expect(container.querySelector(".settings-dialog-shake")).not.toBeNull();
+    });
+
+    it("blocks Save while a new preset is half-created", () => {
+      render(<SettingsScreen {...defaultProps} presetDraftOpen={true} />);
+
+      expect(screen.getByTestId("settings-save-blocked").textContent).toBe(
+        "Create or cancel the new preset first.",
+      );
+      expect(
+        (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+    });
+
+    it("renders the presets tab", () => {
+      render(<SettingsScreen {...defaultProps} activeTab="presets" />);
+
+      expect(screen.getByText("Presets")).toBeDefined();
+    });
+
+    it("renders the remote script tab", async () => {
+      render(<SettingsScreen {...defaultProps} activeTab="remote-script" />);
+
+      expect(await screen.findByTestId("remote-script-tab")).toBeDefined();
+    });
+  });
 });

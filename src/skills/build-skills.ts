@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 import {
   builtinFragments,
@@ -348,11 +349,9 @@ function warnRetiredOverrides(
  * includes the head AND the sibling, so the authoring half ships twice — costing
  * context and, worse, restating guidance a later release may have changed.
  *
- * The split kept the head's name on purpose, so nothing else can catch this: the
- * override still resolves, and the document still assembles. The overlap itself
- * is the only evidence, which is why this looks for COPIED TEXT rather than
- * assuming every override of a split slot is stale — a fork made today carries
- * none of the sibling's prose and stays quiet.
+ * The split kept the head's name, so nothing else can catch this: the override
+ * still resolves and the document still assembles. The overlap is the only
+ * evidence, hence the search for COPIED TEXT — a fork made today stays quiet.
  *
  * Runs before assembly, so it can't know whether the active notation and level
  * include this slot at all — an override of `stark-standard` under bar|beat ships
@@ -380,7 +379,11 @@ function warnSplitOverrides(
       continue;
     }
 
-    const shared = staleSplitLines(body, builtIns[write] ?? "");
+    // Every split slot's sibling is a real slot, so it has a built-in body.
+    const shared = staleSplitLines(
+      body,
+      assertDefined(builtIns[write], `built-in fragment "${write}"`),
+    );
 
     if (shared.length === 0) {
       continue;

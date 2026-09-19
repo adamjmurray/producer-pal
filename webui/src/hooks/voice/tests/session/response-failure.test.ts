@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  extractErrorMessage,
   extractResponseFailure,
   parseRetrySeconds,
 } from "#webui/hooks/voice/helpers/response-failure";
@@ -114,5 +115,19 @@ describe("parseRetrySeconds", () => {
   it("returns null when the matched number is not finite", () => {
     // A bare "." matches [\d.]+ but parses to NaN, which must not become a wait.
     expect(parseRetrySeconds("Please try again in .s")).toBeNull();
+  });
+});
+
+describe("extractErrorMessage", () => {
+  it("falls back to the serialized value when the nested message is empty", () => {
+    expect(extractErrorMessage({ error: { message: "" } })).toBe(
+      '{"error":{"message":""}}',
+    );
+  });
+
+  it("reads the nested message when there is one", () => {
+    expect(extractErrorMessage({ error: { message: "rate limited" } })).toBe(
+      "rate limited",
+    );
   });
 });

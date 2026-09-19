@@ -10,6 +10,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
+  configureRouting,
   findRoutingOptionForDuplicateNames,
   type RoutingType,
 } from "../duplicate-routing.ts";
@@ -43,6 +44,48 @@ function setupTracks(spec: Array<{ id: string; name: string }>): void {
     });
   }
 }
+
+// The warn-on-miss arm is covered below; this is the other one, where
+// duplicate names still resolve and the new track actually gets routed.
+describe("configureRouting with duplicate track names", () => {
+  it("routes the new track to the option at the source's creation position", () => {
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: children("2", "5") },
+    });
+    registerMockObject("2", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { name: "Bass", arm: 1 },
+    });
+    registerMockObject("5", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { name: "Bass", arm: 1 },
+    });
+
+    const newTrack = registerMockObject("9", {
+      path: livePath.track(2),
+      type: "Track",
+      properties: {
+        available_output_routing_types: [
+          JSON.stringify({
+            available_output_routing_types: [bassOption(0), bassOption(1)],
+          }),
+        ],
+      },
+    });
+
+    configureRouting(LiveAPI.from(livePath.track(2)), 1);
+
+    // Source id 5 sorts second among the two "Bass" tracks, so it takes the
+    // second option rather than falling back to the warn-and-skip arm.
+    expect(newTrack.set).toHaveBeenCalledWith(
+      "output_routing_type",
+      JSON.stringify({ output_routing_type: { identifier: "b1" } }),
+    );
+  });
+});
 
 describe("findRoutingOptionForDuplicateNames", () => {
   it("returns the single matching option directly when names are not duplicated", () => {

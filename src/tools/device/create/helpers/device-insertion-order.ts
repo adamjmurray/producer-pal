@@ -28,26 +28,23 @@ interface InsertionTarget {
   display: string;
   /** The input spelling with pad notes resolved, so "pC1" and "pc1" match. */
   key: string;
-  /** Live's own path for the container, when it already exists. Two input
-   * spellings of one chain differ as text and match here. */
+  /** Live's own path, when the container exists: two input spellings of one
+   * chain differ as text and match here. */
   liveKey: string | null;
-  /** Names a slot an insert would push the rest of the chain past. A position
-   * Live can't take is an append, which pushes nothing. */
+  /** Names a slot an insert pushes the rest of the chain past. A position Live
+   * can't take is an append, which pushes nothing. */
   positioned: boolean;
-  /** The entry inserts into a chain it appends (`c+`), which nothing else in
-   * the call can name — so it renumbers nothing. */
+  /** Inserts into a chain it appends (`c+`), which nothing else in the call
+   * can name — so it renumbers nothing. */
   appendsChain: boolean;
 }
 
 /**
  * Refuse a path list whose later entries are spelled through a chain an earlier
- * entry has renumbered.
- *
- * An insert shifts every later device down a slot, so a `d<n>` written after it
- * — in that chain, or anywhere below it — names something that has already
- * moved. An append renumbers too when Live re-sorts the chain around it, which
- * is every device but an audio effect. Nothing has run yet, so refusing costs
- * the caller only a retry (ADR-0035).
+ * entry has renumbered. An insert shifts every later device down a slot, so a
+ * `d<n>` written after it — in that chain or below it — names something that
+ * has already moved. An append renumbers too when Live re-sorts the chain
+ * around it, which is every device but an audio effect (ADR-0035).
  * @param paths - The path entries, in order
  * @param deviceName - The device every entry inserts
  * @throws Error when an entry is spelled through a renumbered chain
@@ -112,10 +109,8 @@ export function validateInsertionOrder(
 
 /**
  * Whether a later entry is spelled through a container an earlier one
- * renumbers. Compare by the object both resolved to when both exist — Live's
- * path is the same for every spelling of one chain, where the input spellings
- * are not. Otherwise compare the input spellings, which is all there is when
- * the container has yet to be created.
+ * renumbers. Compare by the object both resolved to when both exist — one chain
+ * has one Live path but many spellings — and by spelling before it exists.
  * @param target - The entry being checked
  * @param earlier - An entry ahead of it that renumbers what it inserts into
  * @returns True when the target names a slot the earlier entry moves
@@ -183,9 +178,8 @@ function insertionTarget(
 }
 
 /**
- * The container a path names, but only when it is already there. Nothing has
- * run yet, so this must not create the chains the real resolution auto-creates
- * on its way down — a container that doesn't exist reads as unknown instead.
+ * The container a path names, but only when it is already there: nothing has
+ * run yet, so this must not auto-create chains on the way down.
  * @param root - Parsed track root
  * @param segments - The container's segments below the root
  * @param chainsMemo - A drum rack's chains, once read for this call
@@ -248,8 +242,8 @@ function chainsOfRack(
 }
 
 /**
- * The chain a drum-pad path names, resolved against the rack's chain list
- * built once per rack for this call rather than rescanned per pad.
+ * The chain a drum-pad path names, against the rack's chain list built once
+ * per rack for this call rather than rescanned per pad.
  * @param rack - The drum rack device
  * @param drumPadNote - Note name (e.g. "C1"), or "*" for the catch-all
  * @param remainingSegments - Path segments after the pad (c/d prefixed)
@@ -262,11 +256,11 @@ function drumPadChain(
   remainingSegments: string[],
   chainsMemo: Map<string, LiveAPI[]>,
 ): LiveAPI | null {
-  const inNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
-
-  if (inNote == null) {
-    return null;
-  }
+  // The grammar validated the note, so this always converts; the catch-all is
+  // in_note -1. Every segment here was formatted from a parsed one, so a "c"
+  // segment is always "c<index>".
+  const inNote =
+    drumPadNote === "*" ? -1 : (noteNameToMidi(drumPadNote) as number);
 
   let chainIndex = 0;
   let rest = remainingSegments;
@@ -274,11 +268,6 @@ function drumPadChain(
 
   if (first?.startsWith("c")) {
     chainIndex = Number.parseInt(first.slice(1));
-
-    if (Number.isNaN(chainIndex)) {
-      return null;
-    }
-
     rest = remainingSegments.slice(1);
   }
 
@@ -310,9 +299,8 @@ function existing(object: LiveAPI | null): LiveAPI | null {
 
 /**
  * Whether a named position is really an append. Live refuses a position past
- * the end of a chain, including 0 on an empty one, so the insert drops the
- * position and appends — and an append moves nothing that was already there.
- * Unknown containers keep the position, which is all a parse can say.
+ * the end of a chain, including 0 on an empty one, so the insert drops it and
+ * appends, moving nothing. An unknown container keeps its position.
  * @param position - The position the path named
  * @param container - The container, when it already exists
  * @param pending - Devices earlier entries add, keyed by container
@@ -334,9 +322,9 @@ function landsAtEnd(
 }
 
 /**
- * Spell a drum pad by its MIDI note, so two spellings of one pad compare equal.
- * Note names are case-insensitive and enharmonic, so "pC1", "pc1" and "pB#0"
- * all name the same pad and only the number says so.
+ * Spell a drum pad by its MIDI note, so two spellings of one pad compare equal:
+ * note names are case-insensitive and enharmonic, so "pC1", "pc1" and "pB#0"
+ * all name one pad and only the number says so.
  * @param segment - One parsed device-path segment
  * @returns The segment, with a pad's note replaced by its MIDI number
  */

@@ -249,6 +249,30 @@ describe("Max API Adapter", () => {
       });
     });
 
+    // The timeout already answered and dropped the request, so the late
+    // rejection has nothing left to clean up and must not throw on its way out.
+    it("should tolerate Max.outlet rejecting after the call timed out", async () => {
+      setTimeoutForTesting(2);
+
+      let rejectOutlet: (error: Error) => void = () => undefined;
+
+      Max.outlet = vi.fn().mockReturnValue(
+        new Promise((_resolve, reject) => {
+          rejectOutlet = reject;
+        }),
+      );
+
+      const result = await callLiveApi("test-tool", {});
+
+      expect(result.errorCode).toBe("timeout");
+
+      rejectOutlet(new Error("too late"));
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      // The timeout's answer stands.
+      expect(result.errorCode).toBe("timeout");
+    });
+
     it("should merge compactOutput override into contextJSON", async () => {
       const context = captureContextJSON({ compactOutput: false });
 

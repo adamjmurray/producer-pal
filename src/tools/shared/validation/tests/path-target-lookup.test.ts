@@ -55,6 +55,7 @@ describe("trackIdAtPath", () => {
     ["s1", "a scene"],
     ["t0/s1", "a clip slot"],
     ["t0/l0", "a take lane"],
+    ["t0/l+", "a new take lane"],
     ["t0/d1", "a device"],
     ["t0[5|1]", "an arrangement clip"],
     // A "+" root would otherwise be described by the default arm as "a track",

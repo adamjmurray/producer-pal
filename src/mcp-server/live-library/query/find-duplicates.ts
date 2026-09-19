@@ -105,16 +105,16 @@ function runFindDuplicates(
   }
 
   const { where, params } = buildCandidateWhere(args, resolved.parentId);
-  // Assumes one fe_values row per file (the spike found this holds across
-  // the library); a file with multiple rows would contribute more than once to a
-  // hash group. CAST hash to TEXT so SQLite renders the full 64-bit integer;
-  // reading it as a JS number would lose precision past 2^53 and could falsely
-  // merge or split groups. The hash is an opaque equality key — never arithmetic.
+  // Assumes one fe_values row per file; a second row would put the file in its
+  // hash group twice. CAST hash to TEXT so SQLite renders the full 64-bit
+  // integer — read as a JS number it loses precision past 2^53 and could
+  // falsely merge or split groups. It's an opaque equality key, never math.
+  // buildCandidateWhere always emits at least the file_type filter.
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data,
                       CAST(fv.hash AS TEXT) AS hash
                FROM ${CANDIDATE_FROM}
                JOIN fe_values fv ON fv.file_id = f.file_id
-               ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}`;
+               WHERE ${where.join(" AND ")}`;
   const rows = db.prepare(sql).all(...params) as unknown as DuplicateRow[];
 
   const dupGroups = groupByHash(rows);

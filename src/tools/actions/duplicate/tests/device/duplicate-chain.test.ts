@@ -481,6 +481,20 @@ describe("duplicate - chain", () => {
     ).rejects.toThrow('nothing at toPath "t1/inst": t1 has no instrument');
   });
 
+  // A toPath that doesn't parse has no trailing "c+" to strip, so the rack
+  // lookup gets it as written and reports the parse error itself — one
+  // message about the path, not two.
+  it("reports the parse error for a toPath that isn't a path at all", async () => {
+    setupRack();
+    mockNonExistentObjects();
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "nonsense!" }),
+    ).rejects.toThrow(
+      'invalid path "nonsense!" - "nonsense!" is not a track or scene',
+    );
+  });
+
   it("refuses a toPath naming a device that is not there", async () => {
     setupRack();
     mockNonExistentObjects();

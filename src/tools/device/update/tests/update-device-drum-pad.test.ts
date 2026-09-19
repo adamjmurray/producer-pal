@@ -26,9 +26,14 @@ interface RackMocks {
  * Register a drum rack on t0/d0 whose C1 pad holds `chainCount` chains.
  * @param chainCount - Chains stacked on C1
  * @param withPads - false builds a rack with no DrumPad objects (a virtual pad)
+ * @param padNote - The pad's MIDI note
  * @returns The C1 DrumPad and its chains
  */
-function registerDrumRack(chainCount: number, withPads = true): RackMocks {
+function registerDrumRack(
+  chainCount: number,
+  withPads = true,
+  padNote = 36,
+): RackMocks {
   const chainIds = Array.from({ length: chainCount }, (_, i) => `chain-${i}`);
 
   registerMockObject("drumrack-id", {
@@ -44,7 +49,7 @@ function registerDrumRack(chainCount: number, withPads = true): RackMocks {
   const pad = withPads
     ? registerMockObject("pad-36", {
         type: "DrumPad",
-        properties: { note: 36 },
+        properties: { note: padNote },
       })
     : null;
 
@@ -177,6 +182,34 @@ describe("updateDevice - bare drum pad paths", () => {
     );
     expect(pad?.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // A sample is the one write that makes an empty pad's chain, so these cover
+  // what happens when it can't.
+  it("refuses an empty pad Live gives no note for", () => {
+    // Addressed by id, so nothing has checked the pad's note: 200 is outside
+    // the MIDI range, and a chain made on no note would sound nowhere.
+    registerDrumRack(0, true, 200);
+
+    expect(() =>
+      updateDevice({
+        id: "pad-36",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      }),
+    ).toThrow("has no chains, so there is nothing to update");
+  });
+
+  it("refuses an empty pad Live makes no chain on", () => {
+    // The rack answers nothing to insert_chain, so the pad is still empty and
+    // the sample has nowhere to land.
+    registerDrumRack(0);
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      }),
+    ).toThrow("has no chains, so there is nothing to update");
   });
 
   // The rack's return chains belong to the rack, so a send naming none is a

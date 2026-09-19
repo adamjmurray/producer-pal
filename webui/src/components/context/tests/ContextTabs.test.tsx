@@ -252,6 +252,19 @@ describe("ContextTabs — leave guard on tab clicks", () => {
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
 
+  it("keeps the editor open when the close confirm is dismissed", () => {
+    const onClose = vi.fn();
+
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    render(<ContextTabs onClose={onClose} />);
+
+    armMemoryDraft();
+    fireEvent.click(screen.getByLabelText("Close context editor"));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("prompts a discard when switching AWAY from a dirty new-memory draft", () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<ContextTabs />);

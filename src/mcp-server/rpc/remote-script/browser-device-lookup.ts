@@ -7,6 +7,7 @@
 // only within one browser section, and refuses a plug-in installed in more than
 // one format as ambiguous, so the search across sections happens here.
 
+import { assertDefined } from "#src/shared/error-message.ts";
 import { type BrowserItemResolution } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import {
   type RemoteScriptAnswer,
@@ -186,19 +187,27 @@ async function findAtPath(
  */
 function preferredFormat(matches: Candidate[]): Candidate | null {
   const names = new Set(matches.map((match) => normalizedName(match.name)));
-  const ranked = matches.map((match) => ({
-    match,
-    rank: match.section.type === "plugin" ? formatRank(match.path) : null,
-  }));
+  // Anything but a plug-in in a format we rank drops out, shortening the list.
+  const ranked = matches.flatMap((match) => {
+    const rank =
+      match.section.type === "plugin" ? formatRank(match.path) : null;
+
+    return rank == null ? [] : [{ match, rank }];
+  });
   const ranks = new Set(ranked.map(({ rank }) => rank));
 
-  if (names.size !== 1 || ranks.has(null) || ranks.size !== matches.length) {
+  if (
+    names.size !== 1 ||
+    ranked.length !== matches.length ||
+    ranks.size !== matches.length
+  ) {
     return null;
   }
 
-  return (
-    ranked.toSorted((a, b) => (a.rank ?? 0) - (b.rank ?? 0))[0]?.match ?? null
-  );
+  return assertDefined(
+    ranked.toSorted((a, b) => a.rank - b.rank)[0],
+    "best-ranked format",
+  ).match;
 }
 
 /**
@@ -208,7 +217,8 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
  * @returns The rank, or null for a folder that isn't a format
  */
 function formatRank(path: string): number | null {
-  const folder = (path.split("/")[0] ?? "").toLowerCase();
+  const slash = path.indexOf("/");
+  const folder = (slash === -1 ? path : path.slice(0, slash)).toLowerCase();
 
   if (folder === "vst3") {
     return 0;

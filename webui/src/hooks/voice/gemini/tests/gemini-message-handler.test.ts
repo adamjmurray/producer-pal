@@ -5,7 +5,10 @@
 
 import { type Session } from "@google/genai";
 import { describe, expect, it, vi } from "vitest";
-import { handleGeminiMessage } from "#webui/hooks/voice/gemini/gemini-message-handler";
+import {
+  buildGeminiMessageDeps,
+  handleGeminiMessage,
+} from "#webui/hooks/voice/gemini/gemini-message-handler";
 import {
   GEM_ITEM_ID,
   makeMessageDeps,
@@ -96,6 +99,17 @@ describe("handleGeminiMessage", () => {
     await handleGeminiMessage(msg({ setupComplete: {} }), deps);
 
     expect(deps.publishHistory).not.toHaveBeenCalled();
+  });
+
+  it("sends an empty tool response when the model asked for nothing", async () => {
+    const { deps, session } = makeMessageDeps();
+
+    await handleGeminiMessage(msg({ toolCall: {} }), deps);
+
+    expect(deps.executeTool).not.toHaveBeenCalled();
+    expect(session.sendToolResponse).toHaveBeenCalledWith({
+      functionResponses: [],
+    });
   });
 
   it("stores a resumable session-resumption handle", async () => {
@@ -211,5 +225,29 @@ describe("handleGeminiMessage", () => {
 
     // No throw; thinking still toggled off.
     expect(deps.setAssistantThinking).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("buildGeminiMessageDeps publishHistory", () => {
+  it("drops history from a builder the session has already replaced", () => {
+    const builder = {
+      toRealtimeItems: vi.fn(() => []),
+    } as unknown as Parameters<typeof buildGeminiMessageDeps>[0]["builder"];
+    const setHistory = vi.fn();
+    const options = {
+      builder,
+      // The reset path swapped in a new builder; this one is orphaned.
+      builderRef: { current: null },
+      setHistory,
+    } as unknown as Parameters<typeof buildGeminiMessageDeps>[0];
+
+    buildGeminiMessageDeps(options).publishHistory();
+
+    expect(setHistory).not.toHaveBeenCalled();
+
+    (options.builderRef as { current: unknown }).current = builder;
+    buildGeminiMessageDeps(options).publishHistory();
+
+    expect(setHistory).toHaveBeenCalledOnce();
   });
 });

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -106,5 +107,29 @@ describe("liveApi per-operation path", () => {
 
     expect(defaultMock.set).toHaveBeenCalledWith("name", "probe");
     expect(trackMock.set).not.toHaveBeenCalled();
+  });
+});
+
+// The schema is built at module load, so which shape it has is decided by the
+// flag the build was made with — not by the flag at call time.
+describe("liveApi tool definition", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it.each([
+    ["publishes the per-operation path in a probe build", "true", true],
+    ["leaves it out of every other build", undefined, false],
+  ])("%s", async (_label, flag, published) => {
+    vi.stubEnv("ENABLE_OBJECT_PROBE", flag);
+    vi.resetModules();
+
+    const { toolDefLiveApi } =
+      await import("#src/tools/advanced/live-api.def.ts");
+    const operations = toolDefLiveApi.toolOptions.inputSchema
+      .operations as z.ZodArray<z.ZodObject>;
+
+    expect("path" in operations.element.shape).toBe(published);
   });
 });

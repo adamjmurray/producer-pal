@@ -315,4 +315,39 @@ describe("RemoteScriptTab", () => {
       "Reinstall",
     );
   });
+  it("falls back to generic copy when the read answers nothing", async () => {
+    // A 200 with a null body: no status to show and no error to quote.
+    fetchMock.mockResolvedValueOnce(jsonResponse(null));
+    render(<RemoteScriptTab />);
+
+    const error = await waitForHookState(() =>
+      screen.getByTestId("remote-script-load-error"),
+    );
+
+    expect(error.textContent).toBe("Could not read the remote script status.");
+  });
+
+  it("omits the Live version when the server didn't report one", async () => {
+    const summary = await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      running: true,
+      runningVersion: "1.2.0",
+      liveVersion: null,
+    });
+
+    expect(summary).toBe("Installed v1.2.0 (running v1.2.0)");
+  });
+
+  it("omits the Live version from the installed-elsewhere summary too", async () => {
+    const summary = await renderTab({
+      running: true,
+      runningVersion: "1.1.0",
+      liveVersion: null,
+    });
+
+    expect(summary).toBe(
+      "Not installed here, but Live is running v1.1.0 from another location",
+    );
+  });
 });

@@ -9,7 +9,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -153,6 +156,29 @@ describe("createDevice insertion order", () => {
     );
   });
 
+  // The catch-all pad is in_note -1 and has no note to spell, so both entries
+  // key on the same pad and the second one's position has moved.
+  it("refuses two entries naming the catch-all pad", async () => {
+    await expect(
+      createDevice({ path: "t0/d0/p*/d1,t0/d0/p*/d2", deviceName: "Utility" }),
+    ).rejects.toThrow('path entry "t0/d0/p*/d2" is spelled through "t0/d0/p*"');
+  });
+
+  // Nothing has run yet, so a container that isn't there is unknown rather
+  // than empty — the insert loop reports it, one entry at a time.
+  it("leaves an entry whose rack is missing to the insert loop", async () => {
+    mockNonExistentObjects();
+
+    await expect(
+      createDevice({
+        path: "t9/d0/pC1/d1,t9/d0/pD1/d1",
+        deviceName: "Utility",
+      }),
+    ).rejects.toThrow(
+      'could not create "Utility" at any of the specified paths',
+    );
+  });
+
   it("allows two different drum pads in one rack", async () => {
     await expect(
       createDevice({
@@ -208,6 +234,30 @@ describe("createDevice insertion order — one chain, two spellings", () => {
       }),
     ).rejects.toThrow(
       'path entry "t2/d0/c2/d0" is spelled through "t2/d0/pC1/c1"',
+    );
+  });
+
+  // The container sits below the pad's chain, so the tail past the chain is
+  // walked the same way the rest of path resolution walks it.
+  it("follows a path into a rack nested in a drum chain", async () => {
+    registerMockObject("sampler-0", {
+      path: livePath.track(2).device(0).chain(0).device(0),
+      type: "RackDevice",
+      properties: { chains: children("nested-chain") },
+    });
+    registerMockObject("nested-chain", {
+      path: livePath.track(2).device(0).chain(0).device(0).chain(0),
+      type: "Chain",
+      properties: { devices: children("nested-device") },
+    });
+
+    await expect(
+      createDevice({
+        path: "t2/d0/pC1/d0/c0/d0,t2/d0/c0/d0/c0/d1",
+        deviceName: "Utility",
+      }),
+    ).rejects.toThrow(
+      'path entry "t2/d0/c0/d0/c0/d1" is spelled through "t2/d0/pC1/d0/c0"',
     );
   });
 

@@ -409,12 +409,16 @@ describe("drum-pads-from-chains", () => {
     /**
      * Run processDrumPads over one chain holding one device.
      * @param includeDrumPads - Whether the pads themselves are returned
+     * @param path - The rack device's Live API path
      * @returns The readDeviceFn spy, to assert what the walk descended into
      */
-    const processOneChain = (includeDrumPads: boolean) => {
+    const processOneChain = (
+      includeDrumPads: boolean,
+      path: string | null = "live_set tracks 0 devices 0",
+    ) => {
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
       const device = {
-        path: "live_set tracks 0 devices 0",
+        path,
         getChildren: vi.fn(() => [createChainWithDevice(36)]),
         getChildIds: vi.fn(() => []),
       };
@@ -431,6 +435,15 @@ describe("drum-pads-from-chains", () => {
 
       return readDeviceFn;
     };
+
+    it("gives a nested device no path when the rack has none", () => {
+      // extractDevicePath answers null for a rack Live spells outside the
+      // track tree, and a device under it can only be addressed by id.
+      expect(processOneChain(true, null)).toHaveBeenCalledWith(
+        { id: "nested" },
+        expect.objectContaining({ parentPath: null }),
+      );
+    });
 
     it("expands a shown chain's devices, and lets them expand too", () => {
       expect(processOneChain(true)).toHaveBeenCalledWith(
@@ -585,24 +598,7 @@ describe("drum-pads-from-chains", () => {
     });
 
     it("passes the nested device path and incremented depth to readDevice", () => {
-      const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
-      const device = {
-        path: PARENT,
-        getChildren: vi.fn(() => [createChainWithDevice(36)]),
-        getChildIds: vi.fn(() => []),
-      };
-
-      processDrumPads(
-        device as unknown as LiveAPI,
-        {},
-        true,
-        true,
-        0,
-        2,
-        readDeviceFn,
-      );
-
-      expect(readDeviceFn).toHaveBeenCalledWith(
+      expect(processOneChain(true, PARENT)).toHaveBeenCalledWith(
         { id: "nested" },
         expect.objectContaining({
           parentPath: `${PARENT}/pC1/c0/d0`,

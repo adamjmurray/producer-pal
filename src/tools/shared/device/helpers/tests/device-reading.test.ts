@@ -43,7 +43,7 @@ type ChainOverrides = {
   solo?: number;
   muted_via_solo?: number;
   choke_group?: number;
-  out_note?: number;
+  out_note?: number | null;
   color?: string | null;
 };
 
@@ -75,7 +75,7 @@ describe("device-reading", () => {
           }
 
           if (prop === "out_note") {
-            return overrides.out_note ?? 60;
+            return overrides.out_note === undefined ? 60 : overrides.out_note;
           }
 
           return 0;
@@ -165,6 +165,15 @@ describe("device-reading", () => {
       const result = buildChainInfo(chain);
 
       expect(result.mappedPitch).toBeUndefined();
+    });
+
+    it("omits mappedPitch for a DrumChain with no out_note", () => {
+      // Live answers null for a pad that maps nothing; reading it must not
+      // reach midiToNoteName with a null pitch.
+      const chain = createMockChain({ type: "DrumChain", out_note: null });
+      const result = buildChainInfo(chain);
+
+      expect("mappedPitch" in result).toBe(false);
     });
 
     it("omits mappedPitch for a DrumChain whose out_note is out of MIDI range", () => {

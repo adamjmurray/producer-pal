@@ -103,6 +103,18 @@ describe("createDevice params", () => {
       });
     });
 
+    it("reports no params when the list is empty", async () => {
+      registerThresholdDevice();
+
+      expect(
+        await createDevice({
+          deviceName: "Compressor",
+          path: "t0",
+          params: [],
+        }),
+      ).toStrictEqual({ id: "comp-new", path: "t0/d2" });
+    });
+
     it("reports a param that names nothing on the new device", async () => {
       const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 

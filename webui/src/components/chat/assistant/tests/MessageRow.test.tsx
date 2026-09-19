@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render } from "@testing-library/preact";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
@@ -125,5 +125,45 @@ describe("MessageRow token usage label", () => {
     );
 
     expect(container.textContent).toContain("· 42 tok/s · 1.2s to first token");
+  });
+});
+
+describe("MessageRow retry target", () => {
+  it("skips back over earlier assistant turns to the last user message", () => {
+    const user: UIMessage = {
+      role: "user",
+      parts: [{ type: "text", content: "make a beat" }],
+      rawHistoryIndex: 0,
+      timestamp: 0,
+    };
+    const assistant = (index: number): UIMessage => ({
+      role: "model",
+      parts: [{ type: "text", content: `step ${index}` }],
+      rawHistoryIndex: index,
+      timestamp: 0,
+    });
+    const messages = [user, assistant(1), assistant(2)];
+    const handleRetry = vi.fn();
+
+    render(
+      <MessageRow
+        message={messages[2]!}
+        originalIdx={2}
+        messages={messages}
+        isAssistantResponding={false}
+        showTimestamps={false}
+        showTokenUsage={false}
+        handleRetry={handleRetry}
+        handleEdit={vi.fn()}
+        editingIndex={null}
+        setEditingIndex={vi.fn()}
+        editText=""
+        setEditText={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Retry from your last message"));
+
+    expect(handleRetry).toHaveBeenCalledWith(0);
   });
 });

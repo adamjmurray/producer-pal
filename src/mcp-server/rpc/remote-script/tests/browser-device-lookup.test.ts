@@ -198,6 +198,16 @@ describe("lookUpBrowserDevice", () => {
       "error",
       expect.stringContaining("matches 2 devices"),
     );
+
+    await fake?.close();
+
+    // Sitting at the top of Plug-Ins, with no format folder to read at all.
+    const noFolder = { plugin: ["VST3/A/Pro-Q 4", "Pro-Q 4"] };
+
+    expect(await lookUpIn(noFolder, "Pro-Q 4")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 2 devices"),
+    );
   });
 
   it("names only the first ten of a long list", async () => {
