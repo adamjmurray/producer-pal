@@ -459,9 +459,11 @@ Interactive chat for manual testing and debugging.
 scripts/chat [options] [text...]
 ```
 
-Every provider except `claude-code` and `codex-code` is supported: those two run
-through an agent-CLI transport (a spawned `claude` / `codex` subprocess), which
-only the eval CLI drives.
+Every provider is supported. `claude-code` and `codex-code` run through an
+agent-CLI transport (a spawned `claude` / `codex` subprocess) instead of the AI
+SDK, so `-t/--thinking`, `-r/--randomness`, `-o/--output-tokens` and
+`-b/--base-url` do not reach them — passing one prints a warning and is ignored.
+Without `-i` they use the agent-CLI system prompt, not the built-in one.
 
 ### Options
 
@@ -475,6 +477,7 @@ only the eval CLI drives.
 | `-i, --instructions <text>`      | System instructions                          |
 | `-s, --sequence <messages...>`   | Multiple messages to send in sequence        |
 | `-f, --file <path>`              | File containing messages (one per line)      |
+| `-u, --usage`                    | Show per-step token usage                    |
 | `-b, --base-url <url>`           | Base URL for local provider                  |
 | `-n, --no-stream`                | Disable streaming                            |
 | `-d, --debug`                    | Log all API responses                        |
@@ -493,6 +496,10 @@ scripts/chat -m local/glm-4.7-flash -1 "connect to Ableton"
 
 # Local model with custom server URL
 scripts/chat -m local/some-model -b http://localhost:1234/v1 -1 "list tracks"
+
+# Subscription CLIs (requires `claude` / `codex` installed and logged in)
+scripts/chat -m claude-code/sonnet -1 -u "list tracks in the set"
+scripts/chat -m codex-code/terra -1 "list tracks in the set"
 ```
 
 ## Environment variables

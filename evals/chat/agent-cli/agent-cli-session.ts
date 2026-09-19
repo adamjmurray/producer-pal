@@ -29,6 +29,12 @@ export interface AgentCliSessionOptions {
   model?: string;
   /** Print per-turn token usage (the CLI's -u/--usage flag). */
   usage?: boolean;
+  /**
+   * Print the turn preamble — header, user message, assistant label. Defaults
+   * to true. The chat CLI turns it off because it prints its own, and printing
+   * both would echo every prompt twice.
+   */
+  logTurns?: boolean;
 }
 
 /**
@@ -72,7 +78,10 @@ export async function createAgentCliSession(
       message: string,
       turnNumber: number,
     ): Promise<TurnResult> => {
-      logTurnStart(turnNumber, message);
+      if (options.logTurns !== false) {
+        logTurnStart(turnNumber, message);
+      }
+
       const args = transport.buildTurnArgs({
         instructions,
         instructionsFile,

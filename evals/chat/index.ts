@@ -6,6 +6,10 @@
 
 import { Command } from "commander";
 import "#evals/shared/install-fetch-dispatcher.ts";
+import {
+  type AgentCliChatOptions,
+  runAgentCliChat,
+} from "#evals/chat/agent-cli/agent-cli-chat.ts";
 import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {
@@ -101,25 +105,28 @@ program
     const { provider, model } = parseModelArgOrExit(program, modelArg);
 
     // The agent-CLI providers run through a spawned subprocess, not the AI SDK
-    // this CLI streams from. Without this the provider factory throws past
-    // commander's handler as a raw stack trace.
-    if (getAgentCliTransport(provider) != null) {
-      program.error(
-        `Provider "${provider}" is only supported by the eval CLI, which drives ` +
-          `a spawned agent CLI instead of the AI SDK. ` +
-          `Try: scripts/eval -m ${provider}/${model} -t <scenario>`,
-      );
-
-      return;
-    }
-
-    const instructions = rawOptions.instructions ?? SYSTEM_INSTRUCTION;
-    const options: ChatOptions = {
+    // this CLI streams from, so they get their own loop.
+    const isAgentCli = getAgentCliTransport(provider) != null;
+    // Undefined lets the agent-CLI session use its own prompt, written for a
+    // CLI that replaces its agent prompt with it. An explicit -i still wins,
+    // including -i "" to disable.
+    const instructions = isAgentCli
+      ? rawOptions.instructions
+      : (rawOptions.instructions ?? SYSTEM_INSTRUCTION);
+    // Typed wider than ChatOptions so the agent-CLI loop can see --base-url
+    // and name it among the flags it ignores.
+    const options: AgentCliChatOptions = {
       ...rawOptions,
       provider,
       model,
       instructions,
     };
+
+    if (isAgentCli) {
+      await runAgentCliChat(initialText, options);
+
+      return;
+    }
 
     if (options.api) {
       console.warn(
