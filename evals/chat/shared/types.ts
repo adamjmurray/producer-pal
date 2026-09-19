@@ -23,10 +23,7 @@ export type ThinkingLevel =
 
 export interface ChatOptions {
   provider: EvalProvider;
-  api?: "chat" | "responses";
   model: string;
-  stream: boolean;
-  debug: boolean;
   thinking?: ThinkingLevel;
   thinkingSummary?: ReasoningSummary;
   randomness?: number;

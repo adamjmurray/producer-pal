@@ -37,15 +37,12 @@ program
   .showHelpAfterError(true)
   .option(
     "-m, --model [model]",
-    "Model (e.g., claude-sonnet-4-5, google/gemini-2.0-flash)",
+    "Model as provider/model (e.g., google/gemini-2.8-flash). The provider can be omitted for claude-*, gpt-* and gemini-* models (e.g., claude-sonnet-5)",
   )
   .option(
     "--list-models [provider]",
     "List models for a provider (omit to list providers), then exit without chatting",
   )
-  .option("-a, --api <api>", "(deprecated, ignored) API style")
-  .option("-n, --no-stream", "Disable streaming mode")
-  .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
     "-t, --thinking <level>",
     "Thinking/reasoning level (provider-specific)",
@@ -126,12 +123,6 @@ program
       await runAgentCliChat(initialText, options);
 
       return;
-    }
-
-    if (options.api) {
-      console.warn(
-        "Warning: --api flag is deprecated (AI SDK handles API selection internally)",
-      );
     }
 
     await runChat(initialText, options);

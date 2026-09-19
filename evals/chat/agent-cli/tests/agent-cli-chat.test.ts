@@ -46,8 +46,6 @@ function makeOptions(
   return {
     provider: "claude-code",
     model: "sonnet",
-    stream: true,
-    debug: false,
     ...overrides,
   };
 }

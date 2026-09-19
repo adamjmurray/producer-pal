@@ -467,20 +467,18 @@ Without `-i` they use the agent-CLI system prompt, not the built-in one.
 
 ### Options
 
-| Flag                             | Description                                  |
-| -------------------------------- | -------------------------------------------- |
-| `-m, --model <model>` (required) | Model in `provider/model` format             |
-| `-1, --once`                     | Exit after one response                      |
-| `-t, --thinking <level>`         | Thinking/reasoning level (provider-specific) |
-| `-r, --randomness <number>`      | Temperature (0.0-1.0)                        |
-| `-o, --output-tokens <number>`   | Max output tokens                            |
-| `-i, --instructions <text>`      | System instructions                          |
-| `-s, --sequence <messages...>`   | Multiple messages to send in sequence        |
-| `-f, --file <path>`              | File containing messages (one per line)      |
-| `-u, --usage`                    | Show per-step token usage                    |
-| `-b, --base-url <url>`           | Base URL for local provider                  |
-| `-n, --no-stream`                | Disable streaming                            |
-| `-d, --debug`                    | Log all API responses                        |
+| Flag                             | Description                                                        |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `-m, --model <model>` (required) | `provider/model`, or a bare `claude-*`, `gpt-*` or `gemini-*` name |
+| `-1, --once`                     | Exit after one response                                            |
+| `-t, --thinking <level>`         | Thinking/reasoning level (provider-specific)                       |
+| `-r, --randomness <number>`      | Temperature (0.0-1.0)                                              |
+| `-o, --output-tokens <number>`   | Max output tokens                                                  |
+| `-i, --instructions <text>`      | System instructions                                                |
+| `-s, --sequence <messages...>`   | Multiple messages to send in sequence                              |
+| `-f, --file <path>`              | File containing messages (one per line)                            |
+| `-u, --usage`                    | Show per-step token usage                                          |
+| `-b, --base-url <url>`           | Base URL for local provider                                        |
 
 ### Examples
 
@@ -489,7 +487,7 @@ Without `-i` they use the agent-CLI system prompt, not the built-in one.
 scripts/chat -m gemini-3-flash-preview -1 "list tracks in the set"
 
 # Interactive session with Claude
-scripts/chat -m claude-sonnet-4-5
+scripts/chat -m claude-sonnet-5
 
 # Test a local model
 scripts/chat -m local/glm-4.7-flash -1 "connect to Ableton"
