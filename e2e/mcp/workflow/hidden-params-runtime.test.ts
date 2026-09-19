@@ -136,6 +136,42 @@ async function seedClip(path: string): Promise<string> {
   return data.id as string;
 }
 
+/**
+ * The ids and paths cases for a tool addressed by one id or path. Each resolves
+ * to the object whose id is in `state[key]`.
+ * @param tool - Tool name
+ * @param key - The state field holding the target's id
+ * @param path - The target's path
+ * @param idName - A name to write in the ids case, for update tools
+ * @param pathName - A name to write in the paths case, for update tools
+ * @returns The two cases
+ */
+function addressAliasCases(
+  tool: string,
+  key: "trackId" | "sceneId" | "clipId" | "deviceId",
+  path: string,
+  idName?: string,
+  pathName?: string,
+): Case[] {
+  const named = (name?: string) => (name == null ? {} : { name });
+  const verify = (d: AnyResult) => expect(d.id).toBe(state[key]);
+
+  return [
+    {
+      tool,
+      param: "ids",
+      args: () => ({ ids: state[key], ...named(idName) }),
+      verify,
+    },
+    {
+      tool,
+      param: "paths",
+      args: () => ({ paths: path, ...named(pathName) }),
+      verify,
+    },
+  ];
+}
+
 const CASES: Case[] = [
   {
     tool: "ppal-read-track",
@@ -143,6 +179,7 @@ const CASES: Case[] = [
     args: () => ({ trackId: state.trackId }),
     verify: (d) => expect(d.id).toBe(state.trackId),
   },
+  ...addressAliasCases("ppal-read-track", "trackId", "t0"),
   {
     tool: "ppal-read-track",
     param: "trackIndex",
@@ -173,18 +210,13 @@ const CASES: Case[] = [
     args: () => ({ path: "t+", count: 2, name: "Counted Track" }),
     verify: (d) => expect(d as unknown as AnyResult[]).toHaveLength(2),
   },
-  {
-    tool: "ppal-update-track",
-    param: "ids",
-    args: () => ({ ids: state.trackId, name: "Aliased Track" }),
-    verify: (d) => expect(d.id).toBe(state.trackId),
-  },
-  {
-    tool: "ppal-update-track",
-    param: "paths",
-    args: () => ({ paths: "t0", name: "Path Aliased Track" }),
-    verify: (d) => expect(d.id).toBe(state.trackId),
-  },
+  ...addressAliasCases(
+    "ppal-update-track",
+    "trackId",
+    "t0",
+    "Aliased Track",
+    "Path Aliased Track",
+  ),
   {
     tool: "ppal-update-track",
     param: "inputRoutingTypeId",
@@ -227,6 +259,7 @@ const CASES: Case[] = [
     args: () => ({ sceneId: state.sceneId }),
     verify: (d) => expect(d.id).toBe(state.sceneId),
   },
+  ...addressAliasCases("ppal-read-scene", "sceneId", "s0"),
   {
     tool: "ppal-read-scene",
     param: "sceneIndex",
@@ -247,24 +280,20 @@ const CASES: Case[] = [
     args: () => ({ path: "s+", count: 2, name: "Counted Scene" }),
     verify: (d) => expect(d as unknown as AnyResult[]).toHaveLength(2),
   },
-  {
-    tool: "ppal-update-scene",
-    param: "ids",
-    args: () => ({ ids: state.sceneId, name: "Aliased Scene" }),
-    verify: (d) => expect(d.id).toBe(state.sceneId),
-  },
-  {
-    tool: "ppal-update-scene",
-    param: "paths",
-    args: () => ({ paths: "s0", name: "Path Aliased Scene" }),
-    verify: (d) => expect(d.id).toBe(state.sceneId),
-  },
+  ...addressAliasCases(
+    "ppal-update-scene",
+    "sceneId",
+    "s0",
+    "Aliased Scene",
+    "Path Aliased Scene",
+  ),
   {
     tool: "ppal-read-clip",
     param: "clipId",
     args: () => ({ clipId: state.clipId }),
     verify: (d) => expect(d.id).toBe(state.clipId),
   },
+  ...addressAliasCases("ppal-read-clip", "clipId", `t${EMPTY_MIDI_TRACK}/s0`),
   {
     tool: "ppal-read-clip",
     param: "slot",
@@ -353,18 +382,13 @@ const CASES: Case[] = [
     }),
     verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}[77|1]`),
   },
-  {
-    tool: "ppal-update-clip",
-    param: "ids",
-    args: () => ({ ids: state.clipId, name: "Aliased Clip" }),
-    verify: (d) => expect(d.id).toBe(state.clipId),
-  },
-  {
-    tool: "ppal-update-clip",
-    param: "paths",
-    args: () => ({ paths: `t${EMPTY_MIDI_TRACK}/s0`, name: "Path Aliased" }),
-    verify: (d) => expect(d.id).toBe(state.clipId),
-  },
+  ...addressAliasCases(
+    "ppal-update-clip",
+    "clipId",
+    `t${EMPTY_MIDI_TRACK}/s0`,
+    "Aliased Clip",
+    "Path Aliased",
+  ),
   {
     tool: "ppal-update-clip",
     param: "toSlot",
@@ -401,18 +425,14 @@ const CASES: Case[] = [
     args: () => ({ deviceId: state.deviceId }),
     verify: (d) => expect(d.id).toBe(state.deviceId),
   },
-  {
-    tool: "ppal-update-device",
-    param: "ids",
-    args: () => ({ ids: state.deviceId, name: "Aliased Device" }),
-    verify: (d) => expect(d.id).toBe(state.deviceId),
-  },
-  {
-    tool: "ppal-update-device",
-    param: "paths",
-    args: () => ({ paths: "t0/d0", name: "Path Aliased Device" }),
-    verify: (d) => expect(d.id).toBe(state.deviceId),
-  },
+  ...addressAliasCases("ppal-read-device", "deviceId", "t0/d0"),
+  ...addressAliasCases(
+    "ppal-update-device",
+    "deviceId",
+    "t0/d0",
+    "Aliased Device",
+    "Path Aliased Device",
+  ),
   {
     tool: "ppal-delete",
     param: "ids",

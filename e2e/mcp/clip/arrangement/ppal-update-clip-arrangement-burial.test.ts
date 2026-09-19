@@ -45,9 +45,10 @@ describe("a batch move that buries a clip the call names", () => {
 
     const { data, warnings } = await updateClips(
       `${mover.id},${victim.id}`,
-      // The mover lands where the victim sits; the victim's own destination
-      // never happens, because it is gone before its turn comes.
-      { toPath: `${TRACK}/l0[605|1],${TRACK}/l0[609|1]` },
+      // Both go to the victim's spot. The move ordering can't avoid a stack
+      // the call asked for, so the mover lands first and the victim is gone
+      // before its turn comes.
+      { toPath: `${TRACK}/l0[605|1],${TRACK}/l0[605|1]` },
     );
 
     expect(data[1]).toStrictEqual({
