@@ -117,7 +117,7 @@ export async function runTrials(
  * --no-save), print it, and return it as a single-element result list.
  *
  * @param scenario - The skipped scenario
- * @param modelKey - Model key (e.g. "google/gemini-3.6-flash")
+ * @param modelKey - Model key (e.g. "google/gemini-3.8-flash")
  * @param label - Run-environment label (see `envLabel`)
  * @param reason - Why the scenario was skipped
  * @param ctx - Shared run context

@@ -100,7 +100,7 @@ scripts/eval [options]
 | `--json`               | JSON tool-result output (default: compact)         |
 | `--tools <list>`       | Tool subset, comma-separated (default: all)        |
 | `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
-| `-j, --judge <model>`  | Judge model (default: `gemini-3-flash-preview`)    |
+| `-j, --judge <model>`  | Judge model (default: `gemini-3.8-flash`)          |
 | `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)    |
 | `--skip-judge`         | Skip the LLM-as-judge step (checks only)           |
 | `--skip-reflection`    | Skip the self-reflection turn after a failure      |
@@ -118,22 +118,22 @@ scripts/eval [options]
 Models use `provider/model` format, or just the model name if the provider can
 be inferred from the prefix:
 
-| Format                          | Provider    |
-| ------------------------------- | ----------- |
-| `gemini-3-flash-preview`        | google      |
-| `claude-sonnet-4-5`             | anthropic   |
-| `gpt-5-nano`                    | openai      |
-| `google/gemini-3-flash-preview` | google      |
-| `anthropic/claude-sonnet-4-5`   | anthropic   |
-| `codex-code/sol`                | codex-code  |
-| `codex-code/terra`              | codex-code  |
-| `codex-code/luna`               | codex-code  |
-| `claude-code/sonnet`            | claude-code |
-| `claude-code/opus`              | claude-code |
-| `claude-code/haiku`             | claude-code |
-| `claude-code/fable`             | claude-code |
-| `openrouter/some-model`         | openrouter  |
-| `local/model-name`              | local       |
+| Format                        | Provider    |
+| ----------------------------- | ----------- |
+| `gemini-3.8-flash`            | google      |
+| `claude-sonnet-4-5`           | anthropic   |
+| `gpt-5-nano`                  | openai      |
+| `google/gemini-3.8-flash`     | google      |
+| `anthropic/claude-sonnet-4-5` | anthropic   |
+| `codex-code/sol`              | codex-code  |
+| `codex-code/terra`            | codex-code  |
+| `codex-code/luna`             | codex-code  |
+| `claude-code/sonnet`          | claude-code |
+| `claude-code/opus`            | claude-code |
+| `claude-code/haiku`           | claude-code |
+| `claude-code/fable`           | claude-code |
+| `openrouter/some-model`       | openrouter  |
+| `local/model-name`            | local       |
 
 Only the first `/` splits provider from model, so a model name can contain
 slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
@@ -143,10 +143,10 @@ the `local` provider.
 
 ```bash
 # Run all scenarios with a specific model
-scripts/eval -a -m gemini-3-flash-preview
+scripts/eval -a -m gemini-3.8-flash
 
 # Compare two models on one scenario
-scripts/eval -t connect-to-ableton -m gemini-3-flash-preview -m claude-sonnet-4-5
+scripts/eval -t connect-to-ableton -m gemini-3.8-flash -m claude-sonnet-4-5
 
 # Compare Codex subscription models (requires `codex login`)
 scripts/eval -t connect-to-ableton \
@@ -156,13 +156,13 @@ scripts/eval -t connect-to-ableton \
 scripts/eval -t connect-to-ableton -m codex-code/terra -m claude-code/sonnet
 
 # Run one family instead of the whole suite
-scripts/eval --tag notation -m gemini-3-flash-preview
+scripts/eval --tag notation -m gemini-3.8-flash
 
 # Two families at once (repeat the flag or comma-separate)
-scripts/eval --tag paths,clips -m gemini-3-flash-preview
+scripts/eval --tag paths,clips -m gemini-3.8-flash
 
 # Narrow a family to named scenarios (both filters must match)
-scripts/eval --tag paths -t path-session-slot -m gemini-3-flash-preview
+scripts/eval --tag paths -t path-session-slot -m gemini-3.8-flash
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
@@ -311,13 +311,13 @@ three scenarios in a row fail to start.
 
 ```bash
 # Default environment
-scripts/eval -t connect-to-ableton -m gemini-3-flash-preview
+scripts/eval -t connect-to-ableton -m gemini-3.8-flash
 
 # Small-model mode (transforms/bracket scenarios will skip)
 scripts/eval -a -m local/qwen3-8b --small-model
 
 # A restricted toolset (scenarios needing other tools will skip)
-scripts/eval -a -m gemini-3-flash-preview --tools connect,read-track,create-clip
+scripts/eval -a -m gemini-3.8-flash --tools connect,read-track,create-clip
 ```
 
 **Know what an environment grades before you pay for the run.** `--list` takes
@@ -438,7 +438,7 @@ model is tested.
 
 ```bash
 # 2 scenarios x 2 models = 4 runs, one table
-scripts/eval -a -m gemini-3-flash-preview -m claude-sonnet-4-5
+scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-4-5
 ```
 
 To compare environments (e.g. default vs `--small-model`), do a run per
@@ -484,7 +484,7 @@ Without `-i` they use the agent-CLI system prompt, not the built-in one.
 
 ```bash
 # Quick one-shot test with Gemini
-scripts/chat -m gemini-3-flash-preview -1 "list tracks in the set"
+scripts/chat -m gemini-3.8-flash -1 "list tracks in the set"
 
 # Interactive session with Claude
 scripts/chat -m claude-sonnet-5

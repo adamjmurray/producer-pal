@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   const program = new Command()
     .name("probe:skills")
     .description("Check that each fragment / tool / param reaches the model")
-    .option("-m, --model <provider/model>", "Model", "google/gemini-3.6-flash")
+    .option("-m, --model <provider/model>", "Model", "google/gemini-3.8-flash")
     .option("-t, --test <source>", "Probe one source only")
     .option("--small-model", "Probe the basic driver instead of the standard")
     .option("--surface <kind>", "Only skill | tool | param probes")

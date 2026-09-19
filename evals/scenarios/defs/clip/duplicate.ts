@@ -247,7 +247,7 @@ function secondHalfMirrorsFirst(events: NoteEvent[]): boolean {
  * envelopes per the automation limitation).
  *
  * Requires Ableton (real device + LLM): `npm run build:debug` then
- * `./scripts/eval -m google/gemini-3.6-flash -t duplicate-loop`.
+ * `./scripts/eval -m google/gemini-3.8-flash -t duplicate-loop`.
  * NOT yet validated vs Live.
  */
 export const duplicateLoop: EvalScenario = {

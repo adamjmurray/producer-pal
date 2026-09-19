@@ -37,7 +37,7 @@ program
   .showHelpAfterError(true)
   .option(
     "-m, --model [model]",
-    "Model as provider/model (e.g., google/gemini-2.8-flash). The provider can be omitted for claude-*, gpt-* and gemini-* models (e.g., claude-sonnet-5)",
+    "Model as provider/model (e.g., google/gemini-3.8-flash). The provider can be omitted for claude-*, gpt-* and gemini-* models (e.g., claude-sonnet-5)",
   )
   .option(
     "--list-models [provider]",
