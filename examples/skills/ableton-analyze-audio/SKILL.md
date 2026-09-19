@@ -26,7 +26,7 @@ runs in an environment that does.
 ## Prerequisites
 
 - A **`GEMINI_API_KEY`** (or `GEMINI_KEY`) in the environment, or pass
-  `--api-key`. Defaults to `gemini-3.6-flash`; model IDs move, so override with
+  `--api-key`. Defaults to `gemini-3.8-flash`; model IDs move, so override with
   `--model` / `GEMINI_MODEL` if that one is gone.
 - **Not in the environment? Look for a `.env`** in the project root before
   asking the user for a key, and grep it for the name rather than assuming one —

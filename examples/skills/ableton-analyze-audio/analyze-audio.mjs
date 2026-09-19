@@ -47,7 +47,7 @@ const AUDIO_MIME = {
   ".ogg": "audio/ogg",
   ".m4a": "audio/mp4",
 };
-const DEFAULT_MODEL = "gemini-3.6-flash";
+const DEFAULT_MODEL = "gemini-3.8-flash";
 // The silence sentence earns its place: a render from Ableton covers the whole
 // arrangement, so a single track or clip arrives padded with silence. Asking
 // where the music is beats guessing, and it makes a wrong-track render obvious.
