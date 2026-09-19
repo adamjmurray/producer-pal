@@ -6,7 +6,11 @@
 import { type LanguageModelUsage } from "ai";
 import { describe, expect, it } from "vitest";
 import { NOTATIONS } from "#src/shared/notation";
-import { type ChatClientConfig, toTokenUsage } from "#webui/chat/sdk/types";
+import {
+  type ChatClientConfig,
+  toStepTiming,
+  toTokenUsage,
+} from "#webui/chat/sdk/types";
 
 /**
  * Create a LanguageModelUsage with sensible defaults.
@@ -122,5 +126,45 @@ describe("toTokenUsage", () => {
       inputTokens: 100,
       outputTokens: 15,
     });
+  });
+});
+
+describe("toStepTiming", () => {
+  // The SDK divides by a duration that can be zero and clamps the resulting
+  // Infinity to 0, so a 0 means "couldn't measure" and must be dropped.
+  it.each([
+    [
+      "keeps both measurements",
+      { timeToFirstOutputMs: 1234, outputTokensPerSecond: 42.7 },
+      { timeToFirstTokenMs: 1234, outputTokensPerSecond: 42.7 },
+    ],
+    [
+      "drops a zeroed rate",
+      { timeToFirstOutputMs: 900, outputTokensPerSecond: 0 },
+      { timeToFirstTokenMs: 900 },
+    ],
+    [
+      "drops a zeroed time to first token",
+      { timeToFirstOutputMs: 0, outputTokensPerSecond: 30 },
+      { outputTokensPerSecond: 30 },
+    ],
+    ["no performance data at all", undefined, undefined],
+    // A non-streaming step: the SDK leaves both fields unset.
+    ["nothing measurable", {}, undefined],
+    [
+      "non-finite values",
+      {
+        timeToFirstOutputMs: Number.NaN,
+        outputTokensPerSecond: Number.POSITIVE_INFINITY,
+      },
+      undefined,
+    ],
+    [
+      "negative values",
+      { timeToFirstOutputMs: -5, outputTokensPerSecond: -1 },
+      undefined,
+    ],
+  ])("%s", (_label, performance, expected) => {
+    expect(toStepTiming(performance)).toStrictEqual(expected);
   });
 });

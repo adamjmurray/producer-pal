@@ -11,7 +11,7 @@
  * - Message formatter and chat client interfaces
  */
 
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 
 // UI Part Types
 // These represent the different types of content that can appear in a message
@@ -64,6 +64,8 @@ export interface UIToolPart {
 export interface UIStepUsagePart {
   type: "step-usage";
   usage: TokenUsage;
+  /** Generation speed for this step, when the SDK could measure it. */
+  timing?: StepTiming;
 }
 
 export interface UIErrorPart {
@@ -98,6 +100,8 @@ export interface UIMessage {
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */
   usage?: TokenUsage;
+  /** Generation speed for the last step of this message, when measurable */
+  timing?: StepTiming;
 }
 
 // Formatter Interface

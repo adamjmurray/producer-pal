@@ -8,22 +8,24 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
 import { MessageRow } from "#webui/components/chat/assistant/MessageRow";
 
 /**
  * Render a single assistant MessageRow whose usage drives the TokenUsageLabel.
  * @param usage - Token usage for the assistant message
+ * @param timing - Generation speed for the message's last step
  * @returns The rendered container
  */
-function renderAssistant(usage: TokenUsage) {
+function renderAssistant(usage: TokenUsage, timing?: StepTiming) {
   const message: UIMessage = {
     role: "model",
     parts: [{ type: "text", content: "hi" }],
     rawHistoryIndex: 0,
     timestamp: 0,
     usage,
+    timing,
   };
 
   return render(
@@ -113,5 +115,15 @@ describe("MessageRow token usage label", () => {
     expect(container.textContent).toContain("225 reasoning");
     // outputTokens absent → "→ 0"
     expect(container.textContent).toContain("→ 0");
+    expect(container.textContent).not.toContain("tok/s");
+  });
+
+  it("appends generation speed when the message was timed", () => {
+    const { container } = renderAssistant(
+      { inputTokens: 12632, outputTokens: 845 },
+      { timeToFirstTokenMs: 1240, outputTokensPerSecond: 42.4 },
+    );
+
+    expect(container.textContent).toContain("· 42 tok/s · 1.2s to first token");
   });
 });

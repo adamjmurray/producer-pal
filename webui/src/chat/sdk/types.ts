@@ -125,6 +125,8 @@ export interface ChatMessage {
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */
   usage?: TokenUsage;
+  /** Generation speed for the step that produced this message, when measurable */
+  timing?: StepTiming;
   /** Per-message setting override (only present when user overrode the conversation default) */
   thinkingOverride?: string;
   /** True for a synthetic compaction summary that replaces older turns */
@@ -160,6 +162,60 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
     ...(cacheWrite != null &&
       cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
   };
+}
+
+/** Generation speed for one step, limited to what the SDK could measure. */
+export interface StepTiming {
+  /** Milliseconds from the model call starting to its first generated chunk. */
+  timeToFirstTokenMs?: number;
+  /**
+   * Output tokens per second after the first chunk. Measured over the model
+   * response alone, so tool execution and the wait for the first token are both
+   * outside it.
+   */
+  outputTokensPerSecond?: number;
+}
+
+/** The `performance` fields of a step result that {@link toStepTiming} reads. */
+export interface StepPerformance {
+  timeToFirstOutputMs?: number | undefined;
+  outputTokensPerSecond?: number | undefined;
+}
+
+/**
+ * Pull the two speeds worth showing out of a step's `performance`.
+ *
+ * The SDK divides by a duration that can be zero and clamps the resulting
+ * Infinity to 0, so a 0 here means "couldn't measure", not "zero per second" —
+ * drop it rather than show it.
+ * @param performance - The `performance` field of a step result
+ * @returns The usable timings, or undefined when neither is usable
+ */
+export function toStepTiming(
+  performance: StepPerformance | undefined,
+): StepTiming | undefined {
+  const timeToFirstTokenMs = measured(performance?.timeToFirstOutputMs);
+  const outputTokensPerSecond = measured(performance?.outputTokensPerSecond);
+
+  if (timeToFirstTokenMs == null && outputTokensPerSecond == null) {
+    return undefined;
+  }
+
+  return {
+    ...(timeToFirstTokenMs != null && { timeToFirstTokenMs }),
+    ...(outputTokensPerSecond != null && { outputTokensPerSecond }),
+  };
+}
+
+/**
+ * Keep a measurement only when it is a finite, positive number.
+ * @param value - Candidate measurement
+ * @returns The value, or undefined when it can't be trusted
+ */
+function measured(value: number | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
 }
 
 /**

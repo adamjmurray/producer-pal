@@ -330,6 +330,33 @@ describe("AssistantMessage", () => {
       expect(container.textContent).toContain("33");
     });
 
+    it("appends generation speed to a timed step", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t", args: {}, result: "ok" },
+        {
+          type: "step-usage",
+          usage: { inputTokens: 6078, outputTokens: 33 },
+          timing: { timeToFirstTokenMs: 840, outputTokensPerSecond: 38 },
+        },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).toContain(
+        "· 38 tok/s · 840ms to first token",
+      );
+    });
+
+    it("shows no generation speed when the step was not timed", () => {
+      const { container } = render(
+        <AssistantMessage parts={stepUsageParts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).not.toContain("tok/s");
+    });
+
     it("hides step-usage when showTokenUsage is false", () => {
       const { container } = render(
         <AssistantMessage parts={stepUsageParts} showTokenUsage={false} />,

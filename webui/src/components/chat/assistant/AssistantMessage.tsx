@@ -101,6 +101,7 @@ function renderToolGroup(
             <StepUsageLabel
               key={idx}
               usage={part.usage}
+              timing={part.timing}
               newContentTokens={calcStepNewContent(
                 idx,
                 part.usage,
@@ -173,6 +174,7 @@ function renderSinglePart(
       <StepUsageLabel
         key={i}
         usage={part.usage}
+        timing={part.timing}
         newContentTokens={calcStepNewContent(i, part.usage, stepPrevUsages)}
       />
     );

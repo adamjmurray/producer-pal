@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { type ChatMessage, type UserMessage } from "#webui/chat/sdk/types";
+import {
+  type ChatMessage,
+  type StepPerformance,
+  type UserMessage,
+} from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -131,6 +135,7 @@ const DEFAULT_USAGE = {
  * @param options.text - Text to yield in the stream (default: "response")
  * @param options.modelId - Model ID for the response
  * @param options.overrides - Per-message overrides
+ * @param options.performance - Step performance the SDK reports, if any
  * @returns Final chat history
  */
 async function sendWithResponse(
@@ -138,6 +143,7 @@ async function sendWithResponse(
     text?: string;
     modelId?: string;
     overrides?: Parameters<ChatSdkClient["sendMessage"]>[2];
+    performance?: StepPerformance;
   } = {},
 ): Promise<ChatMessage[]> {
   const text = options.text ?? "response";
@@ -149,6 +155,7 @@ async function sendWithResponse(
       // Simulate SDK calling onStepEnd after step completes
       opts.onStepEnd?.({
         usage: DEFAULT_USAGE,
+        performance: options.performance,
         response: { modelId: options.modelId ?? "" },
       });
     }
@@ -497,10 +504,11 @@ describe("ChatSdkClient", () => {
       expect(last[1]!.responseModel).toBe("gpt-4o-mini");
     });
 
-    it("skips responseModel when response has no modelId", async () => {
+    it("skips responseModel and timing when the SDK reports neither", async () => {
       const last = await sendWithResponse({ text: "Hi" });
 
       expect(last[1]!.responseModel).toBeUndefined();
+      expect(last[1]!.timing).toBeUndefined();
     });
 
     it("captures usage on last assistant message", async () => {
@@ -556,6 +564,21 @@ describe("ChatSdkClient", () => {
         inputTokens: 100,
         outputTokens: 50,
         reasoningTokens: 10,
+      });
+    });
+
+    it("attaches the step's generation speed when the SDK measured it", async () => {
+      const last = await sendWithResponse({
+        text: "Hi",
+        performance: {
+          timeToFirstOutputMs: 1200,
+          outputTokensPerSecond: 42.4,
+        },
+      });
+
+      expect(last[1]!.timing).toStrictEqual({
+        timeToFirstTokenMs: 1200,
+        outputTokensPerSecond: 42.4,
       });
     });
 

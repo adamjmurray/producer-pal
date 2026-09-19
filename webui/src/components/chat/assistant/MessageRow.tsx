@@ -6,7 +6,7 @@
 import { type VNode } from "preact";
 import { formatUserContent } from "#webui/chat/helpers/message-formatting";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
-import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 import { CompactButton } from "#webui/components/chat/controls/CompactButton";
 import { RetryButton } from "#webui/components/chat/controls/RetryButton";
 import { EditButton } from "#webui/components/chat/EditButton";
@@ -24,6 +24,7 @@ import {
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
 import { RenderErrorFallback, SafeMarkdown } from "./helpers/SafeMarkdown";
+import { formatStepTiming } from "./helpers/step-usage";
 
 export interface MessageRowProps {
   message: UIMessage;
@@ -216,6 +217,7 @@ function AssistantBubble({
         <TokenUsageLabel
           usage={message.usage}
           prevUsage={getLastStepUsage(message) ?? prevModelUsage}
+          timing={message.timing}
         />
       )}
     </>
@@ -292,14 +294,17 @@ function ModelMismatchLabel({
  * @param props - Component props
  * @param props.usage - Token usage data
  * @param props.prevUsage - Previous step's usage for new content calculation
+ * @param props.timing - Generation speed for the last step, when measurable
  * @returns Label element or null
  */
 function TokenUsageLabel({
   usage,
   prevUsage,
+  timing,
 }: {
   usage?: TokenUsage;
   prevUsage?: TokenUsage;
+  timing?: StepTiming;
 }) {
   if (!usage) {
     return null;
@@ -320,6 +325,7 @@ function TokenUsageLabel({
       → {compactNumber(usage.outputTokens ?? 0)}
       {(usage.reasoningTokens ?? 0) > 0 &&
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
+      {formatStepTiming(timing)}
     </div>
   );
 }

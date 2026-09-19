@@ -150,19 +150,38 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
       addTextContent(currentMessage.parts, msg.content);
       addToolParts(msg, currentMessage.parts);
 
-      if (msg.responseModel) {
-        currentMessage.responseModel = msg.responseModel;
-      }
-
-      if (msg.usage) {
-        currentMessage.usage = msg.usage;
-      }
+      copyStepMetadata(msg, currentMessage);
     }
   }
 
   markLastThoughtAsOpen(messages);
 
   return messages;
+}
+
+/**
+ * Copy a step's model id, usage and generation speed onto the UI message.
+ * @param msg - The raw assistant message for this step
+ * @param currentMessage - The UIMessage being built
+ */
+function copyStepMetadata(msg: ChatMessage, currentMessage: UIMessage): void {
+  if (msg.responseModel) {
+    currentMessage.responseModel = msg.responseModel;
+  }
+
+  if (!msg.usage) {
+    return;
+  }
+
+  currentMessage.usage = msg.usage;
+
+  // Timing belongs to the step its usage came from, so an untimed step has to
+  // drop the previous step's rather than keep showing it.
+  if (msg.timing) {
+    currentMessage.timing = msg.timing;
+  } else {
+    delete currentMessage.timing;
+  }
 }
 
 /**
@@ -179,6 +198,11 @@ function closeStepUsage(message: UIMessage): void {
     return;
   }
 
-  message.parts.push({ type: "step-usage", usage: message.usage });
+  message.parts.push({
+    type: "step-usage",
+    usage: message.usage,
+    ...(message.timing && { timing: message.timing }),
+  });
   message.usage = undefined;
+  message.timing = undefined;
 }

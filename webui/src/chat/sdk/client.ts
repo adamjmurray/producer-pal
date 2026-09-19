@@ -41,6 +41,7 @@ import {
   type ChatMessage,
   type UserMessage,
   normalizeUserMessage,
+  toStepTiming,
   toTokenUsage,
 } from "./types";
 
@@ -455,6 +456,12 @@ export class ChatSdkClient {
 
           if (msg.role === "assistant" && count++ === stepIndex) {
             msg.usage = toTokenUsage(event.usage);
+
+            const timing = toStepTiming(event.performance);
+
+            if (timing) {
+              msg.timing = timing;
+            }
 
             if (event.response.modelId) {
               msg.responseModel = event.response.modelId;
