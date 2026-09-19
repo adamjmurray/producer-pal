@@ -240,6 +240,47 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     expect(requestNode).toHaveBeenCalledTimes(1);
   });
 
+  describe("refuses to load a second Producer Pal", () => {
+    const REFUSAL =
+      "cannot create the Producer Pal device: it is already running in this " +
+      "Set, and a second copy would break the connection this tool runs on";
+
+    it.each([
+      ["by name", "Producer_Pal", "Max Audio Effect/Producer_Pal"],
+      ["by a name still carrying .amxd", "producer_pal.amxd", "User Library"],
+      ["by the file it sits at", "My Pal", "User Library/Producer_Pal.amxd"],
+    ])("%s", async (_case, name, path) => {
+      answerRemoteScript({
+        resolution: {
+          available: true,
+          item: { type: "mfl-device", path, name },
+        },
+      });
+
+      await expect(
+        createDevice({ deviceName: name, path: "t0/d+" }),
+      ).rejects.toThrow(REFUSAL);
+      expect(liveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("still loads another Max for Live device", async () => {
+      answerRemoteScript({
+        resolution: {
+          available: true,
+          item: {
+            type: "mfl-device",
+            path: "Max Audio Effect/LFO.amxd",
+            name: "LFO",
+          },
+        },
+      });
+
+      expect(
+        await createDevice({ deviceName: "LFO", path: "t0/d+" }),
+      ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
+    });
+  });
+
   describe("always deletes the temp track", () => {
     it("when the load fails", async () => {
       answerRemoteScript({

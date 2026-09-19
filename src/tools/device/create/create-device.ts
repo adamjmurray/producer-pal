@@ -152,6 +152,7 @@ export async function createDevice(
  * @returns The browser item, or null for a native device
  * @throws Error listing the native devices when the remote script isn't
  *   answering, since without it they are all there is
+ * @throws Error when the item is Producer Pal itself
  */
 async function findBrowserItem(
   deviceName: string,
@@ -161,6 +162,13 @@ async function findBrowserItem(
   }
 
   const item = await resolveBrowserDevice(deviceName);
+
+  if (item != null && isProducerPalBrowserItem(item)) {
+    throw new Error(
+      "cannot create the Producer Pal device: it is already running in this " +
+        "Set, and a second copy would break the connection this tool runs on",
+    );
+  }
 
   if (item == null) {
     const validList =
@@ -174,6 +182,23 @@ async function findBrowserItem(
   }
 
   return item;
+}
+
+/**
+ * Whether a browser item is the Producer Pal device.
+ *
+ * The browser reports the name with or without the file extension, and a
+ * renamed entry still sits at the .amxd, so check both.
+ * @param item - The item the browser lookup resolved
+ * @returns True when loading it would add a second Producer Pal
+ */
+function isProducerPalBrowserItem(item: BrowserItem): boolean {
+  const name = item.name.replace(/\.amxd$/i, "").toLowerCase();
+
+  return (
+    name === "producer_pal" ||
+    item.path.toLowerCase().endsWith("producer_pal.amxd")
+  );
 }
 
 /**
