@@ -23,6 +23,7 @@ import {
 import { type ListCategoriesArgs, listCategories } from "./list-categories.ts";
 import { listPlugins } from "./list-plugins.ts";
 import { type ListTagsArgs, listTags } from "./list-tags.ts";
+import { setRunningLiveMajor } from "./live-db-path.ts";
 import { ensureSqliteAvailable } from "./live-db.ts";
 import { findDuplicates } from "./query/find-duplicates.ts";
 import { findSimilar } from "./query/find-similar.ts";
@@ -50,56 +51,83 @@ import { librarySearch } from "./query/library-search.ts";
 export function registerLibraryRoutes(): void {
   registerNodeRoute(
     "library.search",
-    guardSqlite((args) =>
+    libraryRoute((args) =>
       librarySearch((args as LibrarySearchArgs | null) ?? {}),
     ),
   );
 
   registerNodeRoute(
     "library.listTags",
-    guardSqlite((args) => listTags((args as ListTagsArgs | null) ?? {})),
+    libraryRoute((args) => listTags((args as ListTagsArgs | null) ?? {})),
   );
 
   registerNodeRoute(
     "library.listCategories",
-    guardSqlite((args) =>
+    libraryRoute((args) =>
       listCategories((args as ListCategoriesArgs | null) ?? {}),
     ),
   );
 
   registerNodeRoute(
     "library.listPlugins",
-    guardSqlite((args) => listPlugins((args as ListPluginsArgs | null) ?? {})),
+    libraryRoute((args) => listPlugins((args as ListPluginsArgs | null) ?? {})),
   );
 
   registerNodeRoute(
     "library.findSimilar",
-    guardSqlite((args) => findSimilar((args as FindSimilarArgs | null) ?? {})),
+    libraryRoute((args) => findSimilar((args as FindSimilarArgs | null) ?? {})),
   );
 
   registerNodeRoute(
     "library.findDuplicates",
-    guardSqlite((args) =>
+    libraryRoute((args) =>
       findDuplicates((args as FindDuplicatesArgs | null) ?? {}),
     ),
   );
 }
 
 /**
- * Wrap a library route handler so every invocation first confirms the runtime
- * provides `node:sqlite`, throwing `SqliteUnavailableError` before the
- * handler's own DB code runs. That surfaces an unsupported runtime (a Max older
+ * Wrap a library route handler with the two things every library route needs
+ * before its own DB code runs.
+ *
+ * It records which Live major is running, from the `liveVersion` V8 sends with
+ * every route call, so DB selection prefers that install's databases over a
+ * newer install's stale ones (see live-db-path.ts).
+ *
+ * Then it confirms the runtime provides `node:sqlite`, throwing
+ * `SqliteUnavailableError`. That surfaces an unsupported runtime (a Max older
  * than the one bundled with Live 12.4) as a hard tool error the chat UI flags
  * and the LLM sees — distinct from the soft `dbAvailable: false` degrade the
  * handlers return for a missing DB or schema drift.
  *
  * @param handler - The underlying route handler
- * @returns A handler that runs the availability guard first
+ * @returns A handler that records the Live major and runs the availability guard
  */
-function guardSqlite(handler: NodeRouteHandler): NodeRouteHandler {
+function libraryRoute(handler: NodeRouteHandler): NodeRouteHandler {
   return async (args) => {
+    setRunningLiveMajor(liveMajorFromArgs(args));
+
     await ensureSqliteAvailable();
 
     return handler(args);
   };
+}
+
+/**
+ * Read the running Live major out of a route's `liveVersion` arg. The arg comes
+ * straight from V8 unvalidated, so anything unparseable means "unknown". A
+ * number is accepted too: V8 coerces a bare "12.4" unless the sender forces a
+ * string.
+ *
+ * @param args - Raw route args
+ * @returns The major version (12 for "12.4"), or null when absent or unparseable
+ */
+function liveMajorFromArgs(args: unknown): number | null {
+  const liveVersion = (args as { liveVersion?: unknown } | null)?.liveVersion;
+  const major =
+    typeof liveVersion === "string" || typeof liveVersion === "number"
+      ? Number.parseInt(String(liveVersion), 10)
+      : Number.NaN;
+
+  return Number.isNaN(major) ? null : major;
 }

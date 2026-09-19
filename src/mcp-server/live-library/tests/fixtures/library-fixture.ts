@@ -172,7 +172,7 @@ export const STALENESS_RISK: StalenessRisk = {
  * @param runQuery - Runs the library query under test and returns its result
  */
 export async function expectQueryDegradesOnBrokenDb(
-  dbPathMod: { findLiveFilesDbPath: (...args: unknown[]) => unknown },
+  dbPathMod: { findLiveFilesDbPath: (...args: never[]) => unknown },
   runQuery: () => Promise<{ dbAvailable?: boolean; reason?: string }>,
 ): Promise<void> {
   const broken = createBrokenLibraryDb();
@@ -197,7 +197,7 @@ export async function expectQueryDegradesOnBrokenDb(
  * @param dbPathMod.findLiveFilesDbPath - The mocked finder function whose mock is rebound each test
  */
 export function setupLibraryFixtureLifecycle(dbPathMod: {
-  findLiveFilesDbPath: (...args: unknown[]) => unknown;
+  findLiveFilesDbPath: (...args: never[]) => unknown;
 }): void {
   let fixture: LibraryFixture;
 
