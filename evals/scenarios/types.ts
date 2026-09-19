@@ -10,9 +10,8 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import { type StepTiming } from "#evals/chat/shared/step-timing.ts";
 import { type ToolCall } from "#evals/chat/shared/types.ts";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { type ScenarioTag } from "./load-scenarios/scenario-tags.ts";
 
 // Re-export types from chat for convenience

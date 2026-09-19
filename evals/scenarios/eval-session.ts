@@ -13,10 +13,6 @@ import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.t
 import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
-import {
-  type StepTiming,
-  toStepTiming,
-} from "#evals/chat/shared/step-timing.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
@@ -27,7 +23,12 @@ import {
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
-import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
+import {
+  type StepTiming,
+  type TokenUsage,
+  toStepTiming,
+  toTokenUsage,
+} from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/turn-logging.ts";
 import {
   buildSeededMessages,

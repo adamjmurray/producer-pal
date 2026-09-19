@@ -4,12 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { inspect, styleText } from "node:util";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   calcNewContentTokens,
   compactNumber,
 } from "#webui/lib/utils/compact-number.ts";
-import { type StepTiming } from "./step-timing.ts";
 
 export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
 

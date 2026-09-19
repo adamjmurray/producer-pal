@@ -10,7 +10,12 @@
 
 import { type LanguageModelUsage, type streamText } from "ai";
 import { isQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
-import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
+import {
+  type StepPerformance,
+  type TokenUsage,
+  toStepTiming,
+  toTokenUsage,
+} from "#webui/chat/sdk/types.ts";
 import {
   continueThought,
   describeStreamError,
@@ -27,7 +32,6 @@ import {
   mcpResultText,
   mcpResultWarnings,
 } from "./shared/mcp-result-text.ts";
-import { type StepPerformance, toStepTiming } from "./shared/step-timing.ts";
 import { type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */

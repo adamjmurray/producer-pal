@@ -8,8 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { type StepTiming } from "#evals/chat/shared/step-timing.ts";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { type EvalTurnResult } from "../../../types.ts";
 import { aggregateStepTimings } from "../step-timing-aggregate.ts";
 
