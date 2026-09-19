@@ -13,7 +13,7 @@ import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { createMcpTools } from "./mcp.ts";
 import { createProviderModel } from "./provider.ts";
-import { formatAssistantLabel, printStepUsage } from "./shared/formatting.ts";
+import { formatAssistantLabel } from "./shared/formatting.ts";
 import { createMessageSource } from "./shared/message-source.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "./shared/types.ts";
@@ -94,24 +94,22 @@ export async function runChat(
             // Errors are rendered (in red) by processCliStream via the
             // stream's "error" part; suppress the SDK's default raw dump.
             onError: () => {},
+            // The usage line itself is printed by processCliStream, off the
+            // finish-step part that carries both usage and timings.
             onStepEnd: (event) => {
-              const usage = toTokenUsage(event.usage);
-              const isTextStep = event.toolCalls.length === 0;
-
-              stepUsages.push(usage);
-
-              if (sess.options.usage) {
-                printStepUsage(usage, prevUsage, isTextStep);
-              }
-
-              prevUsage = usage;
+              stepUsages.push(toTokenUsage(event.usage));
             },
           });
 
           const turnResult = await processCliStream(result, {
             showUsage: sess.options.usage,
+            prevUsage,
             erroredToolCallIds,
           });
+
+          // Carry the last step's usage into the next turn so its "new content"
+          // figure counts the user's next message.
+          prevUsage = stepUsages.at(-1) ?? prevUsage;
 
           // On a stream error, result.responseMessages rejects; the error was
           // already shown by processCliStream, so flag a non-zero exit and skip

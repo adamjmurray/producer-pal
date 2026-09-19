@@ -13,7 +13,6 @@ import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.t
 import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
-import { printStepUsage } from "#evals/chat/shared/formatting.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
@@ -149,23 +148,22 @@ export async function createEvalSession(
         // Errors are rendered (in red) by processCliStream via the stream's
         // "error" part; suppress the SDK's default raw dump.
         onError: () => {},
+        // The usage line itself is printed by processCliStream, off the
+        // finish-step part that carries both usage and timings.
         onStepEnd: (event) => {
-          const usage = toTokenUsage(event.usage);
-
-          stepUsages.push(usage);
-
-          if (options.usage) {
-            printStepUsage(usage, prevUsage, event.toolCalls.length === 0);
-          }
-
-          prevUsage = usage;
+          stepUsages.push(toTokenUsage(event.usage));
         },
       });
 
       const turnResult = await processCliStream(result, {
         showUsage: options.usage,
+        prevUsage,
         erroredToolCallIds,
       });
+
+      // Carry the last step's usage into the next turn so its "new content"
+      // figure counts the user's next message.
+      prevUsage = stepUsages.at(-1) ?? prevUsage;
 
       // On a stream error, result.responseMessages rejects; the error was already
       // shown by processCliStream. Skip history so the scenario can grade the miss.

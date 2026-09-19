@@ -24,7 +24,9 @@ import {
   formatScenarioHeader,
   formatTurnHeader,
   formatSectionHeader,
+  formatStepTiming,
   formatSubsectionHeader,
+  printStepUsage,
 } from "./formatting.ts";
 
 describe("truncate", () => {
@@ -412,5 +414,80 @@ describe("eval output formatting", () => {
 
       expect(result).toContain("-".repeat(60));
     });
+  });
+});
+
+describe("formatStepTiming", () => {
+  it("returns an empty string when there is no timing", () => {
+    expect(formatStepTiming(undefined)).toBe("");
+  });
+
+  it("formats both speeds", () => {
+    expect(
+      formatStepTiming({
+        timeToFirstTokenMs: 1234,
+        outputTokensPerSecond: 42.4,
+      }),
+    ).toBe(" · 42 tok/s · 1.2s to first token");
+  });
+
+  it("uses milliseconds below a second", () => {
+    expect(formatStepTiming({ timeToFirstTokenMs: 840.6 })).toBe(
+      " · 841ms to first token",
+    );
+  });
+
+  it("omits the rate when it was not measurable", () => {
+    expect(formatStepTiming({ timeToFirstTokenMs: 2000 })).toBe(
+      " · 2.0s to first token",
+    );
+  });
+
+  it("omits the first-token time when it was not measurable", () => {
+    expect(formatStepTiming({ outputTokensPerSecond: 7.5 })).toBe(" · 8 tok/s");
+  });
+});
+
+describe("printStepUsage", () => {
+  /**
+   * Capture what printStepUsage writes to the console.
+   *
+   * @param timing - Step timing to pass through, if any
+   * @returns The logged line
+   */
+  function print(timing?: Parameters<typeof printStepUsage>[3]): string {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    printStepUsage(
+      { inputTokens: 12300, outputTokens: 850, reasoningTokens: 200 },
+      { inputTokens: 11500, outputTokens: 400 },
+      true,
+      timing,
+    );
+
+    const line = log.mock.calls.map((call) => String(call[0])).join("");
+
+    log.mockRestore();
+
+    return line;
+  }
+
+  it("prints tokens without timing", () => {
+    const line = print();
+
+    expect(line).toContain("tokens: 12.3K (400 new) → 850 (200 reasoning)");
+    expect(line).not.toContain("tok/s");
+  });
+
+  it("appends timing to the token line", () => {
+    const line = print({
+      timeToFirstTokenMs: 1200,
+      outputTokensPerSecond: 42,
+    });
+
+    expect(line).toContain(
+      "tokens: 12.3K (400 new) → 850 (200 reasoning) · 42 tok/s · " +
+        "1.2s to first token",
+    );
   });
 });

@@ -241,3 +241,98 @@ describe("processCliStream — MCP isError", () => {
     expect(result.toolCalls[0]).not.toHaveProperty("isError");
   });
 });
+
+describe("processCliStream — step usage line", () => {
+  let log: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    setQuietMode(true);
+    log = vi.spyOn(console, "log").mockImplementation(() => {}) as ReturnType<
+      typeof vi.spyOn
+    >;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    setQuietMode(false);
+  });
+
+  /**
+   * A finish-step part carrying usage and the SDK's measured timings.
+   *
+   * @param inputTokens - Input tokens the step reports
+   * @param performance - Timings to attach, if any
+   * @returns A finish-step stream part
+   */
+  function finishStep(
+    inputTokens: number,
+    performance?: Record<string, number>,
+  ): StreamPart {
+    return {
+      type: "finish-step",
+      usage: {
+        inputTokens,
+        inputTokenDetails: {},
+        outputTokens: 850,
+        outputTokenDetails: { reasoningTokens: 200 },
+      },
+      ...(performance != null && { performance }),
+    };
+  }
+
+  /** @returns Everything printed to the console during the stream */
+  function printed(): string {
+    return log.mock.calls.map((call: unknown[]) => String(call[0])).join("");
+  }
+
+  it("prints usage with generation speed from the finish-step part", async () => {
+    await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        { type: "text-delta", text: "hi" },
+        finishStep(12300, {
+          timeToFirstOutputMs: 1200,
+          outputTokensPerSecond: 42,
+        }),
+      ]),
+      { showUsage: true },
+    );
+
+    expect(printed()).toContain(
+      "tokens: 12.3K → 850 (200 reasoning) · 42 tok/s · 1.2s to first token",
+    );
+  });
+
+  it("prints nothing when usage is not requested", async () => {
+    await processCliStream(
+      fakeResult([{ type: "start-step" }, finishStep(12300)]),
+      {},
+    );
+
+    expect(printed()).toBe("");
+  });
+
+  it("counts new content against the previous turn's last step", async () => {
+    await processCliStream(
+      fakeResult([{ type: "start-step" }, finishStep(12300)]),
+      { showUsage: true, prevUsage: { inputTokens: 11500, outputTokens: 400 } },
+    );
+
+    expect(printed()).toContain("tokens: 12.3K (400 new) →");
+  });
+
+  it("carries each step's usage into the next step", async () => {
+    await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        finishStep(11500),
+        { type: "start-step" },
+        finishStep(13000),
+      ]),
+      { showUsage: true },
+    );
+
+    // 13000 - (11500 + 850), read off the first step's usage.
+    expect(printed()).toContain("tokens: 13K (650 new) →");
+  });
+});
