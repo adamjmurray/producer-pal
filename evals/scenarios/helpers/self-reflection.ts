@@ -53,6 +53,7 @@ export async function maybeInjectReflection(
     toolCalls: turnResult.toolCalls,
     durationMs: Date.now() - turnStart,
     stepUsages: turnResult.stepUsages,
+    stepTimings: turnResult.stepTimings,
   };
 
   turns.push(reflectionTurn);

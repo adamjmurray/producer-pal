@@ -13,6 +13,10 @@ import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.t
 import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
+import {
+  type StepTiming,
+  toStepTiming,
+} from "#evals/chat/shared/step-timing.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
@@ -137,6 +141,7 @@ export async function createEvalSession(
       messages.push({ role: "user", content: message });
 
       const stepUsages: TokenUsage[] = [];
+      const stepTimings: StepTiming[] = [];
 
       const result = streamText({
         model,
@@ -152,6 +157,9 @@ export async function createEvalSession(
         // finish-step part that carries both usage and timings.
         onStepEnd: (event) => {
           stepUsages.push(toTokenUsage(event.usage));
+          // Empty when nothing was measurable, so the two arrays stay aligned
+          // and each rate keeps the step's output tokens as its weight.
+          stepTimings.push(toStepTiming(event.performance) ?? {});
         },
       });
 
@@ -168,7 +176,7 @@ export async function createEvalSession(
       // On a stream error, result.responseMessages rejects; the error was already
       // shown by processCliStream. Skip history so the scenario can grade the miss.
       if (turnResult.error != null) {
-        return { ...turnResult, stepUsages };
+        return { ...turnResult, stepUsages, stepTimings };
       }
 
       // Append generated messages to history for multi-turn. See the note in
@@ -176,7 +184,7 @@ export async function createEvalSession(
       // while finalStep.response.messages holds only the last step's.
       messages.push(...(await result.responseMessages));
 
-      return { ...turnResult, stepUsages };
+      return { ...turnResult, stepUsages, stepTimings };
     },
 
     close: async () => {

@@ -294,6 +294,19 @@ export function printStepUsage(
  * @returns Something like " · 42 tok/s · 1.2s to first token", or ""
  */
 export function formatStepTiming(timing: StepTiming | undefined): string {
+  return stepTimingParts(timing)
+    .map((part) => ` · ${part}`)
+    .join("");
+}
+
+/**
+ * The readable pieces of a generation speed, for callers that join them their
+ * own way.
+ *
+ * @param timing - Step timing, or undefined when nothing was measurable
+ * @returns Something like ["42 tok/s", "1.2s to first token"], possibly empty
+ */
+export function stepTimingParts(timing: StepTiming | undefined): string[] {
   const parts: string[] = [];
 
   if (timing?.outputTokensPerSecond != null) {
@@ -304,7 +317,7 @@ export function formatStepTiming(timing: StepTiming | undefined): string {
     parts.push(`${formatDuration(timing.timeToFirstTokenMs)} to first token`);
   }
 
-  return parts.map((part) => ` · ${part}`).join("");
+  return parts;
 }
 
 /**

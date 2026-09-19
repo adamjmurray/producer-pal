@@ -27,6 +27,7 @@ import {
   formatStepTiming,
   formatSubsectionHeader,
   printStepUsage,
+  stepTimingParts,
 } from "./formatting.ts";
 
 describe("truncate", () => {
@@ -445,6 +446,21 @@ describe("formatStepTiming", () => {
 
   it("omits the first-token time when it was not measurable", () => {
     expect(formatStepTiming({ outputTokensPerSecond: 7.5 })).toBe(" · 8 tok/s");
+  });
+});
+
+describe("stepTimingParts", () => {
+  it("returns no parts when there is no timing", () => {
+    expect(stepTimingParts(undefined)).toStrictEqual([]);
+  });
+
+  it("returns the rate before the first-token time", () => {
+    expect(
+      stepTimingParts({
+        timeToFirstTokenMs: 1234,
+        outputTokensPerSecond: 42.4,
+      }),
+    ).toStrictEqual(["42 tok/s", "1.2s to first token"]);
   });
 });
 

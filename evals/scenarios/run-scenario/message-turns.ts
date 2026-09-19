@@ -80,6 +80,7 @@ export async function runMessageTurns(
       toolCalls: turnResult.toolCalls,
       durationMs: Date.now() - turnStart,
       stepUsages: turnResult.stepUsages,
+      stepTimings: turnResult.stepTimings,
     });
   }
 }

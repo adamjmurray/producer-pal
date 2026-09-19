@@ -15,6 +15,7 @@ import {
 } from "../../types.ts";
 import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
 import { assertionLabel } from "./assertion-label.ts";
+import { aggregateStepTimings } from "./step-timing-aggregate.ts";
 import { collectToolErrors } from "./tool-errors.ts";
 import {
   type JsonCheckResult,
@@ -55,6 +56,7 @@ export function toJsonResult(
   const efficiency = buildEfficiency(result.assertions);
   const advisory = result.scenario.judgeAdvisory ?? false;
   const judge = buildJudge(result.assertions, advisory);
+  const totalTiming = aggregateStepTimings(result.turns);
 
   return {
     version: 1,
@@ -79,6 +81,7 @@ export function toJsonResult(
     ...(judge && { judge }),
     totalDurationMs: result.totalDurationMs,
     ...(result.totalUsage && { totalUsage: result.totalUsage }),
+    ...(totalTiming && { totalTiming }),
     ...(result.error && { error: result.error }),
   };
 }
@@ -274,6 +277,8 @@ function derivePassFail(
  * @returns JSON turn record
  */
 function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
+  const timing = aggregateStepTimings([turn]);
+
   return {
     turnIndex: turn.turnIndex,
     userMessage: turn.userMessage,
@@ -290,6 +295,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
+    ...(timing && { timing }),
     ...(turn.seeded === true && { seeded: true }),
   };
 }

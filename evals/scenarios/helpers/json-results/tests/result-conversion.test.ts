@@ -440,4 +440,34 @@ describe("toJsonResult", () => {
       ).toBeUndefined();
     });
   });
+
+  describe("timing", () => {
+    it("records a per-turn rate and a run total", () => {
+      const json = convert({
+        turns: [
+          makeTurn({
+            stepUsages: [{ outputTokens: 300 }, { outputTokens: 100 }],
+            stepTimings: [
+              { outputTokensPerSecond: 60, timeToFirstTokenMs: 800 },
+              { outputTokensPerSecond: 20, timeToFirstTokenMs: 400 },
+            ],
+          }),
+        ],
+      });
+
+      // 300 tokens in 5s + 100 in 5s = 400 / 10s.
+      expect(json.turns[0]?.timing).toStrictEqual({
+        outputTokensPerSecond: 40,
+        timeToFirstTokenMs: 600,
+      });
+      expect(json.totalTiming).toStrictEqual(json.turns[0]?.timing);
+    });
+
+    it("omits timing when the run measured none", () => {
+      const json = convert();
+
+      expect(json.turns[0]?.timing).toBeUndefined();
+      expect(json.totalTiming).toBeUndefined();
+    });
+  });
 });
