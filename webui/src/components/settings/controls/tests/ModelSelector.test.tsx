@@ -270,7 +270,7 @@ describe("ModelSelector", () => {
         model: "my-custom-openrouter",
       });
       expect(
-        screen.getByPlaceholderText(/e.g., bytedance-seed\/seed-1.6/),
+        screen.getByPlaceholderText(/e.g., openai\/gpt-5.6-luna/),
       ).toBeDefined();
     });
 

@@ -62,7 +62,7 @@ export const OPENAI_CONFIG: ProviderConfig = {
 export const OPENROUTER_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENROUTER_KEY",
   providerName: "OpenRouter",
-  defaultModel: "anthropic/claude-haiku-4.5",
+  defaultModel: "google/gemini-3.8-flash",
 };
 
 /** Local OpenAI-compatible server configuration (Ollama, LM Studio, etc.) */

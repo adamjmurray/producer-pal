@@ -187,12 +187,12 @@ export const OPENROUTER_MODELS = [
   { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
   { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
   {
-    value: "deepseek/deepseek-v4-flash-0731",
-    label: "[Paid] DeepSeek V4 Flash",
+    value: "deepseek/deepseek-v4.1-flash",
+    label: "[Paid] DeepSeek V4.1 Flash",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
-  { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
+  { value: "z-ai/glm-5.3", label: "[Paid] Z.ai GLM 5.3" },
   // Free models
   {
     value: "google/gemma-4-31b-it:free",

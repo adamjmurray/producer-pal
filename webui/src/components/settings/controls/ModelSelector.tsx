@@ -15,7 +15,7 @@ const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   gemini: "e.g., gemini-3.8-flash",
   openai: "e.g., gpt-5.6-luna",
   mistral: "e.g., ministral-14b-latest",
-  openrouter: "e.g., bytedance-seed/seed-1.6",
+  openrouter: "e.g., openai/gpt-5.6-luna",
   ollama: "e.g., qwen3.8",
   lmstudio: "", // Not used (has dedicated input)
   custom: "", // Not used (has dedicated input)
