@@ -24,9 +24,12 @@ should follow from them unambiguously, without being spelled out here.
    their targets, so all lists must be the same length. A single value applies
    to all of them, unless it fully determines a location — one place holds one
    object, so it must be named once per target rather than broadcast. An empty
-   entry is refused rather than guessed at. A call that named N targets returns
-   N entries in the order they were named. A single target returns its entry
-   unwrapped: an array where they asked for one object confuses small models.
+   entry is refused rather than guessed at. A comma splits a value only when the
+   call names more than one target; with one target the whole value is literal,
+   which is how a name containing a comma is set. A call that named N targets
+   returns N entries in the order they were named. A single target returns its
+   entry unwrapped: an array where they asked for one object confuses small
+   models.
 
 3. Relocation: Any object that can exist at different paths always supports
    moving and duplicating to a different location. Where the API lacks a move,

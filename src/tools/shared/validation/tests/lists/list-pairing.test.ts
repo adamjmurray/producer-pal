@@ -37,9 +37,13 @@ async function freshConsole(): Promise<{ warn: unknown }> {
 describe("list-pairing", () => {
   describe("splitList", () => {
     it("returns null when there is nothing to pair", () => {
-      expect(splitList("A,B", 1, "name")).toBeNull();
       expect(splitList("Lead", 3, "name")).toBeNull();
       expect(splitList(undefined, 3, "name")).toBeNull();
+    });
+
+    it("keeps a comma literal when the call names one item", () => {
+      expect(splitList("Verse, take 2", 1, "name")).toBeNull();
+      expect(valueForIndex("Verse, take 2", 0, null)).toBe("Verse, take 2");
     });
 
     it("splits and trims", () => {

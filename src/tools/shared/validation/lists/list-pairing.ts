@@ -7,7 +7,9 @@
 // acts on: one value covers them all, or exactly N pair 1:1 in order, and no
 // entry may be empty. A length mismatch is refused before any work runs, and a
 // hole is refused here. Nothing cycles — a caller can't predict where a cycled
-// value lands.
+// value lands. A comma splits only when the call names more than one item:
+// with one item the whole value is literal, which is the only way to set a
+// name that contains a comma (dev/Principles.md, Multi-target).
 //
 // Destinations are the exception, in one direction only: a clip slot holds one
 // clip, so broadcasting a lone slot to three clips would destroy two of them.
