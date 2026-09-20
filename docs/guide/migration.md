@@ -180,6 +180,21 @@ color it landed on in that target's own entry, with
 `ok`, since the color was set. A color that lands exactly as asked says nothing
 at all, so `color` in a result always means "not what you sent".
 
+**The rest of update-device's and update-track's warnings moved onto entries.**
+A refused move (a chain, the Producer Pal device, a drum pad in another rack, a
+destination past the end), a `macroCount` rounded up to the next even number, a
+chain trim a device move left behind or carried, a stacked pad's per-layer
+settings, and an `abCompare` or `macroVariation` the device doesn't have are all
+`reason` on the target's own entry now. It is `ok: false` where they were
+everything you asked of that target, and a lone target throws. Same for
+`ppal-update-track`: `monitoringState` on a track that can't be armed, input
+routing on a group or return track, and a routing name the track doesn't have.
+`wrapInRack` throws instead of returning `null` when it can't wrap anything, and
+names each device it dropped on the new rack's `reason`. A `macroVariationIndex`
+that contradicts its `macroVariation` (sent alone, missing for `load`/`delete`,
+or sent beside `create`/`revert`/`randomize`) is refused before anything is
+written.
+
 **Two move reports moved onto entries too.** A device copy Live turned down now
 names what Live objected to on its destination entry, after the
 `could not be moved to "t0/d1"` the reason already carried:

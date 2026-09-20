@@ -26,7 +26,16 @@ import {
   updateMacroCount,
   updateMacroVariation,
 } from "./rack-macro-updates.ts";
-import { isChainType, isRackDevice, noteIfSet } from "./update-target-types.ts";
+import {
+  type TargetNotes,
+  newTargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
+import {
+  isChainType,
+  isRackDevice,
+  noteIfSet,
+  refuseIgnoredParams,
+} from "./update-target-types.ts";
 
 export interface UpdatePropertyOptions {
   params?: ParamEntry[];
@@ -53,13 +62,12 @@ export interface UpdateTargetOptions extends UpdatePropertyOptions {
   name?: string;
 }
 
-/** What a device update wrote, and what a device has no use for. */
+/** What a device update wrote. */
 export interface DeviceApplied {
   /** One per param the call named: what it reads as, or why it named nothing */
   params: ParamResult[];
   /** One per action the call sent: what it did, or why it did nothing */
   actions: ActionResult[];
-  ignored: string[];
 }
 
 /**
@@ -67,12 +75,14 @@ export interface DeviceApplied {
  * @param target - Device to update
  * @param type - Device type
  * @param options - Update options
- * @returns What its params read as, what its actions did, and what it can't take
+ * @param notes - What this device's entry has to say, added to
+ * @returns What its params read as and what its actions did
  */
 export function updateDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
+  notes: TargetNotes,
 ): DeviceApplied {
   const {
     params,
@@ -100,22 +110,22 @@ export function updateDeviceProperties(
   // values are read at the end instead: an A/B swap, a variation recall or a
   // specialized action below rewrites them.
   const paramResults =
-    params != null ? setParamValues(target, params, force) : [];
+    params != null ? setParamValues(target, params, force, notes) : [];
 
   const actionResults =
     actions == null ? [] : applySpecializedActions(target, actions);
 
   if (abCompare != null) {
-    updateABCompare(target, abCompare);
+    updateABCompare(target, abCompare, notes);
   }
 
   if (isRackDevice(type)) {
     if (macroVariation != null || macroVariationIndex != null) {
-      updateMacroVariation(target, macroVariation, macroVariationIndex);
+      updateMacroVariation(target, macroVariation, macroVariationIndex, notes);
     }
 
     if (macroCount != null) {
-      updateMacroCount(target, macroCount);
+      updateMacroCount(target, macroCount, notes);
     }
   } else {
     noteIfSet(ignored, "macroVariation", macroVariation);
@@ -134,11 +144,9 @@ export function updateDeviceProperties(
   noteIfSet(ignored, "chokeGroup", chokeGroup);
   noteIfSet(ignored, "mappedPitch", mappedPitch);
 
-  return {
-    params: refreshParamValues(paramResults),
-    actions: actionResults,
-    ignored,
-  };
+  refuseIgnoredParams(notes, ignored, type);
+
+  return { params: refreshParamValues(paramResults), actions: actionResults };
 }
 
 /** What a chain or pad update wrote: its mixer, plus any params it took. */
@@ -146,29 +154,25 @@ export interface NonDeviceWrites extends ChainMixerReport {
   params?: ParamResult[];
 }
 
-/** ...plus the params it had no use for, which the caller turns into the
- * target's reason rather than leaving in the entry. */
-export interface NonDeviceApplied extends NonDeviceWrites {
-  ignored: string[];
-}
-
 /**
  * Update chain/drum pad properties
  * @param target - Chain or drum pad to update
  * @param type - Target type
  * @param options - Update options
- * @returns What the chain's mixer and sample writes didn't land as asked, and
- *   the params a chain or pad can't take
+ * @param notes - What this target's entry has to say, added to; left out where
+ *   the caller keeps no entry for this write
+ * @returns What the chain's mixer and sample writes didn't land as asked
  */
 export function updateNonDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
-): NonDeviceApplied {
+  notes: TargetNotes = newTargetNotes(),
+): NonDeviceWrites {
   // A drum pad owns its sample, so a `sample` param addressed to the pad takes
   // the same route the rack's `pC1/sample` shortcut does. Everything else in
   // `params` is still not applicable, and says so in its own entry.
-  const params = applyChainSampleParams(target, type, options);
+  const params = applyChainSampleParams(target, type, options, notes);
   const ignored: string[] = [];
 
   noteIfSet(ignored, "actions", options.actions);
@@ -193,7 +197,10 @@ export function updateNonDeviceProperties(
     }
 
     if (hasChainMixerParams(options)) {
-      mixer = chainMixerReport(applyChainMixer(target, options), options);
+      mixer = chainMixerReport(
+        applyChainMixer(target, options, notes),
+        options,
+      );
     }
   } else {
     noteIfSet(ignored, "color", options.color);
@@ -211,9 +218,9 @@ export function updateNonDeviceProperties(
     noteIfSet(ignored, "mappedPitch", options.mappedPitch);
   }
 
-  return params.length > 0
-    ? { ...mixer, params, ignored }
-    : { ...mixer, ignored };
+  refuseIgnoredParams(notes, ignored, type);
+
+  return params.length > 0 ? { ...mixer, params } : mixer;
 }
 
 /**

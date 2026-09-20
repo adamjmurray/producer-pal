@@ -178,10 +178,9 @@ describe("moveDeviceToPath", () => {
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d9")).toStrictEqual({
       outcome: "refused",
+      reason: '"t1/d9" is past the end of a container holding 2 devices',
     });
-    expect(capturedWarnings()).toContain(
-      'device not moved: "t1/d9" is past the end of a container holding 2 devices',
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("catches an index past the end within the device's own container", () => {
@@ -191,10 +190,9 @@ describe("moveDeviceToPath", () => {
 
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t0/d9")).toStrictEqual({
       outcome: "refused",
+      reason: '"t0/d9" is past the end of a container holding 1 device',
     });
-    expect(capturedWarnings()).toContain(
-      'device not moved: "t0/d9" is past the end of a container holding 1 device',
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("allows the index equal to the count, which appends", () => {
@@ -210,7 +208,7 @@ describe("moveDeviceToPath", () => {
 
   it("spells the destination the way the caller asked it to", () => {
     // Device duplication shifts track indices past its temp track, so the
-    // warning has to name the path the user sent, not the one we moved to.
+    // reason has to name the path the user sent, not the one we moved to.
     registerMockObject("live_set", { path: livePath.liveSet });
     registerMockObject("track-1", {
       path: livePath.track(1),
@@ -218,11 +216,10 @@ describe("moveDeviceToPath", () => {
       properties: { devices: children("resident-0") },
     });
 
-    moveDeviceToPath(LiveAPI.from(device.path), "t1/d9", null, "t0/d9");
-
-    expect(capturedWarnings()).toContain(
-      'device not moved: "t0/d9" is past the end of a container holding 1 device',
-    );
+    expect(
+      moveDeviceToPath(LiveAPI.from(device.path), "t1/d9", null, "t0/d9")
+        .reason,
+    ).toBe('"t0/d9" is past the end of a container holding 1 device');
   });
 
   it("reports a missing destination, without moving", () => {

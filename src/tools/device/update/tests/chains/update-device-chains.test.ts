@@ -242,8 +242,8 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it.each([
       ["macroVariation", { macroVariation: "create" }, "PluginDevice", "800"],
       [
-        "macroVariationIndex",
-        { macroVariationIndex: 1 },
+        "macroVariation, macroVariationIndex",
+        { macroVariation: "load", macroVariationIndex: 1 },
         "PluginDevice",
         "800",
       ],
@@ -265,7 +265,10 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
     it.each([
       ["macroVariation", { macroVariation: "create" }],
-      ["macroVariationIndex", { macroVariationIndex: 1 }],
+      [
+        "macroVariation, macroVariationIndex",
+        { macroVariation: "load", macroVariationIndex: 1 },
+      ],
       ["macroCount", { macroCount: 4 }],
       ["abCompare", { abCompare: "a" }],
     ] as const)(
@@ -282,20 +285,19 @@ describe("updateDevice - Chain and DrumPad support", () => {
       },
     );
 
-    it("does not spuriously warn about A/B Compare when abCompare is unset", () => {
-      updateDevice({ id: "123", name: "Named" });
-
-      expect(capturedWarnings()).not.toContain(
-        "A/B Compare not available on this device",
-      );
+    it("does not spuriously report A/B Compare when abCompare is unset", () => {
+      expect(updateDevice({ id: "123", name: "Named" })).toStrictEqual({
+        id: "123",
+      });
     });
 
     it("does not spuriously adjust macro count on a rack when macroCount is unset", () => {
-      updateDevice({ id: "801", abCompare: "a" });
-
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("macro count rounded"),
-      );
+      expect(
+        updateDevice({ id: "801", abCompare: "a", name: "Named" }),
+      ).toStrictEqual({
+        id: "801",
+        reason: "A/B Compare is not available here",
+      });
     });
   });
 
@@ -433,51 +435,58 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
   }
 
+  /**
+   * The reason update-device put on the moved device's own entry.
+   * @param toPath - Where the move was aimed
+   * @returns That reason, or undefined when the entry carries none
+   */
+  function moveReason(toPath: string): string | undefined {
+    const result = updateDevice({ id: "device-0", toPath }) as {
+      reason?: string;
+    };
+
+    expect(capturedWarnings()).toStrictEqual([]);
+
+    return result.reason;
+  }
+
   it("carries the trim onto an untouched destination chain", () => {
     // chain-1 holds no devices and sits at defaults, so writing its fader
     // re-levels nothing — the trim follows the sound instead of stranding.
     const destinationVolume = registerDestinationMixer();
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
-
-    expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
-    // Announced, because the caller asked to move a device, not to set a fader.
-    expect(capturedWarnings()).toContain(
+    // Said on the entry, because the caller asked to move a device, not to set
+    // a fader.
+    expect(moveReason("t0/d0/c1")).toBe(
       'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
     );
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("stays behind"),
-    );
+    expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
   });
 
-  it("warns instead of overwriting a destination chain that holds devices", () => {
+  it("says so instead of overwriting a destination chain that holds devices", () => {
     // Its fader belongs to the devices already there; writing it would change
     // how they sound, which the caller never asked for.
     registerOccupiedDestination();
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
-
-    expect(capturedWarnings()).toContain(
+    expect(moveReason("t0/d0/c1")).toBe(
       'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
-  it("warns instead of overwriting a destination chain with its own trim", () => {
+  it("says so instead of overwriting a destination chain with its own trim", () => {
     registerDestinationMixer({ display_value: 6 });
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("stays behind"),
-    );
+    expect(moveReason("t0/d0/c1")).toContain("stays behind");
   });
 
   it("stays quiet when the device only moves within its own chain", () => {
-    updateDevice({ id: "device-0", toPath: "t0/d0/c0/d1" });
+    registerMockObject("chain-0", {
+      path: sourceChainPath,
+      type: "Chain",
+      properties: { name: "Trimmed", devices: children("device-0") },
+    });
 
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("stays behind"),
-    );
+    expect(moveReason("t0/d0/c0/d1")).toBeUndefined();
   });
 
   it("leaves the trim behind when the destination is in another rack", () => {
@@ -500,12 +509,10 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
       path: `${otherRackPath.chain(0)} mixer_device`,
     });
 
-    updateDevice({ id: "device-0", toPath: "t1/d0/c0" });
-
-    expect(destinationVolume.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
+    expect(moveReason("t1/d0/c0")).toBe(
       'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
+    expect(destinationVolume.set).not.toHaveBeenCalled();
   });
 
   it("carries the sends too, counting them in the announcement", () => {
@@ -538,12 +545,10 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     const destinationSend = registerMockObject("send-1");
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
-
-    expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
-    expect(capturedWarnings()).toContain(
+    expect(moveReason("t0/d0/c1")).toBe(
       'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
     );
+    expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
   });
 
   it("names what landed rather than what it set out to carry", () => {
@@ -551,13 +556,15 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     // announcing the carry up front contradicted the very next line.
     registerDestinationMixer({ is_enabled: 0 });
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
+    const result = updateDevice({ id: "device-0", toPath: "t0/d0/c1" }) as {
+      reason?: string;
+    };
 
-    expect(capturedWarnings()).toContain(
+    expect(result.reason).toContain(
       'chain "Trimmed" t0/d0/c0 (id chain-0) trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("carried onto the destination chain, which was"),
+    expect(result.reason).not.toContain(
+      "carried onto the destination chain, which was",
     );
   });
 
@@ -579,12 +586,12 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
     registerDestinationMixer();
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
-
-    expect(capturedWarnings()).toContain(
-      't0/d0/c0/d0 (id device-0) was not moved to "t0/d0/c1": the ' +
-        "destination already has an instrument, and only one is allowed",
+    // The move was the whole call, so nothing landed and a lone target throws.
+    expect(() => updateDevice({ id: "device-0", toPath: "t0/d0/c1" })).toThrow(
+      'not moved to "t0/d0/c1": the destination already has an instrument, ' +
+        "and only one is allowed",
     );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("leaves the trim alone when Live refuses the move", () => {
@@ -595,14 +602,11 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     const destinationVolume = registerDestinationMixer();
 
-    updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
+    expect(() => updateDevice({ id: "device-0", toPath: "t0/d0/c1" })).toThrow(
+      'not moved to "t0/d0/c1"',
+    );
 
-    expect(capturedWarnings()).toContain(
-      't0/d0/c0/d0 (id device-0) was not moved to "t0/d0/c1"',
-    );
     expect(destinationVolume.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("carried onto the destination chain"),
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

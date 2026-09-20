@@ -5,6 +5,12 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  type TargetNotes,
+  newTargetNotes,
+  refuseTargetWork,
+  reportTargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
+import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,
   LIVE_API_MONITORING_STATE_OFF,
@@ -16,7 +22,10 @@ import {
   type TrackMixerApplied,
   applyMixerProperties,
 } from "./helpers/track-mixer-updates.ts";
-import { applyRoutingProperties } from "./helpers/track-routing-updates.ts";
+import {
+  type RoutingParams,
+  applyRoutingProperties,
+} from "./helpers/track-routing-updates.ts";
 import {
   paramsTakeLanesIgnore,
   planTakeLaneTargets,
@@ -36,10 +45,7 @@ import {
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import {
-  pathField,
-  targetLabel,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
@@ -48,6 +54,28 @@ import {
   type WriteResult,
 } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+
+/** Params that name a track rather than asking anything of it, plus the
+ * deprecated routing aliases the current names already stand in for. */
+const NOT_TRACK_WORK = new Set([
+  "id",
+  "ids",
+  "path",
+  "paths",
+  "inputRoutingTypeId",
+  "inputRoutingChannelId",
+  "outputRoutingTypeId",
+  "outputRoutingChannelId",
+]);
+
+/** The mixer values one track takes from the call. */
+interface MixerParams {
+  gainDb?: number;
+  pan?: number;
+  panningMode?: PanningMode;
+  leftPan?: number;
+  rightPan?: number;
+}
 
 interface UpdateTrackArgs {
   id?: string;
@@ -101,14 +129,16 @@ interface UpdateTrackResult extends TrackMixerApplied {
 
 /**
  * Apply monitoring state to a track. Monitoring exists only on armable tracks,
- * so it is warn-and-skipped on non-armable tracks (return/master) — mirroring
- * the read-side `canBeArmed` guard in track-routing.ts.
+ * so it is refused on non-armable tracks (return/master) — mirroring the
+ * read-side `canBeArmed` guard in track-routing.ts.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off)
+ * @param notes - What the track's entry has to say, added to
  */
 function applyMonitoringState(
   track: LiveAPI,
   monitoringState: string | undefined,
+  notes: TargetNotes,
 ): void {
   if (monitoringState == null) {
     return;
@@ -117,8 +147,10 @@ function applyMonitoringState(
   const canBeArmed = (track.getProperty("can_be_armed") as number) > 0;
 
   if (!canBeArmed) {
-    console.warn(
-      `monitoringState is only available on armable tracks; skipping track ${targetLabel(track)}`,
+    refuseTargetWork(
+      notes,
+      ["monitoringState"],
+      "monitoringState is only available on armable tracks",
     );
 
     return;
@@ -237,6 +269,7 @@ export function updateTrack(
 
     const track = targetObject(target, "track", trackIdAtPath);
     const trackColor = getColorForIndex(color, i, parsedColors);
+    const notes = newTargetNotes();
 
     const rename = returnTrackRename(track.path, trackName);
 
@@ -251,35 +284,26 @@ export function updateTrack(
     const colorLanded =
       trackColor == null ? {} : landedColor(track, trackColor);
 
-    // Handle mixer properties
-    let mixer: TrackMixerApplied = {};
-
-    if (
-      gainDb != null ||
-      pan != null ||
-      panningMode != null ||
-      leftPan != null ||
-      rightPan != null
-    ) {
-      mixer = applyMixerProperties(track, {
-        gainDb,
-        pan,
-        panningMode,
-        leftPan,
-        rightPan,
-      });
-    }
+    const mixer = trackMixer(track, {
+      gainDb,
+      pan,
+      panningMode,
+      leftPan,
+      rightPan,
+    });
 
     // Handle routing properties
-    applyRoutingProperties(track, {
+    const routing = {
       inputRoutingType: inputRoutingType ?? inputRoutingTypeId,
       inputRoutingChannel: inputRoutingChannel ?? inputRoutingChannelId,
       outputRoutingType: outputRoutingType ?? outputRoutingTypeId,
       outputRoutingChannel: outputRoutingChannel ?? outputRoutingChannelId,
-    });
+    };
+
+    applyRoutingProperties(track, routing, notes);
 
     // Handle monitoring state
-    applyMonitoringState(track, monitoringState);
+    applyMonitoringState(track, monitoringState, notes);
 
     const landed = applyTrackSends(track, resolvedSends.winners);
 
@@ -305,7 +329,7 @@ export function updateTrack(
       mixer.reason,
     ]);
 
-    return {
+    const result: UpdateTrackResult = {
       id: track.id,
       ...pathField(track),
       ...rename.landed,
@@ -314,5 +338,44 @@ export function updateTrack(
       ...(reason == null ? {} : { reason }),
       ...(changedSends.length > 0 ? { sends: changedSends } : {}),
     };
+
+    return reportTargetNotes(
+      result,
+      notes,
+      trackWorkAsked(args, trackName, trackColor, routing),
+    );
   });
+}
+
+/**
+ * Write a track's mixer, when the call asked for any of it.
+ * @param track - Track object
+ * @param params - The mixer values, as the call sent them
+ * @returns What the write landed, read back; empty when none was asked for
+ */
+function trackMixer(track: LiveAPI, params: MixerParams): TrackMixerApplied {
+  return Object.values(params).some((value) => value != null)
+    ? applyMixerProperties(track, params)
+    : {};
+}
+
+/**
+ * What the call asked of one track. The addressing params and the deprecated
+ * routing aliases are left out: only work decides whether a refusal leaves the
+ * track with nothing, and an alias would count its own refused param twice.
+ * @param args - The call's parameters
+ * @param name - The name this target takes from the list
+ * @param color - The color this target takes from the list
+ * @param routing - The routing values, under their current param names
+ * @returns The work asked, keyed by param name
+ */
+function trackWorkAsked(
+  args: UpdateTrackArgs,
+  name: string | undefined,
+  color: string | undefined,
+  routing: RoutingParams,
+): object {
+  const work = Object.entries(args).filter(([key]) => !NOT_TRACK_WORK.has(key));
+
+  return { ...Object.fromEntries(work), name, color, ...routing };
 }

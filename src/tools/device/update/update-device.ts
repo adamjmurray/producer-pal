@@ -17,6 +17,7 @@ import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.t
 import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
 import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
+import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateMultipleTargets } from "./helpers/update-multiple-targets.ts";
 import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
@@ -112,9 +113,18 @@ export function updateDevice(
   params = validateParamEntries(params);
 
   // One value for the whole call, so a per-target skip would repeat itself
-  // down the list. Refused before any target is touched.
+  // down the list. Refused before any target is touched (ADR-0035).
   if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
     throw new Error(`invalid note name "${mappedPitch}" for mappedPitch`);
+  }
+
+  const badVariation = macroVariationParamsReason(
+    macroVariation,
+    macroVariationIndex,
+  );
+
+  if (badVariation != null) {
+    throw new Error(badVariation);
   }
 
   let result: WriteResult<Record<string, unknown>> | null;

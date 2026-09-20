@@ -472,6 +472,24 @@ describe("ppal-update-track", () => {
     expect(data.sends).toBeUndefined();
   });
 
+  // Which return tracks exist is a fact about the Live Set, not about any one
+  // track, so it stays one warning for the whole call.
+  it("warns once for a sendReturn that names no return track", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![3]!.id;
+
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({ id: trackId, sendGainDb: -6, sendReturn: "ZZZ" }),
+    );
+
+    expect(warnings).toContainEqual(
+      expect.stringContaining(
+        'sendReturn "ZZZ" names no return track, so sendGainDb was not written',
+      ),
+    );
+    expect(data.sends).toBeUndefined();
+  });
+
   it("lets a sends entry override the scalar pair naming the same return", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![2]!.id;
@@ -599,6 +617,46 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
     expect(getToolErrorMessage(result)).toContain(
       `s0 (id ${scene.id}) is not a track (found scene)`,
     );
+  });
+
+  // A return track has no arm button, so it has no monitoring either. It used
+  // to warn and answer {id, path}, which reads as a success.
+  it("keeps a return track's slot when monitoringState was all it asked", async () => {
+    const entries = parseBatchResult<UpdateTrackResult | SkippedTargetResult>(
+      await updateTrack({ path: "t0,rt0", monitoringState: "in" }),
+      2,
+    );
+
+    expect(entries).toStrictEqual([
+      expect.objectContaining({ path: "t0" }),
+      {
+        path: "rt0",
+        ok: false,
+        reason: "monitoringState is only available on armable tracks",
+      },
+    ]);
+  });
+
+  it("says so on the return track's entry when a name landed too", async () => {
+    const entries = parseBatchResult<UpdateTrackResult>(
+      await updateTrack({
+        path: "t0,rt0",
+        monitoringState: "in",
+        name: "MonA,MonB",
+      }),
+      2,
+    );
+
+    // The rename happened, so there is no `ok` — just the reason beside it.
+    expect(entries[1]).toStrictEqual(
+      expect.objectContaining({
+        path: "rt0",
+        reason: expect.stringContaining(
+          "monitoringState is only available on armable tracks",
+        ),
+      }),
+    );
+    expect(entries[1]).not.toHaveProperty("ok");
   });
 });
 

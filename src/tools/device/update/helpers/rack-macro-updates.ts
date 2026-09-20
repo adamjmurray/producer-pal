@@ -3,41 +3,45 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  type TargetNotes,
+  noteTarget,
+  refuseTargetWork,
+} from "#src/tools/shared/helpers/target-notes.ts";
 
 // ============================================================================
 // Macro variations
 // ============================================================================
+
+/** The params a macro variation write asks with, refused together. */
+const VARIATION_PARAMS = ["macroVariation", "macroVariationIndex"];
 
 /**
  * Update macro variation state for rack devices
  * @param device - Live API device object
  * @param action - Variation action: create, load, delete, revert, randomize
  * @param index - Variation index for load/delete (0-based)
+ * @param notes - What this device's entry has to say, added to
  */
 export function updateMacroVariation(
   device: LiveAPI,
-  action?: string,
-  index?: number,
+  action: string | undefined,
+  index: number | undefined,
+  notes: TargetNotes,
 ): void {
   const canHaveChains = device.getProperty("can_have_chains");
 
   if (!canHaveChains) {
-    console.warn(
-      `macro variations only available on rack devices; skipping ${targetLabel(device)}`,
+    refuseTargetWork(
+      notes,
+      VARIATION_PARAMS,
+      "macro variations are only available on rack devices",
     );
 
     return;
   }
 
-  if (!validateMacroVariationParams(action, index)) {
-    return;
-  }
-
-  warnIfIndexIgnored(action, index);
-
-  if (!setVariationIndex(device, action, index)) {
+  if (!setVariationIndex(device, action, index, notes)) {
     return;
   }
 
@@ -45,54 +49,31 @@ export function updateMacroVariation(
 }
 
 /**
- * Validate macro variation parameter combinations
+ * The reason a macroVariation/macroVariationIndex pair can't be read at all.
+ * Nothing about a device decides it, so the call is refused before any of its
+ * targets is touched (ADR-0035).
  * @param action - Variation action
  * @param index - Variation index
- * @returns True if parameters are valid
+ * @returns The reason, or null when the pair is usable
  */
-function validateMacroVariationParams(
+export function macroVariationParamsReason(
   action: string | undefined,
   index: number | undefined,
-): boolean {
-  if (index != null && action == null) {
-    console.warn(
-      "macroVariationIndex requires macroVariation 'load' or 'delete'",
-    );
-
-    return false;
-  }
-
-  if ((action === "load" || action === "delete") && index == null) {
-    console.warn(`macroVariation '${action}' requires macroVariationIndex`);
-
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Warn if index parameter is ignored for this action
- * @param action - Variation action
- * @param index - Variation index
- */
-function warnIfIndexIgnored(
-  action: string | undefined,
-  index: number | undefined,
-): void {
+): string | null {
   if (index == null) {
-    return;
+    return action === "load" || action === "delete"
+      ? `macroVariation '${action}' requires macroVariationIndex`
+      : null;
   }
 
-  if (action === "create") {
-    console.warn(
-      "macroVariationIndex ignored for 'create' (variations always appended)",
-    );
-  } else if (action === "revert") {
-    console.warn("macroVariationIndex ignored for 'revert'");
-  } else if (action === "randomize") {
-    console.warn("macroVariationIndex ignored for 'randomize'");
+  if (action == null) {
+    return "macroVariationIndex requires macroVariation 'load' or 'delete'";
   }
+
+  return action === "load" || action === "delete"
+    ? null
+    : `macroVariationIndex does nothing for macroVariation '${action}' — ` +
+        "only 'load' and 'delete' take one";
 }
 
 /**
@@ -100,12 +81,14 @@ function warnIfIndexIgnored(
  * @param device - Rack device
  * @param action - Variation action
  * @param index - Variation index to select
+ * @param notes - What this device's entry has to say, added to
  * @returns True if successful
  */
 function setVariationIndex(
   device: LiveAPI,
   action: string | undefined,
   index: number | undefined,
+  notes: TargetNotes,
 ): boolean {
   if ((action !== "load" && action !== "delete") || index == null) {
     return true;
@@ -114,8 +97,10 @@ function setVariationIndex(
   const variationCount = device.getProperty("variation_count") as number;
 
   if (index >= variationCount) {
-    console.warn(
-      `variation index ${index} out of range on ${targetLabel(device)} (${variationCount} available)`,
+    refuseTargetWork(
+      notes,
+      VARIATION_PARAMS,
+      `variation index ${index} is out of range (${variationCount} available)`,
     );
 
     return false;
@@ -163,13 +148,20 @@ function executeMacroVariationAction(
  * Macros are added/removed in pairs, so odd counts are rounded up to the next even.
  * @param device - Live API device object
  * @param targetCount - Target number of visible macros (0-16)
+ * @param notes - What this device's entry has to say, added to
  */
-export function updateMacroCount(device: LiveAPI, targetCount: number): void {
+export function updateMacroCount(
+  device: LiveAPI,
+  targetCount: number,
+  notes: TargetNotes,
+): void {
   const canHaveChains = device.getProperty("can_have_chains");
 
   if (!canHaveChains) {
-    console.warn(
-      `macro count only available on rack devices; skipping ${targetLabel(device)}`,
+    refuseTargetWork(
+      notes,
+      ["macroCount"],
+      "macroCount is only available on rack devices",
     );
 
     return;
@@ -180,8 +172,9 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
 
   if (targetCount % 2 !== 0) {
     effectiveTarget = Math.min(targetCount + 1, 16);
-    console.warn(
-      `macro count on ${targetLabel(device)} rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
+    noteTarget(
+      notes,
+      `macroCount rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
     );
   }
 
@@ -208,12 +201,17 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
  * Update A/B Compare state for devices that support it
  * @param device - Live API device object
  * @param action - "a", "b", or "save"
+ * @param notes - What this device's entry has to say, added to
  */
-export function updateABCompare(device: LiveAPI, action: string): void {
+export function updateABCompare(
+  device: LiveAPI,
+  action: string,
+  notes: TargetNotes,
+): void {
   const canCompareAB = device.getProperty("can_compare_ab");
 
   if (!canCompareAB) {
-    console.warn(`A/B Compare not available on ${targetLabel(device)}`);
+    refuseTargetWork(notes, ["abCompare"], "A/B Compare is not available here");
 
     return;
   }

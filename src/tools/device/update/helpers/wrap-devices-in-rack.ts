@@ -63,6 +63,8 @@ interface WrapResult {
   path?: string;
   type: string;
   deviceCount: number;
+  /** Which of the devices the call named didn't make it into the rack */
+  reason?: string;
 }
 
 /**
@@ -80,13 +82,10 @@ export function wrapDevicesInRack({
   toPath,
   name,
 }: WrapDevicesOptions): WrapResult | null {
-  const devices = resolveDevices(namedTargets({ id: ids, path }));
+  const skipped: string[] = [];
+  const devices = resolveDevices(namedTargets({ id: ids, path }), skipped);
 
-  if (devices.length === 0) {
-    console.warn("wrapInRack: no devices found");
-
-    return null;
-  }
+  refuseEmptyWrap(devices, skipped);
 
   const rackType = determineRackType(devices.map((d) => d.device));
 
@@ -180,7 +179,25 @@ export function wrapDevicesInRack({
     ...pathField(rack),
     type: rackType,
     deviceCount: rack.getChildCount("chains"),
+    ...(skipped.length > 0 ? { reason: skipped.join("; ") } : {}),
   };
+}
+
+/**
+ * Refuse a wrap with nothing to wrap: nothing landed, and there is no rack
+ * entry to carry why each device the call named dropped out.
+ * @param devices - The devices that resolved
+ * @param skipped - Why the rest didn't
+ * @throws Error when no device resolved
+ */
+function refuseEmptyWrap(devices: ResolvedDevice[], skipped: string[]): void {
+  if (devices.length > 0) {
+    return;
+  }
+
+  const why = skipped.length > 0 ? `: ${skipped.join("; ")}` : "";
+
+  throw new Error(`wrapInRack found no devices to wrap${why}`);
 }
 
 /** A device the call named, alongside the param and spelling that named it. */
@@ -189,11 +206,17 @@ interface ResolvedDevice extends NamedTarget {
 }
 
 /**
- * Resolve the devices a call named to LiveAPI objects
+ * Resolve the devices a call named to LiveAPI objects. One rack answers for
+ * every device named, so a device that can't go in says so on the rack's own
+ * entry rather than dropping out silently.
  * @param items - The targets, each tagged with the param it came from
+ * @param skipped - Why a device the call named isn't in the rack, added to
  * @returns Array of resolved devices, each still carrying its own param/value
  */
-function resolveDevices(items: NamedTarget[]): ResolvedDevice[] {
+function resolveDevices(
+  items: NamedTarget[],
+  skipped: string[],
+): ResolvedDevice[] {
   const devices: ResolvedDevice[] = [];
 
   for (const item of items) {
@@ -204,23 +227,21 @@ function resolveDevices(items: NamedTarget[]): ResolvedDevice[] {
         param === "id" ? LiveAPI.from(value) : resolveDeviceFromPath(value);
 
       if (!device?.exists()) {
-        console.warn(`wrapInRack: device not found at "${value}"`);
+        skipped.push(`no device at "${value}"`);
       } else if (isProducerPalDevice(device)) {
         // Wrapping moves the device into a chain, which is a move like any
         // other — and this one would take the connection with it.
-        console.warn(
-          `wrapInRack: cannot wrap the Producer Pal device ${targetLabel(device)}, skipping`,
+        skipped.push(
+          `the Producer Pal device ${targetLabel(device)} cannot be wrapped`,
         );
       } else if (device.type.endsWith("Device")) {
         devices.push({ ...item, device });
       } else {
-        console.warn(
-          `wrapInRack: "${value}" is not a device (type: ${device.type})`,
-        );
+        skipped.push(`"${value}" is not a device (type: ${device.type})`);
       }
     } catch (error) {
       // Resolution throws for a path that names nothing a device can sit in.
-      console.warn(`wrapInRack: ${errorMessage(error)}`);
+      skipped.push(errorMessage(error));
     }
   }
 

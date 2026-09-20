@@ -10,9 +10,9 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { moveDrumChainToPath } from "../../helpers/move-drum-chain.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("moveDrumChainToPath", () => {
   let chain: RegisteredMockObject;
@@ -34,29 +34,31 @@ describe("moveDrumChainToPath", () => {
     });
   });
 
-  it("warns what the track holds when toPath names nothing by type", () => {
+  it("says what the track holds when toPath names nothing by type", () => {
     registerMockObject("track-0", {
       path: livePath.track(0),
       properties: { devices: children("drumrack-id") },
     });
 
-    moveDrumChainToPath(LiveAPI.from(chain.path), "t0/afx0/pD1", false);
+    const notes = newTargetNotes();
 
-    expect(capturedWarnings()).toStrictEqual([
-      'nothing at toPath "t0/afx0/pD1": t0 has no audio effects',
-    ]);
+    moveDrumChainToPath(LiveAPI.from(chain.path), "t0/afx0/pD1", false, notes);
+
+    expect(notes).toStrictEqual({
+      said: ['nothing at toPath "t0/afx0/pD1": t0 has no audio effects'],
+      refused: ["toPath"],
+    });
     expect(chain.set).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when toPath has out-of-range note", () => {
+  it("should skip when toPath has out-of-range note", () => {
     const chainApi = LiveAPI.from(chain.path);
+    const notes = newTargetNotes();
 
     // G9 is note 139, past MIDI's 127, so no pad answers to it.
-    moveDrumChainToPath(chainApi, "t0/d0/pG9", false);
+    moveDrumChainToPath(chainApi, "t0/d0/pG9", false, notes);
 
-    expect(capturedWarnings()).toContain(
-      'toPath "t0/d0/pG9" is not a drum pad path',
-    );
+    expect(notes.said).toContain('toPath "t0/d0/pG9" is not a drum pad path');
     expect(chain.set).not.toHaveBeenCalled();
   });
 });

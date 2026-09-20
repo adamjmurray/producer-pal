@@ -23,6 +23,7 @@ import {
   unsettableSampleReason,
 } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { refuseDuplicateParams } from "./helpers/params/param-entry-validation.ts";
@@ -47,12 +48,15 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * @param device - LiveAPI device object to update
  * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
+ * @param notes - What the device's entry has to say, added to; left out where
+ *   the caller keeps no entry for this write
  * @returns One entry per param named, in order
  */
 export function setParamValues(
   device: LiveAPI,
   params: ParamEntry[],
   force = false,
+  notes?: TargetNotes,
 ): ParamOutcome[] {
   // Before the first write: two entries reaching one param can only report the
   // last one's value for both, and the caller can retry with nothing to undo.
@@ -82,7 +86,9 @@ export function setParamValues(
     // multi-param update. It becomes that param's own skip entry, the way a
     // target that throws becomes the target's.
     try {
-      results.push(...setOneParam(device, key, rawValue, force, deviceName));
+      results.push(
+        ...setOneParam(device, key, rawValue, force, deviceName, notes),
+      );
     } catch (e) {
       results.push(skippedParam(key, errorMessage(e)));
     }
@@ -131,6 +137,7 @@ function setParamById(
  * @param rawValue - Trimmed value
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param deviceName - The device's class_display_name
+ * @param notes - What the device's entry has to say, added to
  * @returns The entry for this param
  */
 function setOneParam(
@@ -139,6 +146,7 @@ function setOneParam(
   rawValue: string,
   force: boolean,
   deviceName: string | undefined,
+  notes: TargetNotes | undefined,
 ): ParamOutcome[] {
   // A name containing "/" is normally a path-prefixed pseudo-param
   // (e.g. "pC1/sample"): resolve the prefix relative to this device, then
@@ -171,7 +179,7 @@ function setOneParam(
       ];
     }
 
-    return applyNestedParam(device, key, rawValue, force);
+    return applyNestedParam(device, key, rawValue, force, notes);
   }
 
   const inputValue = normalizeParamValue(rawValue, deviceName, key);
@@ -249,6 +257,7 @@ function paramEntry(key: string, outcome: ParamWriteOutcome): ParamOutcome {
  * @param key - Full path-prefixed param name (e.g. "pC1/sample")
  * @param rawValue - Trimmed value to write
  * @param force - Allow a destructive pad-device swap a `sample` write needs
+ * @param notes - What the device's entry has to say, added to
  * @returns The entry for this param
  */
 function applyNestedParam(
@@ -256,6 +265,7 @@ function applyNestedParam(
   key: string,
   rawValue: string,
   force: boolean,
+  notes: TargetNotes | undefined,
 ): ParamOutcome[] {
   const slashIndex = key.lastIndexOf("/");
   const prefix = key.slice(0, slashIndex);
@@ -274,7 +284,13 @@ function applyNestedParam(
     );
   }
 
-  const target = resolveNestedParamTarget(device, prefix, paramName, force);
+  const target = resolveNestedParamTarget(
+    device,
+    prefix,
+    paramName,
+    force,
+    notes,
+  );
 
   // Named as the caller wrote it: a list that came back a name short is one
   // the caller has to diff against its own request to read.
@@ -290,6 +306,7 @@ function applyNestedParam(
     target.device,
     [{ name: paramName, value: rawValue }],
     force,
+    notes,
   ).map((result) =>
     "ok" in result
       ? { ...result, name: key }

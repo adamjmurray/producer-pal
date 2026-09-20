@@ -3,6 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  type TargetNotes,
+  isParamSent,
+  refuseTargetWork,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
@@ -61,59 +66,23 @@ export function noteIfSet(
 }
 
 /**
- * Whether the call actually asked for this param.
- * @param value - Parameter value
- * @returns True unless it is absent or an empty list
- */
-export function isParamSent(value: unknown): boolean {
-  return value != null && !(Array.isArray(value) && value.length === 0);
-}
-
-/**
- * Say on a target's own entry which params its kind of object had no use for.
- * The entry already names the target, so the reason doesn't (ADR-0042).
- * @param entry - The target's entry, added to in place
+ * Say which params this kind of object had no use for, as one refusal.
+ * @param notes - What the target has to say, added to
  * @param ignored - Those params, in the order they were checked
  * @param type - Live object type
- * @param options - What the call asked of this target
- * @returns The entry
- * @throws Error when they were everything the call asked, so nothing landed
  */
-export function reportIgnoredParams<T extends { reason?: string }>(
-  entry: T,
+export function refuseIgnoredParams(
+  notes: TargetNotes,
   ignored: string[],
   type: string,
-  options: object,
-): T {
-  if (ignored.length === 0) {
-    return entry;
+): void {
+  if (ignored.length > 0) {
+    refuseTargetWork(
+      notes,
+      ignored,
+      `${ignored.join(", ")} not applicable to ${type}`,
+    );
   }
-
-  const reason = `${ignored.join(", ")} not applicable to ${type}`;
-
-  if (!askedAnythingElse(options, ignored)) {
-    throw new Error(reason);
-  }
-
-  entry.reason = entry.reason == null ? reason : `${entry.reason}; ${reason}`;
-
-  return entry;
-}
-
-/**
- * Whether the call asked this target for anything beyond the ignored params.
- * Read off the options themselves, so a param added later counts as work by
- * default instead of quietly turning a hit into a skip. `force` never does: it
- * modifies a `params` write rather than asking for anything.
- * @param options - What the call asked of this target
- * @param ignored - The params its kind of object had no use for
- * @returns True when something else was asked for
- */
-function askedAnythingElse(options: object, ignored: string[]): boolean {
-  return Object.entries(options).some(
-    ([key, value]: [string, unknown]) =>
-      key !== "force" && isParamSent(value) && !ignored.includes(key),
-  );
 }
 
 /**

@@ -21,6 +21,7 @@ import { resolveDrumChainSampleTarget } from "#src/tools/shared/device/helpers/n
 import { isSampleParam } from "#src/tools/shared/device/pad-sample-messages.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
 import { type UpdatePropertyOptions } from "./update-device-properties.ts";
+import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { notApplicableReason } from "./update-target-types.ts";
 
 /**
@@ -35,12 +36,14 @@ import { notApplicableReason } from "./update-target-types.ts";
  * @param target - The chain or pad the call addressed
  * @param type - Its Live API type
  * @param options - Update options
+ * @param notes - What the target's entry has to say, added to
  * @returns One entry per param the call sent, in order
  */
 export function applyChainSampleParams(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
+  notes: TargetNotes,
 ): ParamResult[] {
   const params = options.params ?? [];
   const force = options.force ?? false;
@@ -48,7 +51,7 @@ export function applyChainSampleParams(
   return refreshParamValues(
     params.flatMap((entry) =>
       type === "DrumChain" && isSampleParam(paramEntryKey(entry).key)
-        ? writeChainSample(target, entry, force)
+        ? writeChainSample(target, entry, force, notes)
         : [
             skippedParam(
               paramEntryKey(entry).key,
@@ -64,18 +67,20 @@ export function applyChainSampleParams(
  * @param chain - The DrumChain the call addressed
  * @param entry - The `sample` param entry, as the caller wrote it
  * @param force - Allow the instrument-to-Simpler swap the write needs
+ * @param notes - What the chain's entry has to say, added to
  * @returns What the write landed on, or why it landed nowhere
  */
 function writeChainSample(
   chain: LiveAPI,
   entry: ParamEntry,
   force: boolean,
+  notes: TargetNotes,
 ): ParamOutcome[] {
-  const resolved = resolveDrumChainSampleTarget(chain, force);
+  const resolved = resolveDrumChainSampleTarget(chain, force, notes);
 
   if ("reason" in resolved) {
     return [skippedParam(paramEntryKey(entry).key, resolved.reason)];
   }
 
-  return setParamValues(resolved.device, [entry], force);
+  return setParamValues(resolved.device, [entry], force, notes);
 }

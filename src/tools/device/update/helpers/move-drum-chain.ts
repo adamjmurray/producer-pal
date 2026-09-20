@@ -8,7 +8,11 @@
 // destination by path rather than by object.
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type TargetNotes,
+  noteTarget,
+  refuseTargetWork,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import { findDrumPadByNote } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
@@ -22,14 +26,16 @@ import { pathTargetLabel } from "#src/tools/shared/validation/object-path-for-ap
  * @param chain - LiveAPI drum chain object
  * @param toPath - Target drum pad path
  * @param moveEntirePad - If true, move all chains with same in_note
+ * @param notes - What the pad's entry has to say, added to
  */
 export function moveDrumChainToPath(
   chain: LiveAPI,
   toPath: string,
   moveEntirePad: boolean,
+  notes: TargetNotes,
 ): void {
   const drumRackPath = chain.path.replace(/ chains \d+$/, "");
-  const targetNote = targetPadNote(toPath, drumRackPath);
+  const targetNote = targetPadNote(toPath, drumRackPath, notes);
 
   if (targetNote == null) {
     return;
@@ -40,7 +46,9 @@ export function moveDrumChainToPath(
   // in_note to 0-127, so the move can't happen and Live would refuse it
   // silently — say so instead of reporting a no-op as a move.
   if (targetNote === "*") {
-    console.warn(
+    refuseTargetWork(
+      notes,
+      ["toPath"],
       `cannot move a drum chain to the catch-all pad "${toPath}" — ` +
         `Live has no way to set a chain to "all notes"`,
     );
@@ -55,7 +63,14 @@ export function moveDrumChainToPath(
   const rackChains = rack.getChildren("chains");
   const inNotes = rackChains.map((c) => c.getProperty("in_note") as number);
 
-  warnIfDestinationOccupied(rack, toPath, inNotes, sourceInNote, targetInNote);
+  noteIfDestinationOccupied(
+    rack,
+    toPath,
+    inNotes,
+    sourceInNote,
+    targetInNote,
+    notes,
+  );
 
   if (moveEntirePad) {
     for (const [index, c] of rackChains.entries()) {
@@ -77,13 +92,15 @@ export function moveDrumChainToPath(
  * @param inNotes - Every rack chain's in_note, in rack order
  * @param sourceInNote - The moving chain's in_note
  * @param targetInNote - The destination pad's in_note
+ * @param notes - What the pad's entry has to say, added to
  */
-function warnIfDestinationOccupied(
+function noteIfDestinationOccupied(
   rack: LiveAPI,
   toPath: string,
   inNotes: number[],
   sourceInNote: number,
   targetInNote: number,
+  notes: TargetNotes,
 ): void {
   if (targetInNote === sourceInNote) {
     return;
@@ -97,7 +114,8 @@ function warnIfDestinationOccupied(
 
   const label = pathTargetLabel(findDrumPadByNote(rack, targetInNote), toPath);
 
-  console.warn(
+  noteTarget(
+    notes,
     `drum pad ${label} already had ${occupants} chain(s), ` +
       `so the move layers on top of them rather than replacing them`,
   );
@@ -119,20 +137,33 @@ function warnIfDestinationOccupied(
  * source's own.
  * @param toPath - Target drum pad path
  * @param drumRackPath - Live API path of the rack holding the source chain
+ * @param notes - What the pad's entry has to say, added to
  * @returns The pad's note name, "*" for the catch-all pad, or null once the
- *   reason it can't be the destination has been warned
+ *   reason it can't be the destination has been noted
  */
-function targetPadNote(toPath: string, drumRackPath: string): string | null {
+function targetPadNote(
+  toPath: string,
+  drumRackPath: string,
+  notes: TargetNotes,
+): string | null {
   const resolved = resolvePadPath(toPath);
 
   if (resolved?.namesNothing != null) {
-    console.warn(nothingAtPath(toPath, resolved.namesNothing, "toPath"));
+    refuseTargetWork(
+      notes,
+      ["toPath"],
+      nothingAtPath(toPath, resolved.namesNothing, "toPath"),
+    );
 
     return null;
   }
 
   if (resolved?.drumPadNote == null) {
-    console.warn(`toPath "${toPath}" is not a drum pad path`);
+    refuseTargetWork(
+      notes,
+      ["toPath"],
+      `toPath "${toPath}" is not a drum pad path`,
+    );
 
     return null;
   }
@@ -148,7 +179,9 @@ function targetPadNote(toPath: string, drumRackPath: string): string | null {
   // elsewhere can't be honored. Without this it lands on that note in the
   // SOURCE rack instead — the wrong pad, reported as a success.
   if (pad?.rackPath !== drumRackPath) {
-    console.warn(
+    refuseTargetWork(
+      notes,
+      ["toPath"],
       `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
         `move the pad's device instead (update-device on the device path)`,
     );

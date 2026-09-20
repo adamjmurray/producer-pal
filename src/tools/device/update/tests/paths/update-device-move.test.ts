@@ -80,18 +80,16 @@ describe("updateDevice - moving a drum chain", () => {
     chainIds: ["chain-0", "chain-1"],
   };
 
-  // Asks C1 to move to toPath and checks the move was refused: a warning, and
-  // neither of C1's chains re-mapped. Returns what updateDevice reported.
-  function expectPadMoveRefused(toPath: string): unknown {
-    const result = updateDevice({ path: "t0/d0/pC1", toPath });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("does not name a pad in this rack"),
+  // Asks C1 to move to toPath and checks the move was refused: the move was
+  // the whole call, so the lone pad throws and neither chain is re-mapped.
+  function expectPadMoveRefused(toPath: string): void {
+    expect(() => updateDevice({ path: "t0/d0/pC1", toPath })).toThrow(
+      "does not name a pad in this rack",
     );
+
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-
-    return result;
   }
 
   it("should move a single drum chain to a different pad", () => {
@@ -108,7 +106,13 @@ describe("updateDevice - moving a drum chain", () => {
     // Named through the pad it left, reported on the pad it reached: the path
     // the call addressed it by is stale the moment the retarget lands, so the
     // result re-derives it. Rack order puts it ahead of pD1's other chain.
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pD1/c0" });
+    expect(result).toStrictEqual({
+      id: "chain-0",
+      path: "t0/d0/pD1/c0",
+      reason:
+        "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move " +
+        "layers on top of them rather than replacing them",
+    });
   });
 
   it("should resolve a sharp-accidental target pad note", () => {
@@ -126,18 +130,15 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain0.set).toHaveBeenCalledWith("in_note", 0);
   });
 
-  it("should warn and skip a move to the catch-all pad", () => {
+  it("should refuse a move to the catch-all pad", () => {
     // "p*" is in_note -1, and Live clamps a drum chain's in_note to 0-127, so
     // the set is silently refused. Reporting the no-op as a move is the bug.
-    const result = updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/p*" });
+    expect(() =>
+      updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/p*" }),
+    ).toThrow('cannot move a drum chain to the catch-all pad "t0/d0/p*"');
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        'cannot move a drum chain to the catch-all pad "t0/d0/p*"',
-      ),
-    );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pC1/c0" });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should move all chains in a drum pad when using pad path", () => {
@@ -160,54 +161,46 @@ describe("updateDevice - moving a drum chain", () => {
 
   // Live layers rather than replaces, so the destination ends up playing both
   // the sound that was there and the one that arrived.
-  it("warns that a move onto an occupied pad layers", () => {
-    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pD1" });
+  it("says on the pad's entry that a move onto an occupied pad layers", () => {
+    const result = updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pD1" });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move layers",
-      ),
-    );
-    // The move still happens — the warning is what the caller was missing.
+    // The move still happens — the reason is what the caller was missing.
     expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
     expect(chain1.set).toHaveBeenCalledWith("in_note", 38);
+    expect(result).toStrictEqual({
+      ...unmovedPadC1,
+      reason:
+        "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move " +
+        "layers on top of them rather than replacing them",
+    });
   });
 
   it("stays quiet moving onto an empty pad", () => {
-    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pE1" });
+    const result = updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pE1" });
 
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("layers on top"),
-    );
+    expect(result).toStrictEqual(unmovedPadC1);
   });
 
   // A pad that is already where it is asked to go has nothing to layer onto.
   it("stays quiet moving a pad onto itself", () => {
-    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1" });
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("layers on top"),
-    );
-  });
-
-  it("should warn and skip when toPath is not a drum pad path", () => {
-    // Should not throw, just warn and skip the move
-    const result = updateDevice({
-      path: "t0/d0/pC1/c0",
-      toPath: "t1",
-    });
-
-    expect(capturedWarnings()).toContain('toPath "t1" is not a drum pad path');
-    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pC1/c0" });
-  });
-
-  it("should warn and skip when toPath names a different rack", () => {
-    // A pad move is an in_note re-map inside one rack. Honoring only the note
-    // would land the pad on D1 of the SOURCE rack and report success.
-    const result = expectPadMoveRefused("t1/d0/pD1");
+    const result = updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1" });
 
     expect(result).toStrictEqual(unmovedPadC1);
+  });
+
+  it("should refuse a toPath that is not a drum pad path", () => {
+    expect(() => updateDevice({ path: "t0/d0/pC1/c0", toPath: "t1" })).toThrow(
+      'toPath "t1" is not a drum pad path',
+    );
+
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("should refuse a toPath naming a different rack", () => {
+    // A pad move is an in_note re-map inside one rack. Honoring only the note
+    // would land the pad on D1 of the SOURCE rack and report success.
+    expectPadMoveRefused("t1/d0/pD1");
   });
 
   // A chain of a pad in this rack names that pad — the move is an in_note
@@ -222,35 +215,23 @@ describe("updateDevice - moving a drum chain", () => {
     );
   });
 
-  it("should warn and skip when the nested rack a toPath names is not there", () => {
+  it("should refuse a toPath whose nested rack is not there", () => {
     // The trailing "/d0/pE1" says the pad meant is in a rack under D1, and no
     // such rack exists. Honoring the first pad name instead lands C1 on D1 of
     // this rack and reports it as the move they asked for.
-    const result = expectPadMoveRefused("t0/d0/pD1/d0/pE1");
-
-    expect(result).toStrictEqual(unmovedPadC1);
+    expectPadMoveRefused("t0/d0/pD1/d0/pE1");
   });
 
-  it("should warn and skip when toPath nests under the pad being moved", () => {
+  it("should refuse a toPath nesting under the pad being moved", () => {
     // Reading the first pad here makes the move a no-op reported as a success.
-    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1/d0/pD1" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("does not name a pad in this rack"),
-    );
-    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expectPadMoveRefused("t0/d0/pC1/d0/pD1");
   });
 
-  it("should warn and skip when toPath's track does not exist", () => {
-    updateDevice({ path: "t0/d0/pC1", toPath: "t99/d0/pB1" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("does not name a pad in this rack"),
-    );
-    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+  it("should refuse a toPath whose track does not exist", () => {
+    expectPadMoveRefused("t99/d0/pB1");
   });
 
-  it("should warn and skip when trying to move the Producer Pal device", () => {
+  it("says on the entry that the Producer Pal device did not move", () => {
     registerMockObject("this_device", { path: livePath.track(0).device(1) });
 
     const device = registerMockObject("123", {
@@ -261,26 +242,24 @@ describe("updateDevice - moving a drum chain", () => {
     // The rest of the update still lands — only the move is refused.
     const result = updateDevice({ id: "123", toPath: "t1/d0", name: "X" });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("cannot move the Producer Pal device"),
-    );
     expect(device.set).toHaveBeenCalledWith("name", "X");
-    expect(result).toStrictEqual({ id: "123", path: "t0/d1" });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/d1",
+      reason: "the Producer Pal device cannot be moved",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("should warn and skip when trying to move a regular Chain to a drum pad", () => {
+  it("should refuse moving a regular Chain to a drum pad", () => {
     const chain = registerMockObject("123", { type: "Chain" });
 
-    // Should not throw, just warn and skip the move
-    const result = updateDevice({
-      id: "123",
-      toPath: "t0/d0/pD1",
-    });
+    expect(() => updateDevice({ id: "123", toPath: "t0/d0/pD1" })).toThrow(
+      "a chain cannot be moved; move its devices instead",
+    );
 
-    // A non-drum Chain is not moveable to a pad: warn, and never touch in_note.
-    expect(capturedWarnings()).toContain("cannot move Chain id 123");
     expect(chain.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "123" });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // read-device hands out drumPads[].id, so writing one back has to do what
@@ -326,11 +305,12 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     it("skips the per-layer settings on a stacked pad and names the paths", () => {
-      updateDevice({ id: "pad-36", gainDb: -6 });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("t0/d0/pC1/c0, t0/d0/pC1/c1"),
+      // gainDb was the whole call, so nothing landed on the pad.
+      expect(() => updateDevice({ id: "pad-36", gainDb: -6 })).toThrow(
+        "Set them on t0/d0/pC1/c0, t0/d0/pC1/c1.",
       );
+
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("applies a per-layer setting to a single-layer pad", () => {
@@ -385,11 +365,10 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     it("refuses a move out of the nested rack into the outer one", () => {
-      updateDevice({ path: "t0/d0/pC1/c0/d0/pD1", toPath: "t0/d0/pE1" });
+      expect(() =>
+        updateDevice({ path: "t0/d0/pC1/c0/d0/pD1", toPath: "t0/d0/pE1" }),
+      ).toThrow("does not name a pad in this rack");
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("does not name a pad in this rack"),
-      );
       expect(subChainD.set).not.toHaveBeenCalledWith(
         "in_note",
         expect.anything(),
@@ -437,17 +416,17 @@ describe("updateDevice - a toPath that does not resolve", () => {
   });
 
   it.each([
-    ["t99", 'move target at path "t99" does not exist'],
-    ["t99/d0", 'move target at path "t99/d0" does not exist'],
-    ["t99/d0/c0", 'device not moved: Track in path "t99/d0/c0" does not exist'],
-    ["t0/d5/c0", 'device not moved: Device in path "t0/d5/c0" does not exist'],
-    ["garbage", "device not moved: invalid toPath"],
-    ["t0/d0/c0", "device not moved: Auto-creating chains in Drum Racks"],
+    ["t99", 'not moved: nothing at toPath "t99"'],
+    ["t99/d0", 'not moved: nothing at toPath "t99/d0"'],
+    ["t99/d0/c0", 'not moved: Track in path "t99/d0/c0" does not exist'],
+    ["t0/d5/c0", 'not moved: Device in path "t0/d5/c0" does not exist'],
+    ["garbage", "not moved: invalid toPath"],
+    ["t0/d0/c0", "not moved: Auto-creating chains in Drum Racks"],
     [
       "t0/d1/c0",
-      'device not moved: Device at path "t0/d1/c0" does not support chains',
+      'not moved: Device at path "t0/d1/c0" does not support chains',
     ],
-  ])("renames both devices and warns about %s", (toPath, warning) => {
+  ])("renames both devices and says why %s got no move", (toPath, reason) => {
     // One destination per device: a destination never covers both.
     const result = updateDevice({
       id: "123,456",
@@ -455,9 +434,12 @@ describe("updateDevice - a toPath that does not resolve", () => {
       name: "X",
     });
 
-    expect(capturedWarnings()).toContainEqual(expect.stringContaining(warning));
     expect(first.set).toHaveBeenCalledWith("name", "X");
     expect(second.set).toHaveBeenCalledWith("name", "X");
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", reason: expect.stringContaining(reason) },
+      { id: "456", reason: expect.stringContaining(reason) },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

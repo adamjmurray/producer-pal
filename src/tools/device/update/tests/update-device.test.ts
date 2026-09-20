@@ -493,18 +493,21 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
-    it("should round odd counts up to next even and warn", () => {
+    it("should round odd counts up to next even and say so on the entry", () => {
       const result = updateDevice({
         id: "123",
         macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
       });
 
-      expect(capturedWarnings()).toContain(
-        "macro count on t0/d0 (id 123) rounded from 7 to 8 (macros come in pairs)",
-      );
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("add_macro");
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      // The count landed, just not the one asked for, so no `ok`.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        reason: "macroCount rounded from 7 to 8 (macros come in pairs)",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 
@@ -524,17 +527,15 @@ describe("updateDevice", () => {
     });
 
     it("should reject devices without AB Compare support", () => {
-      const result = updateDevice({
-        id: "456",
-        abCompare: "b",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "A/B Compare not available on t0/d1 (id 456)",
+      // abCompare was the whole call, so nothing landed and a lone target
+      // throws rather than reporting a hit.
+      expect(() => updateDevice({ id: "456", abCompare: "b" })).toThrow(
+        "A/B Compare is not available here",
       );
+
       expect(device456.set).not.toHaveBeenCalled();
       expect(device456.call).not.toHaveBeenCalled();
-      expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should set is_using_compare_preset_b to 0 for 'a'", () => {
@@ -659,51 +660,46 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123", path: "t0/d0/c1/d0" });
     });
 
-    it("should warn and skip when trying to move a Chain", () => {
+    it("should refuse a lone move of a Chain", () => {
+      // A plain Chain is neither a device nor a DrumChain, and a pad id names
+      // the whole pad now, so nothing here can move.
       registerMockObject("123", { type: "Chain" });
 
-      // Should not throw, just warn and continue with other updates
-      const result = updateDevice({
-        id: "123",
-        toPath: "t1",
-      });
+      expect(() => updateDevice({ id: "123", toPath: "t1" })).toThrow(
+        "a chain cannot be moved; move its devices instead",
+      );
 
-      // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
-      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
       expectNoMove();
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should warn and skip when trying to move a rack Chain", () => {
-      // Not a DrumPad: a pad id names the whole pad now, and a pad move is an
-      // in_note re-map that updateDrumPadGroup handles.
+    it("says on the entry that a Chain did not move, beside what did land", () => {
       registerMockObject("123", { type: "Chain" });
 
-      // Should not throw, just warn and continue with other updates
       const result = updateDevice({
         id: "123",
         toPath: "t1",
+        name: "Renamed",
       });
 
-      expect(capturedWarnings()).toContain("cannot move Chain t0/d0 (id 123)");
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expectNoMove();
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/d0",
+        reason: "a chain cannot be moved; move its devices instead",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should warn and skip when target path does not exist", () => {
+    it("should refuse a move when target path does not exist", () => {
       mockNonExistentObjects();
 
-      // Should not throw, just warn and continue with other updates
-      const result = updateDevice({
-        id: "123",
-        toPath: "t99",
-      });
-
-      // The missing container is reported and no move is attempted.
-      expect(capturedWarnings()).toContain(
-        'move target at path "t99" does not exist',
+      expect(() => updateDevice({ id: "123", toPath: "t99" })).toThrow(
+        'not moved: nothing at toPath "t99"',
       );
+
       expectNoMove();
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should allow combining move with other updates", () => {

@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type TargetNotes,
+  noteTarget,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import {
   DEVICE_CLASS,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -112,17 +115,17 @@ export function splitForAdvice(key: string): { path: string; name: string } {
  * with no layer named and a `dN` that isn't the instrument skip with a reason.
  * A prefix may cross into a rack nested in a pad (`pC1/c0/d0/pD1`).
  *
- * | Pad instrument           | Behavior                                      |
- * | ------------------------ | --------------------------------------------- |
- * | none                     | create a Simpler                              |
- * | Simpler (single-sample)  | reuse it (caller's sample write replaces)     |
- * | Simpler (multi-sample)   | skip; `force` swaps in a Simpler (and warns)  |
- * | any other instrument     | skip; `force` swaps in a Simpler (and warns)  |
+ * | Pad instrument          | Behavior                                    |
+ * | ----------------------- | ------------------------------------------- |
+ * | none                    | create a Simpler                            |
+ * | Simpler (single-sample) | reuse it (the sample write replaces it)     |
+ * | anything else           | skip; `force` swaps in a Simpler and says so|
  *
  * @param rack - The device being created/updated (the path prefix is relative to it)
  * @param prefix - The path segments before the param name (e.g. "pC1")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
+ * @param notes - The target's entry notes; left out where there is no entry
  * @returns The target device, or the reason nothing can be targeted
  */
 export function resolveNestedParamTarget(
@@ -130,6 +133,7 @@ export function resolveNestedParamTarget(
   prefix: string,
   paramName: string,
   force = false,
+  notes?: TargetNotes,
 ): NestedParamTarget {
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
@@ -143,7 +147,7 @@ export function resolveNestedParamTarget(
 
   // Pad-property model: a `sample` write to a drum pad.
   if (slot) {
-    return resolveDrumPadSampleTarget(rack, slot, force);
+    return resolveDrumPadSampleTarget(rack, slot, force, notes);
   }
 
   // General case: read-only navigation to an existing device.
@@ -170,17 +174,26 @@ export function resolveNestedParamTarget(
  * one layer, and a bare pad path is refused before it gets this far.
  * @param chain - The DrumChain the write addressed
  * @param force - Allow the instrument-to-Simpler swap the sample write needs
+ * @param notes - What the target's entry has to say, added to; left out where
+ *   the caller keeps no entry for this write
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 export function resolveDrumChainSampleTarget(
   chain: LiveAPI,
   force: boolean,
+  notes?: TargetNotes,
 ): NestedParamTarget {
   const instrument = findChainInstrument(chain);
 
   return instrument == null
     ? createSimplerInChain(chain)
-    : applyPadInstrumentPolicy(chain, instrument, pathPrefix(chain), force);
+    : applyPadInstrumentPolicy(
+        chain,
+        instrument,
+        pathPrefix(chain),
+        force,
+        notes,
+      );
 }
 
 /** The device a nested param write lands on, or why it lands on nothing. */
@@ -275,12 +288,14 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
  * @param rack - The device the prefix is relative to
  * @param slot - Parsed drum pad slot
  * @param force - Allow the instrument-to-Simpler swap
+ * @param notes - What the target's entry has to say, added to
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 function resolveDrumPadSampleTarget(
   rack: LiveAPI,
   slot: DrumPadSlot,
   force: boolean,
+  notes: TargetNotes | undefined,
 ): NestedParamTarget {
   const { under, padNote, chainIndex, chainNamed, deviceIndex } = slot;
   // The pad's name relative to the addressed device, so every retry this hands
@@ -331,7 +346,7 @@ function resolveDrumPadSampleTarget(
     );
   }
 
-  return applyPadInstrumentPolicy(chain, instrument, padLabel, force);
+  return applyPadInstrumentPolicy(chain, instrument, padLabel, force, notes);
 }
 
 /**
@@ -342,6 +357,7 @@ function resolveDrumPadSampleTarget(
  * @param instrument - The instrument the chain holds, and its index in it
  * @param padLabel - How to name the pad
  * @param force - Allow the instrument-to-Simpler swap
+ * @param notes - What the target's entry has to say, added to
  * @returns The Simpler to write the sample to, or the reason there is none
  */
 function applyPadInstrumentPolicy(
@@ -349,6 +365,7 @@ function applyPadInstrumentPolicy(
   instrument: { device: LiveAPI; index: number },
   padLabel: string,
   force: boolean,
+  notes: TargetNotes | undefined,
 ): NestedParamTarget {
   const className = instrument.device.getProperty(
     "class_display_name",
@@ -375,7 +392,8 @@ function applyPadInstrumentPolicy(
   // contract says nothing cached survives that. createSimplerInChain invalidates
   // again after its insert; this one keeps the invariant true in between.
   invalidateDevicePathCache();
-  console.warn(
+  noteTarget(
+    notes,
     `force:true — replaced ${held} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
   );
 

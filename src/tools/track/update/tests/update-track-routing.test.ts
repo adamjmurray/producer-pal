@@ -83,30 +83,35 @@ describe("updateTrack routing by name", () => {
     );
   });
 
-  it("uses the first of several options sharing a name, and warns", () => {
-    updateTrack({ id: "123", outputRoutingType: "Bass" });
+  it("uses the first of several options sharing a name, and says so", () => {
+    const result = updateTrack({ id: "123", outputRoutingType: "Bass" });
 
     expect(track.set).toHaveBeenCalledWith(
       "output_routing_type",
       '{"output_routing_type":{"identifier":30}}',
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        'track t0 (id 123) has 2 output_routing_type options named "Bass"',
-      ),
-    );
+    // The routing landed, just not necessarily on the one meant, so no `ok`.
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0",
+      reason:
+        '2 output_routing_type options are named "Bass"; used the first — ' +
+        "send the identifier (30, 31) to pick another",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("warns and skips an unknown name", () => {
-    updateTrack({ id: "123", outputRoutingType: "Nowhere" });
+  it("refuses an unknown name", () => {
+    // The routing was the whole call, so nothing landed on the lone track.
+    expect(() =>
+      updateTrack({ id: "123", outputRoutingType: "Nowhere" }),
+    ).toThrow('the track has no output_routing_type named "Nowhere"');
 
     expect(track.set).not.toHaveBeenCalledWith(
       "output_routing_type",
       expect.anything(),
     );
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('no output_routing_type named "Nowhere"'),
-    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("falls back to the identifier when the available list is empty", () => {
@@ -123,11 +128,9 @@ describe("updateTrack routing by name", () => {
   it("says none rather than an empty list when nothing is available", () => {
     registerMockObject("456", { path: livePath.track(1) });
 
-    updateTrack({ id: "456", outputRoutingType: "Nowhere" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("available: none"),
-    );
+    expect(() =>
+      updateTrack({ id: "456", outputRoutingType: "Nowhere" }),
+    ).toThrow("available: none");
   });
 
   describe("deprecated *Id params", () => {

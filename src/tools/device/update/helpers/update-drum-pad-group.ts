@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { paramEntryKey } from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamResult,
@@ -23,10 +22,14 @@ import {
   pathField,
   pathTargetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
-import { reportIgnoredParams } from "./update-target-types.ts";
 import {
-  type NonDeviceApplied,
+  type TargetNotes,
+  newTargetNotes,
+  refuseTargetWork,
+  reportTargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
+import { stripReturnChainLetter } from "./strip-return-chain-letter.ts";
+import {
   type NonDeviceWrites,
   type UpdateTargetOptions,
   updateNonDeviceProperties,
@@ -89,6 +92,7 @@ export function updateDrumPadGroup(
 ): DrumPadUpdateResult {
   const { pad } = group;
   const padLabel = pathTargetLabel(pad, padPath);
+  const notes = newTargetNotes();
   // A sample write makes the pad's chain, exactly as the rack's `pC1/sample`
   // shortcut does — the pad is the address either way. The new chain then takes
   // the whole call: a one-layer pad is what the pad now is.
@@ -109,7 +113,7 @@ export function updateDrumPadGroup(
 
   const layered =
     chains.length > 1
-      ? dropPerLayerProps(options, padPath, padLabel, chains)
+      ? dropPerLayerProps(options, padPath, chains, notes)
       : options;
   // A sample belongs to one layer, so a stacked pad has to say which — the
   // same ambiguity the rack's `pC1/sample` shortcut refuses. Left in place on a
@@ -136,7 +140,7 @@ export function updateDrumPadGroup(
 
   // Only a single-layer pad reaches the chain mixer — the per-layer settings
   // are dropped above once a pad is stacked — so this is one chain's read-back.
-  const { ignored, ...mixer } = applyToChains(chains, chainOptions);
+  const mixer = applyToChains(chains, chainOptions, notes);
 
   const result: DrumPadUpdateResult = { ...mixer };
 
@@ -152,9 +156,7 @@ export function updateDrumPadGroup(
     result.chainIds = chains.map((chain) => chain.id);
   }
 
-  // The call's own options, not the filtered ones: a per-layer drop already
-  // said its piece, so it still counts as work the pad was asked for.
-  return reportIgnoredParams(result, ignored, "DrumChain", options);
+  return reportTargetNotes(result, notes, options);
 }
 
 /**
@@ -212,19 +214,20 @@ function createChainForSample(
  * Write the pad's properties to its chains.
  * @param chains - The pad's chains, in rack order
  * @param options - Update options, already filtered for this pad
- * @returns The first chain's mixer read-back and the params it had no use for;
- *   the rest only take pad-wide props
+ * @param notes - What the pad's entry has to say, added to
+ * @returns The first chain's mixer read-back; the rest only take pad-wide props
  */
 function applyToChains(
   chains: LiveAPI[],
   options: UpdateTargetOptions,
-): NonDeviceApplied {
+  notes: TargetNotes,
+): NonDeviceWrites {
   const first = chains[0] as LiveAPI;
 
   // in_note is what puts a chain on a pad, and this already retargets every
   // chain sharing the note, so the whole pad lands together.
   if (options.toPath != null) {
-    moveDrumChainToPath(first, options.toPath, true);
+    moveDrumChainToPath(first, options.toPath, true, notes);
   }
 
   // Only reachable on a single-chain pad; a stacked pad drops `name` above.
@@ -232,7 +235,7 @@ function applyToChains(
     first.set("name", stripReturnChainLetter(first, options.name));
   }
 
-  let mixer: NonDeviceApplied = { ignored: [] };
+  let mixer: NonDeviceWrites = {};
 
   for (const [index, chain] of chains.entries()) {
     // The first chain carries the full options, so the params a DrumChain has
@@ -241,6 +244,7 @@ function applyToChains(
       chain,
       "DrumChain",
       index === 0 ? options : broadcastOnly(options),
+      index === 0 ? notes : undefined,
     );
 
     if (index === 0) {
@@ -270,15 +274,15 @@ function broadcastOnly(options: UpdateTargetOptions): UpdateTargetOptions {
  * Drop a stacked pad's per-layer properties, naming the chain paths instead.
  * @param options - Update options
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
- * @param padLabel - How the warning names the pad
  * @param chains - The pad's chains
+ * @param notes - What the pad's entry has to say, added to
  * @returns Options with the per-layer properties removed
  */
 function dropPerLayerProps(
   options: UpdateTargetOptions,
   padPath: string,
-  padLabel: string,
   chains: LiveAPI[],
+  notes: TargetNotes,
 ): UpdateTargetOptions {
   const skipped = PER_LAYER_PROPS.filter((key) => options[key] != null);
 
@@ -290,8 +294,10 @@ function dropPerLayerProps(
     .map((_, index) => `${padPath}/c${index}`)
     .join(", ");
 
-  console.warn(
-    `${padLabel} has ${chains.length} layers, so per-layer ` +
+  refuseTargetWork(
+    notes,
+    skipped,
+    `the pad has ${chains.length} layers, so per-layer ` +
       `settings (${skipped.join(", ")}) were skipped. ` +
       `Set them on ${chainPaths}.`,
   );

@@ -124,10 +124,11 @@ describe("updateDevice - bare drum pad paths", () => {
   it("skips the per-layer settings on a stacked pad and names the chain paths", () => {
     const { chains } = registerDrumRack(2);
 
-    updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" });
-
-    expect(capturedWarnings()).toContain(
-      "t0/d0/pC1 (id pad-36) has 2 layers, so per-layer settings " +
+    // They were the whole call, so nothing landed on the pad.
+    expect(() =>
+      updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" }),
+    ).toThrow(
+      "the pad has 2 layers, so per-layer settings " +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
         "t0/d0/pC1/c1.",
     );
@@ -135,6 +136,21 @@ describe("updateDevice - bare drum pad paths", () => {
     for (const chain of chains) {
       expect(chain.set).not.toHaveBeenCalledWith("name", "Kick");
     }
+
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("keeps the pad's entry when something else did land", () => {
+    registerDrumRack(2);
+
+    expect(
+      updateDevice({ path: "t0/d0/pC1", name: "Kick", mute: true }),
+    ).toStrictEqual({
+      id: "pad-36",
+      reason:
+        "the pad has 2 layers, so per-layer settings (name) were skipped. " +
+        "Set them on t0/d0/pC1/c0, t0/d0/pC1/c1.",
+    });
   });
 
   it("applies the per-layer settings when the pad holds one chain", () => {

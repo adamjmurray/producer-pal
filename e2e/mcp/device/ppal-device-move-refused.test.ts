@@ -10,8 +10,7 @@
  * would add a second without saying so. Both tools used to report success: the
  * move returned the device's id as if it had gone somewhere, and the duplicate
  * returned the id of a copy still sitting on its temp track, which the cleanup
- * then deleted. The move warns and skips; the duplicate refuses the lone
- * destination it was given.
+ * then deleted. Both now refuse the lone destination they were given.
  *
  * The `d+` suite below is the other half: only real Live says where an append
  * lands, since a default track preset may already have put devices there. The
@@ -74,23 +73,38 @@ async function deviceCounts(
   ];
 }
 
+/**
+ * Ask update-device to move the first track's instrument onto the second,
+ * which Live drops, and check both tracks are as they were afterwards.
+ * @param extra - Anything else to ask of the device alongside the move
+ * @returns The raw tool result
+ */
+async function moveInstrumentOntoInstrument(
+  extra: Record<string, unknown> = {},
+): Promise<unknown> {
+  const { from, to, deviceId, before } = await twoInstrumentTracks();
+
+  const result = await ctx.client!.callTool({
+    name: "ppal-update-device",
+    arguments: { id: deviceId, toPath: `t${to}`, ...extra },
+  });
+
+  await sleep(200);
+
+  // Both tracks are as they were: nothing arrived, nothing left.
+  expect(await deviceCounts(from, to)).toStrictEqual(before);
+
+  return result;
+}
+
 describe("a device move Live refuses", () => {
-  it("warns instead of reporting the move as done", async () => {
-    const { from, to, deviceId, before } = await twoInstrumentTracks();
+  it("refuses instead of reporting the move as done", async () => {
+    const result = await moveInstrumentOntoInstrument();
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: { id: deviceId, toPath: `t${to}` },
-    });
-
-    expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("already has an instrument"),
-    );
-
-    await sleep(200);
-
-    // Both tracks are as they were: nothing arrived, nothing left.
-    expect(await deviceCounts(from, to)).toStrictEqual(before);
+    // The move was the whole call, so nothing landed on the lone device.
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("already has an instrument");
+    expect(getToolWarnings(result)).toStrictEqual([]);
   });
 
   it("refuses a duplicate rather than naming a copy that no longer exists", async () => {
@@ -113,7 +127,18 @@ describe("a device move Live refuses", () => {
     expect(await deviceCounts(from, to)).toStrictEqual(before);
   });
 
-  it("warns when toPath names an index past the end of the container", async () => {
+  it("says on the entry that a name landed but the move did not", async () => {
+    const result = await moveInstrumentOntoInstrument({ name: "Still Here" });
+
+    // The rename landed, so the device keeps a normal entry and no `ok`.
+    const entry = parseToolResult<{ id: string; reason?: string }>(result);
+
+    expect(entry.reason).toContain("already has an instrument");
+    expect(entry).not.toHaveProperty("ok");
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  it("refuses a toPath naming an index past the end of the container", async () => {
     // Live takes 0 through the container's device count and ignores anything
     // higher without a word. Within one container the arrival check cannot see
     // it either, because the device is already in the list that check reads.
@@ -129,9 +154,11 @@ describe("a device move Live refuses", () => {
       arguments: { path: `t${track}/d0`, toPath: pastTheEnd },
     });
 
-    expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining(`"${pastTheEnd}" is past the end`),
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `"${pastTheEnd}" is past the end`,
     );
+    expect(getToolWarnings(result)).toStrictEqual([]);
 
     await sleep(200);
 
@@ -306,6 +333,79 @@ describe("toPath paired with the devices a move names", () => {
 
     expect(await readDeviceCount(ctx.client!, track)).toBe(sourceBefore);
     expect(await readDeviceCount(ctx.client!, to)).toBe(destinationBefore);
+  });
+});
+
+// A chain belongs to its rack: moving one means moving the devices inside it.
+// The refusal used to be a warning beside an {id, path} that read as a move.
+describe("a rack chain a call asks to move", () => {
+  /**
+   * Wrap a device in a rack and report the rack and its only chain.
+   * @returns The rack's id and its chain's id
+   */
+  async function rackAndChain(): Promise<{ rackId: string; chainId: string }> {
+    const track = await createMidiTrack(ctx.client!);
+    const deviceId = await createTestDevice(ctx.client!, "Reverb", `t${track}`);
+    const rackId = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id: deviceId, wrapInRack: true },
+      }),
+    ).id;
+
+    await sleep(200);
+
+    const rack = parseToolResult<{ chains?: Array<{ id: string }> }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { id: rackId, include: ["chains"], maxDepth: 1 },
+      }),
+    );
+
+    return { rackId, chainId: rack.chains![0]!.id };
+  }
+
+  it("refuses it, saying chain rather than Live's class name", async () => {
+    const { chainId } = await rackAndChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: chainId, toPath: "t0" },
+    });
+
+    // The move was the whole call, so the lone chain throws.
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "a chain cannot be moved; move its devices instead",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  it("keeps its entry when a rename landed beside the refused move", async () => {
+    const { rackId, chainId } = await rackAndChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: chainId, toPath: "t0", name: "Renamed" },
+    });
+    const entry = parseToolResult<{ id: string; reason?: string }>(result);
+
+    expect(entry.id).toBe(chainId);
+    expect(entry.reason).toBe(
+      "a chain cannot be moved; move its devices instead",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+
+    await sleep(200);
+
+    const rack = parseToolResult<{ chains?: Array<{ name?: string }> }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { id: rackId, include: ["chains"], maxDepth: 1 },
+      }),
+    );
+
+    expect(rack.chains![0]!.name).toBe("Renamed");
   });
 });
 

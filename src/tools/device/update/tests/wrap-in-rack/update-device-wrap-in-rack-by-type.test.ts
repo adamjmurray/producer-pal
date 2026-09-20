@@ -27,12 +27,10 @@ describe("updateDevice - wrapInRack by device type", () => {
   });
 
   it("says what the track holds when a device path names nothing", () => {
-    expect(updateDevice({ path: "t0/inst", wrapInRack: true })).toBeNull();
-    // The miss, then the summary every empty device set gets.
-    expect(capturedWarnings()).toStrictEqual([
-      'wrapInRack: nothing at path "t0/inst": t0 has no instrument',
-      "wrapInRack: no devices found",
-    ]);
+    expect(() => updateDevice({ path: "t0/inst", wrapInRack: true })).toThrow(
+      'wrapInRack found no devices to wrap: nothing at path "t0/inst": t0 has no instrument',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("says what the track holds when toPath names nothing", () => {

@@ -17,7 +17,7 @@ import {
   carryChainMixer,
   readChainMixer,
   sourceChain,
-  warnIfChainMixerLeftBehind,
+  noteChainMixerLeftBehind,
 } from "../chain-mixer.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -458,14 +458,20 @@ describe("applyChainMixer", () => {
       );
     });
 
-    it("warns when the chain has fewer sends than the rack has returns", () => {
+    it("refuses the send when the chain has fewer than the rack has returns", () => {
       registerChainWithSends(["a Delay", "b Reverb", "c Chorus"]);
 
-      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" });
-
-      expect(capturedWarnings()).toContain(
-        'chain "Snare" t0/d0/c1 (id chain-1) has no send for return "c"',
-      );
+      expect(
+        applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" }).sends,
+      ).toStrictEqual([
+        {
+          return: "c",
+          returnId: "rc-2",
+          ok: false,
+          reason: "the chain has no send for this return",
+        },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     // The `sends` list is the multi-send spelling. It reuses the single-send
@@ -659,7 +665,7 @@ describe("applyChainMixer", () => {
   });
 });
 
-describe("warnIfChainMixerLeftBehind", () => {
+describe("noteChainMixerLeftBehind", () => {
   const devicePath = chainPath.device(0);
   let destination: RegisteredMockObject;
 
@@ -677,7 +683,7 @@ describe("warnIfChainMixerLeftBehind", () => {
   it("warns with the mixer values and a pad-move hint for a drum chain", () => {
     registerChainWithMixer({ gainDb: -15 });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
@@ -697,7 +703,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       type: "DrumChain",
     });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(otherRack.path),
     );
@@ -710,7 +716,7 @@ describe("warnIfChainMixerLeftBehind", () => {
   it("omits the pad-move hint for a regular chain", () => {
     registerChainWithMixer({ pan: 0.5, type: "Chain" });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
@@ -723,7 +729,7 @@ describe("warnIfChainMixerLeftBehind", () => {
   it("phrases a copy as a copy and points at a pad copy", () => {
     registerChainWithMixer({ gainDb: -15 });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
       true,
@@ -741,7 +747,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       type: "Track",
     });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(track.path),
     );
@@ -761,7 +767,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     });
     registerReturnChains("a D", "b R");
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
@@ -774,7 +780,7 @@ describe("warnIfChainMixerLeftBehind", () => {
   it("stays quiet when the chain mixer is at its defaults", () => {
     registerChainWithMixer();
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
@@ -785,10 +791,7 @@ describe("warnIfChainMixerLeftBehind", () => {
   it("stays quiet when the device stays in the same chain", () => {
     registerChainWithMixer({ gainDb: -15 });
 
-    warnIfChainMixerLeftBehind(
-      sourceChain(LiveAPI.from(devicePath)),
-      chainApi(),
-    );
+    noteChainMixerLeftBehind(sourceChain(LiveAPI.from(devicePath)), chainApi());
 
     expect(capturedWarnings()).toHaveLength(0);
   });
@@ -799,7 +802,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       type: "SimplerDevice",
     });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(livePath.track(0).device(3))),
       LiveAPI.from(destination.path),
     );
@@ -814,7 +817,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       type: "SimplerDevice",
     });
 
-    warnIfChainMixerLeftBehind(
+    noteChainMixerLeftBehind(
       sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );

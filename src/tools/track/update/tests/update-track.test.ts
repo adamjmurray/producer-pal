@@ -380,19 +380,19 @@ describe("updateTrack", () => {
     });
 
     describe("type-guarded routing and monitoring", () => {
-      it("warns and skips input routing on a return track but still applies output routing", () => {
+      it("skips input routing on a return track but still applies output routing", () => {
         const returnTrack = registerMockObject("ret1", {
           path: livePath.returnTrack(0),
           properties: { can_be_armed: 0 },
         });
 
-        updateTrack({
+        const result = updateTrack({
           id: "ret1",
           inputRoutingType: "17",
           outputRoutingType: "25",
         });
 
-        // Input routing exists only on regular non-group tracks: warn-and-skip.
+        // Input routing exists only on regular non-group tracks.
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",
           expect.anything(),
@@ -402,45 +402,72 @@ describe("updateTrack", () => {
           "output_routing_type",
           '{"output_routing_type":{"identifier":25}}',
         );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("input routing is only available"),
-        );
+        expect(result).toStrictEqual({
+          id: "ret1",
+          path: "rt0",
+          reason: "input routing is only available on regular non-group tracks",
+        });
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
-      it("warns and skips input routing on a group track", () => {
+      it("refuses input routing on a group track", () => {
         const groupTrack = registerMockObject("grp1", {
           path: livePath.track(5),
           properties: { is_foldable: 1 },
         });
 
-        updateTrack({ id: "grp1", inputRoutingType: "17" });
+        expect(() =>
+          updateTrack({ id: "grp1", inputRoutingType: "17" }),
+        ).toThrow(
+          "input routing is only available on regular non-group tracks",
+        );
 
         expect(groupTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",
           expect.anything(),
         );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("input routing is only available"),
-        );
+        expect(capturedWarnings()).toStrictEqual([]);
       });
 
-      it("warns and skips monitoring state on a non-armable track", () => {
+      it("refuses monitoring state on a non-armable track", () => {
         const returnTrack = registerMockObject("ret1", {
           path: livePath.returnTrack(0),
           properties: { can_be_armed: 0 },
         });
 
-        updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN });
+        expect(() =>
+          updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN }),
+        ).toThrow("monitoringState is only available on armable tracks");
 
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "current_monitoring_state",
           expect.anything(),
         );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining(
-            "monitoringState is only available on armable",
-          ),
-        );
+        expect(capturedWarnings()).toStrictEqual([]);
+      });
+
+      // Two targets: the return track keeps its slot as a skip, in the order
+      // the call named them.
+      it("keeps a return track's slot when monitoringState was all it asked", () => {
+        registerMockObject("ret1", {
+          path: livePath.returnTrack(0),
+          properties: { can_be_armed: 0 },
+        });
+
+        expect(
+          updateTrack({
+            id: "123,ret1",
+            monitoringState: MONITORING_STATE.IN,
+          }),
+        ).toStrictEqual([
+          { id: "123", path: "t0" },
+          {
+            id: "ret1",
+            ok: false,
+            reason: "monitoringState is only available on armable tracks",
+          },
+        ]);
+        expect(capturedWarnings()).toStrictEqual([]);
       });
     });
   });

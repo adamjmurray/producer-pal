@@ -513,57 +513,30 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should warn and return null when no devices found", () => {
-    mockNonExistentObjects();
-
-    const result = updateDevice({
-      id: "nonexistent",
-      wrapInRack: true,
-    });
-
-    // The unresolved id is reported, then the empty set aborts the wrap.
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: device not found at "nonexistent"',
-    );
-    expect(capturedWarnings()).toContain("wrapInRack: no devices found");
-    expect(result).toBeNull();
-  });
-
-  it("should warn and return null when the device path's container is missing", () => {
-    mockNonExistentObjects();
-
-    const result = updateDevice({ path: "t99/d0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: device not found at "t99/d0"',
-    );
-    expect(result).toBeNull();
-  });
-
-  // Resolving it as an insertion path would append the chain first, leaving an
-  // empty one behind on the way to "device not found".
-  it("should warn and return null for a c+ path, without making a chain", () => {
-    mockNonExistentObjects();
-
-    const result = updateDevice({ path: "t0/d0/c+", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: nothing at path "t0/d0/c+": "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
-    );
-    expect(result).toBeNull();
-  });
-
-  it("should warn and return null when a drum-pad container can't be resolved", () => {
+  // Nothing was wrapped, so there is no rack entry to carry why.
+  it.each([
+    ["nonexistent id", { id: "nonexistent" }, 'no device at "nonexistent"'],
+    ["missing container", { path: "t99/d0" }, 'no device at "t99/d0"'],
+    // Resolving a c+ as an insertion path would append the chain first,
+    // leaving an empty one behind on the way to "no device".
+    [
+      "c+ path",
+      { path: "t0/d0/c+" },
+      'nothing at path "t0/d0/c+": "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+    ],
     // "pC1" under a device that is not a Drum Rack: resolveContainer yields
     // null, which is a different miss from the device simply not existing.
+    [
+      "unresolvable drum-pad container",
+      { path: "t0/d0/pC1/d0" },
+      'no device at "t0/d0/pC1/d0"',
+    ],
+  ])("should refuse a wrap of a %s", (_label, args, reason) => {
     mockNonExistentObjects();
 
-    const result = updateDevice({ path: "t0/d0/pC1/d0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: device not found at "t0/d0/pC1/d0"',
+    expect(() => updateDevice({ ...args, wrapInRack: true })).toThrow(
+      `wrapInRack found no devices to wrap: ${reason}`,
     );
-    expect(result).toBeNull();
   });
 
   it("should warn and return null when toPath container does not exist", () => {
@@ -581,17 +554,12 @@ describe("updateDevice - wrapInRack", () => {
     expect(result).toBeNull();
   });
 
-  it("should warn and return null for a path that won't resolve", () => {
-    // The device the caller named, not the destination: it drops out with a
-    // warning like any other device that can't be found, rather than throwing.
+  it("should refuse a wrap for a path that won't resolve", () => {
     mockNonExistentObjects();
 
-    const result = updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("wrapInRack: Device at path"),
-    );
-    expect(result).toBeNull();
+    expect(() =>
+      updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true }),
+    ).toThrow("wrapInRack found no devices to wrap: Device at path");
   });
 
   // The sibling move warn-skips every one of these toPaths
@@ -635,35 +603,37 @@ describe("updateDevice - wrapInRack", () => {
     expect(result).toBeNull();
   });
 
-  it("should warn and skip the Producer Pal device", () => {
+  it("should refuse a wrap of the Producer Pal device", () => {
     registerMockObject("this_device", { path: livePath.track(0).device(0) });
 
-    const result = updateDevice({ id: "device-0", wrapInRack: true });
-
-    expect(capturedWarnings()).toContain(
-      "wrapInRack: cannot wrap the Producer Pal device t0/d0 (id device-0), skipping",
+    expect(() => updateDevice({ id: "device-0", wrapInRack: true })).toThrow(
+      "wrapInRack found no devices to wrap: the Producer Pal device " +
+        "t0/d0 (id device-0) cannot be wrapped",
     );
-    expect(capturedWarnings()).toContain("wrapInRack: no devices found");
-    expect(result).toBeNull();
   });
 
-  it("should warn and return null when an id resolves to a non-device object", () => {
+  it("should refuse a wrap when an id resolves to a non-device object", () => {
     // The object exists but its type doesn't end in "Device" (e.g. a Chain),
-    // so resolveDevices warns "is not a device" and skips it -> no devices.
-    registerMockObject("not-a-device", {
-      path: "some/path",
-      type: "Chain",
-    });
+    // so there is nothing to wrap.
+    registerMockObject("not-a-device", { path: "some/path", type: "Chain" });
 
-    const result = updateDevice({
-      id: "not-a-device",
-      wrapInRack: true,
-    });
-
-    expect(capturedWarnings()).toContain(
-      'wrapInRack: "not-a-device" is not a device (type: Chain)',
+    expect(() =>
+      updateDevice({ id: "not-a-device", wrapInRack: true }),
+    ).toThrow(
+      'wrapInRack found no devices to wrap: "not-a-device" is not a device (type: Chain)',
     );
-    expect(result).toBeNull();
+  });
+
+  it("says on the rack's entry which devices did not make it in", () => {
+    registerMockObject("not-a-device", { path: "some/path", type: "Chain" });
+
+    expect(
+      updateDevice({ path: "t0/d0", id: "not-a-device", wrapInRack: true }),
+    ).toStrictEqual(
+      expect.objectContaining({
+        reason: '"not-a-device" is not a device (type: Chain)',
+      }),
+    );
   });
 
   it("should warn but continue when insert_chain fails", () => {
@@ -726,10 +696,12 @@ describe("updateDevice - wrapInRack", () => {
     });
   });
 
-  it("should return null for a path that resolves to a container, not a device", () => {
+  it("should refuse a path that resolves to a container, not a device", () => {
     // "t0" (no device index) resolves to the track container itself; a Track is
     // not a device, so there is nothing to wrap.
-    expect(updateDevice({ path: "t0", wrapInRack: true })).toBeNull();
+    expect(() => updateDevice({ path: "t0", wrapInRack: true })).toThrow(
+      '"t0" is not a device (type: Track)',
+    );
   });
 
   it("should create a chain when the rack starts with none", () => {

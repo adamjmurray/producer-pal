@@ -27,6 +27,40 @@ import {
 
 const ctx = setupMcpTestContext();
 
+/**
+ * An Audio Effect Rack on track 0, wrapped around one device.
+ * @returns The rack's id
+ */
+async function rackWithOneChain(): Promise<string> {
+  const deviceId = await createTestDevice(ctx.client!, "Compressor", "t0");
+  const wrapped = parseToolResult<WrapResult>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: deviceId, wrapInRack: true },
+    }),
+  );
+
+  await sleep(150);
+
+  return wrapped.id;
+}
+
+/**
+ * Read a rack's macros and variations back from Live, once it has settled.
+ * @param rackId - The rack's id
+ * @returns The rack
+ */
+async function readRackParams(rackId: string): Promise<ReadDeviceResult> {
+  await sleep(150);
+
+  return parseToolResult<ReadDeviceResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { id: rackId, include: ["params"] },
+    }),
+  );
+}
+
 describe("ppal-update-device", () => {
   it("updates device name and collapsed state", async () => {
     // Setup: Create a Compressor on track 0
@@ -319,6 +353,54 @@ describe("ppal-update-device", () => {
     expect(afterDelete.variations?.count).toBe(1);
   });
 
+  // The macro count comes back from Live's own `visible_macro_count`, after it
+  // has rounded an odd count up to the next even one.
+  it("rounds an odd macroCount up and says so on the rack's entry", async () => {
+    const rackId = await rackWithOneChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 1 },
+    });
+
+    // The count landed, just not the one asked for, so there is no `ok`.
+    expect(parseToolResult<UpdateDeviceResult>(result).reason).toBe(
+      "macroCount rounded from 1 to 2 (macros come in pairs)",
+    );
+
+    expect((await readRackParams(rackId)).macros?.count).toBe(2);
+  });
+
+  // The pair says nothing about any one device, so a reading it can't be given
+  // is refused before any target is touched.
+  it.each([
+    [
+      { macroVariationIndex: 0 },
+      "macroVariationIndex requires macroVariation 'load' or 'delete'",
+    ],
+    [
+      { macroVariation: "load" },
+      "macroVariation 'load' requires macroVariationIndex",
+    ],
+    [
+      { macroVariation: "create", macroVariationIndex: 0 },
+      "macroVariationIndex does nothing for macroVariation 'create'",
+    ],
+  ])("refuses the contradictory macro variation args %o", async (args, why) => {
+    const rackId = await rackWithOneChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, ...args },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(why);
+
+    // Nothing was written, so no variation was stored on the way to the error.
+    expect((await readRackParams(rackId)).variations?.count ?? 0).toBe(0);
+  });
+
   it("names path, not id, when a path-only call's lists disagree", async () => {
     const pathA = await createTestDeviceAt(ctx.client!, "Compressor", "t0");
     const pathB = await createTestDeviceAt(ctx.client!, "Compressor", "t1");
@@ -352,6 +434,7 @@ interface ReadDeviceResult {
 
 interface UpdateDeviceResult {
   id: string;
+  reason?: string;
   params?: Array<{
     id?: string;
     name: string;

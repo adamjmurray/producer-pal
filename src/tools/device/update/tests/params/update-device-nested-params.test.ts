@@ -521,11 +521,16 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
     });
 
     expect(chain?.call).toHaveBeenCalledWith("delete_device", 0);
+    // The swap is destructive, so the pad's own entry says what it cost.
     expect(result).toStrictEqual({
       id: "pad-36",
       path: "t0/d0/pC1",
       params: [{ name: "sample", value: KICK }],
+      reason:
+        "force:true — replaced a Drum Sampler on pad t0/d0/pC1/c0 with a " +
+        "Simpler to load the sample. Its settings are gone.",
     });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // A sample belongs to one layer, and under force the write would delete an

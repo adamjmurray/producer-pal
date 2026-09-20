@@ -5,13 +5,13 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   carryChainMixer,
   chainMixerToCarry,
+  noteChainMixerLeftBehind,
   sourceChain,
-  warnIfChainMixerLeftBehind,
 } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,
   deviceHasInstrument,
@@ -39,7 +39,7 @@ export interface DeviceMove {
    * afterwards doesn't re-resolve toPath. Only a "moved" outcome has one. */
   container?: LiveAPI;
   /** Why the move didn't happen, spelled as the caller wrote it. Always on an
-   * "unresolvable"; on a "refused" when the destination accounts for it. */
+   * "unresolvable" and on a "refused". */
   reason?: string;
 }
 
@@ -55,6 +55,8 @@ export interface DeviceMove {
  *   (chain duplication), so there is nothing here to carry or warn about
  * @param reportPath - How to spell toPath back, when the caller adjusted it
  *   (device duplication shifts track indices past its temp track)
+ * @param notes - What the device's entry has to say, added to; left out where
+ *   the caller keeps no entry for this move
  * @returns What the move did, plus the container it landed in or why it didn't
  */
 export function moveDeviceToPath(
@@ -62,6 +64,7 @@ export function moveDeviceToPath(
   toPath: string,
   source: LiveAPI | null = device,
   reportPath: string = toPath,
+  notes?: TargetNotes,
 ): DeviceMove {
   const destination = resolveMoveDestination(toPath, reportPath);
 
@@ -69,7 +72,13 @@ export function moveDeviceToPath(
     return { outcome: "unresolvable", reason: destination.reason };
   }
 
-  return moveDeviceIntoContainer(device, destination, source, reportPath);
+  return moveDeviceIntoContainer(
+    device,
+    destination,
+    source,
+    reportPath,
+    notes,
+  );
 }
 
 /**
@@ -80,7 +89,8 @@ export function moveDeviceToPath(
  * @param destination.container - Where the device goes
  * @param destination.position - Index in the container, or null to append
  * @param source - As in moveDeviceToPath
- * @param reportPath - How to spell the destination in a warning
+ * @param reportPath - How to spell the destination back to the caller
+ * @param notes - As in moveDeviceToPath
  * @returns What the move did, plus the container it landed in or why it didn't
  */
 export function moveDeviceIntoContainer(
@@ -91,13 +101,16 @@ export function moveDeviceIntoContainer(
   }: Pick<InsertionPathResolution, "container" | "position">,
   source: LiveAPI | null,
   reportPath: string,
+  notes?: TargetNotes,
 ): DeviceMove {
   if (!container?.exists()) {
     return { outcome: "no-destination" };
   }
 
-  if (isPastTheEnd(position, container, reportPath)) {
-    return { outcome: "refused" };
+  const pastTheEnd = pastTheEndReason(position, container, reportPath);
+
+  if (pastTheEnd != null) {
+    return { outcome: "refused", reason: pastTheEnd };
   }
 
   // Read the chain before the move: on a plain move the source is the device
@@ -130,18 +143,18 @@ export function moveDeviceIntoContainer(
   }
 
   if (carry != null) {
-    carryChainMixer(carry, container);
+    carryChainMixer(carry, container, notes);
   } else if (source != null) {
     // Device duplication passes the real source alongside a temp copy; a plain
     // move leaves `source` defaulted to the device itself.
-    warnIfChainMixerLeftBehind(chain, container, source.id !== device.id);
+    noteChainMixerLeftBehind(chain, container, source.id !== device.id, notes);
   }
 
   return { outcome: "moved", container };
 }
 
 /**
- * Whether a destination index is past where a device can go, warning if it is.
+ * Why a destination index is past where a device can go, when it is.
  *
  * Live takes 0 through the container's device count — count itself appends —
  * and ignores anything higher without a word, for a device arriving from
@@ -153,29 +166,25 @@ export function moveDeviceIntoContainer(
  * device that never left it.
  * @param position - Index the move is aimed at, or null to insert at the top
  * @param container - Where the device is headed
- * @param reportPath - How to spell the destination in the warning
- * @returns True when the move can't happen, having warned why
+ * @param reportPath - How to spell the destination back to the caller
+ * @returns The reason, or null when the move can happen
  */
-function isPastTheEnd(
+function pastTheEndReason(
   position: number | null,
   container: LiveAPI,
   reportPath: string,
-): boolean {
+): string | null {
   if (position == null) {
-    return false;
+    return null;
   }
 
   const count = container.getChildIds("devices").length;
 
   if (position <= count) {
-    return false;
+    return null;
   }
 
-  console.warn(
-    `device not moved: "${reportPath}" is past the end of a container holding ${count} device${count === 1 ? "" : "s"}`,
-  );
-
-  return true;
+  return `"${reportPath}" is past the end of a container holding ${count} device${count === 1 ? "" : "s"}`;
 }
 
 /**

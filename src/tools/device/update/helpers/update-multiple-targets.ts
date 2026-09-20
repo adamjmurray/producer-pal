@@ -44,10 +44,12 @@ import {
   updateNonDeviceProperties,
 } from "./update-device-properties.ts";
 import {
-  isDeviceType,
-  isValidUpdateType,
-  reportIgnoredParams,
-} from "./update-target-types.ts";
+  type TargetNotes,
+  newTargetNotes,
+  refuseTargetWork,
+  reportTargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
+import { isDeviceType, isValidUpdateType } from "./update-target-types.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
 interface UpdateTargetResult extends ChainMixerReport {
@@ -260,11 +262,13 @@ function updateTarget(
     throw new Error(`cannot update ${type} objects: ${targetLabel(target)}`);
   }
 
+  const notes = newTargetNotes();
+
   // Handle move operation first (before other updates)
   const moved =
     options.toPath == null
       ? undefined
-      : moveTargetToPath(target, type, options.toPath);
+      : moveTargetToPath(target, type, options.toPath, notes);
 
   // A move re-parents the object, so its toPath replaces the address the call
   // reached it by.
@@ -280,24 +284,20 @@ function updateTarget(
   if (!isDeviceType(type)) {
     // The chain's own mixer reads back here, so a clamped or snapped level is
     // visible instead of the caller's argument being assumed to have landed.
-    const { ignored, ...mixer } = updateNonDeviceProperties(
-      target,
-      type,
-      options,
-    );
+    const mixer = updateNonDeviceProperties(target, type, options, notes);
 
-    return reportIgnoredParams(
+    return reportTargetNotes(
       { id: target.id, ...pathField(target, written), ...mixer },
-      ignored,
-      type,
+      notes,
       options,
     );
   }
 
-  const { params, actions, ignored } = updateDeviceProperties(
+  const { params, actions } = updateDeviceProperties(
     target,
     type,
     options,
+    notes,
   );
   const result: UpdateTargetResult = {
     id: target.id,
@@ -312,7 +312,7 @@ function updateTarget(
     result.actions = actions;
   }
 
-  return reportIgnoredParams(result, ignored, type, options);
+  return reportTargetNotes(result, notes, options);
 }
 
 /**
@@ -320,6 +320,7 @@ function updateTarget(
  * @param target - The object being updated
  * @param type - Its Live API type
  * @param toPath - Where the call asked to move it
+ * @param notes - What the target's entry has to say, added to
  * @returns The destination as the call spelled it, for naming the object
  *   afterwards; undefined when it stayed where it was
  */
@@ -327,26 +328,35 @@ function moveTargetToPath(
   target: LiveAPI,
   type: string,
   toPath: string,
+  notes: TargetNotes,
 ): WrittenContainer | undefined {
   if (isProducerPalDevice(target)) {
-    console.warn(
-      `cannot move the Producer Pal device ${targetLabel(target)}, skipping the move`,
+    refuseTargetWork(
+      notes,
+      ["toPath"],
+      "the Producer Pal device cannot be moved",
     );
 
     return undefined;
   }
 
   if (isDeviceType(type)) {
-    return moveDeviceAndName(target, toPath);
+    return moveDeviceAndName(target, toPath, notes);
   }
 
   if (type === "DrumChain") {
-    moveDrumChainToPath(target, toPath, false);
+    moveDrumChainToPath(target, toPath, false, notes);
 
     return undefined;
   }
 
-  console.warn(`cannot move ${type} ${targetLabel(target)}`);
+  // Only a chain is left: an updatable target is a device, a chain or a pad,
+  // devices and DrumChains are handled above, and a pad never reaches here.
+  refuseTargetWork(
+    notes,
+    ["toPath"],
+    "a chain cannot be moved; move its devices instead",
+  );
 
   return undefined;
 }
@@ -355,26 +365,36 @@ function moveTargetToPath(
  * Move a device, and say where it landed as the call spelled it.
  * @param device - The device being moved
  * @param toPath - Where the call asked to move it
+ * @param notes - What the device's entry has to say, added to
  * @returns The destination spelling, or undefined when the move didn't happen
  */
 function moveDeviceAndName(
   device: LiveAPI,
   toPath: string,
+  notes: TargetNotes,
 ): WrittenContainer | undefined {
-  const { outcome, container, reason } = moveDeviceToPath(device, toPath);
+  const { outcome, container, reason } = moveDeviceToPath(
+    device,
+    toPath,
+    device,
+    toPath,
+    notes,
+  );
 
   // The move is skipped either way, and the rest of this update — and of the
   // batch — carries on.
   if (outcome === "unresolvable") {
-    console.warn(`device not moved: ${reason}`);
+    refuseTargetWork(notes, ["toPath"], `not moved: ${reason}`);
   } else if (outcome === "no-destination") {
-    console.warn(`move target at path "${toPath}" does not exist`);
+    refuseTargetWork(
+      notes,
+      ["toPath"],
+      `not moved: nothing at toPath "${toPath}"`,
+    );
   } else if (outcome === "refused") {
     const explained = reason == null ? "" : `: ${reason}`;
 
-    console.warn(
-      `${targetLabel(device)} was not moved to "${toPath}"${explained}`,
-    );
+    refuseTargetWork(notes, ["toPath"], `not moved to "${toPath}"${explained}`);
   }
 
   // Live confirms the device is in this container before the move reports

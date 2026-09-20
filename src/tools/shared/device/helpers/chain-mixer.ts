@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type TargetNotes,
+  noteTarget,
+  refuseTargetWork,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import {
   type IndexedSend,
   type SendResult,
@@ -116,17 +120,24 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
  * pair reports under `sends` alongside the list, so one send has one shape.
  * @param chain - Chain or DrumChain LiveAPI object
  * @param params - Mixer values to set
+ * @param notes - What the chain's entry has to say, added to; left out where
+ *   the caller keeps no entry for this write
  * @returns What landed, read back
  */
 export function applyChainMixer(
   chain: LiveAPI,
   params: ChainMixerParams,
+  notes?: TargetNotes,
 ): ChainMixerApplied {
   const applied: ChainMixerApplied = {};
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
-    console.warn(`${chainLabel(chain)} has no mixer device`);
+    refuseTargetWork(
+      notes,
+      Object.keys(params),
+      "the chain has no mixer device",
+    );
 
     return applied;
   }
@@ -165,17 +176,20 @@ export function applyChainMixer(
 }
 
 /**
- * Warn when a device is moved or copied out of a chain whose mixer is
+ * Say when a device is moved or copied out of a chain whose mixer is
  * non-default. The chain fader belongs to the chain, so it doesn't follow the
  * device — a common surprise on device-based drum pad moves.
  * @param chain - The chain the device came out of, from {@link sourceChain}
  * @param destination - Container the device went into (chain or track)
  * @param isCopy - True when the device is being copied, not moved
+ * @param notes - What the device's entry has to say, added to; left out where
+ *   the caller keeps no entry for this move
  */
-export function warnIfChainMixerLeftBehind(
+export function noteChainMixerLeftBehind(
   chain: LiveAPI | null,
   destination: LiveAPI,
   isCopy = false,
+  notes?: TargetNotes,
 ): void {
   if (chain == null || chain.id === destination.id) {
     return;
@@ -196,7 +210,8 @@ export function warnIfChainMixerLeftBehind(
 
   const verb = isCopy ? "does not follow the copy" : "stays behind";
 
-  console.warn(
+  noteTarget(
+    notes,
     `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
   );
 }
@@ -273,10 +288,13 @@ export function chainMixerToCarry(
  * skipped, so announcing the intent up front contradicts the very next warning.
  * @param carry - Mixer values from {@link chainMixerToCarry}
  * @param destination - Chain to write them onto
+ * @param notes - What the device's entry has to say, added to; left out where
+ *   the caller keeps no entry for this move
  */
 export function carryChainMixer(
   carry: ChainMixerCarry,
   destination: LiveAPI,
+  notes?: TargetNotes,
 ): void {
   const { mixer } = carry;
   const applied = applyChainMixer(destination, {
@@ -304,14 +322,16 @@ export function carryChainMixer(
   }
 
   if (Object.keys(landed).length === 0) {
-    console.warn(
+    noteTarget(
+      notes,
       `${carry.from} trim could not be carried onto the destination chain — it stays on the chain the device left`,
     );
 
     return;
   }
 
-  console.warn(
+  noteTarget(
+    notes,
     `${carry.from} trim (${summarizeChainMixer(landed)}) carried onto the destination chain, which was empty and at defaults`,
   );
 }
@@ -427,8 +447,12 @@ function applyChainSend(
   const param = mixer.getChildAt("sends", index);
 
   if (param == null) {
-    console.warn(
-      `${chainLabel(chain)} has no send for return "${send.return}"`,
+    refused.push(
+      refusedSend(
+        send.return,
+        returns[index]?.id,
+        "the chain has no send for this return",
+      ),
     );
 
     return null;

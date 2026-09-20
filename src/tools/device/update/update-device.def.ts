@@ -93,7 +93,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: null,
     }),
     macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
-      default: "Rack only: set visible macro count (0-16)",
+      default:
+        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up.",
       smallModel: null,
     }),
     abCompare: param(z.enum(["a", "b", "save"]).optional(), {
