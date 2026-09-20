@@ -227,36 +227,13 @@ describe("ppal-duplicate", () => {
   ])(
     "reports a scene's arrangement copies $desc by id and path, not by name",
     async ({ arrangementLength, name }) => {
-      const createClipResult = await ctx.client!.callTool({
-        name: "ppal-create-clip",
-        arguments: {
-          path: `t${EMPTY_MIDI_TRACK}/s6`,
-          notes: "C3 1|1",
-          length: "1bar",
-        },
-      });
+      await createSceneClip(6);
 
-      expect(
-        parseToolResult<{ id: string }>(createClipResult).id,
-      ).toBeDefined();
-
-      await sleep(100);
-
-      const scenesResult = await ctx.client!.callTool({
-        name: "ppal-read-live-set",
-        arguments: { include: ["scenes"] },
-      });
-      const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
-
-      const dupResult = await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "scene",
-          id: scenes.scenes![6]!.id,
-          toPath: "[41|1]",
-          name,
-          ...(arrangementLength == null ? {} : { arrangementLength }),
-        },
+      const scenes = await readScenes();
+      const dupResult = await duplicateScene(scenes.scenes![6]!.id, {
+        toPath: "[41|1]",
+        name,
+        ...(arrangementLength == null ? {} : { arrangementLength }),
       });
       const dup = parseToolResult<{ clips: Array<Record<string, unknown>> }>(
         dupResult,
@@ -284,33 +261,12 @@ describe("ppal-duplicate", () => {
   // Color, like name, lands on every clip the copy lands — s7 starts empty,
   // so the clip created here is the whole scene.
   it("puts color on a scene's arrangement copies", async () => {
-    const createClipResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${EMPTY_MIDI_TRACK}/s7`,
-        notes: "C3 1|1",
-        length: "1bar",
-      },
-    });
+    await createSceneClip(7);
 
-    expect(parseToolResult<{ id: string }>(createClipResult).id).toBeDefined();
-
-    await sleep(100);
-
-    const scenesResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
-    });
-    const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
-
-    const dupResult = await ctx.client!.callTool({
-      name: "ppal-duplicate",
-      arguments: {
-        type: "scene",
-        id: scenes.scenes![7]!.id,
-        toPath: "[45|1]",
-        color: "#00FF00",
-      },
+    const scenes = await readScenes();
+    const dupResult = await duplicateScene(scenes.scenes![7]!.id, {
+      toPath: "[45|1]",
+      color: "#00FF00",
     });
     const dup = parseToolResult<{ clips: Array<{ id: string }> }>(dupResult);
 
@@ -329,20 +285,11 @@ describe("ppal-duplicate", () => {
   });
 
   it("refuses a scene duplicate whose toPath names no arrangement position", async () => {
-    const scenesResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
-    });
-    const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
+    const scenes = await readScenes();
     const initialSceneCount = scenes.scenes!.length;
 
-    const dupResult = await ctx.client!.callTool({
-      name: "ppal-duplicate",
-      arguments: {
-        type: "scene",
-        id: scenes.scenes![0]!.id,
-        toPath: `t${EMPTY_MIDI_TRACK}/s5`,
-      },
+    const dupResult = await duplicateScene(scenes.scenes![0]!.id, {
+      toPath: `t${EMPTY_MIDI_TRACK}/s5`,
     });
 
     expect(isToolError(dupResult)).toBe(true);
@@ -351,30 +298,14 @@ describe("ppal-duplicate", () => {
     await sleep(100);
 
     // Nothing was inserted — a call this refuses changes nothing.
-    const afterResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
-    });
-    const after = parseToolResult<ReadLiveSetResult>(afterResult);
-
-    expect(after.scenes!.length).toBe(initialSceneCount);
+    expect((await readScenes()).scenes!.length).toBe(initialSceneCount);
   });
 
   it("warns and ignores count when a scene duplicate names several arrangement positions", async () => {
-    const scenesResult = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
-    });
-    const scenes = parseToolResult<ReadLiveSetResult>(scenesResult);
-
-    const dupResult = await ctx.client!.callTool({
-      name: "ppal-duplicate",
-      arguments: {
-        type: "scene",
-        id: scenes.scenes![7]!.id,
-        toPath: "[49|1],[53|1]",
-        count: 2,
-      },
+    const scenes = await readScenes();
+    const dupResult = await duplicateScene(scenes.scenes![7]!.id, {
+      toPath: "[49|1],[53|1]",
+      count: 2,
     });
     const { data: dup, warnings } =
       parseToolResultWithWarnings<Array<{ clips: unknown[] }>>(dupResult);
@@ -820,6 +751,54 @@ describe("ppal-duplicate", () => {
     expect(message).not.toContain("live_set");
   });
 });
+
+/**
+ * Put a one-bar clip in a session slot, so the scene there has one to copy.
+ * @param sceneIndex - The scene to write into
+ */
+async function createSceneClip(sceneIndex: number): Promise<void> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`,
+      notes: "C3 1|1",
+      length: "1bar",
+    },
+  });
+
+  expect(parseToolResult<{ id: string }>(result).id).toBeDefined();
+
+  await sleep(100);
+}
+
+/**
+ * The Set as ppal-read-live-set reports it, with its scenes.
+ * @returns The live set
+ */
+async function readScenes(): Promise<ReadLiveSetResult> {
+  return parseToolResult<ReadLiveSetResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["scenes"] },
+    }),
+  );
+}
+
+/**
+ * Duplicate a scene.
+ * @param sceneId - The scene to copy
+ * @param args - The ppal-duplicate arguments beyond the type and the id
+ * @returns The raw tool result
+ */
+async function duplicateScene(
+  sceneId: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  return ctx.client!.callTool({
+    name: "ppal-duplicate",
+    arguments: { type: "scene", id: sceneId, ...args },
+  });
+}
 
 // Type interfaces
 

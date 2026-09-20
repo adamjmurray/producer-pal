@@ -50,25 +50,45 @@ async function readThreshold(deviceId: string): Promise<ParamInfo> {
   return threshold as ParamInfo;
 }
 
+/**
+ * Write Threshold twice in one call, naming it two ways.
+ * @param deviceId - The device to write to
+ * @param firstSpelling - How the first entry names the param
+ * @returns The refused result
+ */
+async function writeThresholdTwice(
+  deviceId: string,
+  firstSpelling: string,
+): Promise<unknown> {
+  return ctx.client!.callTool({
+    name: "ppal-update-device",
+    arguments: {
+      id: deviceId,
+      params: [
+        { name: firstSpelling, value: "-6" },
+        { name: "Threshold", value: "-12" },
+      ],
+    },
+  });
+}
+
+/**
+ * A fresh Glue Compressor and its Threshold param as it reads now.
+ * @returns The device's id and its Threshold param
+ */
+async function glueCompressor(): Promise<{
+  deviceId: string;
+  before: ParamInfo;
+}> {
+  const deviceId = await createTestDevice(ctx.client!, "Glue Compressor", "t0");
+
+  return { deviceId, before: await readThreshold(deviceId) };
+}
+
 describe("ppal-update-device with the same param named twice", () => {
   it("is refused before any write lands", async () => {
-    const deviceId = await createTestDevice(
-      ctx.client!,
-      "Glue Compressor",
-      "t0",
-    );
-    const before = await readThreshold(deviceId);
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: {
-        id: deviceId,
-        params: [
-          { name: "Threshold", value: "-6" },
-          { name: "Threshold", value: "-12" },
-        ],
-      },
-    });
+    const { deviceId, before } = await glueCompressor();
+    const result = await writeThresholdTwice(deviceId, "Threshold");
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toMatch(/Threshold.*more than once/);
@@ -78,23 +98,8 @@ describe("ppal-update-device with the same param named twice", () => {
   // The id and the name are different text, so only resolving both to the same
   // param catches this one. The refusal names both spellings.
   it("is refused when one entry is the id and the other the name", async () => {
-    const deviceId = await createTestDevice(
-      ctx.client!,
-      "Glue Compressor",
-      "t0",
-    );
-    const before = await readThreshold(deviceId);
-
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: {
-        id: deviceId,
-        params: [
-          { name: before.id, value: "-6" },
-          { name: "Threshold", value: "-12" },
-        ],
-      },
-    });
+    const { deviceId, before } = await glueCompressor();
+    const result = await writeThresholdTwice(deviceId, before.id);
 
     expect(isToolError(result)).toBe(true);
 

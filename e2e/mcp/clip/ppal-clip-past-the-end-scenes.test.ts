@@ -71,18 +71,24 @@ describe("a clip slot past the last scene", () => {
     return clip.id;
   }
 
-  it("is created by ppal-create-clip, which names the scenes it made", async () => {
+  /**
+   * Write into the slot one scene past the last, and check the entry names the
+   * scenes it made and warns about nothing.
+   * @param toolName - The tool to call
+   * @param argsFor - The call's arguments, given the scene it writes into
+   * @returns What the call reported, and the scene it wrote into
+   */
+  async function expectScenesCreatedPastTheEnd(
+    toolName: string,
+    argsFor: (target: number) => Record<string, unknown>,
+  ): Promise<{ data: CreateClipResult; target: number }> {
     const before = await sceneCount();
     const target = before + 1;
 
     const { data, warnings } = parseToolResultWithWarnings<CreateClipResult>(
       await ctx.client!.callTool({
-        name: "ppal-create-clip",
-        arguments: {
-          path: `${SCRATCH}/s${target}`,
-          notes: "C3 1|1",
-          length: "1bar",
-        },
+        name: toolName,
+        arguments: argsFor(target),
       }),
     );
 
@@ -91,50 +97,44 @@ describe("a clip slot past the last scene", () => {
     expect(data.path).toBe(`${SCRATCH}/s${target}`);
     expect(data.created).toBe(`s${before}-s${target}`);
     expect(warnings).toStrictEqual([]);
+
+    return { data, target };
+  }
+
+  it("is created by ppal-create-clip, which names the scenes it made", async () => {
+    const { target } = await expectScenesCreatedPastTheEnd(
+      "ppal-create-clip",
+      (scene) => ({
+        path: `${SCRATCH}/s${scene}`,
+        notes: "C3 1|1",
+        length: "1bar",
+      }),
+    );
+
     expect(await sceneCount()).toBe(target + 1);
   });
 
   it("is created by a ppal-update-clip toPath, which used to refuse it", async () => {
     const clipId = await clipAt(0);
-    const before = await sceneCount();
-    const target = before + 1;
-
-    const { data, warnings } = parseToolResultWithWarnings<CreateClipResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-clip",
-        arguments: { id: clipId, toPath: `${SCRATCH}/s${target}` },
+    const { data } = await expectScenesCreatedPastTheEnd(
+      "ppal-update-clip",
+      (scene) => ({
+        id: clipId,
+        toPath: `${SCRATCH}/s${scene}`,
       }),
     );
 
-    await sleep(100);
-
-    expect(data.path).toBe(`${SCRATCH}/s${target}`);
-    expect(data.created).toBe(`s${before}-s${target}`);
     expect(data.reason).toBeUndefined();
-    expect(warnings).toStrictEqual([]);
   });
 
   it("is created by a ppal-duplicate toPath, which used to refuse it", async () => {
     const clipId = await clipAt(1);
-    const before = await sceneCount();
-    const target = before + 1;
 
-    const { data, warnings } = parseToolResultWithWarnings<CreateClipResult>(
-      await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "clip",
-          id: clipId,
-          toPath: `${SCRATCH}/s${target}`,
-        },
-      }),
-    );
-
-    await sleep(100);
-
-    expect(data.path).toBe(`${SCRATCH}/s${target}`);
-    expect(data.created).toBe(`s${before}-s${target}`);
-    expect(warnings).toStrictEqual([]);
+    await expectScenesCreatedPastTheEnd("ppal-duplicate", (scene) => ({
+      type: "clip",
+      id: clipId,
+      toPath: `${SCRATCH}/s${scene}`,
+    }));
   });
 
   // A scene is not a destination here: `path` names the scene to write to, and

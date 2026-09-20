@@ -3,11 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/** Reading and updating a clip, for any e2e suite that has to do both. */
+/** Creating, reading and updating a clip, for e2e suites that do several. */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
 import {
+  type CreateClipResult,
   getToolErrorMessage,
   isToolError,
   parseToolResult,
@@ -16,6 +17,38 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
+
+/**
+ * Create a MIDI arrangement clip, on a track or on one of its take lanes.
+ * @param client - The connected MCP client
+ * @param trackIndex - Track index
+ * @param position - Where the clip starts, in bar|beat format
+ * @param args - The clip's name, its length ("1bar" by default), and a path
+ *   suffix naming a take lane (e.g. "/l0")
+ * @returns The created clip
+ */
+export async function createArrangementClip(
+  client: Client,
+  trackIndex: number,
+  position: string,
+  args: { name: string; length?: string; laneSuffix?: string },
+): Promise<CreateClipResult> {
+  const result = await client.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      path: `t${trackIndex}${args.laneSuffix ?? ""}[${position}]`,
+      name: args.name,
+      notes: "C3 D3 E3 F3 1|1",
+      length: args.length ?? "1bar",
+    },
+  });
+
+  await sleep(100);
+
+  // Warnings are tolerated: creating on a take lane always warns that the lane
+  // is hidden until the track's arrow is expanded.
+  return parseToolResultWithWarnings<CreateClipResult>(result).data;
+}
 
 /**
  * Read a clip by id or path, with every include.

@@ -22,6 +22,7 @@ import {
   type SkippedTargetResult,
   sleep,
 } from "../mcp-test-helpers";
+import { expectPaletteColorReported } from "./scene-color-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -87,34 +88,31 @@ describe("ppal-update-scene", () => {
     expect(scene.color).toBeDefined();
   });
 
+  /**
+   * Write a color to a scene.
+   * @param id - The scene to recolor
+   * @param color - The color to ask for
+   * @returns What the call reported
+   */
+  async function updateSceneColor(
+    id: string,
+    color: string,
+  ): Promise<UpdateSceneResult> {
+    return parseToolResult<UpdateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-scene",
+        arguments: { id, color },
+      }),
+    );
+  }
+
   it("reports the palette color Live snapped to, and says nothing when it didn't", async () => {
     const [sceneId, secondSceneId] = await createScenes();
-    const snapped = parseToolResult<UpdateSceneResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-scene",
-        arguments: { id: sceneId, color: "#123456" },
-      }),
+
+    await expectPaletteColorReported(
+      (color) => updateSceneColor(sceneId!, color),
+      (color) => updateSceneColor(secondSceneId!, color),
     );
-
-    // #123456 is not a Live swatch, so the entry carries what landed instead.
-    expect(snapped.color).toMatch(/^#[\dA-F]{6}$/);
-    expect(snapped.color).not.toBe("#123456");
-    expect(snapped.reason).toBe(
-      `color #123456 is not in Live's palette; landed as ${snapped.color}`,
-    );
-
-    await sleep(100);
-
-    // The palette color Live just named, asked for verbatim, has nothing to say.
-    const exact = parseToolResult<UpdateSceneResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-scene",
-        arguments: { id: secondSceneId, color: snapped.color },
-      }),
-    );
-
-    expect(exact.color).toBeUndefined();
-    expect(exact.reason).toBeUndefined();
   });
 
   it("sets and disables the tempo override", async () => {

@@ -34,6 +34,7 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   arrangementClipAt,
+  createArrangementClip,
   expectRefusedUpdate,
   moveOffTakeLane,
   readClipFully,
@@ -509,21 +510,10 @@ async function createClip(
   name: string,
   laneSuffix = "",
 ): Promise<CreateClipResult> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      path: `t${EMPTY_MIDI_TRACK}${laneSuffix}[${position}]`,
-      name,
-      notes: "C3 D3 E3 F3 1|1",
-      length: "1bar",
-    },
+  return createArrangementClip(ctx.client!, EMPTY_MIDI_TRACK, position, {
+    name,
+    laneSuffix,
   });
-
-  await sleep(100);
-
-  // Warnings are tolerated: creating on a take lane always warns that the lane
-  // is hidden until the track's arrow is expanded.
-  return parseToolResultWithWarnings<CreateClipResult>(result).data;
 }
 
 /**

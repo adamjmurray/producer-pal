@@ -15,12 +15,14 @@ import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
   isToolError,
-  parseToolResultWithWarnings,
   type CreateClipResult,
   setupMcpTestContext,
-  sleep,
 } from "../../mcp-test-helpers.ts";
-import { readClipFully, updateClip } from "../helpers/clip-io-test-helpers.ts";
+import {
+  createArrangementClip,
+  readClipFully,
+  updateClip,
+} from "../helpers/clip-io-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -104,19 +106,9 @@ async function createClip(
   length: string,
   laneSuffix = "",
 ): Promise<CreateClipResult> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      path: `t${EMPTY_MIDI_TRACK}${laneSuffix}[${position}]`,
-      name,
-      notes: "C3 D3 E3 F3 1|1",
-      length,
-    },
+  return createArrangementClip(ctx.client!, EMPTY_MIDI_TRACK, position, {
+    name,
+    length,
+    laneSuffix,
   });
-
-  await sleep(100);
-
-  // Warnings are tolerated: creating on a take lane always warns that the
-  // lane is hidden until the track's arrow is expanded.
-  return parseToolResultWithWarnings<CreateClipResult>(result).data;
 }

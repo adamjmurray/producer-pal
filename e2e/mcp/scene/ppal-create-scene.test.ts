@@ -20,6 +20,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { expectPaletteColorReported } from "./scene-color-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -188,33 +189,29 @@ describe("ppal-create-scene", () => {
     expect(finalSceneCount).toBeGreaterThan(initialSceneCount);
   });
 
+  /**
+   * Create a scene at the end of the Set, asking for a color.
+   * @param name - The scene's name
+   * @param color - The color to ask for
+   * @returns What the call reported
+   */
+  async function createColoredScene(
+    name: string,
+    color: string,
+  ): Promise<CreateSceneResult> {
+    return parseToolResult<CreateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { path: "s+", name, color },
+      }),
+    );
+  }
+
   it("reports the palette color Live snapped to, and says nothing when it didn't", async () => {
-    const snapped = parseToolResult<CreateSceneResult>(
-      await ctx.client!.callTool({
-        name: "ppal-create-scene",
-        arguments: { path: "s+", name: "Snapped", color: "#123456" },
-      }),
+    await expectPaletteColorReported(
+      (color) => createColoredScene("Snapped", color),
+      (color) => createColoredScene("Exact", color),
     );
-
-    // #123456 is not a Live swatch, so the entry carries what landed instead.
-    expect(snapped.color).toMatch(/^#[\dA-F]{6}$/);
-    expect(snapped.color).not.toBe("#123456");
-    expect(snapped.reason).toBe(
-      `color #123456 is not in Live's palette; landed as ${snapped.color}`,
-    );
-
-    await sleep(100);
-
-    // The palette color Live just named, asked for verbatim, has nothing to say.
-    const exact = parseToolResult<CreateSceneResult>(
-      await ctx.client!.callTool({
-        name: "ppal-create-scene",
-        arguments: { path: "s+", name: "Exact", color: snapped.color },
-      }),
-    );
-
-    expect(exact.color).toBeUndefined();
-    expect(exact.reason).toBeUndefined();
   });
 
   // capture mode reached setColor only after capture_and_insert_scene had

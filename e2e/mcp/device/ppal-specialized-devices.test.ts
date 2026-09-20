@@ -136,6 +136,31 @@ async function updateDevice(
   await sleep(100);
 }
 
+/**
+ * Write a sample path to a device and hand back what the entry said about it.
+ * @param deviceId - The device to write to
+ * @param samplePath - The sample path to write
+ * @returns The result's param entries
+ */
+async function writeSample(
+  deviceId: string,
+  samplePath: string,
+): Promise<PseudoParam[] | undefined> {
+  const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        id: deviceId,
+        params: [{ name: "sample", value: samplePath }],
+      },
+    }),
+  );
+
+  await sleep(100);
+
+  return data.params;
+}
+
 describe("specialized devices: Drift", () => {
   it("round-trips mod-matrix slots and asserts the raw indices", async () => {
     // ppal-live-api is excluded from the default e2e tool whitelist; re-enable
@@ -622,18 +647,11 @@ describe("specialized devices: Simpler", () => {
 
     // Absolute, so nothing refuses it up front — Live takes replace_sample,
     // finds no file, and loads nothing.
-    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { id, params: [{ name: "sample", value: missing }] },
-      }),
-    );
-
-    await sleep(100);
+    const params = await writeSample(id, missing);
 
     // read-device omits an empty Simpler's sample too, so this entry is the
     // only thing anywhere that says the write never landed.
-    expect(data.params).toStrictEqual([
+    expect(params).toStrictEqual([
       { name: "sample", ok: false, reason: "written, but no value reads back" },
     ]);
     expect(await readDevice(id, ["sample"])).not.toHaveProperty("sample");
@@ -648,19 +666,12 @@ describe("specialized devices: Simpler", () => {
     });
     await sleep(100);
 
-    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { id, params: [{ name: "sample", value: missing }] },
-      }),
-    );
-
-    await sleep(100);
+    const params = await writeSample(id, missing);
 
     // A loaded sample gives the read-back a path to report, and reporting it
     // as the value would read as a write that landed — the caller would only
     // notice by diffing it against the path it sent.
-    const [entry] = data.params ?? [];
+    const [entry] = params ?? [];
 
     expect(entry?.name).toBe("sample");
     expect(entry).not.toHaveProperty("value");
@@ -683,16 +694,9 @@ describe("specialized devices: Simpler", () => {
     // Rewriting the path already loaded leaves the read-back where it was, so
     // only the path the call asked for tells this apart from a write that
     // never landed — which means Live has to report the path it was handed.
-    const { data } = parseToolResultWithWarnings<{ params?: PseudoParam[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: { id, params: [{ name: "sample", value: SAMPLE_FILE }] },
-      }),
-    );
+    const params = await writeSample(id, SAMPLE_FILE);
 
-    await sleep(100);
-
-    expect(data.params).toStrictEqual([{ name: "sample", value: SAMPLE_FILE }]);
+    expect(params).toStrictEqual([{ name: "sample", value: SAMPLE_FILE }]);
   });
 
   it('include: ["*"] emits both the top-level sample field and the sample param entry', async () => {

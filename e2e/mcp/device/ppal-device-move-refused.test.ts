@@ -192,13 +192,7 @@ describe.each([
   ["a bare container", ""],
 ])("%s as a device destination", (_label, suffix) => {
   it("moves a device to the end of a track", async () => {
-    const from = await createMidiTrack(ctx.client!);
-    const to = await createMidiTrack(ctx.client!);
-    const deviceId = await createTestDevice(ctx.client!, "Reverb", `t${from}`);
-
-    // Something already on the destination, so the end is not also index 0.
-    await createTestDevice(ctx.client!, "Utility", `t${to}`);
-    const before = await readDeviceCount(ctx.client!, to);
+    const { deviceId, to, before } = await deviceAndBusyDestination("Reverb");
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
@@ -208,27 +202,12 @@ describe.each([
     expect(getToolWarnings(result)).not.toContainEqual(
       expect.stringContaining("past the end"),
     );
-    // The append lands at the index the count named, so the device is last.
-    expect(parseToolResult<{ path: string }>(result).path).toBe(
-      `t${to}/d${before}`,
-    );
-
-    await sleep(200);
-
-    expect(await readDeviceCount(ctx.client!, to)).toBe(before + 1);
+    await expectAppendedLast(result, to, before);
   });
 
   it("copies a device to the end of a track", async () => {
-    const from = await createMidiTrack(ctx.client!);
-    const to = await createMidiTrack(ctx.client!);
-    const deviceId = await createTestDevice(
-      ctx.client!,
-      "Compressor",
-      `t${from}`,
-    );
-
-    await createTestDevice(ctx.client!, "Utility", `t${to}`);
-    const before = await readDeviceCount(ctx.client!, to);
+    const { deviceId, to, before } =
+      await deviceAndBusyDestination("Compressor");
 
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
@@ -236,15 +215,48 @@ describe.each([
     });
 
     expect(isToolError(result)).toBe(false);
-    expect(parseToolResult<{ path: string }>(result).path).toBe(
-      `t${to}/d${before}`,
-    );
-
-    await sleep(200);
-
-    expect(await readDeviceCount(ctx.client!, to)).toBe(before + 1);
+    await expectAppendedLast(result, to, before);
   });
 });
+
+/**
+ * A device on a fresh track, with a fresh destination track that already holds
+ * one, so the end of the destination is not also index 0.
+ * @param deviceName - The device to put on the source track
+ * @returns The device's id, the destination track, and its device count
+ */
+async function deviceAndBusyDestination(
+  deviceName: string,
+): Promise<{ deviceId: string; to: number; before: number }> {
+  const from = await createMidiTrack(ctx.client!);
+  const to = await createMidiTrack(ctx.client!);
+  const deviceId = await createTestDevice(ctx.client!, deviceName, `t${from}`);
+
+  await createTestDevice(ctx.client!, "Utility", `t${to}`);
+
+  return { deviceId, to, before: await readDeviceCount(ctx.client!, to) };
+}
+
+/**
+ * Check a write landed in the destination's last slot.
+ * @param result - What the write reported
+ * @param to - The destination track index
+ * @param before - The destination's device count before the write
+ */
+async function expectAppendedLast(
+  result: unknown,
+  to: number,
+  before: number,
+): Promise<void> {
+  // The append lands at the index the count named, so the device is last.
+  expect(parseToolResult<{ path: string }>(result).path).toBe(
+    `t${to}/d${before}`,
+  );
+
+  await sleep(200);
+
+  expect(await readDeviceCount(ctx.client!, to)).toBe(before + 1);
+}
 
 interface MovedDevice {
   id: string;
