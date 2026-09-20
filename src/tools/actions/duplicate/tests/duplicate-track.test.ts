@@ -19,10 +19,7 @@ import {
   setupRoutingMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
-import {
-  capturedWarnings,
-  clearCapturedWarnings,
-} from "#src/shared/max/v8-warning-capture.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", async () => {
@@ -195,7 +192,10 @@ describe("duplicate - track duplication", () => {
       id: "track1",
     });
 
-    expect(result).toStrictEqual(createTrackResult(1));
+    expect(result).toStrictEqual({
+      ...createTrackResult(1),
+      reason: "the Producer Pal device was not copied",
+    });
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
 
     // Verify delete_device was called to remove Producer Pal device
@@ -203,10 +203,8 @@ describe("duplicate - track duplication", () => {
       "delete_device",
       1, // Index 1 where the Producer Pal device is
     );
-    // ...and the removal is reported to the user.
-    expect(capturedWarnings()).toContain(
-      "removed the Producer Pal device from the new track t1 (id live_set/tracks/1) - it cannot be duplicated",
-    );
+    // The copy's entry carries it, so nothing warns about it.
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should not remove Producer Pal device when withoutDevices is true", async () => {
@@ -248,16 +246,17 @@ describe("duplicate - track duplication", () => {
         routeToSource: true,
       });
 
-      expect(result).toStrictEqual(createTrackResult(1));
+      expect(result).toStrictEqual({
+        ...createTrackResult(1),
+        reason:
+          'source track t0 (id live_set/tracks/0): set its input to "No Input"',
+      });
 
       // Source input was "Audio In" (not "No Input"), so it is switched to the
       // "No Input" routing type and the change is reported.
       expect(sourceTrack.set).toHaveBeenCalledWith(
         "input_routing_type",
         JSON.stringify({ input_routing_type: { identifier: "no_input_id" } }),
-      );
-      expect(capturedWarnings()).toContain(
-        'Changed track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input"',
       );
 
       // New track output is routed to the (single-name-match) source track.
@@ -320,15 +319,21 @@ describe("duplicate - track duplication", () => {
         },
       });
 
-      await duplicate({ type: "track", id: "track1", routeToSource: true });
+      const result = (await duplicate({
+        type: "track",
+        id: "track1",
+        routeToSource: true,
+      })) as { reason?: string };
 
       expect(newTrack.set).not.toHaveBeenCalledWith(
         "output_routing_type",
         expect.anything(),
       );
-      expect(capturedWarnings()).toContain(
-        'Could not find track "Source Track" t0 (id live_set/tracks/0) in routing options',
+      expect(result.reason).toBe(
+        'not routed to the source: no output option named "Source Track"',
       );
+      // The copy's entry carries it, so nothing warns about it.
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should not change source track monitoring if already set to In", async () => {
@@ -403,42 +408,34 @@ describe("duplicate - track duplication", () => {
         arm: 0,
       });
 
-      await duplicate({
+      const result = (await duplicate({
         type: "track",
         id: "track1",
         routeToSource: true,
-      });
+      })) as { reason?: string };
 
       // Verify the source track was armed
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
 
       // It wasn't already armed, so the arm action is reported.
-      expect(capturedWarnings()).toContain(
-        "routeToSource: armed the source track t0 (id live_set/tracks/0)",
-      );
+      expect(result.reason).toContain("armed it");
     });
 
-    it("should not emit arm warning when source track is already armed", async () => {
+    it("does not report arming a source track that was already armed", async () => {
       const { sourceTrack } = setupRoutingMocks({
         inputRoutingName: "Audio In",
         arm: 1,
       });
 
-      clearCapturedWarnings();
-
-      await duplicate({
+      const result = (await duplicate({
         type: "track",
         id: "track1",
         routeToSource: true,
-      });
+      })) as { reason?: string };
 
       // Verify the source track was still set to armed (even though it already was)
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
-
-      // Verify the arm warning was NOT emitted since it was already armed
-      expect(capturedWarnings()).not.toContain(
-        "routeToSource: armed the source track t0 (id live_set/tracks/0)",
-      );
+      expect(result.reason).not.toContain("armed it");
     });
   });
 

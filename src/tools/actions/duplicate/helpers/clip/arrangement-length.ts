@@ -8,7 +8,6 @@ import {
   durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
@@ -69,7 +68,7 @@ export function parseArrangementLength(
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length for updateClip)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
  * @param name - Optional name for the clips
- * @param context - Context object with silenceWavPath
+ * @param context - Context object with silenceWavPath (the adapter always sets it)
  * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
  */
@@ -90,12 +89,6 @@ export async function createClipsForLength(
 
   if (arrangementLengthBeats < sourceClipLength) {
     // Case 1: Shortening - use holding area approach (preserves clip data including envelopes)
-    if (!isMidiClip && !context.silenceWavPath) {
-      console.warn(
-        "silenceWavPath missing in context - audio clip shortening may fail",
-      );
-    }
-
     // The holding copy is what gets moved onto the target, so it must not be
     // sitting there already: moveClipFromHolding would read that as a
     // self-overlap and skip the clear it needs to avoid the Ableton crash.

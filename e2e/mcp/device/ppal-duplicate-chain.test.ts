@@ -54,25 +54,28 @@ interface RackRead {
 }
 
 /**
- * Check a call raised the warnings it had to and no others. A substring check
- * on its own passes while an unrelated warning rides along — which is how the
- * false "trim stays behind" sat on these drum cases unnoticed.
- *
- * Every copy out of the Kit carries the macro-mappings warning, so a call that
- * has anything else to say lists both.
+ * Check a copy said what it had to on its own entry, and that the call warned
+ * about none of it. A substring check on its own passes while an unrelated
+ * warning rides along — which is how the false "trim stays behind" sat on these
+ * drum cases unnoticed.
+ * @param copy - The copy's entry
  * @param warnings - The call's warnings
- * @param expected - A substring of each warning the call should raise
+ * @param expected - A substring of each thing the entry should say
  */
-function expectOnlyWarnings(warnings: string[], expected: string[]): void {
+function expectOnlyReasons(
+  copy: ChainResult,
+  warnings: string[],
+  expected: string[],
+): void {
   for (const substring of expected) {
-    expect(warnings.join()).toContain(substring);
+    expect(copy.reason ?? "").toContain(substring);
   }
 
-  expect(
-    warnings.filter(
-      (warning) => !expected.some((substring) => warning.includes(substring)),
-    ),
-  ).toStrictEqual([]);
+  if (expected.length === 0) {
+    expect(copy.reason).toBeUndefined();
+  }
+
+  expect(warnings).toStrictEqual([]);
 }
 
 /**
@@ -121,9 +124,7 @@ describe("ppal-duplicate type=chain", () => {
     expect(made?.deviceCount).toBe(sourceDevices);
 
     // Outer has no macro mappings, so a copy out of it has nothing to report.
-    expect(warnings.filter((w) => !w.includes("macro mappings"))).toStrictEqual(
-      [],
-    );
+    expectOnlyReasons(copy, warnings, []);
   });
 
   // `c+` is the spelling for the append a chain copy always does; only real
@@ -201,13 +202,14 @@ describe("ppal-duplicate type=chain", () => {
       arguments: { id: clap!.id, sendGainDb: -12, sendReturn: "B Reverb" },
     });
 
-    const { warnings } = await callWithWarnings(ctx.client!, "ppal-duplicate", {
-      type: "chain",
-      id: clap!.id,
-      toPath: SUB_KIT,
-    });
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-duplicate",
+      { type: "chain", id: clap!.id, toPath: SUB_KIT },
+    );
 
-    expectOnlyWarnings(warnings, [
+    // Both are about this copy, so both ride on its entry rather than warning.
+    expectOnlyReasons(data as ChainResult, warnings, [
       "no return chain named",
       "has macro mappings",
     ]);
@@ -253,6 +255,9 @@ describe("ppal-duplicate type=chain", () => {
     });
 
     expect(isToolError(result)).toBe(true);
+    // Rack kinds in words: Live's class names mean nothing to a caller.
+    expect(getToolErrorMessage(result)).toContain("(an instrument rack)");
+    expect(getToolErrorMessage(result)).toContain("(a drum rack)");
     expect(getToolErrorMessage(result)).toContain("chains of its own kind");
   });
 
@@ -290,10 +295,12 @@ describe("ppal-duplicate type=chain", () => {
     expect(entries[1]).toStrictEqual({
       path: KIT,
       ok: false,
-      reason: expect.stringContaining("chains of its own kind"),
+      reason: expect.stringContaining(
+        '(an instrument rack) into "' + KIT + '" (a drum rack)',
+      ),
     });
     // The entry carries it, so nothing warns about it.
-    expectOnlyWarnings(warnings, []);
+    expect(warnings).toStrictEqual([]);
   });
 
   // The same carry as the instrument case below, on a chain addressed by its
@@ -317,7 +324,7 @@ describe("ppal-duplicate type=chain", () => {
     );
 
     // The Kit's macro mappings are the only thing this copy has to report.
-    expectOnlyWarnings(warnings, ["has macro mappings"]);
+    expectOnlyReasons(data as ChainResult, warnings, ["has macro mappings"]);
 
     const copy = (await readChains(`${KIT}/pE1`, 1)).find(
       (chain) => chain.id === (data as ChainResult).id,
@@ -346,7 +353,8 @@ describe("ppal-duplicate type=chain", () => {
       { type: "chain", id: source.id, name: "Trimmed Copy" },
     );
 
-    expect(warnings.join()).not.toContain("stays behind");
+    expect(warnings).toStrictEqual([]);
+    expect((data as ChainResult).reason ?? "").not.toContain("stays behind");
 
     const copy = (await readChains(OUTER)).find(
       (chain) => chain.id === (data as ChainResult).id,

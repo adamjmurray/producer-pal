@@ -79,7 +79,7 @@ describe("duplicate - device duplication", () => {
 
     // Default count (1) and no name → neither the count warn nor the name set fire.
     expect(consoleMock.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining("count parameter ignored"),
+      expect.stringContaining("copies go one per toPath"),
     );
     expect(tempDevice.set).not.toHaveBeenCalledWith("name", expect.anything());
 
@@ -170,7 +170,7 @@ describe("duplicate - device duplication", () => {
     await duplicate({ type: "device", id: "device1", count: 3 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      "count parameter ignored for device duplication (only single copy supported)",
+      "count 3 ignored: device copies go one per toPath",
     );
   });
 

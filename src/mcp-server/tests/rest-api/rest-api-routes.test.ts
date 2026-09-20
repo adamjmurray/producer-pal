@@ -308,8 +308,6 @@ describe("REST API Routes", () => {
         count: 1,
         id: "1",
         type: "clip",
-        withoutClips: false,
-        withoutDevices: false,
         toSlot: "2/0",
       });
       expect(body.warnings?.join("\n")).toContain(

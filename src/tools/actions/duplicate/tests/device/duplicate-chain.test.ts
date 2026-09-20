@@ -142,7 +142,9 @@ describe("duplicate - chain", () => {
     ).rejects.toThrow("is a rack return chain, which cannot be copied");
   });
 
-  it("refuses a destination rack of a different kind", async () => {
+  // Live's class names ("AudioEffectGroupDevice") mean nothing to a caller, so
+  // the refusal names both racks the way Live's own browser does.
+  it("refuses a destination rack of a different kind, in rack-kind words", async () => {
     setupRack();
     registerMockObject("rack-1", {
       path: livePath.track(1).device(0),
@@ -152,7 +154,23 @@ describe("duplicate - chain", () => {
 
     await expect(
       duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" }),
-    ).rejects.toThrow("a rack only holds chains of its own kind");
+    ).rejects.toThrow(
+      "cannot copy a chain from t0/d0 (id rack-0) (an instrument rack) into " +
+        '"t1/d0" (an audio effect rack) — a rack only holds chains of its own kind',
+    );
+  });
+
+  it("says a destination that is no rack at all is not one", async () => {
+    setupRack();
+    registerMockObject("rack-1", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: { class_name: "Reverb", return_chains: [] },
+    });
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0" }),
+    ).rejects.toThrow('into "t1/d0" (not a rack)');
   });
 
   // The destination keeps its slot, so the caller can pair the entries against
@@ -364,32 +382,33 @@ describe("duplicate - chain", () => {
     ).rejects.toThrow("no destination rack at toPath");
   });
 
-  it("warns that macro mappings do not come along, but only when there are some", async () => {
+  it("says on the copy's entry that macro mappings do not come along", async () => {
     setupRack({ hasMacroMappings: 1 });
 
-    await duplicate({ type: "chain", id: "chain-0" });
+    const result = (await duplicate({ type: "chain", id: "chain-0" })) as {
+      reason?: string;
+    };
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "macro mappings",
-    );
+    expect(result.reason).toContain("macro mappings");
+    // The entry carries it, so nothing warns about it.
+    expect(vi.mocked(consoleMock.warn)).not.toHaveBeenCalled();
   });
 
   it("stays quiet about macros on a rack that has none", async () => {
     setupRack();
 
-    await duplicate({ type: "chain", id: "chain-0" });
+    const result = await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
-      "macro mappings",
-    );
+    expect(result).not.toHaveProperty("reason");
   });
+
   it("warns that count is ignored, since only one copy is made", async () => {
     setupRack();
 
     await duplicate({ type: "chain", id: "chain-0", count: 2 });
 
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "count parameter ignored for chain duplication",
+      "count 2 ignored: chain copies go one per toPath",
     );
   });
 

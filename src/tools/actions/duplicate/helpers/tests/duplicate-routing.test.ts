@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -45,8 +45,8 @@ function setupTracks(spec: Array<{ id: string; name: string }>): void {
   }
 }
 
-// The warn-on-miss arm is covered below; this is the other one, where
-// duplicate names still resolve and the new track actually gets routed.
+// The unresolved arm is covered below; this is the other one, where duplicate
+// names still resolve and the new track actually gets routed.
 describe("configureRouting with duplicate track names", () => {
   it("routes the new track to the option at the source's creation position", () => {
     registerMockObject("live_set", {
@@ -76,7 +76,7 @@ describe("configureRouting with duplicate track names", () => {
       },
     });
 
-    configureRouting(LiveAPI.from(livePath.track(2)), 1);
+    configureRouting(LiveAPI.from(livePath.track(2)), 1, newTargetNotes());
 
     // Source id 5 sorts second among the two "Bass" tracks, so it takes the
     // second option rather than falling back to the warn-and-skip arm.
@@ -125,9 +125,7 @@ describe("findRoutingOptionForDuplicateNames", () => {
     expect(result).toStrictEqual(bassOption(1));
   });
 
-  it("warns and returns undefined when the source track is not among the duplicates", () => {
-    const warnSpy = vi.spyOn(console, "warn");
-
+  it("returns undefined when the source track is not among the duplicates", () => {
     setupTracks([
       { id: "5", name: "Bass" },
       { id: "2", name: "Bass" },
@@ -140,9 +138,6 @@ describe("findRoutingOptionForDuplicateNames", () => {
     );
 
     expect(result).toBeUndefined();
-    expect(warnSpy).toHaveBeenCalledWith(
-      'Could not find source track id 99 in the duplicate name list for "Bass"',
-    );
   });
   it("returns single match when no duplicates exist", () => {
     const result = findRouting("1", "Track 1", [

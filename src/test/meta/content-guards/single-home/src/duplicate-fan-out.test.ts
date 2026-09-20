@@ -9,7 +9,7 @@ import { filesContaining } from "#src/test/helpers/meta-test-helpers.ts";
 // A device copy and a chain copy each wrote the same preamble: split toPath,
 // claim the call's names, refuse a count, take the source id, fan out. The
 // count warning is what that preamble says, so a second one means a second copy.
-const COUNT_WARNING = /count parameter ignored for/;
+const COUNT_WARNING = /copies go one per toPath/;
 
 const HOME =
   "src/tools/actions/duplicate/helpers/device/copy-per-destination.ts";

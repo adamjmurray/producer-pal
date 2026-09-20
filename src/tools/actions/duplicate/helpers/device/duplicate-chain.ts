@@ -9,7 +9,6 @@
 // move already crosses racks freely.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/move-device.ts";
 import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import { readChainMixer } from "#src/tools/shared/device/helpers/chain-mixer.ts";
@@ -28,6 +27,12 @@ import {
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import {
+  newTargetNotes,
+  noteTarget,
+  type TargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
@@ -100,7 +105,7 @@ function duplicateChain(
   const sourceRack = LiveAPI.from(chainRackPath(chain));
   const destinationRack = resolveDestinationRack(toPath, sourceRack);
   const created = insertChain(destinationRack);
-  let reason: string | undefined;
+  const notes = newTargetNotes();
 
   // The chain exists from here on, so whatever goes wrong is reported on its
   // entry: rolling it back would cost the caller a chain they now have. Its
@@ -127,12 +132,15 @@ function duplicateChain(
       readChainMixer(chain),
       sourceRack,
       destinationRack,
+      notes,
     );
     copyChainDevices(chain, created);
-    warnIfMacrosLeftBehind(sourceRack);
+    noteMacrosLeftBehind(sourceRack, notes);
   } catch (error) {
-    reason = errorMessage(error);
+    noteTarget(notes, errorMessage(error));
   }
+
+  const reason = joinReasons(notes.said);
 
   return {
     id: created.id,
@@ -210,8 +218,9 @@ function resolveDestinationRack(
 
   if (destinationClass !== sourceClass) {
     throw new Error(
-      `cannot copy a chain from ${targetLabel(sourceRack)} (a ${sourceClass}) ` +
-        `into "${toPath}" (a ${destinationClass}) — a rack only holds chains of its own kind`,
+      `cannot copy a chain from ${targetLabel(sourceRack)} ` +
+        `(${rackKind(sourceClass)}) into "${toPath}" ` +
+        `(${rackKind(destinationClass)}) — a rack only holds chains of its own kind`,
     );
   }
 
@@ -359,17 +368,37 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
 
 /**
  * Say that macro mappings don't come along, but only when the source rack has
- * any — most racks don't, and an unconditional warning would be noise.
+ * any — most racks don't, and saying it every time would be noise.
  * @param sourceRack - The rack the source chain belongs to
+ * @param notes - What the copy's entry should say
  */
-function warnIfMacrosLeftBehind(sourceRack: LiveAPI): void {
+function noteMacrosLeftBehind(sourceRack: LiveAPI, notes: TargetNotes): void {
   if (sourceRack.getProperty("has_macro_mappings") !== 1) {
     return;
   }
 
-  console.warn(
+  noteTarget(
+    notes,
     `the source rack ${targetLabel(sourceRack)} has macro mappings, and ` +
       "they do not come with a copied chain — re-map the copy's devices in Live " +
       "if you need them",
   );
+}
+
+/** What each rack's Live class name is called in words. */
+const RACK_KINDS: Record<string, string> = {
+  AudioEffectGroupDevice: "an audio effect rack",
+  DrumGroupDevice: "a drum rack",
+  InstrumentGroupDevice: "an instrument rack",
+  MidiEffectGroupDevice: "a MIDI effect rack",
+};
+
+/**
+ * What kind of rack a device is, in the words the tools publish — never the
+ * Live class name, which means nothing to a caller.
+ * @param className - The device's Live class name
+ * @returns The rack kind with its article, or that it is no rack at all
+ */
+function rackKind(className: string): string {
+  return RACK_KINDS[className] ?? "not a rack";
 }

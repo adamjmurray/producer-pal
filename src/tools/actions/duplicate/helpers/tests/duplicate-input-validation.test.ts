@@ -28,7 +28,7 @@ describe("validateAndConfigureRouteToSource", () => {
     ).toThrow("routeToSource is only supported for type 'track'");
   });
 
-  it("forces withoutClips/withoutDevices to true and warns when the user passed false", () => {
+  it("forces withoutClips/withoutDevices to true and says so once", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
     const result = validateAndConfigureRouteToSource(
@@ -40,15 +40,25 @@ describe("validateAndConfigureRouteToSource", () => {
 
     // Returned config is forced to true for both, regardless of the user's false.
     expect(result).toStrictEqual({ withoutClips: true, withoutDevices: true });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(
-      "routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      "routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+      "withoutClips/withoutDevices ignored: routeToSource always copies " +
+        "without clips and devices",
     );
   });
 
-  it("does not warn when withoutClips/withoutDevices are not explicitly false", () => {
+  it("names only the param the call actually sent as false", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    validateAndConfigureRouteToSource("track", true, undefined, false);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "withoutDevices ignored: routeToSource always copies without clips " +
+        "and devices",
+    );
+  });
+
+  it("says nothing when withoutClips/withoutDevices are not explicitly false", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
     const result = validateAndConfigureRouteToSource(
@@ -59,11 +69,6 @@ describe("validateAndConfigureRouteToSource", () => {
     );
 
     expect(result).toStrictEqual({ withoutClips: true, withoutDevices: true });
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("ignoring user-provided withoutClips"),
-    );
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("ignoring user-provided withoutDevices"),
-    );
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

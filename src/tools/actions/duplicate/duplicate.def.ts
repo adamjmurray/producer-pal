@@ -67,11 +67,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: null,
     }),
 
-    withoutClips: param(z.boolean().default(false), {
+    withoutClips: param(z.boolean().optional(), {
       default: "exclude clips?",
       smallModel: null,
     }),
-    withoutDevices: param(z.boolean().default(false), {
+    withoutDevices: param(z.boolean().optional(), {
       default: "exclude devices?",
       smallModel: null,
     }),

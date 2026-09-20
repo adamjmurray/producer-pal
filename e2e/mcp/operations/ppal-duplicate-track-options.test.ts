@@ -28,6 +28,7 @@ interface LiveSetTracks {
 interface DuplicateTrackResult {
   id: string;
   clips?: unknown[];
+  reason?: string;
 }
 
 interface ReadTrackResult {
@@ -80,7 +81,7 @@ describe("ppal-duplicate track options", () => {
     expect(copied.sessionClipCount).toBe(source.sessionClipCount);
   });
 
-  it("routes the copy back to the source track", async () => {
+  it("routes the copy back to the source track, saying so on the copy's entry", async () => {
     const bass = (await readTracks()).tracks[1]!;
 
     const { data: copy, warnings } =
@@ -106,8 +107,34 @@ describe("ppal-duplicate track options", () => {
     expect(source.isArmed).toBe(true);
     expect(source.inputRoutingType?.name).toBe("No Input");
 
-    expect(warnings.join("\n")).toContain("armed the source track");
-    expect(warnings.join("\n")).toContain('to "No Input"');
+    // What the call did to the source belongs to the copy it did it for.
+    expect(copy.reason).toContain("armed it");
+    expect(copy.reason).toContain('set its input to "No Input"');
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("says once which copy params routeToSource settles itself", async () => {
+    const bass = (await readTracks()).tracks[1]!;
+
+    const { warnings } = parseToolResultWithWarnings<DuplicateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "track",
+          id: bass.id,
+          routeToSource: true,
+          withoutClips: false,
+          withoutDevices: false,
+        },
+      }),
+    );
+
+    // One warning for the pair, not one each: it is about the call's params,
+    // which no copy's entry can speak for.
+    expect(warnings).toStrictEqual([
+      "WARNING: withoutClips/withoutDevices ignored: routeToSource always " +
+        "copies without clips and devices",
+    ]);
   });
 
   it("refuses routeToSource for anything but a track", async () => {

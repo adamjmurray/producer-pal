@@ -137,6 +137,19 @@ it was given. A copy that landed but isn't what you asked for (a chain short a
 device, a pad copy that layered onto chains already there) carries a `reason`
 and no `ok`.
 
+**`ppal-duplicate`'s remaining warnings moved onto the copy's entry too.** A
+`routeToSource` copy says what it did to the source (armed it, set its input to
+`"No Input"`, or why it couldn't route at all) on the new track's own `reason`,
+and a track copy that had to drop the Producer Pal device says so there. A
+copied chain carries the sends the destination rack had no return chain for, and
+its source rack's macro mappings not coming along. A refusal to copy a chain
+between racks of different kinds now names both in words (`an instrument rack`,
+`a drum rack`) instead of Live class names like `InstrumentGroupDevice`. What is
+left as a warning is only what no entry can carry:
+`count ignored: <what> copies go one per toPath`, and
+`withoutClips/withoutDevices ignored: routeToSource always copies without clips and devices`
+(one line for the pair, naming only what you sent).
+
 **`ppal-create-clip` answers per destination named.** A `path` list mixing clip
 slots and arrangement positions used to come back clip slots first and the
 arrangement after; it now comes back in the order you named them, and `name` and

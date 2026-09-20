@@ -7,7 +7,6 @@
 // tracks and scenes take. Which destinations the source gets is settled before
 // it starts — see source-plan.ts.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -15,7 +14,10 @@ import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-position
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
 import { duplicateChainWithPaths } from "../device/duplicate-chain.ts";
 import { duplicateDeviceWithPaths } from "../device/duplicate-device.ts";
-import { copyPerDestination } from "../device/copy-per-destination.ts";
+import {
+  copyPerDestination,
+  warnCountIgnored,
+} from "../device/copy-per-destination.ts";
 import {
   duplicateDrumPad,
   resolveSourcePad,
@@ -219,11 +221,7 @@ function duplicateDrumPadSource(
   labels: CopyLabels,
   count: number,
 ): object[] {
-  if (count > 1) {
-    console.warn(
-      `count ${count} ignored: a drum pad copy goes to the pads toPath names`,
-    );
-  }
+  warnCountIgnored(count, "drum pad");
 
   const paths = pathEntries(source.toPath, "toPath");
 

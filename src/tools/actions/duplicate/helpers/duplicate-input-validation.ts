@@ -60,16 +60,17 @@ export function validateAndConfigureRouteToSource(
     throw new Error("routeToSource is only supported for type 'track'");
   }
 
-  // Emit warnings if user provided conflicting parameters
-  if (withoutClips === false) {
-    console.warn(
-      "routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
-    );
-  }
+  // About the call, not about any one copy: routeToSource settles both params
+  // before the sources are even read.
+  const ignored = [
+    ...(withoutClips === false ? ["withoutClips"] : []),
+    ...(withoutDevices === false ? ["withoutDevices"] : []),
+  ];
 
-  if (withoutDevices === false) {
+  if (ignored.length > 0) {
     console.warn(
-      "routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+      `${ignored.join("/")} ignored: routeToSource always copies without ` +
+        "clips and devices",
     );
   }
 

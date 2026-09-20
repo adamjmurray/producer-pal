@@ -3,8 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+// Routing a new track back to the one it was copied from. Everything this
+// changes is about the copy and its source, so it goes on the copy's own entry
+// rather than warning the whole call (ADR-0042).
+
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  noteTarget,
+  type TargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface RoutingType {
@@ -13,53 +20,33 @@ export interface RoutingType {
 }
 
 /**
- * Configure the source track input routing
- * @param sourceTrack - The source track LiveAPI object
- * @param sourceTrackName - The source track name
+ * Configure routing to source track
+ * @param newTrack - The new track LiveAPI object
+ * @param sourceTrackIndex - Source track index
+ * @param notes - What the new track's entry should say
  */
-function configureSourceTrackInput(
-  sourceTrack: LiveAPI,
-  sourceTrackName: string,
+export function configureRouting(
+  newTrack: LiveAPI,
+  sourceTrackIndex: number | undefined,
+  notes: TargetNotes,
 ): void {
-  // Arm the source track for input
-  const currentArm = sourceTrack.getProperty("arm");
+  // sourceTrackIndex is guaranteed by caller when routeToSource is true
+  const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex as number));
+  const sourceTrackName = sourceTrack.getName();
 
-  sourceTrack.set("arm", 1);
+  configureSourceTrackInput(sourceTrack, notes);
 
-  if (currentArm !== 1) {
-    console.warn(
-      `routeToSource: armed the source track ${targetLabel(sourceTrack)}`,
-    );
-  }
+  const availableTypes = newTrack.getProperty(
+    "available_output_routing_types",
+  ) as RoutingType[] | null;
 
-  const currentInputType = sourceTrack.getProperty(
-    "input_routing_type",
-  ) as RoutingType | null;
-  const currentInputName = currentInputType?.display_name;
-
-  if (currentInputName !== "No Input") {
-    // Set source track input to "No Input" to prevent unwanted external input
-    const sourceInputTypes = sourceTrack.getProperty(
-      "available_input_routing_types",
-    ) as RoutingType[] | null;
-    const noInput = sourceInputTypes?.find(
-      (type) => type.display_name === "No Input",
-    );
-
-    if (noInput) {
-      sourceTrack.setProperty("input_routing_type", {
-        identifier: noInput.identifier,
-      });
-      // Warn that input routing changed
-      console.warn(
-        `Changed track "${sourceTrackName}" ${targetLabel(sourceTrack)} input routing from "${currentInputName}" to "No Input"`,
-      );
-    } else {
-      console.warn(
-        `Tried to change track "${sourceTrackName}" ${targetLabel(sourceTrack)} input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
-      );
-    }
-  }
+  applyOutputRouting(
+    newTrack,
+    sourceTrack,
+    sourceTrackName,
+    availableTypes,
+    notes,
+  );
 }
 
 /**
@@ -118,113 +105,112 @@ export function findRoutingOptionForDuplicateNames(
     (track) => track.id === sourceTrack.id,
   );
 
-  if (sourcePosition === -1) {
-    console.warn(
-      `Could not find source track ${targetLabel(sourceTrack)} in the duplicate name list for "${sourceTrackName}"`,
-    );
-
-    return undefined;
-  }
-
-  // Return the routing option at the same position
-  return matchingOptions[sourcePosition];
+  // The caller reports the same thing either way: the name is ambiguous.
+  return sourcePosition === -1 ? undefined : matchingOptions[sourcePosition];
 }
 
+// --- Helpers below main exports ---
+
 /**
- * Find source routing for duplicate track
+ * Arm the source track and take its input off whatever it was listening to, so
+ * the copy feeding it doesn't pick up the outside world as well.
  * @param sourceTrack - The source track LiveAPI object
- * @param sourceTrackName - The source track name
- * @param availableTypes - Available routing types
- * @returns The routing type to use
+ * @param notes - What the new track's entry should say
  */
-function findSourceRouting(
+function configureSourceTrackInput(
   sourceTrack: LiveAPI,
-  sourceTrackName: string,
-  availableTypes: RoutingType[] | null,
-): RoutingType | undefined {
-  // Check if there are duplicate track names
-  const matchingNames =
-    availableTypes?.filter((type) => type.display_name === sourceTrackName) ??
-    [];
+  notes: TargetNotes,
+): void {
+  const wasArmed = sourceTrack.getProperty("arm") === 1;
 
-  if (matchingNames.length > 1) {
-    // Multiple tracks with the same name - use duplicate-aware matching
-    // At this point, availableTypes must be non-null since matchingNames is non-empty
-    const sourceRouting = findRoutingOptionForDuplicateNames(
-      sourceTrack,
-      sourceTrackName,
-      availableTypes as RoutingType[],
+  sourceTrack.set("arm", 1);
+
+  const did = [
+    ...(wasArmed ? [] : ["armed it"]),
+    ...(silenceInput(sourceTrack) ?? []),
+  ];
+
+  if (did.length > 0) {
+    noteTarget(
+      notes,
+      `source track ${targetLabel(sourceTrack)}: ${did.join(", ")}`,
     );
-
-    if (!sourceRouting) {
-      console.warn(
-        `Could not route to "${sourceTrackName}" ${targetLabel(sourceTrack)} due to duplicate track names. ` +
-          `Consider renaming tracks to have unique names.`,
-      );
-    }
-
-    return sourceRouting;
   }
-
-  // Simple case - use the single match (or undefined if no match)
-  return matchingNames[0];
 }
 
 /**
- * Apply output routing configuration to the new track
+ * Point the source track's input at "No Input".
+ * @param sourceTrack - The source track LiveAPI object
+ * @returns What to say about it, or null when it was already there
+ */
+function silenceInput(sourceTrack: LiveAPI): string[] | null {
+  const current = sourceTrack.getProperty(
+    "input_routing_type",
+  ) as RoutingType | null;
+
+  if (current?.display_name === "No Input") {
+    return null;
+  }
+
+  const inputTypes = sourceTrack.getProperty(
+    "available_input_routing_types",
+  ) as RoutingType[] | null;
+  const noInput = inputTypes?.find((type) => type.display_name === "No Input");
+
+  if (noInput == null) {
+    return ['could not set its input to "No Input": it has no such input'];
+  }
+
+  sourceTrack.setProperty("input_routing_type", {
+    identifier: noInput.identifier,
+  });
+
+  return ['set its input to "No Input"'];
+}
+
+/**
+ * Point the new track's output at the source track.
  * @param newTrack - The new track LiveAPI object
+ * @param sourceTrack - The source track LiveAPI object
  * @param sourceTrackName - The source track name
  * @param availableTypes - Available routing types
- * @param sourceTrack - The source track LiveAPI object
+ * @param notes - What the new track's entry should say
  */
 function applyOutputRouting(
   newTrack: LiveAPI,
+  sourceTrack: LiveAPI,
   sourceTrackName: string,
   availableTypes: RoutingType[] | null,
-  sourceTrack: LiveAPI,
+  notes: TargetNotes,
 ): void {
-  const sourceRouting = findSourceRouting(
-    sourceTrack,
-    sourceTrackName,
-    availableTypes,
-  );
+  const matching =
+    availableTypes?.filter((type) => type.display_name === sourceTrackName) ??
+    [];
+  // Several options share the name, so which one is the source has to be worked
+  // out from the track order rather than read off the name.
+  const sourceRouting =
+    matching.length > 1
+      ? findRoutingOptionForDuplicateNames(
+          sourceTrack,
+          sourceTrackName,
+          availableTypes as RoutingType[],
+        )
+      : matching[0];
 
   if (sourceRouting) {
+    // Let Live set the default channel for this routing type
     newTrack.setProperty("output_routing_type", {
       identifier: sourceRouting.identifier,
     });
-    // Let Live set the default channel for this routing type
-  } else {
-    const matchingNames =
-      availableTypes?.filter((type) => type.display_name === sourceTrackName) ??
-      [];
 
-    if (matchingNames.length === 0) {
-      console.warn(
-        `Could not find track "${sourceTrackName}" ${targetLabel(sourceTrack)} in routing options`,
-      );
-    }
+    return;
   }
-}
 
-/**
- * Configure routing to source track
- * @param newTrack - The new track LiveAPI object
- * @param sourceTrackIndex - Source track index
- */
-export function configureRouting(
-  newTrack: LiveAPI,
-  sourceTrackIndex: number | undefined,
-): void {
-  // sourceTrackIndex is guaranteed by caller when routeToSource is true
-  const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex as number));
-  const sourceTrackName = sourceTrack.getName();
-
-  configureSourceTrackInput(sourceTrack, sourceTrackName);
-
-  const availableTypes = newTrack.getProperty(
-    "available_output_routing_types",
-  ) as RoutingType[] | null;
-
-  applyOutputRouting(newTrack, sourceTrackName, availableTypes, sourceTrack);
+  noteTarget(
+    notes,
+    matching.length > 1
+      ? `not routed to the source: ${matching.length} tracks are named ` +
+          `"${sourceTrackName}"; rename one`
+      : `not routed to the source: no output option named "${sourceTrackName}"`,
+  );
 }

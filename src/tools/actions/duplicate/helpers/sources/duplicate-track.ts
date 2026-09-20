@@ -4,10 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import {
+  newTargetNotes,
+  noteTarget,
+  type TargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
@@ -19,11 +23,13 @@ import { configureRouting } from "../duplicate-routing.ts";
  * @param trackIndex - Original track index
  * @param withoutDevices - Whether devices were excluded
  * @param newTrack - The new track LiveAPI object
+ * @param notes - What the new track's entry should say
  */
 function removeHostTrackDevice(
   trackIndex: number,
   withoutDevices: boolean | undefined,
   newTrack: LiveAPI,
+  notes: TargetNotes,
 ): void {
   const hostTrackIndex = getHostTrackIndex();
 
@@ -40,14 +46,13 @@ function removeHostTrackDevice(
           "delete_device",
           Number.parseInt(deviceIndexMatch[1] ?? ""),
         );
-        console.warn(
-          `removed the Producer Pal device from the new track ${targetLabel(newTrack)} - it cannot be duplicated`,
-        );
+        noteTarget(notes, "the Producer Pal device was not copied");
       }
     } catch {
-      // If we can't access this_device, just continue without removing anything
-      console.warn(
-        `could not check the new track ${targetLabel(newTrack)} for the Producer Pal device`,
+      // this_device is unreadable, so nothing was removed either way.
+      noteTarget(
+        notes,
+        "could not check the new track for the Producer Pal device",
       );
     }
   }
@@ -168,7 +173,8 @@ function collectArrangementClips(
  * @param withoutDevices - Whether to exclude devices when duplicating
  * @param routeToSource - Whether to route the new track to the source track
  * @param sourceTrackIndex - Source track index for routing
- * @returns Track info object with id, path, and clips array
+ * @returns Track info object with id, path, clips array, and anything the copy
+ *   has to say beyond them
  */
 export function duplicateTrack(
   trackIndex: number,
@@ -178,7 +184,8 @@ export function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
   sourceTrackIndex?: number,
-): { id: string; path: string; clips: MinimalClipInfo[] } {
+): { id: string; path: string; clips: MinimalClipInfo[]; reason?: string } {
+  const notes = newTargetNotes();
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
@@ -194,7 +201,7 @@ export function duplicateTrack(
     newTrack.setColor(color);
   }
 
-  removeHostTrackDevice(trackIndex, withoutDevices, newTrack);
+  removeHostTrackDevice(trackIndex, withoutDevices, newTrack, notes);
 
   if (withoutDevices === true) {
     deleteAllDevices(newTrack);
@@ -203,12 +210,15 @@ export function duplicateTrack(
   const duplicatedClips = processClipsForDuplication(newTrack, withoutClips);
 
   if (routeToSource) {
-    configureRouting(newTrack, sourceTrackIndex);
+    configureRouting(newTrack, sourceTrackIndex, notes);
   }
+
+  const reason = joinReasons(notes.said);
 
   return {
     id: newTrack.id,
     path: formatObjectPath({ kind: "track", trackIndex: newTrackIndex }),
     clips: duplicatedClips,
+    ...(reason == null ? {} : { reason }),
   };
 }

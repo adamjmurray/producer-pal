@@ -51,9 +51,6 @@ describe("duplicate-track", () => {
       expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
       // No name/color/routeToSource → none of those side effects fire.
       expect(newTrack.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("routing options"),
-      );
     });
 
     it("should set name when provided", () => {
@@ -95,7 +92,7 @@ describe("duplicate-track", () => {
       expect(newTrack.call).toHaveBeenCalledWith("delete_clip", "id arrClip0");
     });
 
-    it("should warn and continue when this_device can't be read", () => {
+    it("says on the copy's entry when this_device can't be read", () => {
       const newTrack = registerMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
@@ -112,13 +109,15 @@ describe("duplicate-track", () => {
         });
 
       try {
-        expect(duplicateTrack(0).path).toBe("t1");
+        const result = duplicateTrack(0);
+
+        expect(result.path).toBe("t1");
+        expect(result.reason).toBe(
+          "could not check the new track for the Producer Pal device",
+        );
         expect(newTrack.call).not.toHaveBeenCalledWith(
           "delete_device",
           expect.anything(),
-        );
-        expect(capturedWarnings()).toContain(
-          "could not check the new track t1 (id live_set/tracks/1) for the Producer Pal device",
         );
       } finally {
         spy.mockRestore();
@@ -215,71 +214,84 @@ describe("duplicate-track", () => {
       return { sourceTrack, newTrack };
     }
 
-    it("should not log arming when track is already armed", () => {
+    it("says nothing when the source was already armed and silent", () => {
       setupRoutingMocks(
         { arm: 1, input_routing_type: { display_name: "No Input" } },
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      duplicateTrack(0, undefined, undefined, false, false, true, 0);
-
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("Armed the source track"),
-      );
-    });
-
-    it("should warn when track routing option is not found", () => {
-      setupRoutingMocks(
-        { arm: 1, input_routing_type: { display_name: "No Input" } },
-        [{ display_name: "Other Track", identifier: "other_track_id" }],
+      const result = duplicateTrack(
+        0,
+        undefined,
+        undefined,
+        false,
+        false,
+        true,
+        0,
       );
 
-      duplicateTrack(0, undefined, undefined, false, false, true, 0);
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          'Could not find track "Source Track" t0 (id live_set/tracks/0) in routing options',
-        ),
-      );
-    });
-
-    it("should warn when duplicate track names prevent routing", () => {
-      setupRoutingMocks(
-        { arm: 1, input_routing_type: { display_name: "No Input" } },
-        [
-          { display_name: "Source Track", identifier: "source_track_id_1" },
-          { display_name: "Source Track", identifier: "source_track_id_2" },
-        ],
-      );
-
-      duplicateTrack(0, undefined, undefined, false, false, true, 0);
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          'Could not route to "Source Track" t0 (id live_set/tracks/0) due to duplicate track names',
-        ),
-      );
+      expect(result).not.toHaveProperty("reason");
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it.each([
       {
-        desc: "should change source track input routing from non-'No Input' to 'No Input'",
+        desc: "says the source name is not an output option",
+        outputRouting: [
+          { display_name: "Other Track", identifier: "other_track_id" },
+        ],
+        expectedReason:
+          'not routed to the source: no output option named "Source Track"',
+      },
+      {
+        desc: "says which name is ambiguous when two tracks share it",
+        outputRouting: [
+          { display_name: "Source Track", identifier: "source_track_id_1" },
+          { display_name: "Source Track", identifier: "source_track_id_2" },
+        ],
+        expectedReason:
+          'not routed to the source: 2 tracks are named "Source Track"; rename one',
+      },
+    ])("$desc", ({ outputRouting, expectedReason }) => {
+      setupRoutingMocks(
+        { arm: 1, input_routing_type: { display_name: "No Input" } },
+        outputRouting,
+      );
+
+      const result = duplicateTrack(
+        0,
+        undefined,
+        undefined,
+        false,
+        false,
+        true,
+        0,
+      );
+
+      expect(result.reason).toBe(expectedReason);
+      // The copy's entry carries it, so nothing warns about it.
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it.each([
+      {
+        desc: "reports arming the source and silencing its input",
         availableInputRouting: [
           { display_name: "No Input", identifier: "no_input_id" },
           { display_name: "Audio In", identifier: "audio_in_id" },
         ],
-        expectedMessage:
-          'Changed track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input"',
+        expectedReason:
+          'source track t0 (id live_set/tracks/0): armed it, set its input to "No Input"',
       },
       {
-        desc: "should warn when No Input routing option is not available",
+        desc: "reports an input it could not silence",
         availableInputRouting: [
           { display_name: "Audio In", identifier: "audio_in_id" },
         ],
-        expectedMessage:
-          'Tried to change track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input" but could not find "No Input"',
+        expectedReason:
+          'source track t0 (id live_set/tracks/0): armed it, could not set its input to "No Input": it has no such input',
       },
-    ])("$desc", ({ availableInputRouting, expectedMessage }) => {
+    ])("$desc", ({ availableInputRouting, expectedReason }) => {
       setupRoutingMocks(
         {
           arm: 0,
@@ -289,11 +301,18 @@ describe("duplicate-track", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      duplicateTrack(0, undefined, undefined, false, false, true, 0);
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(expectedMessage),
+      const result = duplicateTrack(
+        0,
+        undefined,
+        undefined,
+        false,
+        false,
+        true,
+        0,
       );
+
+      expect(result.reason).toBe(expectedReason);
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should delete session clips when withoutClips is true", () => {

@@ -7,11 +7,14 @@
 // are the interesting case, because a send is an index into the rack's return
 // chains and two racks don't share those.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   applyChainMixer,
   type ChainSend,
 } from "#src/tools/shared/device/helpers/chain-mixer.ts";
+import {
+  noteTarget,
+  type TargetNotes,
+} from "#src/tools/shared/helpers/target-notes.ts";
 
 interface ReadSend {
   return: string;
@@ -24,17 +27,20 @@ interface ReadSend {
  * @param mixer - readChainMixer output from the source chain
  * @param sourceRack - The rack the source chain belongs to
  * @param destinationRack - The rack the copy landed in
+ * @param notes - What the copy's entry should say
  */
 export function copyChainMixerTo(
   created: LiveAPI,
   mixer: Record<string, unknown>,
   sourceRack: LiveAPI,
   destinationRack: LiveAPI,
+  notes: TargetNotes,
 ): void {
   const sends = carriedSends(
     (mixer.sends ?? []) as ReadSend[],
     sourceRack,
     destinationRack,
+    notes,
   );
 
   applyChainMixer(created, {
@@ -45,7 +51,7 @@ export function copyChainMixerTo(
 }
 
 /**
- * The sends that have somewhere to land, warning about the ones that don't.
+ * The sends that have somewhere to land, saying which ones didn't.
  *
  * Within one rack every send carries over. Across racks a send is matched by
  * its return chain's name, because that is the only thing the two racks can
@@ -54,12 +60,14 @@ export function copyChainMixerTo(
  * @param sends - The source chain's active sends
  * @param sourceRack - The rack the source chain belongs to
  * @param destinationRack - The rack the copy landed in
+ * @param notes - What the copy's entry should say
  * @returns The sends to write on the copy
  */
 function carriedSends(
   sends: ReadSend[],
   sourceRack: LiveAPI,
   destinationRack: LiveAPI,
+  notes: TargetNotes,
 ): ChainSend[] {
   if (sends.length === 0) {
     return [];
@@ -90,7 +98,8 @@ function carriedSends(
     const named = dropped.map((name) => `"${name}"`).join(", ");
     const tail = dropped.length === 1 ? "that send was" : "those sends were";
 
-    console.warn(
+    noteTarget(
+      notes,
       `the destination rack has no return chain named ${named}, ` +
         `so ${tail} not copied`,
     );

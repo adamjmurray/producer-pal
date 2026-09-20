@@ -67,7 +67,7 @@ describe("warnings the tools still raise", () => {
         count: 2,
       }),
     ).toStrictEqual([
-      "WARNING: count parameter ignored for device duplication (only single copy supported)",
+      "WARNING: count 2 ignored: device copies go one per toPath",
     ]);
 
     expect(
@@ -77,7 +77,7 @@ describe("warnings the tools still raise", () => {
         count: 2,
       }),
     ).toStrictEqual([
-      "WARNING: count parameter ignored for chain duplication (only single copy supported)",
+      "WARNING: count 2 ignored: chain copies go one per toPath",
     ]);
 
     expect(
@@ -88,7 +88,7 @@ describe("warnings the tools still raise", () => {
         count: 2,
       }),
     ).toStrictEqual([
-      "WARNING: count 2 ignored: a drum pad copy goes to the pads toPath names",
+      "WARNING: count 2 ignored: drum pad copies go one per toPath",
     ]);
   });
 
@@ -346,7 +346,6 @@ describe("calls that report on the entry and warn about nothing", () => {
 
     expect(nothingThere).toStrictEqual({
       path: `${SCRATCH}/inst`,
-      type: "device",
       reason: "nothing to delete",
     });
   });

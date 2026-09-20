@@ -74,11 +74,7 @@ export function copyToDestinations<T>(
 
   claimLabels(labels, Math.max(paths.length, 1));
 
-  if (count > 1) {
-    console.warn(
-      `count parameter ignored for ${noun} duplication (only single copy supported)`,
-    );
-  }
+  warnCountIgnored(count, noun);
 
   // Take the id before anything moves, and rebuild the source per destination:
   // a LiveAPI object follows its path, and an earlier copy inserted at or
@@ -89,4 +85,16 @@ export function copyToDestinations<T>(
   return copyPerDestination(paths, named, (destination, index) =>
     copyOne(LiveAPI.from(sourceId), destination, labelName(labels, index)),
   );
+}
+
+/**
+ * Say a count these copies can't honor was ignored. It is about the call's own
+ * param rather than any one destination, so no entry can carry it.
+ * @param count - The count param as sent
+ * @param noun - What is being copied
+ */
+export function warnCountIgnored(count: number, noun: string): void {
+  if (count > 1) {
+    console.warn(`count ${count} ignored: ${noun} copies go one per toPath`);
+  }
 }
