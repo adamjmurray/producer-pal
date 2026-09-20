@@ -22,6 +22,7 @@ import {
   duplicateSceneToArrangement,
 } from "./duplicate-scene.ts";
 import { resolveArrangementPositions } from "../duplicate-destinations.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The arrangement params a scene duplication reads. */
 interface SceneArrangementParams {
@@ -69,7 +70,7 @@ export async function duplicateSceneToArrangementAtPositions(
   const sceneIndex = object.sceneIndex;
 
   if (sceneIndex == null) {
-    throw new Error(`no scene index for id "${id}" (path="${object.path}")`);
+    throw new Error(`no scene index for ${targetLabel(object)}`);
   }
 
   // When single position + count > 1, expand to sequential positions. A list

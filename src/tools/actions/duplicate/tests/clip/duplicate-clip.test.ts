@@ -167,7 +167,7 @@ describe("duplicate - clip duplication", () => {
           toSlot: "1/2",
         }),
       ).rejects.toThrow(
-        'unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="arrangementClip1" path="live_set tracks 0 arrangement_clips 0") ',
+        "is an arrangement clip; ppal-duplicate cannot copy one into a clip slot",
       );
     });
   });

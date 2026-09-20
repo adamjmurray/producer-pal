@@ -115,6 +115,16 @@ export const NEW_OBJECT_NOUNS: Record<NewObjectSegment["kind"], string> = {
   "new-scene": "a new scene",
 };
 
+/** Why a tool that only reaches existing objects can't take each "+" root. */
+export const NEW_OBJECT_ADVICE: Record<NewObjectSegment["kind"], string> = {
+  "new-track": `"${NEW_TRACK}" adds a track, which only ppal-create-track does`,
+  "new-return-track": `"${NEW_RETURN_TRACK}" adds a return track, which only ppal-create-track does`,
+  "new-scene": `"${NEW_SCENE}" adds a scene, which only ppal-create-scene does`,
+};
+
+/** Where to send a caller whose track path names a spot past the last track. */
+export const CREATE_TRACK_ADVICE = "ppal-create-track adds tracks";
+
 const LIVE_API_COLLECTION = {
   device: "devices",
   chain: "chains",

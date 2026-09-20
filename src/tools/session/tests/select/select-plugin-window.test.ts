@@ -78,8 +78,9 @@ describe("select - plugin editor window", () => {
       expect.anything(),
     );
     expect(result.selectedDevice?.pluginWindowOpen).toBeUndefined();
+    // The warning names the device by path and id, never by its Live class.
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("not a plug-in"),
+      "openPluginWindow ignored — t0/d0 (id device_0) is not a plug-in (VST/AU)",
     );
   });
 

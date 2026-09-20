@@ -20,6 +20,8 @@ export interface PathTarget {
   noun: string;
   label: string;
   entry: string;
+  /** Which tool makes one, for a path naming a spot nothing is at yet. */
+  advice?: string;
 }
 
 /**
@@ -108,7 +110,10 @@ export function existingId(
     return { id: object.id };
   }
 
-  return nothingThere(`no ${target.noun} at ${target.label} "${target.entry}"`);
+  return nothingThere(
+    `no ${target.noun} at ${target.label} "${target.entry}"` +
+      (target.advice == null ? "" : `; ${target.advice}`),
+  );
 }
 
 /**

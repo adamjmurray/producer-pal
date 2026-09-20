@@ -537,7 +537,11 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ path: "t0" }),
-      { path: "t999", ok: false, reason: 'no track at path "t999"' },
+      {
+        path: "t999",
+        ok: false,
+        reason: 'no track at path "t999"; ppal-create-track adds tracks',
+      },
     ]);
 
     // The name went to t0, not to whatever followed the miss.
@@ -567,7 +571,34 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
     const result = await updateTrack({ path: "t999", mute: false });
 
     expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain('no track at path "t999"');
+    expect(getToolErrorMessage(result)).toContain(
+      'no track at path "t999"; ppal-create-track adds tracks',
+    );
+  });
+
+  it("sends a t+ path to the tool that takes it", async () => {
+    const result = await updateTrack({ path: "t+", mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"t+" adds a track, which only ppal-create-track does; ' +
+        'name an existing one as "t<index>", "rt<index>", or "mt"',
+    );
+  });
+
+  it("names a scene id in the words the tools publish", async () => {
+    const scene = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { path: "s0" },
+      }),
+    );
+    const result = await updateTrack({ id: scene.id, mute: false });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `s0 (id ${scene.id}) is not a track (found scene)`,
+    );
   });
 });
 

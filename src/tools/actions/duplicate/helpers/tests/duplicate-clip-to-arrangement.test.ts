@@ -28,7 +28,7 @@ describe("duplicateClipToArrangement", () => {
     });
 
     await expect(duplicateClipToArrangement("clip1", 0)).rejects.toThrow(
-      'no track index for clipId "clip1"',
+      "no track for clip id clip1",
     );
   });
 });

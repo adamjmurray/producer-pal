@@ -30,6 +30,7 @@ import { duplicateSceneToArrangementAtPositions } from "./scene-arrangement-posi
 import { type SourceShare } from "./source-plan.ts";
 import { duplicateTrack } from "./duplicate-track.ts";
 import { duplicateScene } from "./duplicate-scene.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The params a track or scene copy reads beyond its name and color. */
 export interface DuplicateParams {
@@ -300,7 +301,6 @@ async function duplicateTrackOrSceneWithCount(
       duplicateTrackOrSceneToSession(
         type,
         object,
-        id,
         i,
         labelName(labels, i),
         labelColor(labels, i),
@@ -318,7 +318,6 @@ async function duplicateTrackOrSceneWithCount(
  * Duplicates a track or scene to the session view
  * @param type - Type of object being duplicated (track or scene)
  * @param object - Live API object to duplicate
- * @param id - ID of the object
  * @param i - Current duplicate index
  * @param objectName - Name for the duplicated object
  * @param objectColor - Color for the duplicated object
@@ -330,7 +329,6 @@ async function duplicateTrackOrSceneWithCount(
 function duplicateTrackOrSceneToSession(
   type: string,
   object: LiveAPI,
-  id: string,
   i: number,
   objectName: string | undefined,
   objectColor: string | undefined,
@@ -342,7 +340,9 @@ function duplicateTrackOrSceneToSession(
     const trackIndex = object.trackIndex;
 
     if (trackIndex == null) {
-      throw new Error(`no track index for id "${id}" (path="${object.path}")`);
+      throw new Error(
+        `${targetLabel(object)} is not a regular track, and Live only duplicates those`,
+      );
     }
 
     const actualTrackIndex = trackIndex + i;
@@ -363,7 +363,7 @@ function duplicateTrackOrSceneToSession(
   const sceneIndex = object.sceneIndex;
 
   if (sceneIndex == null) {
-    throw new Error(`no scene index for id "${id}" (path="${object.path}")`);
+    throw new Error(`no scene index for ${targetLabel(object)}`);
   }
 
   const actualSceneIndex = sceneIndex + i;

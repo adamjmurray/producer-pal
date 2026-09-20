@@ -486,7 +486,7 @@ describe("duplicate - drum pad", () => {
     const rack = registerCopyReadyRack();
 
     await expect(copyC1ToD1({ id: "kick" })).rejects.toThrow(
-      "is a DrumChain, not a drum pad",
+      "is a chain, not a drum pad",
     );
     expectNoCopy(rack);
   });

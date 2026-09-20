@@ -35,7 +35,7 @@ describe("updateClip - refuses one toPath place for several clips", () => {
   const notAClip = (id: string) => ({
     id,
     ok: false,
-    reason: `id ${id} is not a clip (found Device)`,
+    reason: `id ${id} is not a clip (found device)`,
   });
 
   // A bare coordinate names no lane, so each clip keeps its own - it broadcasts
@@ -50,7 +50,7 @@ describe("updateClip - refuses one toPath place for several clips", () => {
   // got nothing done throws instead of answering with a list.
   it("does not refuse a lane destination for a single id", async () => {
     await expect(updateClip({ id: "1", toPath: "t0[5|1]" })).rejects.toThrow(
-      "id 1 is not a clip (found Device)",
+      "id 1 is not a clip (found device)",
     );
   });
 

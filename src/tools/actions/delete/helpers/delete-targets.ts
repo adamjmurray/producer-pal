@@ -205,7 +205,7 @@ function undeletable(object: LiveAPI, type: string): string | null {
   // reject one here.
   if (type !== "chain" && isChain) {
     return (
-      `${targetLabel(object)} is a ${object.type}. ` +
+      `${targetLabel(object)} is a chain. ` +
       (object.type === "DrumChain"
         ? `Use type="chain" for this chain, or type="drum-pad" for the whole pad.`
         : "Deleting rack chains is not supported.")

@@ -50,7 +50,7 @@ export function resolveSourcePad(pad: LiveAPI): PadTarget {
   // caller named. Make them say which pad.
   if (pad.type !== "DrumPad") {
     throw new Error(
-      `${targetLabel(pad)} is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
+      `${targetLabel(pad)} is a chain, not a drum pad; use the id ppal-read-device lists on the pad itself`,
     );
   }
 

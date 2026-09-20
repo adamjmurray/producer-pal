@@ -14,6 +14,7 @@ import {
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
   type ObjectPath,
@@ -340,11 +341,14 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
     }
 
     // Arrangement clips and everything off the session grid land here. Say
-    // what would work, since "found Clip" alone reads as a contradiction to a
+    // what would work, since "found clip" alone reads as a contradiction to a
     // caller who was asked for a clip id.
     if (object.sceneIndex == null) {
+      const found = publishedType(object.type);
+      const kind = found == null ? "" : ` (found ${found})`;
+
       console.warn(
-        `${targetLabel(object)} is in no scene (found ${object.type}); ` +
+        `${targetLabel(object)} is in no scene${kind}; ` +
           `action "${PLAY_SCENE}" takes a scene id or a session clip id`,
       );
       continue;

@@ -299,7 +299,11 @@ describe("updateTrack take lane targets", () => {
         ok: false,
         reason: 'only regular tracks have take lanes; "t1" is a group track',
       },
-      { path: "t9/l0", ok: false, reason: 'no track at path "t9/l0"' },
+      {
+        path: "t9/l0",
+        ok: false,
+        reason: 'no track at path "t9/l0"; ppal-create-track adds tracks',
+      },
       { id: lane(0)!.id, path: "t0/l0", name: "E", created: true },
     ]);
   });
@@ -308,7 +312,7 @@ describe("updateTrack take lane targets", () => {
     mockNonExistentObjects();
 
     expect(() => updateTrack({ path: "t9/l0", name: "Nope" })).toThrow(
-      'no track at path "t9/l0"',
+      'no track at path "t9/l0"; ppal-create-track adds tracks',
     );
   });
 });

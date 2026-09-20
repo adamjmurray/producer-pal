@@ -129,7 +129,7 @@ describe("ppal-read-track", () => {
 
     expect(isToolError(nonExistentResult)).toBe(true);
     expect(getToolErrorMessage(nonExistentResult)).toContain(
-      'nothing at path "t999"',
+      'nothing at path "t999"; ppal-create-track adds tracks',
     );
 
     // Test 10: Verify first 4 tracks are MIDI type (Drums, Bass, Keys, Lead)
@@ -312,7 +312,11 @@ describe("ppal-read-track over a list of targets", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ path: "t0", name: "Drums" }),
-      { path: "t999", ok: false, reason: 'nothing at path "t999"' },
+      {
+        path: "t999",
+        ok: false,
+        reason: 'nothing at path "t999"; ppal-create-track adds tracks',
+      },
       expect.objectContaining({ path: "t4", name: "Audio 1" }),
     ]);
   });

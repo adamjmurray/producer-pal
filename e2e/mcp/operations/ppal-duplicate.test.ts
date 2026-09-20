@@ -799,6 +799,25 @@ describe("ppal-duplicate", () => {
       `no clip at t${EMPTY_MIDI_TRACK}/s2`,
     );
   });
+
+  // Live has no duplicate for a return track, and the refusal used to name the
+  // raw Live path instead of the one the call wrote.
+  it("refuses a return track in the caller's own spelling", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "track", path: "rt0" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+
+    const message = getToolErrorMessage(result);
+
+    expect(message).toContain("rt0 (id ");
+    expect(message).toContain(
+      "is not a regular track, and Live only duplicates those",
+    );
+    expect(message).not.toContain("live_set");
+  });
 });
 
 // Type interfaces

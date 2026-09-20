@@ -28,7 +28,7 @@ import {
 import {
   formatObjectPath,
   isNewObjectPath,
-  NEW_OBJECT_NOUNS,
+  NEW_OBJECT_ADVICE,
   parseObjectPath,
   type DeviceSegment,
   type ObjectPath,
@@ -362,7 +362,7 @@ export function trackSegmentPath(track: TrackSegment): TrackPath {
  */
 function describeNonClipPath(path: ObjectPath): string {
   if (isNewObjectPath(path)) {
-    return `${NEW_OBJECT_NOUNS[path.kind]} holds no clips`;
+    return NEW_OBJECT_ADVICE[path.kind];
   }
 
   switch (path.kind) {
@@ -388,7 +388,7 @@ function describeNonClipPath(path: ObjectPath): string {
  */
 function describeNonDevicePath(path: ObjectPath): string {
   if (isNewObjectPath(path)) {
-    return `${NEW_OBJECT_NOUNS[path.kind]} holds no devices`;
+    return NEW_OBJECT_ADVICE[path.kind];
   }
 
   switch (path.kind) {

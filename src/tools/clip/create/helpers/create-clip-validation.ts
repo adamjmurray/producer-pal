@@ -7,6 +7,10 @@ import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
+import {
+  CREATE_TRACK_ADVICE,
+  formatObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type ClipDestinations } from "./create-clip-destinations.ts";
 
@@ -45,7 +49,10 @@ export function validateDestinationTracks(
     const track = LiveAPI.from(livePath.track(trackIndex));
 
     if (!track.exists()) {
-      throw new Error(`track ${trackIndex} does not exist`);
+      throw new Error(
+        `no track at path "${formatObjectPath({ kind: "track", trackIndex })}"; ` +
+          CREATE_TRACK_ADVICE,
+      );
     }
 
     tracks.set(trackIndex, track);

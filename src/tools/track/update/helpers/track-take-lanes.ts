@@ -17,6 +17,7 @@ import {
   takeLaneCapacityMessage,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { takeLanePathEntry } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { CREATE_TRACK_ADVICE } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -232,7 +233,7 @@ function laneTrack(spec: TakeLaneTargetSpec): LiveAPI {
   const track = LiveAPI.from(livePath.track(spec.trackIndex));
 
   if (!track.exists()) {
-    throw new Error(`no track at path "${spec.entry}"`);
+    throw new Error(`no track at path "${spec.entry}"; ${CREATE_TRACK_ADVICE}`);
   }
 
   assertTrackTakesLanes(track, spec.trackIndex);

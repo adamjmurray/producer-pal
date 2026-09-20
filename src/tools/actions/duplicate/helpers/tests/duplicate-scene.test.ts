@@ -275,7 +275,7 @@ describe("duplicate-scene", () => {
           4,
           4,
         ),
-      ).rejects.toThrow('no scene index for id "scene123"');
+      ).rejects.toThrow("no scene index for id scene123");
     });
 
     it("should return empty clips when withoutClips is true", async () => {

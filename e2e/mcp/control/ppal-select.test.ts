@@ -369,7 +369,21 @@ describe("ppal-select", () => {
     });
     const warnings = getToolWarnings(result);
 
-    expect(warnings.join("\n")).toContain("not a plug-in");
+    // The warning names the device by path and id, not by its Live class.
+    expect(warnings.join("\n")).toContain("is not a plug-in (VST/AU)");
+  });
+
+  it("sends an s+ path to the tool that takes it", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { path: "s+" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      '"s+" adds a scene, which only ppal-create-scene does; ' +
+        "select names something that exists",
+    );
   });
 });
 

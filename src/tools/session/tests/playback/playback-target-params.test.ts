@@ -184,7 +184,7 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "play-session-clips", id: "scene3" }),
-    ).toThrow("s3 (id scene3) is not a clip (found Scene)");
+    ).toThrow("s3 (id scene3) is not a clip (found scene)");
     // The reason is the entry's, so nothing warns it too.
     expect(warn).not.toHaveBeenCalled();
   });
@@ -194,7 +194,7 @@ describe("playback ids that names no clip", () => {
 
     expect(() =>
       playback({ action: "stop-session-clips", id: "scene3" }),
-    ).toThrow("s3 (id scene3) is not a clip (found Scene)");
+    ).toThrow("s3 (id scene3) is not a clip (found scene)");
   });
 
   // Nothing warned on this one at all: the entries were dropped before any id

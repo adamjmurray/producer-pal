@@ -143,6 +143,12 @@ describe("ppal-read-device", () => {
 
     expect(audioRack.type).toBe("audio-effect-rack");
     expect(audioRack.chains!.length).toBe(2); // Dry, Reverb
+
+    // A chain's type is the word the tools publish, not Live's class name.
+    expect(rack.chains!.map((chain) => chain.type)).toStrictEqual([
+      "chain",
+      "chain",
+    ]);
   });
 
   it("reads Drum Rack with pads and return chains", async () => {
@@ -175,6 +181,17 @@ describe("ppal-read-device", () => {
     const returnChain = parseToolResult<ReadDeviceResult>(returnChainResult);
 
     expect(returnChain.id).toBeDefined();
+
+    // Test 4: a pad's own chains are drum chains, said the tools' way
+    const padChainsResult = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d0/pC1", include: ["chains"] },
+    });
+    const padChains = parseToolResult<ReadDeviceResult>(padChainsResult);
+
+    expect(padChains.chains!.map((chain) => chain.type)).toStrictEqual([
+      "drum-chain",
+    ]);
   });
 
   it("reads nested racks with deep paths", async () => {
@@ -295,6 +312,7 @@ interface ReadDeviceResult {
   chains?: Array<{
     id: string;
     name: string;
+    type: string;
   }>;
   drumPads?: Array<{
     id: string;

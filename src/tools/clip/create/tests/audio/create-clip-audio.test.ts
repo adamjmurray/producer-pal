@@ -348,7 +348,9 @@ describe("createClip - audio clips", () => {
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).rejects.toThrow("track 99 does not exist");
+      ).rejects.toThrow(
+        'no track at path "t99"; ppal-create-track adds tracks',
+      );
     });
 
     // Two positions, so each keeps its place rather than the call throwing.

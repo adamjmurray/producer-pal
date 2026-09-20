@@ -15,6 +15,7 @@ import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Callback type for forEachClipInScene
@@ -155,9 +156,7 @@ export async function duplicateSceneToArrangement(
   const sceneIndex = scene.sceneIndex;
 
   if (sceneIndex == null) {
-    throw new Error(
-      `no scene index for id "${sceneId}" (path="${scene.path}")`,
-    );
+    throw new Error(`no scene index for ${targetLabel(scene)}`);
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);

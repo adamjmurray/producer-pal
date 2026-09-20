@@ -263,6 +263,16 @@ unchanged: its `path` names a scene to update, not a place to make one, and a
 path past the last scene is refused with `ppal-create-scene` named in the
 reason.
 
+### Chains say `chain`, not Live's class name
+
+A chain's `type` was Live's class name, `Chain` or `DrumChain`. It is now
+`chain` or `drum-chain`, matching the lowercase words every other `type` field
+already used. A script switching on the old spelling needs the new one.
+
+Errors and warnings dropped their Live class names too:
+`is not a track (found Scene)` now reads `(found scene)`. The few that printed a
+raw Live path (`live_set return_tracks 0`) print the path you wrote instead.
+
 ## Params being removed in 2.4
 
 Every param below still works today and emits a deprecation warning saying what

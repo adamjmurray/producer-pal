@@ -203,8 +203,7 @@ describe("deleteObject device deletion", () => {
           id: "bad_device",
           type: "device",
           ok: false,
-          reason:
-            'no device index for id bad_device (Live path "invalid_path_without_devices")',
+          reason: "no device index for id bad_device",
         },
       ]),
     );
@@ -224,7 +223,7 @@ describe("deleteObject device deletion", () => {
     setupDeviceMocks(id, "invalid_path_without_devices");
 
     expect(() => deleteObject({ id, type: "device" })).toThrow(
-      'no device index for id device_0 (Live path "invalid_path_without_devices")',
+      "no device index for id device_0",
     );
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();

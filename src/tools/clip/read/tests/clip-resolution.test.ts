@@ -28,7 +28,7 @@ describe("resolveClip", () => {
     });
 
     expect(() => resolveClip("id faketrack", null, null)).toThrow(
-      "is not a clip (found Track)",
+      "is not a clip (found track)",
     );
   });
 });

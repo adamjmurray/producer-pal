@@ -84,6 +84,13 @@ export const DEVICE_TYPE = {
   MIDI_EFFECT_RACK: "midi-effect-rack",
 } as const;
 
+// What a read calls a rack chain. Not Live's class names: a result says only
+// what the tools publish.
+export const CHAIN_TYPE = {
+  CHAIN: "chain",
+  DRUM_CHAIN: "drum-chain",
+} as const;
+
 // Monitoring states for user-facing API
 export const MONITORING_STATE = {
   IN: "in",

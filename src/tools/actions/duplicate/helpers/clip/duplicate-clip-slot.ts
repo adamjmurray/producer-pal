@@ -25,6 +25,7 @@ import {
   skippedCopy,
 } from "../minimal-clip-info.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The source objects every copy in one call shares. */
 export interface SlotCopySource {
@@ -159,14 +160,12 @@ export function duplicateClipSlot(
  * Copies a session clip into clip slots.
  * @param slots - Destination slots, in order
  * @param object - Live API object to duplicate
- * @param id - ID of the object
  * @param labels - The call's names and colors
  * @returns Array of result objects
  */
 export function duplicateClipToSlots(
   slots: ClipSlotPosition[],
   object: LiveAPI,
-  id: string,
   labels: CopyLabels,
 ): object[] {
   const trackIndex = object.trackIndex;
@@ -174,7 +173,7 @@ export function duplicateClipToSlots(
 
   if (trackIndex == null || sourceSceneIndex == null) {
     throw new Error(
-      `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
+      `${targetLabel(object)} is an arrangement clip; ppal-duplicate cannot copy one into a clip slot`,
     );
   }
 

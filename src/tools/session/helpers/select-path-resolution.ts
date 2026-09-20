@@ -13,7 +13,7 @@ import {
   formatObjectPath,
   isNewObjectPath,
   namesDevice,
-  NEW_OBJECT_NOUNS,
+  NEW_OBJECT_ADVICE,
   parseObjectPath,
   type ObjectPath,
   type TrackSegment,
@@ -376,7 +376,7 @@ function targetFromPath(path: ObjectPath): PathTarget {
     throw pathError(
       "path",
       formatObjectPath(path),
-      `${NEW_OBJECT_NOUNS[path.kind]} does not exist yet; select names something that does`,
+      `${NEW_OBJECT_ADVICE[path.kind]}; select names something that exists`,
     );
   }
 

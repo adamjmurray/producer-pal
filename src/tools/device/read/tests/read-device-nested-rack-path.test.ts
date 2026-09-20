@@ -121,7 +121,7 @@ describe("readOneDevice - paths through a nested drum rack", () => {
 
     expect(result.id).toBe("sub-chain");
     expect(result.path).toBe("t1/d0/pC1/c0/d0/pC3/c0");
-    expect(result.type).toBe("DrumChain");
+    expect(result.type).toBe("drum-chain");
   });
 
   it("still reads the nested rack itself", () => {

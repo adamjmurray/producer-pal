@@ -120,7 +120,7 @@ describe("deleteObject device path error cases", () => {
     });
 
     expect(() => deleteObject({ id: "orphan-device", type: "device" })).toThrow(
-      'no parent path for device id orphan-device (Live path "devices 0")',
+      "no container for device id orphan-device",
     );
     expect(consoleSpy).not.toHaveBeenCalled();
   });

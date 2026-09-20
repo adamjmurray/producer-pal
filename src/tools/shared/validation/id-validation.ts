@@ -7,6 +7,20 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import { targetLabel } from "./object-path-for-api.ts";
 
+/** What the tools call each Live class a path or id can reach. */
+const TYPE_WORDS: Partial<Record<LiveObjectType, string>> = {
+  Track: "track",
+  Scene: "scene",
+  Clip: "clip",
+  ClipSlot: "clip slot",
+  TakeLane: "take lane",
+  CuePoint: "locator",
+  Chain: "chain",
+  DrumChain: "chain",
+  DrumPad: "drum-pad",
+  DeviceParameter: "device parameter",
+};
+
 /**
  * Validates a single ID matches expected type
  * @param id - The ID to validate
@@ -46,7 +60,21 @@ export function typeMismatch(
     return null;
   }
 
-  return `${targetLabel(object)} is not a ${expectedType} (found ${object.type})`;
+  const found = publishedType(object.type);
+
+  return found == null
+    ? `${targetLabel(object)} is not a ${expectedType}`
+    : `${targetLabel(object)} is not a ${expectedType} (found ${found})`;
+}
+
+/**
+ * The word the tools publish for what an object is, so a message never spells
+ * a Live class name the caller could not have written.
+ * @param type - The Live API class name
+ * @returns The published word, or null for a class the tools never name
+ */
+export function publishedType(type: LiveObjectType): string | null {
+  return type.endsWith("Device") ? "device" : (TYPE_WORDS[type] ?? null);
 }
 
 interface ValidateIdTypesOptions {

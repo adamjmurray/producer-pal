@@ -70,7 +70,7 @@ export async function duplicateClipWithPositions(
 ): Promise<object[]> {
   if (destinations.destination === "session") {
     // A clip slot can't name a lane, so nothing here has one to honor.
-    return duplicateClipToSlots(destinations.slots, object, id, labels);
+    return duplicateClipToSlots(destinations.slots, object, labels);
   }
 
   return await duplicateClipToArrangementPositions(

@@ -23,6 +23,7 @@ import {
 } from "./clip/clip-destinations.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Resolves the comma-separated arrangementStart list to beats. Shared by clip
@@ -141,9 +142,7 @@ export function resolveDestinationTargets(
     const sourceTrackIndex = sourceClip.trackIndex;
 
     if (sourceTrackIndex == null) {
-      throw new Error(
-        `no track index for clip id "${sourceClip.id}" (path=${sourceClip.path})`,
-      );
+      throw new Error(`no track for clip ${targetLabel(sourceClip)}`);
     }
 
     return { trackIndex: sourceTrackIndex, takeLane: null };

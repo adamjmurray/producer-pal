@@ -44,7 +44,7 @@ export function deleteTrackObject(
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
 
   if (Number.isNaN(trackIndex)) {
-    return `no track index for ${targetLabel(object)} (Live path "${object.path}")`;
+    return `no track index for ${targetLabel(object)}`;
   }
 
   const hostTrackIndex = getHostTrackIndex();

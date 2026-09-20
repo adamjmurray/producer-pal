@@ -334,6 +334,19 @@ describe("ppal-delete", () => {
     expect(byId.path).toBeUndefined();
   });
 
+  // The refusal names what it found in the tools' own word, never Live's class.
+  it("refuses a clip id asked for as a track, in published words", async () => {
+    const clip = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+    const result = await del({ id: clip.id, type: "track" });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `is not a track (found clip)`,
+    );
+
+    await del({ id: clip.id, type: "clip" });
+  });
+
   it("deletes several clips in one call", async () => {
     const clip1 = await createClip(`t${EMPTY_MIDI_TRACK}/s1`);
     const clip2 = await createClip(`t${EMPTY_MIDI_TRACK}/s2`);

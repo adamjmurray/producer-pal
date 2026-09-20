@@ -126,10 +126,10 @@ describe("requireClipPath", () => {
   // has to be told that rather than falling into the return/main-track answer.
   it("rejects a path that names something to create", () => {
     expect(() => requireClipPath(parseObjectPath("t+"))).toThrow(
-      /a new track holds no clips/,
+      /"t\+" adds a track, which only ppal-create-track does/,
     );
     expect(() => requireClipPath(parseObjectPath("s+"))).toThrow(
-      /a new scene holds no clips/,
+      /"s\+" adds a scene, which only ppal-create-scene does/,
     );
   });
 
@@ -243,7 +243,7 @@ describe("requireDevicePath", () => {
   // device parser, which answered with a message about device indices.
   it("rejects a path that names something to create", () => {
     expect(() => requireDevicePath(parseObjectPath("rt+"))).toThrow(
-      /a new return track holds no devices/,
+      /"rt\+" adds a return track, which only ppal-create-track does/,
     );
   });
 

@@ -88,7 +88,11 @@ describe("updateTrack by path", () => {
 
     expect(updateTrack({ path: "t0,t9", name: "Here,Nowhere" })).toStrictEqual([
       { id: "123", path: "t0" },
-      { path: "t9", ok: false, reason: 'no track at path "t9"' },
+      {
+        path: "t9",
+        ok: false,
+        reason: 'no track at path "t9"; ppal-create-track adds tracks',
+      },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -97,7 +101,7 @@ describe("updateTrack by path", () => {
     mockNonExistentObjects();
 
     expect(() => updateTrack({ path: "t9", name: "Nowhere" })).toThrow(
-      'no track at path "t9"',
+      'no track at path "t9"; ppal-create-track adds tracks',
     );
   });
 

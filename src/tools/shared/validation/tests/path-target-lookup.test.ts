@@ -34,7 +34,7 @@ describe("trackIdAtPath", () => {
 
     expect(trackIdAtPath("t9")).toStrictEqual({
       id: null,
-      reason: 'no track at path "t9"',
+      reason: 'no track at path "t9"; ppal-create-track adds tracks',
       empty: true,
     });
   });
@@ -44,7 +44,7 @@ describe("trackIdAtPath", () => {
 
     expect(trackIdAtPath("t9", "toPath")).toStrictEqual({
       id: null,
-      reason: 'no track at toPath "t9"',
+      reason: 'no track at toPath "t9"; ppal-create-track adds tracks',
       empty: true,
     });
   });
@@ -58,12 +58,20 @@ describe("trackIdAtPath", () => {
     ["t0/l+", "a new take lane"],
     ["t0/d1", "a device"],
     ["t0[5|1]", "an arrangement clip"],
-    // A "+" root would otherwise be described by the default arm as "a track",
-    // making the message read "names a track, not a track".
-    ["s+", "a new scene"],
   ])("throws that %s names %s, not a track", (path, noun) => {
     expect(() => trackIdAtPath(path)).toThrow(
       `invalid path "${path}" - names ${noun}, not a track; expected "t<index>", "rt<index>", or "mt"`,
+    );
+  });
+
+  // A "+" root is not a wrong kind of path, it is a path for another tool.
+  it.each([
+    ["t+", '"t+" adds a track, which only ppal-create-track does'],
+    ["rt+", '"rt+" adds a return track, which only ppal-create-track does'],
+    ["s+", '"s+" adds a scene, which only ppal-create-scene does'],
+  ])("sends %s to the tool that takes it", (path, advice) => {
+    expect(() => trackIdAtPath(path)).toThrow(
+      `invalid path "${path}" - ${advice}; name an existing one as "t<index>", "rt<index>", or "mt"`,
     );
   });
 });
@@ -95,6 +103,12 @@ describe("sceneIdAtPath", () => {
   ])("throws that %s names %s, not a scene", (path, noun) => {
     expect(() => sceneIdAtPath(path)).toThrow(
       `invalid path "${path}" - names ${noun}, not a scene; expected "s<index>"`,
+    );
+  });
+
+  it("sends s+ to the tool that takes it", () => {
+    expect(() => sceneIdAtPath("s+")).toThrow(
+      'invalid path "s+" - "s+" adds a scene, which only ppal-create-scene does; name an existing one as "s<index>"',
     );
   });
 });

@@ -272,7 +272,7 @@ describe("deleteObject", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
     expect(() => deleteObject({ id: "scene_1", type: "track" })).toThrow(
-      "s0 (id scene_1) is not a track (found Scene)",
+      "s0 (id scene_1) is not a track (found scene)",
     );
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
@@ -288,7 +288,7 @@ describe("deleteObject", () => {
         id: "scene_1",
         type: "track",
         ok: false,
-        reason: "s0 (id scene_1) is not a track (found Scene)",
+        reason: "s0 (id scene_1) is not a track (found scene)",
       },
       { id: "track_0", deletedPath: "t0", type: "track" },
     ]);

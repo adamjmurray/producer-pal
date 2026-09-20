@@ -202,14 +202,14 @@ describe("processDeviceChains", () => {
     expect(chains[0]).toStrictEqual({
       devices: [],
       path: "t0/d0/rc0",
-      type: "Chain",
+      type: "chain",
       id: "chain-Return A",
       name: "Return A",
     });
     expect(chains[1]).toStrictEqual({
       devices: [],
       path: "t0/d0/rc1",
-      type: "Chain",
+      type: "chain",
       id: "chain-Return B",
       name: "Return B",
     });
@@ -341,7 +341,7 @@ describe("processDeviceChains", () => {
     expect(chains).toHaveLength(1);
     expect(chains[0]).toStrictEqual({
       path: "t0/d0/c0",
-      type: "Chain",
+      type: "chain",
       id: "chain-A",
       name: "Chain A",
       deviceCount: 2,

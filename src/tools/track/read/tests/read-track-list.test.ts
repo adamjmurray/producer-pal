@@ -74,7 +74,11 @@ describe("readTrack over a list of targets", () => {
   it("keeps a slot for a target it can't read, and says why", () => {
     expect(readTrack({ path: "t0,t9" })).toStrictEqual([
       track0,
-      { path: "t9", ok: false, reason: 'nothing at path "t9"' },
+      {
+        path: "t9",
+        ok: false,
+        reason: 'nothing at path "t9"; ppal-create-track adds tracks',
+      },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -84,7 +88,9 @@ describe("readTrack over a list of targets", () => {
   });
 
   it("still throws when the only target names nothing", () => {
-    expect(() => readTrack({ path: "t9" })).toThrow('nothing at path "t9"');
+    expect(() => readTrack({ path: "t9" })).toThrow(
+      'nothing at path "t9"; ppal-create-track adds tracks',
+    );
   });
 
   it("refuses a list with an empty entry", () => {

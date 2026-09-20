@@ -261,7 +261,7 @@ describe("duplicate - track/scene index validation", () => {
     });
 
     await expect(duplicate({ type: "track", id: "track1" })).rejects.toThrow(
-      'no track index for id "track1"',
+      "is not a regular track, and Live only duplicates those",
     );
   });
 
@@ -275,7 +275,7 @@ describe("duplicate - track/scene index validation", () => {
 
     it("should throw for session duplication", async () => {
       await expect(duplicate({ type: "scene", id: "scene1" })).rejects.toThrow(
-        'no scene index for id "scene1"',
+        "no scene index for id scene1",
       );
     });
 
@@ -286,7 +286,7 @@ describe("duplicate - track/scene index validation", () => {
           id: "scene1",
           arrangementStart: "1|1",
         }),
-      ).rejects.toThrow('no scene index for id "scene1"');
+      ).rejects.toThrow("no scene index for id scene1");
     });
   });
 });

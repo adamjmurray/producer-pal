@@ -202,10 +202,10 @@ describe("select path param", () => {
   // The "+" roots name a place to create something, which select never does.
   it("refuses a path that names something to create", () => {
     expect(() => select({ path: "t+" })).toThrow(
-      'invalid path "t+" - a new track does not exist yet; select names something that does',
+      'invalid path "t+" - "t+" adds a track, which only ppal-create-track does; select names something that exists',
     );
     expect(() => select({ path: "s+" })).toThrow(
-      'invalid path "s+" - a new scene does not exist yet; select names something that does',
+      'invalid path "s+" - "s+" adds a scene, which only ppal-create-scene does; select names something that exists',
     );
   });
 

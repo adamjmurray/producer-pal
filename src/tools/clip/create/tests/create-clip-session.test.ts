@@ -336,7 +336,7 @@ describe("createClip - session view", () => {
     setupLiveSet();
 
     await expect(createClip({ slot: "99/0", notes: "C3 1|1" })).rejects.toThrow(
-      "track 99 does not exist",
+      'no track at path "t99"; ppal-create-track adds tracks',
     );
   });
 

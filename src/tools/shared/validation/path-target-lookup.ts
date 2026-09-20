@@ -17,8 +17,9 @@ import {
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
+  CREATE_TRACK_ADVICE,
   isNewObjectPath,
-  NEW_OBJECT_NOUNS,
+  NEW_OBJECT_ADVICE,
   parseObjectPath,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
@@ -35,6 +36,7 @@ export function trackIdAtPath(entry: string, label = "path"): IdLookup {
     noun: "track",
     label,
     entry,
+    advice: CREATE_TRACK_ADVICE,
   });
 }
 
@@ -64,6 +66,7 @@ export function trackApiAtPath(entry: string, label = "path"): LiveAPI {
     trackAtPath(parseObjectPath(entry, label), entry, label),
     entry,
     label,
+    CREATE_TRACK_ADVICE,
   );
 }
 
@@ -91,6 +94,8 @@ export function sceneApiAtPath(entry: string, label = "path"): LiveAPI {
  * @returns The track it names
  */
 function trackAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
+  refuseNewObject(path, entry, label, '"t<index>", "rt<index>", or "mt"');
+
   if (
     path.kind !== "track" &&
     path.kind !== "return-track" &&
@@ -114,6 +119,8 @@ function trackAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
  * @returns The scene it names
  */
 function sceneAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
+  refuseNewObject(path, entry, label, '"s<index>"');
+
   if (path.kind !== "scene") {
     throw pathError(
       label,
@@ -130,14 +137,45 @@ function sceneAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
  * @param object - What the path resolved to
  * @param entry - The path as written, for the error
  * @param label - Param name the path came from, for the error
+ * @param advice - Which tool makes one, appended when the path named nothing
  * @returns The object
  */
-function existing(object: LiveAPI, entry: string, label: string): LiveAPI {
+function existing(
+  object: LiveAPI,
+  entry: string,
+  label: string,
+  advice?: string,
+): LiveAPI {
   if (!object.exists()) {
-    throw new Error(`nothing at ${label} "${entry}"`);
+    const hint = advice == null ? "" : `; ${advice}`;
+
+    throw new Error(`nothing at ${label} "${entry}"${hint}`);
   }
 
   return object;
+}
+
+/**
+ * Refuses a "+" path on a lookup that only reaches objects that already exist,
+ * naming the tool that does take it.
+ * @param path - A parsed path
+ * @param entry - The path as written, for the error
+ * @param label - Param name the path came from, for the error
+ * @param spellings - How to name an existing object of the kind wanted
+ */
+function refuseNewObject(
+  path: ObjectPath,
+  entry: string,
+  label: string,
+  spellings: string,
+): void {
+  if (isNewObjectPath(path)) {
+    throw pathError(
+      label,
+      entry,
+      `${NEW_OBJECT_ADVICE[path.kind]}; name an existing one as ${spellings}`,
+    );
+  }
 }
 
 /**
@@ -146,10 +184,6 @@ function existing(object: LiveAPI, entry: string, label: string): LiveAPI {
  * @returns What it names, as a noun phrase
  */
 function describePathKind(path: ObjectPath): string {
-  if (isNewObjectPath(path)) {
-    return NEW_OBJECT_NOUNS[path.kind];
-  }
-
   switch (path.kind) {
     case "scene":
       return "a scene";

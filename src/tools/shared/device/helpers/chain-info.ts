@@ -5,6 +5,7 @@
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import {
+  CHAIN_TYPE,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   STATE,
 } from "#src/tools/constants.ts";
@@ -42,8 +43,8 @@ export function buildChainInfo(
     chainInfo.path = path;
   }
 
-  // chain.type returns "Chain" or "DrumChain" from Live API
-  chainInfo.type = chain.type;
+  chainInfo.type =
+    chain.type === "DrumChain" ? CHAIN_TYPE.DRUM_CHAIN : CHAIN_TYPE.CHAIN;
   chainInfo.name = chain.getName();
 
   const color = chain.getColor();

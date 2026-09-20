@@ -376,7 +376,7 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      "t0[1|1] (id clip1) is in no scene (found Clip); action " +
+      "t0[1|1] (id clip1) is in no scene (found clip); action " +
         '"play-scene" takes a scene id or a session clip id',
     );
   });
@@ -390,8 +390,24 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      "t5 (id track9) is in no scene (found Track); action " +
+      "t5 (id track9) is in no scene (found track); action " +
         '"play-scene" takes a scene id or a session clip id',
+    );
+  });
+
+  it("leaves the type out for a class the tools never name", () => {
+    const warn = vi.spyOn(console, "warn");
+    const scene = mockScene(3);
+
+    registerMockObject("groove1", {
+      path: "live_set grooves 0",
+      type: "Groove",
+    });
+    playback({ action: "play-scene", sceneIndex: 3, id: "groove1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith(
+      'id groove1 is in no scene; action "play-scene" takes a scene id or a session clip id',
     );
   });
 

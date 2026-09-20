@@ -185,7 +185,7 @@ describe("deleteObject drum-pad refusals", () => {
     expect(() =>
       deleteObject({ id: "drum-chain-1", type: "drum-pad" }),
     ).toThrow(
-      't0/d0/c0 (id drum-chain-1) is a DrumChain. Use type="chain" for this ' +
+      't0/d0/c0 (id drum-chain-1) is a chain. Use type="chain" for this ' +
         'chain, or type="drum-pad" for the whole pad.',
     );
     expect(chain.call).not.toHaveBeenCalledWith("delete_all_chains");
@@ -201,7 +201,7 @@ describe("deleteObject drum-pad refusals", () => {
     });
 
     expect(() => deleteObject({ id: "chain-1", type: "device" })).toThrow(
-      "t0/d0/c0 (id chain-1) is a Chain. Deleting rack chains is not supported.",
+      "t0/d0/c0 (id chain-1) is a chain. Deleting rack chains is not supported.",
     );
     expect(consoleSpy).not.toHaveBeenCalled();
   });
@@ -232,7 +232,7 @@ describe("deleteObject drum-pad refusals", () => {
         type: "drum-pad",
         ok: false,
         reason:
-          't0/d0/c0 (id drum-chain-1) is a DrumChain. Use type="chain" for ' +
+          't0/d0/c0 (id drum-chain-1) is a chain. Use type="chain" for ' +
           'this chain, or type="drum-pad" for the whole pad.',
       },
       { id: padId, path: "t0/d0/pC1", type: "drum-pad" },

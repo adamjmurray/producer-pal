@@ -97,7 +97,7 @@ function deleteSceneObject(id: string, object: LiveAPI): string | null {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
 
   if (Number.isNaN(sceneIndex)) {
-    return `no scene index for ${targetLabel(object)} (Live path "${object.path}")`;
+    return `no scene index for ${targetLabel(object)}`;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -128,7 +128,7 @@ function deleteClipObject(
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
 
   if (!trackIndex) {
-    return `no track index for ${targetLabel(object)} (Live path "${object.path}")`;
+    return `no track index for ${targetLabel(object)}`;
   }
 
   const track = trackAt(tracks, Number(trackIndex));
@@ -150,7 +150,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): string | null {
   const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
 
   if (deviceMatches.length === 0) {
-    return `no device index for ${targetLabel(object)} (Live path "${object.path}")`;
+    return `no device index for ${targetLabel(object)}`;
   }
 
   // We know deviceMatches has at least one element from the check above
@@ -161,7 +161,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): string | null {
   const parentPath = object.path.substring(0, lastMatch.index).trim();
 
   if (!parentPath) {
-    return `no parent path for device ${targetLabel(object)} (Live path "${object.path}")`;
+    return `no container for device ${targetLabel(object)}`;
   }
 
   const parent = LiveAPI.from(parentPath);

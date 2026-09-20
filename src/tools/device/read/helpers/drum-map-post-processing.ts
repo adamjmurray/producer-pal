@@ -5,6 +5,7 @@
 
 import { type Notation } from "#src/shared/notation.ts";
 import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { CHAIN_TYPE } from "#src/tools/constants.ts";
 import {
   DEFAULT_MAX_DEPTH,
   findDrumRack,
@@ -101,11 +102,11 @@ function drumMapSource(
   result: Record<string, unknown>,
 ): DeviceWithDrumPads[] | null {
   // A drum pad result carries no `type`; feeding one to getDrumMap crashed it.
-  if (result.type == null || result.type === "DrumChain") {
+  if (result.type == null || result.type === CHAIN_TYPE.DRUM_CHAIN) {
     return null;
   }
 
-  if (result.type === "Chain") {
+  if (result.type === CHAIN_TYPE.CHAIN) {
     return (result.devices ?? []) as DeviceWithDrumPads[];
   }
 

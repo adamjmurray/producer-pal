@@ -176,7 +176,7 @@ describe("createClip - arrangement view", () => {
         trackIndex: 99,
         arrangementStart: "3|1",
       }),
-    ).rejects.toThrow("track 99 does not exist");
+    ).rejects.toThrow('no track at path "t99"; ppal-create-track adds tracks');
   });
 
   it("refuses each position in its own entry when the create fails", async () => {

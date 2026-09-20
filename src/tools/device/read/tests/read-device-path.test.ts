@@ -109,7 +109,7 @@ describe("readOneDevice with path parameter", () => {
     expect(result).toStrictEqual({
       id: "chain-789",
       path: "t1/d0/c0",
-      type: "Chain",
+      type: "chain",
       name: "Chain 1",
       devices: [],
     });
@@ -126,7 +126,7 @@ describe("readOneDevice with path parameter", () => {
     expect(result).toStrictEqual({
       id: "chain-with-color",
       path: "t1/d0/c0",
-      type: "Chain",
+      type: "chain",
       name: "Colored Chain",
       color: "#FF5500",
       devices: [],
@@ -140,7 +140,7 @@ describe("readOneDevice with path parameter", () => {
     expect(result).toStrictEqual({
       id: "chain-123",
       path: "t1/d0/c0",
-      type: "Chain",
+      type: "chain",
       name: "Test Chain",
       color: "#00FF00",
       devices: [],
@@ -176,7 +176,7 @@ describe("readOneDevice with path parameter", () => {
     expect(result).toStrictEqual({
       id: "chain-with-devices",
       path: "t1/d0/c0",
-      type: "Chain",
+      type: "chain",
       name: "Chain With Devices",
       devices: [
         {
@@ -192,8 +192,8 @@ describe("readOneDevice with path parameter", () => {
     setupChainMock({ id: "chain-no-choke", name: "Regular Chain" });
     const result = readOneDevice({ path: "t1/d0/c0" });
 
-    // Regular chains (type: "Chain") don't have chokeGroup - only DrumChain type does
-    expect(result.type).toBe("Chain");
+    // A plain chain has no chokeGroup; only a drum chain does.
+    expect(result.type).toBe("chain");
     expect(result.chokeGroup).toBeUndefined();
   });
 
@@ -217,7 +217,7 @@ describe("readOneDevice with path parameter", () => {
     expect(result).toStrictEqual({
       id: "return-chain-101",
       path: "t1/d0/rc0",
-      type: "Chain",
+      type: "chain",
       name: "Return A",
       color: "#0088FF",
       devices: [],
@@ -231,7 +231,7 @@ describe("readOneDevice with path parameter", () => {
     expect(result).toStrictEqual({
       id: "chain-muted",
       path: "t1/d0/c0",
-      type: "Chain",
+      type: "chain",
       name: "Muted Chain",
       state: "muted",
       devices: [],

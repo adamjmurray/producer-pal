@@ -21,7 +21,7 @@ const simplerDevice = {
 const LAYER1_CHAIN = {
   id: "chain-1",
   path: "t1/d0/pC1/c0",
-  type: "DrumChain",
+  type: "drum-chain",
   name: "Layer 1",
   color: "#00FF00",
   mappedPitch: "C3",
@@ -237,7 +237,7 @@ describe("readOneDevice with drum pad path", () => {
     expect(chains[0]).toStrictEqual({
       id: "chain-1",
       path: "t1/d0/pC1/c0",
-      type: "DrumChain",
+      type: "drum-chain",
       name: "Layer 1",
       color: "#FF0000",
       mappedPitch: "C2",
@@ -270,7 +270,7 @@ describe("readOneDevice with drum pad path", () => {
     expect(chains[0]).toStrictEqual({
       id: "chain-1",
       path: "t1/d0/pC1/c0",
-      type: "DrumChain",
+      type: "drum-chain",
       name: "Layer 1",
       mappedPitch: "C2",
       gainDb: -15,

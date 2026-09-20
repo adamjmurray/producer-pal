@@ -16,6 +16,7 @@ import {
   createClipsForLength,
   parseArrangementLength,
 } from "./arrangement-length.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Duplicate a clip to the arrangement view
@@ -62,9 +63,7 @@ export async function duplicateClipToArrangement(
   const trackIndex = destTrackIndex ?? clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(
-      `no track index for clipId "${clipId}" (path=${clip.path})`,
-    );
+    throw new Error(`no track for clip ${targetLabel(clip)}`);
   }
 
   const track =

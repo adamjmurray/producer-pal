@@ -72,7 +72,7 @@ describe("getMinimalClipInfo", () => {
     };
 
     expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
-      "could not determine trackIndex for clip",
+      "no track for arrangement clip",
     );
   });
 
@@ -86,7 +86,7 @@ describe("getMinimalClipInfo", () => {
     };
 
     expect(() => getMinimalClipInfo(mockClip as unknown as LiveAPI)).toThrow(
-      "could not determine trackIndex/sceneIndex for clip",
+      "no clip slot for clip",
     );
   });
 });

@@ -92,7 +92,7 @@ describe("device-reading", () => {
 
       expect(result).toStrictEqual({
         id: "chain-123",
-        type: "Chain",
+        type: "chain",
         name: "My Chain",
       });
     });
@@ -104,11 +104,11 @@ describe("device-reading", () => {
       expect(result.name).toBe("5678");
     });
 
-    it("includes type from chain.type property", () => {
+    it("publishes the tools' word for a drum chain, not Live's class", () => {
       const chain = createMockChain({ type: "DrumChain" });
       const result = buildChainInfo(chain);
 
-      expect(result.type).toBe("DrumChain");
+      expect(result.type).toBe("drum-chain");
     });
 
     it("includes path when provided", () => {
@@ -240,7 +240,7 @@ describe("device-reading", () => {
       expect(result).toStrictEqual({
         id: "chain-123",
         path: "t0/d0/c0",
-        type: "DrumChain",
+        type: "drum-chain",
         name: "Full Chain",
         color: "#00FF00",
         mappedPitch: "C2",

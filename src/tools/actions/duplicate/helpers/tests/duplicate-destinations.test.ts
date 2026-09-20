@@ -118,7 +118,7 @@ describe("resolveDestinationTargets", () => {
 
   it("throws when the source clip has no track index and none was named", () => {
     expect(() => resolveDestinationTargets(sourceClip(null), [])).toThrow(
-      /no track index for clip id/,
+      /no track for clip s0 \(id src_clip\)/,
     );
   });
 

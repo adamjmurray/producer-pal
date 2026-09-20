@@ -147,10 +147,10 @@ describe("createClip path param", () => {
 
     await expect(
       createClip({ path: "t99/s0", notes: "C3 1|1" }),
-    ).rejects.toThrow("track 99 does not exist");
+    ).rejects.toThrow('no track at path "t99"; ppal-create-track adds tracks');
     await expect(
       createClip({ path: "t99", arrangementStart: "1|1", notes: "C3 1|1" }),
-    ).rejects.toThrow("track 99 does not exist");
+    ).rejects.toThrow('no track at path "t99"; ppal-create-track adds tracks');
   });
 
   // A take lane names one place, unlike a bare track — but still not a spot on
