@@ -29,7 +29,7 @@ Create a Simpler on a MIDI track with the sample already loaded:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-device \
-  '{"deviceName":"Simpler","path":"t6","params":[
+  '{"device":"Simpler","path":"t6","params":[
      {"name":"sample","value":"/abs/path/bass-hit.wav"}]}'
 ```
 

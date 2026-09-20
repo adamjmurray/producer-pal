@@ -57,7 +57,7 @@ describe("ppal-delete nested rack device ordering", () => {
     const reverb = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Reverb", path: `${rack}/pC1/c0/d1` },
+        arguments: { device: "Reverb", path: `${rack}/pC1/c0/d1` },
       }),
     );
 

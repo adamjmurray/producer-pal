@@ -49,7 +49,7 @@ describe("createDevice by device type", () => {
   // it — the same as writing the position that segment resolves to.
   it("inserts at the position the type segment resolves to", async () => {
     expect(
-      await createDevice({ path: "t0/afx0", deviceName: "Compressor" }),
+      await createDevice({ path: "t0/afx0", device: "Compressor" }),
     ).toStrictEqual({ id: "inserted", path: "t0/d1" });
     expect(track.call).toHaveBeenCalledWith("insert_device", "Compressor", 1);
   });
@@ -71,7 +71,7 @@ describe("createDevice by device type", () => {
   // not blame the container.
   it("refuses an insert at a type segment that names nothing", async () => {
     await expect(
-      createDevice({ path: "t0/afx1", deviceName: "Compressor" }),
+      createDevice({ path: "t0/afx1", device: "Compressor" }),
     ).rejects.toThrow(
       'path "t0/afx1" names no device to insert at: t0 has 1 audio effect (afx0)',
     );

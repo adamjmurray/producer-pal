@@ -38,6 +38,8 @@ import {
 import { validateInsertionOrder } from "./helpers/device-insertion-order.ts";
 
 interface CreateDeviceArgs {
+  device?: string;
+  /** Deprecated spelling of `device`. */
   deviceName?: string;
   path?: string;
   name?: string;
@@ -48,7 +50,7 @@ interface CreateDeviceArgs {
 /**
  * Refuse a list-mode call that also carries create-only args.
  *
- * Without deviceName the call lists the catalog and creates nothing, so a path
+ * Without a device the call lists the catalog and creates nothing, so a path
  * or params sent alongside it are dropped — and the catalog comes back looking
  * like the call worked. The args say a create was meant, so answer the create
  * that can't run rather than the list that wasn't asked for.
@@ -68,18 +70,19 @@ function validateListModeArgs(args: {
     const pronoun = sent.length === 1 ? "it" : "them";
 
     throw new Error(
-      `${sent.join(", ")} ${verb} deviceName; omit ${pronoun} to list available devices`,
+      `${sent.join(", ")} ${verb} device; omit ${pronoun} to list available devices`,
     );
   }
 }
 
 /**
  * Creates a Live device on a track or chain, or lists the native devices. A
- * deviceName that isn't native is looked up in Live's browser (plug-ins, Max for
+ * device that isn't native is looked up in Live's browser (plug-ins, Max for
  * Live devices) when the Producer Pal remote script is running.
  * @param args - The device parameters
- * @param args.deviceName - Device name, omit to list available devices
- * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
+ * @param args.device - Device to create, omit to list available devices
+ * @param args.deviceName - Deprecated spelling of `device`
+ * @param args.path - Device path(s), comma-separated for multiple (required when device provided)
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
@@ -87,10 +90,19 @@ function validateListModeArgs(args: {
  * @returns Device list, or object(s) naming each created device
  */
 export async function createDevice(
-  { deviceName, path, name, params, focus }: CreateDeviceArgs = {},
+  {
+    device,
+    deviceName: deprecatedDeviceName,
+    path,
+    name,
+    params,
+    focus,
+  }: CreateDeviceArgs = {},
   _context: Partial<ToolContext> = {},
 ): Promise<typeof VALID_DEVICES | WriteResult<CreateDeviceResult>> {
-  // List mode: return valid devices when deviceName is omitted
+  const deviceName = device ?? deprecatedDeviceName;
+
+  // List mode: return valid devices when no device is named
   if (deviceName == null) {
     validateListModeArgs({ path, name, params });
 
@@ -168,7 +180,7 @@ function createdEntries(
 }
 
 /**
- * Look up a deviceName that isn't native in Live's browser.
+ * Look up a device that isn't native in Live's browser.
  * @param deviceName - Device name
  * @returns The browser item, or null for a native device
  * @throws Error listing the native devices when the remote script isn't
@@ -198,7 +210,7 @@ async function findBrowserItem(
       `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
 
     throw new Error(
-      `invalid deviceName "${deviceName}". Valid devices - ${validList}`,
+      `invalid device "${deviceName}". Valid devices - ${validList}`,
     );
   }
 

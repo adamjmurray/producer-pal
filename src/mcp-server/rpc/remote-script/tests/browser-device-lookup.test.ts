@@ -172,13 +172,13 @@ describe("lookUpBrowserDevice", () => {
     });
   });
 
-  it("refuses a name different things share, spelling each as a deviceName", async () => {
+  it("refuses a name different things share, spelling each as a device", async () => {
     const browser = { plugin: ["VST3/Acme/Echo"], "audio-effect": ["Echo"] };
 
     expect(await lookUpIn(browser, "Echo")).toStrictEqual({
       available: true,
       error:
-        'deviceName "Echo" matches 2 devices; pass one of these as deviceName: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
+        'device "Echo" matches 2 devices; pass one of these as device: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
     });
   });
 
@@ -217,7 +217,7 @@ describe("lookUpBrowserDevice", () => {
     expect(result).toHaveProperty(
       "error",
       expect.stringMatching(
-        /^deviceName "delay" matches 12 devices; .*"Audio Effects\/Delay 10", and 2 more$/,
+        /^device "delay" matches 12 devices; .*"Audio Effects\/Delay 10", and 2 more$/,
       ),
     );
   });
@@ -228,14 +228,14 @@ describe("lookUpBrowserDevice", () => {
     ).toStrictEqual({
       available: true,
       error:
-        'invalid deviceName "Nope": no native device, plug-in, or Max for Live device has that name',
+        'invalid device "Nope": no native device, plug-in, or Max for Live device has that name',
     });
   });
 
   it("refuses a blank name without asking", async () => {
     expect(await lookUpIn({}, "  ")).toHaveProperty(
       "error",
-      expect.stringContaining("invalid deviceName"),
+      expect.stringContaining("invalid device"),
     );
     expect(fake?.requests).toStrictEqual([]);
   });
@@ -247,7 +247,7 @@ describe("lookUpBrowserDevice", () => {
 
     expect(await lookUpBrowserDevice("Reverb")).toHaveProperty(
       "error",
-      expect.stringContaining("invalid deviceName"),
+      expect.stringContaining("invalid device"),
     );
   });
 
@@ -309,7 +309,7 @@ describe("lookUpBrowserDevice", () => {
       ]) {
         expect(await lookUpIn({ plugin }, deviceName)).toStrictEqual({
           available: true,
-          error: `invalid deviceName "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+          error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
         });
 
         await fake?.close();

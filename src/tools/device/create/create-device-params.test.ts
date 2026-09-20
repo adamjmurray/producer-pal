@@ -76,7 +76,7 @@ describe("createDevice params", () => {
       const simpler = registerSimplerCreationFixture();
 
       await createDevice({
-        deviceName: "Simpler",
+        device: "Simpler",
         path: "t0",
         params: [{ name: "sample", value: "/tmp/kick.wav" }],
       });
@@ -91,7 +91,7 @@ describe("createDevice params", () => {
       registerThresholdDevice();
 
       const result = await createDevice({
-        deviceName: "Compressor",
+        device: "Compressor",
         path: "t0",
         params: [{ name: "Threshold", value: "-20 dB" }],
       });
@@ -108,7 +108,7 @@ describe("createDevice params", () => {
 
       expect(
         await createDevice({
-          deviceName: "Compressor",
+          device: "Compressor",
           path: "t0",
           params: [],
         }),
@@ -123,7 +123,7 @@ describe("createDevice params", () => {
       registerSimplerCreationFixture();
 
       const result = await createDevice({
-        deviceName: "Simpler",
+        device: "Simpler",
         path: "t0",
         params: [{ name: "nonexistent", value: "42" }],
       });
@@ -147,7 +147,7 @@ describe("createDevice params", () => {
       registerThresholdDevice();
 
       const result = await createDevice({
-        deviceName: "Compressor",
+        device: "Compressor",
         path: "t0",
         params: [
           { name: "nope", value: "1" },
@@ -185,7 +185,7 @@ describe("createDevice params", () => {
 
       await expect(
         createDevice({
-          deviceName: "Simpler",
+          device: "Simpler",
           path: "t0",
           params: [{ name: "Volume", value: "" }],
         }),
@@ -208,7 +208,7 @@ describe("createDevice params", () => {
       });
 
       await createDevice({
-        deviceName: "EQ Eight",
+        device: "EQ Eight",
         path: "t0",
         params: [{ name: "sample", value: "/tmp/kick.wav" }],
       });
@@ -304,7 +304,7 @@ describe("createDevice params", () => {
       const { simplers } = setupDrumKitFixture();
 
       const result = await createDevice({
-        deviceName: "Drum Rack",
+        device: "Drum Rack",
         path: "t0",
         params: [
           { name: "pC1/sample", value: "/kick.wav" },
@@ -337,7 +337,7 @@ describe("createDevice params", () => {
       const { simplers, samples } = setupDrumKitFixture();
 
       await createDevice({
-        deviceName: "Drum Rack",
+        device: "Drum Rack",
         path: "t0",
         params: [
           { name: "pC1/sample", value: "/kick.wav" },

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// A deviceName Live has no native device for loads from Live's browser through
+// A device Live has no native device for loads from Live's browser through
 // the remote script: onto a temp track, then moved to the path.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -128,7 +128,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
 
   it("loads it onto a temp track and moves it to the path", async () => {
     expect(
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" }),
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
     ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
 
     expect(requestNode).toHaveBeenCalledWith(
@@ -150,7 +150,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
 
   it("inserts at the position the path names", async () => {
     expect(
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d0" }),
+      await createDevice({ device: "Pro-Q 4", path: "t0/d0" }),
     ).toStrictEqual({ id: "loaded-1", path: "t0/d0" });
     expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
@@ -162,7 +162,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
 
   it("appends past the end of the chain, warning like a native insert", async () => {
     expect(
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d5" }),
+      await createDevice({ device: "Pro-Q 4", path: "t0/d5" }),
     ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
     expect(capturedWarnings()).toStrictEqual([
       'path "t0/d5" is past the end of the device chain (1 device), appending "Pro-Q 4" instead',
@@ -174,13 +174,13 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     registerMockObject("preset", { path: TEMP_TRACK.device(0) });
 
     expect(
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" }),
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
     ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
   });
 
   it("names the device and applies params", async () => {
     const result = (await createDevice({
-      deviceName: "Pro-Q 4",
+      device: "Pro-Q 4",
       path: "t0/d+",
       name: "Main EQ",
       params: [{ name: "Nope", value: "1" }],
@@ -197,7 +197,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     mockNonExistentObjects();
 
     expect(
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+,t9/d+" }),
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+,t9/d+" }),
     ).toStrictEqual([
       { id: "loaded-1", path: "t0/d1" },
       {
@@ -211,27 +211,27 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     expectCleanedUp(1);
   });
 
-  it("answers the native invalid deviceName error when the remote script isn't running", async () => {
+  it("answers the native invalid device error when the remote script isn't running", async () => {
     answerRemoteScript({ resolution: { available: false } });
 
     await expect(
-      createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
-    ).rejects.toThrow(/^invalid deviceName "Pro-Q 4"\. Valid devices - /);
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
+    ).rejects.toThrow(/^invalid device "Pro-Q 4"\. Valid devices - /);
     // Ahead of the path check, as it always was.
-    await expect(createDevice({ deviceName: "Pro-Q 4" })).rejects.toThrow(
-      /^invalid deviceName "Pro-Q 4"\. Valid devices - /,
+    await expect(createDevice({ device: "Pro-Q 4" })).rejects.toThrow(
+      /^invalid device "Pro-Q 4"\. Valid devices - /,
     );
     expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("passes a lookup's error through, touching nothing", async () => {
-    const error = 'deviceName "Pro" matches 2 devices; pass one of these';
+    const error = 'device "Pro" matches 2 devices; pass one of these';
 
     answerRemoteScript({ resolution: { available: true, error } });
 
-    await expect(
-      createDevice({ deviceName: "Pro", path: "t0" }),
-    ).rejects.toThrow(error);
+    await expect(createDevice({ device: "Pro", path: "t0" })).rejects.toThrow(
+      error,
+    );
     expect(liveSet.call).not.toHaveBeenCalled();
   });
 
@@ -242,7 +242,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     });
 
     await expect(
-      createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
     ).rejects.toThrow(
       `could not look up "Pro-Q 4" in Live's browser: timed out`,
     );
@@ -252,7 +252,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
     await expect(
-      createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
     ).rejects.toThrow(
       `could not look up "Pro-Q 4" in Live's browser: no answer`,
     );
@@ -262,7 +262,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     liveSet.methods.create_midi_track = () => ["id", "0"];
 
     await expect(
-      createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+      createDevice({ device: "Pro-Q 4", path: "t0" }),
     ).rejects.toThrow(`could not load "Pro-Q 4": Live made no track`);
     expect(requestNode).toHaveBeenCalledTimes(1);
   });
@@ -285,7 +285,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       });
 
       await expect(
-        createDevice({ deviceName: name, path: "t0/d+" }),
+        createDevice({ device: name, path: "t0/d+" }),
       ).rejects.toThrow(REFUSAL);
       expect(liveSet.call).not.toHaveBeenCalled();
     });
@@ -303,7 +303,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       });
 
       expect(
-        await createDevice({ deviceName: "LFO", path: "t0/d+" }),
+        await createDevice({ device: "LFO", path: "t0/d+" }),
       ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
     });
   });
@@ -319,7 +319,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       });
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
       ).rejects.toThrow(`could not load "Pro-Q 4": no 'Pro-Q 4' in VST3`);
       expectCleanedUp();
     });
@@ -331,7 +331,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       });
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
       ).rejects.toThrow(
         `could not load "Pro-Q 4": Live's browser stopped answering`,
       );
@@ -342,7 +342,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       answerRemoteScript({ load: { success: true }, arrives: false });
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
       ).rejects.toThrow(
         `could not load "Pro-Q 4": the remote script returned nothing`,
       );
@@ -356,7 +356,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       });
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
       ).rejects.toThrow(`could not load "Pro-Q 4": timed out`);
       expectCleanedUp();
     });
@@ -365,7 +365,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       answerRemoteScript({ arrives: false });
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0" }),
+        createDevice({ device: "Pro-Q 4", path: "t0" }),
       ).rejects.toThrow(`could not load "Pro-Q 4": it never arrived`);
       expectCleanedUp();
     });
@@ -374,7 +374,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       liveSet.methods.move_device = () => null;
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" }),
+        createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
       ).rejects.toThrow(`could not insert "Pro-Q 4" at end in path "t0/d+"`);
       expectCleanedUp();
     });
@@ -390,7 +390,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       answerRemoteScript({ instrument: true });
 
       await expect(
-        createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" }),
+        createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
       ).rejects.toThrow(
         `could not insert "Pro-Q 4" at end in path "t0/d+": the destination ` +
           `already has an instrument, and only one is allowed`,
@@ -405,7 +405,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       // No object at the view path, so Live's "nothing is selected" id.
       registerMockObject("0", { path: livePath.view.selectedTrack });
 
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" });
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+" });
 
       expect(liveSet.methods.delete_track).toHaveBeenCalledWith(1);
       expect(songView.set).not.toHaveBeenCalledWith(
@@ -423,7 +423,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
 
       answerRemoteScript({ afterLoad: dropTempTrack });
 
-      await createDevice({ deviceName: "Pro-Q 4", path: "t0/d+" });
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+" });
 
       expect(liveSet.methods.delete_track).not.toHaveBeenCalled();
       expect(songView.set).toHaveBeenCalledWith(

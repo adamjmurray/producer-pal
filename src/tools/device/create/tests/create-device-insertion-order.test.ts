@@ -73,7 +73,7 @@ describe("createDevice insertion order", () => {
 
   it("refuses a second positioned entry for the same chain", async () => {
     await expect(
-      createDevice({ path: "t0/d1,t0/d2", deviceName: "Utility" }),
+      createDevice({ path: "t0/d1,t0/d2", device: "Utility" }),
     ).rejects.toThrow(
       'path entry "t0/d2" is spelled through "t0", which an ' +
         "earlier entry renumbers by inserting into it. Make these calls " +
@@ -86,7 +86,7 @@ describe("createDevice insertion order", () => {
   // one named after an insert.
   it("refuses a positioned entry after appending a device Live re-sorts", async () => {
     await expect(
-      createDevice({ path: "t0,t0/d1", deviceName: "Operator" }),
+      createDevice({ path: "t0,t0/d1", device: "Operator" }),
     ).rejects.toThrow('path entry "t0/d1" is spelled through "t0"');
   });
 
@@ -94,7 +94,7 @@ describe("createDevice insertion order", () => {
   // didn't name exactly where it was.
   it("allows a positioned entry after appending an audio effect", async () => {
     await expect(
-      createDevice({ path: "t0,t0/d1", deviceName: "Utility" }).then(
+      createDevice({ path: "t0,t0/d1", device: "Utility" }).then(
         () => "",
         (error: unknown) => String(error),
       ),
@@ -103,14 +103,14 @@ describe("createDevice insertion order", () => {
 
   it("refuses a positioned entry inside a chain an earlier entry filled", async () => {
     await expect(
-      createDevice({ path: "t0/d0/c0,t0/d0/c0/d0", deviceName: "Operator" }),
+      createDevice({ path: "t0/d0/c0,t0/d0/c0/d0", device: "Operator" }),
     ).rejects.toThrow('path entry "t0/d0/c0/d0" is spelled through "t0/d0/c0"');
   });
 
   // An append names no position of its own, so nothing about it goes stale.
   it("allows an append after a positioned entry for the same chain", async () => {
     expect(
-      await createDevice({ path: "t0/d1,t0", deviceName: "Utility" }),
+      await createDevice({ path: "t0/d1,t0", device: "Utility" }),
     ).toStrictEqual([
       { id: "created-0", path: "t0/d1" },
       { id: "created-0", path: "t0/d1" },
@@ -119,7 +119,7 @@ describe("createDevice insertion order", () => {
 
   it("allows two appends to the same chain", async () => {
     expect(
-      await createDevice({ path: "t0,t0", deviceName: "Utility" }),
+      await createDevice({ path: "t0,t0", device: "Utility" }),
     ).toStrictEqual([
       { id: "created-0", path: "t0/d1" },
       { id: "created-0", path: "t0/d1" },
@@ -128,7 +128,7 @@ describe("createDevice insertion order", () => {
 
   it("allows the same position in two different tracks", async () => {
     expect(
-      await createDevice({ path: "t0/d1,t1/d1", deviceName: "Utility" }),
+      await createDevice({ path: "t0/d1,t1/d1", device: "Utility" }),
     ).toStrictEqual([
       { id: "created-0", path: "t0/d1" },
       { id: "created-1", path: "t1/d1" },
@@ -139,7 +139,7 @@ describe("createDevice insertion order", () => {
   // through t0's device list, which the first entry has just renumbered.
   it("refuses an entry sitting below a chain an earlier entry renumbered", async () => {
     await expect(
-      createDevice({ path: "t0/d1,t0/d2/c0", deviceName: "Utility" }),
+      createDevice({ path: "t0/d1,t0/d2/c0", device: "Utility" }),
     ).rejects.toThrow('path entry "t0/d2/c0" is spelled through "t0"');
   });
 
@@ -149,7 +149,7 @@ describe("createDevice insertion order", () => {
     await expect(
       createDevice({
         path: "t0/d0/pC1/d1,t0/d0/pc1/d2",
-        deviceName: "Utility",
+        device: "Utility",
       }),
     ).rejects.toThrow(
       'path entry "t0/d0/pc1/d2" is spelled through "t0/d0/pC1"',
@@ -160,7 +160,7 @@ describe("createDevice insertion order", () => {
   // key on the same pad and the second one's position has moved.
   it("refuses two entries naming the catch-all pad", async () => {
     await expect(
-      createDevice({ path: "t0/d0/p*/d1,t0/d0/p*/d2", deviceName: "Utility" }),
+      createDevice({ path: "t0/d0/p*/d1,t0/d0/p*/d2", device: "Utility" }),
     ).rejects.toThrow('path entry "t0/d0/p*/d2" is spelled through "t0/d0/p*"');
   });
 
@@ -172,7 +172,7 @@ describe("createDevice insertion order", () => {
     expect(
       await createDevice({
         path: "t9/d0/pC1/d1,t9/d0/pD1/d1",
-        deviceName: "Utility",
+        device: "Utility",
       }),
     ).toStrictEqual([
       {
@@ -192,7 +192,7 @@ describe("createDevice insertion order", () => {
     await expect(
       createDevice({
         path: "t0/d0/pC1/d1,t0/d0/pD1/d1",
-        deviceName: "Utility",
+        device: "Utility",
       }).then(
         () => "",
         (error: unknown) => String(error),
@@ -204,7 +204,7 @@ describe("createDevice insertion order", () => {
   // entry at a time, so the pre-flight check passes over it.
   it("leaves an entry that names no container to the insert loop", async () => {
     expect(
-      await createDevice({ path: "s0,t0/d1", deviceName: "Utility" }),
+      await createDevice({ path: "s0,t0/d1", device: "Utility" }),
     ).toStrictEqual([
       {
         path: "s0",
@@ -220,7 +220,7 @@ describe("createDevice insertion order", () => {
   // position named after it is still the position it named.
   it("allows a position after an entry past the end of the chain", async () => {
     expect(
-      await createDevice({ path: "t0/d99,t0/d0", deviceName: "Utility" }),
+      await createDevice({ path: "t0/d99,t0/d0", device: "Utility" }),
     ).toStrictEqual([
       { id: "created-0", path: "t0/d1" },
       { id: "created-0", path: "t0/d1" },
@@ -231,7 +231,7 @@ describe("createDevice insertion order", () => {
   // the append the past-the-end entry falls back to still shifts the chain.
   it("refuses a position after a past-the-end entry Live re-sorts", async () => {
     await expect(
-      createDevice({ path: "t0/d99,t0/d0", deviceName: "Operator" }),
+      createDevice({ path: "t0/d99,t0/d0", device: "Operator" }),
     ).rejects.toThrow('path entry "t0/d0" is spelled through "t0"');
   });
 });
@@ -246,7 +246,7 @@ describe("createDevice insertion order — one chain, two spellings", () => {
     await expect(
       createDevice({
         path: "t2/d0/pC1/c1/d0,t2/d0/c2/d0",
-        deviceName: "Utility",
+        device: "Utility",
       }),
     ).rejects.toThrow(
       'path entry "t2/d0/c2/d0" is spelled through "t2/d0/pC1/c1"',
@@ -270,7 +270,7 @@ describe("createDevice insertion order — one chain, two spellings", () => {
     await expect(
       createDevice({
         path: "t2/d0/pC1/d0/c0/d0,t2/d0/c0/d0/c0/d1",
-        deviceName: "Utility",
+        device: "Utility",
       }),
     ).rejects.toThrow(
       'path entry "t2/d0/c0/d0/c0/d1" is spelled through "t2/d0/pC1/d0/c0"',
@@ -281,7 +281,7 @@ describe("createDevice insertion order — one chain, two spellings", () => {
     await expect(
       createDevice({
         path: "t2/d0/pC1/c0/d0,t2/d0/c1/d0",
-        deviceName: "Utility",
+        device: "Utility",
       }),
     ).resolves.toBeDefined();
   });

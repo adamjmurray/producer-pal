@@ -205,5 +205,5 @@ const params = KIT.map(([note, name, buf]) => ({
 
 process.stderr.write(`Wrote ${KIT.length} samples to ${OUT}\n`);
 process.stdout.write(
-  `${JSON.stringify({ deviceName: "Drum Rack", path: TRACK, params }, null, 2)}\n`,
+  `${JSON.stringify({ device: "Drum Rack", path: TRACK, params }, null, 2)}\n`,
 );

@@ -179,7 +179,7 @@ describe("read-device on nested racks", () => {
     it("leaves out a pad holding an empty rack", async () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Instrument Rack", path: `${KIT}/pB1` },
+        arguments: { device: "Instrument Rack", path: `${KIT}/pB1` },
       });
 
       const kit = await read(KIT, { include: ["drum-map"] });

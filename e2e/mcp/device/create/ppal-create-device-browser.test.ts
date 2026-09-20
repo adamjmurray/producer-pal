@@ -55,7 +55,7 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
       const created = parseToolResult<CreateDeviceResult>(
         await ctx.client!.callTool({
           name: "ppal-create-device",
-          arguments: { deviceName, path },
+          arguments: { device: deviceName, path },
         }),
       );
 
@@ -154,12 +154,12 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
       const before = await trackCount();
       const result = await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "NoSuchDevice12345", path: "t0/d+" },
+        arguments: { device: "NoSuchDevice12345", path: "t0/d+" },
       });
 
       expect(isToolError(result)).toBe(true);
       expect(getToolErrorMessage(result)).toContain(
-        'invalid deviceName "NoSuchDevice12345"',
+        'invalid device "NoSuchDevice12345"',
       );
       expect(await trackCount()).toBe(before);
     });
@@ -171,7 +171,7 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
       const before = await trackCount();
       const result = await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Producer_Pal", path: "t0/d+" },
+        arguments: { device: "Producer_Pal", path: "t0/d+" },
       });
 
       expect(isToolError(result)).toBe(true);

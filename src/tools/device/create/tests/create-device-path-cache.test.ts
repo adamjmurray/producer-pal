@@ -120,7 +120,7 @@ describe("createDevice path cache", () => {
   it("refuses a path spelled through a chain an earlier append re-sorts", async () => {
     await expect(
       createDevice({
-        deviceName: "Operator",
+        device: "Operator",
         path: `${NESTED}, t0/d0/c0, ${NESTED}`,
       }),
     ).rejects.toThrow(`path entry "${NESTED}" is spelled through "t0/d0/c0"`);
@@ -133,7 +133,7 @@ describe("createDevice path cache", () => {
   // stands and the batch keeps sharing one walk.
   it("keeps the cache when the append cannot move anything", async () => {
     await createDevice({
-      deviceName: "Reverb",
+      device: "Reverb",
       path: `${NESTED}, t0/d0/c0, ${NESTED}`,
     });
 

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Finding the browser item a deviceName names. The remote script matches names
+// Finding the browser item a device name refers to. The remote script matches names
 // only within one browser section, and refuses a plug-in installed in more than
 // one format as ambiguous, so the search across sections happens here.
 
@@ -44,7 +44,7 @@ interface Candidate extends ListedItem {
 }
 
 /**
- * Find the one browser item a deviceName names. `<section>/<path>`, e.g.
+ * Find the one browser item a device name refers to. `<section>/<path>`, e.g.
  * `Plug-Ins/VST3/FabFilter/Pro-Q 4`, names one directly. Anything else is
  * searched for in every section: exact names first, else substrings.
  * @param deviceName - The name the call used
@@ -251,7 +251,7 @@ function listedItems(reply: RemoteScriptAnswer): ListedItem[] {
 /**
  * A name compared the way the remote script compares it: trimmed, any case,
  * and without a filename suffix.
- * @param name - A browser name or the call's deviceName
+ * @param name - A browser name or the name the call used
  * @returns The comparable name
  */
 function normalizedName(name: string): string {
@@ -278,7 +278,7 @@ function found(match: Candidate): BrowserItemResolution {
 function nothingNamed(deviceName: string): BrowserItemResolution {
   return {
     available: true,
-    error: `invalid deviceName "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+    error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
   };
 }
 
@@ -300,7 +300,7 @@ function searchFailed(
 
 /**
  * The error for a name more than one thing has, each spelled so it can be sent
- * straight back as deviceName.
+ * straight back as the `device` arg.
  * @param deviceName - The name the call used
  * @param matches - What it matched
  * @returns The message
@@ -315,5 +315,5 @@ function ambiguity(deviceName: string, matches: Candidate[]): string {
       ? `, and ${matches.length - MAX_LISTED} more`
       : "";
 
-  return `deviceName "${deviceName}" matches ${matches.length} devices; pass one of these as deviceName: ${listed}${more}`;
+  return `device "${deviceName}" matches ${matches.length} devices; pass one of these as device: ${listed}${more}`;
 }

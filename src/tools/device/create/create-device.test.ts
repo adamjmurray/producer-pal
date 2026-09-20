@@ -100,16 +100,16 @@ describe("createDevice", () => {
       await expect(
         createDevice({
           path: "t0",
-          deviceName: "NotARealDevice",
+          device: "NotARealDevice",
         }),
-      ).rejects.toThrow(/invalid deviceName "NotARealDevice"/);
+      ).rejects.toThrow(/invalid device "NotARealDevice"/);
     });
 
     it("should include valid devices in error message", async () => {
       await expect(
         createDevice({
           path: "t0",
-          deviceName: "",
+          device: "",
         }),
       ).rejects.toThrow(/Instruments:.*Wavetable/);
     });
@@ -118,7 +118,7 @@ describe("createDevice", () => {
       await expect(
         createDevice({
           path: "t0",
-          deviceName: "invalid",
+          device: "invalid",
         }),
       ).rejects.toThrow(/MIDI Effects:.*Arpeggiator/);
     });
@@ -127,7 +127,7 @@ describe("createDevice", () => {
       await expect(
         createDevice({
           path: "t0",
-          deviceName: "invalid",
+          device: "invalid",
         }),
       ).rejects.toThrow(/Audio Effects:.*Compressor/);
     });
@@ -135,7 +135,7 @@ describe("createDevice", () => {
     it("should accept all valid instruments", async () => {
       for (const device of VALID_DEVICES.instruments) {
         await expect(
-          createDevice({ path: "t0", deviceName: device }),
+          createDevice({ path: "t0", device: device }),
         ).resolves.toBeDefined();
       }
     });
@@ -143,7 +143,7 @@ describe("createDevice", () => {
     it("should accept all valid MIDI effects", async () => {
       for (const device of VALID_DEVICES.midiEffects) {
         await expect(
-          createDevice({ path: "t0", deviceName: device }),
+          createDevice({ path: "t0", device: device }),
         ).resolves.toBeDefined();
       }
     });
@@ -151,14 +151,14 @@ describe("createDevice", () => {
     it("should accept all valid audio effects", async () => {
       for (const device of VALID_DEVICES.audioEffects) {
         await expect(
-          createDevice({ path: "t0", deviceName: device }),
+          createDevice({ path: "t0", device: device }),
         ).resolves.toBeDefined();
       }
     });
   });
 
   describe("listing available devices", () => {
-    it("should return valid devices list when deviceName is omitted", async () => {
+    it("should return valid devices list when device is omitted", async () => {
       const result = (await createDevice({})) as unknown as {
         instruments: string[];
         midiEffects: string[];
@@ -191,19 +191,19 @@ describe("createDevice", () => {
       ["params", { params: [{ name: "Dry/Wet", value: "50%" }] }],
     ])("refuses a list-mode call carrying %s", async (param, args) => {
       await expect(createDevice(args)).rejects.toThrow(
-        `${param} requires deviceName; omit it to list available devices`,
+        `${param} requires device; omit it to list available devices`,
       );
     });
 
     it("names every create-only arg it was sent", async () => {
       await expect(createDevice({ path: "t0", name: "Lead" })).rejects.toThrow(
-        "path, name require deviceName; omit them to list available devices",
+        "path, name require device; omit them to list available devices",
       );
     });
 
     it("does not touch Live before refusing", async () => {
       await expect(createDevice({ path: "t0" })).rejects.toThrow(
-        "path requires deviceName",
+        "path requires device",
       );
 
       expect(track0.call).not.toHaveBeenCalled();
@@ -218,8 +218,8 @@ describe("createDevice", () => {
   });
 
   describe("path validation", () => {
-    it("should throw error when deviceName provided but path missing", async () => {
-      await expect(createDevice({ deviceName: "Compressor" })).rejects.toThrow(
+    it("should throw error when device provided but path missing", async () => {
+      await expect(createDevice({ device: "Compressor" })).rejects.toThrow(
         "path is required when creating a device",
       );
     });
@@ -230,7 +230,7 @@ describe("createDevice", () => {
       it("should create device on track via path (append)", async () => {
         const result = await createDevice({
           path: "t0",
-          deviceName: "Compressor",
+          device: "Compressor",
         });
 
         expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
@@ -253,7 +253,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "t0/d1",
-          deviceName: "EQ Eight",
+          device: "EQ Eight",
         });
 
         expect(track0.call).toHaveBeenCalledWith(
@@ -280,7 +280,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "rt0/d0",
-          deviceName: "Reverb",
+          device: "Reverb",
         });
 
         expect(returnTrack.call).toHaveBeenCalledWith(
@@ -301,7 +301,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "t0/d0",
-          deviceName: "Compressor",
+          device: "Compressor",
         });
 
         // Should call insert_device WITHOUT position (append mode)
@@ -319,7 +319,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "t0/d5",
-          deviceName: "Compressor",
+          device: "Compressor",
         });
 
         expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
@@ -344,7 +344,7 @@ describe("createDevice", () => {
         });
         registerMockObject("device123", { path: livePath.track(0).device(2) });
 
-        await createDevice({ path: "t0/d5", deviceName: "Compressor" });
+        await createDevice({ path: "t0/d5", device: "Compressor" });
 
         expect(mockConsole.warn).toHaveBeenCalledWith(
           expect.stringContaining("(2 devices)"),
@@ -363,7 +363,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "mt",
-          deviceName: "Limiter",
+          device: "Limiter",
         });
 
         expect(masterTrack.call).toHaveBeenCalledWith(
@@ -382,7 +382,7 @@ describe("createDevice", () => {
       it("should create device in chain via path (append)", async () => {
         const result = await createDevice({
           path: "t0/d0/c0",
-          deviceName: "Compressor",
+          device: "Compressor",
         });
 
         expect(chain0.call).toHaveBeenCalledWith("insert_device", "Compressor");
@@ -413,7 +413,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "t0/d0/c0/d0",
-          deviceName: "EQ Eight",
+          device: "EQ Eight",
         });
 
         expect(chain.call).toHaveBeenCalledWith("insert_device", "EQ Eight", 0);
@@ -444,7 +444,7 @@ describe("createDevice", () => {
 
         const result = await createDevice({
           path: "t0/d0/rc0/d0",
-          deviceName: "Delay",
+          device: "Delay",
         });
 
         expect(returnChain.call).toHaveBeenCalledWith(
@@ -466,7 +466,7 @@ describe("createDevice", () => {
         await expect(
           createDevice({
             path: "t99/d0/c0",
-            deviceName: "Compressor",
+            device: "Compressor",
           }),
         ).rejects.toThrow('Track in path "t99/d0/c0" does not exist');
       });
@@ -487,7 +487,7 @@ describe("createDevice", () => {
         await expect(
           createDevice({
             path: "t0/d0/c0",
-            deviceName: "Compressor",
+            device: "Compressor",
           }),
         ).rejects.toThrow('container at path "t0/d0/c0" does not exist');
 
@@ -503,7 +503,7 @@ describe("createDevice", () => {
         await expect(
           createDevice({
             path: "t0/d0/c0",
-            deviceName: "Compressor",
+            device: "Compressor",
           }),
         ).rejects.toThrow(
           'could not insert "Compressor" at end in path "t0/d0/c0"',
@@ -524,7 +524,7 @@ describe("createDevice", () => {
         });
 
         await expect(
-          createDevice({ path: "t0/d+", deviceName: "Operator" }),
+          createDevice({ path: "t0/d+", device: "Operator" }),
         ).rejects.toThrow(
           'could not insert "Operator" at end in path "t0/d+": the ' +
             "destination already has an instrument, and only one is allowed",
@@ -545,7 +545,7 @@ describe("createDevice", () => {
         });
 
         await expect(
-          createDevice({ path: "t0/d+", deviceName: "Operator" }),
+          createDevice({ path: "t0/d+", device: "Operator" }),
         ).rejects.toThrow(
           /could not insert "Operator" at end in path "t0\/d\+"$/,
         );
@@ -567,7 +567,7 @@ describe("createDevice", () => {
         await expect(
           createDevice({
             path: "t0/d1",
-            deviceName: "EQ Eight",
+            device: "EQ Eight",
           }),
         ).rejects.toThrow(
           'could not insert "EQ Eight" at position 1 in path "t0/d1"',
@@ -582,7 +582,7 @@ describe("createDevice", () => {
 
       const result = await createDevice({
         path: "t0,t1",
-        deviceName: "Compressor",
+        device: "Compressor",
       });
 
       expect(result).toStrictEqual([
@@ -595,7 +595,7 @@ describe("createDevice", () => {
     // which is a different mistake with a different fix.
     it("does not call a path that names nothing a missing path", async () => {
       await expect(
-        createDevice({ path: ", ,", deviceName: "Compressor" }),
+        createDevice({ path: ", ,", device: "Compressor" }),
       ).rejects.toThrow('invalid path ", ," - it names nothing');
     });
 
@@ -608,7 +608,7 @@ describe("createDevice", () => {
       await expect(
         createDevice({
           path: "t0,,t1",
-          deviceName: "Compressor",
+          device: "Compressor",
           name: "A,B,C",
         }),
       ).rejects.toThrow('invalid path "t0,,t1" - it has an empty entry.');
@@ -622,7 +622,7 @@ describe("createDevice", () => {
       await expect(
         createDevice({
           path: "t0,t1",
-          deviceName: "Compressor",
+          device: "Compressor",
           name: "A,B,C",
         }),
       ).rejects.toThrow("path names 2 entries but name names 3 entries");
@@ -634,7 +634,7 @@ describe("createDevice", () => {
       await expect(
         createDevice({
           path: "t0,t1",
-          deviceName: "Compressor",
+          device: "Compressor",
           name: "A,",
         }),
       ).rejects.toThrow("path names 2 entries but name names 1 entry");
@@ -643,7 +643,7 @@ describe("createDevice", () => {
     it("should return single result for single path (backward compatible)", async () => {
       const result = await createDevice({
         path: "t0",
-        deviceName: "Compressor",
+        device: "Compressor",
       });
 
       expect(result).toStrictEqual({
@@ -659,7 +659,7 @@ describe("createDevice", () => {
 
       const result = await createDevice({
         path: "t0",
-        deviceName: "Compressor",
+        device: "Compressor",
         name: "My Compressor",
       });
 
@@ -678,7 +678,7 @@ describe("createDevice", () => {
 
       const result = await createDevice({
         path: "t0,t99",
-        deviceName: "Compressor",
+        device: "Compressor",
       });
 
       expect(result).toStrictEqual([
@@ -696,7 +696,7 @@ describe("createDevice", () => {
       mockNonExistentObjects();
 
       expect(
-        await createDevice({ path: "t98,t99", deviceName: "Compressor" }),
+        await createDevice({ path: "t98,t99", device: "Compressor" }),
       ).toStrictEqual([
         {
           path: "t98",
@@ -715,7 +715,7 @@ describe("createDevice", () => {
       mockNonExistentObjects();
 
       await expect(
-        createDevice({ path: "t99", deviceName: "Compressor" }),
+        createDevice({ path: "t99", device: "Compressor" }),
       ).rejects.toThrow('container at path "t99" does not exist');
     });
   });
@@ -724,7 +724,7 @@ describe("createDevice", () => {
     const selectMockRef = setupSelectMock();
 
     it("should select device and show device detail when focus=true", async () => {
-      await createDevice({ deviceName: "EQ Eight", path: "t0", focus: true });
+      await createDevice({ device: "EQ Eight", path: "t0", focus: true });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         id: "device123",
@@ -733,7 +733,7 @@ describe("createDevice", () => {
     });
 
     it("should not call select when focus=false", async () => {
-      await createDevice({ deviceName: "EQ Eight", path: "t0", focus: false });
+      await createDevice({ device: "EQ Eight", path: "t0", focus: false });
 
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
@@ -742,7 +742,7 @@ describe("createDevice", () => {
       registerTrack1WithDevice456();
 
       await createDevice({
-        deviceName: "Compressor",
+        device: "Compressor",
         path: "t0,t1",
         focus: true,
       });
@@ -758,7 +758,7 @@ describe("createDevice", () => {
       mockNonExistentObjects();
 
       await createDevice({
-        deviceName: "Compressor",
+        device: "Compressor",
         path: "t98,t99",
         focus: true,
       });

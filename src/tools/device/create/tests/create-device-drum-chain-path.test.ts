@@ -37,7 +37,7 @@ describe("createDevice — drum chain path spelling", () => {
 
   it("echoes the pad spelling the call supplied", async () => {
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c1" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/pC1/c1" }),
     ).toStrictEqual({ id: "device-in-chain-2", path: "t0/d0/pC1/c1/d0" });
   });
 
@@ -46,7 +46,7 @@ describe("createDevice — drum chain path spelling", () => {
   // a pad is layered.
   it("reports the pad spelling even when the call supplied the rack-relative one", async () => {
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/c2" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/c2" }),
     ).toStrictEqual({ id: "device-in-chain-2", path: "t0/d0/pC1/c1/d0" });
   });
 
@@ -55,22 +55,22 @@ describe("createDevice — drum chain path spelling", () => {
   // result regardless of which one the caller wrote.
   it("resolves c1 to the chain pD1/c0 names, and reports it that way either way", async () => {
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/c1" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/c1" }),
     ).toStrictEqual({ id: "device-in-chain-1", path: "t0/d0/pD1/c0/d0" });
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/pD1/c0" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/pD1/c0" }),
     ).toStrictEqual({ id: "device-in-chain-1", path: "t0/d0/pD1/c0/d0" });
   });
 
   it("keeps the caller's pad spelling when the path names a position", async () => {
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c1/d0" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/pC1/c1/d0" }),
     ).toStrictEqual({ id: "device-in-chain-2", path: "t0/d0/pC1/c1/d0" });
   });
 
   it("spells a pad's first layer through the pad it was written with", async () => {
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/pC1" }),
     ).toStrictEqual({ id: "device-in-chain-0", path: "t0/d0/pC1/d0" });
   });
 });

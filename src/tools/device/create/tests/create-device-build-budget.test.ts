@@ -87,7 +87,7 @@ describe("createDevice build budget", () => {
       (_, i) => `t0/d0/c${String(i)}`,
     );
 
-    await createDevice({ deviceName: "Operator", path: paths.join(",") });
+    await createDevice({ device: "Operator", path: paths.join(",") });
 
     // The track and the rack are the same objects for every path. CHAINS times
     // this many means each path re-walked the prefix.
@@ -100,7 +100,7 @@ describe("createDevice build budget", () => {
   });
 
   it("builds one object for a single created device, not two", async () => {
-    await createDevice({ deviceName: "Operator", path: "t0/d0/c0" });
+    await createDevice({ device: "Operator", path: "t0/d0/c0" });
 
     expect(resolves("id newdev")).toBe(1);
   });
@@ -111,7 +111,7 @@ describe("createDevice build budget", () => {
     setupKit(SMALL_KIT);
 
     await createDevice({
-      deviceName: "Reverb",
+      device: "Reverb",
       path: PAD_NOTES.map((note) => `t1/d0/p${note}`).join(","),
     });
 
@@ -126,7 +126,7 @@ describe("createDevice build budget", () => {
     setupKit(SMALL_KIT);
 
     await createDevice({
-      deviceName: "Reverb",
+      device: "Reverb",
       path: PAD_NOTES.map((note) => `t1/d0/p${note}`).join(","),
     });
 
@@ -140,7 +140,7 @@ describe("createDevice build budget", () => {
     setupKit(BIG_KIT);
 
     await createDevice({
-      deviceName: "Reverb",
+      device: "Reverb",
       path: PAD_NOTES_8.map((note) => `t2/d0/p${note}`).join(","),
     });
 

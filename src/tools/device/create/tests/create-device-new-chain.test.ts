@@ -97,7 +97,7 @@ describe("createDevice — c+ appends a chain", () => {
     const { rack } = registerRack(false, [0, 0]);
 
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/c+" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/c+" }),
     ).toStrictEqual({ id: "device-2", path: "t0/d0/c2/d0" });
     expect(rack.call).toHaveBeenCalledWith("insert_chain");
   });
@@ -106,7 +106,7 @@ describe("createDevice — c+ appends a chain", () => {
     const { rack } = registerRack(false, [0]);
 
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/c+,t0/d0/c+" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/c+,t0/d0/c+" }),
     ).toStrictEqual([
       { id: "device-1", path: "t0/d0/c1/d0" },
       { id: "device-2", path: "t0/d0/c2/d0" },
@@ -122,7 +122,7 @@ describe("createDevice — c+ appends a chain", () => {
     registerRack(true, [36]);
 
     await expect(
-      createDevice({ deviceName: "Simpler", path: "t0/d0/c+" }),
+      createDevice({ device: "Simpler", path: "t0/d0/c+" }),
     ).rejects.toThrow('name the pad instead (e.g. "t0/d0/pC1/c+")');
   });
 
@@ -130,7 +130,7 @@ describe("createDevice — c+ appends a chain", () => {
     const { rack } = registerRack(true, [36]);
 
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c+" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/pC1/c+" }),
     ).toStrictEqual({ id: "device-1", path: "t0/d0/pC1/c1/d0" });
     expect(rack.call).toHaveBeenCalledWith("insert_chain");
   });
@@ -145,7 +145,7 @@ describe("createDevice — c+ appends a chain", () => {
     registerRack(false, [0]);
 
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/c2/d+" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/c2/d+" }),
     ).toStrictEqual({
       id: "device-2",
       path: "t0/d0/c2/d0",
@@ -157,7 +157,7 @@ describe("createDevice — c+ appends a chain", () => {
     registerRack(true, [36]);
 
     expect(
-      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c2/d+" }),
+      await createDevice({ device: "Simpler", path: "t0/d0/pC1/c2/d+" }),
     ).toStrictEqual({
       id: "device-2",
       path: "t0/d0/pC1/c2/d0",

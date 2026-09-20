@@ -9,7 +9,7 @@
  *
  * Requires Ableton (agentic — drives a live model against Live).
  *
- * The kit grammar is a single create-device with `deviceName: "Drum Rack"` and
+ * The kit grammar is a single create-device with `device: "Drum Rack"` and
  * `params` whose names are pad-path prefixed — `{name: "pC1/sample", value:
  * "<abs file path>"}` loads a sample into pad C1, auto-creating that pad's
  * Simpler. The capability is "one call, many pads", NOT pad-by-pad add-device

@@ -151,7 +151,7 @@ describe("device paths by type", () => {
   it("says what the track holds when an insert names no device to sit at", async () => {
     expect(
       await failure("ppal-create-device", {
-        deviceName: "Compressor",
+        device: "Compressor",
         path: "t2/afx5",
       }),
     ).toContain(

@@ -38,7 +38,7 @@ async function warningsForDeviceAt(
   const { warnings } = parseToolResultWithWarnings(
     await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { deviceName, path },
+      arguments: { device: deviceName, path },
     }),
   );
 

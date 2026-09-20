@@ -47,7 +47,7 @@ describe("ppal-create-device", () => {
     return parseToolResult<CreateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName, path },
+        arguments: { device: deviceName, path },
       }),
     );
   }
@@ -191,7 +191,7 @@ describe("ppal-create-device", () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "InvalidDeviceName123", path: "t0" },
+        arguments: { device: "InvalidDeviceName123", path: "t0" },
       }),
     );
 
@@ -204,7 +204,7 @@ describe("ppal-create-device", () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Compressor", path: "t1/d0" },
+        arguments: { device: "Compressor", path: "t1/d0" },
       }),
     );
 
@@ -223,7 +223,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          deviceName: "Compressor",
+          device: "Compressor",
           path: `t99/d+,t${trackIndex}/d+`,
         },
       }),
@@ -245,7 +245,7 @@ describe("ppal-create-device", () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Operator", path: "t1/d+" },
+        arguments: { device: "Operator", path: "t1/d+" },
       }),
     );
 
@@ -267,7 +267,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          deviceName: "Utility",
+          device: "Utility",
           path: `t${trackIndex}/d0,t${trackIndex}/d1`,
         },
       }),
@@ -286,7 +286,7 @@ describe("ppal-create-device", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
       arguments: {
-        deviceName: "Utility",
+        device: "Utility",
         path: `t${trackIndex}/d${before + 5},t${trackIndex}/d0`,
       },
     });
@@ -308,7 +308,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          deviceName: "Utility",
+          device: "Utility",
           path: `t${trackIndex}/d${before + 99},t${trackIndex}/d${before + 98}`,
           name: "First,Second",
         },
@@ -331,7 +331,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          deviceName: "Utility",
+          device: "Utility",
           path: `${rackPath}/pD1/c0/d0,${rackPath}/c1/d0`,
         },
       }),
@@ -357,7 +357,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          deviceName: "Compressor",
+          device: "Compressor",
           path: `t${trackIndex}/d${startingDevices + 1}`,
         },
       }),
@@ -388,7 +388,7 @@ describe("ppal-create-device", () => {
       parseToolResultWithWarnings<CreateDeviceResult>(
         await ctx.client!.callTool({
           name: "ppal-create-device",
-          arguments: { deviceName: "Chorus-Ensemble", path: `${rackPath}/c1` },
+          arguments: { device: "Chorus-Ensemble", path: `${rackPath}/c1` },
         }),
       );
 
@@ -411,7 +411,7 @@ describe("ppal-create-device", () => {
   // own request to work out which entry vanished.
   it("reports a param name that matched nothing, beside one that landed", async () => {
     const created = await callForParams(ctx.client!, "ppal-create-device", {
-      deviceName: "Compressor",
+      device: "Compressor",
       path: "t0",
       params: [
         { name: "Nope", value: "1" },
@@ -509,7 +509,7 @@ describe("ppal-create-device", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { deviceName: "Chorus-Ensemble", path: `${rackPath}/c+` },
+      arguments: { device: "Chorus-Ensemble", path: `${rackPath}/c+` },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -578,7 +578,7 @@ describe("ppal-create-device", () => {
   });
 
   it("refuses a list-mode call carrying create-only args", async () => {
-    // Without deviceName the call lists the catalog; path and params used to be
+    // Without a device the call lists the catalog; path and params used to be
     // dropped without a word, so the catalog came back looking like a success.
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
@@ -590,7 +590,7 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "path, params require deviceName",
+      "path, params require device",
     );
   });
 
@@ -602,7 +602,24 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "path requires deviceName; omit it to list available devices",
+      "path requires device; omit it to list available devices",
+    );
+  });
+
+  // `deviceName` became `device`. The old name still creates the device so a
+  // caller mid-migration keeps working, and the warning names the new one.
+  it("creates a device from the deprecated deviceName", async () => {
+    const trackIndex = await createTrack("midi");
+    const { data, warnings } = parseToolResultWithWarnings<CreateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "Operator", path: `t${trackIndex}/d+` },
+      }),
+    );
+
+    expect((await readDevice(data.id)).type).toContain("Operator");
+    expect(warnings.join("\n")).toContain(
+      'param "deviceName" is deprecated and will be removed; use "device" instead',
     );
   });
 

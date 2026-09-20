@@ -72,7 +72,7 @@ describe("createDevice — d+ appends a device", () => {
     const { track } = registerTrackWithRack();
 
     expect(
-      await createDevice({ deviceName: "Reverb", path: "t0/d+" }),
+      await createDevice({ device: "Reverb", path: "t0/d+" }),
     ).toStrictEqual({ id: "track-device", path: "t0/d1" });
     // No index: Live puts it at the end of the section for its device type.
     expect(track.call).toHaveBeenCalledWith("insert_device", "Reverb");
@@ -82,7 +82,7 @@ describe("createDevice — d+ appends a device", () => {
     const { chain } = registerTrackWithRack();
 
     expect(
-      await createDevice({ deviceName: "Reverb", path: "t0/d0/c0/d+" }),
+      await createDevice({ device: "Reverb", path: "t0/d0/c0/d+" }),
     ).toStrictEqual({ id: "chain-device-1", path: "t0/d0/c0/d1" });
     expect(chain.call).toHaveBeenCalledWith("insert_device", "Reverb");
   });
@@ -91,10 +91,8 @@ describe("createDevice — d+ appends a device", () => {
   it("does the same as the bare container path", async () => {
     const { track } = registerTrackWithRack();
 
-    expect(
-      await createDevice({ deviceName: "Reverb", path: "t0" }),
-    ).toStrictEqual(
-      await createDevice({ deviceName: "Reverb", path: "t0/d+" }),
+    expect(await createDevice({ device: "Reverb", path: "t0" })).toStrictEqual(
+      await createDevice({ device: "Reverb", path: "t0/d+" }),
     );
     expect(
       track.call.mock.calls.filter(([method]) => method === "insert_device"),
@@ -108,7 +106,7 @@ describe("createDevice — d+ appends a device", () => {
     registerTrackWithRack();
 
     expect(
-      await createDevice({ deviceName: "Reverb", path: "t0/d+,t0/d0/c0/d+" }),
+      await createDevice({ device: "Reverb", path: "t0/d+,t0/d0/c0/d+" }),
     ).toStrictEqual([
       { id: "track-device", path: "t0/d1" },
       { id: "chain-device-1", path: "t0/d0/c0/d1" },
