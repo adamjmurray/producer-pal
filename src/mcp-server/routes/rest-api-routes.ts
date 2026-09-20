@@ -317,7 +317,7 @@ function appendDeprecationNotices(
     paramNamesSomething(args[key]),
   );
 
-  for (const text of hiddenParamWarnings(usedKeys, hidden)) {
+  for (const text of hiddenParamWarnings(usedKeys, hidden, args)) {
     response.content.push({ type: "text", text });
   }
 }

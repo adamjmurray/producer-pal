@@ -315,6 +315,29 @@ create reports `{operation, id}`; a rename, and a delete by id or time, report
 the id of the locator they touched; a delete by name keeps its `count` and the
 name it matched. The `time` and `name` you sent don't come back.
 
+`operation` also answers in the words the schema publishes: `create`, `delete`
+and `rename`, not `created`, `deleted` and `renamed`. A skip still reads
+`skipped`.
+
+**`ppal-playback` stops reporting the scene's name.** A `play-scene` answers
+`{id, path}` for the scene it fired; the name it never changed is a read, so
+`ppal-read-scene` is where it comes from now.
+
+**`ppal-library` with one `searches` entry answers like a plain search.** One
+entry needs no grouping, so the result is `{items, ...}` rather than
+`{results: [{label, items}]}`. An empty `searches: []` is refused up front
+instead of quietly running the top-level filters.
+
+**A deprecated index names the path you should have sent.** `trackIndex: 3` now
+warns `use "path" instead (e.g. path: "t3")` rather than naming `path` alone.
+
+**Two whole-call warnings moved onto the entry.** `ppal-select`'s
+`openPluginWindow` on a device that isn't a VST/AU is a `reason` on
+`selectedDevice`; a clip that landed on a take lane says so on its own entry
+(`expand the take-lanes arrow on the track header in Live to see it`), and a
+copy `ppal-duplicate` had to re-create says where it landed and what that cost
+on the copy's entry.
+
 **An arrangement write says what it ran over.** Creating, moving or lengthening
 a clip into a range another clip occupies overwrites it, as it always has. What
 is new is that the written clip's entry carries a `reason` naming what that

@@ -32,7 +32,10 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  arrangementPath,
+  type ClipPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 
 /** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
@@ -267,7 +270,7 @@ export function resolveTakeLane(
       lane.setAll({ name: takeLaneName });
     } else {
       console.warn(
-        `takeLaneName ignored: take lane ${laneIndex} already exists; rename it with ppal-update-track`,
+        `takeLaneName ignored: take lane ${arrangementPath(track.trackIndex as number, laneIndex)} already exists; rename it with ppal-update-track`,
       );
     }
   }

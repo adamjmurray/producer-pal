@@ -362,15 +362,19 @@ describe("ppal-select", () => {
     );
   });
 
-  it("warns that openPluginWindow does nothing for a stock device", async () => {
+  it("says on the device's entry that openPluginWindow did nothing", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { path: "t3/d0", openPluginWindow: true },
     });
-    const warnings = getToolWarnings(result);
+    const selected = parseToolResult<SelectResult>(result).selectedDevice;
 
-    // The warning names the device by path and id, not by its Live class.
-    expect(warnings.join("\n")).toContain("is not a plug-in (VST/AU)");
+    // It's about the one device, so the entry carries it, not a warning.
+    expect(selected?.path).toBe("t3/d0");
+    expect(selected?.reason).toBe(
+      "openPluginWindow ignored: not a plug-in (VST/AU)",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
   });
 
   // Every other tool takes a comma-separated list, so a model sends one here.
@@ -415,6 +419,7 @@ interface SelectResult {
   selectedDevice?: {
     id: string;
     path: string;
+    reason?: string;
   };
   selectedDrumPad?: {
     id: string;

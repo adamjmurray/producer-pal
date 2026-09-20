@@ -12,11 +12,7 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
-import {
-  canRecreateClip,
-  recreatedClipLosses,
-  recreateLossesNote,
-} from "#src/tools/shared/clip/recreate-clip.ts";
+import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
 export interface ResolvedDuplicateLane {
@@ -70,7 +66,6 @@ export function resolveDuplicateTakeLanes(
     return { lanes, refusals: new Map() };
   }
 
-  const losses = recreatedClipLosses(sourceClip);
   const { fitting, dropped } = takeLaneTargetsThatFit(laneTargets);
 
   // Resolve once per destination rather than once per copy.
@@ -88,12 +83,8 @@ export function resolveDuplicateTakeLanes(
       takeLaneName,
     );
 
+    // Where the copy landed, and what it cost, go on that copy's own entry.
     lanes.set(key, { lane, laneIndex });
-    console.warn(
-      `created on take lane "t${trackIndex}/l${laneIndex}"` +
-        recreateLossesNote(losses) +
-        ". Expand the take-lanes arrow on the track header in Live to see it.",
-    );
   }
 
   return { lanes, refusals: dropped };

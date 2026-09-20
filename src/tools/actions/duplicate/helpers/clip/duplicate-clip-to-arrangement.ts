@@ -57,7 +57,7 @@ export async function duplicateClipToArrangement(
   const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {
-    throw new Error(`no clip exists for clipId "${clipId}"`);
+    throw new Error(`id "${clipId}" does not exist`);
   }
 
   const trackIndex = destTrackIndex ?? clip.trackIndex;

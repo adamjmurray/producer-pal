@@ -20,7 +20,6 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 
 const SAMPLE = "/Samples/Castanet.aif";
@@ -123,19 +122,29 @@ describe("duplicate an audio clip to a take lane", () => {
   /**
    * Register the audio source, then copy it onto a fresh take lane at 1|1.
    * @param sourceProps - Clip properties merged over the audio defaults
+   * @returns The copy's entry
    */
   async function duplicateSourceToNewLane(
     sourceProps: Record<string, unknown> = {},
-  ): Promise<void> {
+  ): Promise<unknown> {
     registerAudioSource(sourceProps);
     registerTakeLaneTrack({ initialLanes: 0, hasMidiInput: 0 });
 
-    await duplicate({
+    return await duplicate({
       type: "clip",
       id: "src_clip",
       arrangementStart: "1|1",
       takeLane: 1,
     });
+  }
+
+  /**
+   * What one copy's entry says.
+   * @param entry - The duplicate result for a single copy
+   * @returns Its reason
+   */
+  function reasonOf(entry: unknown): string | undefined {
+    return (entry as { reason?: string }).reason;
   }
 
   it("re-creates the clip from its sample", async () => {
@@ -156,6 +165,10 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
+      reason:
+        "re-created on the take lane (warp markers reset to the sample's " +
+        "defaults); expand the take-lanes arrow on the track header in Live " +
+        "to see it",
     });
   });
 
@@ -209,35 +222,32 @@ describe("duplicate an audio clip to a take lane", () => {
 
   // A copy built from the sample gets the sample's own warp markers, so anything
   // hand-edited on the source is gone. Live has no working way to write them
-  // back, so the warning is all we can offer.
+  // back, so saying so on the copy's entry is all we can offer.
   it("names the warp markers a warped source loses", async () => {
-    await duplicateSourceToNewLane();
+    const result = await duplicateSourceToNewLane();
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `created on take lane "t0/l0" (warp markers reset to the sample's defaults)`,
-      ),
+    expect(reasonOf(result)).toContain(
+      "re-created on the take lane (warp markers reset to the sample's defaults)",
     );
   });
 
   it("names both losses when a warped source also has envelopes", async () => {
-    await duplicateSourceToNewLane({ has_envelopes: 1 });
+    const result = await duplicateSourceToNewLane({ has_envelopes: 1 });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `created on take lane "t0/l0" (automation envelopes aren't copied; ` +
-          `warp markers reset to the sample's defaults)`,
-      ),
+    expect(reasonOf(result)).toContain(
+      "re-created on the take lane (automation envelopes aren't copied; " +
+        "warp markers reset to the sample's defaults)",
     );
   });
 
   // An unwarped clip plays the sample as recorded, so the copy's markers match
-  // and there is nothing to warn about.
+  // and there is nothing lost to name.
   it("names no loss for an unwarped source with no envelopes", async () => {
-    await duplicateSourceToNewLane({ warping: 0 });
+    const result = await duplicateSourceToNewLane({ warping: 0 });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`created on take lane "t0/l0". Expand`),
+    expect(reasonOf(result)).toBe(
+      "re-created on the take lane; expand the take-lanes arrow on the " +
+        "track header in Live to see it",
     );
   });
 
@@ -262,15 +272,12 @@ describe("duplicate an audio clip to a take lane", () => {
 
     expect(promoted?.set).toHaveBeenCalledWith("warping", 1);
     expect(promoted?.set).toHaveBeenCalledWith("gain", 0.6);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "clip t0/l0[1|1] (id tl_src_clip) was promoted to the main lane by re-creating it " +
-          "(warp markers reset to the sample's defaults)",
-      ),
-    );
     expect(result).toStrictEqual({
       id: "tl_clip_37",
       path: "t0[5|1]",
+      reason:
+        "promoted to the main lane by re-creating it (warp markers reset to " +
+        "the sample's defaults)",
     });
   });
 });

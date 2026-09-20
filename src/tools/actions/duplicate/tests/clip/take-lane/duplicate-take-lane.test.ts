@@ -110,14 +110,14 @@ describe("duplicate take lane", () => {
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
     expect(newClip?.set).toHaveBeenCalledWith("signature_numerator", 4);
     expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
-    // The lane's path is reported so the user can find the new clip. This source
-    // has no envelopes, so nothing was lost and the warning names no cost.
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`created on take lane "t0/l0". Expand`),
-    );
+    // The entry says how the copy got there, so the user can find it. This
+    // source has no envelopes, so nothing was lost and it names no cost.
+    expect(consoleMock.warn).not.toHaveBeenCalled();
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
+      reason:
+        "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
     });
   });
 
@@ -623,8 +623,18 @@ describe("duplicate take lane", () => {
     // Both keep their ids — a path that lost its "/lN" would read as one copy
     // landing on the other, and both ids would be stripped without a word.
     expect(result).toStrictEqual([
-      { id: expect.any(String), path: "t0/l0[1|1]" },
-      { id: expect.any(String), path: "t0/l0[5|1]" },
+      {
+        id: expect.any(String),
+        path: "t0/l0[1|1]",
+        reason:
+          "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
+      },
+      {
+        id: expect.any(String),
+        path: "t0/l0[5|1]",
+        reason:
+          "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
+      },
     ]);
   });
 
@@ -665,6 +675,8 @@ describe("duplicate take lane", () => {
     expect(result).toStrictEqual({
       id: expect.stringMatching(/^tl_clip_\d+$/),
       path: "t0/l1[5|1]",
+      reason:
+        "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
     });
 
     const destLane = lookupMockObject(

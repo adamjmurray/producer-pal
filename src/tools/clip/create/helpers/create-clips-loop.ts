@@ -15,6 +15,7 @@ import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import {
   takeLaneLabel,
   type TakeLaneTarget,
@@ -283,6 +284,15 @@ async function createClipAtIndex(
       params.timeSignature,
       params.tracks.get(pos.trackIndex) ?? null,
     );
+
+    // Live hides take lanes until the track's arrow is expanded, so a clip on
+    // one looks missing. The entry's path already names the lane.
+    if (pos.takeLane != null) {
+      appendReason(
+        clipResult,
+        "expand the take-lanes arrow on the track header in Live to see it",
+      );
+    }
 
     // Apply code execution to the newly created clip
     if (code != null) {

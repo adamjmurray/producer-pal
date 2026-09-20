@@ -44,7 +44,7 @@ describe("arrangement-length-changes", () => {
           context: {},
           reasons: newClipReasons(),
         }),
-      ).toThrow("could not determine trackIndex for clip");
+      ).toThrow("no track for clip");
     });
 
     it("should tile clip when currentArrangementLength > totalContentLength for looped clips", () => {
@@ -423,7 +423,7 @@ describe("arrangement-length-changes", () => {
           currentEndTime: 8,
           context: { silenceWavPath: "/test.wav" },
         }),
-      ).toThrow("could not determine trackIndex for clip");
+      ).toThrow("no track for clip");
     });
 
     it("should shorten audio clip using createAudioClipInSession", () => {

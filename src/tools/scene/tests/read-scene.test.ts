@@ -113,9 +113,7 @@ describe("readOneScene", () => {
       type: "Scene",
     });
 
-    expect(() => readOneScene({ sceneIndex: 99 })).toThrow(
-      "sceneIndex 99 does not exist",
-    );
+    expect(() => readOneScene({ sceneIndex: 99 })).toThrow('no scene at "s99"');
   });
 
   it("handles disabled tempo and time signature", () => {

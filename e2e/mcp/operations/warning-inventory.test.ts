@@ -135,6 +135,16 @@ describe("warnings the tools still raise", () => {
     ).toStrictEqual([`WARNING: routeToSource ignored: ${CLIPS_ONLY}`]);
   });
 
+  // A retired index says nothing about how to spell the path that replaces it,
+  // so the warning has to name the path this very call should have sent.
+  it("names the path a deprecated trackIndex meant", async () => {
+    expect(
+      await warningsFrom("ppal-read-track", { trackIndex: 0 }),
+    ).toStrictEqual([
+      'WARNING: param "trackIndex" is deprecated and will be removed; use "path" instead (e.g. path: "t0")',
+    ]);
+  });
+
   it("names an argument it did not recognise, and a blank destination", async () => {
     expect(
       await warningsFrom("ppal-read-track", { path: "t0", bogusArg: 1 }),
@@ -285,6 +295,50 @@ describe("calls that report on the entry and warn about nothing", () => {
         `the copy of ${rackLabel} could not be moved to "t0/d1": ` +
         "the destination already has an instrument, and only one is allowed",
     });
+  });
+
+  // Live hides a take lane until the track's arrow is expanded, so a clip on
+  // one looks missing. It's about that clip, so its own entry says it.
+  it("says on the clip's entry that it landed on a take lane", async () => {
+    const onLane = await entryFrom("ppal-create-clip", {
+      path: `${SCRATCH}/l0[13|1]`,
+      notes: "C3 1|1",
+      length: "1bar",
+    });
+
+    expect(onLane.path).toBe(`${SCRATCH}/l0[13|1]`);
+    expect(onLane.reason).toBe(
+      "expand the take-lanes arrow on the track header in Live to see it",
+    );
+
+    const copied = await entryFrom("ppal-duplicate", {
+      type: "clip",
+      path: `${SCRATCH}/l0[13|1]`,
+      toPath: `${SCRATCH}/l0[17|1]`,
+    });
+
+    expect(copied.reason).toBe(
+      "re-created on the take lane; expand the take-lanes arrow on the track " +
+        "header in Live to see it",
+    );
+  });
+
+  // openPluginWindow is about the one device the call selected, so its entry
+  // carries the refusal rather than a warning.
+  it("says on the selected device's entry that it is not a plug-in", async () => {
+    const selected = parseToolResultWithWarnings<{
+      selectedDevice?: TargetEntry;
+    }>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { path: "t3/d0", openPluginWindow: true },
+      }),
+    );
+
+    expect(selected.warnings).toStrictEqual([]);
+    expect(selected.data.selectedDevice?.reason).toBe(
+      "openPluginWindow ignored: not a plug-in (VST/AU)",
+    );
   });
 
   it("says on the moved clip's entry that it replaced the one there", async () => {

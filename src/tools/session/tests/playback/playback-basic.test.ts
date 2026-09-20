@@ -349,7 +349,7 @@ describe("transport", () => {
     expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       playing: true,
-      scene: { id: "scene0", path: "s0", name: "Test Scene" },
+      scene: { id: "scene0", path: "s0" },
     });
   });
 
@@ -366,7 +366,7 @@ describe("transport", () => {
       .mockReturnValue(false);
 
     expect(() => playback({ action: "play-scene", sceneIndex: 999 })).toThrow(
-      "scene at index 999 does not exist",
+      'no scene at "s999"',
     );
 
     existsSpy.mockRestore();

@@ -507,7 +507,6 @@ describe("ppal-playback", () => {
 
     expect(playingScene.playing).toBe(true);
     expect(playingScene.scene?.path).toBe("s0");
-    expect(playingScene.scene?.name).toBe("Intro");
 
     await playback({ action: "stop" });
   });
@@ -523,16 +522,19 @@ describe("ppal-playback", () => {
 
     expect(byClip.scene?.id).toMatch(/\S/);
     expect(byClip.scene?.path).toBe("s0");
-    expect(byClip.scene?.name).toBe("Intro");
 
     await playback({ action: "stop" });
   });
 
-  it("names an unnamed scene by its number, as Live shows it", async () => {
-    const unnamed = await playback({ action: "play-scene", path: "s7" });
+  // play-scene changes no name, so it reports none: the path and id say which
+  // scene fired, and ppal-read-scene is where a name comes from.
+  it("reports the scene by id and path only", async () => {
+    const played = await playback({ action: "play-scene", path: "s7" });
 
-    expect(unnamed.scene?.path).toBe("s7");
-    expect(unnamed.scene?.name).toBe("8");
+    expect(played.scene).toStrictEqual({
+      id: expect.stringMatching(/\S/),
+      path: "s7",
+    });
 
     await playback({ action: "stop" });
   });
@@ -638,7 +640,7 @@ describe("ppal-playback", () => {
 interface PlaybackResult {
   playing: boolean;
   startTime?: string;
-  scene?: { id: string; path?: string; name: string };
+  scene?: { id: string; path?: string };
   clips?: Array<{ id?: string; path?: string; ok?: false; reason?: string }>;
   loop?: boolean;
   loopStart?: string;

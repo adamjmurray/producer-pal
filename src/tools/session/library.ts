@@ -87,6 +87,9 @@ export async function library(
 
   if (searches != null && action !== "search") {
     console.warn(`searches does not apply to action "${action}"; ignoring it`);
+  } else if (searches?.length === 0) {
+    // An empty list names no search at all, so there is nothing to guess at.
+    throw new Error("searches must name at least one search");
   }
 
   if (action === "listTags") {
@@ -146,14 +149,9 @@ export async function library(
   }
 
   // searches is the fan-out form of a search: each entry carries its own
-  // filters, so the top-level ones don't apply. An empty array says nothing
-  // about what to search for, so fall through to the single search.
-  if (searches != null && searches.length > 0) {
-    return await runSearchBatch(searches, toolContext, runSearch);
-  }
-
+  // filters, so the top-level ones don't apply.
   if (searches != null) {
-    console.warn("searches was empty; running a single search instead");
+    return await runSearchBatch(searches, toolContext, runSearch);
   }
 
   return await runSearch(args, toolContext);

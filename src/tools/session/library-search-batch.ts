@@ -34,7 +34,7 @@ export const MAX_BATCH_QUERIES = 20;
  * @param queries - Per-query filter sets (optional label each)
  * @param ctx - Per-request context carrying sampleFolder
  * @param runSearch - The single-search implementation to reuse per query
- * @returns Array-form batch result, one entry per query in order
+ * @returns One entry per query in order, or a lone query's result unwrapped
  */
 export async function runSearchBatch(
   queries: LibraryBatchQuery[],
@@ -43,7 +43,7 @@ export async function runSearchBatch(
     args: LibrarySearchArgs,
     ctx: Partial<ToolContext>,
   ) => Promise<LibrarySearchResult>,
-): Promise<LibraryBatchResult> {
+): Promise<LibraryBatchResult | LibrarySearchResult> {
   const capped = queries.slice(0, MAX_BATCH_QUERIES);
 
   if (queries.length > MAX_BATCH_QUERIES) {
@@ -107,13 +107,20 @@ export async function runSearchBatch(
     );
   }
 
-  if (!dbConsulted) {
-    return { results };
+  const envelope = {
+    ...(dbConsulted && { dbAvailable }),
+    ...(dbConsulted && stalenessRisk != null && { stalenessRisk }),
+  };
+
+  // One search needs no grouping, so it answers in the shape a plain search
+  // does. An array where the caller asked for one thing confuses small models.
+  if (results.length === 1) {
+    const [{ items, reason }] = results as [LibraryBatchEntry];
+
+    return { ...envelope, items, ...(reason != null && { reason }) };
   }
 
-  return stalenessRisk == null
-    ? { dbAvailable, results }
-    : { dbAvailable, stalenessRisk, results };
+  return { ...envelope, results };
 }
 
 /**

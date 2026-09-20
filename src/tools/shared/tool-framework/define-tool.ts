@@ -152,7 +152,11 @@ export function defineTool(
         }
 
         // The value was honored; this only steers the caller to the real name.
-        for (const text of hiddenParamWarnings(usedHidden, hiddenParams)) {
+        for (const text of hiddenParamWarnings(
+          usedHidden,
+          hiddenParams,
+          args,
+        )) {
           result.content.push({ type: "text", text });
         }
 

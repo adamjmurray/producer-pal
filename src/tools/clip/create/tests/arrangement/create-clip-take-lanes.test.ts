@@ -64,7 +64,7 @@ describe("createClip take lanes", () => {
       arrangementStart: "1|1",
       notes: "C3",
       takeLane: 1,
-    })) as { id: string; path?: string };
+    })) as { id: string; path?: string; reason?: string };
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
     expect(track.call).not.toHaveBeenCalledWith(
@@ -79,6 +79,24 @@ describe("createClip take lanes", () => {
     expect(result.id).toMatch(/^tl_clip_/);
     // result surfaces the lane the clip landed on and where it starts
     expect(result.path).toBe("t0/l0[1|1]");
+    // Live hides take lanes behind an arrow, so the entry says where to look.
+    expect(result.reason).toBe(
+      "expand the take-lanes arrow on the track header in Live to see it",
+    );
+  });
+
+  // A clip on the main lane is visible, so nothing is added to its entry.
+  it("says nothing about take lanes for a main-lane clip", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = (await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1",
+      notes: "C3",
+    })) as { reason?: string };
+
+    expect(result.reason).toBeUndefined();
   });
 
   it("creates neither a lane nor a clip when a later position won't parse", async () => {
@@ -458,9 +476,8 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     ]);
 
     expect(lanes.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('targeting take lane "t0/l0"'),
-    );
+    // Which lane a clip landed on rides on that clip's entry, not a warning.
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   // One lane named twice keys the same, so both its positions land on the one
@@ -494,9 +511,6 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
 
     expect([...lanes.keys()]).toStrictEqual(["t0/l0"]);
     expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('targeting take lane "t0/l0"'),
-    );
   });
 
   // Two destinations naming different lanes on one track each get their own.

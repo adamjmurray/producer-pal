@@ -8,6 +8,7 @@ import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
@@ -33,6 +34,7 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
 
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: scenePathFromIndex,
     }),
     include: param(
       z

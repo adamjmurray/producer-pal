@@ -139,7 +139,7 @@ export async function deleteLocator(
     }
 
     return {
-      operation: "deleted",
+      operation: "delete",
       count: matches.length,
       name: locatorName,
     };
@@ -189,7 +189,7 @@ export async function deleteLocator(
   await waitForPlayheadPosition(liveSet, timeInBeats);
   liveSet.call("set_or_delete_cue");
 
-  return { operation: "deleted", id: deletedId };
+  return { operation: "delete", id: deletedId };
 }
 
 /**
@@ -265,7 +265,7 @@ export function renameLocator(
 
   found.locator.set("name", locatorName);
 
-  return { operation: "renamed", id: found.locator.id };
+  return { operation: "rename", id: found.locator.id };
 }
 
 /**

@@ -99,9 +99,7 @@ describe("readOneTrack", () => {
   it("throws when the track does not exist", () => {
     registerMockObject("0", { path: livePath.track(99), type: "Track" });
 
-    expect(() => readOneTrack({ trackIndex: 99 })).toThrow(
-      "trackIndex 99 does not exist",
-    );
+    expect(() => readOneTrack({ trackIndex: 99 })).toThrow('no track at "t99"');
   });
 
   it("returns track information for MIDI tracks", () => {

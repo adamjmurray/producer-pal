@@ -161,9 +161,11 @@ describe("hidden params", () => {
     );
 
     expect(Object.keys(validating)).toContain("sceneIndex");
+    // The example is a function: the warning reads the path off the call's args.
     expect(hidden.sceneIndex).toStrictEqual({
       kind: "deprecated",
       replacedBy: "path",
+      example: expect.any(Function),
     });
   });
 

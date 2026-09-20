@@ -5,6 +5,7 @@
 
 import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/clip-resolution.ts";
 import { STATE } from "#src/tools/constants.ts";
+import { trackCategoryPath } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 import { computeState } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
   readReturnTrackInfo,
@@ -246,15 +247,15 @@ export function readMixerProperties(
  * Handle track that doesn't exist by throwing an error
  * @param category - Track category (regular, return, or master)
  * @param trackIndex - Track index
- * @throws Error indicating the track does not exist
+ * @throws Error naming the path that holds no track
  */
 export function handleNonExistentTrack(
   category: string,
   trackIndex: number | null,
 ): never {
-  const indexType = category === "return" ? "returnTrackIndex" : "trackIndex";
-
-  throw new Error(`${indexType} ${trackIndex} does not exist`);
+  throw new Error(
+    `no track at "${trackCategoryPath(category, trackIndex ?? 0)}"`,
+  );
 }
 
 /**

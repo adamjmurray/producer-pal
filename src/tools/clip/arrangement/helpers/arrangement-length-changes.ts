@@ -13,7 +13,10 @@ import {
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
-import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  pathPrefix,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 
@@ -112,7 +115,7 @@ export function handleArrangementLengthening({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(`could not determine trackIndex for clip ${clip.id}`);
+    throw new Error(`no track for clip ${targetLabel(clip)}`);
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
@@ -331,7 +334,7 @@ export function handleArrangementShortening({
   const trackIndex = clip.trackIndex;
 
   if (trackIndex == null) {
-    throw new Error(`could not determine trackIndex for clip ${clip.id}`);
+    throw new Error(`no track for clip ${targetLabel(clip)}`);
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));

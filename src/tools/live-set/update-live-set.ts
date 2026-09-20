@@ -322,7 +322,7 @@ async function createLocator(
   }
 
   return {
-    operation: "created",
+    operation: "create",
     ...(found && { id: found.locator.id }),
   };
 }

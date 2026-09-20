@@ -37,7 +37,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(newCue.set.mock.calls.filter((c) => c[0] === "name")).toHaveLength(
         0,
       );
-      expect(result.locator).toStrictEqual({ operation: "created", id: "26" });
+      expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
     });
 
     it("should create locator with name", async () => {
@@ -52,7 +52,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 16);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(newCue.set).toHaveBeenCalledWith("name", "Verse");
-      expect(result.locator).toStrictEqual({ operation: "created", id: "26" });
+      expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
     });
 
     it("should stop playback before creating locator", async () => {
@@ -122,7 +122,7 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 0);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toStrictEqual({ operation: "deleted", id: "26" });
+      expect(result.locator).toStrictEqual({ operation: "delete", id: "26" });
     });
 
     it("names the locator it deleted at a time by its ID", async () => {
@@ -133,7 +133,7 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 16);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toStrictEqual({ operation: "deleted", id: "27" });
+      expect(result.locator).toStrictEqual({ operation: "delete", id: "27" });
     });
 
     it("should delete all locators by name", async () => {
@@ -159,7 +159,7 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(cueTimeSets).toStrictEqual([32, 0]);
       expect(result.locator).toStrictEqual({
-        operation: "deleted",
+        operation: "delete",
         count: 2,
         name: "Verse",
       });
@@ -178,7 +178,7 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
-        operation: "deleted",
+        operation: "delete",
         count: 1,
         name: "5678",
       });
@@ -193,7 +193,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "Verse", // the second locator is "Verse" — must be ignored
       });
 
-      expect(result.locator).toStrictEqual({ operation: "deleted", id: "26" });
+      expect(result.locator).toStrictEqual({ operation: "delete", id: "26" });
     });
 
     it("prefers locatorTime over locatorName when both are given", async () => {
@@ -203,7 +203,7 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "Intro", // must be ignored
       });
 
-      expect(result.locator).toStrictEqual({ operation: "deleted", id: "27" });
+      expect(result.locator).toStrictEqual({ operation: "delete", id: "27" });
     });
 
     it("should skip if no identifier provided for delete", async () => {
@@ -309,7 +309,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(cues.get("26")?.set).toHaveBeenCalledWith("name", "New Intro");
-      expect(result.locator).toStrictEqual({ operation: "renamed", id: "26" });
+      expect(result.locator).toStrictEqual({ operation: "rename", id: "26" });
     });
 
     it("should rename locator by time", async () => {
@@ -320,7 +320,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(cues.get("27")?.set).toHaveBeenCalledWith("name", "New Verse");
-      expect(result.locator).toStrictEqual({ operation: "renamed", id: "27" });
+      expect(result.locator).toStrictEqual({ operation: "rename", id: "27" });
     });
 
     it("should skip if locatorName is missing for rename", async () => {
@@ -395,7 +395,7 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
-      expect(result.locator).toStrictEqual({ operation: "created", id: "26" });
+      expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
     });
   });
   describe("locator args without an operation", () => {

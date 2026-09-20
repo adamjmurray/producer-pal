@@ -39,9 +39,9 @@ describe("updateLiveSet - locator lists", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "created", id: "26" },
-        { operation: "created", id: "27" },
-        { operation: "created", id: "28" },
+        { operation: "create", id: "26" },
+        { operation: "create", id: "27" },
+        { operation: "create", id: "28" },
       ]);
       expect(set.locators()).toStrictEqual([
         { time: 0, name: "Intro" },
@@ -75,7 +75,7 @@ describe("updateLiveSet - locator lists", () => {
       });
 
       expect(result.locator).toStrictEqual({
-        operation: "created",
+        operation: "create",
         id: "26",
       });
       expect(set.locators()).toStrictEqual([
@@ -94,8 +94,8 @@ describe("updateLiveSet - locator lists", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "deleted", id: "26" },
-        { operation: "deleted", id: "28" },
+        { operation: "delete", id: "26" },
+        { operation: "delete", id: "28" },
       ]);
       expect(set.locators()).toStrictEqual([{ time: 16, name: "Verse" }]);
     });
@@ -109,8 +109,8 @@ describe("updateLiveSet - locator lists", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "deleted", count: 1, name: "Intro" },
-        { operation: "deleted", count: 1, name: "Drop" },
+        { operation: "delete", count: 1, name: "Intro" },
+        { operation: "delete", count: 1, name: "Drop" },
       ]);
       expect(set.locators()).toStrictEqual([{ time: 16, name: "Verse" }]);
     });
@@ -121,8 +121,8 @@ describe("updateLiveSet - locator lists", () => {
       const result = await renameBothLocators();
 
       expect(result.locator).toStrictEqual([
-        { operation: "renamed", id: "26" },
-        { operation: "renamed", id: "27" },
+        { operation: "rename", id: "26" },
+        { operation: "rename", id: "27" },
       ]);
       expect(set.locators()).toStrictEqual([
         { time: 0, name: "Head" },
@@ -190,7 +190,7 @@ describe("updateLiveSet - locator lists", () => {
 
       const entries = result.locator as Array<Record<string, unknown>>;
 
-      expect(entries[0]).toStrictEqual({ operation: "created", id: "26" });
+      expect(entries[0]).toStrictEqual({ operation: "create", id: "26" });
       // The skip carries every spelling the caller wrote, so they can tell
       // which section it was.
       expect(entries[1]).toStrictEqual({
@@ -200,7 +200,7 @@ describe("updateLiveSet - locator lists", () => {
         ok: false,
         reason: expect.stringContaining('Invalid bar|beat format: "nope"'),
       });
-      expect(entries[2]).toStrictEqual({ operation: "created", id: "27" });
+      expect(entries[2]).toStrictEqual({ operation: "create", id: "27" });
       expect(set.locators()).toStrictEqual([
         { time: 0, name: "Intro" },
         { time: 32, name: "Drop" },
@@ -245,7 +245,7 @@ describe("updateLiveSet - locator lists", () => {
       const result = await renameBothLocators();
 
       expect(result.locator).toStrictEqual([
-        { operation: "renamed", id: "26" },
+        { operation: "rename", id: "26" },
         {
           operation: "skipped",
           id: "27",
@@ -266,7 +266,7 @@ describe("updateLiveSet - locator lists", () => {
       });
 
       expect(result.locator).toStrictEqual([
-        { operation: "renamed", id: "26" },
+        { operation: "rename", id: "26" },
         {
           operation: "skipped",
           ok: false,

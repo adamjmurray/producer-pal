@@ -77,10 +77,15 @@ describe("duplicate to a take lane, cut short", () => {
       { deadline: 1000 },
     );
 
-    // The one copy that fit landed on the lane the warning goes on to name; the
+    // The one copy that fit says on its own entry where it landed; the
     // destination it never reached keeps its slot.
     expect(result).toStrictEqual([
-      { id: "tl_clip_1", path: "t1/l0[1|1]" },
+      {
+        id: "tl_clip_1",
+        path: "t1/l0[1|1]",
+        reason:
+          "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
+      },
       {
         path: "t1/l0[5|1]",
         ok: false,
@@ -121,7 +126,12 @@ describe("duplicate to a take lane, cut short", () => {
       },
       // The mock's clip ids run off a counter every test shares, so the copy
       // is matched by shape rather than by a number that shifts.
-      { id: expect.stringMatching(/^tl_clip_\d+$/), path: "t1/l0[5|1]" },
+      {
+        id: expect.stringMatching(/^tl_clip_\d+$/),
+        path: "t1/l0[5|1]",
+        reason:
+          "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
+      },
       {
         path: "t1/l1[9|1]",
         ok: false,

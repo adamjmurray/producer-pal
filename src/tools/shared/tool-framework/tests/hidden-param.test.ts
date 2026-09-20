@@ -16,6 +16,7 @@ import {
 } from "../hidden-param.ts";
 import { getParamModes, param } from "../modal-config.ts";
 import { resolveToolSchema } from "../resolve-tool-schema.ts";
+import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 type MockServer = McpServer & { registerTool: Mock };
 
@@ -185,6 +186,41 @@ describe("hiddenParamWarnings", () => {
       ),
     ).toStrictEqual([
       'WARNING: param "locator" is deprecated and will be removed; use "toPath" instead (e.g. toPath: "t2[loc:Verse]")',
+    ]);
+  });
+
+  // A deprecated index says nothing about how to spell the path that replaces
+  // it, so the example is read off the call's own args.
+  it("reads the example off the args the call sent", () => {
+    expect(
+      hiddenParamWarnings(
+        ["trackIndex"],
+        collectHiddenParams({
+          trackIndex: deprecatedParam(z.number().optional(), {
+            replacedBy: "path",
+            example: trackPathFromIndex,
+          }),
+        }),
+        { trackIndex: 3 },
+      ),
+    ).toStrictEqual([
+      'WARNING: param "trackIndex" is deprecated and will be removed; use "path" instead (e.g. path: "t3")',
+    ]);
+  });
+
+  it("leaves the example out when the args don't determine one", () => {
+    expect(
+      hiddenParamWarnings(
+        ["trackIndex"],
+        collectHiddenParams({
+          trackIndex: deprecatedParam(z.number().optional(), {
+            replacedBy: "path",
+            example: trackPathFromIndex,
+          }),
+        }),
+      ),
+    ).toStrictEqual([
+      'WARNING: param "trackIndex" is deprecated and will be removed; use "path" instead',
     ]);
   });
 

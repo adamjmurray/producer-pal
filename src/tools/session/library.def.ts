@@ -75,7 +75,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     searches: param(searchesInputSchema, {
       default:
-        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Each entry takes the same filters as a single search, plus an optional label; results come back in order, grouped per query (max 20)",
+        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Each entry takes the same filters as a single search, plus an optional label; results come back in order, grouped per query (max 20). One entry answers like a plain search, ungrouped",
       smallModel: null,
     }),
 

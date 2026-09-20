@@ -15,6 +15,8 @@ import { getMinimalClipInfo } from "../minimal-clip-info.ts";
 import {
   PartialRecreateError,
   recreateClip,
+  recreatedClipLosses,
+  recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lanes.ts";
 
@@ -146,7 +148,9 @@ function recreateCopy(
   destination: LiveAPI,
   kind: "take-lane" | "promoted",
 ): CopyAttempt {
-  const losses: string[] = [];
+  // Seeded with what a re-create is known to cost this source, then added to
+  // with anything the copy itself turned out to lose.
+  const losses = recreatedClipLosses(options.object);
 
   try {
     const copy = getMinimalClipInfo(
@@ -160,11 +164,7 @@ function recreateCopy(
       ),
     );
 
-    // What a re-create costs is warned once for the whole call, before any copy
-    // exists, so a loss only this copy hit has to go on its own entry.
-    return {
-      copy: losses.length > 0 ? { ...copy, reason: losses.join("; ") } : copy,
-    };
+    return { copy: { ...copy, reason: landedNote(kind, losses) } };
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
     // refusal would lose a clip the caller has to know about.
@@ -181,4 +181,21 @@ function recreateCopy(
       refused: `the ${kind} copy failed: ${errorMessage(error)}`,
     };
   }
+}
+
+/**
+ * How a re-created copy got where it is, and what that cost. Live's arrangement
+ * duplicate can make neither move, so the copy's own entry says so.
+ * @param kind - Which re-create this was
+ * @param losses - What the re-create lost
+ * @returns The note for the entry
+ */
+function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
+  const cost = recreateLossesNote(losses);
+
+  // Live hides take lanes until the track's arrow is expanded, so a copy on one
+  // looks missing.
+  return kind === "take-lane"
+    ? `re-created on the take lane${cost}; expand the take-lanes arrow on the track header in Live to see it`
+    : `promoted to the main lane by re-creating it${cost}`;
 }

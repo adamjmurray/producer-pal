@@ -68,7 +68,7 @@ describe("select - plugin editor window", () => {
     expect(device.set).toHaveBeenCalledWith("is_editor_open", 1);
   });
 
-  it("warns and skips when the targeted device is not a plug-in", () => {
+  it("says so on the device's entry when it is not a plug-in", () => {
     const device = registerDeviceAtT0D0("device_0", "Eq8Device");
 
     const result = select({ devicePath: "t0/d0", openPluginWindow: true });
@@ -77,11 +77,13 @@ describe("select - plugin editor window", () => {
       "is_editor_open",
       expect.anything(),
     );
-    expect(result.selectedDevice?.pluginWindowOpen).toBeUndefined();
-    // The warning names the device by path and id, never by its Live class.
-    expect(capturedWarnings()).toContainEqual(
-      "openPluginWindow ignored — t0/d0 (id device_0) is not a plug-in (VST/AU)",
-    );
+    // The entry already names the device, so the reason says only what happened.
+    expect(result.selectedDevice).toStrictEqual({
+      id: "device_0",
+      path: "t0/d0",
+      reason: "openPluginWindow ignored: not a plug-in (VST/AU)",
+    });
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("warns and skips when no device target is provided", () => {

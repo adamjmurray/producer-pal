@@ -44,5 +44,5 @@ export function expectedWarnings(
   const hidden = hiddenByTool()[tool] ?? {};
   const used = Object.keys(hidden).filter((key) => key in args);
 
-  return hiddenParamWarnings(used, hidden);
+  return hiddenParamWarnings(used, hidden, args);
 }

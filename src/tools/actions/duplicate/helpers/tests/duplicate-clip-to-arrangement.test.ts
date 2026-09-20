@@ -17,7 +17,7 @@ describe("duplicateClipToArrangement", () => {
     });
 
     await expect(duplicateClipToArrangement("nonexistent", 0)).rejects.toThrow(
-      'no clip exists for clipId "nonexistent"',
+      'id "nonexistent" does not exist',
     );
   });
 

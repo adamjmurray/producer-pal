@@ -102,17 +102,18 @@ describe("playback play-scene target agreement", () => {
 
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
       playing: true,
-      scene: { id: "scene3", path: "s3", name: "Chorus" },
+      scene: { id: "scene3", path: "s3" },
     });
   });
 
-  // Live shows an unnamed scene as its number, and readScene says the same.
-  it("names an unnamed scene by its number", () => {
-    mockScene(3, undefined, "");
+  // play-scene changes no name, so it doesn't report one: id and path already
+  // say which scene fired, and ppal-read-scene has the name.
+  it("reports the scene by id and path only", () => {
+    mockScene(3, undefined, "Chorus");
 
     expect(playback({ action: "play-scene", sceneIndex: 3 })).toStrictEqual({
       playing: true,
-      scene: { id: "scene3", path: "s3", name: "4" },
+      scene: { id: "scene3", path: "s3" },
     });
   });
 
@@ -124,7 +125,7 @@ describe("playback play-scene target agreement", () => {
 
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
       playing: true,
-      scene: { id: "scene5", path: "s5", name: "Bridge" },
+      scene: { id: "scene5", path: "s5" },
     });
   });
 

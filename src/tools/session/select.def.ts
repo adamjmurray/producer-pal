@@ -10,6 +10,10 @@ import {
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import {
+  scenePathFromIndex,
+  trackPathFromIndex,
+} from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
@@ -61,14 +65,16 @@ export const toolDefSelect = defineTool("ppal-select", {
 
     trackIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: trackPathFromIndex,
     }),
     trackType: deprecatedParam(
       z.enum(["regular", "return", "master"]).optional(),
-      { replacedBy: "path" },
+      { replacedBy: "path", example: trackPathFromIndex },
     ),
 
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: scenePathFromIndex,
     }),
 
     path: z.coerce

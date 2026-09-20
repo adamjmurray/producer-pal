@@ -272,7 +272,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(createResult.locator?.operation).toBe("created");
+    expect(createResult.locator?.operation).toBe("create");
     expect(createResult.locator?.id).toBeDefined();
 
     await sleep(100);
@@ -296,7 +296,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(renameResult.locator?.operation).toBe("renamed");
+    expect(renameResult.locator?.operation).toBe("rename");
     expect(renameResult.locator?.id).toBe(alpha!.id);
 
     await sleep(100);
@@ -326,7 +326,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(deleteByName.locator?.operation).toBe("deleted");
+    expect(deleteByName.locator?.operation).toBe("delete");
     expect(deleteByName.locator?.count).toBe(1);
 
     await sleep(100);
@@ -346,7 +346,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(deleteByTime.locator?.operation).toBe("deleted");
+    expect(deleteByTime.locator?.operation).toBe("delete");
 
     await sleep(100);
     locators = await readLocatorList();
@@ -372,9 +372,9 @@ describe("ppal-update-live-set", () => {
     );
 
     expect(created.locator?.map((entry) => entry.operation)).toStrictEqual([
-      "created",
-      "created",
-      "created",
+      "create",
+      "create",
+      "create",
     ]);
     // Every entry names the locator it made, and no two share an id.
     const createdIds = created.locator?.map((entry) => entry.id);
@@ -408,8 +408,8 @@ describe("ppal-update-live-set", () => {
     );
 
     expect(renamed.locator?.map((entry) => entry.operation)).toStrictEqual([
-      "renamed",
-      "renamed",
+      "rename",
+      "rename",
     ]);
 
     await sleep(100);
@@ -431,9 +431,9 @@ describe("ppal-update-live-set", () => {
     );
 
     expect(deleted.locator?.map((entry) => entry.operation)).toStrictEqual([
-      "deleted",
-      "deleted",
-      "deleted",
+      "delete",
+      "delete",
+      "delete",
     ]);
 
     await sleep(100);
@@ -478,7 +478,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(created.locator?.operation).toBe("created");
+    expect(created.locator?.operation).toBe("create");
 
     await sleep(100);
 
@@ -496,7 +496,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(deleted.locator?.operation).toBe("deleted");
+    expect(deleted.locator?.operation).toBe("delete");
   });
 
   it("refuses locator args sent with no locatorOperation", async () => {

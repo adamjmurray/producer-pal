@@ -22,11 +22,7 @@ import { destinationTracks, duplicateOneCopy } from "./duplicate-one-copy.ts";
 import { copySpanBeats, planCopies, sourceLastOrder } from "./copy-plan.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot.ts";
 import { type UnreachedDestination } from "../sources/scene-arrangement-positions.ts";
-import {
-  canRecreateClip,
-  recreatedClipLosses,
-  recreateLossesNote,
-} from "#src/tools/shared/clip/recreate-clip.ts";
+import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 import { entriesPerDestination, refusedCopy } from "./copy-entries.ts";
 import {
   labelDuplicateDestinations,
@@ -42,7 +38,6 @@ import {
   resolveArrangementPositions,
   resolveDestinationTargets,
 } from "../duplicate-destinations.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Duplicates a clip to its resolved destinations
@@ -402,15 +397,6 @@ function warnRecreatedCopyLimits(
   if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
     console.warn(
       "arrangementLength ignored for the re-created copies (they use the source clip's length)",
-    );
-  }
-
-  if (canPromote) {
-    const losses = recreatedClipLosses(object);
-
-    console.warn(
-      `clip ${targetLabel(object)} was promoted to the main lane by re-creating it` +
-        recreateLossesNote(losses),
     );
   }
 

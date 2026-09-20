@@ -7,6 +7,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
@@ -22,14 +23,18 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
       smallModel:
         "'t+' to append, or 't<index>' to insert there (t0 is the first track, so a user's \"track 3\" is t2)",
     }),
+
     trackIndex: deprecatedParam(z.coerce.number().int().min(-1).optional(), {
       replacedBy: "path",
+      example: trackPathFromIndex,
     }),
+
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
       example: "t+,t+,t+",
       note: "path names every track, so repeat it once per track instead of counting",
     }),
+
     name: param(z.string().optional(), {
       default: "name for all, or comma-separated one per track, in order",
       smallModel: "track name",

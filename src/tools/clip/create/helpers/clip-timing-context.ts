@@ -8,7 +8,6 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   resolveTakeLane,
   takeLaneLabel,
@@ -164,23 +163,18 @@ export function resolveCreateClipTakeLanes(
 
   // Resolve once per destination rather than once per clip.
   for (const position of fitting) {
-    const { trackIndex, takeLane: target } = position;
+    const { takeLane: target } = position;
     const key = takeLaneLabel(position);
 
     if (lanes.has(key)) {
       continue;
     }
 
-    const { lane, laneIndex } = resolveTakeLane(
-      trackFor(position),
-      target,
-      takeLaneName,
-    );
+    const { lane } = resolveTakeLane(trackFor(position), target, takeLaneName);
 
+    // Which lane a clip landed on is its own entry's business, so nothing is
+    // said here.
     lanes.set(key, lane);
-    console.warn(
-      `targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
-    );
   }
 
   return { lanes, dropped };

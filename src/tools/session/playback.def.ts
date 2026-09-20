@@ -7,6 +7,7 @@ import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -85,6 +86,7 @@ stop: session and arrangement; takes startTime to park the next play`,
     }),
     sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: scenePathFromIndex,
     }),
   },
 });

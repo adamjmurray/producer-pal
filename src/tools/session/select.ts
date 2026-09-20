@@ -7,6 +7,7 @@ import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { toLiveApiView } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   applyDetailView,
@@ -79,7 +80,12 @@ export interface SelectResult {
      * the arrangement. select's own path takes either form. */
     path?: string;
   };
-  selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
+  selectedDevice?: {
+    id: string;
+    path: string;
+    pluginWindowOpen?: boolean;
+    reason?: string;
+  };
   selectedDrumPad?: { id: string; path: string };
   selectedChain?: { id: string; path: string };
 }
@@ -184,18 +190,13 @@ export function select(
     resolvedDevice: requiredTargets.device,
   });
 
-  let pluginWindowOpen: boolean | undefined;
-
-  if (args.openPluginWindow != null) {
-    const applied = applyPluginEditorWindow(
-      selectedDeviceAPI,
-      args.openPluginWindow,
-    );
-
-    if (applied) {
-      pluginWindowOpen = args.openPluginWindow;
-    }
-  }
+  const pluginWindow =
+    args.openPluginWindow == null
+      ? null
+      : {
+          open: args.openPluginWindow,
+          ...applyPluginEditorWindow(selectedDeviceAPI, args.openPluginWindow),
+        };
 
   const rackSelection =
     rackTarget == null ? undefined : selectRackTarget(songView, rackTarget);
@@ -229,8 +230,14 @@ export function select(
   addDeviceToResponse(result, resolved, selectedDeviceAPI);
   Object.assign(result, rackSelection);
 
-  if (pluginWindowOpen != null && result.selectedDevice != null) {
-    result.selectedDevice.pluginWindowOpen = pluginWindowOpen;
+  if (result.selectedDevice != null && pluginWindow != null) {
+    if (pluginWindow.applied) {
+      result.selectedDevice.pluginWindowOpen = pluginWindow.open;
+    }
+
+    if (pluginWindow.reason != null) {
+      appendReason(result.selectedDevice, pluginWindow.reason);
+    }
   }
 
   return result;

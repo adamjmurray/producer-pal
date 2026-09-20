@@ -42,7 +42,7 @@ interface AnyResult {
   selectedDevice?: { id: string; path?: string };
   playing?: boolean;
   startTime?: string;
-  scene?: { id: string; path?: string; name: string };
+  scene?: { id: string; path?: string };
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;
@@ -717,8 +717,9 @@ describe("hidden params at runtime", () => {
   // of the action enum, not tagged via deprecatedParam/aliasParam — so it has
   // no entry in CASES and isn't covered by "has a case for every hidden param".
   it("still runs the fan-out for a caller on the retired searchBatch action", async () => {
+    // One search answers ungrouped, the way a plain search does.
     const { data, warnings } = parseToolResultWithWarnings<{
-      results?: unknown;
+      items?: unknown;
     }>(
       await ctx.client!.callTool({
         name: "ppal-library",
@@ -729,7 +730,7 @@ describe("hidden params at runtime", () => {
       }),
     );
 
-    expect(data.results).toBeDefined();
+    expect(data.items).toBeDefined();
     expect(warnings).toStrictEqual([
       'WARNING: action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
     ]);

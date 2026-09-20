@@ -8,6 +8,7 @@ import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
@@ -37,10 +38,11 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
 
     trackType: deprecatedParam(
       z.enum(["regular", "return", "master"]).optional(),
-      { replacedBy: "path" },
+      { replacedBy: "path", example: trackPathFromIndex },
     ),
     trackIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
       replacedBy: "path",
+      example: trackPathFromIndex,
     }),
     include: param(
       z

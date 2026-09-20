@@ -55,6 +55,7 @@ describe("promoting a take-lane clip", () => {
     expect(result).toStrictEqual({
       id: expect.not.stringMatching(/^tl_src_clip$/) as unknown as string,
       path: "t0[5|1]",
+      reason: "promoted to the main lane by re-creating it",
     });
 
     // It's a copy: nothing tries to clear the source off its lane.
@@ -85,27 +86,25 @@ describe("promoting a take-lane clip", () => {
     });
   });
 
-  // A promote emitted no warning at all before, so the envelope loss was silent.
-  // Like the other re-create warnings, it's per call rather than per copy.
-  it("warns once that a promoted copy loses automation envelopes", async () => {
+  // The envelope loss is about the copy, so every copy's own entry names it.
+  it("says on each promoted copy that it loses automation envelopes", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
     registerTakeLaneSource({ has_envelopes: 1 });
 
-    await duplicate({
+    const result = (await duplicate({
       type: "clip",
       id: "tl_src_clip",
       arrangementStart: "1|1,2|1,3|1",
-    });
+    })) as Array<{ reason?: string }>;
 
-    const warnings = vi
-      .mocked(consoleMock.warn)
-      .mock.calls.filter(([message]) =>
-        String(message).includes("automation envelopes aren't copied"),
-      );
-
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]?.[0]).toContain("promoted to the main lane");
+    expect(result.map((entry) => entry.reason)).toStrictEqual(
+      Array.from({ length: 3 }).fill(
+        "promoted to the main lane by re-creating it " +
+          "(automation envelopes aren't copied)",
+      ),
+    );
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   // Promoting re-creates the clip, which an audio clip with no sample file has

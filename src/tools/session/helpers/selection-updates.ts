@@ -15,7 +15,6 @@ import {
   toLiveApiView,
 } from "#src/tools/shared/helpers/live-api-values.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
 
@@ -220,34 +219,34 @@ function resolveDeviceFromPath(
 /**
  * Open or close a plug-in's (VST/AU) floating editor window. The `is_editor_open`
  * property is specific to the PluginDevice LOM class (Live 12.4+), so for any
- * other device this warns and skips rather than throwing.
+ * other device this skips rather than throwing.
  * @param device - The resolved target device, or undefined if none was targeted
  * @param open - true to open the editor window, false to close it
- * @returns true if the property was written (device is a plug-in)
+ * @returns Whether the property was written, and what the device's entry should
+ *   say when it wasn't; with no device there is no entry, so that warns
  */
 export function applyPluginEditorWindow(
   device: LiveAPI | undefined,
   open: boolean,
-): boolean {
+): { applied: boolean; reason?: string } {
   if (device == null) {
     console.warn(
       "openPluginWindow requires a plug-in device — specify id or path",
     );
 
-    return false;
+    return { applied: false };
   }
 
   if (device.type !== "PluginDevice") {
-    console.warn(
-      `openPluginWindow ignored — ${targetLabel(device)} is not a plug-in (VST/AU)`,
-    );
-
-    return false;
+    return {
+      applied: false,
+      reason: "openPluginWindow ignored: not a plug-in (VST/AU)",
+    };
   }
 
   device.setProperty("is_editor_open", open ? 1 : 0);
 
-  return true;
+  return { applied: true };
 }
 
 /**

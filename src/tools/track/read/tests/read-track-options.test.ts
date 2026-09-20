@@ -274,7 +274,7 @@ describe("readOneTrack", () => {
 
         expect(() =>
           readOneTrack({ trackIndex: 99, trackType: "return" }),
-        ).toThrow("returnTrackIndex 99 does not exist");
+        ).toThrow('no track at "rt99"');
       });
 
       it("includes routing properties for return tracks when requested", () => {
@@ -362,7 +362,7 @@ describe("readOneTrack", () => {
 
         expect(() =>
           readOneTrack({ trackIndex: 0, trackType: "master" }),
-        ).toThrow("trackIndex null does not exist");
+        ).toThrow('no track at "mt"');
       });
 
       it("includes audio effects for master track when requested", () => {
