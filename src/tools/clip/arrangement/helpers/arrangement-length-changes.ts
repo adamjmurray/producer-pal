@@ -17,7 +17,10 @@ import {
   pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { type ClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import {
+  clipReporterFor,
+  type ClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 
 export interface ArrangementContext {
@@ -26,40 +29,6 @@ export interface ArrangementContext {
 
 export interface ClipIdResult {
   id: string;
-}
-
-interface TileWithContextOptions {
-  adjustPreRoll: boolean;
-  startOffset?: number;
-  tileLength?: number;
-}
-
-/**
- * Wrapper for tileClipToRange with type casts for ArrangementContext
- * @param clip - Source clip
- * @param track - Track to tile on
- * @param position - Start position
- * @param length - Length to tile
- * @param ctx - Per-request context
- * @param options - Tiling options
- * @returns Array of tiled clip info
- */
-function tileWithContext(
-  clip: LiveAPI,
-  track: LiveAPI,
-  position: number,
-  length: number,
-  ctx: ArrangementContext,
-  options: TileWithContextOptions,
-): ClipIdResult[] {
-  return tileClipToRange(
-    clip,
-    track,
-    position,
-    length,
-    ctx as TilingContext,
-    options,
-  );
 }
 
 interface HandleArrangementLengtheningArgs {
@@ -119,6 +88,12 @@ export function handleArrangementLengthening({
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
+  // Tiling speaks for this clip, so what it has to say goes on this clip's
+  // entry rather than into a warning.
+  const tilingContext: TilingContext = {
+    ...(context as TilingContext),
+    reportClip: clipReporterFor(reasons),
+  };
 
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
@@ -139,12 +114,12 @@ export function handleArrangementLengthening({
     // Expose hidden content by tiling with start_marker offsets
     const currentOffset = clipStartMarker - clipLoopStart;
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
-    const tiledClips = tileWithContext(
+    const tiledClips = tileClipToRange(
       clip,
       track,
       currentEndTime,
       remainingLength,
-      context,
+      tilingContext,
       {
         adjustPreRoll: false,
         startOffset: currentOffset + currentArrangementLength,
@@ -170,7 +145,7 @@ export function handleArrangementLengthening({
       totalContentLength,
       currentOffset,
       track,
-      context,
+      context: tilingContext,
     });
 
     updatedClips.push({ id: clip.id });
@@ -190,7 +165,7 @@ interface CreateLoopedClipTilesArgs {
   totalContentLength: number;
   currentOffset: number;
   track: LiveAPI;
-  context: ArrangementContext;
+  context: TilingContext;
 }
 
 /**
@@ -226,7 +201,7 @@ function createLoopedClipTiles({
   // a float wobble between two Live reads from truncating an exact pass.
   if (currentArrangementLength < totalContentLength - EPSILON) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
-    const tiledClips = tileWithContext(
+    const tiledClips = tileClipToRange(
       clip,
       track,
       currentEndTime,
@@ -255,13 +230,13 @@ function createLoopedClipTiles({
       isAudioClip,
       position: newEndTime,
       length: tempClipLength,
-      silenceWavPath: context.silenceWavPath as string,
+      silenceWavPath: context.silenceWavPath,
     });
 
     newEndTime = currentStartTime + totalContentLength;
     const firstTileLength = newEndTime - currentStartTime;
     const remainingSpace = arrangementLengthBeats - firstTileLength;
-    const tiledClips = tileWithContext(
+    const tiledClips = tileClipToRange(
       clip,
       track,
       newEndTime,
@@ -282,7 +257,7 @@ function createLoopedClipTiles({
   // plays the pre-roll.
   const firstTileLength = currentEndTime - currentStartTime;
   const remainingSpace = arrangementLengthBeats - firstTileLength;
-  const tiledClips = tileWithContext(
+  const tiledClips = tileClipToRange(
     clip,
     track,
     currentEndTime,

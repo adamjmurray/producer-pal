@@ -30,6 +30,7 @@ import {
 import { orderArrangementMoves } from "./arrangement/update-clip-move-order.ts";
 import { refuseSplitWithMove } from "./update-clip-refusals.ts";
 import {
+  clipReporterFor,
   markClipLanded,
   refuseClipWork,
   type ClipReasons,
@@ -375,7 +376,7 @@ function applySplittingIfNeeded({
     arrangementClips,
     splitPoints,
     [...clips],
-    context,
+    { ...context, reportClip: clipReporterFor(reasons) },
     mode,
   );
 

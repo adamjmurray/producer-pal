@@ -15,6 +15,7 @@ import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
+import { type ClipReporter } from "./clip-reporter.ts";
 
 /**
  * Beat tolerance for length comparisons across arrangement editing. Splitting
@@ -34,6 +35,8 @@ export interface TilingContext {
    * an error. Undefined/null means no deadline.
    */
   deadline?: number | null;
+  /** Where to say what happened to a clip; unset drops what tiling reports. */
+  reportClip?: ClipReporter;
 }
 
 export interface CreatedClip {

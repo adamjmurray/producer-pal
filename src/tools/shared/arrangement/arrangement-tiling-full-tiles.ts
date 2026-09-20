@@ -9,7 +9,6 @@
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
@@ -23,7 +22,6 @@ import {
   clearClipAtDuplicateTarget,
   sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
-import { targetLabelForId } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * How many tiles' worth of span one clear empties, ahead of the tiles that
@@ -38,14 +36,15 @@ import { targetLabelForId } from "#src/tools/shared/validation/object-path-for-a
 const TILES_PER_CLEAR_WINDOW = 8;
 
 /**
- * Whether tiling should stop now, warning about what it managed to place.
+ * Whether tiling should stop now, noting on the clip's entry what it managed to
+ * place.
  *
  * The Node-side timeout replaces the whole response with an error, so a run that
  * overshoots tells the caller nothing about the tiles that did land. Stopping
  * just short keeps the partial result and says how far it got.
  *
  * @param context - Context object carrying the request deadline
- * @param sourceClipId - ID of the clip being lengthened, for the warning
+ * @param sourceClipId - ID of the clip being lengthened, for its entry's reason
  * @param placed - Tiles placed so far
  * @param total - Tiles the run set out to place
  * @param reached - Beat position tiling has filled up to
@@ -64,9 +63,10 @@ export function outOfTime(
     return false;
   }
 
-  console.warn(
-    `Ran out of time while lengthening clip ${targetLabelForId(sourceClipId)}: placed ${placed} of ${total} tiles, ` +
-      `reaching ${reached} beats instead of ${target}. Re-run to continue.`,
+  context.reportClip?.note(
+    sourceClipId,
+    `ran out of time: placed ${placed} of ${total} tiles, reaching ` +
+      `${reached} beats instead of ${target}; re-run to continue`,
   );
 
   return true;
@@ -271,8 +271,9 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
 
   // Skip a refused copy so no phantom clip id reaches createdClips.
   if (!tileClip.exists()) {
-    console.warn(
-      `Failed to duplicate source clip for tile at ${currentPosition}, skipping`,
+    context.reportClip?.note(
+      sourceClipId,
+      `Live refused a copy, so the tile at ${currentPosition} beats was skipped`,
     );
 
     return null;

@@ -15,6 +15,7 @@
 // under a new id hands its reasons back with {@link moveClipReasons}.
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { type LandedColor } from "#src/tools/shared/helpers/landed-color.ts";
@@ -62,6 +63,19 @@ export function noteClipReason(
   reason: string,
 ): void {
   reasons.said.set(clipId, [...(reasons.said.get(clipId) ?? []), reason]);
+}
+
+/**
+ * A reporter for the shared arrangement steps, which own no entries of their
+ * own. Splitting and tiling report through it instead of warning.
+ * @param reasons - What each clip has to say, added to
+ * @returns The reporter to put on the step's context
+ */
+export function clipReporterFor(reasons: ClipReasons): ClipReporter {
+  return {
+    note: (clipId, reason) => noteClipReason(reasons, clipId, reason),
+    refuse: (clipId, reason) => refuseClipWork(reasons, clipId, reason),
+  };
 }
 
 /**

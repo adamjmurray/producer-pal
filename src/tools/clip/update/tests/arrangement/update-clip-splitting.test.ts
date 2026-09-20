@@ -250,6 +250,24 @@ describe("updateClip - splitting smoke tests", () => {
     );
   });
 
+  // Live refusing the copy the cut works from leaves the clip whole. That is
+  // about this one clip, so its own entry carries it.
+  it("says on the clip's entry when Live refuses the copy the cut needs", async () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    callState.trackMock.call.mockImplementation((method: string) =>
+      method === "duplicate_clip_to_arrangement" ? ["id", "0"] : undefined,
+    );
+
+    await expect(
+      updateClip({ id: clipId, arrangementSplit: "2|1" }, {}),
+    ).rejects.toThrow(
+      "arrangementSplit ignored: Live refused the copy the cut works from",
+    );
+  });
+
   // A cut whose pieces the rescan can't find leaves the target with no clip at
   // all. One target never comes back as no entries — and a lone one throws.
   it("refuses a target whose split left no clip behind", async () => {

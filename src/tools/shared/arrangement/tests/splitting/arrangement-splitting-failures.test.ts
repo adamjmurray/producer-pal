@@ -21,9 +21,11 @@ import {
   throwOnNthDuplicate,
   type SplittingClipProps,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
+import {
+  recordClipReports,
+  type ClipReport,
+} from "../helpers/clip-report-recorder.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-
-const HOLDING_AREA = {} as const;
 
 /** 12 beats from beat 100, so segment positions are unambiguous. */
 const TWELVE_BEAT_AT_100 = {
@@ -76,14 +78,15 @@ function registerSecondClip(
  * Split the 12-beat clip at both its inner boundaries, with one duplicate
  * failing the way `opts` says.
  * @param opts - Which duplicate call fails, and how
- * @returns The track the split ran on
+ * @returns The track the split ran on, and what the clip's entry was told
  */
 function splitWithFailure(opts: {
   failOnDuplicate?: number;
   throwOnDuplicate?: number;
-}): RegisteredMockObject {
+}): { trackMock: RegisteredMockObject; reports: ClipReport[] } {
   const { callState } = setupClipSplittingMocks("clip_1", TWELVE_BEAT_AT_100);
   const clip = LiveAPI.from("id clip_1");
+  const { reports, reportClip } = recordClipReports();
 
   overrideWithDuplicateCounter(callState.trackMock, opts);
 
@@ -91,11 +94,26 @@ function splitWithFailure(opts: {
     [clip],
     [104, 108],
     [clip],
-    HOLDING_AREA,
+    { reportClip },
     ARRANGEMENT_SPLIT_MODE,
   );
 
-  return callState.trackMock;
+  return { trackMock: callState.trackMock, reports };
+}
+
+/**
+ * What the clip's entry says when only the first of its two cuts landed. The
+ * middle names whatever Live refused, which varies per failure.
+ * @returns A matcher for the expected report
+ */
+function madeOneOfTwoCuts(): unknown {
+  return {
+    kind: "note",
+    clipId: "clip_1",
+    reason: expect.stringMatching(
+      /^arrangementSplit made 1 of 2 cuts: .*the rest of the clip is left whole$/,
+    ),
+  };
 }
 
 // Splitting trims the original before it places anything, so a step that fails
@@ -105,20 +123,16 @@ describe("performSplitting when Live refuses a step", () => {
   it("puts the uncut rest of the clip back whole", () => {
     // The 3rd duplicate moves the middle segment to its final position. Live
     // answering ["id", 0] there is what used to throw out of the whole call.
-    const trackMock = splitWithFailure({ failOnDuplicate: 3 });
+    const { trackMock, reports } = splitWithFailure({ failOnDuplicate: 3 });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Failed to cut segment 1 of clip t0[26|1] (id clip_1)",
-      ),
-    );
+    expect(reports).toStrictEqual([madeOneOfTwoCuts()]);
     // 104 is the failed segment's own start: everything from there on goes back
     // as one clip, rather than that span being left empty.
     expect(dupPositions(trackMock).at(-1)).toBe(104);
   });
 
   it("deletes the half-built copy left in the holding area", () => {
-    const trackMock = splitWithFailure({ failOnDuplicate: 3 });
+    const { trackMock } = splitWithFailure({ failOnDuplicate: 3 });
 
     // The clip put back whole already covers this copy's content.
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id dup_2");
@@ -129,13 +143,17 @@ describe("performSplitting when Live refuses a step", () => {
     // skip on to the next segment. Step 2 already trimmed segment 1's span off
     // the original, so skipping left [104,108) empty and its notes gone. The
     // same failure as an exception never lost anything.
-    const trackMock = splitWithFailure({ failOnDuplicate: 2 });
+    const { trackMock, reports } = splitWithFailure({ failOnDuplicate: 2 });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Failed to cut segment 1 of clip t0[26|1] (id clip_1)",
-      ),
-    );
+    expect(reports).toStrictEqual([
+      {
+        kind: "note",
+        clipId: "clip_1",
+        reason:
+          "arrangementSplit made 1 of 2 cuts: Live refused a copy, so the " +
+          "rest of the clip is left whole",
+      },
+    ]);
     // 104, not 108: the tail covers the refused segment's span too.
     expect(dupPositions(trackMock).at(-1)).toBe(104);
   });
@@ -143,13 +161,17 @@ describe("performSplitting when Live refuses a step", () => {
   it("recovers the same way when the duplicate throws outright", () => {
     // 2nd duplicate: the middle segment's working copy, so there is no
     // half-built copy to clean up.
-    const trackMock = splitWithFailure({ throwOnDuplicate: 2 });
+    const { trackMock, reports } = splitWithFailure({ throwOnDuplicate: 2 });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Failed to cut segment 1 of clip t0[26|1] (id clip_1)",
-      ),
-    );
+    expect(reports).toStrictEqual([
+      {
+        kind: "note",
+        clipId: "clip_1",
+        reason:
+          "arrangementSplit made 1 of 2 cuts: Live API error; the rest of " +
+          "the clip is left whole",
+      },
+    ]);
     expect(dupPositions(trackMock).at(-1)).toBe(104);
   });
 
@@ -177,7 +199,7 @@ describe("performSplitting when Live refuses a step", () => {
       [first, second],
       [104, 204],
       [first, second],
-      HOLDING_AREA,
+      {},
       ARRANGEMENT_SPLIT_MODE,
     );
 
@@ -191,6 +213,7 @@ describe("performSplitting when Live refuses a step", () => {
     const { callState } = setupClipSplittingMocks("clip_1", EIGHT_BEAT_AT_100);
     const first = LiveAPI.from("id clip_1");
     const second = registerSecondClip("clip_2");
+    const { reports, reportClip } = recordClipReports();
 
     // The 2nd duplicate places the first clip's tail; the 3rd and 4th are the
     // second clip's, and only run if the failure didn't abort the call.
@@ -203,16 +226,22 @@ describe("performSplitting when Live refuses a step", () => {
         [first, second],
         [104],
         [first, second],
-        HOLDING_AREA,
+        { reportClip },
         ARRANGEMENT_SPLIT_MODE,
       ),
     ).not.toThrow();
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "arrangementSplit failed for clip t0[26|1] (id clip_1)",
-      ),
-    );
+    // Only the clip that failed says so, and it says it on its own entry.
+    expect(reports).toStrictEqual([
+      {
+        kind: "note",
+        clipId: "clip_1",
+        reason: expect.stringMatching(
+          /^arrangementSplit failed: .*the clip may be left partly cut, with a copy past the end of the arrangement$/,
+        ),
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
     expect(dups.count).toBe(4);
   });
 });

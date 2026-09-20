@@ -23,6 +23,7 @@ import {
   setupSplittingClipGetMock,
   withEachLiveCallCostingASecond,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
+import { recordClipReports } from "../helpers/clip-report-recorder.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const HOLDING_AREA = {} as const;
@@ -428,8 +429,9 @@ describe("performSplitting", () => {
     );
   });
 
-  it("should warn and abort when duplication fails", () => {
+  it("refuses the clip's split on its own entry when duplication fails", () => {
     const { callState, mockClip, clips } = setupSplitTest();
+    const { reports, reportClip } = recordClipReports();
 
     // Make duplicate_clip_to_arrangement return "0" (non-existent)
     callState.trackMock.call.mockImplementation((method: string) => {
@@ -444,13 +446,20 @@ describe("performSplitting", () => {
       [mockClip],
       [4],
       clips,
-      HOLDING_AREA,
+      { reportClip },
       ARRANGEMENT_SPLIT_MODE,
     );
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to duplicate"),
-    );
+    // The clip's own entry carries it, so no warning says it a second time.
+    expect(reports).toStrictEqual([
+      {
+        kind: "refuse",
+        clipId: "clip_1",
+        reason:
+          "arrangementSplit ignored: Live refused the copy the cut works from",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should split unlooped MIDI clips using unified algorithm", () => {
@@ -469,12 +478,14 @@ describe("performSplitting", () => {
     expectDuplicateCalled(callState.trackMock);
   });
 
-  it("should skip clips with no trackIndex and emit warning", () => {
+  it("refuses the split on the clip's entry when its track can't be found", () => {
     const clipId = "clip_1";
 
     setupSplittingClipBaseMocks(clipId);
     setupSplittingClipGetMock(clipId, { looping: true });
+
     const { mockClip, clips } = createPerformContext(clipId);
+    const { reports, reportClip } = recordClipReports();
 
     // Override trackIndex to be null
     Object.defineProperty(mockClip, "trackIndex", { get: () => null });
@@ -483,14 +494,17 @@ describe("performSplitting", () => {
       [mockClip],
       [4],
       clips,
-      HOLDING_AREA,
+      { reportClip },
       ARRANGEMENT_SPLIT_MODE,
     );
 
-    // Should emit warning about trackIndex
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("trackIndex"),
-    );
+    expect(reports).toStrictEqual([
+      {
+        kind: "refuse",
+        clipId,
+        reason: "arrangementSplit ignored: could not find the clip's track",
+      },
+    ]);
   });
 
   it("should filter split points to those within clip bounds", () => {
@@ -791,6 +805,8 @@ describe("performSplitting", () => {
     // area: what never got cut goes back as one clip.
     const { callState, mockClip, clips } = setupSplitTest();
 
+    const { reports, reportClip } = recordClipReports();
+
     // The budget runs out inside the split.
     withEachLiveCallCostingASecond(callState.trackMock, () => {
       performSplitting(
@@ -800,16 +816,24 @@ describe("performSplitting", () => {
         {
           ...HOLDING_AREA,
           deadline: 1500,
+          reportClip,
         },
         ARRANGEMENT_SPLIT_MODE,
       );
     });
 
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "Ran out of time splitting clip clip_1 after 1 of 3 cuts",
-      ),
-    );
+    // How far this one clip got is about this one clip, so its entry carries
+    // it rather than a warning.
+    expect(reports).toStrictEqual([
+      {
+        kind: "note",
+        clipId: "clip_1",
+        reason:
+          "arrangementSplit made 1 of 3 cuts: ran out of time, so the rest " +
+          "of the clip is left whole; re-run to cut the rest",
+      },
+    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
     // The uncut tail (beats 4-16) placed back at beat 4, in one piece.
     expect(callState.trackMock.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",

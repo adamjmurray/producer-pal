@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   clipIgnoredParams,
+  clipLandedNothing,
+  clipReporterFor,
   ignoreClipParams,
   moveClipReasons,
   newClipReasons,
@@ -68,6 +70,24 @@ describe("clip-reasons", () => {
     reportClipReasons(reasons, "1", [entry]);
 
     expect(entry).toStrictEqual({ id: "1", reason: "could not be read back" });
+  });
+
+  it("collects what the shared arrangement steps report", () => {
+    const reasons = newClipReasons();
+    const reporter = clipReporterFor(reasons);
+
+    reporter.note("1", "placed 2 of 8 tiles");
+    reporter.refuse("2", "arrangementSplit ignored");
+
+    const tiled: ClipResult = { id: "1" };
+
+    reportClipReasons(reasons, "1", [tiled]);
+
+    expect(tiled).toStrictEqual({ id: "1", reason: "placed 2 of 8 tiles" });
+    // A note leaves the clip a real entry; a refusal with nothing else landing
+    // makes it a skip.
+    expect(clipLandedNothing(reasons, "1")).toBe(false);
+    expect(clipLandedNothing(reasons, "2")).toBe(true);
   });
 
   it("collects every param a clip ignored", () => {
