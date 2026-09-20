@@ -406,10 +406,11 @@ describe("createClip - session view", () => {
     expect(clip2.set).toHaveBeenCalledWith("name", "Loop");
     expect(clip3.set).toHaveBeenCalledWith("name", "Loop");
 
+    // One scene existed, so each destination reports the scene it made.
     expect(result).toStrictEqual([
-      { id: "clip_0_1", path: "t0/s1" },
-      { id: "clip_0_2", path: "t0/s2" },
-      { id: "clip_0_3", path: "t0/s3" },
+      { id: "clip_0_1", path: "t0/s1", created: "s1" },
+      { id: "clip_0_2", path: "t0/s2", created: "s2" },
+      { id: "clip_0_3", path: "t0/s3", created: "s3" },
     ]);
   });
 
@@ -463,7 +464,7 @@ describe("createClip - session view", () => {
 
     expect(result).toStrictEqual([
       { path: "t0/s0", ok: false, reason: "a clip already exists at t0/s0" },
-      { id: clip.id, path: "t0/s1" },
+      { id: clip.id, path: "t0/s1", created: "s1" },
     ]);
   });
 
@@ -506,6 +507,7 @@ describe("createClip - session view - per-clip transforms", () => {
       {
         id: "clip_0_1",
         path: "t0/s1",
+        created: "s1",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -513,6 +515,7 @@ describe("createClip - session view - per-clip transforms", () => {
       {
         id: "clip_0_2",
         path: "t0/s2",
+        created: "s2",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -520,6 +523,7 @@ describe("createClip - session view - per-clip transforms", () => {
       {
         id: "clip_0_3",
         path: "t0/s3",
+        created: "s3",
         noteCount: 1,
         transformed: 1,
         length: "1bar",

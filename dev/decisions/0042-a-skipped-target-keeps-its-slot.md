@@ -141,21 +141,28 @@ target, so no entry exists yet to carry them.
   `firstStart` the call can't use — it only lands alongside `looping: true` — is
   a `reason` on that clip's entry rather than a warning, and no `ok`: the clip
   exists.
+- **A clip slot past the last scene is a destination, so it is created.**
+  create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
+  scenes up to a slot that isn't there yet, sharing one helper, and the entry
+  reports them as `created: "s8-s9"` — the path alone says what to make, and a
+  caller can't pair its own request against scenes it was never told about. Past
+  the auto-create cap, and on a track that isn't there, the destination is still
+  refused. update-scene's `path` names a target rather than a destination, so it
+  stays a refusal, with create-scene named in the reason.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `reason` on the lane's own entry, which otherwise reads like any other hit.
   `ok: false` only when the lane was neither created nor named, so nothing the
   call asked of it landed.
 - **duplicate answers per destination named.** A destination no copy landed at
-  keeps its slot as `{path, ok: false, reason}` — a missing clip slot, a track
-  that won't take the clip, a copy Live declined, a take lane past the cap, a
-  re-create that failed, a destination the deadline never reached, one the plan
-  dropped because a clip slot can't take an arrangement copy. A copy that landed
-  incomplete is a clip entry with a `reason`, not a skip: it exists, so losing
-  it from the result would cost the caller a clip. The path is spelled the way a
-  copy that landed there would report it, so it pastes back into `toPath`. The
-  deadline warning still names what it never reached, and counts only copies
-  that exist.
+  keeps its slot as `{path, ok: false, reason}` — a track that won't take the
+  clip, a copy Live declined, a take lane past the cap, a re-create that failed,
+  a destination the deadline never reached, one the plan dropped because a clip
+  slot can't take an arrangement copy. A copy that landed incomplete is a clip
+  entry with a `reason`, not a skip: it exists, so losing it from the result
+  would cost the caller a clip. The path is spelled the way a copy that landed
+  there would report it, so it pastes back into `toPath`. The deadline warning
+  still names what it never reached, and counts only copies that exist.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
   hands back why rather than warning it, so the destination's reason says what

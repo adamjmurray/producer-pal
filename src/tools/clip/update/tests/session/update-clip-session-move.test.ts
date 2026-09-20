@@ -22,6 +22,7 @@ import { resolveMoveDestinations } from "../../helpers/move/move-destinations.ts
 import { handlePositionOperations } from "../../helpers/move/position-operations.ts";
 import { handleClipSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 
 vi.mock(import("../../helpers/arrangement/arrangement-move.ts"), () => ({
   handleArrangementOperations: vi.fn(),
@@ -49,8 +50,10 @@ const OCCUPANT_ID = "789";
  * @param opts.destIsMidi - Whether the destination track takes MIDI
  * @param opts.destIsFrozen - Whether the destination track is frozen
  * @param opts.deleteFails - Whether Live refuses to delete the copied-out source
+ * @param opts.sceneCount - Scenes in the Set; fewer than the destination needs
+ *   leaves its slot missing until create_scene makes it
  * @returns Object with mockClip, updatedClips, what the clip had to say, and
- *   the source clip slot mock
+ *   the source clip slot and Live Set mocks
  */
 function runSessionMove(opts: {
   trackIndex?: number;
@@ -64,6 +67,7 @@ function runSessionMove(opts: {
   destIsMidi?: number;
   destIsFrozen?: number;
   deleteFails?: boolean;
+  sceneCount?: number;
 }) {
   const {
     trackIndex = 0,
@@ -77,6 +81,7 @@ function runSessionMove(opts: {
     destIsMidi = 1,
     destIsFrozen = 0,
     deleteFails = false,
+    sceneCount = toSceneIndex + 1,
   } = opts;
 
   mockNonExistentObjects();
@@ -124,13 +129,30 @@ function runSessionMove(opts: {
     },
   );
 
-  registerMockObject(
-    `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}`,
-    {
-      path: livePath.track(toTrackIndex).clipSlot(toSceneIndex),
-      properties: { has_clip: destHasClip },
-    },
-  );
+  const registerDestinationSlot = () =>
+    registerMockObject(
+      `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}`,
+      {
+        path: livePath.track(toTrackIndex).clipSlot(toSceneIndex),
+        properties: { has_clip: destHasClip },
+      },
+    );
+
+  const scenes: Array<string | number> = [];
+
+  for (let index = 0; index < sceneCount; index++) {
+    scenes.push("id", index + 1);
+  }
+
+  const liveSet = registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { scenes },
+    methods: { create_scene: registerDestinationSlot },
+  });
+
+  if (sceneCount > toSceneIndex) {
+    registerDestinationSlot();
+  }
 
   if (destHasClip) {
     registerMockObject(OCCUPANT_ID, { path: destClipPath });
@@ -152,6 +174,7 @@ function runSessionMove(opts: {
     updatedClips,
     reasons,
     sourceSlot: sourceSlot as RegisteredMockObject,
+    liveSet: liveSet as RegisteredMockObject,
   };
 }
 
@@ -335,7 +358,7 @@ describe("handleClipSlotMove", () => {
     );
   });
 
-  it("should warn when destination slot does not exist", () => {
+  it("refuses a destination on a track that isn't there", () => {
     mockNonExistentObjects();
 
     const mockClip = {
@@ -356,11 +379,37 @@ describe("handleClipSlotMove", () => {
       reasons,
     });
 
-    expect(reasonFor(reasons)).toBe(
-      "not moved: destination t99/s99 does not exist",
-    );
+    expect(reasonFor(reasons)).toBe("not moved: track t99 does not exist");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
+  });
+
+  it("makes the scenes up to a destination past the last one", () => {
+    const { updatedClips, reasons } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 3,
+      sceneCount: 2,
+    });
+
+    expect(reasonFor(reasons)).toBe("");
+    expect(updatedClips).toStrictEqual([
+      { id: COPY_ID, path: "t1/s3", created: "s2-s3" },
+    ]);
+  });
+
+  it("refuses a destination past the scene cap, making nothing", () => {
+    const { updatedClips, reasons, liveSet } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: MAX_AUTO_CREATED_SCENES,
+      sceneCount: 2,
+    });
+
+    expect(reasonFor(reasons)).toBe(
+      `not moved: scene "s${MAX_AUTO_CREATED_SCENES}" is out of range: ` +
+        `scenes auto-create only through "s${MAX_AUTO_CREATED_SCENES - 1}"`,
+    );
+    expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
+    expect(updatedClips).toStrictEqual([{ id: "123", path: "t0/s0" }]);
   });
 
   // duplicate_clip_to no-ops on a type mismatch and the source is deleted right

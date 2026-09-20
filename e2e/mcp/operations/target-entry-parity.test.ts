@@ -152,7 +152,7 @@ describe("a write answers the same by path and by id", () => {
     expect(missing).toStrictEqual({
       path: "s99",
       ok: false,
-      reason: 'no scene at path "s99"',
+      reason: 'no scene at path "s99"; ppal-create-scene makes one',
     });
   });
 

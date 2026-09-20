@@ -151,6 +151,8 @@ Live, or make sure your standalone Max is up to date. See
 - Create multiple copies at once
 - Copy clips anywhere in the Session, Arrangement, or from Session to
   Arrangement
+  - A clip slot past the last scene creates the scenes up to it, reported as
+    `created`
   - Position in the Arrangement by bar|beat or locator
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
@@ -308,7 +310,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether
   Live warps it with `warping` (see [Audio Clips](#audio-clips))
-- Auto-create scenes as needed
+- Create the scenes up to a clip slot past the last one, reporting them as
+  `created`
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
 
@@ -339,7 +342,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Move a clip with `toPath`: along its own track, to another track, onto or off
   a [take lane](/features#take-lanes), or back into a session slot. A move Live
   has no API for re-creates the clip, which costs its automation envelopes; the
-  result says when that applied
+  result says when that applied. A slot past the last scene creates the scenes
+  up to it, reported as `created`
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 

@@ -17,6 +17,7 @@ import {
   clipCopyBlocker,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import {
   canRecreateClip,
   recreatedClipLosses,
@@ -39,6 +40,12 @@ import {
   recreateIntoEmptySlot,
   recreateIntoOccupiedSlot,
 } from "./recreate-into-slot.ts";
+
+/** A destination slot, and the scenes reaching it had to make. */
+interface PreparedDestination {
+  clipSlot: LiveAPI;
+  created: string | null;
+}
 
 interface SlotMoveArgs {
   clip: LiveAPI;
@@ -89,21 +96,10 @@ export function handleClipSlotMove({
     return;
   }
 
-  const destClipSlot = destinationSlot({
-    clip,
-    toSlot,
-    updatedClips,
-    noteResult,
-    reasons,
-  });
-
-  if (destClipSlot == null) {
-    return;
-  }
-
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
   // of failing, and the source is deleted right after — check first rather than
-  // destroying the clip and reporting it moved.
+  // destroying the clip and reporting it moved. Before the slot, too: a missing
+  // track is the track's own reason, and no scene should be made to reach it.
   const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
   const blocker = clipCopyBlocker(
     clipIsMidi,
@@ -117,6 +113,20 @@ export function handleClipSlotMove({
 
     return;
   }
+
+  const destination = destinationSlot({
+    clip,
+    toSlot,
+    updatedClips,
+    noteResult,
+    reasons,
+  });
+
+  if (destination == null) {
+    return;
+  }
+
+  const { clipSlot: destClipSlot, created } = destination;
 
   // Read now, warn after the copy: when copyClipToSlot declines, the occupant
   // is still there and an up-front warning contradicts the one that follows.
@@ -157,9 +167,7 @@ export function handleClipSlotMove({
     source: slotPath(srcTrackIndex, srcSceneIndex),
     deleteSource: () => sourceClipSlot.call("delete_clip"),
   });
-  updatedClips.push(
-    buildClipResultObject(newClip.id, noteResult, objectPathForApi(newClip)),
-  );
+  pushMovedClip(updatedClips, newClip, noteResult, created);
 }
 
 /**
@@ -194,7 +202,7 @@ export function handleArrangementToSlotMove({
     return;
   }
 
-  const destClipSlot = destinationSlot({
+  const destination = destinationSlot({
     clip,
     toSlot,
     updatedClips,
@@ -202,9 +210,11 @@ export function handleArrangementToSlotMove({
     reasons,
   });
 
-  if (destClipSlot == null) {
+  if (destination == null) {
     return;
   }
+
+  const { clipSlot: destClipSlot, created } = destination;
 
   // Read before the source is touched: everything below changes what it holds.
   const losses = recreatedClipLosses(clip);
@@ -258,12 +268,36 @@ export function handleArrangementToSlotMove({
     });
   }
 
-  updatedClips.push(
-    buildClipResultObject(newClip.id, noteResult, objectPathForApi(newClip)),
-  );
+  pushMovedClip(updatedClips, newClip, noteResult, created);
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Report the clip the move landed, naming the scenes reaching it had to make.
+ * @param updatedClips - Array to collect results
+ * @param newClip - The clip at the destination
+ * @param noteResult - Note update result for result
+ * @param created - The scenes created, or null when none were
+ */
+function pushMovedClip(
+  updatedClips: ClipResult[],
+  newClip: LiveAPI,
+  noteResult: NoteUpdateResult | null,
+  created: string | null,
+): void {
+  const entry = buildClipResultObject(
+    newClip.id,
+    noteResult,
+    objectPathForApi(newClip),
+  );
+
+  if (created != null) {
+    entry.created = created;
+  }
+
+  updatedClips.push(entry);
+}
 
 interface DeleteSourceArgs {
   /** What each clip has to say beyond its result. */
@@ -362,36 +396,69 @@ function destinationTrack(
 }
 
 /**
- * The destination slot, or null when it doesn't exist — in which case the clip
- * is left where it is and its entry says it didn't move.
+ * The destination slot. When it sits past the last scene, the scenes up to it
+ * are made — the path says what to create, so the move creates it. Null when
+ * the slot still isn't there, in which case the clip is left where it is and
+ * its entry says it didn't move.
  * @param args - The clip, the destination, and the call's collectors
  * @param args.clip - The clip being moved
  * @param args.toSlot - Destination slot position
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
- * @returns The destination ClipSlot, or null
+ * @returns The destination ClipSlot and the scenes created, or null
  */
-function destinationSlot({
-  clip,
-  toSlot,
-  updatedClips,
-  noteResult,
-  reasons,
-}: Omit<SlotMoveArgs, "destinationTracks">): LiveAPI | null {
-  const destClipSlot = LiveAPI.from(
-    livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex),
-  );
+function destinationSlot(
+  args: Omit<SlotMoveArgs, "destinationTracks">,
+): PreparedDestination | null {
+  const { toSlot } = args;
+  const path = livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex);
+  const clipSlot = LiveAPI.from(path);
 
-  if (destClipSlot.exists()) {
-    return destClipSlot;
+  if (clipSlot.exists()) {
+    return { clipSlot, created: null };
   }
 
-  refuseClipWork(
-    reasons,
-    clip.id,
-    `not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
+  let created: string | null;
+
+  try {
+    created = createMissingScenes(toSlot.sceneIndex);
+  } catch (error) {
+    return refuseSlotMove(args, errorMessage(error));
+  }
+
+  const madeSlot = LiveAPI.from(path);
+
+  if (madeSlot.exists()) {
+    return { clipSlot: madeSlot, created };
+  }
+
+  return refuseSlotMove(
+    args,
+    `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
   );
+}
+
+/**
+ * Leave the clip where it is, saying why it didn't move.
+ * @param args - The clip, the destination, and the call's collectors
+ * @param args.clip - The clip being moved
+ * @param args.updatedClips - Array to collect results
+ * @param args.noteResult - Note update result for result
+ * @param args.reasons - What each clip has to say beyond its result
+ * @param reason - Why the destination couldn't be reached
+ * @returns Null, for the caller to return
+ */
+function refuseSlotMove(
+  {
+    clip,
+    updatedClips,
+    noteResult,
+    reasons,
+  }: Omit<SlotMoveArgs, "destinationTracks">,
+  reason: string,
+): null {
+  refuseClipWork(reasons, clip.id, `not moved: ${reason}`);
   keepClip(clip, updatedClips, noteResult);
 
   return null;

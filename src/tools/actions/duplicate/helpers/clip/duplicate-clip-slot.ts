@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import {
   clipCopyBlocker,
   clipOverwriteNote,
@@ -102,19 +104,9 @@ export function duplicateClipSlot(
   const { sourceClipSlot, sourceClip, tracks } = shared;
   const destination = slotPath(toTrackIndex, toSceneIndex);
 
-  // Get destination clip slot
-  const destClipSlot = LiveAPI.from(
-    livePath.track(toTrackIndex).clipSlot(toSceneIndex),
-  );
-
-  // An entry rather than a throw, so the other slots of a comma-separated
-  // toPath keep the copies they already made.
-  if (!destClipSlot.exists()) {
-    return skippedCopy(destination, "no clip slot there");
-  }
-
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
   // of failing, so check first rather than reporting a copy that never happened.
+  // Before the slot, too: no scene should be made to reach a missing track.
   const clipIsMidi = (sourceClip.getProperty("is_midi_clip") as number) > 0;
   const blocker = clipCopyBlocker(
     clipIsMidi,
@@ -122,9 +114,19 @@ export function duplicateClipSlot(
     tracks.get(toTrackIndex),
   );
 
+  // An entry rather than a throw, so the other slots of a comma-separated
+  // toPath keep the copies they already made.
   if (blocker != null) {
     return skippedCopy(destination, blocker);
   }
+
+  const prepared = prepareDestinationSlot(toTrackIndex, toSceneIndex);
+
+  if (typeof prepared === "string") {
+    return skippedCopy(destination, prepared);
+  }
+
+  const { clipSlot: destClipSlot, created } = prepared;
 
   // Read before the copy: the clip that was there is gone once it lands, and
   // the entry has to say the copy replaced it.
@@ -141,6 +143,10 @@ export function duplicateClipSlot(
   newClip.setAll({ name, color });
 
   const copy = getMinimalClipInfo(newClip);
+
+  if (created != null) {
+    copy.created = created;
+  }
 
   if (destinationWasOccupied) {
     copy.reason = clipOverwriteNote(destination);
@@ -192,4 +198,45 @@ export function duplicateClipToSlots(
       shared,
     ),
   );
+}
+
+// --- Helpers below main exports ---
+
+/** A destination slot, and the scenes reaching it had to make. */
+interface PreparedSlot {
+  clipSlot: LiveAPI;
+  created: string | null;
+}
+
+/**
+ * The slot to copy into, creating the scenes up to it when it sits past the
+ * last one — a slot path says on its own what to make.
+ * @param trackIndex - The track the destination names
+ * @param sceneIndex - The scene the destination names
+ * @returns The slot and the scenes created, or the reason there is no slot
+ */
+function prepareDestinationSlot(
+  trackIndex: number,
+  sceneIndex: number,
+): PreparedSlot | string {
+  const slotApiPath = livePath.track(trackIndex).clipSlot(sceneIndex);
+  const clipSlot = LiveAPI.from(slotApiPath);
+
+  if (clipSlot.exists()) {
+    return { clipSlot, created: null };
+  }
+
+  let created: string | null;
+
+  try {
+    created = createMissingScenes(sceneIndex);
+  } catch (error) {
+    return errorMessage(error);
+  }
+
+  const madeSlot = LiveAPI.from(slotApiPath);
+
+  return madeSlot.exists()
+    ? { clipSlot: madeSlot, created }
+    : "no clip slot there";
 }

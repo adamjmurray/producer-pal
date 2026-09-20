@@ -16,6 +16,8 @@ export interface MinimalClipInfo {
   path?: string;
   noteCount?: number;
   transformed?: number;
+  /** The scenes the destination had to make ("s8-s9"), when it made any. */
+  created?: string;
   /** Why the copy isn't quite what was asked for, when it isn't. */
   reason?: string;
 }

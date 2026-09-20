@@ -102,7 +102,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>', " +
+        "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>' " +
+          "(scenes are created up to that index), " +
           "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
           "loc:<locator name or id>), a take lane 't<track>/l<lane>' (lanes are created up to that " +
           "index), or " +

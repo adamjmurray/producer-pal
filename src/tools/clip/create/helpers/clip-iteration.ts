@@ -12,7 +12,6 @@ import {
   requireCreatedSessionClip,
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import {
   arrangementPath,
   slotPath,
@@ -92,6 +91,7 @@ export function processClipIteration(
 ): ClipResultObject {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
+  let createdScenes: string | null = null;
 
   if (sampleFile) {
     // Audio clip creation
@@ -103,11 +103,11 @@ export function processClipIteration(
         validSceneIndex,
         sampleFile,
         liveSet,
-        MAX_AUTO_CREATED_SCENES,
       );
 
       clip = result.clip;
       currentSceneIndex = result.sceneIndex;
+      createdScenes = result.created;
     } else {
       // Arrangement view
       const result = createAudioArrangementClip(
@@ -138,11 +138,11 @@ export function processClipIteration(
         validSceneIndex,
         clipLength,
         liveSet,
-        MAX_AUTO_CREATED_SCENES,
       );
 
       clip = result.clip;
       currentSceneIndex = result.sceneIndex;
+      createdScenes = result.created;
     } else {
       // Arrangement view
       const result = createArrangementClip(
@@ -176,7 +176,7 @@ export function processClipIteration(
     }
   }
 
-  return buildClipResult(
+  const clipResult = buildClipResult(
     clip,
     trackIndex,
     view,
@@ -189,6 +189,12 @@ export function processClipIteration(
     transformedCount,
     color,
   );
+
+  if (createdScenes != null) {
+    clipResult.created = createdScenes;
+  }
+
+  return clipResult;
 }
 
 // --- Private helpers ---
@@ -196,29 +202,28 @@ export function processClipIteration(
 interface SessionClipResult {
   clip: LiveAPI;
   sceneIndex: number;
+  /** The scenes the slot had to make, or null when none were needed. */
+  created: string | null;
 }
 
 /**
- * Creates a session clip in a clip slot, auto-creating scenes if needed
+ * Creates a session clip in a clip slot, creating the scenes up to it if needed
  * @param trackIndex - Track index (0-based)
  * @param sceneIndex - Target scene index (0-based)
  * @param clipLength - Clip length in beats
  * @param liveSet - LiveAPI live_set object
- * @param maxAutoCreatedScenes - Maximum scenes allowed
- * @returns Object with clip and sceneIndex
+ * @returns Object with clip, sceneIndex, and the scenes created
  */
 function createSessionClip(
   trackIndex: number,
   sceneIndex: number,
   clipLength: number,
   liveSet: LiveAPI,
-  maxAutoCreatedScenes: number,
 ): SessionClipResult {
-  const clipSlot = prepareSessionClipSlot(
+  const { clipSlot, created } = prepareSessionClipSlot(
     trackIndex,
     sceneIndex,
     liveSet,
-    maxAutoCreatedScenes,
   );
 
   clipSlot.call("create_clip", clipLength);
@@ -226,6 +231,7 @@ function createSessionClip(
   return {
     clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
+    created,
   };
 }
 

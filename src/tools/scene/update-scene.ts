@@ -19,6 +19,7 @@ import {
   writeFanOut,
   type WriteResult,
 } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { sceneIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
@@ -96,7 +97,7 @@ export function updateScene(
   const written: string[] = [];
 
   const result = writeFanOut(targets, (target, i) => {
-    const scene = targetObject(target, "scene", sceneIdAtPath);
+    const scene = targetObject(target, "scene", sceneToUpdateAtPath);
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);
 
@@ -129,4 +130,23 @@ export function updateScene(
   }
 
   return result;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The scene a path names. A path past the last scene is a target, not a
+ * destination — nothing here says what a new scene would be — so it is refused
+ * with the tool that does make scenes.
+ * @param entry - One scene path, as the caller wrote it
+ * @returns The scene's id, or why there isn't one
+ */
+function sceneToUpdateAtPath(entry: string): IdLookup {
+  const lookup = sceneIdAtPath(entry);
+
+  if (lookup.id != null || !lookup.empty) {
+    return lookup;
+  }
+
+  return { ...lookup, reason: `${lookup.reason}; ppal-create-scene makes one` };
 }

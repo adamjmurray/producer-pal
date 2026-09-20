@@ -36,7 +36,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a clip slot; " +
+        "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a clip slot " +
+        "(scenes are created up to that index); " +
         "'t<track>[<position>]' is that spot on the track's arrangement, where a position is bar|beat " +
         "or loc:<locator name or id>. An arrangement path needs both halves. " +
         "'t<track>/l<lane>[<position>]' puts it on a take lane, creating lanes up to that index. " +

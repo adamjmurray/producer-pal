@@ -113,6 +113,36 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     return { slots, result };
   }
 
+  // The field has to survive the per-target assembly, not just the move.
+  it("reports on the entry the scenes a destination past the last one made", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNonExistentObjects();
+    registerSlots([[0, 0, 1]]);
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      properties: { has_midi_input: 1, is_frozen: 0 },
+    });
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { scenes: ["id", 1, "id", 2] },
+      methods: {
+        create_scene: () => {
+          registerSlots([[1, 3, 0]]);
+
+          return null;
+        },
+      },
+    });
+
+    const result = await updateClip({ path: "t0/s0", toPath: "t1/s3" });
+
+    expect(result).toStrictEqual({
+      id: "t1/s3/clip",
+      path: "t1/s3",
+      created: "s2-s3",
+    });
+  });
+
   it("keeps each clip on the destination named at its own position", async () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
@@ -130,7 +160,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         path: "t1/s1",
         ok: false,
-        reason: "not moved: destination t5/s1 does not exist",
+        reason: "not moved: track t5 does not exist",
       },
     ]);
   });
@@ -307,7 +337,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       {
         id: "456",
         ok: false,
-        reason: "not moved: destination t5/s0 does not exist",
+        reason: "not moved: track t5 does not exist",
       },
       {
         id: "456",

@@ -595,6 +595,8 @@ export interface CreateClipResult {
   path?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
+  /** The scenes the destination had to make ("s8-s9"), when it made any */
+  created?: string;
   /** What the call asked for that the clip didn't get */
   reason?: string;
 }
@@ -605,6 +607,8 @@ export interface UpdateClipResult {
   noteCount?: number;
   transformed?: number;
   length?: string;
+  /** The scenes the destination had to make ("s8-s9"), when it made any */
+  created?: string;
 }
 
 /** Result from ppal-create-track tool */

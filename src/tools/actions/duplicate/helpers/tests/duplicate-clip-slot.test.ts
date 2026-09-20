@@ -14,6 +14,7 @@ import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-position
 import { copyLabels } from "../sources/copy-labels.ts";
 import { duplicateClipSlot } from "../clip/duplicate-clip-slot.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 
 /** Source clip, in slot 0/0 */
 const SOURCE_CLIP_ID = "56";
@@ -258,6 +259,79 @@ describe("duplicateClipWithPositions to clip slots", () => {
   });
 });
 
+describe("duplicateClipSlot past the last scene", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * A Set with two scenes whose t1/s3 slot only appears once create_scene has
+   * made the scenes up to it.
+   * @returns The Live Set mock
+   */
+  function setupShortSet(): RegisteredMockObject {
+    mockNonExistentObjects();
+
+    const destClipPath = livePath.track(1).clipSlot(3).clip();
+
+    registerMockObject(SOURCE_CLIP_ID, {
+      path: livePath.track(0).clipSlot(0).clip(),
+      properties: { is_midi_clip: 1 },
+    });
+    registerMockObject("live_set/tracks/0/clip_slots/0", {
+      path: livePath.track(0).clipSlot(0),
+      properties: { has_clip: 1 },
+      methods: {
+        duplicate_clip_to: () => {
+          registerMockObject(COPY_ID, { path: destClipPath });
+
+          return null;
+        },
+      },
+    });
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { has_midi_input: 1, is_frozen: 0 },
+    });
+
+    return registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { scenes: ["id", 1, "id", 2] },
+      methods: {
+        create_scene: () =>
+          registerMockObject("live_set/tracks/1/clip_slots/3", {
+            path: livePath.track(1).clipSlot(3),
+            properties: { has_clip: 0 },
+          }),
+      },
+    }) as RegisteredMockObject;
+  }
+
+  it("makes the scenes up to the destination and says which", () => {
+    const liveSet = setupShortSet();
+
+    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+      id: COPY_ID,
+      path: "t1/s3",
+      created: "s2-s3",
+    });
+    expect(liveSet.call).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses a destination past the scene cap, making nothing", () => {
+    const liveSet = setupShortSet();
+
+    expect(duplicateClipSlot(0, 0, 1, MAX_AUTO_CREATED_SCENES)).toStrictEqual({
+      path: `t1/s${MAX_AUTO_CREATED_SCENES}`,
+      ok: false,
+      reason:
+        `scene "s${MAX_AUTO_CREATED_SCENES}" is out of range: ` +
+        `scenes auto-create only through "s${MAX_AUTO_CREATED_SCENES - 1}"`,
+    });
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+});
+
 describe("duplicateClipSlot with a missing slot or clip", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -311,6 +385,7 @@ interface ClipSlotMockLiveAPIInstance {
   path: string;
   exists: () => boolean;
   getProperty: (prop: string) => boolean | null;
+  getChildIds: (name: string) => string[];
   child: (name: string) => ClipSlotMockLiveAPIInstance;
   id: string;
 }
@@ -368,6 +443,11 @@ function createClipSlotMockLiveAPI({
       }
 
       return null;
+    }
+
+    // One scene, so s0 is never past the end and no scene is created here.
+    getChildIds(): string[] {
+      return ["id 1"];
     }
 
     get id(): string {

@@ -104,6 +104,8 @@ export interface ClipResultObject {
   warping?: boolean;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
+  /** The scenes the destination had to make ("s8-s9"), when it made any. */
+  created?: string;
   /** What the call asked for that the clip didn't get */
   reason?: string;
 }

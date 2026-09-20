@@ -125,6 +125,8 @@ describe("createClip - advanced features", () => {
     expect((arrayResult as object[])[1]).toStrictEqual({
       id: expect.any(String),
       path: "t0/s2",
+      // The Set had two scenes, so the second destination made the one it named
+      created: "s2",
     });
   });
 

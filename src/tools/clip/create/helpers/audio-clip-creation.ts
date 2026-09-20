@@ -18,6 +18,8 @@ import {
 export interface AudioSessionClipResult {
   clip: LiveAPI;
   sceneIndex: number;
+  /** The scenes the slot had to make, or null when none were needed. */
+  created: string | null;
 }
 
 /**
@@ -26,21 +28,18 @@ export interface AudioSessionClipResult {
  * @param sceneIndex - Target scene index (0-based)
  * @param sampleFile - Absolute path to audio file
  * @param liveSet - LiveAPI liveSet object
- * @param maxAutoCreatedScenes - Maximum number of scenes allowed
- * @returns Object with clip and sceneIndex
+ * @returns Object with clip, sceneIndex, and the scenes created
  */
 export function createAudioSessionClip(
   trackIndex: number,
   sceneIndex: number,
   sampleFile: string,
   liveSet: LiveAPI,
-  maxAutoCreatedScenes: number,
 ): AudioSessionClipResult {
-  const clipSlot = prepareSessionClipSlot(
+  const { clipSlot, created } = prepareSessionClipSlot(
     trackIndex,
     sceneIndex,
     liveSet,
-    maxAutoCreatedScenes,
   );
 
   clipSlot.call("create_audio_clip", sampleFile);
@@ -48,6 +47,7 @@ export function createAudioSessionClip(
   return {
     clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
+    created,
   };
 }
 

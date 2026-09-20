@@ -100,34 +100,36 @@ describe("clip-results", () => {
       });
     }
 
-    it("throws at the boundary sceneIndex === maxAutoCreatedScenes", () => {
-      // 1000 >= 1000 must throw. A `>` mutant (strict) would fall through at the
-      // exact boundary; the message pins both the blanked-string and the
-      // `MAX_AUTO_CREATED_SCENES - 1` (=999) arithmetic mutants.
-      registerLiveSet(3);
-
-      expect(() =>
-        prepareSessionClipSlot(0, 1000, LiveAPI.from(livePath.liveSet), 1000),
-      ).toThrow(
-        'scene "s1000" is out of range: scenes auto-create only through "s999"',
-      );
-    });
-
-    it("does not auto-create scenes when the slot already exists", () => {
+    it("creates no scenes when the slot already exists", () => {
       // sceneIndex 1 < currentSceneCount 3 → no scenes created; the slot is empty.
       const liveSet = registerLiveSet(3);
 
       registerSlot(0);
 
-      const slot = prepareSessionClipSlot(
+      const prepared = prepareSessionClipSlot(
         0,
         1,
         LiveAPI.from(livePath.liveSet),
-        1000,
       );
 
       expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
-      expect(slot.path).toBe(String(livePath.track(0).clipSlot(1)));
+      expect(prepared.created).toBeNull();
+      expect(prepared.clipSlot.path).toBe(
+        String(livePath.track(0).clipSlot(1)),
+      );
+    });
+
+    it("reports the scenes it had to create", () => {
+      registerLiveSet(1);
+      registerSlot(0);
+
+      const prepared = prepareSessionClipSlot(
+        0,
+        1,
+        LiveAPI.from(livePath.liveSet),
+      );
+
+      expect(prepared.created).toBe("s1");
     });
 
     it("throws when a clip already exists in the target slot", () => {
@@ -135,7 +137,7 @@ describe("clip-results", () => {
       registerSlot(1);
 
       expect(() =>
-        prepareSessionClipSlot(0, 1, LiveAPI.from(livePath.liveSet), 1000),
+        prepareSessionClipSlot(0, 1, LiveAPI.from(livePath.liveSet)),
       ).toThrow("a clip already exists at t0/s1");
     });
   });

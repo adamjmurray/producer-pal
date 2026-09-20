@@ -182,7 +182,11 @@ describe("ppal-update-scene over a list with a target it can't reach", () => {
 
     expect(entries).toStrictEqual([
       expect.objectContaining({ path: "s0" }),
-      { path: "s999", ok: false, reason: 'no scene at path "s999"' },
+      {
+        path: "s999",
+        ok: false,
+        reason: 'no scene at path "s999"; ppal-create-scene makes one',
+      },
     ]);
 
     const scene = parseToolResult<ReadSceneResult>(
@@ -199,7 +203,9 @@ describe("ppal-update-scene over a list with a target it can't reach", () => {
     const result = await updateScene({ path: "s999", name: "Nowhere" });
 
     expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain('no scene at path "s999"');
+    expect(getToolErrorMessage(result)).toContain(
+      'no scene at path "s999"; ppal-create-scene makes one',
+    );
   });
 });
 

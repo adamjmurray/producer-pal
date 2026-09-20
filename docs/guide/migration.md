@@ -253,6 +253,16 @@ one nothing could be written to keeps its slot as
 
 `ppal-select` is unchanged: what it reports is the selection it made.
 
+**A clip destination past the last scene makes the scenes up to it.**
+`ppal-create-clip` always did; `ppal-update-clip`'s `toPath` and
+`ppal-duplicate`'s `toPath` used to refuse one ("destination t1/s20 does not
+exist", "no clip slot there") and now create the same way. Whichever tool made
+them, that entry carries a `created` field naming them (`created: "s8-s9"`), and
+a destination past the auto-create cap is still refused. `ppal-update-scene` is
+unchanged: its `path` names a scene to update, not a place to make one, and a
+path past the last scene is refused with `ppal-create-scene` named in the
+reason.
+
 ## Params being removed in 2.4
 
 Every param below still works today and emits a deprecation warning saying what

@@ -72,7 +72,11 @@ describe("updateScene by path", () => {
 
     expect(updateScene({ path: "s0,s9", name: "One,Two" })).toStrictEqual([
       { id: "123", path: "s0" },
-      { path: "s9", ok: false, reason: 'no scene at path "s9"' },
+      {
+        path: "s9",
+        ok: false,
+        reason: 'no scene at path "s9"; ppal-create-scene makes one',
+      },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });

@@ -26,6 +26,7 @@ import {
   sleep,
 } from "../mcp-test-helpers.ts";
 import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
@@ -604,7 +605,8 @@ describe("ppal-duplicate", () => {
 
   // N destinations named, N entries back: the slot that can't take a copy keeps
   // its place, so the caller can pair the entries against the toPath it sent.
-  it("keeps the slot of a clip destination that holds no slot", async () => {
+  // Past the cap is the one slot no scene creation can reach.
+  it("keeps the slot of a clip destination past the scene cap", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -617,13 +619,13 @@ describe("ppal-duplicate", () => {
 
     await sleep(100);
 
-    // Scene 99 doesn't exist, so neither does its slot on any track.
+    const capped = `t${RACKS_TRACK}/s${MAX_AUTO_CREATED_SCENES}`;
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "clip",
         id: source.id,
-        toPath: `t${RACKS_TRACK}/s11,t${RACKS_TRACK}/s99`,
+        toPath: `t${RACKS_TRACK}/s11,${capped}`,
       },
     });
     const { data, warnings } =
@@ -638,9 +640,11 @@ describe("ppal-duplicate", () => {
     expect(data).toHaveLength(2);
     expect(landed.path).toBe(`t${RACKS_TRACK}/s11`);
     expect(refused).toStrictEqual({
-      path: `t${RACKS_TRACK}/s99`,
+      path: capped,
       ok: false,
-      reason: "no clip slot there",
+      reason:
+        `scene "s${MAX_AUTO_CREATED_SCENES}" is out of range: ` +
+        `scenes auto-create only through "s${MAX_AUTO_CREATED_SCENES - 1}"`,
     });
     expect(warnings.join(" ")).not.toContain("not duplicated");
   });

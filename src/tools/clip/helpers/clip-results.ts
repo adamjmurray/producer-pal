@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
@@ -33,6 +34,8 @@ export interface ClipResult {
   arrangementLength?: string;
   /** The palette color Live settled on, when it isn't the one asked for. */
   color?: string;
+  /** The scenes the destination had to make ("s8-s9"), when it made any. */
+  created?: string;
   /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take
@@ -100,36 +103,26 @@ export function keepClip(
   );
 }
 
+/** A slot ready for a clip, and the scenes reaching it had to make. */
+export interface PreparedClipSlot {
+  clipSlot: LiveAPI;
+  /** The scenes this call created ("s8-s9"), or null when none were needed. */
+  created: string | null;
+}
+
 /**
- * Prepare a session clip slot, auto-creating scenes if needed
+ * Prepare a session clip slot, creating the scenes up to it if needed
  * @param trackIndex - Track index (0-based)
  * @param sceneIndex - Target scene index (0-based)
  * @param liveSet - LiveAPI liveSet object
- * @param maxAutoCreatedScenes - Maximum number of scenes allowed
- * @returns The clip slot ready for clip creation
+ * @returns The clip slot ready for clip creation, and the scenes created
  */
 export function prepareSessionClipSlot(
   trackIndex: number,
   sceneIndex: number,
   liveSet: LiveAPI,
-  maxAutoCreatedScenes: number,
-): LiveAPI {
-  if (sceneIndex >= maxAutoCreatedScenes) {
-    throw new Error(
-      `scene "s${sceneIndex}" is out of range: scenes auto-create only through "s${maxAutoCreatedScenes - 1}"`,
-    );
-  }
-
-  const currentSceneCount = liveSet.getChildIds("scenes").length;
-
-  if (sceneIndex >= currentSceneCount) {
-    const scenesToCreate = sceneIndex - currentSceneCount + 1;
-
-    for (let j = 0; j < scenesToCreate; j++) {
-      liveSet.call("create_scene", -1);
-    }
-  }
-
+): PreparedClipSlot {
+  const created = createMissingScenes(sceneIndex, liveSet);
   const clipSlot = LiveAPI.from(
     livePath.track(trackIndex).clipSlot(sceneIndex),
   );
@@ -140,7 +133,7 @@ export function prepareSessionClipSlot(
     );
   }
 
-  return clipSlot;
+  return { clipSlot, created };
 }
 
 /**
