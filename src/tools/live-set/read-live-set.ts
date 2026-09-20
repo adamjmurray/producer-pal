@@ -51,19 +51,23 @@ export function readLiveSet(
   // Read the return tracks once for efficiency (used for sends in mixer data)
   const returnTracks = readReturnTrackInfo();
 
-  // One pass over the session grid, shared by the scenes and the tracks below.
-  // Each counts the same slots — scenes by column, tracks by row — so counting
-  // in both places built every clip in the Set twice.
+  // One pass over the session grid, shared by the scenes and the tracks below:
+  // each counts the same slots, so counting in both built every clip twice.
   const clipCounts =
     includeFlags.includeScenes || includeFlags.includeTracks
       ? sessionClipCounts(trackIds.length, sceneIds.length)
       : null;
 
   const liveSetName = liveSet.getName();
+  // Read once: the result's time signature and the locators spell the same meter.
+  const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
+  const timeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
     tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
-    timeSignature: liveSet.timeSignature,
+    timeSignature: `${String(timeSigNumerator)}/${String(timeSigDenominator)}`,
   };
 
   // Include full scene details or just the count
@@ -152,13 +156,6 @@ export function readLiveSet(
 
   // Include locators when requested
   if (includeFlags.includeLocators) {
-    const timeSigNumerator = liveSet.getProperty(
-      "signature_numerator",
-    ) as number;
-    const timeSigDenominator = liveSet.getProperty(
-      "signature_denominator",
-    ) as number;
-
     result.locators = readLocators(
       liveSet,
       timeSigNumerator,

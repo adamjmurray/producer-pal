@@ -371,16 +371,14 @@ export function readTrackGeneric({
     ...(includeColor && { color: track.getColor() }),
   };
 
-  addOptionalBooleanProperties(result, track, canBeArmed);
+  addOptionalBooleanProperties(result, track, canBeArmed, isGroup);
 
-  // Instrument name (always included if present)
   const instrumentName = getInstrumentName(trackDevices);
 
   if (instrumentName != null) {
     result.instrument = instrumentName;
   }
 
-  // Add mixer properties if requested
   if (includeMixer) {
     const { reason, ...mixer } = readMixerProperties(track, returnTracks);
 

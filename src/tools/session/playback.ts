@@ -117,8 +117,8 @@ export function playback(
   });
 
   // Dropped before anything reads them, so a session action can't write the
-  // arrangement. Dropping runs before the fold, so a session action refuses
-  // nothing, looks up no locator, and warns by the names the caller sent.
+  // arrangement — and before the fold, so it looks up no locator and warns by
+  // the names the caller sent.
   const timeline = foldLocatorParams(
     resolveArrangementParams(action, {
       startTime,
@@ -133,34 +133,19 @@ export function playback(
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
-  // Get song time signature for bar|beat conversions
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
-
   // The timeline is written before the action, except on stop: Live's own
-  // second stop sends the start position to the top, so a position written
-  // first would be wiped by the stop that was supposed to park it.
+  // second stop sends the start position to the top, wiping one written first.
   const writeTimeline = (): TimelineWrites =>
-    applyArrangementTimeline(
-      liveSet,
-      timeline,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+    applyArrangementTimeline(liveSet, timeline);
   const timelineFollowsAction = action === "stop";
   let writes: TimelineWrites = timelineFollowsAction
     ? { wroteLoop: false }
     : writeTimeline();
 
-  // Read before the action, because an action that starts or stops the
-  // transport can't read it after: Live updates is_playing asynchronously, so a
-  // read in the same request still answers the old state. Those actions predict
-  // the new one instead; the ones that leave the transport alone pass this
-  // through. The playhead has the same problem, which is why it isn't reported.
+  // Read before the action: Live updates is_playing asynchronously, so an
+  // action that starts or stops the transport can't read it after, and predicts
+  // the new state instead. The playhead has the same problem, so it isn't
+  // reported at all.
   const isPlayingBefore = (liveSet.getProperty("is_playing") as number) > 0;
 
   const playbackState: PlaybackState = handlePlaybackAction(
@@ -176,13 +161,10 @@ export function playback(
 
   // Where the next play begins. Not the playhead: writing this leaves the
   // playhead where it was, and starting playback jumps it here.
-  const startTimePosition = readStartTime(
-    liveSet,
-    action,
-    { ...writes, startTime: timeline.startTime },
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
+  const startTimePosition = readStartTime(liveSet, action, {
+    ...writes,
+    startTime: timeline.startTime,
+  });
 
   handleFocus(action, focus);
 
@@ -193,14 +175,7 @@ export function playback(
     ...(playbackState.scene && { scene: playbackState.scene }),
     // One entry per clip slot the call named, in the order it named them
     ...(playbackState.clips && { clips: playbackState.clips }),
-    ...reportArrangementLoop(
-      liveSet,
-      action,
-      timeline,
-      writes.wroteLoop,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
+    ...reportArrangementLoop(liveSet, action, timeline, writes.wroteLoop),
   };
 }
 

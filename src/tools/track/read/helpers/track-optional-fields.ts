@@ -48,19 +48,19 @@ interface MixerResult {
  * @param result - Result object to modify
  * @param track - Track object
  * @param canBeArmed - Whether the track can be armed
+ * @param isGroup - Whether the track is a group
  */
 export function addOptionalBooleanProperties(
   result: Record<string, unknown>,
   track: LiveAPI,
   canBeArmed: boolean,
+  isGroup: boolean,
 ): void {
   const isArmed = canBeArmed ? (track.getProperty("arm") as number) > 0 : false;
 
   if (isArmed) {
     result.isArmed = isArmed;
   }
-
-  const isGroup = (track.getProperty("is_foldable") as number) > 0;
 
   if (isGroup) {
     result.isGroup = isGroup;
@@ -182,14 +182,12 @@ export function readMixerProperties(
 
   const result: MixerResult = {};
 
-  // Read gain
   const volume = mixer.child("volume");
 
   if (volume.exists()) {
     result.gainDb = readGainDb(volume);
   }
 
-  // Read panning mode
   const panningMode = mixer.getProperty("panning_mode");
   const isSplitMode = panningMode === 1;
 
@@ -198,7 +196,6 @@ export function readMixerProperties(
     result.panningMode = "split";
   }
 
-  // Read panning based on mode
   if (isSplitMode) {
     const leftSplit = mixer.child("left_split_stereo");
     const rightSplit = mixer.child("right_split_stereo");
@@ -218,7 +215,6 @@ export function readMixerProperties(
     }
   }
 
-  // Read sends
   const sends = mixer.getChildren("sends");
 
   if (sends.length > 0) {
@@ -261,10 +257,9 @@ export function handleNonExistentTrack(
 /**
  * Drum-rack detection for one track read, computed at most once and only if
  * something asks. `isDrumRackForTrack` walks the track's whole device tree, and
- * a track read can need the answer three times (session clips, arrangement
- * clips, take lanes) — so the three shared one call instead of walking three
- * times. Still lazy: a group or return track reads no clips at all, and must
- * not pay for a walk nothing consumes.
+ * one track read can need the answer three times (session clips, arrangement
+ * clips, take lanes). Still lazy: a group or return track reads no clips, and
+ * must not pay for a walk nothing consumes.
  *
  * @param track - The track being read
  * @param include - The include array threaded to the nested clip reads
@@ -300,9 +295,8 @@ function readGainDb(param: LiveAPI): unknown {
 
 /**
  * Whether nested clip reads for this track will serialize notes — the only case
- * drum-rack detection feeds. Mirrors readOneClip's own include gating
- * (READ_CLIP_DEFAULTS), so the drum-rack device walk is skipped when notes
- * aren't requested (e.g. a clips-without-notes track read).
+ * drum-rack detection feeds. Mirrors readOneClip's own include gating, so the
+ * device walk is skipped when notes aren't requested.
  * @param include - The include array threaded to the nested clip reads
  * @returns True when the nested reads will format notes
  */

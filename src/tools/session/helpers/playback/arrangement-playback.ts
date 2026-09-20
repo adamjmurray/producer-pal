@@ -10,6 +10,7 @@ import {
   locatorRef,
   songPositionToBeats,
 } from "#src/tools/shared/locator/song-position.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { type PlaybackState } from "./scene-playback.ts";
 
 /** What a timeline write actually landed. */
@@ -62,10 +63,9 @@ const ARRANGEMENT_ACTIONS = new Set([
 /**
  * Drop the arrangement-timeline params on an action that doesn't use them.
  *
- * These are written to the Live Set before the action runs, so a session action
- * used to apply them anyway: "play scene 3 from bar 5" fired the scene and moved
- * the arrangement start position, without a word. The scene had nothing to do with the
- * arrangement, so the caller got a change to their Live Set they never asked for.
+ * They are written to the Live Set before the action runs, so without this
+ * "play scene 3 from bar 5" fires the scene and silently moves the arrangement
+ * start position — a change to the Set the caller never asked for.
  * @param action - The playback action, which decides whether they apply
  * @param params - The timeline params as the caller sent them
  * @returns The params, or none of them when the action works the session
@@ -95,21 +95,16 @@ export function resolveArrangementParams<
 /**
  * The loop fields a playback result carries.
  *
- * A result never says back what the call told it, and it can't check: a written
- * `live_set loop` answers a read with the value from before the write until
- * about 25 ms after the request returns, and V8 can't wait for it. So a call
- * that wrote the loop reports only what the caller didn't say — the end that
- * slid because they named the other, and the bounds a play-arrangement will
- * loop over. A call that wrote none of it reports the loop that governs the
- * playback it just started, read off the Live Set. That read is stale only when
- * another request wrote the loop inside the window, which takes a parallel
- * tool call — a model round-trip is far longer, so it's left alone.
+ * A written `live_set loop` still reads back as its old value until about 25 ms
+ * after the request returns, and V8 can't wait for it. So a call that wrote the
+ * loop reports only what the caller didn't say: the end that slid because they
+ * named the other, and the bounds a play-arrangement will loop over. A call
+ * that wrote none of it reads the loop off the Live Set, which is stale only if
+ * a parallel tool call wrote it inside the window.
  * @param liveSet - The live_set LiveAPI object
  * @param action - The playback action that just ran
  * @param timeline - The timeline params, with locators already folded in
  * @param wroteLoop - Whether the loop was written; a refused plan writes nothing
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  * @returns The loop fields for the result, empty when it has nothing to say
  */
 export function reportArrangementLoop(
@@ -117,8 +112,6 @@ export function reportArrangementLoop(
   action: string,
   timeline: ArrangementParams,
   wroteLoop: boolean,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
 ): LoopReport {
   const { loop, loopStart, loopEnd } = timeline;
   const obeysLoop = action === PLAY_ARRANGEMENT;
@@ -134,10 +127,7 @@ export function reportArrangementLoop(
 
     // Bounds a loop that's off won't use aren't worth the tokens.
     return loopEnabled
-      ? {
-          loop: true,
-          ...loopBounds(liveSet, timeSigNumerator, timeSigDenominator),
-        }
+      ? { loop: true, ...loopBounds(liveSet) }
       : { loop: false };
   }
 
@@ -154,7 +144,7 @@ export function reportArrangementLoop(
     return {};
   }
 
-  const bounds = loopBounds(liveSet, timeSigNumerator, timeSigDenominator);
+  const bounds = loopBounds(liveSet);
 
   return {
     ...(reportsStart && { loopStart: bounds.loopStart }),
@@ -166,15 +156,14 @@ export function reportArrangementLoop(
  * The loop's bounds in bar|beat. `loop_start` and `loop_length` do read back
  * inside the request that wrote them, unlike `loop` itself.
  * @param liveSet - The live_set LiveAPI object
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  * @returns The loop's two ends
  */
-function loopBounds(
-  liveSet: LiveAPI,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): { loopStart: string; loopEnd: string } {
+function loopBounds(liveSet: LiveAPI): {
+  loopStart: string;
+  loopEnd: string;
+} {
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    songMeter();
   const startBeats = liveSet.getProperty("loop_start") as number;
   const lengthBeats = liveSet.getProperty("loop_length") as number;
 
@@ -196,51 +185,32 @@ function loopBounds(
  * Write the arrangement timeline: the start position and the loop.
  * @param liveSet - The live_set LiveAPI object
  * @param timeline - The timeline params, with locators already folded in
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  * @returns What the write landed, which a refused loop plan changes
  */
 export function applyArrangementTimeline(
   liveSet: LiveAPI,
   timeline: ArrangementParams,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
 ): TimelineWrites {
-  const startTimeBeats = resolveStartTime(
-    liveSet,
-    timeline,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const wroteLoop = applyArrangementLoop(
-    liveSet,
-    timeline,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  const startTimeBeats = resolveStartTime(liveSet, timeline);
+  const wroteLoop = applyArrangementLoop(liveSet, timeline);
 
   return { startTimeBeats, wroteLoop };
 }
 
 /**
  * Read the arrangement start position back after the action, and report it only
- * when it is news: a position the caller didn't write, one Live didn't put
- * where they asked, or one a `loc:` name resolved to. play-arrangement always
- * reads it, because that is where playback just began and the caller may never
- * have looked.
+ * when it is news: one the caller didn't write, one Live didn't put where they
+ * asked, or one a `loc:` name resolved to. play-arrangement always reads it,
+ * because that is where playback just began.
  * @param liveSet - The live_set LiveAPI object
  * @param action - The playback action that just ran
  * @param wrote - The start position the call sent, and the beat it resolved to
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  * @returns The start position in bar|beat, or undefined when it says nothing
  */
 export function readStartTime(
   liveSet: LiveAPI,
   action: string,
   wrote: TimelineWrites & { startTime?: string },
-  timeSigNumerator: number,
-  timeSigDenominator: number,
 ): string | undefined {
   const { startTime, startTimeBeats } = wrote;
 
@@ -248,6 +218,8 @@ export function readStartTime(
     return undefined;
   }
 
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    songMeter();
   const beats = liveSet.getProperty("start_time") as number;
   // A locator resolved to a bar the caller has never seen, so it always
   // reports. A bar|beat they wrote themselves reports only when Live moved it:
@@ -303,20 +275,18 @@ export function foldLocatorParams(
  * @param liveSet - The live_set LiveAPI object
  * @param params - The timeline params
  * @param params.startTime - Song position, bar|beat or `loc:<name>`
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  * @returns The start position in beats, or undefined when none was given
  */
 export function resolveStartTime(
   liveSet: LiveAPI,
   { startTime }: ArrangementParams,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
 ): number | undefined {
   if (startTime == null) {
     return undefined;
   }
 
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    songMeter();
   const startTimeBeats = songPositionToBeats(liveSet, startTime, {
     paramName: "startTime",
     timeSigNumerator,

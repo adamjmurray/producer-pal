@@ -6,6 +6,7 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { type ArrangementParams } from "./arrangement-playback.ts";
 
 /** Where the loop should end up: Live stores a start and a length, not two ends. */
@@ -20,20 +21,15 @@ type PlannedLoop = { plan: LoopPlan } | { refusal: string };
 /**
  * Write the arrangement loop, or leave every part of it alone.
  *
- * The three writes — on/off, start, length — go together. A plan that can't be
- * had is refused whole, because writing the start and then refusing the length
- * leaves a loop the caller never asked for.
+ * The three writes — on/off, start, length — go together: a plan that can't be
+ * had is refused whole, or the caller gets a loop they never asked for.
  * @param liveSet - The live_set LiveAPI object
  * @param timeline - The timeline params, with locators already folded in
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
  * @returns Whether the loop was written — a refused plan writes nothing
  */
 export function applyArrangementLoop(
   liveSet: LiveAPI,
   timeline: ArrangementParams,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
 ): boolean {
   const { loop, loopStart, loopEnd } = timeline;
 
@@ -41,6 +37,8 @@ export function applyArrangementLoop(
     return false;
   }
 
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    songMeter();
   const namesABound = loopStart != null || loopEnd != null;
   const toBeats = (value: string, paramName: string): number =>
     songPositionToBeats(liveSet, value, {
@@ -80,8 +78,7 @@ export function applyArrangementLoop(
 /**
  * Work out where the loop lands. One end alone slides the whole loop and keeps
  * its length, the way dragging the loop brace in Live does; both ends set the
- * span outright. At least one end is always named — a call that names neither
- * has no bounds to plan.
+ * span outright. At least one end is always named.
  * @param params - The resolved ends and the loop's current length
  * @param params.startBeats - Requested loop start, or null when only the end is named
  * @param params.endBeats - Requested loop end, or null when only the start is named

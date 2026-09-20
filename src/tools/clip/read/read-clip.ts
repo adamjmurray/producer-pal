@@ -64,6 +64,12 @@ interface WarpMarker {
   beatTime: number;
 }
 
+/** A clip's own meter, which spells both its positions and its notes. */
+interface ClipMeter {
+  numerator: number;
+  denominator: number;
+}
+
 /** Result returned by readClip */
 export interface ReadClipResult {
   // Core properties
@@ -138,8 +144,7 @@ export function readClip(
 
 /**
  * Read one clip a call named. An empty slot is a miss: a lone target throws, a
- * listed one gets the entry saying so. Only the batch readers, which walk slots
- * nobody named, take the empty answer.
+ * listed one gets the entry saying so. Only the batch readers take it.
  * @param args - Arguments for one clip
  * @param context - Context object
  * @returns Result object with clip information
@@ -215,8 +220,10 @@ export function readOneClip(
 
   addClipLocationProperties(result, clip, isArrangementClip);
 
+  const clipMeter = clipMeterReader(clip);
+
   if (includeTiming) {
-    addTimingProperties(result, clip, result.type === "audio");
+    addTimingProperties(result, clip, result.type === "audio", clipMeter);
   }
 
   if (result.type === "midi") {
@@ -225,6 +232,7 @@ export function readOneClip(
       clip,
       includeClipNotes,
       context.notation ?? "barbeat",
+      clipMeter,
       args.drumMode,
     );
   }
@@ -268,21 +276,38 @@ function addBooleanStateProperties(
 }
 
 /**
+ * Read the clip's meter once, and only if something asks: the timing block and
+ * the note formatting both spell positions in it, and a read with neither must
+ * not pay for it.
+ * @param clip - LiveAPI clip object
+ * @returns A getter for the clip's meter
+ */
+function clipMeterReader(clip: LiveAPI): () => ClipMeter {
+  let meter: ClipMeter | null = null;
+
+  return () =>
+    (meter ??= {
+      numerator: clip.getProperty("signature_numerator") as number,
+      denominator: clip.getProperty("signature_denominator") as number,
+    });
+}
+
+/**
  * Add timing properties (timeSignature, looping, start, end, length, firstStart)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isAudioClip - Whether the clip is an audio clip, whose marker
  *   properties are in seconds rather than beats when it is not warped
+ * @param clipMeter - Getter for the clip's meter
  */
 function addTimingProperties(
   result: ReadClipResult,
   clip: LiveAPI,
   isAudioClip: boolean,
+  clipMeter: () => ClipMeter,
 ): void {
-  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
-  const timeSigDenominator = clip.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    clipMeter();
   const isLooping = (clip.getProperty("looping") as number) > 0;
 
   const { startBeats, endBeats, startMarkerBeats } = clipRegionBeats(
@@ -291,7 +316,7 @@ function addTimingProperties(
     isLooping,
   );
 
-  result.timeSignature = clip.timeSignature;
+  result.timeSignature = `${String(timeSigNumerator)}/${String(timeSigDenominator)}`;
   result.looping = isLooping;
   result.start = abletonBeatsToBarBeat(
     startBeats,
@@ -324,6 +349,7 @@ function addTimingProperties(
  * @param clip - LiveAPI clip object
  * @param includeClipNotes - Whether to include formatted notes
  * @param notation - Notation for the returned notes (default barbeat)
+ * @param clipMeter - Getter for the clip's meter
  * @param precomputedDrumMode - Drum mode supplied by a batch reader; falls back
  *   to a device-tree walk when omitted (standalone reads)
  */
@@ -332,16 +358,15 @@ function processMidiClip(
   clip: LiveAPI,
   includeClipNotes: boolean,
   notation: Notation,
+  clipMeter: () => ClipMeter,
   precomputedDrumMode?: boolean,
 ): void {
   if (!includeClipNotes) {
     return;
   }
 
-  const timeSigNumerator = clip.getProperty("signature_numerator") as number;
-  const timeSigDenominator = clip.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    clipMeter();
   const lengthBeats = clip.getProperty("length") as number;
 
   // Read the window [-lengthBeats, 2*lengthBeats] so a pickup before the start
@@ -354,8 +379,7 @@ function processMidiClip(
     -lengthBeats,
     lengthBeats * 3,
   ) as string;
-  // `?? []` because everything below is total on a missing key, the way
-  // formatNotation is: nothing to spell is not an error.
+  // `?? []` because nothing to spell is not an error, the way formatNotation is.
   const notes = JSON.parse(notesDictionary).notes ?? [];
 
   // Nothing to spell means the answer is never used, so an empty clip must not
