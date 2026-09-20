@@ -198,10 +198,9 @@ async function lengthenClipAndCollectInfo(
     context,
   );
 
-  // updateClip returns array of clip objects with id property
   const clipResults = (
     Array.isArray(updateResult) ? updateResult : [updateResult]
-  ) as { id: string }[];
+  ) as { id: string; reason?: string }[];
   const arrangementClipIds = track.getChildIds("arrangement_clips");
 
   for (const clipObj of clipResults) {
@@ -210,7 +209,12 @@ async function lengthenClipAndCollectInfo(
       .find((c) => c.id === clipObj.id);
 
     if (clipLiveAPI) {
-      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI));
+      // update-clip says on its entry when the file ran out before the length
+      // asked for; the copy's entry keeps that.
+      duplicatedClips.push({
+        ...getMinimalClipInfo(clipLiveAPI),
+        ...(clipObj.reason == null ? {} : { reason: clipObj.reason }),
+      });
     }
   }
 }

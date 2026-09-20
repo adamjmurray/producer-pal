@@ -141,6 +141,38 @@ describe("duplicate - arrangementLength functionality", () => {
     });
   });
 
+  it("keeps the reason updateClip put on a lengthened copy's entry", async () => {
+    registerSourceClip({
+      length: 4,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 1,
+    });
+
+    setupLengthMocks();
+
+    const reason =
+      "arrangementLength unchanged: the audio file has no more content to show";
+
+    updateClipMock.mockReturnValueOnce(
+      Promise.resolve([{ id: livePath.track(0).arrangementClip(0), reason }]),
+    );
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar+n/2",
+    });
+
+    expect(result).toStrictEqual({
+      id: livePath.track(0).arrangementClip(0),
+      path: "t0[5|1]",
+      reason,
+    });
+  });
+
   it("should duplicate a non-looping clip at original length when requested length is longer", async () => {
     registerSourceClip({
       length: 4,

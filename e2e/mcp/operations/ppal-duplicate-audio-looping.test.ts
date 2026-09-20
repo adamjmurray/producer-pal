@@ -35,26 +35,34 @@ const WARPED_AUDIO_TRACK = 4;
 /** Clear of t4's own arrangement clip at 17|1. */
 const TARGET_BAR = 49;
 
+/** What a duplicate says about one copy. */
+interface ClipEntry {
+  path?: string;
+  reason?: string;
+}
+
 /** t4/s0's loop, as read-clip spells a duration. */
 const LOOP = "n1.5888/4";
 
 /**
  * Duplicate to the arrangement and read back the copies it left on t4.
  * @param args - ppal-duplicate arguments
- * @param expectedWarnings - Warnings the call is allowed to raise
- * @returns t4's arrangement clips, minus the one the Set ships at 17|1
+ * @returns The call's clip entries, and t4's arrangement clips minus the one
+ *   the Set ships at 17|1
  */
 async function duplicateAndReadCopies(
   args: Record<string, unknown>,
-  expectedWarnings = 0,
-): Promise<ReadClipResult[]> {
+): Promise<{ copies: ReadClipResult[]; entries: ClipEntry[] }> {
   const raw = await ctx.client!.callTool({
     name: "ppal-duplicate",
     arguments: args,
   });
-  const { warnings } = parseToolResultWithWarnings<unknown>(raw);
+  const { data, warnings } = parseToolResultWithWarnings<
+    ClipEntry | { clips: ClipEntry[] }
+  >(raw);
 
-  expect(warnings).toHaveLength(expectedWarnings);
+  // Whatever a copy could not do, its entry says; the call warns about nothing.
+  expect(warnings).toStrictEqual([]);
 
   await sleep(150);
 
@@ -67,9 +75,11 @@ async function duplicateAndReadCopies(
   });
   const track = parseToolResult<{ arrangementClips?: ReadClipResult[] }>(read);
 
-  return (track.arrangementClips ?? []).filter(
+  const copies = (track.arrangementClips ?? []).filter(
     (clip) => !clip.path?.startsWith(`t${WARPED_AUDIO_TRACK}[17|`),
   );
+
+  return { copies, entries: "clips" in data ? data.clips : [data] };
 }
 
 /**
@@ -106,7 +116,7 @@ function expectWholeLoopTiles(
 describe("ppal-duplicate with a looping audio source", () => {
   it("repeats whole loops when a clip duplicate fills an arrangementLength", async () => {
     // 2 bars holds 5 whole loops and 0.0562 beats over.
-    const copies = await duplicateAndReadCopies({
+    const { copies } = await duplicateAndReadCopies({
       type: "clip",
       path: `t${WARPED_AUDIO_TRACK}/s0`,
       toPath: `t${WARPED_AUDIO_TRACK}[${TARGET_BAR}|1]`,
@@ -117,19 +127,25 @@ describe("ppal-duplicate with a looping audio source", () => {
   });
 
   it("repeats whole loops when a scene duplicate fills an arrangementLength", async () => {
-    // 4 bars holds 10 whole loops and 0.1125 beats over. The one warning is
-    // t5's unlooped clip, which has no more file content to stretch into — the
-    // looping clip on t4 must not join it.
-    const copies = await duplicateAndReadCopies(
-      {
-        type: "scene",
-        path: "s0",
-        toPath: `[${TARGET_BAR}|1]`,
-        arrangementLength: "4bar",
-      },
-      1,
-    );
+    // 4 bars holds 10 whole loops and 0.1125 beats over. t5's unlooped clip
+    // has no more file content to stretch into, and says so on its own entry;
+    // the looping clip on t4 must not join it.
+    const { copies, entries } = await duplicateAndReadCopies({
+      type: "scene",
+      path: "s0",
+      toPath: `[${TARGET_BAR}|1]`,
+      arrangementLength: "4bar",
+    });
 
     expectWholeLoopTiles(copies, 10, "n0.1125/4");
+
+    const withReasons = entries.filter((entry) => entry.reason != null);
+
+    expect(withReasons).toStrictEqual([
+      expect.objectContaining({
+        path: `t5[${TARGET_BAR}|1]`,
+        reason: expect.stringContaining("no more content"),
+      }),
+    ]);
   });
 });
