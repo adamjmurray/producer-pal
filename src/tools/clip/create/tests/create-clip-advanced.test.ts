@@ -601,6 +601,8 @@ describe("buildClipResult (unit)", () => {
       4,
       4,
       null,
+      undefined,
+      null,
     );
 
     expect(result.length).toBeUndefined();

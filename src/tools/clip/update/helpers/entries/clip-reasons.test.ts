@@ -4,11 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   clipIgnoredParams,
   ignoreClipParams,
   moveClipReasons,
   newClipReasons,
+  noteClipColor,
+  reportClipReasons,
 } from "./clip-reasons.ts";
 
 describe("clip-reasons", () => {
@@ -32,6 +35,39 @@ describe("clip-reasons", () => {
     expect(reasons.said.get("named_id")).toStrictEqual([
       "notes ignored: it is audio",
     ]);
+  });
+
+  it("hands a landed color over to the id the call knows the clip by", () => {
+    const reasons = newClipReasons();
+
+    noteClipColor(reasons, "new_id", {
+      color: "#FF3636",
+      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+    moveClipReasons(reasons, "new_id", "named_id");
+
+    const entry: ClipResult = { id: "named_id" };
+
+    reportClipReasons(reasons, "named_id", [entry]);
+
+    expect(entry).toStrictEqual({
+      id: "named_id",
+      color: "#FF3636",
+      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+    expect(reasons.colors.has("new_id")).toBe(false);
+  });
+
+  it("puts a color it could not read back on the entry as a reason only", () => {
+    const reasons = newClipReasons();
+
+    noteClipColor(reasons, "1", { reason: "could not be read back" });
+
+    const entry: ClipResult = { id: "1" };
+
+    reportClipReasons(reasons, "1", [entry]);
+
+    expect(entry).toStrictEqual({ id: "1", reason: "could not be read back" });
   });
 
   it("collects every param a clip ignored", () => {

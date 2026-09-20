@@ -12,7 +12,7 @@ import {
   markerClampSeconds,
 } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
+import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
@@ -27,7 +27,11 @@ import {
   handleQuantization,
 } from "../notes/note-updates.ts";
 import { buildClipPropertiesToSet } from "../clip-properties-to-set.ts";
-import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
+import {
+  type ClipReasons,
+  ignoreClipParams,
+  noteClipColor,
+} from "../entries/clip-reasons.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -333,7 +337,7 @@ function writeClipProperties(
   );
 
   if (color != null) {
-    verifyColorQuantization(clip, color);
+    noteClipColor(reasons, clip.id, landedColor(clip, color));
   }
 }
 

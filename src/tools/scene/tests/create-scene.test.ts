@@ -345,6 +345,28 @@ describe("createScene", () => {
     });
   });
 
+  describe("color", () => {
+    it("reports the palette color Live snapped to on the scene's entry", () => {
+      scene1.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/1",
+        path: "s1",
+        color: "#FF3636",
+        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
+    it("says nothing when the color lands as asked", () => {
+      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/1",
+        path: "s1",
+      });
+    });
+  });
+
   describe("capture mode", () => {
     let captureLiveSet: RegisteredMockObject;
     let capturedScene: RegisteredMockObject;
@@ -411,6 +433,20 @@ describe("createScene", () => {
       ).toThrow('invalid color "not-a-hex-color" - expected "#RRGGBB"');
 
       expect(captureLiveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("reports the palette color Live snapped to on the captured scene", () => {
+      capturedScene.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createScene({ capture: true, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+        color: "#FF3636",
+        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
     });
 
     it("should apply additional properties after capture", () => {

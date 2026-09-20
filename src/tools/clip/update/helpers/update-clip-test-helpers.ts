@@ -299,17 +299,20 @@ export function setupMidiClipMock(
   opts: MidiClipMockOptions = {},
 ): void {
   clip.get.mockImplementation(
-    createPropertyGetImpl({
-      is_arrangement_clip: 0,
-      is_midi_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      // A real clip always has one, and duplicateLoop reports it. Without a
-      // default the result reads back "0bar" and looks like a bug in the code
-      // under test rather than a gap in the fixture.
-      length: 8,
-      ...opts,
-    }),
+    createPropertyGetImpl(
+      {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        // A real clip always has one, and duplicateLoop reports it. Without a
+        // default the result reads back "0bar" and looks like a bug in the code
+        // under test rather than a gap in the fixture.
+        length: 8,
+        ...opts,
+      },
+      storedPropertyGet(clip),
+    ),
   );
 }
 
@@ -324,17 +327,20 @@ export function setupAudioClipMock(
   opts: Record<string, unknown> = {},
 ): void {
   clip.get.mockImplementation(
-    createPropertyGetImpl({
-      is_arrangement_clip: 0,
-      is_midi_clip: 0,
-      is_audio_clip: 1,
-      // Warped by default: markers are beats, like every other clip type.
-      // Override to 0 for the seconds-valued markers of an unwarped clip.
-      warping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      ...opts,
-    }),
+    createPropertyGetImpl(
+      {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        // Warped by default: markers are beats, like every other clip type.
+        // Override to 0 for the seconds-valued markers of an unwarped clip.
+        warping: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        ...opts,
+      },
+      storedPropertyGet(clip),
+    ),
   );
 }
 
@@ -383,6 +389,22 @@ export function setupMockProperties(
   mock.get.mockImplementation(
     createPropertyGetImpl(props, fallbackGet ?? undefined),
   );
+}
+
+/**
+ * Read a property the registration itself kept, so a clip reads back what the
+ * code under test wrote to it (setColor, above all).
+ * @param clip - Registered mock clip
+ * @returns Fallback for properties the fixture doesn't pin
+ */
+function storedPropertyGet(
+  clip: RegisteredMockObject,
+): (prop: string) => unknown[] {
+  return (prop: string) => {
+    const stored = clip.properties[prop];
+
+    return [stored === undefined ? 0 : stored];
+  };
 }
 
 /**

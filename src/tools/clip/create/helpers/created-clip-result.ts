@@ -7,6 +7,10 @@ import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ClipPropertiesToSet {
@@ -98,6 +102,8 @@ export interface ClipResultObject {
   length?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
   /** What the call asked for that the clip didn't get */
   reason?: string;
 }
@@ -114,6 +120,7 @@ export interface ClipResultObject {
  * @param timeSigDenominator - Clip time signature denominator
  * @param sampleFile - Audio file path (for audio clips)
  * @param transformedCount - Number of notes matched by transform selectors
+ * @param color - The color the call asked for, or null when it asked for none
  * @returns Clip result object
  */
 export function buildClipResult(
@@ -126,8 +133,10 @@ export function buildClipResult(
   timeSigNumerator: number,
   timeSigDenominator: number,
   sampleFile: string | null,
-  transformedCount?: number,
+  transformedCount: number | undefined,
+  color: string | null,
 ): ClipResultObject {
+  const landed: LandedColor = color == null ? {} : landedColor(clip, color);
   const clipResult: ClipResultObject = {
     id: clip.id,
   };
@@ -175,5 +184,5 @@ export function buildClipResult(
     );
   }
 
-  return clipResult;
+  return { ...clipResult, ...landed };
 }

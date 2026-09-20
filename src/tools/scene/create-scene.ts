@@ -17,6 +17,10 @@ import {
 } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
@@ -32,6 +36,9 @@ import {
 interface SceneResult {
   id: string;
   path: string;
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
+  reason?: string;
 }
 
 interface SceneProperties {
@@ -80,7 +87,7 @@ export function createScene(
     focus,
   }: CreateSceneArgs = {},
   _context: Partial<ToolContext> = {},
-): SceneResult | SceneResult[] | CaptureSceneResult {
+): SceneResult | SceneResult[] | (CaptureSceneResult & LandedColor) {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   if (capture) {
@@ -147,7 +154,7 @@ function runCapture(
   props: SceneProperties,
   name: string | undefined,
   focus: boolean | undefined,
-): CaptureSceneResult {
+): CaptureSceneResult & LandedColor {
   // A malformed color would otherwise only surface inside setColor, after
   // captureScene has already captured the playing clips into a real scene.
   pairLabels({ noun: "scene", count: 1, color: props.color });
@@ -159,47 +166,58 @@ function runCapture(
     name,
   });
 
-  applyCaptureProperties(capturedIndex, props);
+  const landed = applyCaptureProperties(capturedIndex, props);
 
   if (focus) {
     focusSelect({ view: "session", id: result.id });
   }
 
-  return result;
+  return { ...result, ...landed };
 }
 
 /**
  * Applies scene properties (color, tempo, timeSignature) to a scene
  * @param scene - The LiveAPI scene object
  * @param props - Properties to apply
+ * @returns What the scene's entry says about the color it ended up with
  */
-function applySceneProperties(scene: LiveAPI, props: SceneProperties): void {
+function applySceneProperties(
+  scene: LiveAPI,
+  props: SceneProperties,
+): LandedColor {
   const { color, tempo, timeSignature } = props;
+  let landed: LandedColor = {};
 
   if (color != null) {
     scene.setColor(color);
+    landed = landedColor(scene, color);
   }
 
   applyTempoProperty(scene, tempo);
   applyTimeSignatureProperty(scene, timeSignature);
+
+  return landed;
 }
 
 /**
  * Applies scene properties in capture mode
  * @param sceneIndex - Index the capture landed at
  * @param props - Properties to apply
+ * @returns What the scene's entry says about the color it ended up with
  */
 function applyCaptureProperties(
   sceneIndex: number,
   props: SceneProperties,
-): void {
+): LandedColor {
   const { color, tempo, timeSignature } = props;
 
-  if (color != null || tempo != null || timeSignature != null) {
-    const scene = LiveAPI.from(livePath.scene(sceneIndex));
-
-    applySceneProperties(scene, { color, tempo, timeSignature });
+  if (color == null && tempo == null && timeSignature == null) {
+    return {};
   }
+
+  const scene = LiveAPI.from(livePath.scene(sceneIndex));
+
+  return applySceneProperties(scene, { color, tempo, timeSignature });
 }
 
 /**
@@ -229,10 +247,11 @@ function createSingleScene(
     scene.set("name", props.name);
   }
 
-  applySceneProperties(scene, props);
+  const landed = applySceneProperties(scene, props);
 
   return {
     id: scene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: insertion.finalIndex }),
+    ...landed,
   };
 }

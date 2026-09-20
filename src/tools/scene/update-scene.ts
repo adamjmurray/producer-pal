@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
@@ -25,6 +28,9 @@ import {
 interface UpdateSceneResult {
   id: string;
   path?: string;
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
+  reason?: string;
 }
 
 interface UpdateSceneArgs {
@@ -94,24 +100,25 @@ export function updateScene(
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);
 
-    // Update properties if provided
     if (sceneName != null) {
       scene.set("name", sceneName);
     }
 
+    let landed: LandedColor = {};
+
     if (sceneColor != null) {
       scene.setColor(sceneColor);
-      verifyColorQuantization(scene, sceneColor);
+      landed = landedColor(scene, sceneColor);
     }
 
     applyTempoProperty(scene, tempo);
     applyTimeSignatureProperty(scene, timeSignature);
     written.push(scene.id);
 
-    // Build optimistic result object
     return {
       id: scene.id,
       ...pathField(scene),
+      ...landed,
     };
   });
 

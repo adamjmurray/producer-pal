@@ -188,6 +188,35 @@ describe("ppal-create-scene", () => {
     expect(finalSceneCount).toBeGreaterThan(initialSceneCount);
   });
 
+  it("reports the palette color Live snapped to, and says nothing when it didn't", async () => {
+    const snapped = parseToolResult<CreateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { path: "s+", name: "Snapped", color: "#123456" },
+      }),
+    );
+
+    // #123456 is not a Live swatch, so the entry carries what landed instead.
+    expect(snapped.color).toMatch(/^#[\dA-F]{6}$/);
+    expect(snapped.color).not.toBe("#123456");
+    expect(snapped.reason).toBe(
+      `color #123456 is not in Live's palette; landed as ${snapped.color}`,
+    );
+
+    await sleep(100);
+
+    // The palette color Live just named, asked for verbatim, has nothing to say.
+    const exact = parseToolResult<CreateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { path: "s+", name: "Exact", color: snapped.color },
+      }),
+    );
+
+    expect(exact.color).toBeUndefined();
+    expect(exact.reason).toBeUndefined();
+  });
+
   // capture mode reached setColor only after capture_and_insert_scene had
   // already turned the playing clips into a real scene, so a bad color left one
   // behind. Only real Live inserts the scene, so only e2e can catch it.
@@ -500,6 +529,8 @@ interface LiveSetResult {
 interface CreateSceneResult {
   id: string;
   path: string;
+  color?: string;
+  reason?: string;
 }
 
 interface CaptureSceneResult {

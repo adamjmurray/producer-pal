@@ -511,6 +511,36 @@ describe("createTrack", () => {
     });
   });
 
+  describe("color", () => {
+    it("reports the palette color Live snapped to on the track's entry", () => {
+      const track = registerMockObject("midi_track_1", {});
+
+      track.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createTrack({ trackIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "midi_track_1",
+        path: "t1",
+        color: "#FF3636",
+        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
+    it("says nothing when the color lands as asked", () => {
+      const track = registerMockObject("midi_track_1", {});
+
+      track.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16711680] : [0],
+      );
+
+      expect(createTrack({ trackIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "midi_track_1",
+        path: "t1",
+      });
+    });
+  });
+
   describe("comma-separated colors", () => {
     it("refuses a color list that doesn't match count", () => {
       registerTrackMocks(4);

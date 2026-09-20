@@ -17,6 +17,7 @@
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { type LandedColor } from "#src/tools/shared/helpers/landed-color.ts";
 
 /** What the clips of one call have to say beyond their own results. */
 export interface ClipReasons {
@@ -28,6 +29,8 @@ export interface ClipReasons {
   landed: Set<string>;
   /** Params that did nothing on a clip, by that clip's id. */
   ignoredParams: Map<string, Set<string>>;
+  /** The color a clip ended up with, when it isn't the one asked for. */
+  colors: Map<string, string>;
 }
 
 /** Shared empty answer for a clip that ignored nothing. */
@@ -43,6 +46,7 @@ export function newClipReasons(): ClipReasons {
     refused: new Set(),
     landed: new Set(),
     ignoredParams: new Map(),
+    colors: new Map(),
   };
 }
 
@@ -58,6 +62,26 @@ export function noteClipReason(
   reason: string,
 ): void {
   reasons.said.set(clipId, [...(reasons.said.get(clipId) ?? []), reason]);
+}
+
+/**
+ * Note the color Live settled on for this clip, when it isn't the one asked for.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ * @param landed - What the read-back after the write found
+ */
+export function noteClipColor(
+  reasons: ClipReasons,
+  clipId: string,
+  landed: LandedColor,
+): void {
+  if (landed.reason != null) {
+    noteClipReason(reasons, clipId, landed.reason);
+  }
+
+  if (landed.color != null) {
+    reasons.colors.set(clipId, landed.color);
+  }
 }
 
 /**
@@ -195,6 +219,13 @@ export function moveClipReasons(
 
   reasons.ignoredParams.delete(fromId);
 
+  const color = reasons.colors.get(fromId);
+
+  if (color != null) {
+    reasons.colors.set(toId, color);
+    reasons.colors.delete(fromId);
+  }
+
   // `landed` needs no move: the loop marks it against the clip the caller named.
   if (reasons.refused.delete(fromId)) {
     reasons.refused.add(toId);
@@ -218,6 +249,12 @@ export function reportClipReasons(
 
   if (entry == null) {
     return;
+  }
+
+  const color = reasons.colors.get(clipId);
+
+  if (color != null) {
+    entry.color = color;
   }
 
   for (const reason of reasons.said.get(clipId) ?? []) {

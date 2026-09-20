@@ -171,6 +171,15 @@ everything you asked of it the entry is `ok: false`, and a lone target throws. A
 how `ppal-update-track` reports a send a track can't take (no mixer, no sends,
 no send for that return).
 
+**A color Live snapped to its palette lands on the target's entry.** Live keeps
+about 70 colors and snaps anything else to the nearest one. That used to be a
+warning; `ppal-create-track`, `ppal-create-scene`, `ppal-create-clip`,
+`ppal-update-track`, `ppal-update-scene` and `ppal-update-clip` now put the
+color it landed on in that target's own entry, with
+`reason: "color #FF0000 is not in Live's palette; landed as #FF3636"` and no
+`ok`, since the color was set. A color that lands exactly as asked says nothing
+at all, so `color` in a result always means "not what you sent".
+
 **Two move reports moved onto entries too.** A device copy Live turned down now
 names what Live objected to on its destination entry, after the
 `could not be moved to "t0/d1"` the reason already carried:

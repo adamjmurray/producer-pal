@@ -12,6 +12,8 @@ import {
   type Insertion,
   planInsertions,
 } from "#src/tools/shared/validation/lists/insertion-plan.ts";
+import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { labelNewTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
@@ -43,6 +45,8 @@ interface CreatedTrackResult {
    * says why, and there is no `ok` — the track was made.
    */
   name?: string;
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
   reason?: string;
 }
 
@@ -103,13 +107,18 @@ export function createTrack(
       getNameForIndex(name, i, parsedNames),
     );
 
+    const trackColor = getColorForIndex(color, i, parsedColors);
+
     track.setAll({
       name: rename.write,
-      color: getColorForIndex(color, i, parsedColors),
+      color: trackColor,
       mute,
       solo,
       arm,
     });
+
+    const landed = trackColor == null ? {} : landedColor(track, trackColor);
+    const reason = joinReasons([rename.landed.reason, landed.reason]);
 
     created.push({
       id: trackId,
@@ -119,6 +128,8 @@ export function createTrack(
           : { kind: "track", trackIndex: insertion.finalIndex },
       ),
       ...rename.landed,
+      ...landed,
+      ...(reason == null ? {} : { reason }),
     });
   }
 

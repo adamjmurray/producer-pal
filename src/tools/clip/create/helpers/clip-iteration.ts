@@ -187,6 +187,7 @@ export function processClipIteration(
     timeSigDenominator,
     sampleFile,
     transformedCount,
+    color,
   );
 }
 

@@ -163,83 +163,42 @@ describe("updateClip - Properties and ID handling", () => {
     expect(mocks.clip456.set).not.toHaveBeenCalled();
   });
 
-  describe("color quantization verification", () => {
+  describe("color", () => {
     /**
-     * Set up clip mock to return a specific color value from get("color").
-     * @param colorValue - The numeric color value to return
+     * Read the clip's color back as Live would after quantizing it.
+     * @param colorValue - The color Live answers with, as its packed integer
      */
-    function setupColorMock(colorValue: number): void {
-      setupMidiClipMock(mocks.clip123);
-
-      mocks.clip123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [colorValue];
-        }
-
-        if (prop === "is_arrangement_clip") {
-          return [0];
-        }
-
-        if (prop === "is_midi_clip") {
-          return [1];
-        }
-
-        if (prop === "is_audio_clip") {
-          return [0];
-        }
-
-        return [0];
-      });
+    function clipReadsColor(colorValue: number): void {
+      setupMidiClipMock(mocks.clip123, { color: colorValue });
     }
 
-    it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("reports the palette color Live snapped to on the clip's entry", async () => {
+      clipReadsColor(16725558); // #FF3636
 
-      setupColorMock(16725558); // #FF3636 (quantized from #FF0000)
-
-      await updateClip({
+      expect(await updateClip({ id: "123", color: "#FF0000" })).toStrictEqual({
         id: "123",
-        color: "#FF0000",
+        path: "t0/s0",
+        color: "#FF3636",
+        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested clip t0/s0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
-      );
-
-      consoleSpy.mockRestore();
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("says nothing when the color lands as asked", async () => {
+      clipReadsColor(16711680); // #FF0000
 
-      setupColorMock(16711680); // #FF0000 (exact match)
-
-      await updateClip({
+      expect(await updateClip({ id: "123", color: "#FF0000" })).toStrictEqual({
         id: "123",
-        color: "#FF0000",
+        path: "t0/s0",
       });
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
 
-    it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("says nothing about color when the call sent none", async () => {
+      clipReadsColor(16725558);
 
-      setupMidiClipMock(mocks.clip123);
-
-      await updateClip({
-        id: "123",
-        name: "No color update",
-      });
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      expect(
+        await updateClip({ id: "123", name: "No color update" }),
+      ).toStrictEqual({ id: "123", path: "t0/s0" });
     });
   });
 });

@@ -31,6 +31,8 @@ export interface ClipResult {
   length?: string;
   /** The span left on the arrangement, when the call cut it short. */
   arrangementLength?: string;
+  /** The palette color Live settled on, when it isn't the one asked for. */
+  color?: string;
   /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take

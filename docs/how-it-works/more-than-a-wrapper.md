@@ -43,11 +43,18 @@ So you can ask for _"make the drums dark purple"_ and it just works.
 There's a wrinkle. Live snaps colors to a **fixed palette of about 70
 swatches**, so the color you ask for isn't always the color you get. A thin
 wrapper hands back a different number and leaves the AI confused. Producer Pal
-reads the color back after setting it, and when Live has quantized it, says so
-([`color-quantization.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/helpers/color-quantization.ts)):
+reads the color back after setting it, and when Live has snapped it, puts the
+color it landed on in that clip's own result
+([`landed-color.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/helpers/landed-color.ts)):
 
-> Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live
-> uses a fixed color palette.
+```json
+{
+  "id": "123",
+  "path": "t0/s0",
+  "color": "#FF3636",
+  "reason": "color #FF0000 is not in Live's palette; landed as #FF3636"
+}
+```
 
 ## Device knobs in real units
 

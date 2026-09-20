@@ -27,7 +27,8 @@ import {
   applyTrackSends,
   resolveTrackSends,
 } from "./helpers/track-send-updates.ts";
-import { verifyColorQuantization } from "#src/tools/shared/helpers/color-quantization.ts";
+import { joinReasons } from "#src/tools/shared/helpers/entry-reasons.ts";
+import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import {
   type SendResult,
   warnSendCollisions,
@@ -91,6 +92,8 @@ interface UpdateTrackResult extends TrackMixerApplied {
    * says why, and there is no `ok` — the rename happened.
    */
   name?: string;
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
   reason?: string;
   /** Every send the call wrote, read back off the track */
   sends?: SendResult[];
@@ -245,10 +248,8 @@ export function updateTrack(
       arm,
     });
 
-    // Verify color quantization if color was set
-    if (trackColor != null) {
-      verifyColorQuantization(track, trackColor);
-    }
+    const colorLanded =
+      trackColor == null ? {} : landedColor(track, trackColor);
 
     // Handle mixer properties
     let mixer: TrackMixerApplied = {};
@@ -295,12 +296,22 @@ export function updateTrack(
       (send) => send.reason != null,
     );
 
-    // Optimistic except for the mixer and sends, read back off the track.
+    // Optimistic except for the color, mixer and sends, read back off the
+    // track. Each of those can have its own say, so the reasons are joined
+    // rather than spread over one another.
+    const reason = joinReasons([
+      rename.landed.reason,
+      colorLanded.reason,
+      mixer.reason,
+    ]);
+
     return {
       id: track.id,
       ...pathField(track),
       ...rename.landed,
+      ...colorLanded,
       ...mixer,
+      ...(reason == null ? {} : { reason }),
       ...(changedSends.length > 0 ? { sends: changedSends } : {}),
     };
   });

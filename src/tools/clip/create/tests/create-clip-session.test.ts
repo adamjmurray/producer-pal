@@ -245,6 +245,32 @@ describe("createClip - session view", () => {
     });
   });
 
+  it("reports the palette color Live snapped to on the clip's entry", async () => {
+    const { clip } = setupDefaultSessionClip();
+
+    clip.get.mockImplementation((prop: string) =>
+      prop === "color" ? [16725558] : [0],
+    );
+
+    const result = await createClip({ slot: "0/0", color: "#FF0000" });
+
+    expect(result).toStrictEqual({
+      id: "clip_0_0",
+      path: "t0/s0",
+      color: "#FF3636",
+      reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+    });
+  });
+
+  it("says nothing about color when the clip took the one asked for", async () => {
+    setupDefaultSessionClip();
+
+    expect(await createClip({ slot: "0/0", color: "#FF0000" })).toStrictEqual({
+      id: "clip_0_0",
+      path: "t0/s0",
+    });
+  });
+
   it("should create a clip from midi-json notation", async () => {
     const { clip } = setupDefaultSessionClip();
 

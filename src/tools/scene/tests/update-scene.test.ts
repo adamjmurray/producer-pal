@@ -21,19 +21,6 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-async function withConsoleSpy(
-  fn: (spy: ReturnType<typeof vi.spyOn>) => void,
-): Promise<void> {
-  const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-  const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-  try {
-    fn(consoleSpy);
-  } finally {
-    consoleSpy.mockRestore();
-  }
-}
-
 describe("updateScene", () => {
   let scene1: RegisteredMockObject;
   let scene2: RegisteredMockObject;
@@ -284,48 +271,60 @@ describe("updateScene", () => {
     expect(scene3.set).not.toHaveBeenCalled();
   });
 
-  describe("color quantization verification", () => {
-    it("should emit warning when color is quantized by Live", async () => {
-      await withConsoleSpy((consoleSpy) => {
-        // Override get to return quantized color (different from input)
-        scene1.get.mockImplementation((prop: string) => {
-          if (prop === "color") {
-            return [16725558]; // #FF3636 (quantized from #FF0000)
-          }
+  describe("color", () => {
+    /**
+     * Read the scene's color back as Live would after quantizing it.
+     * @param value - The color Live answers with, as its packed integer
+     */
+    function sceneReadsColor(value: number): void {
+      scene1.get.mockImplementation((prop: string) =>
+        prop === "color" ? [value] : [0],
+      );
+    }
 
-          return [0];
-        });
+    it("reports the palette color Live snapped to on the scene's entry", () => {
+      sceneReadsColor(16725558); // #FF3636
 
-        updateScene({ id: "123", color: "#FF0000" });
+      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+        color: "#FF3636",
+        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
 
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "Requested scene s0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
-        );
+    it("says nothing when the color lands as asked", () => {
+      sceneReadsColor(16711680); // #FF0000
+
+      expect(updateScene({ id: "123", color: "#ff0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
       });
     });
 
-    it("should not emit warning when color matches exactly", async () => {
-      await withConsoleSpy((consoleSpy) => {
-        // Override get to return exact color (same as input)
-        scene1.get.mockImplementation((prop: string) => {
-          if (prop === "color") {
-            return [16711680]; // #FF0000 (exact match)
-          }
+    it("says nothing about color when the call sent none", () => {
+      sceneReadsColor(16725558);
 
-          return [0];
-        });
-
-        updateScene({ id: "123", color: "#FF0000" });
-
-        expect(consoleSpy).not.toHaveBeenCalled();
+      expect(updateScene({ id: "123", name: "No color" })).toStrictEqual({
+        id: "123",
+        path: "s0",
       });
     });
 
-    it("should not verify color if color parameter is not provided", async () => {
-      await withConsoleSpy((consoleSpy) => {
-        updateScene({ id: "123", name: "No color update" });
+    it("reports a color it set but could not read back", () => {
+      scene1.get.mockImplementation((prop: string) => {
+        if (prop === "color") {
+          throw new Error("gone");
+        }
 
-        expect(consoleSpy).not.toHaveBeenCalled();
+        return [0];
+      });
+
+      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "s0",
+        reason: "color #FF0000 was set but could not be read back: gone",
       });
     });
   });

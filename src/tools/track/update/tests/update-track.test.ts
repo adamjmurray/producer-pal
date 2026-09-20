@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -507,100 +507,86 @@ describe("updateTrack", () => {
     });
   });
 
-  describe("color quantization verification", () => {
-    it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-      // Override get to return quantized color (different from input)
-      track123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [16725558]; // #FF3636 (quantized from #FF0000)
-        }
-
-        return [0];
-      });
-
-      updateTrack({
-        id: "123",
-        color: "#FF0000",
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested track t0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+  describe("color", () => {
+    /**
+     * Read a track's color back as Live would after quantizing it.
+     * @param track - The registered mock track
+     * @param value - The color Live answers with, as its packed integer
+     */
+    function trackReadsColor(track: RegisteredMockObject, value: number): void {
+      track.get.mockImplementation((prop: string) =>
+        prop === "color" ? [value] : [0],
       );
+    }
 
-      consoleSpy.mockRestore();
+    it("reports the palette color Live snapped to on the track's entry", () => {
+      trackReadsColor(track123, 16725558); // #FF3636
+
+      expect(updateTrack({ id: "123", color: "#FF0000" })).toStrictEqual({
+        id: "123",
+        path: "t0",
+        color: "#FF3636",
+        reason: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("says nothing when the color lands as asked", () => {
+      trackReadsColor(track123, 16711680); // #FF0000
 
-      // Override get to return exact color (same as input)
-      track123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [16711680]; // #FF0000 (exact match)
-        }
-
-        return [0];
-      });
-
-      updateTrack({
+      expect(updateTrack({ id: "123", color: "#FF0000" })).toStrictEqual({
         id: "123",
-        color: "#FF0000",
+        path: "t0",
       });
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
 
-    it("should emit warning for each track when updating multiple tracks", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("answers per track when several were recolored", () => {
+      trackReadsColor(track123, 1768495); // #1AFC2F
+      trackReadsColor(track456, 1768495);
 
-      const colorMock = (prop: string) => {
-        if (prop === "color") {
-          return [1768495]; // #1AFC2F (quantized from #00FF00)
-        }
-
-        return [0];
-      };
-
-      track123.get.mockImplementation(colorMock);
-      track456.get.mockImplementation(colorMock);
-
-      updateTrack({
-        id: "123,456",
-        color: "#00FF00",
-      });
-
-      expect(consoleSpy).toHaveBeenCalledTimes(2);
-      expect(consoleSpy).toHaveBeenNthCalledWith(
-        1,
-        "Requested track t0 (id 123) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
-      );
-      expect(consoleSpy).toHaveBeenNthCalledWith(
-        2,
-        "Requested track t1 (id 456) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
-      );
-
-      consoleSpy.mockRestore();
+      expect(updateTrack({ id: "123,456", color: "#00FF00" })).toStrictEqual([
+        {
+          id: "123",
+          path: "t0",
+          color: "#1AFC2F",
+          reason: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+        },
+        {
+          id: "456",
+          path: "t1",
+          color: "#1AFC2F",
+          reason: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+        },
+      ]);
     });
 
-    it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
+    it("says nothing about color when the call sent none", () => {
+      trackReadsColor(track123, 16725558);
 
-      updateTrack({
+      expect(updateTrack({ id: "123", name: "No color" })).toStrictEqual({
         id: "123",
-        name: "No color update",
+        path: "t0",
+      });
+    });
+
+    it("keeps the return track's rename reason alongside the color's", () => {
+      const returnTrack = registerMockObject("rt-1", {
+        path: livePath.returnTrack(0),
       });
 
-      expect(consoleSpy).not.toHaveBeenCalled();
+      trackReadsColor(returnTrack, 16725558); // #FF3636
 
-      consoleSpy.mockRestore();
+      expect(
+        updateTrack({ id: "rt-1", name: "Verb", color: "#FF0000" }),
+      ).toStrictEqual({
+        id: "rt-1",
+        path: "rt0",
+        name: "A-Verb",
+        color: "#FF3636",
+        reason:
+          "Live prefixes a return track's name with its send letter; " +
+          "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
     });
   });
 });
