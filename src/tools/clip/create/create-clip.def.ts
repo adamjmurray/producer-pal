@@ -142,7 +142,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     warping: param(z.boolean().optional(), {
       default:
-        "audio clips only. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo. false = play the file as rendered. The settled state comes back as `warping`",
+        "audio clips only. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo. false = play the file as rendered. The state Live settled on comes back as `warping` unless it's the one you asked for",
       smallModel:
         "audio clips only: false plays the file as rendered; omit and Live may time-stretch it to the tempo",
     }),

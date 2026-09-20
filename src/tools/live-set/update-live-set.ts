@@ -127,22 +127,13 @@ export async function updateLiveSet(
   }
 
   if (scale != null) {
-    const respelledRoot = applyScale(liveSet, parsedScale, result);
-    const meta = [
+    applyScale(liveSet, parsedScale, scale, result);
+
+    result.$meta = [
       parsedScale == null
         ? "Scale disabled for selected clips and defaults for new clips."
         : "Scale applied to selected clips and defaults for new clips.",
     ];
-
-    // Without this, a model that asked for F# sees Gb come back and retries,
-    // thinking the write failed.
-    if (respelledRoot != null) {
-      meta.push(
-        `Scale roots are spelled with flats, so ${respelledRoot.requestedRoot} comes back as ${respelledRoot.storedRoot} — same scale, set correctly.`,
-      );
-    }
-
-    result.$meta = meta;
   }
 
   if (parsedScale != null) {

@@ -31,11 +31,10 @@ describe("deleteObject with a target named twice", () => {
     expect(
       deleteObject({ id: "track_1", path: "t0", type: "track" }),
     ).toStrictEqual([
-      { id: "track_1", deletedPath: "t0", type: "track" },
+      { id: "track_1", deletedPath: "t0" },
       {
         id: "track_1",
         path: "t0",
-        type: "track",
         reason: "already named as id track_1 earlier in this call",
       },
     ]);
@@ -48,11 +47,10 @@ describe("deleteObject with a target named twice", () => {
     setupTrackMocks({ track_1: String(livePath.track(0)) });
 
     expect(deleteObject({ path: "t0,t0", type: "track" })).toStrictEqual([
-      { id: "track_1", deletedPath: "t0", type: "track" },
+      { id: "track_1", deletedPath: "t0" },
       {
         id: "track_1",
         path: "t0",
-        type: "track",
         reason: 'already named as "t0" earlier in this call',
       },
     ]);
@@ -69,11 +67,10 @@ describe("deleteObject with a target named twice", () => {
     expect(
       deleteObject({ id: "track_0,track_1,track_0", type: "track" }),
     ).toStrictEqual([
-      { id: "track_0", deletedPath: "t0", type: "track" },
-      { id: "track_1", deletedPath: "t1", type: "track" },
+      { id: "track_0", deletedPath: "t0" },
+      { id: "track_1", deletedPath: "t1" },
       {
         id: "track_0",
-        type: "track",
         reason: "already named as id track_0 earlier in this call",
       },
     ]);

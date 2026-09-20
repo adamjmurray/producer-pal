@@ -115,6 +115,17 @@ function targetFromParams({
   devicePath: rawDevicePath,
 }: PathParams): PathTarget {
   const path = namedParam(rawPath, "path");
+
+  // Every other tool takes a comma-separated list, so a model sends one here
+  // too. Without this the grammar only says the root isn't a track or scene.
+  if (path != null && path.includes(",")) {
+    throw pathError(
+      "path",
+      path,
+      "select takes one target per call (Live holds one selection)",
+    );
+  }
+
   const slot = namedHiddenPath(rawSlot, "slot");
   const devicePath = namedHiddenPath(rawDevicePath, "devicePath");
 

@@ -188,6 +188,7 @@ export function processClipIteration(
     sampleFile,
     transformedCount,
     color,
+    audio.warping ?? null,
   );
 
   if (createdScenes != null) {

@@ -39,7 +39,6 @@ const ctx = setupMcpTestContext();
 
 interface DeleteResult {
   id: string;
-  type: string;
   ok?: false;
   reason?: string;
 }

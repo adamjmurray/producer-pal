@@ -34,7 +34,6 @@ describe("deleteObject by track and scene path", () => {
     expect(deleteObject({ path: "t1", type: "track" })).toStrictEqual({
       id: "track_2",
       deletedPath: "t1",
-      type: "track",
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -45,7 +44,6 @@ describe("deleteObject by track and scene path", () => {
     expect(deleteObject({ path: "rt0", type: "track" })).toStrictEqual({
       id: "ret_0",
       deletedPath: "rt0",
-      type: "track",
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_return_track", 0);
   });
@@ -56,7 +54,6 @@ describe("deleteObject by track and scene path", () => {
     expect(deleteObject({ path: "s2", type: "scene" })).toStrictEqual({
       id: "scene_3",
       deletedPath: "s2",
-      type: "scene",
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 2);
   });
@@ -72,8 +69,8 @@ describe("deleteObject by track and scene path", () => {
     // Deletes highest index first so the earlier delete doesn't shift the
     // later one, but results come back in the order named: id before path.
     expect(result).toStrictEqual([
-      { id: "track_1", deletedPath: "t0", type: "track" },
-      { id: "track_2", deletedPath: "t1", type: "track" },
+      { id: "track_1", deletedPath: "t0" },
+      { id: "track_2", deletedPath: "t1" },
     ]);
   });
 
@@ -84,7 +81,6 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "s9", type: "scene" })).toStrictEqual({
       path: "s9",
-      type: "scene",
       reason: "nothing to delete",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -103,12 +99,11 @@ describe("deleteObject by track and scene path", () => {
     expect(deleteObject({ path: "t0/s1, t0", type: "track" })).toStrictEqual([
       {
         path: "t0/s1",
-        type: "track",
         ok: false,
         reason:
           'invalid path "t0/s1" - names a clip slot, not a track; expected "t<index>", "rt<index>", or "mt"',
       },
-      { id: "track_1", deletedPath: "t0", type: "track" },
+      { id: "track_1", deletedPath: "t0" },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });

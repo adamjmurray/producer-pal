@@ -31,7 +31,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       .string()
       .optional()
       .describe(
-        "select by ID (auto-detects track/scene/clip/device/chain/drum pad)",
+        "select by ID (auto-detects track/scene/clip/device/chain/drum pad); one ID, not a list",
       ),
 
     // select is the one tool that takes every object type by id, so all four
@@ -79,7 +79,7 @@ export const toolDefSelect = defineTool("ppal-select", {
           "'mt' the main track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
           "'t0/d0/pC1' a drum pad, 't0[5|1]' (or 't0/l0[5|1]') a spot on the arrangement " +
           "timeline, which moves the arrangement start marker there and selects the clip " +
-          "covering it, if any",
+          "covering it, if any. One path, not a list - Live holds one selection",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {

@@ -101,7 +101,6 @@ function deleteOne(
   return {
     id,
     ...addressField(address, refusal == null && type !== "drum-pad"),
-    type,
     ...(refusal == null ? {} : { ok: false as const, reason: refusal }),
     requestIndex,
   };

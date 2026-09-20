@@ -34,6 +34,9 @@ function mockLiveSetWithScaleState(): LiveAPI {
   } as unknown as LiveAPI;
 }
 
+/** What applyScale writes onto the tool's result. */
+type ScaleResult = { scale?: string; reason?: string };
+
 /** A live_set mock that answers with `held`, whatever is written to it. */
 function mockLiveSetHolding(held: Record<string, unknown>): LiveAPI {
   return {
@@ -202,58 +205,64 @@ describe("tempo-and-scale-updates", () => {
   describe("applyScale", () => {
     it("should disable scale mode when no scale is passed", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { scale?: string } = {};
+      const result: ScaleResult = {};
 
-      const respelled = applyScale(mockLiveSet, null, result);
+      applyScale(mockLiveSet, null, "", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 0);
-      expect(result.scale).toBe("");
-      expect(respelled).toBeNull();
+      expect(result).toStrictEqual({});
     });
 
-    it("should set scale properties for valid scale string", () => {
+    it("says nothing about a scale Live stores the way it was asked for", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
-      const result: { scale?: string } = {};
+      const result: ScaleResult = {};
 
-      applyScale(mockLiveSet, parseScale("C Major"), result);
+      applyScale(mockLiveSet, parseScale("C Major"), "C Major", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 0);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Major");
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_mode", 1);
-      expect(result.scale).toBe("C Major");
+      expect(result).toStrictEqual({});
     });
 
     it("reports a sharp root by the flat name Live stores", () => {
       // Live keeps only root_note, a pitch class number, so the result must
       // name it the way every read of it will.
       const mockLiveSet = mockLiveSetWithScaleState();
-      const result: { scale?: string } = {};
+      const result: ScaleResult = {};
 
-      const respelled = applyScale(mockLiveSet, parseScale("F# Minor"), result);
+      applyScale(mockLiveSet, parseScale("F# Minor"), "F# Minor", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 6);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
       expect(result.scale).toBe("Gb Minor");
-      expect(respelled).toStrictEqual({
-        requestedRoot: "F#",
-        storedRoot: "Gb",
-      });
+      expect(result.reason).toBe(
+        "scale roots are spelled with flats, so F# comes back as Gb — " +
+          "same scale, set correctly",
+      );
+    });
+
+    it("says how a spelling the tools only tolerate is stored", () => {
+      const mockLiveSet = mockLiveSetWithScaleState();
+      const result: ScaleResult = {};
+
+      applyScale(mockLiveSet, parseScale("bB DoRiAn"), "bB DoRiAn", result);
+
+      expect(result.scale).toBe("Bb Dorian");
+      expect(result.reason).toBe(
+        "scale bB DoRiAn is spelled Bb Dorian — same scale, set correctly",
+      );
     });
 
     it("should handle flat root notes", () => {
       const mockLiveSet = mockLiveSetWithScaleState();
-      const result: { scale?: string } = {};
+      const result: ScaleResult = {};
 
-      const respelled = applyScale(
-        mockLiveSet,
-        parseScale("Bb Dorian"),
-        result,
-      );
+      applyScale(mockLiveSet, parseScale("Bb Dorian"), "Bb Dorian", result);
 
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
-      expect(result.scale).toBe("Bb Dorian");
-      expect(respelled).toBeNull();
+      expect(result).toStrictEqual({});
     });
 
     it("falls back to the requested spelling when Live reports no usable root", () => {
@@ -263,12 +272,11 @@ describe("tempo-and-scale-updates", () => {
           property === "scale_name" ? "Major" : -1,
         ),
       } as unknown as LiveAPI;
-      const result: { scale?: string } = {};
+      const result: ScaleResult = {};
 
-      const respelled = applyScale(mockLiveSet, parseScale("C Major"), result);
+      applyScale(mockLiveSet, parseScale("C Major"), "C Major", result);
 
-      expect(result.scale).toBe("C Major");
-      expect(respelled).toBeNull();
+      expect(result).toStrictEqual({});
     });
 
     it("refuses a root that canonicalizes but has no pitch class", () => {

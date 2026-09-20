@@ -33,7 +33,6 @@ export interface DeleteResult {
   deletedPath?: string;
   /** The target's address when this entry removed nothing. */
   path?: string;
-  type: string;
   /** Only on a target this call could not delete. */
   ok?: false;
   /** Why it wasn't deleted, or why there was nothing left for it to delete. */
@@ -111,7 +110,6 @@ export function resolveDeleteTargets(
       settled.push({
         id: target.id,
         ...requestAddress(target.requestPath),
-        type,
         reason: namedEarlierReason(earlier),
         requestIndex,
       });
@@ -150,7 +148,6 @@ function resolveTarget(
     return {
       entry: {
         ...address,
-        type,
         ...(lookup.empty
           ? { reason: NOTHING_TO_DELETE }
           : { ok: false as const, reason: lookup.reason }),
@@ -164,7 +161,7 @@ function resolveTarget(
 
   if (!object.exists()) {
     return {
-      entry: { id, ...address, type, reason: NOTHING_TO_DELETE, requestIndex },
+      entry: { id, ...address, reason: NOTHING_TO_DELETE, requestIndex },
     };
   }
 
@@ -172,7 +169,7 @@ function resolveTarget(
 
   if (refusal != null) {
     return {
-      entry: { id, ...address, type, ok: false, reason: refusal, requestIndex },
+      entry: { id, ...address, ok: false, reason: refusal, requestIndex },
     };
   }
 

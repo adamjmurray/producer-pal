@@ -201,6 +201,25 @@ that contradicts its `macroVariation` (sent alone, missing for `load`/`delete`,
 or sent beside `create`/`revert`/`randomize`) is refused before anything is
 written.
 
+**`ppal-delete` entries no longer carry `type`.** You sent it, so the entry
+doesn't repeat it. Pair entries to targets by position, as everything else does.
+
+**`ppal-update-live-set` reports `scale` only when Live stores a different
+spelling** than the one you sent, with a `reason` saying why (`"F# Dorian"` in,
+`"Gb Dorian"` out). A scale stored the way you asked for it, and `scale: ""`
+disabling it, now say nothing. The respelling note left `$meta`, which keeps
+only the "applied"/"disabled" line.
+
+**`ppal-create-clip` reports an audio clip's `warping` only when Live didn't
+settle on the state you asked for.** Omit `warping` and it still comes back,
+since Live chose it. `length` is unchanged: an audio clip's region comes from
+the sample, never from your argument.
+
+**`ppal-select` refuses a comma-separated `path`.** It takes one target per
+call, because Live holds one selection, and now says so instead of complaining
+that the path isn't a track or scene. `ppal-context`'s `name` and
+`ppal-live-api`'s `path` take one value each for the same reason.
+
 **Two move reports moved onto entries too.** A device copy Live turned down now
 names what Live objected to on its destination entry, after the
 `could not be moved to "t0/d1"` the reason already carried:
@@ -239,8 +258,8 @@ tool has always worked this way.
 - **Gain is rounded to 0.01 dB.** A gain of -6.333333 used to read back as
   -6.333000183105469. Exact comparisons need the same rounding.
 - **`update-live-set`'s `scale` is the spelling Live stores**, not yours:
-  `"F# Dorian"` in, `"Gb Dorian"` out. Every read already said this; the write
-  result was the one that disagreed.
+  `"F# Dorian"` in, `"Gb Dorian"` out, and only when the two differ. Every read
+  already said this; the write result was the one that disagreed.
 
 ### Error and warning text
 
@@ -262,7 +281,7 @@ that governs what the call did.
 | `ppal-update-track`          | `gainDb`, `pan`, `leftPan`, `rightPan`, `sends` | `panningMode: "split"`, when you set a pan param in split mode without naming it |
 | update-device, create-device | a `params` entry's `value` for a bare number    | `{id, name}` for that entry; the value for a unit, enum label, or note name      |
 | `ppal-update-device`         | a chain's `gainDb`, `pan`, `sends`              | `{id, path}`, plus a `reason` when one applies                                   |
-| `ppal-update-live-set`       | `tempo`, `timeSignature`                        | `scale`, which Live spells its own way                                           |
+| `ppal-update-live-set`       | `tempo`, `timeSignature`, `scale`               | `scale` plus a `reason`, when Live spells it its own way                         |
 | `ppal-playback`              | `startTime` you sent as a bar\|beat             | `startTime` you didn't send, or that a `loc:` name resolved to                   |
 
 Two things moved rather than vanished. A `sends` array now holds only the sends

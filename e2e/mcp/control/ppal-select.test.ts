@@ -373,6 +373,14 @@ describe("ppal-select", () => {
     expect(warnings.join("\n")).toContain("is not a plug-in (VST/AU)");
   });
 
+  // Every other tool takes a comma-separated list, so a model sends one here.
+  it("refuses a list of paths, saying select takes one target", async () => {
+    await expectRefusal(
+      { path: `t${EMPTY_MIDI_TRACK},t0` },
+      "select takes one target per call (Live holds one selection)",
+    );
+  });
+
   it("sends an s+ path to the tool that takes it", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-select",

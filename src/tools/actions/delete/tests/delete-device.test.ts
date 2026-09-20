@@ -35,7 +35,6 @@ describe("deleteObject device deletion", () => {
     expect(result).toStrictEqual({
       id,
       deletedPath,
-      type: "device",
     });
     expect(parents.get(parentPath)?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -97,8 +96,8 @@ describe("deleteObject device deletion", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "device_1", deletedPath: "t0/d0", type: "device" },
-      { id: "device_2", deletedPath: "t1/d1", type: "device" },
+      { id: "device_1", deletedPath: "t0/d0" },
+      { id: "device_2", deletedPath: "t1/d1" },
     ]);
     expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -130,8 +129,8 @@ describe("deleteObject device deletion", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "device_0_0", deletedPath: "t0/d0", type: "device" },
-      { id: "device_0_1", deletedPath: "t0/d1", type: "device" },
+      { id: "device_0_0", deletedPath: "t0/d0" },
+      { id: "device_0_1", deletedPath: "t0/d1" },
     ]);
   });
 
@@ -170,10 +169,9 @@ describe("deleteObject device deletion", () => {
     expect(parent?.call).toHaveBeenCalledTimes(1);
     expect(parent?.call).toHaveBeenCalledWith("delete_device", 1);
     expect(result).toStrictEqual([
-      { id: "dupe_device", deletedPath: "t0/d1", type: "device" },
+      { id: "dupe_device", deletedPath: "t0/d1" },
       {
         id: "dupe_device",
-        type: "device",
         reason: "already named as id dupe_device earlier in this call",
       },
     ]);
@@ -197,11 +195,9 @@ describe("deleteObject device deletion", () => {
         {
           id: "good_device",
           deletedPath: "t0/d0",
-          type: "device",
         },
         {
           id: "bad_device",
-          type: "device",
           ok: false,
           reason: "no device index for id bad_device",
         },
@@ -300,17 +296,14 @@ describe("deleteObject device deletion", () => {
           {
             id: "c0_d0",
             deletedPath: "t2/d0/c0/d0",
-            type: "device",
           },
           {
             id: "c1_d0",
             deletedPath: "t2/d0/c1/d0",
-            type: "device",
           },
           {
             id: "c0_d1",
             deletedPath: "t2/d0/c0/d1",
-            type: "device",
           },
         ]),
       );
@@ -361,8 +354,8 @@ describe("deleteObject device deletion", () => {
         expect(result).toHaveLength(2);
         expect(result).toStrictEqual(
           expect.arrayContaining([
-            expect.objectContaining({ type: "device" }),
-            expect.objectContaining({ type: "device" }),
+            expect.objectContaining({}),
+            expect.objectContaining({}),
           ]),
         );
       }
@@ -404,7 +397,6 @@ describe("deleteObject device deletion", () => {
       expect(result).toStrictEqual({
         id: "device_by_path",
         deletedPath: "t0/d1",
-        type: "device",
       });
       expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
         "delete_device",
@@ -423,8 +415,8 @@ describe("deleteObject device deletion", () => {
       // Results come back in path order, not the deletion order (which is
       // highest track index first).
       expect(result).toStrictEqual([
-        { id: "dev_0_0", deletedPath: "t0/d0", type: "device" },
-        { id: "dev_1_1", deletedPath: "t1/d1", type: "device" },
+        { id: "dev_0_0", deletedPath: "t0/d0" },
+        { id: "dev_1_1", deletedPath: "t1/d1" },
       ]);
     });
 
@@ -444,12 +436,10 @@ describe("deleteObject device deletion", () => {
         {
           id: "dev_by_id",
           deletedPath: "t1/d1",
-          type: "device",
         },
         {
           id: "dev_by_path",
           deletedPath: "t0/d0",
-          type: "device",
         },
       ]);
     });
@@ -465,7 +455,6 @@ describe("deleteObject device deletion", () => {
       expect(result).toStrictEqual({
         id: "nested_dev",
         deletedPath: "t1/d0/c2/d1",
-        type: "device",
       });
       expect(
         parents.get("live_set tracks 1 devices 0 chains 2")?.call,
@@ -482,9 +471,8 @@ describe("deleteObject device deletion", () => {
         {
           id: "valid_dev",
           deletedPath: "t0/d0",
-          type: "device",
         },
-        { path: "t99/d99", type: "device", reason: "nothing to delete" },
+        { path: "t99/d99", reason: "nothing to delete" },
       ]);
     });
 
@@ -494,7 +482,6 @@ describe("deleteObject device deletion", () => {
 
       expect(result).toStrictEqual({
         path: "t99/d99",
-        type: "device",
         reason: "nothing to delete",
       });
     });
@@ -508,7 +495,6 @@ describe("deleteObject device deletion", () => {
       expect(result).toStrictEqual({
         id: deviceId,
         deletedPath: "t1/d0/pC1/c0/d0",
-        type: "device",
       });
       // Should call delete_device on the chain containing the device
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
@@ -525,7 +511,6 @@ describe("deleteObject device deletion", () => {
       expect(result).toStrictEqual({
         id: deviceId,
         deletedPath: "t1/d0/pC1/d0",
-        type: "device",
       });
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
     });

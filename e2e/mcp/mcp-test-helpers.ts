@@ -616,7 +616,7 @@ export interface CreateClipResult {
   length?: string;
   /** Where the clip landed: "t0/s3", "t0", or "t0/l1" */
   path?: string;
-  /** Audio clips only: whether Live is time-stretching the sample */
+  /** Audio clips only: the warp state Live settled on, when it isn't the one asked for */
   warping?: boolean;
   /** The scenes the destination had to make ("s8-s9"), when it made any */
   created?: string;

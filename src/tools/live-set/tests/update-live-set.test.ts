@@ -17,13 +17,13 @@ const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
 const scaleDisabledNote =
   "Scale disabled for selected clips and defaults for new clips.";
-const scaleRespellNote =
-  "Scale roots are spelled with flats, so F# comes back as Gb — " +
-  "same scale, set correctly.";
+const scaleRespellReason =
+  "scale roots are spelled with flats, so F# comes back as Gb — " +
+  "same scale, set correctly";
 
+// The scale landed as asked, so only what the caller couldn't know comes back.
 const D_MAJOR_RESULT = {
   id: "live_set_id",
-  scale: "D Major",
   scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
   $meta: [scaleChangeNote],
 };
@@ -230,7 +230,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "C Dorian",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
       $meta: [scaleChangeNote],
     });
@@ -244,14 +243,15 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("root_note", 6);
     expect(sharp.scale).toBe("Gb Dorian");
 
+    // A scale Live stores the way it was asked for says nothing.
     const flat = await updateLiveSet({ scale: "Bb Major" });
 
-    expect(flat.scale).toBe("Bb Major");
+    expect(flat.scale).toBeUndefined();
 
-    // A root with no enharmonic spelling comes back unchanged.
+    // A root with no enharmonic spelling comes back unchanged, so it's silent.
     const natural = await updateLiveSet({ scale: "C Major" });
 
-    expect(natural.scale).toBe("C Major");
+    expect(natural.scale).toBeUndefined();
   });
 
   it("explains the respelling only when the root comes back differently", async () => {
@@ -259,19 +259,32 @@ describe("updateLiveSet", () => {
     // respelled case has to say the write succeeded.
     const sharp = await updateLiveSet({ scale: "F# Dorian" });
 
-    expect(sharp.$meta).toStrictEqual([scaleChangeNote, scaleRespellNote]);
+    expect(sharp.reason).toBe(scaleRespellReason);
+    expect(sharp.$meta).toStrictEqual([scaleChangeNote]);
 
     const flat = await updateLiveSet({ scale: "Db Major" });
 
+    expect(flat.reason).toBeUndefined();
     expect(flat.$meta).toStrictEqual([scaleChangeNote]);
 
     const natural = await updateLiveSet({ scale: "C Major" });
 
+    expect(natural.reason).toBeUndefined();
     expect(natural.$meta).toStrictEqual([scaleChangeNote]);
 
     const disabled = await updateLiveSet({ scale: "" });
 
+    expect(disabled.reason).toBeUndefined();
     expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
+  });
+
+  it("says how a tolerated spelling is stored", async () => {
+    const result = await updateLiveSet({ scale: "c major" });
+
+    expect(result.scale).toBe("C Major");
+    expect(result.reason).toBe(
+      "scale c major is spelled C Major — same scale, set correctly",
+    );
   });
 
   it("should handle case insensitive scale input and normalize the output", async () => {
@@ -293,7 +306,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 0);
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "",
       $meta: [scaleDisabledNote],
     });
   });
@@ -317,7 +329,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "D Dorian",
       scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
       $meta: [scaleChangeNote],
     });
@@ -338,7 +349,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 1);
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "G Mixolydian",
       scalePitches: ["G", "A", "B", "C", "D", "E", "Gb"],
       $meta: [scaleChangeNote],
     });
@@ -362,7 +372,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "C Major",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
       $meta: [scaleChangeNote],
     });
@@ -384,7 +393,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "A Minor",
       scalePitches: ["A", "B", "Db", "D", "E", "Gb", "Ab"],
       $meta: [scaleChangeNote],
     });
@@ -403,7 +411,6 @@ describe("updateLiveSet", () => {
     expect(liveSet.get).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scale: "",
       $meta: [scaleDisabledNote],
     });
   });

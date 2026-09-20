@@ -83,24 +83,25 @@ export function applyTimeSignature(
 }
 
 /**
- * Apply a scale to the live set, or disable it.
+ * Apply a scale to the live set, or disable it. Reported only when Live stores
+ * a different spelling than the one asked for.
  * @param liveSet - The live_set object
  * @param parsed - The scale, already read by parseScale, or null to disable it
+ * @param requested - The scale as the caller wrote it
  * @param result - Result object to update
- * @param result.scale - Scale property to set
- * @returns Both root spellings when the root is reported under a different name
- *   than the caller asked for (F# -> Gb), otherwise null
+ * @param result.scale - The scale Live stores, when it isn't the one asked for
+ * @param result.reason - Why the spelling isn't the one asked for
  */
 export function applyScale(
   liveSet: LiveAPI,
   parsed: ParsedScale | null,
-  result: { scale?: string },
-): { requestedRoot: string; storedRoot: string } | null {
+  requested: string,
+  result: { scale?: string; reason?: string },
+): void {
   if (parsed == null) {
     liveSet.set("scale_mode", 0);
-    result.scale = "";
 
-    return null;
+    return;
   }
 
   const { scaleRoot, scaleName, scaleRootNumber } = parsed;
@@ -109,18 +110,23 @@ export function applyScale(
   liveSet.set("scale_name", scaleName);
   liveSet.set("scale_mode", 1);
 
-  // Report the name Live stores, not the spelling asked for. Live keeps only a
-  // pitch class number, so every read of it comes back flat ("F#" -> "Gb") —
-  // echoing the request here would disagree with every later read.
+  // Live keeps only a pitch class number, so every read of the root comes back
+  // flat ("F#" -> "Gb"). Report what it stores, or a later read disagrees.
   const storedRoot =
     numberToPitchClass(liveSet.getProperty("root_note") as number) ?? scaleRoot;
-  const storedName = liveSet.getProperty("scale_name");
+  const landed = `${storedRoot} ${String(liveSet.getProperty("scale_name"))}`;
 
-  result.scale = `${storedRoot} ${String(storedName)}`;
+  if (landed === requested.trim()) {
+    return;
+  }
 
-  return storedRoot === scaleRoot
-    ? null
-    : { requestedRoot: scaleRoot, storedRoot };
+  result.scale = landed;
+  // Without the reason, a model that asked for F# sees Gb come back and
+  // retries, thinking the write failed.
+  result.reason =
+    storedRoot === scaleRoot
+      ? `scale ${requested.trim()} is spelled ${landed} — same scale, set correctly`
+      : `scale roots are spelled with flats, so ${scaleRoot} comes back as ${storedRoot} — same scale, set correctly`;
 }
 
 /**

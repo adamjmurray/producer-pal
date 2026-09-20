@@ -141,11 +141,10 @@ describe("deleteObject when Live refuses the delete", () => {
       {
         id: "scene_0",
         path: "s0",
-        type: "scene",
         ok: false,
         reason: "scene s0 (id scene_0) still exists, so Live did not delete it",
       },
-      { id: "already_gone", type: "scene", reason: "nothing to delete" },
+      { id: "already_gone", reason: "nothing to delete" },
     ]);
     expect(warnSpy).not.toHaveBeenCalled();
   });
@@ -157,7 +156,6 @@ describe("deleteObject when Live refuses the delete", () => {
     expect(deleteObject({ id: "track_1", type: "track" })).toStrictEqual({
       id: "track_1",
       deletedPath: "t1",
-      type: "track",
     });
     expect(warnSpy).not.toHaveBeenCalled();
   });

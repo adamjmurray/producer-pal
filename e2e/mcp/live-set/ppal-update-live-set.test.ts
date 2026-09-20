@@ -140,7 +140,8 @@ describe("ppal-update-live-set", () => {
     });
     const scaleResult = parseToolResult<UpdateResult>(scaleUpdate);
 
-    expect(scaleResult.scale).toBe("D Minor");
+    // Live stored the scale as asked, so only the pitches come back.
+    expect(scaleResult.scale).toBeUndefined();
     expect(scaleResult.scalePitches).toBeDefined();
     expect(Array.isArray(scaleResult.scalePitches)).toBe(true);
 
@@ -151,7 +152,10 @@ describe("ppal-update-live-set", () => {
     });
     const disableResult = parseToolResult<UpdateResult>(disableScale);
 
-    expect(disableResult.scale).toBe(""); // Empty string means scale disabled
+    expect(disableResult.scale).toBeUndefined();
+    expect(disableResult.$meta).toContain(
+      "Scale disabled for selected clips and defaults for new clips.",
+    );
 
     // Test 3: Update multiple parameters at once
     const multiUpdate = await ctx.client!.callTool({
@@ -164,11 +168,10 @@ describe("ppal-update-live-set", () => {
     });
     const multiResult = parseToolResult<UpdateResult>(multiUpdate);
 
-    // Both landed as asked, so only the scale — which Live spells its own
-    // way — comes back.
+    // All three landed as asked, so none of them come back.
     expect(multiResult.tempo).toBeUndefined();
     expect(multiResult.timeSignature).toBeUndefined();
-    expect(multiResult.scale).toBe("G Major");
+    expect(multiResult.scale).toBeUndefined();
 
     // Wait for Live API state to settle, then verify all with read
     await sleep(100);
@@ -204,10 +207,10 @@ describe("ppal-update-live-set", () => {
     const updated = parseToolResult<UpdateResult>(update);
 
     expect(updated.scale).toBe("Gb Dorian");
-    // Without this note a model reads the changed spelling as a failed write.
-    expect(updated.$meta).toContain(
-      "Scale roots are spelled with flats, so F# comes back as Gb — " +
-        "same scale, set correctly.",
+    // Without this reason a model reads the changed spelling as a failed write.
+    expect(updated.reason).toBe(
+      "scale roots are spelled with flats, so F# comes back as Gb — " +
+        "same scale, set correctly",
     );
 
     await sleep(100);
@@ -570,6 +573,7 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string[];
+  reason?: string;
   $meta?: string[];
   locator?: {
     operation: string;

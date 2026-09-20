@@ -199,6 +199,13 @@ describe("select path param", () => {
     expect(() => select({ path: "mt" })).toThrow('no track at "mt"');
   });
 
+  // Every other tool takes a comma-separated list, so a model sends one here.
+  it("refuses a list of paths, saying select takes one target", () => {
+    expect(() => select({ path: "t0,t1" })).toThrow(
+      'invalid path "t0,t1" - select takes one target per call (Live holds one selection)',
+    );
+  });
+
   // The "+" roots name a place to create something, which select never does.
   it("refuses a path that names something to create", () => {
     expect(() => select({ path: "t+" })).toThrow(

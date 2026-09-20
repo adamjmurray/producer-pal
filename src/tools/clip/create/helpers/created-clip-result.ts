@@ -100,7 +100,7 @@ export interface ClipResultObject {
   noteCount?: number;
   transformed?: number;
   length?: string;
-  /** Audio clips only: whether Live is time-stretching the sample */
+  /** Audio clips only: the warp state Live settled on, when it isn't the one asked for */
   warping?: boolean;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
@@ -123,6 +123,7 @@ export interface ClipResultObject {
  * @param sampleFile - Audio file path (for audio clips)
  * @param transformedCount - Number of notes matched by transform selectors
  * @param color - The color the call asked for, or null when it asked for none
+ * @param warping - The warp state the call asked for, or null when it asked for none
  * @returns Clip result object
  */
 export function buildClipResult(
@@ -137,6 +138,7 @@ export function buildClipResult(
   sampleFile: string | null,
   transformedCount: number | undefined,
   color: string | null,
+  warping: boolean | null = null,
 ): ClipResultObject {
   const landed: LandedColor = color == null ? {} : landedColor(clip, color);
   const clipResult: ClipResultObject = {
@@ -172,13 +174,17 @@ export function buildClipResult(
     }
   }
 
-  // For audio clips: report the warp state Live settled on plus the region it
-  // covers. `Clip.length` is not used — on an unwarped session clip Live
-  // reports the length it would have if still warped (see audioClipTiming).
+  // For audio clips: report the region the clip covers, which comes from the
+  // sample and not from any arg, plus the warp state when Live didn't settle on
+  // the one asked for. `Clip.length` is not used — on an unwarped session clip
+  // Live reports the length it would have if still warped (see audioClipTiming).
   if (sampleFile) {
     const timing = audioClipTiming(clip);
 
-    clipResult.warping = timing.warping;
+    if (timing.warping !== warping) {
+      clipResult.warping = timing.warping;
+    }
+
     clipResult.length = abletonBeatsToDuration(
       timing.endBeats - timing.startBeats,
       timeSigNumerator,

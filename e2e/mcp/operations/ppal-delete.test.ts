@@ -129,7 +129,8 @@ describe("ppal-delete", () => {
     );
 
     expect(deleted.id).toBe(track.id);
-    expect(deleted.type).toBe("track");
+    // The caller sent `type`, so the entry doesn't repeat it.
+    expect(deleted).not.toHaveProperty("type");
     // `ok` is on skips only, so a delete that landed carries none.
     expect(deleted.ok).toBeUndefined();
 
@@ -158,11 +159,10 @@ describe("ppal-delete", () => {
     );
 
     expect(data).toStrictEqual([
-      { id: track.id, deletedPath: track.path, type: "track" },
+      { id: track.id, deletedPath: track.path },
       {
         id: track.id,
         path: track.path,
-        type: "track",
         reason: `already named as id ${track.id} earlier in this call`,
       },
     ]);
@@ -190,7 +190,6 @@ describe("ppal-delete", () => {
     // A repeat needed no work, so it carries a reason and no `ok`.
     expect(data[2]).toStrictEqual({
       id: first.id,
-      type: "track",
       reason: `already named as id ${first.id} earlier in this call`,
     });
 
@@ -285,7 +284,6 @@ describe("ppal-delete", () => {
       await del({ id: scene.id, type: "scene" }),
     );
 
-    expect(deleted.type).toBe("scene");
     expect(deleted.ok).toBeUndefined();
 
     const scene1 = await createScene({ path: "s0", name: "Multi Scene 1" });
@@ -304,7 +302,6 @@ describe("ppal-delete", () => {
       await del({ id: clip.id, type: "clip" }),
     );
 
-    expect(deleted.type).toBe("clip");
     expect(deleted.ok).toBeUndefined();
 
     await expectGone("ppal-read-clip", { id: clip.id });
@@ -368,7 +365,6 @@ describe("ppal-delete", () => {
       await del({ id: deviceId, type: "device" }),
     );
 
-    expect(deleted.type).toBe("device");
     expect(deleted.ok).toBeUndefined();
 
     await expectGone("ppal-read-device", { id: deviceId });
@@ -415,7 +411,6 @@ describe("ppal-delete", () => {
 
     expect(data).toStrictEqual({
       path: "t99/d99",
-      type: "device",
       reason: "nothing to delete",
     });
   });
@@ -439,9 +434,8 @@ describe("ppal-delete", () => {
         deletedPath: expect.stringMatching(
           new RegExp(`^t${RACKS_TRACK}/d\\d+$`),
         ),
-        type: "device",
       },
-      { id: "99999", type: "device", reason: "nothing to delete" },
+      { id: "99999", reason: "nothing to delete" },
     ]);
   });
 
@@ -463,11 +457,9 @@ describe("ppal-delete", () => {
       // The address the clip itself reported, not an assumed slot.
       deletedPath: clip.path,
       id: clip.id,
-      type: "clip",
     });
     expect(data[1]).toStrictEqual({
       id: scene.id,
-      type: "clip",
       ok: false,
       reason: expect.stringContaining("is not a clip"),
     });
@@ -493,7 +485,6 @@ describe("ppal-delete", () => {
       "path",
     );
 
-    expect(deleted.type).toBe("drum-pad");
     expect(deleted.ok).toBeUndefined();
     // The slot outlives the call, so the address comes back under `path`.
     expect(deleted.path).toBe("t0/d0/pC1");
@@ -535,7 +526,6 @@ interface DeleteResult {
   deletedPath?: string;
   /** The target's address when it is still there. */
   path?: string;
-  type: string;
   /** Only on a target this call could not delete. */
   ok?: false;
   /** Why it wasn't deleted, or why there was nothing to delete. */

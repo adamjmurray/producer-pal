@@ -32,7 +32,6 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual({
       id: "track_2",
       deletedPath: "t1",
-      type: "track",
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -45,7 +44,6 @@ describe("deleteObject", () => {
     expect(deleteObject({ ids: "track_2", type: "track" })).toStrictEqual({
       id: "track_2",
       deletedPath: "t1",
-      type: "track",
     });
   });
 
@@ -68,9 +66,9 @@ describe("deleteObject", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "track_0", deletedPath: "t0", type: "track" },
-      { id: "track_1", deletedPath: "t1", type: "track" },
-      { id: "track_2", deletedPath: "t2", type: "track" },
+      { id: "track_0", deletedPath: "t0" },
+      { id: "track_1", deletedPath: "t1" },
+      { id: "track_2", deletedPath: "t2" },
     ]);
   });
 
@@ -82,7 +80,6 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual({
       id: "scene_2",
       deletedPath: "s1",
-      type: "scene",
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_scene", 1);
   });
@@ -101,8 +98,8 @@ describe("deleteObject", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "scene_0", deletedPath: "s0", type: "scene" },
-      { id: "scene_2", deletedPath: "s2", type: "scene" },
+      { id: "scene_0", deletedPath: "s0" },
+      { id: "scene_2", deletedPath: "s2" },
     ]);
   });
 
@@ -130,8 +127,8 @@ describe("deleteObject", () => {
     expect(track1.call).toHaveBeenCalledWith("delete_clip", "id clip_1_1");
 
     expect(result).toStrictEqual([
-      { id: "clip_0_0", deletedPath: "t0/s0", type: "clip" },
-      { id: "clip_1_1", deletedPath: "t1/s1", type: "clip" },
+      { id: "clip_0_0", deletedPath: "t0/s0" },
+      { id: "clip_1_1", deletedPath: "t1/s1" },
     ]);
   });
 
@@ -146,7 +143,6 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual({
       id: "clip_0_0",
       deletedPath: "t0/s0",
-      type: "clip",
     });
   });
 
@@ -168,7 +164,6 @@ describe("deleteObject", () => {
     // rather than refused — and nothing warns about it.
     expect(deleteObject({ path: "t0/s9", type: "clip" })).toStrictEqual({
       path: "t0/s9",
-      type: "clip",
       reason: "nothing to delete",
     });
     expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -213,11 +208,10 @@ describe("deleteObject", () => {
       {
         id: "take_lane_clip",
         path: "t0/l0[1|1]",
-        type: "clip",
         ok: false,
         reason: expect.stringContaining("cannot delete take-lane clip"),
       },
-      { id: "clip_1_1", deletedPath: "t1/s1", type: "clip" },
+      { id: "clip_1_1", deletedPath: "t1/s1" },
     ]);
   });
 
@@ -257,7 +251,6 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "999",
-      type: "track",
       reason: "nothing to delete",
     });
     expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -286,11 +279,10 @@ describe("deleteObject", () => {
     ).toStrictEqual([
       {
         id: "scene_1",
-        type: "track",
         ok: false,
         reason: "s0 (id scene_1) is not a track (found scene)",
       },
-      { id: "track_0", deletedPath: "t0", type: "track" },
+      { id: "track_0", deletedPath: "t0" },
     ]);
   });
 
@@ -314,9 +306,9 @@ describe("deleteObject", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "track_0", deletedPath: "t0", type: "track" },
-      { id: "nonexistent", type: "track", reason: "nothing to delete" },
-      { id: "track_2", deletedPath: "t2", type: "track" },
+      { id: "track_0", deletedPath: "t0" },
+      { id: "nonexistent", reason: "nothing to delete" },
+      { id: "track_2", deletedPath: "t2" },
     ]);
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
@@ -341,10 +333,10 @@ describe("deleteObject", () => {
     // Results stay in the order named: ids first, then paths — a success, a
     // rejected id, a success, and an unresolved path.
     expect(result).toStrictEqual([
-      { id: "track_a", deletedPath: "t0", type: "track" },
-      { id: "missing_id", type: "track", reason: "nothing to delete" },
-      { id: "track_b", deletedPath: "t2", type: "track" },
-      { path: "t99", type: "track", reason: "nothing to delete" },
+      { id: "track_a", deletedPath: "t0" },
+      { id: "missing_id", reason: "nothing to delete" },
+      { id: "track_b", deletedPath: "t2" },
+      { path: "t99", reason: "nothing to delete" },
     ]);
   });
 
@@ -359,8 +351,8 @@ describe("deleteObject", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: "nonexistent1", type: "track", reason: "nothing to delete" },
-      { id: "nonexistent2", type: "track", reason: "nothing to delete" },
+      { id: "nonexistent1", reason: "nothing to delete" },
+      { id: "nonexistent2", reason: "nothing to delete" },
     ]);
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
@@ -394,12 +386,11 @@ describe("deleteObject", () => {
       {
         id: "track_1",
         path: "t1",
-        type: "track",
         ok: false,
         reason:
           "cannot delete track t1 (id track_1), which hosts the Producer Pal device",
       },
-      { id: "track_0", deletedPath: "t0", type: "track" },
+      { id: "track_0", deletedPath: "t0" },
     ]);
   });
 
@@ -433,8 +424,8 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids, type: "track" });
 
     expect(result).toStrictEqual([
-      { id: "track_0", deletedPath: "t0", type: "track" },
-      { id: "track_1", deletedPath: "t1", type: "track" },
+      { id: "track_0", deletedPath: "t0" },
+      { id: "track_1", deletedPath: "t1" },
     ]);
   });
 
@@ -455,7 +446,6 @@ describe("deleteObject", () => {
     expect(singleResult).toStrictEqual({
       id: "track_0",
       deletedPath: "t0",
-      type: "track",
     });
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
@@ -520,7 +510,6 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual({
       id,
       deletedPath: "rt1",
-      type: "track",
     });
     expect(liveSet.call).toHaveBeenCalledWith(
       "delete_return_track",
@@ -548,8 +537,8 @@ describe("deleteObject", () => {
 
     // Results come back in the order they were named, not the deletion order.
     expect(result).toStrictEqual([
-      { id: "return_0", deletedPath: "rt0", type: "track" },
-      { id: "return_2", deletedPath: "rt2", type: "track" },
+      { id: "return_0", deletedPath: "rt0" },
+      { id: "return_2", deletedPath: "rt2" },
     ]);
   });
 
@@ -579,7 +568,6 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual({
       id: "return_12",
       deletedPath: "rt12",
-      type: "track",
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_return_track", 12);
   });
@@ -610,7 +598,6 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual({
       id: "clip_10_0",
       deletedPath: "t10/s0",
-      type: "clip",
     });
     // A truncated "\d" would resolve track index 1, calling delete_clip on the
     // wrong track — assert the two-digit track's own parent was called.

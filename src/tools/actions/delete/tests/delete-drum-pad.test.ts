@@ -25,7 +25,7 @@ describe("deleteObject drum-pad deletion", () => {
 
     const result = deleteObject({ id: id, type: "drum-pad" });
 
-    expect(result).toStrictEqual({ id, type: "drum-pad" });
+    expect(result).toStrictEqual({ id });
     expect(devices.get(id)?.call).toHaveBeenCalledWith("delete_all_chains");
   });
 
@@ -37,10 +37,7 @@ describe("deleteObject drum-pad deletion", () => {
 
     const result = deleteObject({ id: "pad_1, pad_2", type: "drum-pad" });
 
-    expect(result).toStrictEqual([
-      { id: "pad_1", type: "drum-pad" },
-      { id: "pad_2", type: "drum-pad" },
-    ]);
+    expect(result).toStrictEqual([{ id: "pad_1" }, { id: "pad_2" }]);
     expect(devices.get("pad_1")?.call).toHaveBeenCalledWith(
       "delete_all_chains",
     );
@@ -64,7 +61,6 @@ describe("deleteObject drum-pad deletion", () => {
     expect(result).toStrictEqual({
       id: padId,
       path: "t0/d0/pC1",
-      type: "drum-pad",
     });
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
   });
@@ -87,7 +83,6 @@ describe("deleteObject drum-pad deletion", () => {
     expect(result).toStrictEqual({
       id: padId,
       path: "t0/d0/c0/d0/pD1",
-      type: "drum-pad",
     });
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
   });
@@ -105,7 +100,6 @@ describe("deleteObject drum-pad deletion", () => {
 
     expect(result).toStrictEqual({
       path: "t0/d0/pD1",
-      type: "drum-pad",
       reason: "nothing to delete",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
@@ -130,8 +124,8 @@ describe("deleteObject drum-pad deletion", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: "pad_by_id", type: "drum-pad" },
-      { id: padId, path: "t0/d0/pC1", type: "drum-pad" },
+      { id: "pad_by_id" },
+      { id: padId, path: "t0/d0/pC1" },
     ]);
     expect(extraPads.get("pad_by_id")?.call).toHaveBeenCalledWith(
       "delete_all_chains",
@@ -154,10 +148,9 @@ describe("deleteObject drum-pad deletion", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: padId, path: "t0/d0/pC1", type: "drum-pad" },
+      { id: padId, path: "t0/d0/pC1" },
       {
         path: "t99/d99/pC1",
-        type: "drum-pad",
         reason: "nothing to delete",
       },
     ]);
@@ -229,13 +222,12 @@ describe("deleteObject drum-pad refusals", () => {
     expect(result).toStrictEqual([
       {
         id: "drum-chain-1",
-        type: "drum-pad",
         ok: false,
         reason:
           't0/d0/c0 (id drum-chain-1) is a chain. Use type="chain" for ' +
           'this chain, or type="drum-pad" for the whole pad.',
       },
-      { id: padId, path: "t0/d0/pC1", type: "drum-pad" },
+      { id: padId, path: "t0/d0/pC1" },
     ]);
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
   });

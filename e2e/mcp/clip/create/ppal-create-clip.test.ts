@@ -387,6 +387,26 @@ describe("ppal-create-clip", () => {
     const audioSession = parseToolResult<CreateClipResult>(audioSessionResult);
 
     expect(audioSession.id).toBeDefined();
+    // Nothing asked for a warp state, so the one Live chose comes back.
+    expect(audioSession.warping).toBeDefined();
+
+    await sleep(100);
+
+    // A warp state the call asked for and got is an echo, so it says nothing.
+    const askedWarping = parseToolResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${audioTrack.path}/s8`,
+          sampleFile: SAMPLE_FILE,
+          warping: true,
+        },
+      }),
+    );
+
+    expect(askedWarping.warping).toBeUndefined();
+    // The region comes from the sample, so it is still reported.
+    expect(askedWarping.length).toBeDefined();
 
     await sleep(100);
     const verifyAudioSession = await ctx.client!.callTool({
@@ -466,7 +486,7 @@ describe("ppal-create-clip audio warping", () => {
       warping: false,
     });
 
-    expect(created.warping).toBe(false);
+    // Asked for and got, so the result says nothing; the read shows it.
     expect(clip.type).toBe("audio");
     expect(clip.warping).toBe(false);
 
@@ -493,13 +513,13 @@ describe("ppal-create-clip audio warping", () => {
 
   it("lands a warped clip when warping is requested", async () => {
     const song = await readSongTiming(ctx.client!);
-    const { created, clip } = await createAndRead(ctx.client!, {
+    const { clip } = await createAndRead(ctx.client!, {
       path: `t${AUDIO_TRACK}/s7`,
       name: "warped",
       warping: true,
     });
 
-    expect(created.warping).toBe(true);
+    // Asked for and got, so the result says nothing; the read shows it.
     expect(clip.warping).toBe(true);
 
     // Live maps every marker from seconds into beats when warp goes on, so the

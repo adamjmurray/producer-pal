@@ -619,6 +619,23 @@ describe("createClip - audio clip warping", () => {
     expect(clip.set).toHaveBeenCalledWith("warping", 1);
   });
 
+  it("says nothing about a warp state that landed as asked", async () => {
+    setupStretchedAudioClip(2.7, 4);
+
+    const result = await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: true,
+    });
+
+    // The region comes from the sample, so it is still reported.
+    expect(result).toStrictEqual({
+      id: "audio_clip_0_0",
+      path: "t0/s0",
+      length: "1bar",
+    });
+  });
+
   it("reports the warp state Live settled on without warning about it", async () => {
     const warnSpy = vi.spyOn(v8Console, "warn");
 
