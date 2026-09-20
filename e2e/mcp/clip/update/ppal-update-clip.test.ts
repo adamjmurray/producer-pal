@@ -410,15 +410,17 @@ describe("ppal-update-clip", () => {
     expect(newClip.name).toBe("Move Me");
     expect(newClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s5`);
 
-    // Verify the original slot is now empty
+    // Verify the original slot is now empty: reading it back errors, which is
+    // what an empty slot answers a read that named it.
     const verifyOld = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { path: `t${EMPTY_MIDI_TRACK}/s4` },
     });
-    const { data: oldSlot } =
-      parseToolResultWithWarnings<ReadClipResult>(verifyOld);
 
-    expect(oldSlot.id).toBeNull();
+    expect(isToolError(verifyOld)).toBe(true);
+    expect(getToolErrorMessage(verifyOld)).toContain(
+      `no clip at t${EMPTY_MIDI_TRACK}/s4`,
+    );
   });
 
   // The batch resolves the destination track once and every clip's copy check

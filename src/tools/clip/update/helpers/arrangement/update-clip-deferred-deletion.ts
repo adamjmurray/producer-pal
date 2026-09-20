@@ -29,7 +29,7 @@ import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-la
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipIsGone } from "../batch/buried-clips.ts";
-import { appendReason } from "../entries/clip-reasons.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { type OverwritePlan } from "./update-clip-arrangement-overwrite-plan.ts";
 import {
   deferClipDeletion,

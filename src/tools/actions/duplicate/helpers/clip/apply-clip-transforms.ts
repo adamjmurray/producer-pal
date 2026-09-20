@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { appendReason } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { collectClipResults } from "./overwritten-copies.ts";

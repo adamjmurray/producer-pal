@@ -234,7 +234,7 @@ describe("readOneClip", () => {
     expect(result.notes).toBe("v100 n/4 C3 1|1-n/4\nD3 1|1\nE3 2|2");
   });
 
-  it("returns null values and emits warning when no clip exists at valid track/scene", () => {
+  it("returns null values when no clip exists at valid track/scene", () => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
     // Track and scene exist, but clip does not
@@ -260,8 +260,9 @@ describe("readOneClip", () => {
       path: "t2/s3",
     });
 
-    // Verify warning is emitted
-    expect(consoleSpy).toHaveBeenCalledWith("no clip at t2/s3");
+    // The batch readers walk slots nobody named, so an empty one is not a miss
+    // to report; readClip turns it into one for a target a call named.
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 
   // Nothing is registered, so nothing exists — including the clip the read

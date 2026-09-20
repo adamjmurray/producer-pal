@@ -17,7 +17,6 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
-  parseToolResultWithWarnings,
   type ReadClipResult,
   type SkippedTargetResult,
   setupMcpTestContext,
@@ -187,21 +186,15 @@ describe("ppal-read-clip", () => {
   });
 
   it("handles empty slots and errors correctly", async () => {
-    // Test 1: Read empty slot (t8 is empty track with no clips)
+    // Test 1: A lone empty slot is a read that got nothing — it errors, with
+    // no entry to carry the reason (t8 is an empty track).
     const emptyResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { path: "t8/s0" },
     });
-    const { data: emptyClip, warnings } =
-      parseToolResultWithWarnings<ReadClipResult>(emptyResult);
 
-    expect(emptyClip.id).toBeNull();
-    expect(emptyClip.type).toBeNull();
-    expect(emptyClip.path).toBe("t8/s0");
-
-    // Verify warning is emitted for empty slot
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toBe("WARNING: no clip at t8/s0");
+    expect(isToolError(emptyResult)).toBe(true);
+    expect(getToolErrorMessage(emptyResult)).toContain("no clip at t8/s0");
 
     // Test 2: Non-existent scene throws error
     const invalidSceneResult = await ctx.client!.callTool({
@@ -341,8 +334,8 @@ describe("ppal-read-clip over a list of targets", () => {
   });
 
   it("keeps a slot for an empty clip slot and reads the rest", async () => {
-    // t8 holds no clips. A lone read of an empty slot warns instead; in a list
-    // the entry carries it, and parseBatchResult throws on any warning.
+    // t8 holds no clips. The entry carries the reason and nothing is warned —
+    // parseBatchResult throws on any warning.
     const entries = parseBatchResult<ReadClipResult | SkippedTargetResult>(
       await readClips({ path: "t0/s0,t8/s0,t1/s0" }),
       3,

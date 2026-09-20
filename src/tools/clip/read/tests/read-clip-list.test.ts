@@ -78,8 +78,6 @@ describe("readClip over a list of targets", () => {
     ]);
   });
 
-  // A lone read answers an empty slot with a clip-shaped nothing and a warning.
-  // In a list the entry carries it, so the warning would only repeat it.
   it("turns an empty slot into a miss, without warning", () => {
     expect(readClip({ path: "t0/s0,t0/s1" })).toStrictEqual([
       clip0,
@@ -99,14 +97,9 @@ describe("readClip over a list of targets", () => {
     expect(readClip({ path: "t0/s0" })).toStrictEqual(clip0);
   });
 
-  it("still answers a lone empty slot with the empty-slot shape", () => {
-    expect(readClip({ path: "t0/s1" })).toStrictEqual({
-      id: null,
-      type: null,
-      name: null,
-      path: "t0/s1",
-    });
-    expect(capturedWarnings()).toContainEqual("no clip at t0/s1");
+  it("throws when the only target is an empty slot", () => {
+    expect(() => readClip({ path: "t0/s1" })).toThrow("no clip at t0/s1");
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("still throws when the only target names nothing", () => {

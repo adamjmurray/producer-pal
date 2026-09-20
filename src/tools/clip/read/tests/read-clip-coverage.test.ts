@@ -70,7 +70,7 @@ describe("readOneClip - include flag gating", () => {
     clearMockRegistry();
   });
 
-  it("suppresses the empty-slot warning when suppressEmptyWarning is set", () => {
+  it("answers an empty slot with the null shape, and says nothing", () => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
     // Track and scene exist, clip slot is empty (clip id "0" => !exists()).
@@ -81,11 +81,7 @@ describe("readOneClip - include flag gating", () => {
       type: "Clip",
     });
 
-    const result = readOneClip({
-      trackIndex: 4,
-      sceneIndex: 5,
-      suppressEmptyWarning: true,
-    });
+    const result = readOneClip({ trackIndex: 4, sceneIndex: 5 });
 
     expect(result).toStrictEqual({
       id: null,

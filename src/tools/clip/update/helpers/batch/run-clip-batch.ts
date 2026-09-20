@@ -16,8 +16,8 @@ import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.t
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { trackMoveSkips } from "../arrangement/update-clip-move-skip.ts";
 import { type MoveGroup } from "../arrangement/update-clip-move-groups.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import {
-  appendReason,
   type ClipReasons,
   clipIgnoredParams,
   clipLandedNothing,

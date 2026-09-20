@@ -28,55 +28,38 @@ describe("processWarpMarkers", () => {
     clearMockRegistry();
   });
 
-  it("returns markers for a direct array without warning", () => {
+  it("returns markers for a direct array, with nothing to report", () => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
     const result = processWarpMarkers(
       warpClip(JSON.stringify([{ sample_time: 44100, beat_time: 1 }])),
     );
 
-    expect(result).toStrictEqual([{ sampleTime: 44100, beatTime: 1 }]);
+    expect(result).toStrictEqual({
+      markers: [{ sampleTime: 44100, beatTime: 1 }],
+    });
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it("returns undefined without warning when warp_markers is an empty string", () => {
+  it.each([
+    ["an empty string", ""],
+    ["missing", undefined],
+    ["an object with no warp_markers key", "{}"],
+    ["a non-array value", JSON.stringify({ warp_markers: 42 })],
+  ])("returns nothing at all when warp_markers is %s", (_label, value) => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-    expect(processWarpMarkers(warpClip(""))).toBeUndefined();
+    expect(processWarpMarkers(warpClip(value))).toStrictEqual({});
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
-  it("returns undefined without warning when warp_markers is missing", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-    expect(processWarpMarkers(warpClip(undefined))).toBeUndefined();
-    expect(consoleSpy).not.toHaveBeenCalled();
-  });
-
-  it("returns undefined without warning for an object with no warp_markers key", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-    expect(processWarpMarkers(warpClip("{}"))).toBeUndefined();
-    expect(consoleSpy).not.toHaveBeenCalled();
-  });
-
-  it("returns undefined without warning when warp_markers is a non-array value", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
-
-    expect(
-      processWarpMarkers(warpClip(JSON.stringify({ warp_markers: 42 }))),
-    ).toBeUndefined();
-    expect(consoleSpy).not.toHaveBeenCalled();
-  });
-
-  it("warns with a descriptive message when the JSON cannot be parsed", () => {
+  it("reports the reason on the clip when the JSON cannot be parsed", () => {
     const consoleSpy = vi.spyOn(consoleModule, "warn");
 
     const result = processWarpMarkers(warpClip("invalid json{"));
 
-    expect(result).toBeUndefined();
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to read warp markers for clip id clip1"),
-    );
+    expect(result.markers).toBeUndefined();
+    expect(result.reason).toContain("warpMarkers unreadable:");
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 });

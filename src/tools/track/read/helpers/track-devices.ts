@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import {
   readDevice,
@@ -15,6 +14,8 @@ export interface CategorizedDevices {
   midiEffects: DeviceWithDrumPads[];
   instrument: DeviceWithDrumPads | null;
   audioEffects: DeviceWithDrumPads[];
+  /** What the track has that the categories can't hold; goes on its entry */
+  reason?: string;
 }
 
 export interface CategorizeDevicesOptions {
@@ -75,17 +76,13 @@ export function categorizeDevices(
     }
   }
 
-  // Validate instrument count
-  if (instruments.length > 1) {
-    console.warn(
-      `Track has ${instruments.length} instruments (${instruments.map(resultLabel).join(", ")}), which is unusual. Expected 0 or 1.`,
-    );
-  }
-
   return {
     midiEffects,
     instrument: instruments.length > 0 ? (instruments[0] ?? null) : null,
     audioEffects,
+    ...(instruments.length > 1 && {
+      reason: `track has ${instruments.length} instruments (${instruments.map(resultLabel).join(", ")}), which is unusual — expected 0 or 1`,
+    }),
   };
 }
 

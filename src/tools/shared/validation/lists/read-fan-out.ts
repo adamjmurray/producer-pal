@@ -43,15 +43,14 @@ interface FanOutOptions {
  * Reads every target a call names.
  * @param args - The call's args, with its target params as the caller sent them
  * @param options - What this tool reads, and the params it accepts
- * @param readOne - Reads one target, throwing when it names nothing. Its second
- *   argument says the read is one of a list, where a miss has an entry to land
- *   in and so must throw rather than warn
+ * @param readOne - Reads one target, throwing when it names nothing or holds
+ *   nothing: a lone target answers with that error, a listed one with its entry
  * @returns The object when one target was named, otherwise one entry per target
  */
 export function readFanOut<A extends TargetParams, T>(
   args: A,
   options: FanOutOptions,
-  readOne: (args: A, listed: boolean) => T,
+  readOne: (args: A) => T,
 ): ReadResult<T> {
   const alias = paramValue(args, options.idAlias) as string | null | undefined;
   // Every target param is read once, here, so a value that names nothing says
@@ -61,7 +60,7 @@ export function readFanOut<A extends TargetParams, T>(
   const first = targets[0];
 
   if (targets.length < 2) {
-    const one = readOne(first == null ? call : withTarget(call, first), false);
+    const one = readOne(first == null ? call : withTarget(call, first));
 
     warnBlank(args, options, alias, 1);
 
@@ -71,7 +70,7 @@ export function readFanOut<A extends TargetParams, T>(
   refuseOneTargetParams(args, options, targets.length);
 
   const entries = targets.map((target) =>
-    attemptTarget(target, () => readOne(withTarget(call, target), true)),
+    attemptTarget(target, () => readOne(withTarget(call, target))),
   );
 
   warnBlank(args, options, alias, entries.length);

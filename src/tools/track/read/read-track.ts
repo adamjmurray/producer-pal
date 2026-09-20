@@ -17,6 +17,7 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   readFanOut,
@@ -302,6 +303,20 @@ function addDrumMapFromDevices(
 }
 
 /**
+ * Put what a part of the read couldn't do on the track's own entry.
+ * @param result - The track's entry
+ * @param reason - What to say, or undefined when there's nothing
+ */
+function addReason(
+  result: Record<string, unknown>,
+  reason: string | undefined,
+): void {
+  if (reason != null) {
+    appendReason(result, reason);
+  }
+}
+
+/**
  * Generic track reader that works with any track type. This is an internal helper function
  * used by readTrack to read comprehensive information about tracks.
  * @param args - The parameters
@@ -367,7 +382,10 @@ export function readTrackGeneric({
 
   // Add mixer properties if requested
   if (includeMixer) {
-    Object.assign(result, readMixerProperties(track, returnTracks));
+    const { reason, ...mixer } = readMixerProperties(track, returnTracks);
+
+    Object.assign(result, mixer);
+    addReason(result, reason);
   }
 
   if (groupId) {
@@ -432,6 +450,7 @@ export function readTrackGeneric({
     const categorized = categorizeDevices(trackDevices, { chainsHidden: true });
 
     addDrumMapFromDevices(result, categorized, notation);
+    addReason(result, categorized.reason);
   }
 
   addSlotIndices(result, track, category);

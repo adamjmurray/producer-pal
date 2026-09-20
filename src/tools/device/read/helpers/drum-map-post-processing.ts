@@ -3,20 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import {
   DEFAULT_MAX_DEPTH,
   findDrumRack,
   getDrumMap,
   type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
-import { resultLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DrumMapPostProcessOptions {
   /** Whether a drum map was asked for, including via `include: ["*"]` */
   includeDrumMap: boolean;
-  /** Whether "drum-map" was named outright, so its absence is worth a warning */
+  /** Whether "drum-map" was named outright, so its absence is worth saying */
   drumMapExplicit: boolean;
   /** Whether chains were fetched only to build the map */
   chainsForDrumMap: boolean;
@@ -44,7 +43,7 @@ export function postProcessDrumMap(
     const devices = drumMapSource(result);
 
     if (devices == null) {
-      warnNoDrumMap(result, drumMapExplicit);
+      sayNoDrumMap(result, drumMapExplicit);
     } else {
       const drumRack = findDrumRack(devices);
 
@@ -114,13 +113,13 @@ function drumMapSource(
 }
 
 /**
- * Say why a drum map is missing, but only when the caller named it. With
- * `include: ["*"]` nothing was singled out, so silence matches how a device
- * with no kit in it already answers.
+ * Say on the result why its drum map is missing, but only when the caller named
+ * it. With `include: ["*"]` nothing was singled out, so silence matches how a
+ * device with no kit in it already answers.
  * @param result - Result that has no drum map
  * @param drumMapExplicit - Whether "drum-map" was named outright
  */
-function warnNoDrumMap(
+function sayNoDrumMap(
   result: Record<string, unknown>,
   drumMapExplicit: boolean,
 ): void {
@@ -130,8 +129,9 @@ function warnNoDrumMap(
 
   const kind = result.type == null ? "drum pad" : "drum chain";
 
-  console.warn(
-    `${resultLabel(result)} is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
+  appendReason(
+    result,
+    `this is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
   );
 }
 

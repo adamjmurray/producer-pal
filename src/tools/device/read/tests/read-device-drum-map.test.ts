@@ -106,8 +106,8 @@ function setupInstrumentRackWithKit(): void {
   registerKit("kit", KIT);
 }
 
-const PAD_WARNING =
-  "t1/d0/pC1 (id pad-36) is a drum pad and has no drum map of its own — read its drum rack for the kit's map";
+const PAD_REASON =
+  "this is a drum pad and has no drum map of its own — read its drum rack for the kit's map";
 
 describe("readOneDevice drum-map by target kind", () => {
   it('reads a drum pad with include: ["*"] instead of crashing', () => {
@@ -126,16 +126,17 @@ describe("readOneDevice drum-map by target kind", () => {
       chains: expect.any(Array),
     });
     expect(result.chains).toHaveLength(1);
-    expect(capturedWarnings()).not.toContain(PAD_WARNING);
+    expect(result.reason).toBeUndefined();
   });
 
-  it("warns instead of mapping when drum-map is asked of a drum pad", () => {
+  it("says on the pad's own entry that it has no drum map", () => {
     setupKitPad();
 
     const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(capturedWarnings()).toContain(PAD_WARNING);
+    expect(result.reason).toBe(PAD_REASON);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   // A kit behind a pad only plays through that pad's note, so its pitches
@@ -153,10 +154,10 @@ describe("readOneDevice drum-map by target kind", () => {
     const result = readOneDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(capturedWarnings()).toContain(PAD_WARNING);
+    expect(result.reason).toBe(PAD_REASON);
   });
 
-  it("warns instead of mapping when drum-map is asked of a drum chain", () => {
+  it("says on a drum chain's own entry that it has no drum map", () => {
     setupKitPad();
 
     const result = readOneDevice({
@@ -165,8 +166,8 @@ describe("readOneDevice drum-map by target kind", () => {
     });
 
     expect(result.drumMap).toBeUndefined();
-    expect(capturedWarnings()).toContain(
-      "t1/d0/pC1/c0 (id chain-1) is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
+    expect(result.reason).toBe(
+      "this is a drum chain and has no drum map of its own — read its drum rack for the kit's map",
     );
   });
 

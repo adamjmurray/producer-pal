@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/clip-resolution.ts";
 import { STATE } from "#src/tools/constants.ts";
 import { computeState } from "#src/tools/shared/device/helpers/chain-info.ts";
@@ -24,7 +23,6 @@ import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface SendInfo {
   gainDb: unknown;
@@ -40,6 +38,8 @@ interface MixerResult {
   leftPan?: unknown;
   rightPan?: unknown;
   sends?: SendInfo[];
+  /** What the mixer read couldn't line up; goes on the track's own entry */
+  reason?: string;
 }
 
 /**
@@ -223,11 +223,8 @@ export function readMixerProperties(
   if (sends.length > 0) {
     const returns = returnTracks ?? readReturnTrackInfo();
 
-    // Warn if send count doesn't match return track count
     if (sends.length !== returns.length) {
-      console.warn(
-        `Send count (${sends.length}) on track ${targetLabel(track)} doesn't match return track count (${returns.length})`,
-      );
+      result.reason = `send count (${sends.length}) doesn't match return track count (${returns.length})`;
     }
 
     result.sends = sends.map((send, i) => {

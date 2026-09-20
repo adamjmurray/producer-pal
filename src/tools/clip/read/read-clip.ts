@@ -10,7 +10,7 @@ import {
 import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   parseIncludeArray,
@@ -47,8 +47,6 @@ export interface ReadClipArgs {
   /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
-  /** @internal Suppress warning for empty clip slots (used by batch readers) */
-  suppressEmptyWarning?: boolean;
   /** Hidden alias for path; also used by batch readers with parsed indices */
   trackIndex?: number | null;
   /** Hidden alias for path; also used by batch readers with parsed indices */
@@ -107,6 +105,9 @@ export interface ReadClipResult {
   warping?: boolean;
   warpMode?: string;
   warpMarkers?: WarpMarker[];
+
+  /** What the read couldn't produce for this clip */
+  reason?: string;
 }
 
 /**
@@ -131,24 +132,24 @@ export function readClip(
       idAlias: "clipId",
       oneTargetParams: ["trackIndex", "sceneIndex", "slot"],
     },
-    (one, listed) =>
-      listed ? readListedClip(one, context) : readOneClip(one, context),
+    (one) => readNamedClip(one, context),
   );
 }
 
 /**
- * Read one clip of a list, where an empty slot is a miss like any other: the
- * entry says so, so the warning a lone read gives would only repeat it.
+ * Read one clip a call named. An empty slot is a miss: a lone target throws, a
+ * listed one gets the entry saying so. Only the batch readers, which walk slots
+ * nobody named, take the empty answer.
  * @param args - Arguments for one clip
  * @param context - Context object
  * @returns Result object with clip information
  * @throws Error when the slot holds no clip
  */
-function readListedClip(
+function readNamedClip(
   args: ReadClipArgs,
   context: Partial<ToolContext>,
 ): ReadClipResult {
-  const clip = readOneClip({ ...args, suppressEmptyWarning: true }, context);
+  const clip = readOneClip(args, context);
 
   if (clip.id == null) {
     throw new Error(`no clip at ${clip.path}`);
@@ -192,12 +193,6 @@ export function readOneClip(
   );
 
   if (!resolved.found) {
-    if (!args.suppressEmptyWarning) {
-      console.warn(
-        `no clip at ${slotPath(trackIndex as number, sceneIndex as number)}`,
-      );
-    }
-
     return resolved.emptySlotResponse;
   }
 
@@ -431,10 +426,14 @@ function processAudioClip(
 
     // Warp markers are work-in-progress: debug builds only (build:debug)
     if (process.env.ENABLE_WARP_MARKERS === "true") {
-      const warpMarkers = processWarpMarkers(clip);
+      const { markers, reason } = processWarpMarkers(clip);
 
-      if (warpMarkers !== undefined) {
-        result.warpMarkers = warpMarkers;
+      if (markers !== undefined) {
+        result.warpMarkers = markers;
+      }
+
+      if (reason != null) {
+        appendReason(result, reason);
       }
     }
   }

@@ -65,9 +65,8 @@ describe("readOneTrack", () => {
       expect(result.devices).toBeUndefined();
     });
 
-    it("warns when a track has more than one instrument", () => {
-      // Defensive warning: a track is expected to have 0 or 1 instrument. Two
-      // instruments (unusual) must surface a warning. Reached via the drum-map
+    it("says on the track's entry when it has more than one instrument", () => {
+      // A track is expected to have 0 or 1 instrument. Reached via the drum-map
       // path, which categorizes devices.
       setupTrackWithDevices([
         {
@@ -84,13 +83,13 @@ describe("readOneTrack", () => {
         },
       ]);
 
-      readOneTrack({ trackIndex: 0, include: ["drum-map"] });
+      const result = readOneTrack({ trackIndex: 0, include: ["drum-map"] });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(
-          "Track has 2 instruments (t0/d0 (id device1), t0/d1 (id device2))",
-        ),
+      expect(result.reason).toBe(
+        "track has 2 instruments (t0/d0 (id device1), t0/d1 (id device2)), " +
+          "which is unusual — expected 0 or 1",
       );
+      expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("puts a device of an unrecognized type in no category", () => {

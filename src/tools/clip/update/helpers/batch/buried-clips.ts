@@ -19,7 +19,7 @@ import {
   objectPathForApi,
   stillAtPath,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { appendReason } from "../entries/clip-reasons.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { remainderFinder, type TrimmedLanding } from "./trimmed-landings.ts";
 
 /** Where each clip sat before the call moved any of them, by id. */

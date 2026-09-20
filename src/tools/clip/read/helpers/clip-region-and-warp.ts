@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -16,7 +15,6 @@ import {
   WARP_MODE,
 } from "#src/tools/constants.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface RegionBeats {
   /** Playable region start in beats */
@@ -73,6 +71,13 @@ interface WarpMarkerData {
   beat_time: number;
 }
 
+/** What a warp-marker read has for the clip's entry. */
+export interface WarpMarkerRead {
+  markers?: WarpMarker[];
+  /** Why there are none, when reading them failed */
+  reason?: string;
+}
+
 /** Mapping of Live API warp modes to friendly names */
 export const WARP_MODE_MAPPING: Record<number, string> = {
   [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
@@ -87,38 +92,34 @@ export const WARP_MODE_MAPPING: Record<number, string> = {
 /**
  * Process warp markers for an audio clip
  * @param clip - LiveAPI clip object
- * @returns Array of warp markers or undefined
+ * @returns The markers, or the reason the clip has none to give
  */
-export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
+export function processWarpMarkers(clip: LiveAPI): WarpMarkerRead {
   try {
     const warpMarkersJson = clip.getProperty("warp_markers") as string;
 
     if (!warpMarkersJson || warpMarkersJson === "") {
-      return undefined;
+      return {};
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
 
     // Handle both possible structures: direct array or nested in warp_markers property
     if (Array.isArray(warpMarkersData)) {
-      return warpMarkersData.map(mapMarker);
+      return { markers: warpMarkersData.map(mapMarker) };
     }
 
     if (
       warpMarkersData.warp_markers &&
       Array.isArray(warpMarkersData.warp_markers)
     ) {
-      return warpMarkersData.warp_markers.map(mapMarker);
+      return { markers: warpMarkersData.warp_markers.map(mapMarker) };
     }
 
-    return undefined;
+    return {};
   } catch (error) {
-    // Fail gracefully - clip might not support warp markers or format might be unexpected
-    console.warn(
-      `Failed to read warp markers for clip ${targetLabel(clip)}: ${errorMessage(error)}`,
-    );
-
-    return undefined;
+    // The clip might not support warp markers, or the format is unexpected.
+    return { reason: `warpMarkers unreadable: ${errorMessage(error)}` };
   }
 }
 

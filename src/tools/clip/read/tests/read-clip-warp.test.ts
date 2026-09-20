@@ -75,10 +75,13 @@ describe("readOneClip - warp markers", () => {
     expect(readClipWithWarp().warpMarkers).toBeUndefined();
   });
 
-  it("handles invalid warp markers JSON gracefully", () => {
+  it("says on the clip's own entry that the markers wouldn't read", () => {
     setupAudioClipWithWarpMarkers("invalid json{", "Audio Invalid JSON");
 
-    expect(readClipWithWarp().warpMarkers).toBeUndefined();
+    const result = readClipWithWarp();
+
+    expect(result.warpMarkers).toBeUndefined();
+    expect(result.reason).toContain("warpMarkers unreadable:");
   });
 
   it("does not include warp markers when not requested", () => {

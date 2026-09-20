@@ -242,8 +242,9 @@ export function assertNamesTarget(options: {
 }
 
 /**
- * Read one session slot and grade whether it holds a clip. An empty slot reads
- * back as `id: null`, so both directions are checkable — which is what a
+ * Read a track's session clips and grade whether one slot holds a clip. Reading
+ * the slot itself would error when it is empty, and a state assertion grades an
+ * error as unreadable rather than as "empty" — which is half of what a
  * track/scene transposition needs: the intended slot filled AND the swapped one
  * still empty.
  *
@@ -255,19 +256,17 @@ export function assertSlotOccupancy(
   path: string,
   occupied: boolean,
 ): EvalAssertion {
+  const trackPath = path.split("/")[0] ?? path;
+
   return {
     type: "state",
-    tool: "ppal-read-clip",
-    args: { path, include: [] },
-    expect: (result) =>
-      (((result as { id?: unknown }).id ?? null) != null) === occupied,
-    explain: (result) => {
-      const id = (result as { id?: unknown }).id ?? null;
-
-      return occupied
+    tool: "ppal-read-track",
+    args: { path: trackPath, include: ["session-clips"] },
+    expect: (result) => (slotClipId(result, path) != null) === occupied,
+    explain: (result) =>
+      occupied
         ? `expected a clip at ${path}, found none`
-        : `expected ${path} to stay empty, found clip id ${argText(id)}`;
-    },
+        : `expected ${path} to stay empty, found clip id ${argText(slotClipId(result, path))}`,
   };
 }
 
@@ -439,4 +438,20 @@ export function assertArrangementClipNamed(options: {
           .join(", ") || "no arrangement clips"
       }`,
   };
+}
+
+/**
+ * The id of the clip in one session slot of a read track.
+ * @param result - Parsed ppal-read-track result
+ * @param path - Session slot path (e.g. "t2/s1")
+ * @returns The clip's id, or null when the slot is empty
+ */
+function slotClipId(result: unknown, path: string): string | null {
+  const track = result as {
+    sessionClips?: { id?: string; path?: string }[];
+  };
+
+  const clip = (track.sessionClips ?? []).find((each) => each.path === path);
+
+  return clip?.id ?? null;
 }

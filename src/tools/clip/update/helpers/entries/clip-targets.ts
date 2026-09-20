@@ -9,7 +9,7 @@
 // already happened keeps it as a normal entry with a reason (ADR-0042).
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { appendReason } from "./clip-reasons.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { clipIdAtPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import {
   namedIdParam,

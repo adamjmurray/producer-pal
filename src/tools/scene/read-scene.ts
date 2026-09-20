@@ -222,7 +222,6 @@ function readSceneClips(
       {
         trackIndex,
         sceneIndex,
-        suppressEmptyWarning: true,
         slotValidated: true,
         include,
       },

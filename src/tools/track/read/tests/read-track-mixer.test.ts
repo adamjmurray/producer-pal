@@ -397,7 +397,7 @@ describe("readOneTrack - mixer properties", () => {
     expect(sends[0]).toHaveProperty("gainDb", -6.33);
   });
 
-  it("warns when send count doesn't match return track count", () => {
+  it("says on the track's own entry when the send count doesn't match", () => {
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     setupTrackMixerMocks({
@@ -411,9 +411,10 @@ describe("readOneTrack - mixer properties", () => {
       returnTracks: RETURN_TRACKS.slice(0, 1),
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Send count (2) on track t0 (id track1) doesn't match return track count (1)",
+    expect(result.reason).toBe(
+      "send count (2) doesn't match return track count (1)",
     );
+    expect(consoleSpy).not.toHaveBeenCalled();
     // No return track lines up with the second send, so it carries no returnId
     expectSendsWithReverbAndSecond(result, { return: "Return 2" });
 

@@ -15,6 +15,7 @@
 // under a new id hands its reasons back with {@link moveClipReasons}.
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 
 /** What the clips of one call have to say beyond their own results. */
@@ -198,15 +199,6 @@ export function moveClipReasons(
   if (reasons.refused.delete(fromId)) {
     reasons.refused.add(toId);
   }
-}
-
-/**
- * Add to what an entry says, keeping anything already on it.
- * @param entry - The clip's entry in the result
- * @param reason - What to add
- */
-export function appendReason(entry: ClipResult, reason: string): void {
-  entry.reason = entry.reason == null ? reason : `${entry.reason}; ${reason}`;
 }
 
 /**

@@ -168,7 +168,7 @@ describe("readClip build budget", () => {
     registerMockObject("scene9", { path: livePath.scene(9), properties: {} });
     mockNonExistentObjects();
 
-    readClip({ path: "t0/s9" });
+    expect(() => readClip({ path: "t0/s9" })).toThrow("no clip at t0/s9");
 
     // Nothing at the address: only now does telling an empty slot from a bad
     // one need the track and the scene, and it needs each of them once.

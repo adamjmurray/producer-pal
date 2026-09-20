@@ -89,6 +89,16 @@ returns an array in request order, with a target that couldn't be read holding
 its slot as `{id or path, ok: false, reason}`. Naming one target still returns
 the object on its own.
 
+**A read now says it on the target's own entry, not in a warning.**
+`ppal-read-clip` used to answer an empty clip slot with
+`{id: null, type: null, name: null, path}` and a warning. Naming that slot on
+its own is now an error (`no clip at t0/s3`), and in a list the slot holds its
+place as `{path, ok: false, reason}`, so check for `ok`, not for `id: null`. A
+read that landed but couldn't produce part of the answer carries a `reason` on
+that target's entry and no `ok`: `ppal-read-track` for a send count that doesn't
+match the Set's return tracks and for a track with more than one instrument,
+`ppal-read-device` for why a drum pad or drum chain has no drum map of its own.
+
 **Every write tool now answers the same way, and `ppal-delete` has no `deleted`
 field.** `ppal-update-track`, `-scene` and `-device` used to drop a target they
 couldn't reach and warn. They return an entry for every target named, in order,

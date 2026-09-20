@@ -46,7 +46,6 @@ export function readSessionClips(
     (_clipSlotId, sceneIndex) => ({
       trackIndex,
       sceneIndex,
-      suppressEmptyWarning: true,
       slotValidated: true,
       drumMode,
       ...(include && { include }),

@@ -784,15 +784,16 @@ describe("ppal-duplicate", () => {
     await sleep(100);
 
     // Nothing landed at the destination the refused copy named — reading it
-    // back warns that the slot is empty, which is the point.
+    // back errors because the slot is empty, which is the point.
     const destination = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { path: `t${EMPTY_MIDI_TRACK}/s2` },
     });
 
-    expect(
-      parseToolResultWithWarnings<ReadClipResult>(destination).data.id,
-    ).toBeNull();
+    expect(isToolError(destination)).toBe(true);
+    expect(getToolErrorMessage(destination)).toContain(
+      `no clip at t${EMPTY_MIDI_TRACK}/s2`,
+    );
   });
 });
 
