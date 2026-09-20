@@ -23,7 +23,11 @@ import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-pat
 import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import { type CompleteArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
-import { isSameLiveApiId, parseClipSlot } from "./select-id-resolution.ts";
+import {
+  assertOneSelectTarget,
+  isSameLiveApiId,
+  parseClipSlot,
+} from "./select-id-resolution.ts";
 import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
 export interface PathTarget {
@@ -116,15 +120,8 @@ function targetFromParams({
 }: PathParams): PathTarget {
   const path = namedParam(rawPath, "path");
 
-  // Every other tool takes a comma-separated list, so a model sends one here
-  // too. Without this the grammar only says the root isn't a track or scene.
-  if (path != null && path.includes(",")) {
-    throw pathError(
-      "path",
-      path,
-      "select takes one target per call (Live holds one selection)",
-    );
-  }
+  // Without this the grammar only says the root isn't a track or scene.
+  assertOneSelectTarget("path", path);
 
   const slot = namedHiddenPath(rawSlot, "slot");
   const devicePath = namedHiddenPath(rawDevicePath, "devicePath");

@@ -15,7 +15,7 @@ import { type CommentTree } from "../comment-scan-helpers.ts";
 
 /** Cap on non-test modules whose exports don't name the file, per tree. */
 export const MAIN_EXPORT_LIMITS: Record<CommentTree, number> = {
-  src: 15,
+  src: 14,
   scripts: 0,
   webui: 5,
   evals: 3,

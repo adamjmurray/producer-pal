@@ -11,6 +11,7 @@ import {
   paramNamesSomething,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { buildTrackPath } from "./selection-updates.ts";
 import { rackOfTarget } from "./rack-selection.ts";
 
@@ -214,6 +215,26 @@ export function isSameLiveApiId(idA: string, idB: string): boolean {
   return fromLiveApiId(idA) === fromLiveApiId(idB);
 }
 
+/**
+ * Refuse a comma-separated value on a param select can only take one of. Every
+ * other tool takes a list, so a model sends one here too, and without this the
+ * value reads as a single id or path that names nothing.
+ * @param label - The param the value came from
+ * @param value - The value as the caller wrote it
+ */
+export function assertOneSelectTarget(
+  label: string,
+  value: string | undefined,
+): void {
+  if (value?.includes(",")) {
+    throw pathError(
+      label,
+      value,
+      "select takes one target per call (Live holds one selection)",
+    );
+  }
+}
+
 // --- Helpers below main exports ---
 
 /**
@@ -239,6 +260,10 @@ function namedSelectIds(args: SelectIdArgs): NamedId[] {
     if (paramNamesSomething(value)) {
       named.push({ label, id: (value as string).trim() });
     }
+  }
+
+  for (const entry of named) {
+    assertOneSelectTarget(entry.label, entry.id);
   }
 
   return named;

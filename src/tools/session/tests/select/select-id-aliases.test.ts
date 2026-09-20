@@ -320,6 +320,22 @@ describe("select id aliases", () => {
     ).toThrow("id and trackId name different tracks; send one");
   });
 
+  // Every other tool takes a comma-separated list, so a model sends one here.
+  it("refuses a list of ids, under any spelling", () => {
+    expect(() => select({ id: "id track_123,id track_456" })).toThrow(
+      'invalid id "id track_123,id track_456" - select takes one target per ' +
+        "call (Live holds one selection)",
+    );
+    expect(() => select({ trackId: "1,2" })).toThrow(
+      'invalid trackId "1,2" - select takes one target per call ' +
+        "(Live holds one selection)",
+    );
+    expect(() => select({ clipId: "1,2" })).toThrow(
+      'invalid clipId "1,2" - select takes one target per call ' +
+        "(Live holds one selection)",
+    );
+  });
+
   it("takes the same object under two spellings", () => {
     registerMockObject("track_123", {
       path: livePath.track(0),

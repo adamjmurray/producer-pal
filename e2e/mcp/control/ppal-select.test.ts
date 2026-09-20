@@ -385,6 +385,21 @@ describe("ppal-select", () => {
     );
   });
 
+  it("refuses a list of ids the same way, under any spelling", async () => {
+    const first = (await select({ path: "t0" })).selectedTrack!.id;
+    const second = (await select({ path: `t${EMPTY_MIDI_TRACK}` }))
+      .selectedTrack!.id;
+
+    await expectRefusal(
+      { id: `id ${first},id ${second}` },
+      "select takes one target per call (Live holds one selection)",
+    );
+    await expectRefusal(
+      { trackId: `id ${first},id ${second}` },
+      "select takes one target per call (Live holds one selection)",
+    );
+  });
+
   it("sends an s+ path to the tool that takes it", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-select",
