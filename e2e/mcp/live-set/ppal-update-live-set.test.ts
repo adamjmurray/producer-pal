@@ -140,10 +140,10 @@ describe("ppal-update-live-set", () => {
     });
     const scaleResult = parseToolResult<UpdateResult>(scaleUpdate);
 
-    // Live stored the scale as asked, so only the pitches come back.
+    // Live stored the scale as asked, so only the pitches come back, in the
+    // same comma-joined shape ppal-read-live-set uses.
     expect(scaleResult.scale).toBeUndefined();
-    expect(scaleResult.scalePitches).toBeDefined();
-    expect(Array.isArray(scaleResult.scalePitches)).toBe(true);
+    expect(scaleResult.scalePitches).toBe("D,E,F,G,A,Bb,C");
 
     // Test 2: Disable scale (empty string)
     const disableScale = await ctx.client!.callTool({
@@ -572,7 +572,7 @@ interface UpdateResult {
   tempo?: number;
   timeSignature?: string;
   scale?: string;
-  scalePitches?: string[];
+  scalePitches?: string;
   reason?: string;
   $meta?: string[];
   locator?: {

@@ -24,7 +24,7 @@ const scaleRespellReason =
 // The scale landed as asked, so only what the caller couldn't know comes back.
 const D_MAJOR_RESULT = {
   id: "live_set_id",
-  scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
+  scalePitches: "D,E,Gb,G,A,B,Db",
   $meta: [scaleChangeNote],
 };
 
@@ -230,7 +230,7 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
+      scalePitches: "C,D,E,F,G,A,B",
       $meta: [scaleChangeNote],
     });
   });
@@ -329,7 +329,7 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
+      scalePitches: "D,E,Gb,G,A,B,Db",
       $meta: [scaleChangeNote],
     });
   });
@@ -349,7 +349,7 @@ describe("updateLiveSet", () => {
     expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 1);
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scalePitches: ["G", "A", "B", "C", "D", "E", "Gb"],
+      scalePitches: "G,A,B,C,D,E,Gb",
       $meta: [scaleChangeNote],
     });
   });
@@ -372,9 +372,17 @@ describe("updateLiveSet", () => {
     expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
+      scalePitches: "C,D,E,F,G,A,B",
       $meta: [scaleChangeNote],
     });
+
+    // The pitches use the root the call wrote, so the only read of it is the
+    // spelling check applyScale already does.
+    const rootNoteReads = liveSet.get.mock.calls.filter(
+      (args: unknown[]) => args[0] === "root_note",
+    );
+
+    expect(rootNoteReads).toHaveLength(1);
   });
 
   it("should parse scale correctly for different roots", async () => {
@@ -393,7 +401,7 @@ describe("updateLiveSet", () => {
     expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
-      scalePitches: ["A", "B", "Db", "D", "E", "Gb", "Ab"],
+      scalePitches: "A,B,Db,D,E,Gb,Ab",
       $meta: [scaleChangeNote],
     });
   });

@@ -137,10 +137,14 @@ export async function updateLiveSet(
   }
 
   if (parsedScale != null) {
-    const rootNote = liveSet.getProperty("root_note") as number;
+    // Only Live knows a scale name's intervals, so that read stays. The root is
+    // the pitch class the call just wrote, so don't read it back.
     const scaleIntervals = liveSet.getProperty("scale_intervals") as number[];
 
-    result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
+    result.scalePitches = intervalsToPitchClasses(
+      scaleIntervals,
+      parsedScale.scaleRootNumber,
+    ).join(",");
   }
 
   // Handle locator operations
