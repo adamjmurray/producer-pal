@@ -8,6 +8,7 @@ import {
   prepareSessionClipSlot,
   requireCreatedClip,
   requireCreatedSessionClip,
+  type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 import {
@@ -15,11 +16,9 @@ import {
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
-export interface AudioSessionClipResult {
+export interface AudioSessionClipResult extends SlotWork {
   clip: LiveAPI;
   sceneIndex: number;
-  /** The scenes the slot had to make, or null when none were needed. */
-  created: string | null;
 }
 
 /**
@@ -28,7 +27,7 @@ export interface AudioSessionClipResult {
  * @param sceneIndex - Target scene index (0-based)
  * @param sampleFile - Absolute path to audio file
  * @param liveSet - LiveAPI liveSet object
- * @returns Object with clip, sceneIndex, and the scenes created
+ * @returns Object with clip, sceneIndex, the scenes created, and what it replaced
  */
 export function createAudioSessionClip(
   trackIndex: number,
@@ -36,7 +35,7 @@ export function createAudioSessionClip(
   sampleFile: string,
   liveSet: LiveAPI,
 ): AudioSessionClipResult {
-  const { clipSlot, created } = prepareSessionClipSlot(
+  const { clipSlot, created, overwrote } = prepareSessionClipSlot(
     trackIndex,
     sceneIndex,
     liveSet,
@@ -48,6 +47,7 @@ export function createAudioSessionClip(
     clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
     created,
+    overwrote,
   };
 }
 

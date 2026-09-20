@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMockObject,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildClipResultObject,
@@ -91,9 +94,10 @@ describe("clip-results", () => {
     /**
      * Register t0/s1 as a clip slot.
      * @param hasClip - Whether the slot already holds a clip
+     * @returns The registered clip slot
      */
-    function registerSlot(hasClip: number): void {
-      registerMockObject(livePath.track(0).clipSlot(1), {
+    function registerSlot(hasClip: number): RegisteredMockObject {
+      return registerMockObject(livePath.track(0).clipSlot(1), {
         path: livePath.track(0).clipSlot(1),
         type: "ClipSlot",
         properties: { has_clip: hasClip },
@@ -103,9 +107,7 @@ describe("clip-results", () => {
     it("creates no scenes when the slot already exists", () => {
       // sceneIndex 1 < currentSceneCount 3 → no scenes created; the slot is empty.
       const liveSet = registerLiveSet(3);
-
-      registerSlot(0);
-
+      const clipSlot = registerSlot(0);
       const prepared = prepareSessionClipSlot(
         0,
         1,
@@ -113,7 +115,9 @@ describe("clip-results", () => {
       );
 
       expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
+      expect(clipSlot.call).not.toHaveBeenCalledWith("delete_clip");
       expect(prepared.created).toBeNull();
+      expect(prepared.overwrote).toBeNull();
       expect(prepared.clipSlot.path).toBe(
         String(livePath.track(0).clipSlot(1)),
       );
@@ -132,13 +136,18 @@ describe("clip-results", () => {
       expect(prepared.created).toBe("s1");
     });
 
-    it("throws when a clip already exists in the target slot", () => {
+    it("deletes the clip the slot already holds, and says what it replaced", () => {
       registerLiveSet(3);
-      registerSlot(1);
 
-      expect(() =>
-        prepareSessionClipSlot(0, 1, LiveAPI.from(livePath.liveSet)),
-      ).toThrow("a clip already exists at t0/s1");
+      const clipSlot = registerSlot(1);
+      const prepared = prepareSessionClipSlot(
+        0,
+        1,
+        LiveAPI.from(livePath.liveSet),
+      );
+
+      expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
+      expect(prepared.overwrote).toBe("overwrote the existing clip at t0/s1");
     });
   });
 });

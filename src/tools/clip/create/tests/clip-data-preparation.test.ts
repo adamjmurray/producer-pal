@@ -94,11 +94,15 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
     });
     registerMockObject("track-0", { path: livePath.track(0) });
 
-    // has_clip: 1 makes prepareSessionClipSlot throw inside processClipIteration.
+    // Live refuses the create in each slot, so neither destination gets a clip.
     for (const sceneIndex of [0, 1]) {
       registerMockObject(`clip-slot-0-${sceneIndex}`, {
         path: livePath.track(0).clipSlot(sceneIndex),
-        properties: { has_clip: 1 },
+        methods: {
+          create_clip: () => {
+            throw new Error("boom");
+          },
+        },
       });
     }
 
@@ -106,8 +110,8 @@ describe("createClip - skip entries (createClipAtIndex catch)", () => {
 
     // No bar|beat position: a clip slot doesn't have one.
     expect(result).toStrictEqual([
-      { path: "t0/s0", ok: false, reason: "a clip already exists at t0/s0" },
-      { path: "t0/s1", ok: false, reason: "a clip already exists at t0/s1" },
+      { path: "t0/s0", ok: false, reason: "boom" },
+      { path: "t0/s1", ok: false, reason: "boom" },
     ]);
   });
 

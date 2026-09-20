@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { clipOverwriteNote } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { createMissingScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -103,19 +104,27 @@ export function keepClip(
   );
 }
 
-/** A slot ready for a clip, and the scenes reaching it had to make. */
-export interface PreparedClipSlot {
-  clipSlot: LiveAPI;
+/** What reaching a session slot and clearing it for a new clip took. */
+export interface SlotWork {
   /** The scenes this call created ("s8-s9"), or null when none were needed. */
   created: string | null;
+  /** What the new clip replaced, or null when the slot was empty. */
+  overwrote: string | null;
+}
+
+/** A slot ready for a clip, and what clearing it for one took. */
+export interface PreparedClipSlot extends SlotWork {
+  clipSlot: LiveAPI;
 }
 
 /**
- * Prepare a session clip slot, creating the scenes up to it if needed
+ * Prepare a session clip slot, creating the scenes up to it if needed. A slot
+ * that already holds a clip is emptied: writing into a slot replaces what is
+ * there, the way duplicating or moving a clip into one does.
  * @param trackIndex - Track index (0-based)
  * @param sceneIndex - Target scene index (0-based)
  * @param liveSet - LiveAPI liveSet object
- * @returns The clip slot ready for clip creation, and the scenes created
+ * @returns The empty clip slot, the scenes created, and what it replaced
  */
 export function prepareSessionClipSlot(
   trackIndex: number,
@@ -127,13 +136,17 @@ export function prepareSessionClipSlot(
     livePath.track(trackIndex).clipSlot(sceneIndex),
   );
 
-  if (clipSlot.getProperty("has_clip")) {
-    throw new Error(
-      `a clip already exists at ${slotPath(trackIndex, sceneIndex)}`,
-    );
+  if (!clipSlot.getProperty("has_clip")) {
+    return { clipSlot, created, overwrote: null };
   }
 
-  return { clipSlot, created };
+  clipSlot.call("delete_clip");
+
+  return {
+    clipSlot,
+    created,
+    overwrote: clipOverwriteNote(slotPath(trackIndex, sceneIndex)),
+  };
 }
 
 /**

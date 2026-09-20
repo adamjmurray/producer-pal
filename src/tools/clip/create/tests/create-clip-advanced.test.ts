@@ -245,9 +245,17 @@ describe("createClip - advanced features", () => {
     // The focus guard (`lastClip != null` → dropped) would select a skip entry,
     // which has no id.
     it("selects nothing when no destination got a clip", async () => {
-      setupSessionMocks({
+      const { clipSlot } = setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
-        clipSlot: { has_clip: 1 },
+      });
+
+      // Live refuses the create, so neither destination gets a clip.
+      overrideCall(clipSlot, (method) => {
+        if (method === "create_clip") {
+          throw new Error("boom");
+        }
+
+        return USE_CALL_FALLBACK;
       });
 
       const result = await createClip({ slot: "0/0,0/0", focus: true });

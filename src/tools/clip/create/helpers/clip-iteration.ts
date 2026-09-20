@@ -11,6 +11,7 @@ import {
   requireCreatedClip,
   requireCreatedSessionClip,
   type MidiNote,
+  type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   arrangementPath,
@@ -91,7 +92,7 @@ export function processClipIteration(
 ): ClipResultObject {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
-  let createdScenes: string | null = null;
+  let slotWork: SlotWork | null = null;
 
   if (sampleFile) {
     // Audio clip creation
@@ -107,7 +108,7 @@ export function processClipIteration(
 
       clip = result.clip;
       currentSceneIndex = result.sceneIndex;
-      createdScenes = result.created;
+      slotWork = result;
     } else {
       // Arrangement view
       const result = createAudioArrangementClip(
@@ -142,7 +143,7 @@ export function processClipIteration(
 
       clip = result.clip;
       currentSceneIndex = result.sceneIndex;
-      createdScenes = result.created;
+      slotWork = result;
     } else {
       // Arrangement view
       const result = createArrangementClip(
@@ -191,8 +192,8 @@ export function processClipIteration(
     audio.warping ?? null,
   );
 
-  if (createdScenes != null) {
-    clipResult.created = createdScenes;
+  if (slotWork != null) {
+    noteSlotWork(clipResult, slotWork);
   }
 
   return clipResult;
@@ -200,11 +201,24 @@ export function processClipIteration(
 
 // --- Private helpers ---
 
-interface SessionClipResult {
+/**
+ * Say on the new clip's entry what reaching its slot took.
+ * @param clipResult - The new clip's entry
+ * @param slotWork - The scenes made and the clip replaced, if any
+ */
+function noteSlotWork(clipResult: ClipResultObject, slotWork: SlotWork): void {
+  if (slotWork.created != null) {
+    clipResult.created = slotWork.created;
+  }
+
+  if (slotWork.overwrote != null) {
+    clipResult.reason = slotWork.overwrote;
+  }
+}
+
+interface SessionClipResult extends SlotWork {
   clip: LiveAPI;
   sceneIndex: number;
-  /** The scenes the slot had to make, or null when none were needed. */
-  created: string | null;
 }
 
 /**
@@ -213,7 +227,7 @@ interface SessionClipResult {
  * @param sceneIndex - Target scene index (0-based)
  * @param clipLength - Clip length in beats
  * @param liveSet - LiveAPI live_set object
- * @returns Object with clip, sceneIndex, and the scenes created
+ * @returns Object with clip, sceneIndex, the scenes created, and what it replaced
  */
 function createSessionClip(
   trackIndex: number,
@@ -221,7 +235,7 @@ function createSessionClip(
   clipLength: number,
   liveSet: LiveAPI,
 ): SessionClipResult {
-  const { clipSlot, created } = prepareSessionClipSlot(
+  const { clipSlot, created, overwrote } = prepareSessionClipSlot(
     trackIndex,
     sceneIndex,
     liveSet,
@@ -233,6 +247,7 @@ function createSessionClip(
     clip: requireCreatedSessionClip(clipSlot, slotPath(trackIndex, sceneIndex)),
     sceneIndex,
     created,
+    overwrote,
   };
 }
 

@@ -314,6 +314,12 @@ unchanged: its `path` names a scene to update, not a place to make one, and a
 path past the last scene is refused with `ppal-create-scene` named in the
 reason.
 
+**A clip slot that already holds a clip is replaced.** `ppal-create-clip` used
+to refuse an occupied slot ("a clip already exists at t0/s0") and now deletes
+what was there, the way `ppal-duplicate` and `ppal-update-clip`'s `toPath`
+already do. The new clip's entry says so, with
+`reason: "overwrote the existing clip at t0/s0"`.
+
 ### Chains say `chain`, not Live's class name
 
 A chain's `type` was Live's class name, `Chain` or `DrumChain`. It is now

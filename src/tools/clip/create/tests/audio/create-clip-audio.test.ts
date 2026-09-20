@@ -216,12 +216,16 @@ describe("createClip - audio clips", () => {
       ).rejects.toThrow("out of range");
     });
 
-    it("should throw when the clip slot already holds a clip", async () => {
-      setupSessionAudioClipMocks({ hasClip: 1 });
+    it("should replace the clip the slot already holds", async () => {
+      const { clipSlot } = setupSessionAudioClipMocks({ hasClip: 1 });
 
-      await expect(
-        createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" }),
-      ).rejects.toThrow("a clip already exists at t0/s0");
+      const result = (await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+      })) as { reason?: string };
+
+      expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
+      expect(result.reason).toBe("overwrote the existing clip at t0/s0");
     });
   });
 

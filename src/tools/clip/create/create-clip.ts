@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
@@ -441,7 +442,7 @@ function noteIgnoredFirstStart(
   for (const clip of createdClips) {
     // A destination that got no clip already says why in its own reason.
     if (!("ok" in clip)) {
-      clip.reason = "firstStart ignored: set looping: true to use it";
+      appendReason(clip, "firstStart ignored: set looping: true to use it");
     }
   }
 }

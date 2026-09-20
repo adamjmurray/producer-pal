@@ -20,6 +20,8 @@ import {
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when nothing names a destination", async () => {
@@ -310,21 +312,46 @@ describe("createClip - basic validation and time signatures", () => {
     setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { signature_numerator: 4, signature_denominator: 4 },
-      clipSlot: { has_clip: 1 },
     });
     registerEmptyClipSlot(1);
+    // An audio track takes no MIDI clip, so t1/s0 gets none.
+    registerMockObject("7", {
+      path: livePath.track(1),
+      properties: { has_midi_input: 0 },
+    });
 
     const result = (await createClip({
-      slot: "0/0,0/1",
+      path: "t1/s0,t0/s1",
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
     })) as Array<{ reason?: string }>;
 
     expect(result.map((entry) => entry.reason)).toStrictEqual([
-      "a clip already exists at t0/s0",
+      "track t1 (id 7) is audio; a MIDI clip needs a MIDI track",
       "firstStart ignored: set looping: true to use it",
     ]);
+  });
+
+  // Both are the clip's own news, so neither note replaces the other.
+  it("keeps the note about the clip it replaced beside the firstStart note", async () => {
+    setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { signature_numerator: 4, signature_denominator: 4 },
+      clipSlot: { has_clip: 1 },
+    });
+
+    const result = (await createClip({
+      slot: "0/0",
+      notes: "C4 1|1",
+      firstStart: "1|2",
+      looping: false,
+    })) as { reason?: string };
+
+    expect(result.reason).toBe(
+      "overwrote the existing clip at t0/s0; " +
+        "firstStart ignored: set looping: true to use it",
+    );
   });
 
   it("sets playing_position when firstStart is used with looping clips", async () => {

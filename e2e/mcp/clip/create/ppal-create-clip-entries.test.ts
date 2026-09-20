@@ -5,8 +5,8 @@
 
 /**
  * E2E tests for ppal-create-clip's multi-destination result: N destinations
- * named, N entries back, in the order named, and a destination that got no clip
- * holding its place as a skip (ADR-0042).
+ * named, N entries back, in the order named, each saying what its own
+ * destination got — including a slot whose clip the call replaced (ADR-0042).
  * Uses: e2e-test-set (t8 is empty, session and arrangement alike)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -15,9 +15,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
-  getToolErrorMessage,
   getToolWarnings,
-  isToolError,
   parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
@@ -27,8 +25,8 @@ import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
-/** An entry for a destination that got no clip. */
-interface SkipEntry {
+/** One destination's entry: the clip it got, or why it got none. */
+interface ClipEntry {
   path?: string;
   ok?: false;
   reason?: string;
@@ -79,7 +77,7 @@ describe("ppal-create-clip result entries", () => {
     expect(names).toStrictEqual(["Arr A", "Session", "Arr B"]);
   });
 
-  it("refuses an occupied clip slot in its own entry and makes the rest", async () => {
+  it("replaces the clip in an occupied slot and makes the rest", async () => {
     await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: { path: `t${EMPTY_MIDI_TRACK}/s0`, name: "Already here" },
@@ -90,47 +88,63 @@ describe("ppal-create-clip result entries", () => {
       name: "ppal-create-clip",
       arguments: {
         path: `t${EMPTY_MIDI_TRACK}/s0,t${EMPTY_MIDI_TRACK}/s1`,
-        name: "Refused,Made",
+        name: "Replacing,Made",
       },
     });
-    const entries = parseBatchResult<SkipEntry>(result, 2);
+    const entries = parseBatchResult<ClipEntry>(result, 2);
 
-    expect(entries[0]).toStrictEqual({
-      path: `t${EMPTY_MIDI_TRACK}/s0`,
-      ok: false,
-      reason: `a clip already exists at t${EMPTY_MIDI_TRACK}/s0`,
-    });
+    expect(entries[0]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
+    expect(entries[0]?.ok).toBeUndefined();
+    expect(entries[0]?.reason).toBe(
+      `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s0`,
+    );
     expect(entries[1]?.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
     expect(entries[1]?.ok).toBeUndefined();
 
-    // The refusal is the entry's, so nothing about it rides in a warning.
-    expect(getToolWarnings(result)).not.toContainEqual(
-      expect.stringContaining("already exists"),
-    );
-
     await sleep(100);
 
-    // The occupied slot kept the clip that was already there.
+    // Both slots hold the clips this call made.
+    expect(await readClipName(entries[0]!.id!)).toBe("Replacing");
     expect(await readClipName(entries[1]!.id!)).toBe("Made");
   });
 
-  // One destination has no list for an entry to hold a place in, so the reason
-  // comes back as the error it would have been all along.
-  it("errors when the one slot it names already holds a clip", async () => {
-    await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: { path: `t${EMPTY_MIDI_TRACK}/s0` },
-    });
+  // Writing into a slot replaces what is there, the way duplicating into one
+  // does, and the new clip's entry is where that is reported.
+  it("replaces the clip in the one slot it names", async () => {
+    const first = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}/s0`, notes: "C3 1|1" },
+      }),
+    );
+
     await sleep(100);
 
-    const refused = await ctx.client!.callTool({
+    const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { path: `t${EMPTY_MIDI_TRACK}/s0` },
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s0`, notes: "E3 1|1" },
     });
+    const entry = parseToolResult<{ id: string; reason?: string }>(result);
 
-    expect(isToolError(refused)).toBe(true);
-    expect(getToolErrorMessage(refused)).toContain(
-      `a clip already exists at t${EMPTY_MIDI_TRACK}/s0`,
+    expect(entry.id).not.toBe(first.id);
+    expect(entry.reason).toBe(
+      `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s0`,
     );
+
+    // The replacement is the entry's own news, so nothing rides in a warning.
+    expect(getToolWarnings(result)).toHaveLength(0);
+
+    await sleep(100);
+
+    // The slot holds the new clip, notes and all.
+    const slot = parseToolResult<{ id: string; notes?: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { path: `t${EMPTY_MIDI_TRACK}/s0`, include: ["notes"] },
+      }),
+    );
+
+    expect(slot.id).toBe(entry.id);
+    expect(slot.notes).toContain("E3");
   });
 });

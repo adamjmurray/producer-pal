@@ -435,26 +435,37 @@ describe("createClip - session view", () => {
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
   });
 
-  it("throws when the one slot it names already holds a clip", async () => {
+  it("replaces the clip an occupied slot already holds", async () => {
     setupLiveSet();
     setupTrack(0);
-    const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
+    const { clipSlot, clip } = setupSessionClip(0, 0, {
+      hasClip: 1,
+      clipId: "clip_0_0",
+      clipProperties: { length: 4 },
+    });
 
-    await expect(
-      createClip({ slot: "0/0", name: "This Should Fail" }),
-    ).rejects.toThrow("a clip already exists at t0/s0");
+    const result = await createClip({ slot: "0/0", name: "Replacement" });
 
-    expect(clipSlot.call).not.toHaveBeenCalledWith(
+    expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
+    expect(clipSlot.call).toHaveBeenCalledWith(
       "create_clip",
       expect.anything(),
     );
+    expect(result).toStrictEqual({
+      id: clip.id,
+      path: "t0/s0",
+      reason: "overwrote the existing clip at t0/s0",
+    });
   });
 
-  // The occupied slot keeps its place, so the entries still pair with the call.
-  it("refuses an occupied slot in its own entry and creates the rest", async () => {
+  it("replaces an occupied slot's clip and creates the rest", async () => {
     setupLiveSet({ scenes: children("scene0") });
     setupTrack(0);
-    setupSessionClip(0, 0, { hasClip: 1 });
+    const occupied = setupSessionClip(0, 0, {
+      hasClip: 1,
+      clipId: "clip_0_0",
+      clipProperties: { length: 4 },
+    });
     const { clip } = setupSessionClip(0, 1, {
       clipId: "clip_0_1",
       clipProperties: { length: 4 },
@@ -463,7 +474,11 @@ describe("createClip - session view", () => {
     const result = await createClip({ path: "t0/s0,t0/s1" });
 
     expect(result).toStrictEqual([
-      { path: "t0/s0", ok: false, reason: "a clip already exists at t0/s0" },
+      {
+        id: occupied.clip.id,
+        path: "t0/s0",
+        reason: "overwrote the existing clip at t0/s0",
+      },
       { id: clip.id, path: "t0/s1", created: "s1" },
     ]);
   });

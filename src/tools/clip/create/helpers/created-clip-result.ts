@@ -106,7 +106,7 @@ export interface ClipResultObject {
   color?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
-  /** What the call asked for that the clip didn't get */
+  /** What the call asked for that the clip didn't get, or what it replaced */
   reason?: string;
 }
 
