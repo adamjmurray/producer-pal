@@ -31,17 +31,17 @@ describe("the doubled-spelling guard has one home", () => {
     throwOnFileViolations(
       violations,
       "Found a hand-rolled path/slot both-set check",
-      `Call refuseDoubledSpelling or warnDoubledSpelling from ${GUARD} instead.`,
+      `Call refuseDoubledSpelling from ${GUARD} instead.`,
     );
 
     expect(violations).toHaveLength(0);
   });
 
-  it("should still offer both ways of reporting the conflict", () => {
+  it("should refuse the conflict, never warn past it", () => {
     const guard = fs.readFileSync(path.join(projectRoot, GUARD), "utf8");
 
     expect(guard).toContain("export function refuseDoubledSpelling");
-    expect(guard).toContain("export function warnDoubledSpelling");
+    expect(guard).not.toContain("console.warn");
   });
 });
 

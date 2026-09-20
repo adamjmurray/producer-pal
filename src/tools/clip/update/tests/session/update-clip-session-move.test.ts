@@ -766,27 +766,23 @@ describe("resolveMoveDestinations", () => {
     expect(moveLanes(undefined, "  ", 1)).toStrictEqual([null]);
   });
 
-  it("moves nowhere when toPath and toSlot both name a destination", () => {
-    // An update tool warns and skips instead of throwing, but it must not pick
-    // one destination over the other.
-    expect(moveLanes("t2/s3", "4/5", 1)).toStrictEqual([null]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("both name a destination, so no clip was moved"),
+  it("refuses when toPath and toSlot both name a destination", () => {
+    // Nothing has run yet, so the whole call is refused rather than moving
+    // nowhere while the rest of the update succeeds.
+    expect(() => moveLanes("t2/s3", "4/5", 1)).toThrow(
+      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
     );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  // The worst version of the pairing bug: a toSlot of "," named no second
-  // destination, so the check refused a move the caller had asked for once —
-  // and the result said nothing about the clip staying put.
+  // A toSlot of "," names no second destination, so it is not a conflict: the
+  // move the caller asked for once still happens.
   it("moves to toPath when toSlot names nothing", () => {
     expect(moveLanes("t2/s3", ",", 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('toSlot "," names nothing'),
-    );
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("no clip was moved"),
     );
   });
 

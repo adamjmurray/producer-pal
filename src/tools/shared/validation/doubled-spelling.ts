@@ -13,7 +13,6 @@
 // conflict — a bug that has been fixed once per param until this became one
 // function.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
@@ -38,9 +37,10 @@ export interface NamedSpelling {
 }
 
 /**
- * Reads the pair, refusing a call that spelled it both ways. For a tool that
- * makes objects: nothing has been created yet, so refusing is atomic and the
- * caller retries with one spelling, while a guess leaves a copy to clean up.
+ * Reads the pair, refusing a call that spelled it both ways. The conflict is in
+ * the args, so it is known before anything runs: refusing is atomic and the
+ * caller retries with one spelling. Warning instead would return a
+ * success-shaped result for the rest of a call we couldn't read (ADR-0035).
  * @param args - The two params as the tool received them
  * @returns What each spelling named
  */
@@ -50,29 +50,10 @@ export function refuseDoubledSpelling(
   const named = readSpellings(args);
 
   if (named.value != null && named.aliasValue != null) {
-    throw new Error(doubledMessage(args));
-  }
-
-  return named;
-}
-
-/**
- * Reads the pair, dropping both and warning when the call spelled it both ways.
- * For a tool that writes properties: the rest of the batch still lands, so the
- * warning says what the conflict cost rather than costing the whole call.
- * @param args - The two params as the tool received them
- * @param args.outcome - What didn't happen, for the warning ("no clip was moved")
- * @returns What each spelling named, or null when both named something
- */
-export function warnDoubledSpelling(
-  args: DoubledSpellingArgs & { outcome: string },
-): NamedSpelling | null {
-  const named = readSpellings(args);
-
-  if (named.value != null && named.aliasValue != null) {
-    console.warn(doubledMessage(args, `, so ${args.outcome}`));
-
-    return null;
+    throw new Error(
+      `${args.param} and ${args.alias} both name ${args.noun}; ` +
+        `use ${args.param} alone (${args.alias} is deprecated)`,
+    );
   }
 
   return named;
@@ -90,17 +71,4 @@ function readSpellings(args: DoubledSpellingArgs): NamedSpelling {
     value: namedParam(args.value, args.param),
     aliasValue: namedHiddenPath(args.aliasValue ?? undefined, args.alias),
   };
-}
-
-/**
- * The message both entry points report the conflict with.
- * @param args - The two params as the tool received them
- * @param outcome - What the conflict cost, already punctuated, or "" for a refusal
- * @returns The message
- */
-function doubledMessage(args: DoubledSpellingArgs, outcome = ""): string {
-  return (
-    `${args.param} and ${args.alias} both name ${args.noun}${outcome}; ` +
-    `use ${args.param} alone (${args.alias} is deprecated)`
-  );
 }

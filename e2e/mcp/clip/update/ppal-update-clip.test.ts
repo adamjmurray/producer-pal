@@ -687,6 +687,33 @@ describe("ppal-update-clip", () => {
     );
   });
 
+  it("refuses toPath and toSlot together, leaving the clip alone", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s6`, {
+      notes: "C3 1|1",
+      name: "Untouched",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        id: clipId,
+        toPath: `t${EMPTY_MIDI_TRACK}/s7`,
+        toSlot: `${EMPTY_MIDI_TRACK}/8`,
+        name: "Not Renamed",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "toPath and toSlot both name a destination",
+    );
+
+    await sleep(100);
+
+    // Refused up front, so the rename in the same call never landed either.
+    expect(await readClipName(clipId)).toBe("Untouched");
+  });
+
   // A blank id reads as unset, so the path carries the call — but nothing in
   // the result would say the id the caller sent was dropped.
   it("warns when a blank id rides along with a path", async () => {

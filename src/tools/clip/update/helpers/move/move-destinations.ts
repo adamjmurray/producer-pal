@@ -13,7 +13,7 @@ import {
   pathNamesSomething,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { warnDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
+import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import {
   requireClipDestinationPath,
   type ClipDestinationPath,
@@ -105,23 +105,16 @@ export function resolveMoveDestinations(
     positions: Array.from({ length: clipCount }, () => null),
     refusals: Array.from({ length: clipCount }, () => null),
   };
-  // A warning, not a refusal: the rest of the update (name, color, length)
-  // still lands, and nothing was created that the caller would have to clean up
-  // before retrying — unlike create-clip and duplicate, which refuse.
-  const named = warnDoubledSpelling({
+  // Refused, not warned: nothing has run yet, so the caller can just retry with
+  // one spelling. Dropping both would move nothing while the rest of the update
+  // succeeded, which reads as though the move landed.
+  const { value: toPath, aliasValue: toSlot } = refuseDoubledSpelling({
     param: "toPath",
     value: rawToPath,
     alias: "toSlot",
     aliasValue: rawToSlot,
     noun: "a destination",
-    outcome: "no clip was moved",
   });
-
-  if (named == null) {
-    return none;
-  }
-
-  const { value: toPath, aliasValue: toSlot } = named;
 
   if (toPath == null && toSlot == null) {
     return none;
