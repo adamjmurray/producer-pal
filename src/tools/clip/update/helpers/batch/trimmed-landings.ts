@@ -15,6 +15,7 @@
 // hands back that other clip.
 
 import { clipsOnLane } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
@@ -107,7 +108,7 @@ function addGroupTrims(
   for (const { id, length } of landings.toReversed()) {
     if (coveredAfter > 0 && length > coveredAfter) {
       trims.set(id, {
-        lane: laneOf(group),
+        lane: arrangementLaneOf(group.landing),
         beats: group.startBeats + coveredAfter,
         end: group.startBeats + length,
       });
@@ -142,17 +143,4 @@ function knownLengths(
   }
 
   return measured;
-}
-
-/**
- * The lane a group landed on, as a path coordinate.
- * @param group - The clips that landed on one lane and position
- * @returns The lane
- */
-function laneOf(group: MoveGroup): ArrangementLane {
-  const { trackIndex, takeLane } = group.landing;
-
-  return takeLane == null
-    ? { kind: "track", trackIndex }
-    : { kind: "take-lane", trackIndex, laneIndex: takeLane };
 }

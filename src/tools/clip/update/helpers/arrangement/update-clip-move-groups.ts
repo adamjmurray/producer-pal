@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneLabel,
   type ArrangementTrack,
@@ -38,7 +37,6 @@ export interface MoveGroup {
   landing: ArrangementTrack;
   /** The position they land at, in beats. */
   startBeats: number;
-  count: number;
   /** What each clip's placement landed here, by source id, in landing order. */
   landed: Map<string, LandedClip>;
   /** Clips waiting to see whether the overwrite really happens. */
@@ -60,20 +58,6 @@ export function moveGroupKey(
   startBeats: number,
 ): string {
   return `${takeLaneLabel(landing)}@${startBeats}`;
-}
-
-/**
- * Count one clip against the group it lands in.
- * @param groups - Counts per group, added to
- * @param landing - The track and lane the clip lands on
- * @param startBeats - The position it lands at, in beats
- */
-export function tallyMovedClip(
-  groups: Map<string, MoveGroup>,
-  landing: ArrangementTrack,
-  startBeats: number,
-): void {
-  moveGroupFor(groups, landing, startBeats).count++;
 }
 
 /**
@@ -133,20 +117,6 @@ export function deferClipDeletion(
 }
 
 /**
- * Warn about clips this call stacked on top of each other.
- * @param groups - Counts per group, from tallyMovedClip
- */
-export function emitArrangementWarnings(groups: Map<string, MoveGroup>): void {
-  for (const { landing, count } of groups.values()) {
-    if (count > 1) {
-      console.warn(
-        `${count} clips on ${takeLaneLabel(landing)} moved to the same position - later clips will overwrite earlier ones`,
-      );
-    }
-  }
-}
-
-/**
  * The group for a lane and position, created empty the first time.
  * @param groups - Counts per group
  * @param landing - The track and lane the clip lands on
@@ -162,7 +132,6 @@ function moveGroupFor(
   const group = groups.get(key) ?? {
     landing,
     startBeats,
-    count: 0,
     landed: new Map<string, LandedClip>(),
     deferred: [],
   };

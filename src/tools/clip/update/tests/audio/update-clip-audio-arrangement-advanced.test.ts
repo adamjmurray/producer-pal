@@ -77,6 +77,9 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
   );
 });
 
+const NOTHING_MORE =
+  "arrangementLength unchanged: the audio file has no more content to show";
+
 describe("Unlooped unwarped audio clips - arrangementLength extension via loop_end", () => {
   /**
    * Set up an unwarped audio clip with common defaults.
@@ -124,7 +127,11 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     );
 
     expect(clip.set).toHaveBeenCalledWith("loop_end", 6.0);
-    expect(result).toStrictEqual({ id: "800", path: "t0[1|1]" });
+    expect(result).toStrictEqual({
+      id: "800",
+      path: "t0[1|1]",
+      reason: NOTHING_MORE,
+    });
   });
 
   it.each([
@@ -132,13 +139,13 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
       clipId: "810",
       name: "Unwarped Capped",
       endTimeSequence: new MockSequence(6.0, 6.0, 9.6),
-      description: "should emit warning when capped at file boundary",
+      description: "says on the entry that the file boundary capped it",
     },
     {
       clipId: "820",
       name: "Unwarped No Hidden",
       endTimeSequence: 6.0 as number | MockSequence,
-      description: "should emit warning when no additional content available",
+      description: "says on the entry that there was no more content",
     },
   ])("$description", async ({ clipId, name, endTimeSequence }) => {
     setupUnwarpedClip(clipId, name, endTimeSequence);
@@ -148,7 +155,11 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
       mockContext,
     );
 
-    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
+    expect(result).toStrictEqual({
+      id: clipId,
+      path: "t0[1|1]",
+      reason: NOTHING_MORE,
+    });
   });
 });
 

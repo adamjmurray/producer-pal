@@ -146,7 +146,13 @@ describe("updateClip reports a clip the batch buried", () => {
     })) as ClipResult[];
 
     expect(result).toStrictEqual([
-      { id: LANDED, path: "t0[26|1]" },
+      {
+        id: LANDED,
+        path: "t0[26|1]",
+        // The long clip's own landing is what cleared the short one out of
+        // the way, so its entry says so.
+        reason: "overwrote the clip at t0[26|1]",
+      },
       {
         id: "short",
         path: "t0[26|1]",
@@ -154,7 +160,6 @@ describe("updateClip reports a clip the batch buried", () => {
         reason: `not updated: ${BURIED}`,
       },
     ]);
-    // Only one clip ever landed there, so nothing stacked.
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -249,9 +254,7 @@ describe("a clip the call holds back for an overwrite", () => {
       deleted: true,
     });
     expect(result[1]?.id).toBe(LANDED);
-    expect(capturedWarnings()).toStrictEqual([
-      "2 clips on t0 moved to the same position - later clips will overwrite earlier ones",
-    ]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });
 

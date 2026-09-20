@@ -315,6 +315,18 @@ create reports `{operation, id}`; a rename, and a delete by id or time, report
 the id of the locator they touched; a delete by name keeps its `count` and the
 name it matched. The `time` and `name` you sent don't come back.
 
+**An arrangement write says what it ran over.** Creating, moving or lengthening
+a clip into a range another clip occupies overwrites it, as it always has. What
+is new is that the written clip's entry carries a `reason` naming what that
+cost: `overwrote the clip at t0[4|1]`, `shortened the clip at t0[4|1]`, or
+`split the clip at t0[1|1] into t0[1|1] and t0[4|1]`, several joined with `; `.
+The whole-call warning `N clips on t0 moved to the same position` is gone, and
+so are the four warnings about an unlooped audio clip that couldn't reach the
+`arrangementLength` you asked for. That clip's entry now says
+`arrangementLength unchanged: the audio file has no more content to show`, or
+`arrangementLength landed at 2bar: ...` when it grew part of the way. A script
+matching on any of that warning text needs to read the entries instead.
+
 `ppal-select` is unchanged: what it reports is the selection it made.
 
 **A clip destination past the last scene makes the scenes up to it.**

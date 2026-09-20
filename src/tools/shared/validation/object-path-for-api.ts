@@ -3,13 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { type ArrangementLane } from "./helpers/object-path-position.ts";
-import { arrangementPath, slotPath } from "./helpers/object-paths.ts";
-import { songMeter } from "./helpers/song-meter.ts";
+import {
+  arrangementPath,
+  arrangementPositionPath,
+  slotPath,
+} from "./helpers/object-paths.ts";
 import { formatObjectPath } from "./object-path.ts";
 
 const SCENE = /^live_set scenes (\d+)$/;
@@ -236,21 +238,12 @@ function arrangementClipPath(
   trackIndex: number,
   laneIndex: string | undefined,
 ): string {
-  const { numerator, denominator } = songMeter();
   const lane: ArrangementLane =
     laneIndex == null
       ? { kind: "track", trackIndex }
       : { kind: "take-lane", trackIndex, laneIndex: Number(laneIndex) };
 
-  return formatObjectPath({
-    kind: "arrangement-position",
-    lane,
-    position: abletonBeatsToBarBeat(
-      api.getProperty("start_time") as number,
-      numerator,
-      denominator,
-    ),
-  });
+  return arrangementPositionPath(lane, api.getProperty("start_time") as number);
 }
 
 /**

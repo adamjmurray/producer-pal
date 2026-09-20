@@ -53,6 +53,8 @@ interface TargetEntry {
   color?: string;
   path?: string;
   ok?: false;
+  /** Clips only: true when another clip in the call was moved on top of it. */
+  deleted?: boolean;
   reason?: string;
   params?: Array<{ reason?: string }>;
   sends?: SendEntry[];
@@ -142,8 +144,12 @@ describe("warnings the tools still raise", () => {
       await warningsFrom("ppal-update-clip", { path: "t0/s0", toPath: "   " }),
     ).toStrictEqual(["WARNING: blank toPath ignored — leave it out instead"]);
   });
+});
 
-  it("says two clips were moved onto one spot in the same lane", async () => {
+describe("calls that report on the entry and warn about nothing", () => {
+  // This used to be a whole-call warning naming the lane and a count. The
+  // clip that was buried carries the news itself now.
+  it("marks the clip two moves onto one spot buried, and warns nothing", async () => {
     for (const bar of ["1|1", "5|1"]) {
       parseToolResult<CreateClipResult>(
         await ctx.client!.callTool({
@@ -158,18 +164,17 @@ describe("warnings the tools still raise", () => {
       await sleep(100);
     }
 
-    expect(
-      await warningsFrom("ppal-update-clip", {
-        path: `${SCRATCH}[1|1],${SCRATCH}[5|1]`,
-        toPath: "[21|1],[21|1]",
-      }),
-    ).toStrictEqual([
-      `WARNING: 2 clips on ${SCRATCH} moved to the same position - later clips will overwrite earlier ones`,
-    ]);
-  });
-});
+    const entries = await entriesFrom("ppal-update-clip", {
+      path: `${SCRATCH}[1|1],${SCRATCH}[5|1]`,
+      toPath: "[21|1],[21|1]",
+    });
 
-describe("calls that report on the entry and warn about nothing", () => {
+    expect(entries[0]).toStrictEqual(
+      expect.objectContaining({ deleted: true }),
+    );
+    expect(entries[1]?.path).toBe(`${SCRATCH}[21|1]`);
+  });
+
   it("says on each entry that a colour snapped to the palette", async () => {
     const snapped = {
       color: "#3C3C3C",

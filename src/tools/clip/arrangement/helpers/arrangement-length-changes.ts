@@ -14,6 +14,7 @@ import {
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type ClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 
 export interface ArrangementContext {
@@ -66,6 +67,8 @@ interface HandleArrangementLengtheningArgs {
   currentStartTime: number;
   currentEndTime: number;
   context: ArrangementContext;
+  /** What each clip has to say beyond its result. */
+  reasons: ClipReasons;
 }
 
 /**
@@ -78,6 +81,7 @@ interface HandleArrangementLengtheningArgs {
  * @param options.currentStartTime - Current start time in beats
  * @param options.currentEndTime - Current end time in beats
  * @param options.context - Per-request context
+ * @param options.reasons - What each clip has to say beyond its result
  * @returns Array of updated clip info
  */
 export function handleArrangementLengthening({
@@ -88,6 +92,7 @@ export function handleArrangementLengthening({
   currentStartTime,
   currentEndTime,
   context,
+  reasons,
 }: HandleArrangementLengtheningArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
@@ -122,6 +127,7 @@ export function handleArrangementLengthening({
       currentEndTime,
       clipStartMarker,
       track,
+      reasons,
     });
   }
 

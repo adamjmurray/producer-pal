@@ -20,11 +20,9 @@ import {
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
-  emitArrangementWarnings,
   moveGroupKey,
   type MoveGroup,
 } from "../../helpers/arrangement/update-clip-move-groups.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type ClipReasons,
   newClipReasons,
@@ -60,16 +58,17 @@ const DEST_MAIN_LANE: ArrangementTrack = {
 };
 
 /**
- * What the tally counted for a lane at the position every move here aims at.
+ * How many copies are confirmed landed on a lane at the position every move
+ * here aims at.
  * @param groups - The tally a batch of moves shared
  * @param landing - The lane to read, defaulting to the destination's main one
- * @returns The count, or 0 when nothing was counted there
+ * @returns The number of landings, or 0 when nothing landed there
  */
 function landedCount(
   groups: Map<string, MoveGroup>,
   landing: ArrangementTrack = DEST_MAIN_LANE,
 ): number {
-  return groups.get(moveGroupKey(landing, 32))?.count ?? 0;
+  return groups.get(moveGroupKey(landing, 32))?.landed.size ?? 0;
 }
 
 const TAKE_LANE_SOURCE = livePath
@@ -377,16 +376,14 @@ describe("moving an arrangement clip to another lane", () => {
 
   // add_new_notes throws AFTER Live already created a real clip: the
   // destination now holds a real, if incomplete, clip — not nothing — so the
-  // move must be reported (and counted) as landed, not refused, and the
-  // source must still be cleared to complete it.
-  it("reports and counts a partial re-create, keeping the source untouched", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
+  // move is reported rather than refused outright, and the source is left
+  // alone because either clip could be the broken one.
+  it("reports a partial re-create, keeping the source untouched", () => {
     const result = runMove({
       destination: { trackIndex: DEST_TRACK, takeLane: 0 },
       initialLanes: 1,
       postCreateFails: true,
       hasNotes: true,
-      movedClipGroups,
     });
 
     expect(movedReason()).toContain(
@@ -398,7 +395,6 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
-    expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
   });
 
   // A non-empty file_path only means Live once saw a sample there, so the
@@ -474,15 +470,14 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(SOURCE_ID);
-    // These all return before the placement writes anything, so nothing was
-    // overwritten and nothing is counted.
+    // These all return before the placement writes anything, so nothing landed.
     expect(landedCount(movedClipGroups)).toBe(0);
   });
 
-  // The count is what the "same position" warning says out loud, so a refused
-  // clip must not turn a single landing into a stack of two.
+  // A refused clip must not leave a landing behind for a sibling of the same
+  // call to be held back for.
   it.each(REFUSALS)(
-    "doesn't stack a clip that landed with %s",
+    "records one landing when a sibling was refused with %s",
     (_label, opts) => {
       const movedClipGroups = new Map<string, MoveGroup>();
 
@@ -490,19 +485,15 @@ describe("moving an arrangement clip to another lane", () => {
       // so the landing move gets one that takes it.
       runMove({ ...opts, movedClipGroups });
       runMove({ movedClipGroups });
-      emitArrangementWarnings(movedClipGroups);
 
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("moved to the same position"),
-      );
       expect(landedCount(movedClipGroups)).toBe(1);
     },
   );
 
-  // The opposite case: Live clears the target range BEFORE the duplicate that
-  // then silently declines, so the clip that "wasn't moved" has already
-  // destroyed whatever stood there. That is the overwrite the warning is for.
-  it("counts a placement that cleared the target and then failed", () => {
+  // Live clears the target range BEFORE the duplicate that then silently
+  // declines, so the clip that "wasn't moved" has already destroyed whatever
+  // stood there — and nothing landed to replace it.
+  it("reports a placement that cleared the target and then failed", () => {
     const movedClipGroups = new Map<string, MoveGroup>();
     const result = runMove({ duplicateFails: true, movedClipGroups });
 
@@ -514,64 +505,29 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
-    expect(landedCount(movedClipGroups)).toBe(1);
+    expect(landedCount(movedClipGroups)).toBe(0);
   });
 
-  it("counts a failed placement toward the stack warning", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
-
-    runMove({ movedClipGroups });
-    runMove({ duplicateFails: true, movedClipGroups });
-    emitArrangementWarnings(movedClipGroups);
-
-    expect(capturedWarnings()).toContainEqual(
-      `2 clips on t${DEST_TRACK} moved to the same position - later clips will overwrite earlier ones`,
-    );
-  });
-
-  // A take lane is a lane of its own: two clips at one position on different
-  // lanes sit side by side, so there is no overwrite to warn about.
-  it("doesn't stack clips landing on different take lanes", () => {
+  // A take lane is a lane of its own, so two clips at one position on
+  // different ones sit side by side and each keeps its own landing.
+  it("records a landing per take lane", () => {
     const movedClipGroups = new Map<string, MoveGroup>();
 
     runMove({ destination: takeLane(0), movedClipGroups });
     runMove({ destination: takeLane(1), movedClipGroups });
-    emitArrangementWarnings(movedClipGroups);
 
-    // Both landed — each on its own lane, so neither group holds a stack.
     expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
     expect(landedCount(movedClipGroups, takeLane(1))).toBe(1);
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("moved to the same position"),
-    );
   });
 
-  it("doesn't stack a take-lane landing against a main-lane one", () => {
+  it("keeps a take-lane landing apart from a main-lane one", () => {
     const movedClipGroups = new Map<string, MoveGroup>();
 
     runMove({ movedClipGroups });
     runMove({ destination: takeLane(0), movedClipGroups });
-    emitArrangementWarnings(movedClipGroups);
 
     expect(landedCount(movedClipGroups)).toBe(1);
     expect(landedCount(movedClipGroups, takeLane(0))).toBe(1);
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("moved to the same position"),
-    );
-  });
-
-  // One lane, one position: these really do land on top of each other, and the
-  // warning names the lane so the caller knows which one.
-  it("warns for clips landing on one take lane at one position", () => {
-    const movedClipGroups = new Map<string, MoveGroup>();
-
-    runMove({ destination: takeLane(1), movedClipGroups });
-    runMove({ destination: takeLane(1), movedClipGroups });
-    emitArrangementWarnings(movedClipGroups);
-
-    expect(capturedWarnings()).toContainEqual(
-      `2 clips on t${DEST_TRACK}/l1 moved to the same position - later clips will overwrite earlier ones`,
-    );
   });
 });
 
@@ -806,9 +762,11 @@ describe("a move that names a position but no lane", () => {
       `t${DEST_TRACK}[9|1]`,
       `t${DEST_TRACK}/l0[9|1]`,
     ]);
-    // Different lanes, so nothing stacked and nothing may be warned about.
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("moved to the same position"),
+    // Different lanes, so neither entry reports overwriting the other.
+    expect(result).not.toContainEqual(
+      expect.objectContaining({
+        reason: expect.stringContaining("overwrote the clip"),
+      }),
     );
   });
 });

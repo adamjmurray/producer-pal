@@ -8,11 +8,8 @@ import {
   durationToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ClipReasons, ignoreClipParams } from "./entries/clip-reasons.ts";
 
 interface BeatPositions {
@@ -147,27 +144,9 @@ export function calculateBeatPositions({
       timeSigDenominator,
     );
 
-    // If start not provided, read current value from clip
-    if (startBeats == null) {
-      if (wasLooping) {
-        startBeats = currentStart;
-      } else {
-        // For non-looping clips, derive from end_marker - length
-        const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
-
-        startBeats = currentEnd - lengthBeats;
-
-        // Sanity check for MIDI clips only - audio clips have length based on sample duration
-        if (
-          isMidiClip &&
-          Math.abs(startBeats - currentStart) > SAME_TIME_EPSILON
-        ) {
-          console.warn(
-            `clip ${targetLabel(clip)}: derived start (${startBeats}) differs from current start_marker (${currentStart})`,
-          );
-        }
-      }
-    }
+    // With no `start`, a looping clip keeps its own; an unlooped one holds its
+    // end and grows backward, which is what `length` means there.
+    startBeats ??= wasLooping ? currentStart : currentEnd - lengthBeats;
 
     endBeats = startBeats + lengthBeats;
   }

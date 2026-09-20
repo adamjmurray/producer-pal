@@ -14,6 +14,13 @@ import {
   type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import {
+  arrangementLaneOf,
+  arrangementWriteEffects,
+  type LaneSnapshot,
+  snapshotLane,
+} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
+import {
   arrangementPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
@@ -93,6 +100,7 @@ export function processClipIteration(
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
   let slotWork: SlotWork | null = null;
+  const laneBefore = laneBeforeCreate(view, trackIndex, takeLane, track);
 
   if (sampleFile) {
     // Audio clip creation
@@ -196,7 +204,7 @@ export function processClipIteration(
     noteSlotWork(clipResult, slotWork);
   }
 
-  return clipResult;
+  return noteDisplaced(clipResult, laneBefore, clip.id);
 }
 
 // --- Private helpers ---
@@ -212,8 +220,63 @@ function noteSlotWork(clipResult: ClipResultObject, slotWork: SlotWork): void {
   }
 
   if (slotWork.overwrote != null) {
-    clipResult.reason = slotWork.overwrote;
+    appendReason(clipResult, slotWork.overwrote);
   }
+}
+
+/**
+ * Photograph the arrangement lane a create is about to write into, so the new
+ * clip's entry can say what it displaced. Null in the session, where a slot
+ * holds one clip and there is nothing to displace.
+ * @param view - View type (session or arrangement)
+ * @param trackIndex - Track index
+ * @param takeLane - Take lane the clip goes on, or null for the main lane
+ * @param track - The destination track, resolved once for the whole call
+ * @returns The lane as it was, or null for a session create
+ */
+function laneBeforeCreate(
+  view: string,
+  trackIndex: number,
+  takeLane: LiveAPI | null,
+  track: LiveAPI | null,
+): LaneSnapshot | null {
+  if (view === "session") {
+    return null;
+  }
+
+  return snapshotLane(
+    arrangementLaneOf({
+      trackIndex,
+      takeLane: takeLane?.takeLaneIndex ?? null,
+    }),
+    // The batch already resolved the lane; don't build it per clip.
+    takeLane ?? track ?? undefined,
+  );
+}
+
+/**
+ * Say on the new clip's entry what the create did to the clips already on the
+ * lane, which Live reports nowhere.
+ * @param clipResult - The new clip's entry
+ * @param laneBefore - The lane as it was, or null for a session create
+ * @param clipId - The clip the create made, which describes itself
+ * @returns The entry
+ */
+function noteDisplaced(
+  clipResult: ClipResultObject,
+  laneBefore: LaneSnapshot | null,
+  clipId: string,
+): ClipResultObject {
+  const displaced =
+    laneBefore == null
+      ? undefined
+      : arrangementWriteEffects(laneBefore, [clipId]);
+
+  if (displaced != null) {
+    appendReason(clipResult, displaced);
+  }
+
+  return clipResult;
 }
 
 interface SessionClipResult extends SlotWork {

@@ -184,9 +184,9 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(source.id);
   });
 
-  // The "same position" warning counts what landed. Both of these were refused,
-  // so nothing stacked and nothing may be warned about.
-  it("doesn't count refused clips as a stack at one position", async () => {
+  // Both of these were refused, so neither wrote anything — and neither entry
+  // may claim to have run over the other.
+  it("says nothing was displaced when both moves were refused", async () => {
     const first = await createClip("49|1", "Refused One");
     const second = await createClip("53|1", "Refused Two");
 
@@ -199,13 +199,12 @@ describe("arrangement clip moved to another lane", () => {
     );
     const entries = data as unknown as ReadClipResult[];
 
-    // Both of them, not just one: a single refusal leaves a lone landing,
-    // which wouldn't have warned about a stack even before the count was true.
     for (const entry of entries) {
       expect(entry.reason).toContain(`not moved: track t${AUDIO_TRACK} (id `);
+      expect(entry.reason).not.toContain("overwrote");
     }
 
-    expect(warnings.join(" ")).not.toContain("moved to the same position");
+    expect(warnings).toStrictEqual([]);
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "49|1"))?.id,
     ).toBe(first.id);
@@ -215,8 +214,8 @@ describe("arrangement clip moved to another lane", () => {
   });
 
   // Take lanes are separate lanes: two clips at one position on different ones
-  // sit side by side, so the "same position" warning must not claim a stack.
-  it("doesn't warn about clips landing on different take lanes", async () => {
+  // sit side by side, so neither can have run over the other.
+  it("says nothing was displaced on different take lanes", async () => {
     const first = await createClip("65|1", "Lane Zero");
     const second = await createClip("69|1", "Lane One");
 
@@ -236,12 +235,17 @@ describe("arrangement clip moved to another lane", () => {
     }
 
     expect(landed[0]).not.toBe(landed[1]);
-    expect(warnings.join(" ")).not.toContain("moved to the same position");
+
+    for (const entry of entries) {
+      expect(entry.reason).not.toContain("overwrote");
+    }
+
+    expect(warnings).toStrictEqual([]);
   });
 
-  // One lane, one position: these really do overwrite each other, and the
-  // warning names the lane it happened on.
-  it("warns about clips landing on one take lane at one position", async () => {
+  // One lane, one position: these really do land on top of each other, and the
+  // clip that arrived second is the one that can say so.
+  it("says on the later clip's entry that it overwrote the earlier one", async () => {
     const first = await createClip("77|1", "Stacked One");
     const second = await createClip("89|1", "Stacked Two");
 
@@ -254,15 +258,17 @@ describe("arrangement clip moved to another lane", () => {
     );
     const entries = data as unknown as ReadClipResult[];
 
-    // Both moves ran, so the stack the warning names is real.
+    // Both moves ran, so the stack is real.
     for (const entry of entries) {
       expect(entry.reason).toContain(`re-created on t${CHILD_TRACK}/l`);
     }
 
-    // The lane is named: before this, the warning was charged to the track.
-    expect(warnings.join(" ")).toMatch(
-      new RegExp(`2 clips on t${CHILD_TRACK}/l\\d+ moved to the same position`),
+    // The first found the lane empty; the second found the first there.
+    expect(entries[0]?.reason).not.toContain("overwrote");
+    expect(entries[1]?.reason).toMatch(
+      new RegExp(`overwrote the clip at t${CHILD_TRACK}/l\\d+\\[93\\|1\\]`),
     );
+    expect(warnings).toStrictEqual([]);
   });
 
   // The planner runs the clip being landed on first, trusting its declared move

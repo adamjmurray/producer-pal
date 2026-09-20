@@ -44,6 +44,46 @@ async function readClipName(id: string): Promise<string | undefined> {
   ).name;
 }
 
+/**
+ * Put a clip on the empty MIDI track's arrangement.
+ * @param position - Where it starts, bar|beat
+ * @param length - How long it is
+ * @returns The entry the create answered with
+ */
+async function makeClipAt(
+  position: string,
+  length: string,
+): Promise<CreateClipResult> {
+  const result = parseToolResult<CreateClipResult>(
+    await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}[${position}]`,
+        notes: "C3 1|1",
+        length,
+      },
+    }),
+  );
+
+  await sleep(100);
+
+  return result;
+}
+
+/**
+ * Make a clip over ground something else is standing on, and report what its
+ * entry says that cost.
+ * @param position - Where the new clip starts, bar|beat
+ * @param length - How long it is
+ * @returns The entry's reason, or undefined when it had nothing to say
+ */
+async function reasonForClipAt(
+  position: string,
+  length: string,
+): Promise<string | undefined> {
+  return (await makeClipAt(position, length)).reason;
+}
+
 describe("ppal-create-clip result entries", () => {
   // A mixed list used to answer clip slots first and the arrangement after, so
   // the entries no longer lined up with the call and name/color landed on the
@@ -106,6 +146,31 @@ describe("ppal-create-clip result entries", () => {
     // Both slots hold the clips this call made.
     expect(await readClipName(entries[0]!.id!)).toBe("Replacing");
     expect(await readClipName(entries[1]!.id!)).toBe("Made");
+  });
+
+  // Writing into an occupied arrangement range is normal and goes ahead, but
+  // Live reports nothing about the clip it destroys to make room.
+  it("says on the new clip's entry what it displaced", async () => {
+    await makeClipAt("701|1", "4bar");
+    await makeClipAt("709|1", "1bar");
+    await makeClipAt("713|1", "4bar");
+
+    // Whole: the new clip covers the 1-bar clip at 709|1 exactly.
+    expect(await reasonForClipAt("709|1", "1bar")).toBe(
+      `overwrote the clip at t${EMPTY_MIDI_TRACK}[709|1]`,
+    );
+
+    // Front: the new clip starts inside the 4-bar clip and runs past its end.
+    expect(await reasonForClipAt("704|1", "4bar")).toBe(
+      `shortened the clip at t${EMPTY_MIDI_TRACK}[701|1]`,
+    );
+
+    // Middle: Live keeps the head on the original clip and makes the tail a
+    // new one, so the entry names both pieces.
+    expect(await reasonForClipAt("714|1", "1bar")).toBe(
+      `split the clip at t${EMPTY_MIDI_TRACK}[713|1] into ` +
+        `t${EMPTY_MIDI_TRACK}[713|1] and t${EMPTY_MIDI_TRACK}[715|1]`,
+    );
   });
 
   // Writing into a slot replaces what is there, the way duplicating into one

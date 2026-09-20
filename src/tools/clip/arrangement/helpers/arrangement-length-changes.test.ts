@@ -17,6 +17,7 @@ import {
   setupArrangementClipPath,
   setupArrangementMocks,
 } from "./arrangement-length-changes-test-helpers.ts";
+import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import {
   type ClipIdResult,
   handleArrangementLengthening,
@@ -41,6 +42,7 @@ describe("arrangement-length-changes", () => {
           currentStartTime: 0,
           currentEndTime: 8,
           context: {},
+          reasons: newClipReasons(),
         }),
       ).toThrow("could not determine trackIndex for clip");
     });
@@ -105,6 +107,7 @@ describe("arrangement-length-changes", () => {
         currentStartTime: 0,
         currentEndTime: 12,
         context: { silenceWavPath: "/test.wav" },
+        reasons: newClipReasons(),
       });
 
       // Should call createAudioClipInSession for audio clips
@@ -608,6 +611,7 @@ function runLengthening(
     currentStartTime: args.currentStartTime,
     currentEndTime: args.currentEndTime,
     context: { silenceWavPath: "/test.wav" },
+    reasons: newClipReasons(),
   });
 
   return { tile, clip, result };

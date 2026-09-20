@@ -36,11 +36,11 @@ const clipReason = (clipId: string): string =>
   joinedClipReason(reasons, clipId);
 
 /**
- * How many clips the tally counted on one lane at one position.
+ * How many copies are confirmed landed on one lane at one position.
  * @param groups - The tally
  * @param trackIndex - The lane's track
  * @param startBeats - The position
- * @returns The count, or undefined when nothing landed there
+ * @returns The number of landings, or undefined when the group is absent
  */
 function groupCount(
   groups: Map<string, MoveGroup>,
@@ -48,7 +48,7 @@ function groupCount(
   startBeats: number,
 ): number | undefined {
   return groups.get(moveGroupKey({ trackIndex, takeLane: null }, startBeats))
-    ?.count;
+    ?.landed.size;
 }
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
@@ -321,8 +321,7 @@ describe("arrangement-move", () => {
           {
             landing: { trackIndex, takeLane: null },
             startBeats: 64,
-            count: 2,
-            landed: new Map(),
+            landed: new Map([["earlier", { id: "earlier-copy", length: 16 }]]),
             deferred: [],
           },
         ],
@@ -330,7 +329,7 @@ describe("arrangement-move", () => {
 
       runStartOperation(mockClip as unknown as LiveAPI, 64, movedClipGroups);
 
-      expect(groupCount(movedClipGroups, trackIndex, 64)).toBe(3);
+      expect(groupCount(movedClipGroups, trackIndex, 64)).toBe(2);
     });
 
     // Nothing about the clip is touched here: only a confirmed landing, later
@@ -349,7 +348,7 @@ describe("arrangement-move", () => {
         expect.anything(),
         expect.anything(),
       );
-      // Not counted either: nothing has landed on it yet.
+      // Nothing has landed on it yet either.
       expect(groupCount(movedClipGroups, 0, 16)).toBe(0);
       expect(
         movedClipGroups.get(moveGroupKey({ trackIndex: 0, takeLane: null }, 16))
@@ -514,9 +513,6 @@ describe("a clip held back for an overwrite", () => {
       { id: MOVED, path: "t0[17|1]" },
     ]);
     expect(deletedIds(track)).toStrictEqual([`id ${SECOND}`, `id ${FIRST}`]);
-    expect(capturedWarnings()).toContain(
-      "2 clips on t0 moved to the same position - later clips will overwrite earlier ones",
-    );
   });
 
   // The bug this guards: the first clip used to be cleared on the prediction
@@ -553,7 +549,7 @@ describe("a clip held back for an overwrite", () => {
   });
 
   it("skips the delete when the landing already cleared it away", () => {
-    const { result, sourceTrack, count } = flushHeldBack(
+    const { result, sourceTrack } = flushHeldBack(
       SECOND,
       planBuryingFirst(),
       false,
@@ -561,8 +557,6 @@ describe("a clip held back for an overwrite", () => {
 
     expect(result).toStrictEqual({ id: FIRST, deleted: true });
     expect(sourceTrack.call).not.toHaveBeenCalled();
-    // Still counted: the clip is gone either way.
-    expect(count).toBe(2);
   });
 
   // Survivors descend in length, but a non-survivor can outlast a later, shorter
@@ -585,7 +579,7 @@ describe("a clip held back for an overwrite", () => {
   // The failed placement cleared the target range before the copy it never
   // made, and this clip was sitting in it.
   it("reports a held-back clip the failed placement destroyed anyway", () => {
-    const { result, sourceTrack, count } = flushHeldBack(
+    const { result, sourceTrack } = flushHeldBack(
       "outsider",
       planBuryingFirst(),
       false,
@@ -593,8 +587,6 @@ describe("a clip held back for an overwrite", () => {
 
     expect(result).toStrictEqual({ id: FIRST, deleted: true });
     expect(sourceTrack.call).not.toHaveBeenCalled();
-    // Nothing landed, so it stacked with nothing.
-    expect(count).toBe(1);
   });
 
   it("clears nothing when the call planned no overwrite at all", () => {
@@ -726,14 +718,13 @@ function planBurying(
 }
 
 /**
- * The held clip survived the landing: its entry says so, nothing was deleted,
- * and the group still counts just the one clip.
+ * The held clip survived the landing: its entry says so and nothing was
+ * deleted.
  * @param flushed - What the flush left behind
  */
 function expectHeldClipKept(flushed: ReturnType<typeof flushHeldBack>): void {
   expect(flushed.result).toStrictEqual({ id: FIRST, deleted: false });
   expect(flushed.sourceTrack.call).not.toHaveBeenCalled();
-  expect(flushed.count).toBe(1);
 }
 
 /**
@@ -742,7 +733,7 @@ function expectHeldClipKept(flushed: ReturnType<typeof flushHeldBack>): void {
  * @param landed - The clip that landed at the destination
  * @param plan - The overwrite plan, or undefined when the call planned none
  * @param clipExists - Whether the held clip survived the landing
- * @returns Its entry, its source track, and how many clips the group counts
+ * @returns Its entry and its source track
  */
 function flushHeldBack(
   landed: string,
@@ -756,7 +747,7 @@ function flushHeldBack(
 
   flushDeferredDeletions(movedClipGroups, plan);
 
-  return { result, sourceTrack, count: movedClipGroups.get(GROUP)?.count };
+  return { result, sourceTrack };
 }
 
 function groupHoldingOneClipBack(landed: string, clipExists = true) {
@@ -772,7 +763,6 @@ function groupHoldingOneClipBack(landed: string, clipExists = true) {
       {
         landing: { trackIndex: 0, takeLane: null },
         startBeats: TARGET_BEATS,
-        count: 1,
         landed: new Map([[landed, { id: MOVED, length: 16 }]]),
         deferred: [
           {

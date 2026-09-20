@@ -5,6 +5,11 @@
 
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
+  arrangementWriteEffects,
+  snapshotLane,
+} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import {
+  noteClipReason,
   refuseClipWork,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
@@ -75,7 +80,12 @@ export function handleArrangementLengthOperation({
 
   // Check if shortening, lengthening, or same
   if (arrangementLengthBeats > currentArrangementLength) {
-    // Lengthening via tiling or hidden content exposure
+    // Growing into the lane overwrites whatever sits after the clip, so
+    // photograph the lane first and say what the growth cost.
+    const laneBefore = snapshotLane({
+      kind: "track",
+      trackIndex: clip.trackIndex as number,
+    });
     const result = handleArrangementLengthening({
       clip,
       isAudioClip,
@@ -84,7 +94,17 @@ export function handleArrangementLengthOperation({
       currentStartTime,
       currentEndTime,
       context,
+      reasons,
     });
+    // The clip itself and every tile it laid describe themselves.
+    const displaced = arrangementWriteEffects(laneBefore, [
+      clip.id,
+      ...result.map(({ id }) => id),
+    ]);
+
+    if (displaced != null) {
+      noteClipReason(reasons, clip.id, displaced);
+    }
 
     updatedClips.push(...result);
   } else if (arrangementLengthBeats < currentArrangementLength) {

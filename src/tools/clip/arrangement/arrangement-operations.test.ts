@@ -4,6 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  clearMockRegistry,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   type ClipReasons,
   newClipReasons,
@@ -109,6 +116,56 @@ describe("handleArrangementLengthOperation", () => {
 
     expect(shorteningSpy).toHaveBeenCalledTimes(1);
     expect(result).toStrictEqual([]);
+  });
+
+  // Growing a clip runs over whatever sits after it, and Live says nothing
+  // about the clip it destroys.
+  it("says on the clip's entry what the lengthening overwrote", () => {
+    clearMockRegistry();
+    mockNonExistentObjects();
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const trackProps: Record<string, unknown> = {
+      arrangement_clips: children("789", "neighbour"),
+    };
+
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: trackProps,
+    });
+    registerMockObject("789", {
+      path: livePath.track(0).arrangementClip(0),
+      type: "Clip",
+      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 8 },
+    });
+    registerMockObject("neighbour", {
+      path: livePath.track(0).arrangementClip(1),
+      type: "Clip",
+      properties: { start_time: 8, end_time: 16 },
+    });
+    vi.spyOn(helpers, "handleArrangementLengthening").mockImplementation(() => {
+      trackProps.arrangement_clips = children("789");
+
+      return [{ id: "789" }];
+    });
+
+    const reasons = newClipReasons();
+
+    handleArrangementLengthOperation({
+      clip: LiveAPI.from("789"),
+      isAudioClip: false,
+      arrangementLengthBeats: 16,
+      context: {},
+      reasons,
+    });
+
+    expect(reasons.said.get("789")).toStrictEqual([
+      "overwrote the clip at t0[3|1]",
+    ]);
   });
 
   it("does nothing when target length equals current length", () => {

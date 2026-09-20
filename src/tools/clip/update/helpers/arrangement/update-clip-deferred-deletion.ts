@@ -90,8 +90,7 @@ export function deferNonSurvivorDeletion({
  * Settle every clip the call held back, once all its moves have run.
  *
  * A clip is cleared only when something long enough to bury it actually landed
- * on its group — then it is counted too, since the count is what the "same
- * position" warning says out loud. A clip nothing landed on top of stays.
+ * on its group. A clip nothing landed on top of stays.
  * @param movedClipGroups - Tally of clips landing on each lane and position
  * @param plan - What the call was set to overwrite; absent when it planned none
  */
@@ -119,7 +118,6 @@ export function flushDeferredDeletions(
       }
 
       result.deleted = true;
-      group.count++;
 
       // The landing may already have cleared the range this clip sat in, in
       // which case there is nothing left to delete.

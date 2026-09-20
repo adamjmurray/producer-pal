@@ -11,6 +11,11 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import {
+  arrangementLaneOf,
+  arrangementWriteEffects,
+  snapshotLane,
+} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -29,7 +34,6 @@ import { placeMovedClip } from "./place-moved-clip.ts";
 import {
   forgetLandedLength,
   recordLandedClip,
-  tallyMovedClip,
   type MoveGroup,
 } from "./update-clip-move-groups.ts";
 
@@ -138,6 +142,10 @@ export function handleArrangementStartOperation({
     return null;
   }
 
+  // The landing overwrites whatever is in its way — including a clip an
+  // earlier target of this same call put there — so photograph the destination
+  // lane and let this clip's entry say what it displaced.
+  const laneBefore = snapshotLane(arrangementLaneOf(landing));
   const newClip = placeMovedClip({
     clip,
     destination,
@@ -145,23 +153,25 @@ export function handleArrangementStartOperation({
     targetBeats,
     isMidiClip,
     context,
-    movedClipGroups,
     reasons,
   });
+  // The source describes itself: it is about to be cleared, and a move onto
+  // its own lane trims it on the way.
+  const displaced = arrangementWriteEffects(
+    laneBefore,
+    newClip == null ? [clip.id] : [clip.id, newClip.id],
+  );
+
+  if (displaced != null) {
+    noteClipReason(reasons, clip.id, displaced);
+  }
 
   // Null covers two cases, both already on the clip's entry: refused before
-  // anything was touched (nothing to tally), or a partial re-create that tallied
-  // itself before returning here. Either way the source is left alone.
+  // anything was touched, or a partial re-create. Either way the source is
+  // left alone.
   if (newClip == null) {
     return clip.id;
   }
-
-  // Counted against the lane and position the placement wrote to — the pair
-  // the "same position" warning names. Counted after the placement ran, never
-  // before: a refusal above wrote nothing, while a placement that ran and then
-  // failed still counts, because it cleared the target range before the copy
-  // that never appeared.
-  tallyMovedClip(movedClipGroups, landing, targetBeats);
 
   // Verify duplicate succeeded before deleting original
   if (!newClip.exists()) {

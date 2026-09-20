@@ -8,10 +8,7 @@ import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { type OverwritePlan } from "./helpers/arrangement/update-clip-arrangement-overwrite-plan.ts";
 import { flushDeferredDeletions } from "./helpers/arrangement/update-clip-deferred-deletion.ts";
-import {
-  emitArrangementWarnings,
-  type MoveGroup,
-} from "./helpers/arrangement/update-clip-move-groups.ts";
+import { type MoveGroup } from "./helpers/arrangement/update-clip-move-groups.ts";
 import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
 import {
   type ClipEntry,
@@ -234,10 +231,7 @@ function finishUpdate({
   resultsPerSlot,
   focus,
 }: FinishUpdateArgs): ClipEntry | ClipEntry[] {
-  // Before the warnings: a clip cleared here counts toward the group the
-  // "same position" warning names.
   flushDeferredDeletions(movedClipGroups, overwrites);
-  emitArrangementWarnings(movedClipGroups);
 
   const entries = clipEntriesInCallOrder(
     targets.named,

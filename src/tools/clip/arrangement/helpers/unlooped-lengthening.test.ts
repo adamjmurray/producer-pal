@@ -6,9 +6,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  clipLandedNothing,
+  newClipReasons,
+  type ClipReasons,
+} from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { joinedClipReason } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 const EPSILON = 0.001;
+const NO_MORE_CONTENT = "the audio file has no more content to show";
+
+/** What the last run's clip said on its entry. */
+let reasons: ClipReasons = newClipReasons();
+const clipReason = (): string => joinedClipReason(reasons, "clip-1");
 
 interface RunOpts {
   props: Record<string, unknown>;
@@ -27,6 +37,8 @@ interface RunOpts {
  * @returns The result array, the clip.set spy, and the session-creation spy
  */
 function run(opts: RunOpts) {
+  reasons = newClipReasons();
+
   const set = vi.fn();
   const clip = {
     id: "clip-1",
@@ -53,6 +65,7 @@ function run(opts: RunOpts) {
     currentEndTime: opts.currentEndTime ?? 0,
     clipStartMarker: opts.clipStartMarker,
     track: {} as unknown as LiveAPI,
+    reasons,
   });
 
   return { result, set, spy };
@@ -192,7 +205,7 @@ describe("handleUnloopedLengthening", () => {
   });
 
   describe("warped unlooped audio", () => {
-    it("caps loop_end at the file content boundary and warns", () => {
+    it("caps loop_end at the file content boundary and says where it landed", () => {
       // totalContentFromStart = 20 - 4 = 16, capped below requested 100
       const { set } = warped({
         end_marker: 20,
@@ -203,18 +216,14 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16); // loop_start(0) + 16
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("capped at file content boundary"),
+      expect(clipReason()).toBe(
+        `arrangementLength landed at 4bar: ${NO_MORE_CONTENT}`,
       );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("beats available"),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("requested"),
-      );
+      // It grew, so the clip is a real entry rather than a skip.
+      expect(clipLandedNothing(reasons, "clip-1")).toBe(false);
     });
 
-    it("warns and skips when no additional content is available", () => {
+    it("says nothing changed when no additional content is available", () => {
       // totalContentFromStart(8) == currentArrangementLength(8)
       const { set } = warped({
         end_marker: 12,
@@ -224,14 +233,8 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 50,
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Cannot lengthen unlooped audio clip"),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("beats available"),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("currently shown"),
+      expect(clipReason()).toBe(
+        `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
       );
       expect(set).not.toHaveBeenCalledWith("loop_end", expect.anything());
     });
@@ -246,13 +249,13 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 50,
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("no additional file content"),
+      expect(clipReason()).toBe(
+        `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
       );
       expect(set).not.toHaveBeenCalledWith("loop_end", expect.anything());
     });
 
-    it("does not warn when the full requested length is achievable", () => {
+    it("says nothing when the full requested length is achievable", () => {
       // effectiveTarget(16) == arrangementLengthBeats(16), no cap warning
       const { set } = warped({
         end_marker: 30,
@@ -263,10 +266,10 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16);
-      expect(capturedWarnings()).toHaveLength(0);
+      expect(clipReason()).toBe("");
     });
 
-    it("does not warn at the exact cap boundary (target == requested - EPSILON)", () => {
+    it("says nothing at the exact cap boundary (target == requested - EPSILON)", () => {
       // effectiveTarget == arrangementLengthBeats - EPSILON; `<` is false there
       const { set } = warped({
         end_marker: 16,
@@ -277,7 +280,7 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16 - EPSILON);
-      expect(capturedWarnings()).toHaveLength(0);
+      expect(clipReason()).toBe("");
     });
 
     it("does not extend end_marker when target equals current end_marker", () => {
@@ -304,57 +307,45 @@ describe("handleUnloopedLengthening", () => {
       expect(set).toHaveBeenCalledWith("loop_end", 18);
     });
 
-    it("warns at the file boundary when no additional length is achieved", () => {
+    it("says nothing changed at the file boundary", () => {
       // actualArrangementLength == currentArrangementLength(8)
       unwarped({ end_time: 8 });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Cannot lengthen unlooped audio clip"),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("at file boundary"),
+      expect(clipReason()).toBe(
+        `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
       );
     });
 
-    it("warns at the exact no-content boundary (actual == current + EPSILON)", () => {
+    it("says nothing changed at the exact boundary (actual == current + EPSILON)", () => {
       // actualArrangementLength == currentArrangementLength + EPSILON
       unwarped({ end_time: 8 + EPSILON });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("Cannot lengthen unlooped audio clip"),
+      expect(clipReason()).toBe(
+        `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
       );
     });
 
-    it("warns that the clip was capped when it falls short of the request", () => {
+    it("says where it landed when it falls short of the request", () => {
       // actual(12) is between current(8) and requested(16)
       unwarped({ end_time: 12 });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("capped at file content boundary"),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("beats achieved"),
-      );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("requested"),
-      );
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("Cannot lengthen"),
+      expect(clipReason()).toBe(
+        `arrangementLength landed at 3bar: ${NO_MORE_CONTENT}`,
       );
     });
 
-    it("does not warn when the requested length is fully achieved", () => {
+    it("says nothing when the requested length is fully achieved", () => {
       // actualArrangementLength(16) == requested(16)
       unwarped({ end_time: 16 });
 
-      expect(capturedWarnings()).toHaveLength(0);
+      expect(clipReason()).toBe("");
     });
 
-    it("does not warn at the exact cap boundary (actual == requested - EPSILON)", () => {
+    it("says nothing at the exact cap boundary (actual == requested - EPSILON)", () => {
       // actualArrangementLength == arrangementLengthBeats - EPSILON; `<` is false
       unwarped({ end_time: 16 - EPSILON });
 
-      expect(capturedWarnings()).toHaveLength(0);
+      expect(clipReason()).toBe("");
     });
 
     it("computes clip start time by subtracting current length from end time", () => {
@@ -365,11 +356,8 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 100,
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("capped at file content boundary"),
-      );
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("at file boundary"),
+      expect(clipReason()).toBe(
+        `arrangementLength landed at 4bar: ${NO_MORE_CONTENT}`,
       );
     });
 
@@ -381,8 +369,8 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 18,
       });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("capped at file content boundary"),
+      expect(clipReason()).toBe(
+        `arrangementLength landed at 4bar: ${NO_MORE_CONTENT}`,
       );
     });
   });

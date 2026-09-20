@@ -3,21 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
-  emitArrangementWarnings,
-  tallyMovedClip,
+  deferClipDeletion,
+  forgetLandedLength,
+  moveGroupKey,
+  recordLandedClip,
   type MoveGroup,
 } from "../helpers/arrangement/update-clip-move-groups.ts";
-
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  warn: vi.fn(),
-  log: vi.fn(),
-}));
-
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 
 /**
  * A track's main arrangement lane, where a move with no take lane lands.
@@ -28,81 +23,57 @@ function mainLane(trackIndex: number): ArrangementTrack {
   return { trackIndex, takeLane: null };
 }
 
-/**
- * Tally a run of clips landing on one lane at one position.
- * @param groups - The tally
- * @param landing - The lane they land on
- * @param startBeats - The position
- * @param count - How many clips land there
- */
-function tallyMany(
-  groups: Map<string, MoveGroup>,
-  landing: ArrangementTrack,
-  startBeats: number,
-  count: number,
-): void {
-  for (let i = 0; i < count; i++) {
-    tallyMovedClip(groups, landing, startBeats);
-  }
-}
-
 describe("update-clip-move-groups", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("does not warn when nothing was moved", () => {
-    emitArrangementWarnings(new Map());
-
-    expect(console.warn).not.toHaveBeenCalled();
-  });
-
-  it("does not warn when one clip lands per group", () => {
-    const groups = new Map<string, MoveGroup>();
-
-    tallyMovedClip(groups, mainLane(0), 16);
-    tallyMovedClip(groups, mainLane(1), 16);
-    emitArrangementWarnings(groups);
-
-    expect(console.warn).not.toHaveBeenCalled();
-  });
-
-  it("does not warn for clips on one lane at different positions", () => {
-    const groups = new Map<string, MoveGroup>();
-
-    tallyMovedClip(groups, mainLane(0), 16);
-    tallyMovedClip(groups, mainLane(0), 32);
-    tallyMovedClip(groups, mainLane(0), 48);
-    emitArrangementWarnings(groups);
-
-    expect(console.warn).not.toHaveBeenCalled();
-  });
-
-  it("warns when clips land on one lane at one position", () => {
-    const groups = new Map<string, MoveGroup>();
-
-    tallyMany(groups, mainLane(0), 16, 3);
-    emitArrangementWarnings(groups);
-
-    expect(console.warn).toHaveBeenCalledWith(
-      "3 clips on t0 moved to the same position - later clips will overwrite earlier ones",
+  it("keys a lane and position, take lanes apart from the main one", () => {
+    expect(moveGroupKey(mainLane(0), 16)).toBe("t0@16");
+    expect(moveGroupKey({ trackIndex: 0, takeLane: 1 }, 16)).toBe("t0/l1@16");
+    expect(moveGroupKey(mainLane(0), 32)).not.toBe(
+      moveGroupKey(mainLane(0), 16),
     );
   });
 
-  it("warns once per overlapping group", () => {
+  it("collects landings and held-back clips into one group per lane and position", () => {
+    const groups = new Map<string, MoveGroup>();
+    const result: ClipResult = { id: "held" };
+
+    recordLandedClip(groups, mainLane(0), 16, "source", {
+      id: "copy",
+      length: 8,
+    });
+    deferClipDeletion(groups, mainLane(0), 16, {
+      clip: LiveAPI.from("held"),
+      sourceTrack: LiveAPI.from("track"),
+      result,
+    });
+    recordLandedClip(groups, mainLane(0), 32, "elsewhere", {
+      id: "other",
+      length: 4,
+    });
+
+    expect([...groups.keys()]).toStrictEqual(["t0@16", "t0@32"]);
+
+    const group = groups.get("t0@16") as MoveGroup;
+
+    expect(group.landed.get("source")).toStrictEqual({
+      id: "copy",
+      length: 8,
+    });
+    expect(group.deferred).toHaveLength(1);
+  });
+
+  // A resize after the copy landed makes the recorded length a lie, and the
+  // trim look-up would then describe the wrong clip.
+  it("forgets a landing's length once the call resized it", () => {
     const groups = new Map<string, MoveGroup>();
 
-    tallyMany(groups, mainLane(0), 16, 2);
-    tallyMovedClip(groups, mainLane(1), 16);
-    tallyMany(groups, mainLane(2), 32, 4);
-    emitArrangementWarnings(groups);
+    recordLandedClip(groups, mainLane(0), 16, "source", {
+      id: "copy",
+      length: 8,
+    });
+    forgetLandedLength(groups, "source");
 
-    expect(console.warn).toHaveBeenCalledTimes(2);
-    expect(console.warn).toHaveBeenCalledWith(
-      "2 clips on t0 moved to the same position - later clips will overwrite earlier ones",
-    );
-    expect(console.warn).toHaveBeenCalledWith(
-      "4 clips on t2 moved to the same position - later clips will overwrite earlier ones",
-    );
+    expect(
+      (groups.get("t0@16") as MoveGroup).landed.get("source")?.length,
+    ).toBeNull();
   });
 });

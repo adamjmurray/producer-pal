@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -449,5 +450,137 @@ describe("processClipIteration (unit)", () => {
     callArrangementIteration({ sampleFile: "/samples/loop.wav" });
 
     expect(setAllSpy).not.toHaveBeenCalled();
+  });
+});
+
+/** One clip on the lane, as the registry answers for it. */
+interface Span {
+  id: string;
+  start: number;
+  end: number;
+}
+
+/**
+ * A track whose arrangement lane changes the moment Live makes the new clip,
+ * the way a create over an occupied range really behaves. Each clip keeps one
+ * props object, because the create moves the clips already there rather than
+ * leaving them where the registry first put them.
+ * @param before - The clips on the lane before the create
+ * @param after - The clips on it once the create has run, new clip included
+ */
+function setupDisplacingTrack(before: Span[], after: Span[]): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+
+  const propsById = new Map<string, Record<string, unknown>>();
+
+  const place = (spans: Span[]): void => {
+    for (const { id, start, end } of spans) {
+      Object.assign(propsById.get(id) as Record<string, unknown>, {
+        start_time: start,
+        end_time: end,
+        length: end - start,
+      });
+    }
+  };
+
+  for (const [index, { id }] of [...before, ...after].entries()) {
+    const props = propsById.get(id) ?? {};
+
+    propsById.set(id, props);
+    registerMockObject(id, {
+      path: livePath.track(0).arrangementClip(index),
+      type: "Clip",
+      properties: props,
+    });
+  }
+
+  place(before);
+
+  const trackProps: Record<string, unknown> = {
+    arrangement_clips: children(...before.map((span) => span.id)),
+  };
+
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: trackProps,
+    methods: {
+      create_midi_clip: () => {
+        place(after);
+        trackProps.arrangement_clips = children(
+          ...after.map((span) => span.id),
+        );
+
+        return ["id", "made"];
+      },
+    },
+  });
+}
+
+// Writing into an occupied range is normal, so the create goes ahead — but a
+// caller can't see what it cost unless the new clip's entry says so.
+describe("createClip - what an arrangement create displaced", () => {
+  it("says it wiped out the clip that was there", async () => {
+    setupDisplacingTrack(
+      [{ id: "old", start: 12, end: 16 }],
+      [{ id: "made", start: 12, end: 16 }],
+    );
+
+    const result = (await createClip({
+      path: "t0[4|1]",
+      length: "1bar",
+    })) as { reason?: string };
+
+    expect(result.reason).toBe("overwrote the clip at t0[4|1]");
+  });
+
+  it("says it cut short the clip it landed after", async () => {
+    setupDisplacingTrack(
+      [{ id: "old", start: 0, end: 20 }],
+      [
+        { id: "old", start: 0, end: 12 },
+        { id: "made", start: 12, end: 16 },
+      ],
+    );
+
+    const result = (await createClip({
+      path: "t0[4|1]",
+      length: "1bar",
+    })) as { reason?: string };
+
+    expect(result.reason).toBe("shortened the clip at t0[1|1]");
+  });
+
+  it("names both pieces of a clip it landed inside", async () => {
+    setupDisplacingTrack(
+      [{ id: "old", start: 0, end: 32 }],
+      [
+        { id: "old", start: 0, end: 12 },
+        { id: "made", start: 12, end: 16 },
+        { id: "tail", start: 16, end: 32 },
+      ],
+    );
+
+    const result = (await createClip({
+      path: "t0[4|1]",
+      length: "1bar",
+    })) as { reason?: string };
+
+    expect(result.reason).toBe(
+      "split the clip at t0[1|1] into t0[1|1] and t0[5|1]",
+    );
+  });
+
+  it("says nothing when the range was empty", async () => {
+    setupDisplacingTrack([], [{ id: "made", start: 12, end: 16 }]);
+
+    const result = (await createClip({
+      path: "t0[4|1]",
+      length: "1bar",
+    })) as { reason?: string };
+
+    expect(result.reason).toBeUndefined();
   });
 });

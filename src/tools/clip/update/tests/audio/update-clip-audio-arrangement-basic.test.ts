@@ -105,6 +105,8 @@ async function runBoundary8Case(
   );
 }
 
+const NO_MORE_CONTENT = "the audio file has no more content to show";
+
 describe("Unlooped warped audio clips - skip when no additional content", () => {
   // These clips show all file content (end_marker = file boundary = 8)
   // No hidden content → nothing to reveal → skip
@@ -132,7 +134,11 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       );
 
       // unwrapSingleResult returns single object for single-element arrays
-      expect(result).toStrictEqual({ id: cId, path: "t0[1|1]" });
+      expect(result).toStrictEqual({
+        id: cId,
+        path: "t0[1|1]",
+        reason: `arrangementLength unchanged: ${NO_MORE_CONTENT}`,
+      });
       mockCreate.mockRestore();
     },
   );
@@ -166,7 +172,11 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
 
       // Single clip returned (extended in place via loop_end, no tiles)
       // unwrapSingleResult returns single object for single-element arrays
-      expect(result).toStrictEqual({ id: cId, path: "t0[1|1]" });
+      expect(result).toStrictEqual({
+        id: cId,
+        path: "t0[1|1]",
+        reason: `arrangementLength landed at 2bar: ${NO_MORE_CONTENT}`,
+      });
       mockCreate.mockRestore();
     },
   );

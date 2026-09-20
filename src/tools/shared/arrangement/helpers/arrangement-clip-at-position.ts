@@ -64,6 +64,19 @@ export function arrangementPositionTarget(
 }
 
 /**
+ * The Track or TakeLane a lane coordinate names.
+ * @param lane - The lane
+ * @returns The object holding that lane's arrangement clips
+ */
+export function laneObject(lane: ArrangementLane): LiveAPI {
+  return LiveAPI.from(
+    lane.kind === "take-lane"
+      ? livePath.track(lane.trackIndex).takeLane(lane.laneIndex)
+      : livePath.track(lane.trackIndex),
+  );
+}
+
+/**
  * The clips on one lane. A take lane answers with its own; the main lane is the
  * track's list minus anything sitting on a lane, so `t0[5|1]` can never match a
  * take at the same time however Live answers `arrangement_clips` on a track
@@ -72,18 +85,18 @@ export function arrangementPositionTarget(
  * The scan builds a LiveAPI per clip on the lane, so a caller looking several
  * things up holds the result rather than calling again.
  * @param lane - The lane the path named
+ * @param api - The lane object, when the caller already has it
  * @returns The clips on that lane, in Live's order
  */
-export function clipsOnLane(lane: ArrangementLane): LiveAPI[] {
-  if (lane.kind === "take-lane") {
-    return LiveAPI.from(
-      livePath.track(lane.trackIndex).takeLane(lane.laneIndex),
-    ).getChildren("arrangement_clips");
-  }
+export function clipsOnLane(
+  lane: ArrangementLane,
+  api: LiveAPI = laneObject(lane),
+): LiveAPI[] {
+  const clips = api.getChildren("arrangement_clips");
 
-  return LiveAPI.from(livePath.track(lane.trackIndex))
-    .getChildren("arrangement_clips")
-    .filter((clip) => !isTakeLaneClip(clip));
+  return lane.kind === "take-lane"
+    ? clips
+    : clips.filter((clip) => !isTakeLaneClip(clip));
 }
 
 /**

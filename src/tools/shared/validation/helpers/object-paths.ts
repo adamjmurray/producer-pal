@@ -7,11 +7,14 @@
 // A path parses the same everywhere; what a tool accepts differs by what can
 // occupy the location, so the rejection names the caller's own concept.
 
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   livePath,
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
+import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   namedParam,
   paramNamesSomething,
@@ -52,6 +55,9 @@ export type TakeLanePath = Extract<
 
 /** A path whose last segment could name a take lane. */
 const TAKE_LANE_ENTRY = /\/l(?:\d+|\+)$/;
+
+/** The path kind a spot on the arrangement timeline has. */
+const ARRANGEMENT_POSITION = "arrangement-position";
 
 /** A track or device-chain location, which is what can hold a device. */
 export interface DeviceContainerPath {
@@ -163,6 +169,25 @@ export function arrangementPath(
     kind: "take-lane",
     trackIndex,
     laneIndex: takeLane,
+  });
+}
+
+/**
+ * The path a spot on the arrangement spells: its lane, plus where it is.
+ * @param lane - The lane the spot sits on
+ * @param startBeats - The position in Ableton beats
+ * @returns The path (e.g. "t0[5|1]" or "t0/l1[5|1]")
+ */
+export function arrangementPositionPath(
+  lane: ArrangementLane,
+  startBeats: number,
+): string {
+  const { numerator, denominator } = songMeter();
+
+  return formatObjectPath({
+    kind: ARRANGEMENT_POSITION,
+    lane,
+    position: abletonBeatsToBarBeat(startBeats, numerator, denominator),
   });
 }
 
@@ -374,7 +399,7 @@ function describeNonClipPath(path: ObjectPath): string {
       return NEW_TAKE_LANE_ADVICE;
     case "scene":
       return "a scene alone names no track";
-    case "arrangement-position":
+    case ARRANGEMENT_POSITION:
       return "a song position names one arrangement clip, not a place to put one";
     default:
       return "return and main tracks have no clips";
@@ -396,7 +421,7 @@ function describeNonDevicePath(path: ObjectPath): string {
       return "a scene holds no devices";
     case "slot":
       return "a clip slot holds no devices";
-    case "arrangement-position":
+    case ARRANGEMENT_POSITION:
       return "a song position names a clip, not a device";
     default:
       return "a take lane holds no devices";
