@@ -251,6 +251,7 @@ describe("transport", () => {
 
     expect(result).toStrictEqual({
       playing: true,
+      clips: [{ id: "clip1", path: "t0/s0" }],
     });
   });
 
@@ -307,19 +308,15 @@ describe("transport", () => {
     );
   });
 
-  // Skipping the only id leaves nothing to fire, so the call has no target.
+  // The one target named got nothing done, so its reason is the call's error.
   // Reporting playing: true here claimed a launch that never happened.
   it("refuses play-session-clips when no id names a clip", () => {
     mockNonExistentObjects();
 
     expect(() =>
       playback({ action: "play-session-clips", id: "nonexistent_clip" }),
-    ).toThrow(
-      'id "nonexistent_clip" named no clip for action "play-session-clips"',
-    );
-    expect(capturedWarnings()).toContain(
-      'id "nonexistent_clip" does not exist',
-    );
+    ).toThrow('id "nonexistent_clip" does not exist');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clips", () => {
@@ -334,7 +331,7 @@ describe("transport", () => {
         action: "play-session-clips",
         id: "clip1",
       }),
-    ).toThrow("play-session-clips action failed: no clip slot at t99/s0");
+    ).toThrow("no clip slot at t99/s0");
   });
 
   it("should handle play-scene action", () => {
@@ -392,6 +389,7 @@ describe("transport", () => {
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
+      clips: [{ id: "clip1", path: "t0/s0" }],
     });
   });
 
@@ -437,12 +435,8 @@ describe("transport", () => {
 
     expect(() =>
       playback({ action: "stop-session-clips", id: "nonexistent_clip" }),
-    ).toThrow(
-      'id "nonexistent_clip" named no clip for action "stop-session-clips"',
-    );
-    expect(capturedWarnings()).toContain(
-      'id "nonexistent_clip" does not exist',
-    );
+    ).toThrow('id "nonexistent_clip" does not exist');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should throw error when clip has no trackIndex for play-session-clips", () => {
@@ -453,9 +447,7 @@ describe("transport", () => {
         action: "play-session-clips",
         id: "clip1",
       }),
-    ).toThrow(
-      "play-session-clips action failed: could not determine track/scene for clipId=clip1",
-    );
+    ).toThrow("id clip1 is not in a clip slot");
   });
 
   it("should throw error when clip has no trackIndex for stop-session-clips", () => {
@@ -466,9 +458,7 @@ describe("transport", () => {
         action: "stop-session-clips",
         id: "clip1",
       }),
-    ).toThrow(
-      "stop-session-clips action failed: could not determine track/scene for clipId=clip1",
-    );
+    ).toThrow("id clip1 is not in a clip slot");
   });
 
   it("should throw error when track does not exist for stop-session-clips", () => {
@@ -483,9 +473,7 @@ describe("transport", () => {
         action: "stop-session-clips",
         id: "clip1",
       }),
-    ).toThrow(
-      "stop-session-clips action failed: track at index 99 does not exist",
-    );
+    ).toThrow("no clip slot at t99/s0");
   });
 
   it("should handle stop-all-clips action", () => {
@@ -612,6 +600,9 @@ describe("transport", () => {
 
   it("should handle play-session-clips via slots with single slot", () => {
     liveSet = setupPlaybackLiveSet();
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
     const clipSlot = registerClipSlot(0, 1);
 
     const result = playback({
@@ -623,8 +614,10 @@ describe("transport", () => {
     expect(clipSlot.call).toHaveBeenCalledTimes(1);
     // No quantization fix for single clip
     expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
+    // The caller spelled it "0/1", and the entry answers in the taught path.
     expect(result).toStrictEqual({
       playing: true,
+      clips: [{ id: "clip1", path: "t0/s1" }],
     });
   });
 
@@ -646,6 +639,9 @@ describe("transport", () => {
 
   it("should handle stop-session-clips via slots", () => {
     liveSet = setupPlaybackLiveSet({ is_playing: 1 });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
+    });
     const track0 = registerMockObject(livePath.track(0), {
       path: livePath.track(0),
     });
@@ -658,6 +654,7 @@ describe("transport", () => {
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true,
+      clips: [{ id: "clip1", path: "t0/s0" }],
     });
   });
 
@@ -685,7 +682,7 @@ describe("transport", () => {
         action: "play-session-clips",
         slots: "99/0",
       }),
-    ).toThrow("play-session-clips action failed: no clip slot at t99/s0");
+    ).toThrow("no clip slot at t99/s0");
   });
 
   it("should throw error when track does not exist for stop-session-clips via slots", () => {
@@ -697,8 +694,6 @@ describe("transport", () => {
         action: "stop-session-clips",
         slots: "99/0",
       }),
-    ).toThrow(
-      "stop-session-clips action failed: track at index 99 does not exist",
-    );
+    ).toThrow("no clip slot at t99/s0");
   });
 });

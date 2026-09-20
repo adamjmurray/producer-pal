@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type ClipSlotEntry } from "./session-clip-targets.ts";
 import { sceneDisplayName } from "#src/tools/scene/helpers/scene-slots.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -21,6 +22,8 @@ export interface PlaybackState {
    * in it, so the caller doesn't always know which one fired.
    */
   scene?: FiredScene;
+  /** Set by the clip actions: one entry per clip slot the call named */
+  clips?: ClipSlotEntry[];
 }
 
 /**

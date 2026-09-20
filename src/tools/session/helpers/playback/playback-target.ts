@@ -5,12 +5,15 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  sessionClipTargets,
+  type ClipSlotTarget,
+} from "./session-clip-targets.ts";
+import {
   namedIdParam,
   namedParam,
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
   type ObjectPath,
@@ -30,10 +33,8 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
-  /** Clip slots named by `path` or the deprecated `slots` */
-  slotPositions: ClipSlotPosition[] | null;
-  /** `id` as the caller named it, or undefined when it names no clip */
-  ids: string | undefined;
+  /** The clip slots every target param named, in call order */
+  clips: ClipSlotTarget[];
 }
 
 export interface PlaybackTargetParams {
@@ -110,7 +111,7 @@ export function resolvePlaybackTarget(
       sceneIndex,
     });
 
-    return { sceneIndex: null, slotPositions: null, ids: undefined };
+    return { sceneIndex: null, clips: [] };
   }
 
   const { entries, source } = readPathParam(namedPaths, slots);
@@ -122,14 +123,16 @@ export function resolvePlaybackTarget(
         sceneIndex,
         namedIds,
       ),
-      slotPositions: null,
-      ids: undefined,
+      clips: [],
     };
   }
 
   // Narrow before warning: a path this action can't use throws, and saying we
   // ignored a param on a call that did nothing is noise the model has to read.
-  const slotPositions = slotPositionsFrom(action, entries, source);
+  const clips = sessionClipTargets(
+    namedIds,
+    slotPathsFrom(action, entries, source),
+  );
 
   if (sceneIndex != null) {
     console.warn(
@@ -138,92 +141,10 @@ export function resolvePlaybackTarget(
     );
   }
 
-  return { sceneIndex: null, slotPositions, ids: namedIds };
-}
-
-/**
- * Union the slots named by ids and by the resolved path positions. Both name a
- * set of clips to act on, so neither drops the other.
- * @param ids - Comma-separated clip IDs
- * @param slotPositions - Resolved clip slots, or null when none given
- * @param action - Action name for error messages
- * @returns The distinct slots to act on
- */
-export function resolveClipSlotPositions(
-  ids: string | undefined,
-  slotPositions: ClipSlotPosition[] | null,
-  action: string,
-): ClipSlotPosition[] {
-  if (ids == null && slotPositions == null) {
-    throw new Error(`id or path is required for action "${action}"`);
-  }
-
-  const positions = dedupeSlotPositions([
-    ...(ids == null ? [] : idSlotPositions(ids, action)),
-    ...(slotPositions ?? []),
-  ]);
-
-  // Skipping a bad id among good ones still leaves a call to make. Skipping all
-  // of them leaves none, and an empty list reads downstream as "act on these
-  // zero clips" — so the tool fired nothing and reported playing: true. Each id
-  // already warned why it was skipped; this says the call has no target left.
-  if (positions.length === 0) {
-    throw new Error(`id "${ids}" named no clip for action "${action}"`);
-  }
-
-  return positions;
+  return { sceneIndex: null, clips };
 }
 
 // --- Helpers below main exports ---
-
-/**
- * The slot each id names. A bad id is warned and skipped, not thrown: the
- * caller's other ids and paths still have a call to make.
- * @param ids - The normalized `id` param
- * @param action - Action name for error messages
- * @returns One position per id that named a session clip
- */
-function idSlotPositions(ids: string, action: string): ClipSlotPosition[] {
-  const clips = validateIdTypes(targetEntries(ids, "id"), "clip", {
-    skipInvalid: true,
-  });
-
-  return clips.map((clip) => {
-    const { trackIndex, sceneIndex } = clip;
-
-    if (trackIndex == null || sceneIndex == null) {
-      throw new Error(
-        `${action} action failed: could not determine track/scene for clipId=${clip.id}`,
-      );
-    }
-
-    return { trackIndex, sceneIndex };
-  });
-}
-
-/**
- * Drop slots named twice over. Naming the same clip by id and by path is not a
- * conflict, but firing it twice is a different Live call than firing it once.
- * @param positions - The slots every target param named, in order
- * @returns The distinct slots, first mention winning
- */
-function dedupeSlotPositions(
-  positions: ClipSlotPosition[],
-): ClipSlotPosition[] {
-  const seen = new Set<string>();
-
-  return positions.filter(({ trackIndex, sceneIndex }) => {
-    const key = `${trackIndex}/${sceneIndex}`;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-
-    return true;
-  });
-}
 
 /**
  * Read `path` or the deprecated `slots` as parsed entries.
@@ -310,12 +231,19 @@ function pathSceneRefs(
  * @returns The param and the entry, quoted (e.g. `path "t0/s1"`)
  */
 function quoteEntry(entry: ObjectPath, source: PathSource): string {
-  const spelled =
-    source.label === "slots" && entry.kind === "slot"
-      ? `${entry.trackIndex}/${entry.sceneIndex}`
-      : formatObjectPath(entry);
+  return `${source.label} "${spellEntry(entry, source)}"`;
+}
 
-  return `${source.label} "${spelled}"`;
+/**
+ * One entry in the spelling the param that carried it uses.
+ * @param entry - One entry the path param named
+ * @param source - The param that named it
+ * @returns The entry, spelled that param's way (e.g. `t0/s1`)
+ */
+function spellEntry(entry: ObjectPath, source: PathSource): string {
+  return source.label === "slots" && entry.kind === "slot"
+    ? `${entry.trackIndex}/${entry.sceneIndex}`
+    : formatObjectPath(entry);
 }
 
 /**
@@ -324,21 +252,24 @@ function quoteEntry(entry: ObjectPath, source: PathSource): string {
  * @param action - The playback action
  * @param entries - What the path param named
  * @param source - The param that named them, or null when neither did
- * @returns One position per entry, or null when the param named nothing
+ * @returns One slot per entry, paired with the caller's spelling of it
  */
-function slotPositionsFrom(
+function slotPathsFrom(
   action: string,
   entries: ObjectPath[],
   source: PathSource | null,
-): ClipSlotPosition[] | null {
+): Array<{ value: string; position: ClipSlotPosition }> {
   if (source == null) {
-    return null;
+    return [];
   }
 
   return entries.map((entry) => {
     assertClipPath(action, entry, source);
 
-    return requireClipSlotPath(entry, source.label);
+    return {
+      value: spellEntry(entry, source),
+      position: requireClipSlotPath(entry, source.label),
+    };
   });
 }
 

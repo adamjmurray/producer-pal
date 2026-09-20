@@ -458,6 +458,46 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
+  // A call naming two clips answers for both, in the order it named them, so a
+  // bad id costs the caller that one clip and nothing else.
+  it("keeps a bad id's slot when stopping two clips", async () => {
+    const clip = await createSessionClip(0, "C3");
+
+    await sleep(100);
+
+    const stopped = await playback({
+      action: "stop-session-clips",
+      id: `999999,${clip}`,
+    });
+
+    expect(stopped.clips).toHaveLength(2);
+    expect(stopped.clips?.[0]).toStrictEqual({
+      id: "999999",
+      ok: false,
+      reason: 'id "999999" does not exist',
+    });
+    expect(stopped.clips?.[1]).toStrictEqual({
+      id: clip,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
+    });
+
+    await playback({ action: "stop" });
+  });
+
+  // The lone target got nothing done, and there is no list for its entry to
+  // hold a place in, so the reason comes back as the call's error.
+  it("errors on a single bad id instead of reporting a stop", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "stop-session-clips", id: "999999" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      'id "999999" does not exist',
+    );
+  });
+
   it("plays a scene by path", async () => {
     const playingScene = await playback({
       action: "play-scene",
@@ -593,6 +633,7 @@ interface PlaybackResult {
   playing: boolean;
   startTime?: string;
   scene?: { id: string; path?: string; name: string };
+  clips?: Array<{ id?: string; path?: string; ok?: false; reason?: string }>;
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;

@@ -168,6 +168,17 @@ names what Live objected to on its destination entry, after the
 `ppal-update-clip` move into an occupied slot carries
 `reason: "overwrote the existing clip at t1/s0"` on the moved clip's entry.
 
+**`ppal-playback`'s clip actions answer per target named.** `play-session-clips`
+and `stop-session-clips` used to report only `playing`, and quietly warned past
+an id they couldn't use. They now carry a `clips` array with one entry per `id`
+or `path` you named, in order: `{id, path}` for a slot they acted on, and
+`{id or path, ok: false, reason}`, spelled the way you wrote it, for one that
+named no session clip, or no clip slot. A slot you named twice (once by id, once
+by path) is still acted on once, and the repeat entry says so in a `reason`.
+Naming a single target that fails is now an error instead of a warning, and a
+call where every target failed reports `playing` as it found it rather than
+claiming a launch. The other actions are unchanged and have no `clips`.
+
 **A call naming one target that can't be done now throws** instead of returning
 an empty array with a warning. `ppal-update-track path="t99"` is an error, as is
 an update-clip or duplicate call whose one target got nothing done; deleting
