@@ -272,6 +272,17 @@ one nothing could be written to keeps its slot as
 `reason` on the track's own entry now: `pan` sent in split panning mode,
 `leftPan`/`rightPan` sent in stereo, or a mixer or send param a rack macro owns.
 
+**A locator id is Live's own id now.** `ppal-read-live-set` used to report
+`locator-0`, a position in the list that shifted whenever an earlier locator was
+added or removed. It now reports Live's id (`"27"`), which stays with the
+locator, and `locatorId` and `loc:` take it back (`loc:27`). A locator named
+with nothing but digits reads as an id, so its `position` falls back to one.
+
+**`ppal-update-live-set`'s locator results stop echoing your arguments.** A
+create reports `{operation, id}`; a rename, and a delete by id or time, report
+the id of the locator they touched; a delete by name keeps its `count` and the
+name it matched. The `time` and `name` you sent don't come back.
+
 `ppal-select` is unchanged: what it reports is the selection it made.
 
 **A clip destination past the last scene makes the scenes up to it.**

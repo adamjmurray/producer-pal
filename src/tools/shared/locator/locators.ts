@@ -35,20 +35,6 @@ interface ResolveLocatorOptions {
 }
 
 /**
- * Build a locator ID from its position in the cue_points array. This is a
- * POSITIONAL/display ID, NOT a stable handle: it reflects the locator's current
- * time-order, so adding or removing any earlier locator shifts it. For
- * cross-turn delete/rename, prefer the locator name or time (both stable) over a
- * remembered locator-N. The positional-shift behavior is locked by
- * read-live-set-locators.test.ts.
- * @param locatorIndex - The index of the locator in the cue_points array
- * @returns Locator ID in format "locator-{index}"
- */
-export function getLocatorId(locatorIndex: number): string {
-  return `locator-${locatorIndex}`;
-}
-
-/**
  * Read all locators from the Live Set
  * @param liveSet - The live_set LiveAPI object
  * @param timeSigNumerator - Time signature numerator
@@ -61,12 +47,13 @@ export function readLocators(
   timeSigDenominator: number,
 ): LocatorInfo[] {
   const locatorIds = liveSet.getChildIds("cue_points");
-  const entries: { name: string; timeInBeats: number }[] = [];
+  const entries: { id: string; name: string; timeInBeats: number }[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
 
     entries.push({
+      id: locator.id,
       name: locator.getName(),
       timeInBeats: locator.getProperty("time") as number,
     });
@@ -75,15 +62,15 @@ export function readLocators(
   // Every name up front: a repeat can't be spotted until they are all read.
   const names = entries.map((entry) => entry.name);
 
-  return entries.map(({ name, timeInBeats }, i) => ({
-    id: getLocatorId(i),
+  return entries.map(({ id, name, timeInBeats }) => ({
+    id,
     name,
     time: abletonBeatsToBarBeat(
       timeInBeats,
       timeSigNumerator,
       timeSigDenominator,
     ),
-    position: locatorPosition(name, i, names),
+    position: locatorPosition(name, id, names),
   }));
 }
 
@@ -91,7 +78,7 @@ export function readLocators(
  * Find a locator by ID or time position
  * @param liveSet - The live_set LiveAPI object
  * @param options - Search options
- * @param options.locatorId - Locator ID to find (e.g., "locator-0")
+ * @param options.locatorId - Locator ID to find (e.g., "27")
  * @param options.timeInBeats - Exact time position in beats
  * @returns Locator object and index, or null if not found
  */
@@ -104,7 +91,7 @@ export function findLocator(
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
 
-    if (locatorId != null && getLocatorId(i) === locatorId) {
+    if (locatorId != null && locator.id === locatorId) {
       return { locator, index: i };
     }
 
@@ -241,12 +228,12 @@ export function resolveLocatorListToBeats(
   throw new Error("locatorId or locatorName is required");
 }
 
-const LOCATOR_ID_PATTERN = /^locator-\d+$/;
+const LOCATOR_ID_PATTERN = /^\d+$/;
 
 /**
- * Check if a locator reference is a locator ID (format: locator-N)
+ * Check if a locator reference is a Live object id rather than a name
  * @param value - Locator reference to check
- * @returns True if value matches locator ID format
+ * @returns True if value is all digits
  */
 export function isLocatorId(value: string): boolean {
   return LOCATOR_ID_PATTERN.test(value);
@@ -254,7 +241,7 @@ export function isLocatorId(value: string): boolean {
 
 /**
  * Resolve a single locator reference (ID or name) to its time in beats.
- * Auto-detects whether the value is a locator ID (locator-N) or a name.
+ * Auto-detects whether the value is a locator ID (all digits) or a name.
  * @param liveSet - The live_set LiveAPI object
  * @param locatorRef - Locator ID or name
  * @param context - Optional context for error messages
@@ -275,16 +262,16 @@ export function resolveLocatorRefToBeats(
  * including inside a path coordinate. Without it a model copies the bar out of
  * `time` and the section name never reaches a call.
  *
- * Falls back to the positional id whenever the name wouldn't resolve to this
- * exact locator: a blank or repeated name matches the wrong one, a bracket or
- * comma is read by the path grammar before the name is, and an id-shaped name
- * is read as some other locator's positional id.
+ * Falls back to the id whenever the name wouldn't resolve to this exact
+ * locator: a blank or repeated name matches the wrong one, a bracket or comma
+ * is read by the path grammar before the name is, and an all-digit name is read
+ * as some other locator's id.
  * @param name - This locator's name
- * @param index - Its index in cue_points
+ * @param id - This locator's Live id
  * @param names - Every locator's name, to spot a repeat
- * @returns The token, e.g. "loc:Bridge" or "loc:locator-3"
+ * @returns The token, e.g. "loc:Bridge" or "loc:27"
  */
-function locatorPosition(name: string, index: number, names: string[]): string {
+function locatorPosition(name: string, id: string, names: string[]): string {
   const usable =
     name !== "" &&
     name === name.trim() &&
@@ -292,7 +279,7 @@ function locatorPosition(name: string, index: number, names: string[]): string {
     !isLocatorId(name) &&
     names.indexOf(name) === names.lastIndexOf(name);
 
-  return `loc:${usable ? name : getLocatorId(index)}`;
+  return `loc:${usable ? name : id}`;
 }
 
 /**

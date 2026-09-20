@@ -33,7 +33,8 @@ interface CuePointConfig {
 function setupTrackWithLocators(
   cuePoints: CuePointConfig[],
 ): RegisteredMockObject {
-  const cueIds = cuePoints.map((_, i) => `cue${i}`);
+  // Ordinary Live object ids: a cue point reports one like any other object.
+  const cueIds = cuePoints.map((_, i) => String(26 + i));
 
   registerMockObject("live_set", {
     path: livePath.liveSet,
@@ -47,7 +48,7 @@ function setupTrackWithLocators(
     // bounded by cuePoints.length
     const cp = cuePoints[i] as CuePointConfig;
 
-    registerMockObject(`cue${i}`, {
+    registerMockObject(String(26 + i), {
       properties: { time: cp.time, name: cp.name },
     });
   }
@@ -138,7 +139,7 @@ const SCENE_CLIP = "id live_set/tracks/0/clip_slots/0/clip";
 describe("duplicate - locators as arrangement positions", () => {
   describe("arrangementStart takes loc:", () => {
     it.each<[string, string, number, string]>([
-      ["a locator id", "loc:locator-1", 8, "3|1"],
+      ["a locator id", "loc:27", 8, "3|1"],
       ["a locator name", "loc:Drop", 8, "3|1"],
       ["the undocumented prefix", "locator:Drop", 8, "3|1"],
     ])(
@@ -159,7 +160,7 @@ describe("duplicate - locators as arrangement positions", () => {
     );
 
     it.each<[string, string, number, string]>([
-      ["a locator id", "loc:locator-1", 16, "5|1"],
+      ["a locator id", "loc:27", 16, "5|1"],
       ["a locator name", "loc:Chorus", 32, "9|1"],
     ])(
       "places a scene copy at %s",
@@ -188,7 +189,7 @@ describe("duplicate - locators as arrangement positions", () => {
     // One list, both spellings: a bar|beat entry passes through untouched.
     it.each<[string, string, number, number]>([
       ["bar|beat and loc:", "1|1,loc:Drop", 0, 8],
-      ["two locators", "loc:Start,loc:locator-1", 0, 8],
+      ["two locators", "loc:Start,loc:27", 0, 8],
     ])(
       "places a copy per entry in a list mixing %s",
       async (_l, list, a, b) => {
@@ -242,7 +243,7 @@ describe("duplicate - locators as arrangement positions", () => {
     // The message names arrangementStart, the param the caller sent — the
     // locator that resolves it is not a param of its own any more.
     it.each<[string, string, string]>([
-      ["id", "loc:locator-5", "locator not found: locator-5"],
+      ["id", "loc:99", "locator not found: 99"],
       [
         "name",
         "loc:NonExistent",
@@ -279,7 +280,7 @@ describe("duplicate - locators as arrangement positions", () => {
   describe("the deprecated locator param", () => {
     it.each<[string, string, number[]]>([
       ["one name", "Drop", [8]],
-      ["one id", "locator-1", [8]],
+      ["one id", "27", [8]],
       ["a list, one loc: per entry", "Start, Drop", [0, 8]],
     ])("folds %s onto arrangementStart", async (_label, locator, beats) => {
       const track0 = setupClipWithLocators(standardCuePoints);
@@ -301,7 +302,7 @@ describe("duplicate - locators as arrangement positions", () => {
       const result = await duplicate({
         type: "scene",
         id: "scene1",
-        locator: "locator-1",
+        locator: "27",
       });
 
       expectDuplicatedAt(track0, SCENE_CLIP, 16);
@@ -314,7 +315,7 @@ describe("duplicate - locators as arrangement positions", () => {
     // Never pick one: the two params name the same position, so a caller who
     // sent both told us two different things about it.
     it.each([
-      ["an id", "locator-0"],
+      ["an id", "26"],
       ["a name", "Verse"],
     ])("refuses arrangementStart plus %s", async (_label, locator) => {
       registerMockObject("scene1", { path: livePath.scene(0) });

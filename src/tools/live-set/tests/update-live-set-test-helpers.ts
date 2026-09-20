@@ -112,7 +112,8 @@ export function setupLocatorCreationMocks(
   const { time = 0, isPlaying = 0, songLength = 1000 } = config;
   let locatorCreated = false;
 
-  const newCue = registerMockObject("new_cue", {
+  // An ordinary Live object id, the way a real cue point reports one.
+  const newCue = registerMockObject("26", {
     path: livePath.cuePoint(0),
     properties: { time },
   });
@@ -135,7 +136,7 @@ export function setupLocatorCreationMocks(
     }
 
     if (prop === "cue_points") {
-      return locatorCreated ? children("new_cue") : children();
+      return locatorCreated ? children("26") : children();
     }
 
     return [0];

@@ -317,14 +317,14 @@ describe("createClip - arrangement view", () => {
 
 describe("createClip - loc: on arrangementStart", () => {
   const CUE_POINTS = [
-    { id: "cue1", time: 16, name: "Verse" },
-    { id: "cue2", time: 32, name: "Chorus" },
+    { id: "26", time: 16, name: "Verse" },
+    { id: "27", time: 32, name: "Chorus" },
   ];
 
   it.each<[string, string, number, string]>([
     ["a locator name", "loc:Verse", 16, "5|1"],
-    ["a locator id", "loc:locator-0", 16, "5|1"],
-    ["a later locator id", "loc:locator-1", 32, "9|1"],
+    ["a locator id", "loc:26", 16, "5|1"],
+    ["a later locator id", "loc:27", 32, "9|1"],
   ])(
     "places the clip at %s",
     async (_label, arrangementStart, beats, barBeat) => {

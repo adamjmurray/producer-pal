@@ -37,11 +37,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(newCue.set.mock.calls.filter((c) => c[0] === "name")).toHaveLength(
         0,
       );
-      expect(result.locator).toStrictEqual({
-        operation: "created",
-        time: "1|1",
-        id: "locator-0",
-      });
+      expect(result.locator).toStrictEqual({ operation: "created", id: "26" });
     });
 
     it("should create locator with name", async () => {
@@ -56,12 +52,7 @@ describe("updateLiveSet - locator operations", () => {
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 16);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
       expect(newCue.set).toHaveBeenCalledWith("name", "Verse");
-      expect(result.locator).toStrictEqual({
-        operation: "created",
-        time: "5|1",
-        name: "Verse",
-        id: "locator-0",
-      });
+      expect(result.locator).toStrictEqual({ operation: "created", id: "26" });
     });
 
     it("should stop playback before creating locator", async () => {
@@ -77,7 +68,7 @@ describe("updateLiveSet - locator operations", () => {
 
     it("should skip creation if locator already exists at position", async () => {
       setupLocatorMocks(liveSet, {
-        cuePoints: [{ id: "existing_cue", time: 16, name: "Existing" }],
+        cuePoints: [{ id: "26", time: 16, name: "Existing" }],
       });
 
       const result = await updateLiveSet({
@@ -94,7 +85,7 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "a locator is already at 5|1",
         time: "5|1",
-        existingId: "locator-0",
+        existingId: "26",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -117,8 +108,8 @@ describe("updateLiveSet - locator operations", () => {
     beforeEach(() => {
       setupLocatorMocks(liveSet, {
         cuePoints: [
-          { id: "cue1", time: 0, name: "Intro" },
-          { id: "cue2", time: 16, name: "Verse" },
+          { id: "26", time: 0, name: "Intro" },
+          { id: "27", time: 16, name: "Verse" },
         ],
       });
     });
@@ -126,18 +117,15 @@ describe("updateLiveSet - locator operations", () => {
     it("should delete locator by ID", async () => {
       const result = await updateLiveSet({
         locatorOperation: "delete",
-        locatorId: "locator-0",
+        locatorId: "26",
       });
 
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 0);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toStrictEqual({
-        operation: "deleted",
-        id: "locator-0",
-      });
+      expect(result.locator).toStrictEqual({ operation: "deleted", id: "26" });
     });
 
-    it("should delete locator by time", async () => {
+    it("names the locator it deleted at a time by its ID", async () => {
       const result = await updateLiveSet({
         locatorOperation: "delete",
         locatorTime: "5|1",
@@ -145,18 +133,15 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 16);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.locator).toStrictEqual({
-        operation: "deleted",
-        time: "5|1",
-      });
+      expect(result.locator).toStrictEqual({ operation: "deleted", id: "27" });
     });
 
     it("should delete all locators by name", async () => {
       setupLocatorMocks(liveSet, {
         cuePoints: [
-          { id: "cue1", time: 0, name: "Verse" },
-          { id: "cue2", time: 16, name: "Chorus" },
-          { id: "cue3", time: 32, name: "Verse" },
+          { id: "26", time: 0, name: "Verse" },
+          { id: "27", time: 16, name: "Chorus" },
+          { id: "28", time: 32, name: "Verse" },
         ],
       });
 
@@ -183,7 +168,7 @@ describe("updateLiveSet - locator operations", () => {
     it("deletes a locator by an all-digit name", async () => {
       // The match must still find it by its string name.
       setupLocatorMocks(liveSet, {
-        cuePoints: [{ id: "cue1", time: 0, name: 5678 }],
+        cuePoints: [{ id: "26", time: 0, name: 5678 }],
       });
 
       const result = await updateLiveSet({
@@ -204,27 +189,21 @@ describe("updateLiveSet - locator operations", () => {
       // present we delete that single locator, never every cue sharing the name.
       const result = await updateLiveSet({
         locatorOperation: "delete",
-        locatorId: "locator-0",
-        locatorName: "Verse", // cue2 is "Verse" — must be ignored
+        locatorId: "26",
+        locatorName: "Verse", // the second locator is "Verse" — must be ignored
       });
 
-      expect(result.locator).toStrictEqual({
-        operation: "deleted",
-        id: "locator-0",
-      });
+      expect(result.locator).toStrictEqual({ operation: "deleted", id: "26" });
     });
 
     it("prefers locatorTime over locatorName when both are given", async () => {
       const result = await updateLiveSet({
         locatorOperation: "delete",
-        locatorTime: "5|1", // 16 beats → cue2
+        locatorTime: "5|1", // 16 beats → the second locator
         locatorName: "Intro", // must be ignored
       });
 
-      expect(result.locator).toStrictEqual({
-        operation: "deleted",
-        time: "5|1",
-      });
+      expect(result.locator).toStrictEqual({ operation: "deleted", id: "27" });
     });
 
     it("should skip if no identifier provided for delete", async () => {
@@ -243,14 +222,14 @@ describe("updateLiveSet - locator operations", () => {
     it("should skip if locator ID not found", async () => {
       const result = await updateLiveSet({
         locatorOperation: "delete",
-        locatorId: "locator-99",
+        locatorId: "99",
       });
 
       expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
       expect(result.locator).toStrictEqual({
         operation: "skipped",
-        reason: 'nothing to delete: no locator with id "locator-99"',
-        id: "locator-99",
+        reason: 'nothing to delete: no locator with id "99"',
+        id: "99",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -276,8 +255,8 @@ describe("updateLiveSet - locator operations", () => {
       // wipe every unnamed locator in the Set.
       setupLocatorMocks(liveSet, {
         cuePoints: [
-          { id: "cue1", time: 0 },
-          { id: "cue2", time: 16 },
+          { id: "26", time: 0 },
+          { id: "27", time: 16 },
         ],
       });
 
@@ -316,8 +295,8 @@ describe("updateLiveSet - locator operations", () => {
     beforeEach(() => {
       cues = setupLocatorMocks(liveSet, {
         cuePoints: [
-          { id: "cue1", time: 0 },
-          { id: "cue2", time: 16 },
+          { id: "26", time: 0 },
+          { id: "27", time: 16 },
         ],
       });
     });
@@ -325,16 +304,12 @@ describe("updateLiveSet - locator operations", () => {
     it("should rename locator by ID", async () => {
       const result = await updateLiveSet({
         locatorOperation: "rename",
-        locatorId: "locator-0",
+        locatorId: "26",
         locatorName: "New Intro",
       });
 
-      expect(cues.get("cue1")?.set).toHaveBeenCalledWith("name", "New Intro");
-      expect(result.locator).toStrictEqual({
-        operation: "renamed",
-        id: "locator-0",
-        name: "New Intro",
-      });
+      expect(cues.get("26")?.set).toHaveBeenCalledWith("name", "New Intro");
+      expect(result.locator).toStrictEqual({ operation: "renamed", id: "26" });
     });
 
     it("should rename locator by time", async () => {
@@ -344,18 +319,14 @@ describe("updateLiveSet - locator operations", () => {
         locatorName: "New Verse",
       });
 
-      expect(cues.get("cue2")?.set).toHaveBeenCalledWith("name", "New Verse");
-      expect(result.locator).toStrictEqual({
-        operation: "renamed",
-        id: "locator-1",
-        name: "New Verse",
-      });
+      expect(cues.get("27")?.set).toHaveBeenCalledWith("name", "New Verse");
+      expect(result.locator).toStrictEqual({ operation: "renamed", id: "27" });
     });
 
     it("should skip if locatorName is missing for rename", async () => {
       const result = await updateLiveSet({
         locatorOperation: "rename",
-        locatorId: "locator-0",
+        locatorId: "26",
       });
 
       expect(result.locator).toStrictEqual({
@@ -383,15 +354,15 @@ describe("updateLiveSet - locator operations", () => {
     it("should skip if locator ID not found for rename", async () => {
       const result = await updateLiveSet({
         locatorOperation: "rename",
-        locatorId: "locator-99",
+        locatorId: "99",
         locatorName: "New Name",
       });
 
       expect(result.locator).toStrictEqual({
         operation: "skipped",
         ok: false,
-        reason: 'no locator with id "locator-99"',
-        id: "locator-99",
+        reason: 'no locator with id "99"',
+        id: "99",
       });
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -424,18 +395,14 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
-      expect(result.locator).toStrictEqual({
-        operation: "created",
-        time: "1|1",
-        id: "locator-0",
-      });
+      expect(result.locator).toStrictEqual({ operation: "created", id: "26" });
     });
   });
   describe("locator args without an operation", () => {
     it.each([
       ["locatorTime", { locatorTime: "45|1" }],
       ["locatorName", { locatorName: "Chorus" }],
-      ["locatorId", { locatorId: "locator-0" }],
+      ["locatorId", { locatorId: "26" }],
     ])("refuses a call sending only %s", async (param, args) => {
       await expect(updateLiveSet(args)).rejects.toThrow(
         `${param} require locatorOperation`,

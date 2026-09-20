@@ -20,6 +20,7 @@ import {
   getToolErrorMessage,
   getToolWarnings,
   isToolError,
+  readLocators,
   type ReadClipResult,
   setupMcpTestContext,
   type SkippedTargetResult,
@@ -550,14 +551,14 @@ describe("ppal-duplicate", () => {
 
     await sleep(100);
 
+    const bridge = (await readLocators(ctx.client!)).find(
+      (l) => l.name === "Bridge",
+    );
+
     const byId = parseToolResult<DuplicateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
-        arguments: {
-          type: "clip",
-          id: clip.id,
-          toPath: "[loc:locator-3]",
-        },
+        arguments: { type: "clip", id: clip.id, toPath: `[loc:${bridge!.id}]` },
       }),
     );
 

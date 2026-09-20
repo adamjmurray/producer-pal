@@ -439,7 +439,7 @@ describe("parseObjectPath - the [song position] coordinate", () => {
   // a result always spells it back as bar|beat.
   it.each([
     ["a locator", "loc:Verse"],
-    ["a locator id", "loc:locator-0"],
+    ["a locator id", "loc:27"],
     ["a name holding both separators", "loc:A, B/C"],
     ["a note-value offset", "1|1-n/4"],
   ])("keeps %s verbatim", (_label, position) => {

@@ -44,7 +44,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
     }),
     locatorId: param(z.coerce.string().optional(), {
       default:
-        "Locator ID(s) for delete/rename (e.g. locator-0), comma-separated for several. Positional — shifts if locators are added/removed, so prefer locatorTime or locatorName",
+        "Locator ID(s) from read-live-set for delete/rename, comma-separated for several",
       smallModel: null,
     }),
     locatorTime: param(z.coerce.string().optional(), {

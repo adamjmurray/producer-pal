@@ -468,6 +468,29 @@ export async function readClipWithNotes(
   return parseToolResult<ReadClipResult>(result);
 }
 
+/** A locator as ppal-read-live-set reports it. */
+export interface LocatorInfo {
+  id: string;
+  name: string;
+  time: string;
+  position: string;
+}
+
+/**
+ * Reads the Set's locators. Their ids are Live's own, so they differ per Set
+ * and a test has to read one rather than hardcode it.
+ * @param client - The MCP client under test
+ * @returns Every locator in the Set, in time order
+ */
+export async function readLocators(client: Client): Promise<LocatorInfo[]> {
+  const result = await client.callTool({
+    name: "ppal-read-live-set",
+    arguments: { include: ["locators"] },
+  });
+
+  return parseToolResult<{ locators?: LocatorInfo[] }>(result).locators ?? [];
+}
+
 /**
  * The skills overrides the server under test will apply, read from its own
  * ~/.producer-pal via GET /skill-overrides.

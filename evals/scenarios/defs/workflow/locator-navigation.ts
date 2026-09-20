@@ -176,7 +176,7 @@ function assertDuplicatedToLocator(turn: number): EvalAssertion {
         .filter(Boolean)
         .join(" ");
 
-      if (!/bridge|locator-3/i.test(named)) {
+      if (!/bridge|loc:\d+/i.test(named)) {
         throw new Error(
           named
             ? `did not name the Bridge locator: ${named}`
@@ -223,8 +223,8 @@ export const locatorNavigation: EvalScenario = {
       ["loopStart", "loopEnd"],
       `a Bridge (${BRIDGE}) to Outro (${OUTRO}) loop`,
       ({ args }) =>
-        /bridge|locator-3/i.test(argText(args.loopStart)) &&
-        /outro|locator-4/i.test(argText(args.loopEnd)),
+        /bridge|loc:\d+/i.test(argText(args.loopStart)) &&
+        /outro|loc:\d+/i.test(argText(args.loopEnd)),
     ),
 
     assertDuplicatedToLocator(3),

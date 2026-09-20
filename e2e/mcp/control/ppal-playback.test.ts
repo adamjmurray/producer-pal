@@ -19,6 +19,7 @@ import {
   getToolWarnings,
   parseToolResult,
   parseToolResultWithWarnings,
+  readLocators,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -573,9 +574,14 @@ describe("ppal-playback", () => {
   });
 
   it("starts the arrangement from a locator id", async () => {
+    // Live's own id, so it differs per Set — it has to come from the read.
+    const chorus = (await readLocators(ctx.client!)).find(
+      (l) => l.name === "Chorus",
+    );
+
     const playing = await playback({
       action: "play-arrangement",
-      startTime: "loc:locator-2",
+      startTime: `loc:${chorus!.id}`,
     });
 
     expect(playing.startTime).toBe("17|1");

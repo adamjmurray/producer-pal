@@ -11,9 +11,9 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import {
+  type LocatorMatch,
   findLocator,
   findLocatorsByName,
-  getLocatorId,
 } from "#src/tools/shared/locator/locators.ts";
 
 interface DeleteLocatorOptions {
@@ -146,10 +146,11 @@ export async function deleteLocator(
   }
 
   // Delete by ID or time (single locator)
+  let found: LocatorMatch | null;
   let timeInBeats: number;
 
   if (locatorId != null) {
-    const found = findLocator(liveSet, { locatorId });
+    found = findLocator(liveSet, { locatorId });
 
     if (!found) {
       return {
@@ -168,7 +169,7 @@ export async function deleteLocator(
       timeSigNumerator,
       timeSigDenominator,
     );
-    const found = findLocator(liveSet, { timeInBeats });
+    found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
       return {
@@ -179,17 +180,16 @@ export async function deleteLocator(
     }
   }
 
+  // The id, while the locator is still there to read it off.
+  const deletedId = found.locator.id;
+
   stopPlaybackIfNeeded(liveSet);
 
   liveSet.set("current_song_time", timeInBeats);
   await waitForPlayheadPosition(liveSet, timeInBeats);
   liveSet.call("set_or_delete_cue");
 
-  return {
-    operation: "deleted",
-    ...(locatorId != null && { id: locatorId }),
-    ...(locatorTime != null && { time: locatorTime }),
-  };
+  return { operation: "deleted", id: deletedId };
 }
 
 /**
@@ -265,11 +265,7 @@ export function renameLocator(
 
   found.locator.set("name", locatorName);
 
-  return {
-    operation: "renamed",
-    id: getLocatorId(found.index),
-    name: locatorName,
-  };
+  return { operation: "renamed", id: found.locator.id };
 }
 
 /**

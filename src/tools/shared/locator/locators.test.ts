@@ -8,7 +8,6 @@ import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   findLocator,
-  getLocatorId,
   isLocatorId,
   resolveLocatorListToBeats,
   resolveLocatorRefToBeats,
@@ -49,39 +48,31 @@ describe("locators", () => {
     vi.clearAllMocks();
   });
 
-  describe("getLocatorId", () => {
-    it("returns locator ID in expected format", () => {
-      expect(getLocatorId(0)).toBe("locator-0");
-      expect(getLocatorId(5)).toBe("locator-5");
-      expect(getLocatorId(99)).toBe("locator-99");
-    });
-  });
-
   describe("findLocator", () => {
     it("returns the match for a locator ID", () => {
       const liveSet = setupMockLocators(
-        { id: "loc0", time: 0 },
-        { id: "loc1", time: 16 },
+        { id: "26", time: 0 },
+        { id: "27", time: 16 },
       );
 
-      expect(findLocator(liveSet, { locatorId: "locator-1" })?.index).toBe(1);
+      expect(findLocator(liveSet, { locatorId: "27" })?.index).toBe(1);
     });
 
     it("returns null for a locator ID that does not match", () => {
       const liveSet = setupMockLocators(
-        { id: "loc0", time: 0 },
-        { id: "loc1", time: 16 },
+        { id: "26", time: 0 },
+        { id: "27", time: 16 },
       );
 
       // An id guard mutated to always match would wrongly return index 0.
-      expect(findLocator(liveSet, { locatorId: "locator-9" })).toBeNull();
+      expect(findLocator(liveSet, { locatorId: "99" })).toBeNull();
     });
 
     it("finds a non-first locator by exact time", () => {
       const liveSet = setupMockLocators(
-        { id: "loc0", time: 0 },
-        { id: "loc1", time: 16 },
-        { id: "loc2", time: 32 },
+        { id: "26", time: 0 },
+        { id: "27", time: 16 },
+        { id: "28", time: 32 },
       );
 
       // Searching by time (no locatorId): the id branch must be skipped so the
@@ -107,12 +98,12 @@ describe("locators", () => {
       } as unknown as LiveAPI;
 
       expect(() => {
-        resolveLocatorToBeats(mockLiveSet, { locatorId: "locator-5" });
-      }).toThrow("locator not found: locator-5");
+        resolveLocatorToBeats(mockLiveSet, { locatorId: "99" });
+      }).toThrow("locator not found: 99");
     });
 
     it("resolves locator by ID", () => {
-      registerMockObject("locator1", {
+      registerMockObject("27", {
         type: "CuePoint",
         properties: {
           time: 32,
@@ -120,18 +111,18 @@ describe("locators", () => {
       });
 
       const mockLiveSet = {
-        getChildIds: vi.fn().mockReturnValue(["id locator1"]),
+        getChildIds: vi.fn().mockReturnValue(["id 27"]),
       } as unknown as LiveAPI;
 
       const result = resolveLocatorToBeats(mockLiveSet, {
-        locatorId: "locator-0",
+        locatorId: "27",
       });
 
       expect(result).toBe(32);
     });
 
     it("resolves locator by name", () => {
-      registerMockObject("locator1", {
+      registerMockObject("27", {
         type: "CuePoint",
         properties: {
           name: "Bridge",
@@ -140,7 +131,7 @@ describe("locators", () => {
       });
 
       const mockLiveSet = {
-        getChildIds: vi.fn().mockReturnValue(["id locator1"]),
+        getChildIds: vi.fn().mockReturnValue(["id 27"]),
       } as unknown as LiveAPI;
 
       const result = resolveLocatorToBeats(mockLiveSet, {
@@ -151,7 +142,7 @@ describe("locators", () => {
     });
 
     it("throws when locator name not found", () => {
-      registerMockObject("locator1", {
+      registerMockObject("27", {
         type: "CuePoint",
         properties: {
           name: "Verse",
@@ -160,7 +151,7 @@ describe("locators", () => {
       });
 
       const mockLiveSet = {
-        getChildIds: vi.fn().mockReturnValue(["id locator1"]),
+        getChildIds: vi.fn().mockReturnValue(["id 27"]),
       } as unknown as LiveAPI;
 
       expect(() => {
@@ -169,7 +160,7 @@ describe("locators", () => {
     });
 
     it("resolves locator by name when Live reports an all-digit name as a number", () => {
-      const liveSet = setupMockLocators({ id: "loc0", name: 5678, time: 8 });
+      const liveSet = setupMockLocators({ id: "26", name: 5678, time: 8 });
 
       const result = resolveLocatorToBeats(liveSet, { locatorName: "5678" });
 
@@ -180,7 +171,7 @@ describe("locators", () => {
       // A nameless locator reads back "" (getName's fallback for a missing
       // name), so without an explicit guard an empty locatorName would match
       // every nameless locator — and delete-by-name would wipe them all.
-      const liveSet = setupMockLocators({ id: "loc0", time: 8 });
+      const liveSet = setupMockLocators({ id: "26", time: 8 });
 
       expect(() => {
         resolveLocatorToBeats(liveSet, { locatorName: "" });
@@ -188,7 +179,7 @@ describe("locators", () => {
     });
 
     it("appends the context suffix to the name-not-found message", () => {
-      const liveSet = setupMockLocators({ id: "loc0", name: "Verse", time: 8 });
+      const liveSet = setupMockLocators({ id: "26", name: "Verse", time: 8 });
 
       // The " ${context}" suffix (leading space) must be preserved verbatim.
       expect(() => {
@@ -199,42 +190,42 @@ describe("locators", () => {
 
   describe("resolveLocatorListToBeats", () => {
     it("resolves single locator ID", () => {
-      registerMockObject("locator1", {
+      registerMockObject("27", {
         type: "CuePoint",
         properties: { time: 16 },
       });
 
       const mockLiveSet = {
-        getChildIds: vi.fn().mockReturnValue(["id locator1"]),
+        getChildIds: vi.fn().mockReturnValue(["id 27"]),
       } as unknown as LiveAPI;
 
       const result = resolveLocatorListToBeats(mockLiveSet, {
-        locatorId: "locator-0",
+        locatorId: "27",
       });
 
       expect(result).toStrictEqual([16]);
     });
 
     it("resolves comma-separated locator IDs", () => {
-      registerMockObject("loc0", {
+      registerMockObject("26", {
         type: "CuePoint",
         properties: { time: 0 },
       });
-      registerMockObject("loc1", {
+      registerMockObject("27", {
         type: "CuePoint",
         properties: { time: 16 },
       });
-      registerMockObject("loc2", {
+      registerMockObject("28", {
         type: "CuePoint",
         properties: { time: 32 },
       });
 
       const mockLiveSet = {
-        getChildIds: vi.fn().mockReturnValue(["id loc0", "id loc1", "id loc2"]),
+        getChildIds: vi.fn().mockReturnValue(["id 26", "id 27", "id 28"]),
       } as unknown as LiveAPI;
 
       const result = resolveLocatorListToBeats(mockLiveSet, {
-        locatorId: "locator-0, locator-2",
+        locatorId: "26, 28",
       });
 
       expect(result).toStrictEqual([0, 32]);
@@ -242,7 +233,7 @@ describe("locators", () => {
 
     it("resolves single locator name", () => {
       const liveSet = setupMockLocators({
-        id: "loc0",
+        id: "26",
         name: "Verse",
         time: 8,
       });
@@ -254,8 +245,8 @@ describe("locators", () => {
 
     it("resolves comma-separated locator names", () => {
       const liveSet = setupMockLocators(
-        { id: "loc0", name: "Verse", time: 8 },
-        { id: "loc1", name: "Chorus", time: 24 },
+        { id: "26", name: "Verse", time: 8 },
+        { id: "27", name: "Chorus", time: 24 },
       );
 
       expect(
@@ -264,18 +255,18 @@ describe("locators", () => {
     });
 
     it("throws when a locator ID is not found", () => {
-      const liveSet = setupMockLocators({ id: "loc0", time: 0 });
+      const liveSet = setupMockLocators({ id: "26", time: 0 });
 
       expect(() => {
         resolveLocatorListToBeats(liveSet, {
-          locatorId: "locator-0, locator-5",
+          locatorId: "26, 99",
         });
-      }).toThrow("locator not found: locator-5");
+      }).toThrow("locator not found: 99");
     });
 
     it("throws when a locator name is not found", () => {
       const liveSet = setupMockLocators({
-        id: "loc0",
+        id: "26",
         name: "Verse",
         time: 8,
       });
@@ -299,34 +290,33 @@ describe("locators", () => {
   });
 
   describe("isLocatorId", () => {
-    it("returns true for valid locator IDs", () => {
-      expect(isLocatorId("locator-0")).toBe(true);
-      expect(isLocatorId("locator-42")).toBe(true);
-      expect(isLocatorId("locator-99")).toBe(true);
+    it("returns true for an all-digit id", () => {
+      expect(isLocatorId("0")).toBe(true);
+      expect(isLocatorId("27")).toBe(true);
+      expect(isLocatorId("12345")).toBe(true);
     });
 
     it("returns false for locator names", () => {
       expect(isLocatorId("Verse")).toBe(false);
       expect(isLocatorId("Chorus")).toBe(false);
-      expect(isLocatorId("locator-")).toBe(false);
-      expect(isLocatorId("locator-abc")).toBe(false);
-      expect(isLocatorId("LOCATOR-0")).toBe(false);
+      expect(isLocatorId("")).toBe(false);
+      expect(isLocatorId("27b")).toBe(false);
       // Anchored on both ends: reject leading/trailing junk around a valid core.
-      expect(isLocatorId("xlocator-0")).toBe(false);
-      expect(isLocatorId("locator-0x")).toBe(false);
+      expect(isLocatorId("id 27")).toBe(false);
+      expect(isLocatorId("27 ")).toBe(false);
     });
   });
 
   describe("resolveLocatorRefToBeats", () => {
-    it("resolves by ID when value matches locator ID pattern", () => {
-      const liveSet = setupMockLocators({ id: "locator1", time: 32 });
+    it("resolves by ID when value is all digits", () => {
+      const liveSet = setupMockLocators({ id: "27", time: 32 });
 
-      expect(resolveLocatorRefToBeats(liveSet, "locator-0")).toBe(32);
+      expect(resolveLocatorRefToBeats(liveSet, "27")).toBe(32);
     });
 
-    it("resolves by name when value does not match locator ID pattern", () => {
+    it("resolves by name when value is not all digits", () => {
       const liveSet = setupMockLocators({
-        id: "locator1",
+        id: "27",
         name: "Bridge",
         time: 64,
       });
@@ -338,8 +328,8 @@ describe("locators", () => {
       const liveSet = setupMockLocators();
 
       expect(() => {
-        resolveLocatorRefToBeats(liveSet, "locator-99");
-      }).toThrow("locator not found: locator-99");
+        resolveLocatorRefToBeats(liveSet, "99");
+      }).toThrow("locator not found: 99");
     });
   });
 });

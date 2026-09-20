@@ -13,6 +13,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
+  readLocators,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -110,14 +111,14 @@ describe("ppal-read-live-set", () => {
   });
 
   it("falls back to the ID for a locator named like an ID", async () => {
-    // A name shaped like a positional ID resolves as that ID, which points at
-    // whichever locator sits at that index — not this one.
+    // An all-digit name resolves as an id, which points at whichever locator
+    // carries it — not at this one. 999999 is past any id Live hands out here.
     await ctx.client!.callTool({
       name: "ppal-update-live-set",
       arguments: {
         locatorOperation: "create",
         locatorTime: "2|1",
-        locatorName: "locator-0",
+        locatorName: "999999",
       },
     });
     await sleep(100);
@@ -129,15 +130,71 @@ describe("ppal-read-live-set", () => {
           arguments: { include: ["locators"] },
         }),
       );
-      const named = parsed.locators?.find((l) => l.name === "locator-0");
+      const named = parsed.locators?.find((l) => l.name === "999999");
 
       expect(named).toBeDefined();
       expect(named!.position).toBe(`loc:${named!.id}`);
-      expect(named!.id).not.toBe("locator-0");
+      expect(named!.id).not.toBe("999999");
     } finally {
       await ctx.client!.callTool({
         name: "ppal-update-live-set",
         arguments: { locatorOperation: "delete", locatorTime: "2|1" },
+      });
+    }
+  });
+
+  // The whole point of Live's own id: a caller can send one back a turn later.
+  it("keeps a locator's ID when an earlier locator is deleted", async () => {
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "3|1,4|1",
+        locatorName: "First,Second",
+      },
+    });
+    await sleep(100);
+
+    try {
+      const before = await readLocators(ctx.client!);
+      const first = before.find((l) => l.name === "First");
+      const second = before.find((l) => l.name === "Second");
+
+      expect(first).toBeDefined();
+      expect(second).toBeDefined();
+
+      const deletedFirst = parseToolResult<{ locator: { id: string } }>(
+        await ctx.client!.callTool({
+          name: "ppal-update-live-set",
+          arguments: { locatorOperation: "delete", locatorId: first!.id },
+        }),
+      );
+
+      expect(deletedFirst.locator.id).toBe(first!.id);
+      await sleep(100);
+
+      const after = await readLocators(ctx.client!);
+
+      expect(after.find((l) => l.name === "First")).toBeUndefined();
+      // The survivor kept the id it was read with, so it is still addressable.
+      expect(after.find((l) => l.name === "Second")?.id).toBe(second!.id);
+
+      const deletedSecond = parseToolResult<{ locator: { id: string } }>(
+        await ctx.client!.callTool({
+          name: "ppal-update-live-set",
+          arguments: { locatorOperation: "delete", locatorId: second!.id },
+        }),
+      );
+
+      expect(deletedSecond.locator.id).toBe(second!.id);
+      await sleep(100);
+      const left = await readLocators(ctx.client!);
+
+      expect(left.find((l) => l.name === "Second")).toBeUndefined();
+    } finally {
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorTime: "3|1,4|1" },
       });
     }
   });

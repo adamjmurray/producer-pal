@@ -9,10 +9,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import {
-  findLocator,
-  getLocatorId,
-} from "#src/tools/shared/locator/locators.ts";
+import { findLocator } from "#src/tools/shared/locator/locators.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
@@ -307,7 +304,7 @@ async function createLocator(
       operation: "skipped",
       reason: `a locator is already at ${locatorTime}`,
       time: locatorTime,
-      existingId: getLocatorId(existing.index),
+      existingId: existing.locator.id,
     };
   }
 
@@ -335,8 +332,6 @@ async function createLocator(
 
   return {
     operation: "created",
-    time: locatorTime,
-    ...(locatorName != null && { name: locatorName }),
-    ...(found && { id: getLocatorId(found.index) }),
+    ...(found && { id: found.locator.id }),
   };
 }

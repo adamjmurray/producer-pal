@@ -251,8 +251,8 @@ describe("ppal-update-live-set", () => {
   });
 
   it("creates, renames, and deletes locators", async () => {
-    // Locator IDs are positional and assignment only sticks against real Live,
-    // so this exercises the full create/rename/delete cycle end-to-end. The set
+    // A locator id is Live's own and only assignment against real Live proves
+    // it round-trips, so this runs the full create/rename/delete cycle. The Set
     // ships with locators (Intro/Verse/Chorus/Bridge), so use unique names and
     // unoccupied positions to avoid collisions.
     const initialLocators = await readLocatorList();
@@ -271,7 +271,6 @@ describe("ppal-update-live-set", () => {
 
     expect(createResult.locator?.operation).toBe("created");
     expect(createResult.locator?.id).toBeDefined();
-    expect(createResult.locator?.name).toBe("E2E Alpha");
 
     await sleep(100);
     let locators = await readLocatorList();
@@ -279,6 +278,8 @@ describe("ppal-update-live-set", () => {
 
     expect(alpha).toBeDefined();
     expect(alpha!.time).toBe("2|1");
+    // The id the create reported is the one the read hands back.
+    expect(alpha!.id).toBe(createResult.locator?.id);
 
     // Rename it by ID
     const renameResult = parseToolResult<UpdateResult>(
@@ -293,7 +294,7 @@ describe("ppal-update-live-set", () => {
     );
 
     expect(renameResult.locator?.operation).toBe("renamed");
-    expect(renameResult.locator?.name).toBe("E2E Beta");
+    expect(renameResult.locator?.id).toBe(alpha!.id);
 
     await sleep(100);
     locators = await readLocatorList();
@@ -372,11 +373,11 @@ describe("ppal-update-live-set", () => {
       "created",
       "created",
     ]);
-    expect(created.locator?.map((entry) => entry.name)).toStrictEqual([
-      "E2E List A",
-      "E2E List B",
-      "E2E List C",
-    ]);
+    // Every entry names the locator it made, and no two share an id.
+    const createdIds = created.locator?.map((entry) => entry.id);
+
+    expect(createdIds?.filter(Boolean)).toHaveLength(3);
+    expect(new Set(createdIds).size).toBe(3);
 
     await sleep(100);
     let locators = await readLocatorList();
@@ -403,9 +404,9 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(renamed.locator?.map((entry) => entry.name)).toStrictEqual([
-      "E2E List X",
-      "E2E List Z",
+    expect(renamed.locator?.map((entry) => entry.operation)).toStrictEqual([
+      "renamed",
+      "renamed",
     ]);
 
     await sleep(100);
@@ -474,7 +475,7 @@ describe("ppal-update-live-set", () => {
       }),
     );
 
-    expect(created.locator?.name).toBe("4321");
+    expect(created.locator?.operation).toBe("created");
 
     await sleep(100);
 

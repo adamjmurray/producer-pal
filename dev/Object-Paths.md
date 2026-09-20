@@ -152,8 +152,8 @@ would land on the catch-all pad and sound on every note no pad claims. On a pad
 
 A point on the song timeline has two spellings, and **every param that takes one
 takes both**: a bar|beat position (`5|1`, song meter), or `loc:<name>` naming a
-locator. `loc:` also accepts a locator id (`loc:locator-0`), and `locator:` is
-accepted as an undocumented spelling of the prefix.
+locator. `loc:` also accepts a locator id (`loc:27`), and `locator:` is accepted
+as an undocumented spelling of the prefix.
 
 The prefix is **required, never sniffed**. Resolving a bare `"Verse"` by name
 because it doesn't look like bar|beat would turn a locator named `5|1`, or a

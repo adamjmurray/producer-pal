@@ -11,8 +11,8 @@ import {
 } from "./playback-test-helpers.ts";
 
 const VERSE_CHORUS_CUE_POINTS = [
-  { id: "cue1", time: 16, name: "Verse" },
-  { id: "cue2", time: 32, name: "Chorus" },
+  { id: "26", time: 16, name: "Verse" },
+  { id: "27", time: 32, name: "Chorus" },
 ] as const;
 
 /**
@@ -40,7 +40,7 @@ describe("playback - song positions", () => {
     it("should start playback from a locator id", () => {
       const result = playback({
         action: "play-arrangement",
-        startTime: "loc:locator-0",
+        startTime: "loc:26",
       });
 
       expectLiveSetProperty(liveSet, "start_time", 16);
@@ -100,8 +100,8 @@ describe("playback - song positions", () => {
 
     it("should throw if the locator id is not found", () => {
       expect(() =>
-        playback({ action: "play-arrangement", startTime: "loc:locator-99" }),
-      ).toThrow("locator not found: locator-99");
+        playback({ action: "play-arrangement", startTime: "loc:99" }),
+      ).toThrow("locator not found: 99");
     });
 
     it("should throw if the locator name is not found", () => {
@@ -127,7 +127,7 @@ describe("playback - song positions", () => {
     // Every spelling of the same 5|1-9|1 loop: two locator ids, two names, and
     // one of each — the two ends resolve independently.
     it.each([
-      ["locator ids", "loc:locator-0", "loc:locator-1"],
+      ["locator ids", "loc:26", "loc:27"],
       ["locator names", "loc:Verse", "loc:Chorus"],
       ["a bar|beat and a locator", "5|1", "loc:Chorus"],
     ])("should set the loop from %s", (_label, loopStart, loopEnd) => {
@@ -149,9 +149,9 @@ describe("playback - song positions", () => {
         playback({
           action: "update-arrangement",
           loop: true,
-          loopStart: "loc:locator-99",
+          loopStart: "loc:99",
         }),
-      ).toThrow("locator not found: locator-99");
+      ).toThrow("locator not found: 99");
     });
 
     it("should throw if the loopEnd locator is not found", () => {
@@ -175,7 +175,7 @@ describe("playback - song positions", () => {
     it("should fold startLocator into startTime", () => {
       const result = playback({
         action: "play-arrangement",
-        startLocator: "locator-0",
+        startLocator: "26",
       });
 
       expectLiveSetProperty(liveSet, "start_time", 16);
@@ -207,7 +207,7 @@ describe("playback - song positions", () => {
         playback({
           action: "play-arrangement",
           startTime: "1|1",
-          startLocator: "locator-0",
+          startLocator: "26",
         }),
       ).toThrow("startTime cannot be used with startLocator");
     });
@@ -217,7 +217,7 @@ describe("playback - song positions", () => {
         playback({
           action: "update-arrangement",
           loopStart: "1|1",
-          loopStartLocator: "locator-0",
+          loopStartLocator: "26",
         }),
       ).toThrow("loopStart cannot be used with loopStartLocator");
     });
@@ -239,9 +239,9 @@ describe("playback - song positions", () => {
     beforeEach(() => {
       liveSet = setupCuePointMocks({
         cuePoints: [
-          { id: "cue1", time: 0, name: "Intro" },
-          { id: "cue2", time: 16, name: "Verse" },
-          { id: "cue3", time: 32, name: "Chorus" },
+          { id: "26", time: 0, name: "Intro" },
+          { id: "27", time: 16, name: "Verse" },
+          { id: "28", time: 32, name: "Chorus" },
         ],
         liveSet: { startTime: 16, loop: 1, loopStart: 16, loopLength: 16 },
       });
@@ -252,8 +252,8 @@ describe("playback - song positions", () => {
         action: "play-arrangement",
         startTime: "loc:Verse",
         loop: true,
-        loopStart: "loc:locator-1",
-        loopEnd: "loc:locator-2",
+        loopStart: "loc:27",
+        loopEnd: "loc:28",
       });
 
       expectLiveSetProperty(liveSet, "start_time", 16);
