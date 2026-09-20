@@ -14,6 +14,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  createTestDeviceAt,
   extractToolResultText,
   getToolErrorMessage,
   isToolError,
@@ -115,6 +116,36 @@ describe("ppal-create-device", () => {
       }),
     );
   }
+
+  // A path naming a chain past the rack's last one makes the chains below it
+  // too, so the entry says which ones it left behind.
+  it("names the rack chains a device path had to make first", async () => {
+    const trackIndex = await createTrack("audio");
+    const devicePath = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${trackIndex}`,
+    );
+    const rack = parseToolResult<WrapResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { path: devicePath, wrapInRack: true },
+      }),
+    );
+
+    await sleep(150);
+
+    // One past the rack's last chain, so the gap below it is filled as well.
+    const firstNew = rack.deviceCount;
+    const target = firstNew + 1;
+    const created = await createDevice(
+      "Compressor",
+      `${rack.path}/c${target}/d+`,
+    );
+
+    expect(created.created).toBe(`c${firstNew}-c${target}`);
+    expect(created.path).toBe(`${rack.path}/c${target}/d0`);
+  });
 
   it("lists the devices it can create when given no name", async () => {
     const list = parseToolResult<ListDevicesResult>(
@@ -602,6 +633,8 @@ interface TargetSkip {
 interface CreateDeviceResult {
   id: string;
   path: string;
+  /** The rack chains the path had to make first, when it made any */
+  created?: string;
   params?: Array<{
     id?: string;
     name: string;
@@ -615,4 +648,11 @@ interface ReadDeviceResult {
   type: string;
   path?: string;
   name?: string;
+}
+
+/** What a wrapInRack answers with; `deviceCount` is the rack's chain count. */
+interface WrapResult {
+  id: string;
+  path: string;
+  deviceCount: number;
 }

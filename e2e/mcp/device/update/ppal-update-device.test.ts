@@ -16,6 +16,7 @@ import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   type SkippedTargetResult,
   sleep,
@@ -399,6 +400,40 @@ describe("ppal-update-device", () => {
 
     // Nothing was written, so no variation was stored on the way to the error.
     expect((await readRackParams(rackId)).variations?.count ?? 0).toBe(0);
+  });
+
+  // The count comes back off Live's own `visible_macro_count`. This rack has no
+  // mappings, so both writes land exactly and the entry says nothing.
+  it("raises and lowers macroCount with nothing to report", async () => {
+    const rackId = await rackWithOneChain();
+
+    for (const macroCount of [8, 2]) {
+      const written = parseToolResultWithWarnings<UpdateDeviceResult>(
+        await ctx.client!.callTool({
+          name: "ppal-update-device",
+          arguments: { id: rackId, macroCount },
+        }),
+      );
+
+      expect(written.data.reason).toBeUndefined();
+      expect(written.warnings).toStrictEqual([]);
+      expect((await readRackParams(rackId)).macros?.count).toBe(macroCount);
+    }
+  });
+
+  // A reason names the object the way the tools publish it, never by Live's
+  // class name.
+  it("says a rack-only param is not applicable to a chain", async () => {
+    const written = parseToolResultWithWarnings<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { path: "t6/d0/c0", name: "Chain One", macroCount: 4 },
+      }),
+    );
+
+    // The name landed, so the refused param rides along as a reason.
+    expect(written.data.reason).toBe("macroCount not applicable to a chain");
+    expect(written.warnings).toStrictEqual([]);
   });
 
   it("names path, not id, when a path-only call's lists disagree", async () => {

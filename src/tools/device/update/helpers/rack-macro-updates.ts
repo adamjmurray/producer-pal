@@ -143,6 +143,9 @@ function executeMacroVariationAction(
 // Macro count
 // ============================================================================
 
+/** The most macros a rack shows. */
+const MAX_MACRO_COUNT = 16;
+
 /**
  * Update visible macro count for rack devices.
  * Macros are added/removed in pairs, so odd counts are rounded up to the next even.
@@ -167,29 +170,81 @@ export function updateMacroCount(
     return;
   }
 
-  // Macros are added/removed in pairs - round up odd numbers to next even
-  let effectiveTarget = targetCount;
+  const target = evenMacroCount(targetCount, notes);
+  // Read the mappings first: lowering the count may take them with it, and then
+  // nothing is left to explain the count the rack settled on.
+  const hadMappings = (device.getProperty("has_macro_mappings") as number) > 0;
+  const before = device.getProperty("visible_macro_count") as number;
+  const method = target > before ? "add_macro" : "remove_macro";
 
-  if (targetCount % 2 !== 0) {
-    effectiveTarget = Math.min(targetCount + 1, 16);
-    noteTarget(
-      notes,
-      `macroCount rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
-    );
+  for (let i = 0; i < Math.abs(target - before) / 2; i++) {
+    device.call(method);
   }
 
-  const currentCount = device.getProperty("visible_macro_count") as number;
-  const diff = effectiveTarget - currentCount;
-  const pairCount = Math.abs(diff) / 2;
+  reportMacroCount(device, { before, target, hadMappings }, notes);
+}
 
-  if (diff > 0) {
-    for (let i = 0; i < pairCount; i++) {
-      device.call("add_macro");
-    }
-  } else if (diff < 0) {
-    for (let i = 0; i < pairCount; i++) {
-      device.call("remove_macro");
-    }
+/** What one macroCount write asked for, and what the rack was before it. */
+interface MacroCountWrite {
+  before: number;
+  target: number;
+  hadMappings: boolean;
+}
+
+/**
+ * The count to write, rounded up to the next even one: Live adds and removes
+ * macros in pairs.
+ * @param targetCount - The count the call asked for
+ * @param notes - What this device's entry has to say, added to
+ * @returns The even count
+ */
+function evenMacroCount(targetCount: number, notes: TargetNotes): number {
+  if (targetCount % 2 === 0) {
+    return targetCount;
+  }
+
+  const effective = Math.min(targetCount + 1, MAX_MACRO_COUNT);
+
+  noteTarget(
+    notes,
+    `macroCount rounded from ${targetCount} to ${effective} (macros come in pairs)`,
+  );
+
+  return effective;
+}
+
+/**
+ * Say what the count actually did, read back off the rack. Live keeps a mapped
+ * macro visible, and whether lowering the count drops a mapping or is refused
+ * outright is unverified — so the entry reports the count that landed rather
+ * than either assumption.
+ * @param device - The rack
+ * @param write - What the write asked for, and what the rack was before it
+ * @param write.before - The count the rack showed beforehand
+ * @param write.target - The even count the write asked for
+ * @param write.hadMappings - Whether a macro was mapped beforehand
+ * @param notes - What this device's entry has to say, added to
+ */
+function reportMacroCount(
+  device: LiveAPI,
+  { before, target, hadMappings }: MacroCountWrite,
+  notes: TargetNotes,
+): void {
+  const landed = device.getProperty("visible_macro_count") as number;
+
+  if (landed !== target) {
+    const why = hadMappings ? ": Live keeps a mapped macro visible" : "";
+
+    noteTarget(notes, `macroCount landed at ${landed}, not ${target}${why}`);
+
+    return;
+  }
+
+  if (hadMappings && landed < before) {
+    noteTarget(
+      notes,
+      `macros ${landed + 1} to ${before} hidden; any mappings on them are gone`,
+    );
   }
 }
 

@@ -42,7 +42,7 @@ describe("updateTrack take lane targets", () => {
       id: lane(0)!.id,
       path: "t0/l0",
       name: "Take A",
-      created: true,
+      created: "l0",
     });
   });
 
@@ -56,7 +56,7 @@ describe("updateTrack take lane targets", () => {
       id: lane(0)!.id,
       path: "t0/l0",
       name: "Lane",
-      created: true,
+      created: "l0",
     });
   });
 
@@ -70,8 +70,8 @@ describe("updateTrack take lane targets", () => {
     expect(lane(0)?.set).toHaveBeenCalledWith("name", "Take A");
     expect(lane(1)?.set).toHaveBeenCalledWith("name", "Take B");
     expect(result).toStrictEqual([
-      { id: lane(0)!.id, path: "t0/l0", name: "Take A", created: true },
-      { id: lane(1)!.id, path: "t0/l1", name: "Take B", created: true },
+      { id: lane(0)!.id, path: "t0/l0", name: "Take A", created: "l0" },
+      { id: lane(1)!.id, path: "t0/l1", name: "Take B", created: "l1" },
     ]);
   });
 
@@ -87,7 +87,7 @@ describe("updateTrack take lane targets", () => {
       id: lane(2)!.id,
       path: "t0/l2",
       name: "Third",
-      created: true,
+      created: "l0-l2",
     });
   });
 
@@ -127,8 +127,8 @@ describe("updateTrack take lane targets", () => {
 
     expect(result).toStrictEqual([
       { id: "t1", path: "t1" },
-      { id: lane(0)!.id, path: "t0/l0", name: "First", created: true },
-      { id: lane(1)!.id, path: "t0/l1", name: "Second", created: true },
+      { id: lane(0)!.id, path: "t0/l0", name: "First", created: "l0" },
+      { id: lane(1)!.id, path: "t0/l1", name: "Second", created: "l1" },
     ]);
   });
 
@@ -145,7 +145,7 @@ describe("updateTrack take lane targets", () => {
       id: lane(0)!.id,
       path: "t0/l0",
       name: "Take A",
-      created: true,
+      created: "l0",
       reason: "a take lane takes only name; ignored color, mute",
     });
   });
@@ -204,7 +204,7 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual([
       { id: existing, path: "t0/l0", name: "First" },
       { id: "t1", path: "t1" },
-      { id: lane(1)!.id, path: "t0/l1", name: "Third", created: true },
+      { id: lane(1)!.id, path: "t0/l1", name: "Third", created: "l1" },
     ]);
   });
 
@@ -304,7 +304,7 @@ describe("updateTrack take lane targets", () => {
         ok: false,
         reason: 'no track at path "t9/l0"; ppal-create-track adds tracks',
       },
-      { id: lane(0)!.id, path: "t0/l0", name: "E", created: true },
+      { id: lane(0)!.id, path: "t0/l0", name: "E", created: "l0" },
     ]);
   });
 

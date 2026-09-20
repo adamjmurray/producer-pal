@@ -255,7 +255,7 @@ describe("updateDevice - bare drum pad paths", () => {
     registerDrumRack(2);
 
     expect(() => updateDevice({ path: "t0/d0/pC1", macroCount: 4 })).toThrow(
-      "macroCount not applicable to DrumChain",
+      "macroCount not applicable to a drum pad chain",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });

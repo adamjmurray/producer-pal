@@ -41,6 +41,9 @@ export interface DeviceMove {
   /** Why the move didn't happen, spelled as the caller wrote it. Always on an
    * "unresolvable" and on a "refused". */
   reason?: string;
+  /** The rack chains toPath had to make first ("c2-c3"), when it made any.
+   * They exist whether or not the move itself went through. */
+  created?: string;
 }
 
 /**
@@ -72,13 +75,17 @@ export function moveDeviceToPath(
     return { outcome: "unresolvable", reason: destination.reason };
   }
 
-  return moveDeviceIntoContainer(
+  const move = moveDeviceIntoContainer(
     device,
     destination,
     source,
     reportPath,
     notes,
   );
+
+  return destination.createdChains == null
+    ? move
+    : { ...move, created: destination.createdChains };
 }
 
 /**

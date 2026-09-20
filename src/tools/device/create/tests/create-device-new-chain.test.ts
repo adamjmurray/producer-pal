@@ -4,13 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // `c+` appends a chain and loads the device into it, so the caller never has to
-// read the rack to find out how many chains it already had.
+// read the rack to find out how many chains it already had. `c<n>` past the
+// last chain fills the gap below it, and the entry names what it made.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
+  mockNonExistentObjects,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -131,5 +133,35 @@ describe("createDevice — c+ appends a chain", () => {
       await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c+" }),
     ).toStrictEqual({ id: "device-1", path: "t0/d0/pC1/c1/d0" });
     expect(rack.call).toHaveBeenCalledWith("insert_chain");
+  });
+
+  // `c+` names the one chain it makes in the result's own path, so only a gap
+  // the caller didn't ask for needs naming.
+  it("names the chains a c<n> past the last one had to make", async () => {
+    // The chain the path names must read as missing before it is made, the way
+    // Live reports one: a default mock would answer for it and the walk would
+    // hold that answer instead of the chain it then creates.
+    mockNonExistentObjects();
+    registerRack(false, [0]);
+
+    expect(
+      await createDevice({ deviceName: "Simpler", path: "t0/d0/c2/d+" }),
+    ).toStrictEqual({
+      id: "device-2",
+      path: "t0/d0/c2/d0",
+      created: "c1-c2",
+    });
+  });
+
+  it("names the pad layers a c<n> past the last one had to make", async () => {
+    registerRack(true, [36]);
+
+    expect(
+      await createDevice({ deviceName: "Simpler", path: "t0/d0/pC1/c2/d+" }),
+    ).toStrictEqual({
+      id: "device-2",
+      path: "t0/d0/pC1/c2/d0",
+      created: "c1-c2",
+    });
   });
 });

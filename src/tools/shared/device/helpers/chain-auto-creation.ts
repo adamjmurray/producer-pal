@@ -9,6 +9,7 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
@@ -30,17 +31,22 @@ type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
 // Maximum chains that can be auto-created to prevent runaway creation
 const MAX_AUTO_CREATE_CHAINS = 16;
 
+/** Chain ranges a path made on the way down, for the result to report. */
+export type CreatedChains = string[];
+
 /**
  * Resolve container with auto-creation of missing chains
  * @param root - Parsed track root
  * @param segments - Device and chain segments below the root
  * @param path - Original path for error messages
+ * @param created - Chain ranges this path made, added to
  * @returns LiveAPI object (Track or Chain)
  */
 export function resolveContainerWithAutoCreate(
   root: TrackSegment,
   segments: IndexedSegment[],
   path: string,
+  created?: CreatedChains,
 ): LiveAPI {
   let currentPath = trackSegmentPath(root).toString();
   let current = liveApiAtDevicePath(currentPath);
@@ -54,7 +60,7 @@ export function resolveContainerWithAutoCreate(
       current = navigateToDevice(currentPath, segment.index, path);
       currentPath += ` devices ${segment.index}`;
     } else {
-      current = navigateToChain(current, currentPath, segment, path);
+      current = navigateToChain(current, currentPath, segment, path, created);
       currentPath = current.path;
     }
   }
@@ -110,6 +116,7 @@ function navigateToDevice(
  * @param currentPath - Current Live API path
  * @param segment - Chain or return-chain segment
  * @param fullPath - Full path for error messages
+ * @param created - Chain ranges this path made, added to
  * @returns LiveAPI chain object
  */
 function navigateToChain(
@@ -117,6 +124,7 @@ function navigateToChain(
   currentPath: string,
   segment: ChainSegment,
   fullPath: string,
+  created?: CreatedChains,
 ): LiveAPI {
   const chainPath = `${currentPath} ${liveApiCollection(segment)} ${segment.index}`;
 
@@ -140,7 +148,7 @@ function navigateToChain(
   warnRackRelativeDrumChainSpelling(existing);
 
   if (segment.index >= parentDevice.getChildCount("chains")) {
-    autoCreateChains(parentDevice, segment.index, fullPath);
+    autoCreateChains(parentDevice, segment.index, fullPath, created);
 
     return liveApiAtDevicePath(chainPath);
   }
@@ -153,11 +161,13 @@ function navigateToChain(
  * @param device - Parent device LiveAPI object
  * @param targetIndex - Target chain index
  * @param fullPath - Full path for error messages
+ * @param created - Chain ranges this path made, added to
  */
 function autoCreateChains(
   device: LiveAPI,
   targetIndex: number,
   fullPath: string,
+  created?: CreatedChains,
 ): void {
   // Check if device supports chains (prevents infinite loop on non-rack devices)
   if (!device.getProperty("can_have_chains")) {
@@ -172,7 +182,8 @@ function autoCreateChains(
   }
 
   // Limit how many chains can be auto-created
-  const chainsToCreate = targetIndex + 1 - device.getChildCount("chains");
+  const firstIndex = device.getChildCount("chains");
+  const chainsToCreate = targetIndex + 1 - firstIndex;
 
   if (chainsToCreate > MAX_AUTO_CREATE_CHAINS) {
     throw new Error(
@@ -188,6 +199,8 @@ function autoCreateChains(
       );
     }
   }
+
+  created?.push(createdRange("c", firstIndex, targetIndex));
 }
 
 /**
@@ -246,12 +259,14 @@ function autoCreateDrumPadChains(
  * @param drumPadNote - Note name (e.g. "C1", "F#1") or "*" for the catch-all
  *   pad, whose chains resolve but can't be created
  * @param chainSegments - Path segments after the pad note ([] or ["c<n>"])
+ * @param created - Chain ranges this path made, added to
  * @returns The resolved chain, or null when it can't be resolved/created
  */
 export function resolveOrCreateDrumPadChain(
   rack: LiveAPI,
   drumPadNote: string,
   chainSegments: string[],
+  created?: CreatedChains,
 ): LiveAPI | null {
   if (!rack.exists()) {
     return null;
@@ -288,6 +303,7 @@ export function resolveOrCreateDrumPadChain(
       drumPadNote,
       chainSegments,
       nestedIndex,
+      created,
     );
   }
 
@@ -338,7 +354,18 @@ export function resolveOrCreateDrumPadChain(
   // The chain the miss was looking for is the one just created, so there is
   // nothing to look up again — a second resolve would rebuild every chain on
   // the pad to find it.
-  return autoCreateDrumPadChains(rack, targetInNote, chainIndex, existingCount);
+  const chain = autoCreateDrumPadChains(
+    rack,
+    targetInNote,
+    chainIndex,
+    existingCount,
+  );
+
+  if (chain != null) {
+    created?.push(createdRange("c", existingCount, chainIndex));
+  }
+
+  return chain;
 }
 
 /**
@@ -349,6 +376,7 @@ export function resolveOrCreateDrumPadChain(
  * @param drumPadNote - The outer pad's note name
  * @param chainSegments - Path segments after the outer pad note
  * @param nestedIndex - Index of the nested `p<note>` segment
+ * @param created - Chain ranges this path made, added to
  * @returns The resolved chain, or null when it can't be resolved/created
  */
 function resolveNestedDrumPadChain(
@@ -356,6 +384,7 @@ function resolveNestedDrumPadChain(
   drumPadNote: string,
   chainSegments: string[],
   nestedIndex: number,
+  created?: CreatedChains,
 ): LiveAPI | null {
   const nestedNote = assertDefined(
     chainSegments[nestedIndex],
@@ -380,6 +409,7 @@ function resolveNestedDrumPadChain(
     rack,
     drumPadNote,
     namesChain ? toNested.slice(0, 1) : [],
+    created,
   );
 
   if (chain == null) {
@@ -396,6 +426,7 @@ function resolveNestedDrumPadChain(
     nested,
     nestedNote,
     chainSegments.slice(nestedIndex + 1),
+    created,
   );
 }
 

@@ -76,7 +76,9 @@ describe("createScene by path", () => {
     }
 
     expect(createScene({ path: "s5,s5" })).toStrictEqual([
-      { id: "live_set/scenes/5", path: "s5" },
+      // The gap filler is named too, so the call accounts for every scene it
+      // left behind.
+      { id: "live_set/scenes/5", path: "s5", created: "s2-s4" },
       { id: "live_set/scenes/6", path: "s6" },
     ]);
     expect(liveSet.call).toHaveBeenCalledTimes(5);

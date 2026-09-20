@@ -100,7 +100,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     // throws instead (ADR-0042).
     it("should refuse mute on a Device", () => {
       expect(() => updateDevice({ id: "123", mute: true })).toThrow(
-        "mute not applicable to RackDevice",
+        "mute not applicable to a device",
       );
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -131,7 +131,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
     it("should refuse color on a Device", () => {
       expect(() => updateDevice({ id: "123", color: "#FF0000" })).toThrow(
-        "color not applicable to RackDevice",
+        "color not applicable to a device",
       );
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -150,13 +150,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
     it("should refuse chokeGroup on a Chain", () => {
       expect(() => updateDevice({ id: "456", chokeGroup: 1 })).toThrow(
-        "chokeGroup not applicable to Chain",
+        "chokeGroup not applicable to a chain",
       );
     });
 
     it("should refuse chokeGroup on a Device", () => {
       expect(() => updateDevice({ id: "123", chokeGroup: 1 })).toThrow(
-        "chokeGroup not applicable to RackDevice",
+        "chokeGroup not applicable to a device",
       );
     });
   });
@@ -192,7 +192,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
     it("should refuse mappedPitch on a Chain", () => {
       expect(() => updateDevice({ id: "456", mappedPitch: "C3" })).toThrow(
-        "mappedPitch not applicable to Chain",
+        "mappedPitch not applicable to a chain",
       );
     });
   });
@@ -212,7 +212,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
           {
             name: "789",
             ok: false,
-            reason: "'params' not applicable to Chain id 456",
+            reason: "'params' not applicable to a chain id 456",
           },
         ],
       });
@@ -223,7 +223,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       const result = updateDevice({ id: "456", params: [] });
 
       expect(capturedWarnings()).not.toContain(
-        "'params' not applicable to Chain id 456",
+        "'params' not applicable to a chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -240,23 +240,22 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it.each([
-      ["macroVariation", { macroVariation: "create" }, "PluginDevice", "800"],
+      ["macroVariation", { macroVariation: "create" }, "800"],
       [
         "macroVariation, macroVariationIndex",
         { macroVariation: "load", macroVariationIndex: 1 },
-        "PluginDevice",
         "800",
       ],
-      ["solo", { solo: true }, "RackDevice", "123"],
-      ["mappedPitch", { mappedPitch: "C3" }, "RackDevice", "123"],
+      ["solo", { solo: true }, "123"],
+      ["mappedPitch", { mappedPitch: "C3" }, "123"],
     ] as const)(
       "says %s is not applicable to a device, beside what did land",
-      (label, args, type, id) => {
+      (label, args, id) => {
         // A name lands, so the target keeps a normal entry and the param that
         // did nothing rides on it as a reason.
         expect(updateDevice({ id, name: "Named", ...args })).toStrictEqual(
           expect.objectContaining({
-            reason: `${label} not applicable to ${type}`,
+            reason: `${label} not applicable to a device`,
           }),
         );
         expect(capturedWarnings()).toStrictEqual([]);
@@ -272,13 +271,13 @@ describe("updateDevice - Chain and DrumPad support", () => {
       ["macroCount", { macroCount: 4 }],
       ["abCompare", { abCompare: "a" }],
     ] as const)(
-      "says %s is not applicable to a Chain, beside what did land",
+      "says %s is not applicable to a chain, beside what did land",
       (label, args) => {
         expect(
           updateDevice({ id: "456", name: "Named", ...args }),
         ).toStrictEqual(
           expect.objectContaining({
-            reason: `${label} not applicable to Chain`,
+            reason: `${label} not applicable to a chain`,
           }),
         );
         expect(capturedWarnings()).toStrictEqual([]);
@@ -331,9 +330,18 @@ describe("updateDevice - Chain and DrumPad support", () => {
   });
 
   describe("invalid types", () => {
+    // An object the tool has no word of its own for still doesn't leak Live's.
+    it("falls back to plain words for an object it can't name", () => {
+      registerMockObject("sample-1", { type: "Sample" });
+
+      expect(() => updateDevice({ id: "sample-1", name: "Nope" })).toThrow(
+        "cannot update this object: id sample-1",
+      );
+    });
+
     it("refuses a lone Track, which this tool can't write", () => {
       expect(() => updateDevice({ id: "791", name: "Test" })).toThrow(
-        "cannot update Track objects: id 791",
+        "cannot update a track: id 791",
       );
       expect(capturedWarnings()).toStrictEqual([]);
     });

@@ -8,7 +8,15 @@ import {
   isParamSent,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
+import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
+
+/** Where this tool's prose says more than the shared vocabulary does. */
+const PROSE_WORDS: Record<string, string> = {
+  DrumChain: "drum pad chain",
+  DrumPad: "drum pad",
+};
 
 /**
  * Check if type is updatable (device, chain, or drum pad)
@@ -49,6 +57,19 @@ export function isChainType(type: string): boolean {
 }
 
 /**
+ * What to call the object a message is about, in the words the tools publish.
+ * Live's class names — `DrumChain`, `Eq8Device` — are spellings no tool hands
+ * out anywhere else, so a result never shows one.
+ * @param type - Live's class name for the object
+ * @returns The words for it, with its article ("a chain")
+ */
+export function liveObjectWords(type: string): string {
+  const word = PROSE_WORDS[type] ?? publishedType(type as LiveObjectType);
+
+  return word == null ? "this object" : `a ${word}`;
+}
+
+/**
  * Note a parameter this kind of object has no use for, when the call sent one.
  * An empty array counts as unset (the caller supplied the key but no entries).
  * @param ignored - The params that did nothing, added to
@@ -80,7 +101,7 @@ export function refuseIgnoredParams(
     refuseTargetWork(
       notes,
       ignored,
-      `${ignored.join(", ")} not applicable to ${type}`,
+      `${ignored.join(", ")} not applicable to ${liveObjectWords(type)}`,
     );
   }
 }
@@ -98,5 +119,5 @@ export function notApplicableReason(
   type: string,
   target: LiveAPI,
 ): string {
-  return `'${paramName}' not applicable to ${type} ${targetLabel(target)}`;
+  return `'${paramName}' not applicable to ${liveObjectWords(type)} ${targetLabel(target)}`;
 }

@@ -20,6 +20,8 @@ interface CapturedClip {
 export interface CaptureSceneResult {
   id: string;
   path: string;
+  /** The empty scenes the capture had to add first, when it added any */
+  created?: string;
   clips: CapturedClip[];
 }
 
@@ -47,6 +49,7 @@ export function captureScene({
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const appView = LiveAPI.from(livePath.view.song);
+  let padded: string | null = null;
 
   if (sceneIndex != null) {
     // capture_and_insert_scene inserts after the selection, so select the scene
@@ -54,7 +57,7 @@ export function captureScene({
     // predecessor is the last scene. An index past the end has no predecessor
     // to select, so pad with empty scenes first, same as create mode.
     validateSceneIndexCap([sceneIndex]);
-    ensureSceneCountForIndex(liveSet, sceneIndex);
+    padded = ensureSceneCountForIndex(liveSet, sceneIndex);
 
     const scene = LiveAPI.from(livePath.scene(sceneIndex - 1));
 
@@ -100,6 +103,7 @@ export function captureScene({
   return {
     id: newScene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
+    ...(padded == null ? {} : { created: padded }),
     sceneIndex: newSceneIndex,
     clips,
   };

@@ -3,8 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ChainMixerReport } from "./chain-mixer-report.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
@@ -49,14 +47,27 @@ import {
   refuseTargetWork,
   reportTargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
-import { isDeviceType, isValidUpdateType } from "./update-target-types.ts";
+import {
+  isDeviceType,
+  isValidUpdateType,
+  liveObjectWords,
+} from "./update-target-types.ts";
 
 /** One target's result: what it is, plus whatever the call wrote on it. */
 interface UpdateTargetResult extends ChainMixerReport {
   id: string;
   path?: string;
+  /** The rack chains a toPath had to make first ("c2-c3"), when it made any */
+  created?: string;
   params?: ParamResult[];
   actions?: ActionResult[];
+}
+
+/** Where a `toPath` move put the target, and what it made getting there. */
+interface TargetMove {
+  /** The destination spelling, absent when the move didn't happen */
+  written?: WrittenContainer;
+  created?: string;
 }
 
 /** A bare pad path names the whole pad, so it resolves to a group of objects
@@ -140,7 +151,7 @@ function resolveIdToTarget(id: string): ResolvedTarget | null {
 /**
  * A DrumPad id names the same thing its pad path does, so give it the same
  * whole-pad update. read-device hands these ids out, and without this most of
- * what it reports on a pad is "not applicable to DrumPad" when written back.
+ * what it reports on a pad is "not applicable to a drum pad" when written back.
  * @param target - The object an id resolved to
  * @returns The whole-pad target, or null when this isn't a pad
  */
@@ -164,9 +175,9 @@ function drumPadTarget(target: LiveAPI): ResolvedTarget | null {
 function resolvePathToTargetSafe(path: string): ResolvedTarget | null {
   try {
     return resolvePathToTarget(path);
-  } catch (e) {
-    console.warn(errorMessage(e));
-
+  } catch {
+    // Only the container spelling to echo comes through here, and the target's
+    // own entry already carries whatever went wrong with the path.
     return null;
   }
 }
@@ -259,20 +270,23 @@ function updateTarget(
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
-    throw new Error(`cannot update ${type} objects: ${targetLabel(target)}`);
+    throw new Error(
+      `cannot update ${liveObjectWords(type)}: ${targetLabel(target)}`,
+    );
   }
 
   const notes = newTargetNotes();
 
   // Handle move operation first (before other updates)
-  const moved =
+  const moved: TargetMove =
     options.toPath == null
-      ? undefined
+      ? {}
       : moveTargetToPath(target, type, options.toPath, notes);
 
   // A move re-parents the object, so its toPath replaces the address the call
   // reached it by.
-  const written = moved ?? writtenContainer(writtenPath);
+  const written = moved.written ?? writtenContainer(writtenPath);
+  const madeChains = moved.created == null ? {} : { created: moved.created };
 
   // No DrumPad case: a pad is never a lone target — id and path both resolve
   // one to the whole pad, and updateDrumPadGroup writes `name` to its chain,
@@ -287,7 +301,12 @@ function updateTarget(
     const mixer = updateNonDeviceProperties(target, type, options, notes);
 
     return reportTargetNotes(
-      { id: target.id, ...pathField(target, written), ...mixer },
+      {
+        id: target.id,
+        ...pathField(target, written),
+        ...madeChains,
+        ...mixer,
+      },
       notes,
       options,
     );
@@ -302,6 +321,7 @@ function updateTarget(
   const result: UpdateTargetResult = {
     id: target.id,
     ...pathField(target, written),
+    ...madeChains,
   };
 
   if (params.length > 0) {
@@ -322,14 +342,14 @@ function updateTarget(
  * @param toPath - Where the call asked to move it
  * @param notes - What the target's entry has to say, added to
  * @returns The destination as the call spelled it, for naming the object
- *   afterwards; undefined when it stayed where it was
+ *   afterwards, plus any chains the path made; empty when it stayed put
  */
 function moveTargetToPath(
   target: LiveAPI,
   type: string,
   toPath: string,
   notes: TargetNotes,
-): WrittenContainer | undefined {
+): TargetMove {
   if (isProducerPalDevice(target)) {
     refuseTargetWork(
       notes,
@@ -337,7 +357,7 @@ function moveTargetToPath(
       "the Producer Pal device cannot be moved",
     );
 
-    return undefined;
+    return {};
   }
 
   if (isDeviceType(type)) {
@@ -347,7 +367,7 @@ function moveTargetToPath(
   if (type === "DrumChain") {
     moveDrumChainToPath(target, toPath, false, notes);
 
-    return undefined;
+    return {};
   }
 
   // Only a chain is left: an updatable target is a device, a chain or a pad,
@@ -358,7 +378,7 @@ function moveTargetToPath(
     "a chain cannot be moved; move its devices instead",
   );
 
-  return undefined;
+  return {};
 }
 
 /**
@@ -366,14 +386,15 @@ function moveTargetToPath(
  * @param device - The device being moved
  * @param toPath - Where the call asked to move it
  * @param notes - What the device's entry has to say, added to
- * @returns The destination spelling, or undefined when the move didn't happen
+ * @returns The destination spelling, absent when the move didn't happen, plus
+ *   any chains the path made on the way
  */
 function moveDeviceAndName(
   device: LiveAPI,
   toPath: string,
   notes: TargetNotes,
-): WrittenContainer | undefined {
-  const { outcome, container, reason } = moveDeviceToPath(
+): TargetMove {
+  const { outcome, container, reason, created } = moveDeviceToPath(
     device,
     toPath,
     device,
@@ -399,12 +420,17 @@ function moveDeviceAndName(
 
   // Live confirms the device is in this container before the move reports
   // "moved", which is what makes the destination safe to name it by.
-  return container == null
-    ? undefined
-    : {
-        container: () => container,
-        path: insertionContainerPath(toPath, "toPath"),
-      };
+  return {
+    ...(container == null
+      ? {}
+      : {
+          written: {
+            container: () => container,
+            path: insertionContainerPath(toPath, "toPath"),
+          },
+        }),
+    ...(created == null ? {} : { created }),
+  };
 }
 
 /**

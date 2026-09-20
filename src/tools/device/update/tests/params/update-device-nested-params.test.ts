@@ -627,7 +627,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
         name: "Volume",
         ok: false,
         reason: expect.stringContaining(
-          "'params' not applicable to DrumChain t0/d0/pC1/c0",
+          "'params' not applicable to a drum pad chain t0/d0/pC1/c0",
         ),
       },
     ]);

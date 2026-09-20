@@ -766,7 +766,7 @@ describe("updateDevice - actions arg", () => {
     });
 
     expect(() => updateDevice({ id: "chain-1", actions: ["reverse"] })).toThrow(
-      "actions not applicable to Chain",
+      "actions not applicable to a chain",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });

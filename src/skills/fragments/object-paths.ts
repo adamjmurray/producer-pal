@@ -30,7 +30,7 @@ The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` ap
 
 Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. \`name\` and \`color\` pair with the list 1:1.
 
-A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). Updating a scene never makes one: only a destination says what a new scene would hold.
+A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
 
 A track's take lanes are \`ppal-update-track\`'s: \`t2/l+\` appends one (each \`l+\` in the list its own), and \`t2/l<n>\` names an existing lane, creating the lanes up to it. \`name\` is the only param a lane takes, and \`ppal-read-track\` reads a lane path too.`;
 

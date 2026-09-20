@@ -99,7 +99,7 @@ export function updateDevice(
     focus,
   }: UpdateDeviceArgs,
   _context: Partial<ToolContext> = {},
-): WriteResult<Record<string, unknown>> | null {
+): WriteResult<Record<string, unknown>> {
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
   ids = namedIdParam(id, ids, "ids");
@@ -127,13 +127,10 @@ export function updateDevice(
     throw new Error(badVariation);
   }
 
-  let result: WriteResult<Record<string, unknown>> | null;
+  let result: WriteResult<Record<string, unknown>>;
 
   if (wrapInRack) {
-    result = wrapDevicesInRack({ ids, path, toPath, name }) as Record<
-      string,
-      unknown
-    > | null;
+    result = { ...wrapDevicesInRack({ ids, path, toPath, name }) };
   } else {
     // Every list in the call is checked together, before any of them is split:
     // once one is split nothing knows whether the others are lists at all.
@@ -186,7 +183,7 @@ export function updateDevice(
     });
   }
 
-  if (focus && result != null) {
+  if (focus) {
     const lastId = lastWrittenId(result);
 
     if (lastId) {

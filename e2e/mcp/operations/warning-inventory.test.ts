@@ -247,7 +247,7 @@ describe("calls that report on the entry and warn about nothing", () => {
     expect(ignoredArg[0]).toStrictEqual({
       path: "t0/d0",
       ok: false,
-      reason: "gainDb not applicable to RackDevice",
+      reason: "gainDb not applicable to a device",
     });
     // The chain it was sent alongside takes it, and keeps its own slot.
     expect(ignoredArg[1]?.path).toBe("t0/d0/pC1/c0");

@@ -177,7 +177,7 @@ an instrument aimed at a chain that already has one reads
 **`ppal-update-device` reports a param the object can't take on its entry.**
 `gainDb`, `pan`, `mute`, `solo`, `sends` and the rest sent to an object with no
 use for them used to warn once per param. The target's entry now carries
-`reason: "gainDb, pan not applicable to RackDevice"`, and where they were
+`reason: "gainDb, pan not applicable to a device"`, and where they were
 everything you asked of it the entry is `ok: false`, and a lone target throws. A
 `sends` entry naming no return chain of the rack is that send's own
 `{return, ok: false, reason}` under the chain or pad it was sent to, matching
@@ -333,6 +333,19 @@ what was there, the way `ppal-duplicate` and `ppal-update-clip`'s `toPath`
 already do. The new clip's entry says so, with
 `reason: "overwrote the existing clip at t0/s0"`.
 
+### Results name what a call had to make first
+
+A path that reaches past the end makes the objects below it, and the entry now
+says which: `created: "c2-c3"` for rack chains on `ppal-create-device` and
+`ppal-update-device`, `created: "l1-l3"` for take lanes on `ppal-update-track`
+(it used to be `created: true`, naming only the lane you asked for), and
+`created: "s5-s7"` for the scenes a `ppal-create-scene` padded a gap with.
+
+`ppal-update-device` also reads `macroCount` back off the rack instead of
+assuming the write took: a count that didn't land reads
+`reason: "macroCount landed at 8, not 4: Live keeps a mapped macro visible"`,
+and lowering the count on a mapped rack says which macros went with it.
+
 ### Chains say `chain`, not Live's class name
 
 A chain's `type` was Live's class name, `Chain` or `DrumChain`. It is now
@@ -342,6 +355,9 @@ already used. A script switching on the old spelling needs the new one.
 Errors and warnings dropped their Live class names too:
 `is not a track (found Scene)` now reads `(found scene)`. The few that printed a
 raw Live path (`live_set return_tracks 0`) print the path you wrote instead.
+`ppal-update-device` says it that way on the target's own entry as well:
+`not applicable to a drum pad chain` and `cannot update a track` where they used
+to read `DrumChain` and `Track objects`.
 
 ## Params being removed in 2.4
 

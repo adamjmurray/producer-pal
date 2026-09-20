@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 
 /**
  * Creates the scenes a clip destination past the last one needs. A slot path
@@ -36,7 +37,5 @@ export function createMissingScenes(
     liveSet.call("create_scene", -1);
   }
 
-  return sceneCount === sceneIndex
-    ? `s${sceneCount}`
-    : `s${sceneCount}-s${sceneIndex}`;
+  return createdRange("s", sceneCount, sceneIndex);
 }

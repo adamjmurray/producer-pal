@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import {
   type InsertionSpot,
   refuseCountWithPathList,
@@ -32,20 +33,23 @@ export function validateSceneIndexCap(insertIndexes: number[]): void {
  * Pads the live set with empty scenes so index `sceneIndex` exists.
  * @param liveSet - The LiveAPI live_set object
  * @param sceneIndex - The target scene index
+ * @returns The scenes this made ("s8-s9"), or null when none were needed
  */
 export function ensureSceneCountForIndex(
   liveSet: LiveAPI,
   sceneIndex: number,
-): void {
+): string | null {
   const currentSceneCount = liveSet.getChildIds("scenes").length;
 
-  if (sceneIndex > currentSceneCount) {
-    const scenesToPad = sceneIndex - currentSceneCount;
-
-    for (let i = 0; i < scenesToPad; i++) {
-      liveSet.call("create_scene", -1);
-    }
+  if (sceneIndex <= currentSceneCount) {
+    return null;
   }
+
+  for (let i = currentSceneCount; i < sceneIndex; i++) {
+    liveSet.call("create_scene", -1);
+  }
+
+  return createdRange("s", currentSceneCount, sceneIndex - 1);
 }
 
 /**

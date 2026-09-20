@@ -16,6 +16,7 @@ import {
   takeLaneById,
   takeLaneCapacityMessage,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { takeLanePathEntry } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { CREATE_TRACK_ADVICE } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -35,8 +36,9 @@ export interface UpdateTakeLaneResult {
   id: string;
   path?: string;
   name: string;
-  /** Only when this call made the lane */
-  created?: true;
+  /** The lanes this call made ("l3", or "l1-l3" when it filled the gap below
+   * the one named), when it made any */
+  created?: string;
   ok?: false;
   reason?: string;
 }
@@ -103,13 +105,16 @@ export function updateTakeLane(
   const before = track.getChildCount("take_lanes");
   const laneIndex = spec.laneIndex ?? before;
   const { lane } = resolveTakeLane(track, laneIndex);
-  const created = laneIndex >= before;
+  // Naming a lane past the end fills in every lane below it too, so the entry
+  // says which lanes the call made, not just the one it asked for.
+  const created =
+    laneIndex >= before ? createdRange("l", before, laneIndex) : null;
 
   lane.setAll({ name });
 
   // The lane still got what the call could give it when it was created or
   // named, so the ignored params are a note on a hit rather than a skip.
-  const wrote = created || name != null;
+  const wrote = created != null || name != null;
 
   return {
     id: lane.id,
@@ -117,7 +122,7 @@ export function updateTakeLane(
     // A lane is only ever its name, so the entry says what it is now: the name
     // just written, or the one it kept.
     name: name ?? lane.getName(),
-    ...(created ? { created: true as const } : {}),
+    ...(created == null ? {} : { created }),
     ...(ignored.length === 0
       ? {}
       : {

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type CreatedChains,
   appendChain,
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
@@ -64,6 +65,9 @@ export interface InsertionPathResolution {
   /** How the call spelled the container, so a result can hand back the
    * caller's own spelling of a drum chain rather than the rack-relative one. */
   containerPath: string;
+  /** The rack chains the path had to make first ("c2-c3"), when it made any.
+   * Numbered within the rack the path names. */
+  createdChains?: string;
 }
 
 /**
@@ -112,8 +116,9 @@ export function resolveInsertionPath(
   // A type-addressed segment that named no device makes a canonical spelling
   // name the wrong thing — echo what the call wrote instead.
   const spelled = resolved ? above : held(segments);
+  const created: CreatedChains = [];
   const container = resolved
-    ? resolveContainer(root, above, path, appendsChain)
+    ? resolveContainer(root, above, path, appendsChain, created)
     : null;
 
   return {
@@ -121,6 +126,7 @@ export function resolveInsertionPath(
     position: !appends && last?.kind === "device" ? last.index : null,
     ...(appendsDevice ? { appendsDevice } : {}),
     ...(resolved ? {} : { namesNothing }),
+    ...(created.length > 0 ? { createdChains: created.join(", ") } : {}),
     // The chain a `c+` made has an index only now that it exists, and the
     // result has to name it rather than the `c+` the call wrote.
     containerPath:
@@ -181,6 +187,7 @@ function containerSegments<T extends DeviceSegment>(segments: T[]): T[] {
  * @param segments - Device-chain segments below the root
  * @param path - Original path, for error messages
  * @param appendsChain - Whether the path ended in `c+`
+ * @param created - Chain ranges the path made on the way down, added to
  * @returns LiveAPI object (Track or Chain)
  */
 function resolveContainer(
@@ -188,6 +195,7 @@ function resolveContainer(
   segments: CanonicalDeviceSegment[],
   path: string,
   appendsChain: boolean,
+  created: CreatedChains,
 ): LiveAPI | null {
   const indexed = segments.filter(
     (segment): segment is IndexedSegment => segment.kind !== "drum-pad",
@@ -196,13 +204,13 @@ function resolveContainer(
   // A drum pad resolves by MIDI note against a live rack, so the whole path
   // goes through the pad navigator rather than the chain walker.
   if (indexed.length !== segments.length) {
-    return resolveDrumPadContainer(root, segments, path, appendsChain);
+    return resolveDrumPadContainer(root, segments, path, appendsChain, created);
   }
 
   const container =
     indexed.length === 0
       ? liveApiAtDevicePath(trackSegmentPath(root).toString())
-      : resolveContainerWithAutoCreate(root, indexed, path);
+      : resolveContainerWithAutoCreate(root, indexed, path, created);
 
   return appendsChain ? appendChainTo(container, path) : container;
 }
@@ -213,6 +221,7 @@ function resolveContainer(
  * @param segments - Device-chain segments, at least one of them a drum pad
  * @param path - Original path, for error messages
  * @param appendsChain - Whether the path ended in `c+`
+ * @param created - Chain ranges the path made on the way down, added to
  * @returns LiveAPI object (Chain)
  */
 function resolveDrumPadContainer(
@@ -220,6 +229,7 @@ function resolveDrumPadContainer(
   segments: CanonicalDeviceSegment[],
   path: string,
   appendsChain: boolean,
+  created: CreatedChains,
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
   const rack = liveApiAtDevicePath(resolved.liveApiPath);
@@ -233,7 +243,7 @@ function resolveDrumPadContainer(
     return resolveOrCreateDrumPadChain(rack, note, [NEW_CHAIN]);
   }
 
-  const container = resolveOrCreateDrumPadChain(rack, note, tail);
+  const container = resolveOrCreateDrumPadChain(rack, note, tail, created);
 
   // Deeper down, the `c+` belongs to a rack nested under the pad.
   return appendsChain && container != null

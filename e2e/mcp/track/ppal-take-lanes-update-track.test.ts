@@ -56,7 +56,8 @@ interface UpdateTakeLaneResult {
   id: string;
   path: string;
   name: string;
-  created?: true;
+  /** The lanes the call made ("l0", or "l0-l2" when it filled a gap) */
+  created?: string;
   ok?: false;
   reason?: string;
 }
@@ -83,7 +84,7 @@ describe("take lanes as track-tool targets", () => {
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}/l0`,
       name: "Take A",
-      created: true,
+      created: "l0",
     });
 
     // Each l+ appends its own lane, and the names pair with them in order
@@ -191,7 +192,8 @@ describe("take lanes as track-tool targets", () => {
     });
 
     expect(lane.path).toBe(`t${EMPTY_MIDI_TRACK}/l2`);
-    expect(lane.created).toBe(true);
+    // The gap below the lane the path named is filled in, and named.
+    expect(lane.created).toBe("l0-l2");
     expect(lane.reason).toBe("a take lane takes only name; ignored color");
 
     await sleep(100);
@@ -245,7 +247,7 @@ describe("take lanes as track-tool targets", () => {
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}/l0`,
       name: "C",
-      created: true,
+      created: "l0",
     });
   });
 });

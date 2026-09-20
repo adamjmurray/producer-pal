@@ -5,17 +5,14 @@
 
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
+import { appendChain } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import {
-  type InsertionPathResolution,
-  resolveInsertionPath,
-} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
@@ -30,6 +27,7 @@ import {
   pathField,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { liveObjectWords } from "./update-target-types.ts";
 import {
   type ObjectPath,
   parseObjectPath,
@@ -67,6 +65,13 @@ interface WrapResult {
   reason?: string;
 }
 
+/** Where the new rack goes. */
+interface RackDestination {
+  container: LiveAPI;
+  /** The slot the path named, or null to append */
+  position: number | null;
+}
+
 /**
  * Wrap device(s) in a new rack
  * @param options - The options
@@ -75,23 +80,20 @@ interface WrapResult {
  * @param options.toPath - Target path for the new rack
  * @param options.name - Name for the new rack
  * @returns Info about the created rack
+ * @throws Error when nothing can be wrapped, or nowhere can hold the rack
  */
 export function wrapDevicesInRack({
   ids,
   path,
   toPath,
   name,
-}: WrapDevicesOptions): WrapResult | null {
-  const skipped: string[] = [];
-  const devices = resolveDevices(namedTargets({ id: ids, path }), skipped);
+}: WrapDevicesOptions): WrapResult {
+  const reasons: string[] = [];
+  const devices = resolveDevices(namedTargets({ id: ids, path }), reasons);
 
-  refuseEmptyWrap(devices, skipped);
+  refuseEmptyWrap(devices, reasons);
 
   const rackType = determineRackType(devices.map((d) => d.device));
-
-  if (rackType == null) {
-    return null;
-  }
 
   // Instruments require temp-track workaround
   if (rackType === RACK_TYPE_INSTRUMENT) {
@@ -113,23 +115,11 @@ export function wrapDevicesInRack({
     );
   }
 
-  const destination = toPath
+  const { container, position } = toPath
     ? rackDestination(toPath)
     : getDeviceInsertionPoint(assertDefined(devices[0], "first device").device);
 
-  if (destination == null) {
-    return null;
-  }
-
-  const { container, position } = destination;
-
-  if (!container?.exists()) {
-    console.warn("wrapInRack: target container does not exist");
-
-    return null;
-  }
-
-  const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType as RackType];
+  const rackName = RACK_TYPE_TO_DEVICE_NAME[rackType];
   const rackId = container.call(
     "insert_device",
     rackName,
@@ -141,61 +131,78 @@ export function wrapDevicesInRack({
     rack.set("name", name);
   }
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  for (let i = 0; i < devices.length; i++) {
-    const device = assertDefined(devices[i], `device at index ${i}`).device;
-
-    // Ensure chain exists (create if needed)
-    const currentChainCount = rack.getChildCount("chains");
-
-    if (i >= currentChainCount) {
-      const chainsNeeded = i + 1 - currentChainCount;
-
-      for (let j = 0; j < chainsNeeded; j++) {
-        const result = rack.call("insert_chain");
-
-        if (!Array.isArray(result) || result[0] !== "id") {
-          console.warn(
-            `wrapInRack: failed to create chain ${j + 1}/${chainsNeeded}`,
-          );
-        }
-      }
-    }
-
-    const chainPath = `${rack.path} chains ${i}`;
-    const chainContainer = LiveAPI.from(chainPath);
-
-    liveSet.call(
-      "move_device",
-      toLiveApiId(device.id),
-      toLiveApiId(chainContainer.id),
-      0,
-    );
-  }
+  moveDevicesIntoChains(rack, devices, reasons);
 
   return {
     id: rack.id,
     ...pathField(rack),
     type: rackType,
     deviceCount: rack.getChildCount("chains"),
-    ...(skipped.length > 0 ? { reason: skipped.join("; ") } : {}),
+    ...(reasons.length > 0 ? { reason: reasons.join("; ") } : {}),
   };
+}
+
+/**
+ * Put each device in its own chain of the new rack, making the chains as it
+ * goes. A chain Live won't make is the one device that didn't get in, so it
+ * lands on the rack's own entry rather than dropping out of sight.
+ * @param rack - The new rack
+ * @param devices - The devices to wrap, in order
+ * @param reasons - Why a device the call named isn't in the rack, added to
+ */
+function moveDevicesIntoChains(
+  rack: LiveAPI,
+  devices: ResolvedDevice[],
+  reasons: string[],
+): void {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  for (const [index, { param, value, device }] of devices.entries()) {
+    const chain = chainAt(rack, index);
+
+    if (chain == null) {
+      reasons.push(`${param} "${value}" stayed put: Live made no chain for it`);
+      continue;
+    }
+
+    liveSet.call(
+      "move_device",
+      toLiveApiId(device.id),
+      toLiveApiId(chain.id),
+      0,
+    );
+  }
+}
+
+/**
+ * The rack's chain at an index, appending chains until it exists.
+ * @param rack - The new rack
+ * @param index - The chain index wanted
+ * @returns The chain, or null when Live wouldn't make one
+ */
+function chainAt(rack: LiveAPI, index: number): LiveAPI | null {
+  for (let i = rack.getChildCount("chains"); i <= index; i++) {
+    if (appendChain(rack) == null) {
+      return null;
+    }
+  }
+
+  return rack.child("chains", String(index));
 }
 
 /**
  * Refuse a wrap with nothing to wrap: nothing landed, and there is no rack
  * entry to carry why each device the call named dropped out.
  * @param devices - The devices that resolved
- * @param skipped - Why the rest didn't
+ * @param reasons - Why the rest didn't
  * @throws Error when no device resolved
  */
-function refuseEmptyWrap(devices: ResolvedDevice[], skipped: string[]): void {
+function refuseEmptyWrap(devices: ResolvedDevice[], reasons: string[]): void {
   if (devices.length > 0) {
     return;
   }
 
-  const why = skipped.length > 0 ? `: ${skipped.join("; ")}` : "";
+  const why = reasons.length > 0 ? `: ${reasons.join("; ")}` : "";
 
   throw new Error(`wrapInRack found no devices to wrap${why}`);
 }
@@ -210,12 +217,12 @@ interface ResolvedDevice extends NamedTarget {
  * every device named, so a device that can't go in says so on the rack's own
  * entry rather than dropping out silently.
  * @param items - The targets, each tagged with the param it came from
- * @param skipped - Why a device the call named isn't in the rack, added to
+ * @param reasons - Why a device the call named isn't in the rack, added to
  * @returns Array of resolved devices, each still carrying its own param/value
  */
 function resolveDevices(
   items: NamedTarget[],
-  skipped: string[],
+  reasons: string[],
 ): ResolvedDevice[] {
   const devices: ResolvedDevice[] = [];
 
@@ -227,21 +234,23 @@ function resolveDevices(
         param === "id" ? LiveAPI.from(value) : resolveDeviceFromPath(value);
 
       if (!device?.exists()) {
-        skipped.push(`no device at "${value}"`);
+        reasons.push(`no device at "${value}"`);
       } else if (isProducerPalDevice(device)) {
         // Wrapping moves the device into a chain, which is a move like any
         // other — and this one would take the connection with it.
-        skipped.push(
+        reasons.push(
           `the Producer Pal device ${targetLabel(device)} cannot be wrapped`,
         );
       } else if (device.type.endsWith("Device")) {
         devices.push({ ...item, device });
       } else {
-        skipped.push(`"${value}" is not a device (type: ${device.type})`);
+        reasons.push(
+          `"${value}" is ${liveObjectWords(device.type)}, not a device`,
+        );
       }
     } catch (error) {
       // Resolution throws for a path that names nothing a device can sit in.
-      skipped.push(errorMessage(error));
+      reasons.push(errorMessage(error));
     }
   }
 
@@ -249,31 +258,27 @@ function resolveDevices(
 }
 
 /**
- * Where the new rack goes. Resolution throws for a toPath that names nothing a
- * device can go in — a missing track or device, a chain in a Drum Rack, a
- * device that isn't a rack — and the sibling move warn-skips all of those, so
- * do the same rather than failing the whole call.
+ * Where the new rack goes. wrapInRack does one thing, so a toPath that names
+ * nowhere leaves nothing to report on — it fails the call instead of skipping.
  * @param toPath - Target path for the new rack
- * @returns The destination, or null when the path didn't resolve
+ * @returns The container and the slot in it
+ * @throws Error when the path names nowhere a rack can go
  */
-function rackDestination(toPath: string): InsertionPathResolution | null {
-  try {
-    const destination = resolveInsertionPath(toPath, "toPath");
+function rackDestination(toPath: string): RackDestination {
+  const { container, position, namesNothing } = resolveInsertionPath(
+    toPath,
+    "toPath",
+  );
 
-    if (destination.namesNothing != null) {
-      console.warn(
-        `wrapInRack: ${nothingAtPath(toPath, destination.namesNothing, "toPath")}`,
-      );
-
-      return null;
-    }
-
-    return destination;
-  } catch (error) {
-    console.warn(`wrapInRack: ${errorMessage(error)}`);
-
-    return null;
+  if (namesNothing != null) {
+    throw new Error(nothingAtPath(toPath, namesNothing, "toPath"));
   }
+
+  if (!container?.exists()) {
+    throw new Error(nothingAtPath(toPath, undefined, "toPath"));
+  }
+
+  return { container, position };
 }
 
 /**
@@ -313,9 +318,10 @@ function resolveDeviceFromPath(path: string): LiveAPI | null {
 /**
  * Determine the appropriate rack type for wrapping devices
  * @param devices - Devices to wrap
- * @returns Rack type or null if incompatible
+ * @returns Rack type
+ * @throws Error when no one rack can hold them all
  */
-function determineRackType(devices: LiveAPI[]): string | null {
+function determineRackType(devices: LiveAPI[]): RackType {
   const types = new Set<number>();
 
   for (const device of devices) {
@@ -332,9 +338,7 @@ function determineRackType(devices: LiveAPI[]): string | null {
     types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) &&
     types.has(LIVE_API_DEVICE_TYPE_MIDI_EFFECT)
   ) {
-    console.warn("wrapInRack: cannot mix MIDI and Audio effects in one rack");
-
-    return null;
+    throw new Error("wrapInRack cannot mix MIDI and audio effects in one rack");
   }
 
   if (types.has(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT)) {
@@ -345,9 +349,7 @@ function determineRackType(devices: LiveAPI[]): string | null {
     return "midi-effect-rack";
   }
 
-  console.warn("wrapInRack: no valid effect devices found");
-
-  return null;
+  throw new Error("wrapInRack found no effect devices to wrap");
 }
 
 /**
@@ -381,7 +383,7 @@ function wrapInstrumentInRack(
   device: LiveAPI,
   toPath?: string,
   name?: string,
-): WrapResult | null {
+): WrapResult {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   // 1. Get source track from the instrument
@@ -391,21 +393,9 @@ function wrapInstrumentInRack(
   // 2. Resolve and validate the destination BEFORE moving anything. A bad
   // toPath must fail here, while the instruments are still safely on their
   // source track — never after they've been staged on the temp track.
-  const destination = toPath
+  const { container, position } = toPath
     ? rackDestination(toPath)
     : { container: sourceContainer, position: devicePosition };
-
-  if (destination == null) {
-    return null;
-  }
-
-  const { container, position } = destination;
-
-  if (!container?.exists()) {
-    console.warn("wrapInRack: target container does not exist");
-
-    return null;
-  }
 
   // 3. Create temp MIDI track (appended)
   const tempTrackId = liveSet.call("create_midi_track", -1) as string;

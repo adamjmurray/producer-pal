@@ -10,6 +10,7 @@ import {
   livePath,
   mockNonExistentObjects,
   mockWorkingDeviceMoves,
+  registerMacroRack,
   registerMockObject,
   registerParamMock,
   updateDevice,
@@ -439,12 +440,8 @@ describe("updateDevice", () => {
 
   describe("macroCount", () => {
     beforeEach(() => {
-      // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
-      device123 = registerMockObject("123", {
-        path: livePath.track(0).device(0),
-        type: "RackDevice",
-        properties: { can_have_chains: 1, visible_macro_count: 4 },
-      });
+      // id 123 is a rack showing 4 macros, id 456 a regular device
+      device123 = registerMacroRack("123", { count: 4 });
 
       device456 = registerMockObject("456", {
         path: livePath.track(0).device(1),
@@ -455,7 +452,7 @@ describe("updateDevice", () => {
 
     it("should reject non-rack devices with error", () => {
       expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
-        "macroCount not applicable to Device",
+        "macroCount not applicable to a device",
       );
       expect(device456.call).not.toHaveBeenCalled();
       expect(capturedWarnings()).toStrictEqual([]);
@@ -508,6 +505,47 @@ describe("updateDevice", () => {
         reason: "macroCount rounded from 7 to 8 (macros come in pairs)",
       });
       expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says where the count landed when a mapped rack keeps its macros", () => {
+      registerMacroRack("rack", { count: 8, mapped: true, floor: 8 });
+
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+        reason:
+          "macroCount landed at 8, not 4: Live keeps a mapped macro visible",
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says where the count landed when nothing is mapped", () => {
+      registerMacroRack("rack", { count: 8, floor: 6 });
+
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+        reason: "macroCount landed at 6, not 4",
+      });
+    });
+
+    it("says which mapped macros a lowered count hid", () => {
+      registerMacroRack("rack", { count: 8, mapped: true });
+
+      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+        reason: "macros 5 to 8 hidden; any mappings on them are gone",
+      });
+    });
+
+    it("says nothing extra when a mapped rack takes the macros it is given", () => {
+      registerMacroRack("rack", { count: 4, mapped: true });
+
+      expect(updateDevice({ id: "rack", macroCount: 8 })).toStrictEqual({
+        id: "rack",
+        path: "t0/d0",
+      });
     });
   });
 
@@ -734,7 +772,7 @@ describe("updateDevice", () => {
       // Nothing can be written to it, so the lone target is refused and the
       // reason is the error rather than a warning.
       expect(() => updateDevice({ id: "999", name: "Nope" })).toThrow(
-        "cannot update Track objects: t3 (id 999)",
+        "cannot update a track: t3 (id 999)",
       );
       expect(capturedWarnings()).toStrictEqual([]);
     });
@@ -746,7 +784,7 @@ describe("updateDevice", () => {
         {
           id: "999",
           ok: false,
-          reason: "cannot update Track objects: t3 (id 999)",
+          reason: "cannot update a track: t3 (id 999)",
         },
         { id: "123", path: "t0/d0" },
       ]);

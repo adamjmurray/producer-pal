@@ -15,6 +15,7 @@ import {
   createMidiTrack,
   createTestDeviceAt,
   getToolErrorMessage,
+  getToolWarnings,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
@@ -48,6 +49,61 @@ describe("ppal-update-device wrapInRack", () => {
     expect(result.type).toBe("instrument-rack");
     expect(result.deviceCount).toBe(1);
     expect(result.path).toBe(devicePath);
+  });
+
+  // A wrap makes one rack for the whole call, so a wrap that can't happen has
+  // no entry to report on and fails outright.
+  it("refuses to wrap MIDI and audio effects into one rack", async () => {
+    const trackIndex = await createMidiTrack(ctx.client!);
+    const arp = await createTestDeviceAt(
+      ctx.client!,
+      "Arpeggiator",
+      `t${trackIndex}`,
+    );
+    const comp = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${trackIndex}`,
+    );
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${arp},${comp}`, wrapInRack: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "wrapInRack cannot mix MIDI and audio effects in one rack",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  it("refuses a wrap whose toPath names nothing", async () => {
+    const trackIndex = await createMidiTrack(ctx.client!);
+    const devicePath = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${trackIndex}`,
+    );
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: devicePath, wrapInRack: true, toPath: "t99/d3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('nothing at toPath "t99/d3"');
+    expect(getToolWarnings(result)).toStrictEqual([]);
+
+    // The device stayed where it was.
+    expect(
+      parseToolResult<{ path?: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-device",
+          arguments: { path: devicePath },
+        }),
+      ).path,
+    ).toBe(devicePath);
   });
 
   it("refuses to wrap two instruments from different tracks into one rack", async () => {

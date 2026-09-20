@@ -344,3 +344,50 @@ export function expectValueSet(param: RegisteredMockObject): number {
 
   return setCall[1];
 }
+
+/** What a registered rack does with its macros. */
+export interface MacroRackSpec {
+  /** The macros it shows to begin with */
+  count: number;
+  /** Whether one of its macros is mapped */
+  mapped?: boolean;
+  /** The fewest macros it will hide down to, for a rack that keeps some */
+  floor?: number;
+}
+
+/**
+ * Register a rack at t0/d0 whose add_macro/remove_macro move the visible count,
+ * so a test reads back what the write landed on rather than what it asked for.
+ * @param id - Mock object ID
+ * @param spec - What the rack shows, and how far it will go
+ * @param spec.count - The macros it shows to begin with
+ * @param spec.mapped - Whether one of its macros is mapped
+ * @param spec.floor - The fewest macros it will hide down to
+ * @returns The registered rack mock
+ */
+export function registerMacroRack(
+  id: string,
+  { count, mapped = false, floor = 0 }: MacroRackSpec,
+): RegisteredMockObject {
+  const properties: Record<string, unknown> = {
+    can_have_chains: 1,
+    visible_macro_count: count,
+    has_macro_mappings: mapped ? 1 : 0,
+  };
+
+  // Live moves macros a pair at a time.
+  const move = (by: number) => (): null => {
+    const now = properties.visible_macro_count as number;
+
+    properties.visible_macro_count = Math.max(floor, now + by);
+
+    return null;
+  };
+
+  return registerMockObject(id, {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties,
+    methods: { add_macro: move(2), remove_macro: move(-2) },
+  });
+}

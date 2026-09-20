@@ -34,11 +34,9 @@ describe("updateDevice - wrapInRack by device type", () => {
   });
 
   it("says what the track holds when toPath names nothing", () => {
-    expect(
+    expect(() =>
       updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t0/inst" }),
-    ).toBeNull();
-    expect(capturedWarnings()).toStrictEqual([
-      'wrapInRack: nothing at toPath "t0/inst": t0 has no instrument',
-    ]);
+    ).toThrow('nothing at toPath "t0/inst": t0 has no instrument');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

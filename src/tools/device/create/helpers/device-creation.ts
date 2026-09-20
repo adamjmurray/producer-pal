@@ -25,6 +25,8 @@ import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 export interface CreateDeviceResult {
   id: string;
   path?: string;
+  /** The rack chains the path had to make first ("c2-c3"), when it made any */
+  created?: string;
   params?: ParamResult[];
 }
 
@@ -35,6 +37,8 @@ export interface CreationTarget {
   position: number | null;
   /** How the call spelled the container */
   containerPath: string;
+  /** The rack chains the path made on the way to the container, if any */
+  createdChains?: string;
 }
 
 /**
@@ -44,7 +48,7 @@ export interface CreationTarget {
  * @throws Error when the path names no place a device can go
  */
 export function resolveCreationTarget(path: string): CreationTarget {
-  const { container, position, containerPath, namesNothing } =
+  const { container, position, containerPath, namesNothing, createdChains } =
     resolveInsertionPath(path);
 
   if (namesNothing != null) {
@@ -57,7 +61,7 @@ export function resolveCreationTarget(path: string): CreationTarget {
     throw new Error(`container at path "${path}" does not exist`);
   }
 
-  return { container, position, containerPath };
+  return { container, position, containerPath, createdChains };
 }
 
 /**
@@ -140,16 +144,18 @@ export function insertRefusalCause(
  * @param target - Where it was created
  * @param target.container - The container
  * @param target.containerPath - How the call spelled the container
- * @returns The entry's id and path
+ * @param target.createdChains - The rack chains the path made first, if any
+ * @returns The entry's id, path, and the chains it took to get there
  */
 export function createdDeviceEntry(
   id: string,
   device: LiveAPI,
-  { container, containerPath }: CreationTarget,
+  { container, containerPath, createdChains }: CreationTarget,
 ): CreateDeviceResult {
   return {
     id,
     ...pathField(device, { container: () => container, path: containerPath }),
+    ...(createdChains == null ? {} : { created: createdChains }),
   };
 }
 

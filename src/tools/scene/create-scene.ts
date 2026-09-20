@@ -21,6 +21,7 @@ import {
   landedColor,
   type LandedColor,
 } from "#src/tools/shared/helpers/landed-color.ts";
+import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import {
@@ -36,6 +37,9 @@ import {
 interface SceneResult {
   id: string;
   path: string;
+  /** The empty scenes this one needed below it, when the path reached past the
+   * end ("s5-s7") */
+  created?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
   reason?: string;
@@ -252,6 +256,17 @@ function createSingleScene(
   return {
     id: scene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: insertion.finalIndex }),
+    // Named at the indices they were made at, before this scene went in above
+    // them.
+    ...(insertion.padCount === 0
+      ? {}
+      : {
+          created: createdRange(
+            "s",
+            sceneIndex - insertion.padCount,
+            sceneIndex - 1,
+          ),
+        }),
     ...landed,
   };
 }

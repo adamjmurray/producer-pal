@@ -187,14 +187,14 @@ describe("a write answers the same by path and by id", () => {
       {
         name: "Volume",
         ok: false,
-        reason: `'params' not applicable to Chain t6/d0/c0 (id ${chainId})`,
+        reason: `'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
       },
     ]);
     expect(pad!.params).toStrictEqual([
       {
         name: "Volume",
         ok: false,
-        reason: `'params' not applicable to DrumChain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
+        reason: `'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
       },
     ]);
   });
@@ -251,13 +251,11 @@ describe("a write answers the same by path and by id", () => {
     expect(host).toStrictEqual({
       id: hostTrackId,
       path: "t11",
-      type: "track",
       ok: false,
       reason: `cannot delete track t11 (id ${hostTrackId}), which hosts the Producer Pal device`,
     });
     expect(missing).toStrictEqual({
       path: "t99",
-      type: "track",
       reason: "nothing to delete",
     });
   });

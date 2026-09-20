@@ -94,7 +94,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
       default:
-        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up.",
+        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up; the entry says where the count landed.",
       smallModel: null,
     }),
     abCompare: param(z.enum(["a", "b", "save"]).optional(), {
@@ -146,7 +146,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     wrapInRack: param(z.boolean().optional(), {
       default:
-        "Wrap device(s) in a new rack (auto-detects type from device); only one instrument at a time",
+        "Wrap device(s) in a new rack (auto-detects type from device); only one instrument at a time, and MIDI and audio effects can't share a rack",
       smallModel: null,
     }),
   },

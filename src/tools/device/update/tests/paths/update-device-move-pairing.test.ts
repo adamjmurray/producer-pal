@@ -120,6 +120,6 @@ describe("updateDevice — pairing toPath with the targets", () => {
   it("leaves wrapInRack's single destination alone", () => {
     expect(() =>
       updateDevice({ path: "t0/d0,t0/d1", toPath: "t1", wrapInRack: true }),
-    ).not.toThrow();
+    ).not.toThrow("toPath names 1 destination");
   });
 });

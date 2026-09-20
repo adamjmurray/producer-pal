@@ -240,7 +240,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         sends: [{ return: "a", gainDb: -6 }],
       }),
     ).toThrow(
-      "gainDb, pan, sendGainDb, sendReturn, sends not applicable to SimplerDevice",
+      "gainDb, pan, sendGainDb, sendReturn, sends not applicable to a device",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -257,7 +257,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       path: "t0/d0/c0",
       gainDb: -15.02,
       reason:
-        "gainDb read back as shown, not as sent; macroCount not applicable to DrumChain",
+        "gainDb read back as shown, not as sent; macroCount not applicable to a drum pad chain",
     });
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -273,7 +273,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(result[0]).toStrictEqual({
       id: "target-1",
       ok: false,
-      reason: "gainDb not applicable to SimplerDevice",
+      reason: "gainDb not applicable to a device",
     });
     expect(result[1].id).toBe("chain-0");
     expect(capturedWarnings()).toStrictEqual([]);
