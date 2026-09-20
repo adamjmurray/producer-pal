@@ -106,7 +106,8 @@ In the `dev` branch:
 - [ ] The PR to `main` has a green build
 - [ ] MCP e2e tests pass locally (see below)
 - [ ] Most evals should (at least partially) pass with a capable model e.g.
-      `scripts/eval -m gpt-5.4 -j gpt-5.4-mini -a` (requires API keys in `.env`)
+      `scripts/eval -m gpt-5.6-terra -j gpt-5.6-luna -a` (requires API keys in
+      `.env`)
 
 ### MCP E2E Tests
 

@@ -15,7 +15,7 @@ starting a chat or run.
 ```bash
 scripts/chat --list-models            # list providers
 scripts/chat --list-models openai     # list one provider's models
-scripts/chat -m claude-sonnet-4-5     # start a chat
+scripts/chat -m claude-sonnet-5       # start a chat
 ```
 
 ## Skills Snapshots

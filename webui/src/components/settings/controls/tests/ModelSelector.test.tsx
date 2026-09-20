@@ -182,7 +182,7 @@ describe("ModelSelector", () => {
     it("renders text input for lmstudio provider", () => {
       renderModelSelector({ provider: "lmstudio", model: "llama-3.1-70b" });
       expect(
-        screen.getByPlaceholderText(/e.g., qwen\/qwen3-coder/),
+        screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/),
       ).toBeDefined();
     });
 
@@ -192,7 +192,7 @@ describe("ModelSelector", () => {
         model: "llama-3.1-70b",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3-coder/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/), {
         target: { value: "qwen-2.5-72b" },
       });
       expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
@@ -226,7 +226,7 @@ describe("ModelSelector", () => {
         target: { value: "OTHER" },
       });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-2.5-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-3.8-flash/),
       ).toBeDefined();
     });
 
@@ -236,7 +236,7 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-2.5-flash/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-3.8-flash/), {
         target: { value: "custom-model-name" },
       });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
@@ -245,7 +245,7 @@ describe("ModelSelector", () => {
     it("shows custom input initially for non-preset models", () => {
       renderModelSelector({ model: "my-custom-model" });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-2.5-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-3.8-flash/),
       ).toBeDefined();
       expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
         "OTHER",
@@ -254,7 +254,7 @@ describe("ModelSelector", () => {
 
     it("shows provider-specific placeholders for OpenAI", () => {
       renderModelSelector({ provider: "openai", model: "my-custom-openai" });
-      expect(screen.getByPlaceholderText(/e.g., gpt-5.4-nano/)).toBeDefined();
+      expect(screen.getByPlaceholderText(/e.g., gpt-5.6-luna/)).toBeDefined();
     });
 
     it("shows provider-specific placeholders for Mistral", () => {
@@ -276,7 +276,7 @@ describe("ModelSelector", () => {
 
     it("shows provider-specific placeholders for Ollama", () => {
       renderModelSelector({ provider: "ollama", model: "my-custom-ollama" });
-      expect(screen.getByPlaceholderText(/e.g., qwen3:30b/)).toBeDefined();
+      expect(screen.getByPlaceholderText(/e.g., qwen3.8/)).toBeDefined();
     });
   });
 });

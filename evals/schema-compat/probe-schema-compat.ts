@@ -69,7 +69,7 @@ const TOOL_CHOICE: "auto" | "required" = process.argv.includes("--auto")
 const REPEATS = Math.max(1, Math.floor(numArg("--repeat=") ?? 3));
 /**
  * Sampling temperature. Left unset (provider default) by default: forcing 0 on
- * reasoning models (e.g. gpt-5-nano) gets rejected by some endpoints, which
+ * reasoning models (e.g. gpt-5.6-luna) gets rejected by some endpoints, which
  * would show as false `rejected` cells. Repeats — not temp 0 — are how this
  * probe controls for noise. Override with --temp=N when the model allows it.
  */

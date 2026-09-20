@@ -25,7 +25,7 @@ export interface ProviderConfig {
 export const ANTHROPIC_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "ANTHROPIC_KEY",
   providerName: "Anthropic",
-  defaultModel: "claude-sonnet-4-5-20250929",
+  defaultModel: "claude-sonnet-5",
 };
 
 /** Claude Code CLI subscription provider configuration */
@@ -55,7 +55,7 @@ export const GEMINI_CONFIG: ProviderConfig = {
 export const OPENAI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENAI_KEY",
   providerName: "OpenAI",
-  defaultModel: "gpt-5-nano",
+  defaultModel: "gpt-5.6-terra",
 };
 
 /** OpenRouter provider configuration */
