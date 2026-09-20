@@ -50,6 +50,7 @@ interface SendEntry {
 /** One entry of a multi-target write result. */
 interface TargetEntry {
   id?: string;
+  color?: string;
   path?: string;
   ok?: false;
   reason?: string;
@@ -58,37 +59,6 @@ interface TargetEntry {
 }
 
 describe("warnings the tools still raise", () => {
-  it("says once per target that a colour snapped to the palette", async () => {
-    expect(
-      await warningsFrom("ppal-update-track", {
-        path: `${SCRATCH},t10`,
-        color: OFF_PALETTE,
-      }),
-    ).toStrictEqual([
-      paletteWarning("track", await label("ppal-read-track", SCRATCH)),
-      paletteWarning("track", await label("ppal-read-track", "t10")),
-    ]);
-
-    expect(
-      await warningsFrom("ppal-update-scene", {
-        path: "s3,s6",
-        color: OFF_PALETTE,
-      }),
-    ).toStrictEqual([
-      paletteWarning("scene", await label("ppal-read-scene", "s3")),
-      paletteWarning("scene", await label("ppal-read-scene", "s6")),
-    ]);
-
-    expect(
-      await warningsFrom("ppal-update-clip", {
-        path: "t0/s0",
-        color: OFF_PALETTE,
-      }),
-    ).toStrictEqual([
-      paletteWarning("clip", await label("ppal-read-clip", "t0/s0")),
-    ]);
-  });
-
   it("says count was ignored by the types that copy once", async () => {
     expect(
       await warningsFrom("ppal-duplicate", {
@@ -197,22 +167,45 @@ describe("warnings the tools still raise", () => {
       `WARNING: 2 clips on ${SCRATCH} moved to the same position - later clips will overwrite earlier ones`,
     ]);
   });
-
-  it("warns when a send names a return track that isn't there", async () => {
-    // One warning for the whole call: `sends` names return tracks, and which
-    // ones exist is a fact about the Set rather than about either track.
-    expect(
-      await warningsFrom("ppal-update-track", {
-        path: `t0,${SCRATCH}`,
-        sends: [{ return: "Nope", gainDb: -10 }],
-      }),
-    ).toStrictEqual([
-      'WARNING: sends entry "Nope" names no return track, so its gainDb was not written (Available: A-Delay, B-Reverb)',
-    ]);
-  });
 });
 
 describe("calls that report on the entry and warn about nothing", () => {
+  it("says on each entry that a colour snapped to the palette", async () => {
+    const snapped = {
+      color: "#3C3C3C",
+      reason: expect.stringContaining(
+        `color ${OFF_PALETTE} is not in Live's palette; landed as #3C3C3C`,
+      ),
+    };
+
+    const tracks = await entriesFrom("ppal-update-track", {
+      path: `${SCRATCH},t10`,
+      color: OFF_PALETTE,
+    });
+
+    expect(tracks).toStrictEqual([
+      expect.objectContaining(snapped),
+      expect.objectContaining(snapped),
+    ]);
+
+    const scenes = await entriesFrom("ppal-update-scene", {
+      path: "s3,s6",
+      color: OFF_PALETTE,
+    });
+
+    expect(scenes).toStrictEqual([
+      expect.objectContaining(snapped),
+      expect.objectContaining(snapped),
+    ]);
+
+    const clip = await entryFrom("ppal-update-clip", {
+      path: "t0/s0",
+      color: OFF_PALETTE,
+    });
+
+    expect(clip).toStrictEqual(expect.objectContaining(snapped));
+  });
+
   it("refuses a move, ignores a param, and misses a param name in silence", async () => {
     const refusedMove = await entryFrom("ppal-update-clip", {
       path: "t0/s0",
@@ -320,6 +313,24 @@ describe("calls that report on the entry and warn about nothing", () => {
       expect.objectContaining({ ok: false, reason: "the track has no sends" }),
     ]);
 
+    // Which return tracks exist is a fact about the Set, so it is resolved once
+    // — and every track the call named still says it on its own entry.
+    const noReturn = await entriesFrom("ppal-update-track", {
+      path: `t0,${SCRATCH}`,
+      sends: [{ return: "Nope", gainDb: -10 }],
+    });
+
+    for (const entry of noReturn) {
+      expect(entry.sends).toStrictEqual([
+        {
+          return: "Nope",
+          ok: false,
+          reason:
+            'no return track matching "Nope" (Available: A-Delay, B-Reverb)',
+        },
+      ]);
+    }
+
     const pads = await entriesFrom("ppal-update-device", {
       path: "t0/d0/pC1,t0/d0/pC2",
       mute: true,
@@ -408,16 +419,6 @@ async function entriesFrom(
  */
 function sendsOf(entry: TargetEntry): SendEntry[] {
   return entry.sends ?? [];
-}
-
-/**
- * The palette warning as a tool writes it.
- * @param noun - What kind of object was coloured
- * @param target - The object, as `<path> (id <id>)`
- * @returns The warning line to expect
- */
-function paletteWarning(noun: string, target: string): string {
-  return `WARNING: Requested ${noun} ${target} color ${OFF_PALETTE} was mapped to nearest palette color #3C3C3C. Live uses a fixed color palette.`;
 }
 
 /**

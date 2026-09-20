@@ -204,8 +204,9 @@ target, so no entry exists yet to carry them.
   `{return, ok: false, reason}` on the chain's entry, the return spelled the way
   the caller wrote it. update-track's own three — no mixer, no sends, no send
   for that return — are facts about the track rather than about the Live Set,
-  and answer the same way. Which return _tracks_ exist is still one warning for
-  the whole call: it is about the Set, not about any track.
+  and answer the same way. Which return _tracks_ exist is a fact about the Set,
+  so it is resolved once for the call, but a send naming none is still that
+  send's own `{return, ok: false, reason}` on every track the call named.
 - **A type-addressed device path that names nothing reports once.** `t0/inst` on
   a track with no instrument substitutes a fallback index, and what the
   container does hold rides back on the resolution instead of a warning: the

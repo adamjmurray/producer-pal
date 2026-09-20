@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   PARAM_DISABLED_REASON,
   isParamEnabled,
@@ -29,13 +28,19 @@ export interface ResolvedSend extends IndexedSend {
   returnId: string;
 }
 
+/** What a call's sends resolved to, for every track it names to report. */
+export interface TrackSends extends DedupedSends<ResolvedSend> {
+  /** Entries for the sends that named no return track, in the order named */
+  unresolved: SendResult[];
+}
+
 /**
  * Match every send the call asked for to a return track, once for the whole
  * call.
  *
  * The return tracks belong to the Live Set, not to any track being updated, so
- * nothing about a track decides this. Resolving it per track would repeat one
- * warning down the list (ADR-0009).
+ * nothing about a track decides this. It is still resolved once and reported on
+ * every track's entry, so no track is left without an answer (ADR-0042).
  *
  * The scalar pair is resolved first, so a call using both honors both. They
  * only collide when they name the same return, and then the list is the later
@@ -44,20 +49,21 @@ export interface ResolvedSend extends IndexedSend {
  * @param sendReturn - Return track id, name, or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
  * @returns The sends to write, one per return, in the order they were named,
- *   and the returns more than one of them named
+ *   the returns more than one of them named, and the ones that matched nothing
  */
 export function resolveTrackSends(
   sendGainDb: number | undefined,
   sendReturn: string | undefined,
   sends: SendEntry[] | undefined,
-): DedupedSends<ResolvedSend> {
+): TrackSends {
   // Nothing to resolve, so nothing to read: every update-track call would
   // otherwise pay for the Live Set's return tracks.
   if (sendReturn == null && (sends ?? []).length === 0) {
-    return { winners: [], collisions: [] };
+    return { winners: [], collisions: [], unresolved: [] };
   }
 
   const returns = readReturnTrackInfo();
+  const unresolved: SendResult[] = [];
 
   // A half pair was refused up front, so either both are set or neither is.
   const scalar =
@@ -65,25 +71,21 @@ export function resolveTrackSends(
       ? matchReturn(
           returns,
           { return: sendReturn, gainDb: sendGainDb },
-          `sendReturn "${sendReturn}" names no return track, so sendGainDb was not written`,
+          unresolved,
         )
       : null;
 
   const list: ResolvedSend[] = [];
 
   for (const send of sends ?? []) {
-    const resolved = matchReturn(
-      returns,
-      send,
-      `sends entry "${send.return}" names no return track, so its gainDb was not written`,
-    );
+    const resolved = matchReturn(returns, send, unresolved);
 
     if (resolved != null) {
       list.push(resolved);
     }
   }
 
-  return dedupeSendsByReturn(scalar, list);
+  return { ...dedupeSendsByReturn(scalar, list), unresolved };
 }
 
 /**
@@ -156,13 +158,13 @@ function applyTrackSend(track: LiveAPI, send: ResolvedSend): SendResult {
  * Match one send's return, naming the returns it could have named instead
  * @param returns - The Live Set's return tracks
  * @param send - The send, with the return spelled as the caller wrote it
- * @param problem - What went wrong, in the caller's own param names
+ * @param unresolved - Entries for the sends that matched nothing, added to
  * @returns The resolved send, or null when nothing matched
  */
 function matchReturn(
   returns: ReturnTrackInfo[],
   send: SendEntry,
-  problem: string,
+  unresolved: SendResult[],
 ): ResolvedSend | null {
   const names = returns.map((rt) => rt.name);
   const index = findReturnIndex(
@@ -178,7 +180,15 @@ function matchReturn(
         ? `Available: ${names.join(", ")}`
         : "the Live Set has no return tracks";
 
-    console.warn(`${problem} (${available})`);
+    // Nothing resolved, so there is no id to quote and nothing to write. Every
+    // track the call named reports it on its own entry (ADR-0042).
+    unresolved.push(
+      refusedSend(
+        send.return,
+        undefined,
+        `no return track matching "${send.return}" (${available})`,
+      ),
+    );
 
     return null;
   }

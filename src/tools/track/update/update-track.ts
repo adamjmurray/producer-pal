@@ -251,8 +251,8 @@ export function updateTrack(
   const laneTargets = planTakeLaneTargets(targets);
   const laneIgnores = laneTargets.size === 0 ? [] : paramsTakeLanesIgnore(args);
 
-  // Resolved once: the return tracks belong to the Live Set, so a per-track
-  // lookup would repeat one warning down the list.
+  // Resolved once: the return tracks belong to the Live Set, so nothing about a
+  // track decides this. What matched nothing still rides back on every track.
   const resolvedSends = resolveTrackSends(sendGainDb, sendReturn, sends);
 
   // The collisions belong to the call, not to a track, so they are announced
@@ -315,10 +315,12 @@ export function updateTrack(
     }
 
     // A send that took the level asked for has nothing to say — the caller
-    // named the return and knows the level — so only the rest report.
-    const changedSends = [...landed.values()].filter(
-      (send) => send.reason != null,
-    );
+    // named the return and knows the level — so only the rest report. The ones
+    // that named no return track follow, in the order the call named them.
+    const changedSends = [
+      ...[...landed.values()].filter((send) => send.reason != null),
+      ...resolvedSends.unresolved,
+    ];
 
     // Optimistic except for the color, mixer and sends, read back off the
     // track. Each of those can have its own say, so the reasons are joined

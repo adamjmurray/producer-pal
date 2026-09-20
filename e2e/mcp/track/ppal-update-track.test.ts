@@ -453,41 +453,27 @@ describe("ppal-update-track", () => {
     expect(send!.gainDb).toBe(-18);
   });
 
-  it("reports no send for a return name that matches none", async () => {
-    const liveSet = await readTracks();
-    const trackId = liveSet.tracks![3]!.id;
-
-    const result = await updateTrack({
-      id: trackId,
-      sends: [{ return: "ZZZ", gainDb: -6 }],
-    });
-
-    const { data, warnings } =
-      parseToolResultWithWarnings<UpdateTrackResult>(result);
-
-    expect(warnings).toContainEqual(
-      expect.stringContaining('sends entry "ZZZ" names no return track'),
-    );
-    // Nothing was written, so nothing is reported as though it had been.
-    expect(data.sends).toBeUndefined();
-  });
-
-  // Which return tracks exist is a fact about the Live Set, not about any one
-  // track, so it stays one warning for the whole call.
-  it("warns once for a sendReturn that names no return track", async () => {
+  // Which return tracks exist is a fact about the Live Set, so it is resolved
+  // once for the call — but the track the call named still gets the answer,
+  // whichever param spelled the send.
+  it.each([
+    ["sends", { sends: [{ return: "ZZZ", gainDb: -6 }] }],
+    ["the scalar pair", { sendGainDb: -6, sendReturn: "ZZZ" }],
+  ])("reports a return that matches none, named by %s", async (_how, args) => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
 
     const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
-      await updateTrack({ id: trackId, sendGainDb: -6, sendReturn: "ZZZ" }),
+      await updateTrack({ id: trackId, ...args }),
     );
 
-    expect(warnings).toContainEqual(
-      expect.stringContaining(
-        'sendReturn "ZZZ" names no return track, so sendGainDb was not written',
-      ),
-    );
-    expect(data.sends).toBeUndefined();
+    expect(warnings.join()).not.toContain("no return track matching");
+    // Nothing was written, so the entry says why in place of a level.
+    expect(data.sends).toContainEqual({
+      return: "ZZZ",
+      ok: false,
+      reason: expect.stringContaining('no return track matching "ZZZ"'),
+    });
   });
 
   it("lets a sends entry override the scalar pair naming the same return", async () => {

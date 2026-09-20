@@ -137,18 +137,14 @@ describe("updateTrack - send properties", () => {
     expect(send2.set).toHaveBeenCalledWith("display_value", -6);
   });
 
-  it("should warn and skip for an id that is not a return track", () => {
+  it("reports an id that is not a return track on the entry", () => {
     const result = updateTrack({
       id: "123",
       sendGainDb: -12,
       sendReturn: "123",
     });
 
-    expectSendUpdateSkipped(
-      result,
-      [send1, send2],
-      'sendReturn "123" names no return track',
-    );
+    expectSendUnresolved(result, [send1, send2], "123");
   });
 
   // Half a pair names no send, and it names the same non-send for every track
@@ -164,21 +160,17 @@ describe("updateTrack - send properties", () => {
     expect(send2.set).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when return track not found", () => {
-    // Should not throw, just warn and skip the send update. Crucially, no send
-    // is touched — a mis-initialized "not found" sentinel would silently write
-    // the wrong send instead of skipping.
+  it("should skip when return track not found", () => {
+    // Should not throw, just report and skip the send update. Crucially, no
+    // send is touched — a mis-initialized "not found" sentinel would silently
+    // write the wrong send instead of skipping.
     const result = updateTrack({
       id: "123",
       sendGainDb: -12,
       sendReturn: "C",
     });
 
-    expectSendUpdateSkipped(
-      result,
-      [send1, send2],
-      'sendReturn "C" names no return track',
-    );
+    expectSendUnresolved(result, [send1, send2], "C");
   });
 
   it("should not over-match a return whose name merely starts with the letter", () => {
@@ -196,11 +188,7 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
-    expectSendUpdateSkipped(
-      result,
-      [send1, send2],
-      'sendReturn "A" names no return track',
-    );
+    expectSendUnresolved(result, [send1, send2], "A");
   });
 
   it("says on the track's entry that it has no sends", () => {
@@ -219,15 +207,21 @@ describe("updateTrack - send properties", () => {
     expectSendRefused(result, [send1, send2], "the track has no sends");
   });
 
-  it("names the param and lists the returns when none matches", () => {
-    // The model has to be able to tell which param went wrong and what it
-    // could have said instead.
-    updateTrack({ id: "123", sendGainDb: -12, sendReturn: "ZZZ" });
+  it("lists the returns it could have named instead", () => {
+    // The model has to be able to tell what it could have said instead.
+    const result = updateTrack({
+      id: "123",
+      sendGainDb: -12,
+      sendReturn: "ZZZ",
+    });
 
-    expect(capturedWarnings()).toContain(
-      'sendReturn "ZZZ" names no return track, so sendGainDb was ' +
-        "not written (Available: A-Reverb, B-Delay)",
-    );
+    expect(sendsOf(result)).toStrictEqual([
+      {
+        return: "ZZZ",
+        ok: false,
+        reason: 'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
+      },
+    ]);
   });
 
   it("says so when the Live Set has no return tracks at all", () => {
@@ -237,22 +231,46 @@ describe("updateTrack - send properties", () => {
       properties: { return_tracks: [] },
     });
 
-    updateTrack({ id: "123", sendGainDb: -12, sendReturn: "A" });
+    const result = updateTrack({
+      id: "123",
+      sendGainDb: -12,
+      sendReturn: "A",
+    });
 
-    expect(capturedWarnings()).toContain(
-      'sendReturn "A" names no return track, so sendGainDb was ' +
-        "not written (the Live Set has no return tracks)",
-    );
+    expect(sendsOf(result)).toStrictEqual([
+      {
+        return: "A",
+        ok: false,
+        reason:
+          'no return track matching "A" (the Live Set has no return tracks)',
+      },
+    ]);
   });
 
-  it("warns once for a multi-track call, not once per track", () => {
-    // The return tracks belong to the Live Set, so nothing about a track
-    // decides this — checking it per track repeats one warning down the list.
-    updateTrack({ id: "123,456", sendGainDb: -12, sendReturn: "ZZZ" });
+  it("puts the entry on every track the call named", () => {
+    // The return tracks belong to the Live Set, so this is resolved once — but
+    // no track named by the call is left without an answer.
+    const result = updateTrack({
+      id: "123,456",
+      sendGainDb: -12,
+      sendReturn: "ZZZ",
+    });
 
-    expect(
-      capturedWarnings().filter((warning) => warning.includes("ZZZ")),
-    ).toHaveLength(1);
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(result).toStrictEqual(
+      [0, 1].map((index) => ({
+        id: index === 0 ? "123" : "456",
+        path: `t${index}`,
+        sends: [
+          {
+            return: "ZZZ",
+            ok: false,
+            reason:
+              'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
+          },
+        ],
+      })),
+    );
   });
 
   it("should set sends on multiple tracks", () => {
@@ -316,14 +334,11 @@ describe("updateTrack - send properties", () => {
         ],
       });
 
-      expect(capturedWarnings()).toContain(
-        'sends entry "ZZZ" names no return track, so its gainDb ' +
-          "was not written (Available: A-Reverb, B-Delay)",
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
       expect(send1.set).not.toHaveBeenCalled();
       expect(send2.set).toHaveBeenCalledWith("display_value", -12);
       // The one that was written is reported because Live kept another level;
-      // the entry that went nowhere can't be read back as though it had.
+      // the entry that went nowhere has no level and says why instead.
       expect(result).toStrictEqual({
         id: "123",
         path: "t0",
@@ -333,6 +348,12 @@ describe("updateTrack - send properties", () => {
             returnId: "return_B",
             gainDb: -11.98,
             reason: SNAPPED_SEND,
+          },
+          {
+            return: "ZZZ",
+            ok: false,
+            reason:
+              'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
           },
         ],
       });
@@ -718,21 +739,32 @@ function sendsOf(result: ReturnType<typeof updateTrack>): unknown[] {
   return (result as { sends?: unknown[] }).sends ?? [];
 }
 
-// Asserts that updateTrack declined to apply a send update: none of the given
-// sends were written, the warning reached the model on the response, and the
-// track itself still reported a plain success result (warn-and-skip must never
-// throw, so partial successes can continue across tracks).
-function expectSendUpdateSkipped(
+/**
+ * A send that named no return track: nothing was written, the track keeps its
+ * slot with the send's own entry, and nothing was warned about (ADR-0042).
+ * @param result - What updateTrack returned
+ * @param sends - The send params that must have stayed untouched
+ * @param named - The return, spelled the way the call wrote it
+ */
+function expectSendUnresolved(
   result: ReturnType<typeof updateTrack>,
   sends: RegisteredMockObject[],
-  expectedWarning: string,
+  named: string,
 ): void {
   for (const send of sends) {
     expect(send.set).not.toHaveBeenCalled();
   }
 
-  expect(capturedWarnings()).toContainEqual(
-    expect.stringContaining(expectedWarning),
-  );
-  expect(result).toStrictEqual({ id: "123", path: "t0" });
+  expect(capturedWarnings()).toStrictEqual([]);
+  expect(result).toStrictEqual({
+    id: "123",
+    path: "t0",
+    sends: [
+      {
+        return: named,
+        ok: false,
+        reason: expect.stringContaining(`no return track matching "${named}"`),
+      },
+    ],
+  });
 }

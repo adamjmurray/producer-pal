@@ -171,6 +171,12 @@ everything you asked of it the entry is `ok: false`, and a lone target throws. A
 how `ppal-update-track` reports a send a track can't take (no mixer, no sends,
 no send for that return).
 
+**`ppal-update-track` reports a send that names no return track the same way.**
+A `sendReturn` (or a `sends` entry) matching no return track of the Set used to
+be one warning for the whole call. Every track you named now carries
+`{return, ok: false, reason: 'no return track matching "Verb" (Available: A-Reverb, B-Delay)'}`
+in its `sends`, with the return spelled the way you wrote it.
+
 **A color Live snapped to its palette lands on the target's entry.** Live keeps
 about 70 colors and snaps anything else to the nearest one. That used to be a
 warning; `ppal-create-track`, `ppal-create-scene`, `ppal-create-clip`,
