@@ -250,6 +250,8 @@ describe("processCliStream — step usage line", () => {
     log = vi.spyOn(console, "log").mockImplementation(() => {}) as ReturnType<
       typeof vi.spyOn
     >;
+    // The empty-turn warning bypasses quiet mode on purpose.
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
   });
 
   afterEach(() => {

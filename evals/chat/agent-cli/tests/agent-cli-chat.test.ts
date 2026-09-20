@@ -55,6 +55,7 @@ describe("runAgentCliChat", () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     sendMessageMock.mockResolvedValue({ text: "ok", toolCalls: [] });
     createSessionMock.mockImplementation(
       async (): Promise<EvalSession> =>
