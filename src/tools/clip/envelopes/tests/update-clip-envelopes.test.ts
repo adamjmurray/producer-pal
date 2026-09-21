@@ -215,6 +215,7 @@ describe("updateClip - envelopes", () => {
   });
 
   it("reports one line's error and still applies the others", async () => {
+    setupMidiClipMock(mocks.clip123, { loop_end: 16, end_marker: 16 });
     vi.mocked(requestNode).mockImplementation(async (_route, args) =>
       (args as { parameter?: unknown }).parameter === "volume"
         ? {
@@ -233,6 +234,22 @@ describe("updateClip - envelopes", () => {
       expect.objectContaining({
         envelopes: 1,
         reason: 'envelope "volume": value 5 is outside 0..1',
+      }),
+    );
+  });
+
+  it("notes a point past the clip end, which never plays", async () => {
+    setupMidiClipMock(mocks.clip123, { loop_end: 8, end_marker: 8 });
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: `${FILTER_ID}: ${NOTATION}`,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 1,
+        reason: `envelope "${FILTER_ID}": point 4|1 is past the clip end (3|1), so it never plays`,
       }),
     );
   });

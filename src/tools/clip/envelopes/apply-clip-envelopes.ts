@@ -9,6 +9,7 @@
 // same call may just have written.
 
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { appendReason } from "#src/tools/shared/helpers/entry-reasons.ts";
@@ -32,6 +33,8 @@ interface ClipAddress {
   slot: number;
   timeSigNumerator: number;
   timeSigDenominator: number;
+  /** Where the clip stops playing, in beats; Live keeps events past it */
+  endBeats: number;
 }
 
 /**
@@ -72,6 +75,10 @@ export async function applyClipEnvelopes(
     slot,
     timeSigNumerator: clip.getProperty("signature_numerator") as number,
     timeSigDenominator: clip.getProperty("signature_denominator") as number,
+    endBeats: Math.max(
+      clip.getProperty("loop_end") as number,
+      clip.getProperty("end_marker") as number,
+    ),
   });
 }
 
@@ -96,6 +103,11 @@ async function writeEachLine(
 
     if (outcome.ok) {
       written += 1;
+
+      if (outcome.note != null) {
+        appendReason(entry, `envelope "${line.target}": ${outcome.note}`);
+      }
+
       continue;
     }
 
@@ -120,7 +132,7 @@ async function writeEachLine(
 async function writeOneLine(
   line: EnvelopeLine,
   address: ClipAddress,
-): Promise<RouteOutcome<unknown>> {
+): Promise<RouteOutcome<unknown> & { note?: string }> {
   const { trackIndex, slot } = address;
   let request;
 
@@ -141,12 +153,47 @@ async function writeOneLine(
     );
   }
 
-  return await envelopeRoute<EnvelopeWriteResult>(ENVELOPE_ROUTES.write, {
-    ...request,
-    points: parseEnvelopeNotation(line.notation, address).map((point) => ({
-      time: point.time,
-      value: point.value,
-      ...(point.jump && { jump: true }),
-    })),
-  });
+  const points = parseEnvelopeNotation(line.notation, address);
+  const outcome = await envelopeRoute<EnvelopeWriteResult>(
+    ENVELOPE_ROUTES.write,
+    {
+      ...request,
+      points: points.map((point) => ({
+        time: point.time,
+        value: point.value,
+        ...(point.jump && { jump: true }),
+      })),
+    },
+  );
+
+  return outcome.ok
+    ? { ...outcome, note: pastEndNote(points, address) }
+    : outcome;
+}
+
+/**
+ * Live stores a point past the clip's end but never plays it, which is almost
+ * always a wrong bar number rather than what was meant.
+ * @param points - What was written
+ * @param address - The clip and its meter
+ * @returns The note, or undefined when every point is inside the clip
+ */
+function pastEndNote(
+  points: readonly { time: number }[],
+  address: ClipAddress,
+): string | undefined {
+  const past = points.find((point) => point.time > address.endBeats);
+
+  if (past == null) {
+    return undefined;
+  }
+
+  const spell = (beats: number) =>
+    abletonBeatsToBarBeat(
+      beats,
+      address.timeSigNumerator,
+      address.timeSigDenominator,
+    );
+
+  return `point ${spell(past.time)} is past the clip end (${spell(address.endBeats)}), so it never plays`;
 }

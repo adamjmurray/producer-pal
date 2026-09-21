@@ -21,6 +21,8 @@ from .routes import RouteError
 
 MAX_EVENTS = 1000
 EPSILON = 1e-6
+# Live keeps events past the clip end, so a read covers them unless told not to.
+MAX_TIME = 1e6
 
 
 def list_envelopes(bridge, params):
@@ -36,7 +38,7 @@ def list_envelopes(bridge, params):
                     dict(
                         target,
                         parameter=_describe(param),
-                        event_count=len(list(env.events_in_range(0, clip.length))),
+                        event_count=len(list(env.events_in_range(0, MAX_TIME))),
                     )
                 )
     return {"envelopes": out}
@@ -52,7 +54,7 @@ def read(bridge, params):
         return {"exists": False, "parameter": _describe(param)}
 
     start = _num(params.get("from", 0))
-    end = _num(params.get("to", clip.length))
+    end = _num(params.get("to", MAX_TIME))
     limit = min(int(params.get("limit", MAX_EVENTS)), MAX_EVENTS)
     events = list(env.events_in_range(start, end))
     out = []
