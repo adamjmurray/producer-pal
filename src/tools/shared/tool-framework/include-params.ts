@@ -15,6 +15,7 @@ const TRACKS = "tracks";
 const SAMPLE = "sample";
 const TIMING = "timing";
 const WARP = "warp";
+const ENVELOPES = "envelopes";
 const DEVICES = "devices";
 const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
@@ -47,6 +48,14 @@ export const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
   clip: [CLIP_NOTES, SAMPLE, COLOR, TIMING, WARP],
 };
 
+/**
+ * Options a read tool publishes that '*' never turns on, because they cost more
+ * than a Live read: the caller has to ask for them by name.
+ */
+export const OPT_IN_ONLY_INCLUDE_OPTIONS: Record<string, string[]> = {
+  clip: [ENVELOPES],
+};
+
 export interface IncludeFlags {
   includeDrumMap: boolean;
   includeClipNotes: boolean;
@@ -65,6 +74,7 @@ export interface IncludeFlags {
   includeSample: boolean;
   includeTiming: boolean;
   includeWarp: boolean;
+  includeEnvelopes: boolean;
   includeMixer: boolean;
   includeLocators: boolean;
 }
@@ -99,6 +109,7 @@ export function parseIncludeArray(
       includeColor: Boolean(defaults.includeColor),
       includeTiming: Boolean(defaults.includeTiming),
       includeWarp: Boolean(defaults.includeWarp),
+      includeEnvelopes: Boolean(defaults.includeEnvelopes),
       includeMixer: Boolean(defaults.includeMixer),
       includeLocators: Boolean(defaults.includeLocators),
     };
@@ -130,6 +141,7 @@ export function parseIncludeArray(
       includeColor: false,
       includeTiming: false,
       includeWarp: false,
+      includeEnvelopes: false,
       includeMixer: false,
       includeLocators: false,
     };
@@ -153,6 +165,7 @@ export function parseIncludeArray(
     includeColor: includeSet.has(COLOR),
     includeTiming: includeSet.has(TIMING),
     includeWarp: includeSet.has(WARP),
+    includeEnvelopes: includeSet.has(ENVELOPES),
     includeMixer: includeSet.has(MIXER),
     includeLocators: includeSet.has(LOCATORS),
   };
@@ -179,6 +192,7 @@ const FLAG_TO_OPTION: [keyof IncludeFlags, string][] = [
   ["includeColor", COLOR],
   ["includeTiming", TIMING],
   ["includeWarp", WARP],
+  ["includeEnvelopes", ENVELOPES],
   ["includeMixer", MIXER],
   ["includeLocators", LOCATORS],
 ];
@@ -252,6 +266,7 @@ export const READ_CLIP_DEFAULTS: Partial<IncludeFlags> = {
   includeColor: false,
   includeTiming: false,
   includeWarp: false,
+  includeEnvelopes: false,
 };
 
 /**

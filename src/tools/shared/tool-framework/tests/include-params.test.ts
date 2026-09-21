@@ -32,6 +32,7 @@ const ALL_FLAGS_FALSE = {
   includeColor: false,
   includeTiming: false,
   includeWarp: false,
+  includeEnvelopes: false,
   includeMixer: false,
   includeLocators: false,
 };
@@ -140,6 +141,10 @@ describe("parseIncludeArray", () => {
     expect(result.includeColor).toBe(true);
     expect(result.includeTiming).toBe(true);
     expect(result.includeWarp).toBe(true);
+
+    // Envelopes cost a remote-script round trip per parameter, so they are
+    // published but never turned on by the wildcard.
+    expect(result.includeEnvelopes).toBe(false);
   });
 });
 
@@ -316,6 +321,7 @@ describe("option ↔ flag round-trip (every option)", () => {
     ["includeColor", "color"],
     ["includeTiming", "timing"],
     ["includeWarp", "warp"],
+    ["includeEnvelopes", "envelopes"],
     ["includeMixer", "mixer"],
     ["includeLocators", "locators"],
   ];

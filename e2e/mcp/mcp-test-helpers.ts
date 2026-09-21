@@ -675,4 +675,18 @@ export interface ReadClipResult {
   sampleFile?: string;
   sampleLength?: number;
   sampleRate?: number;
+  /** Each automated parameter, or why there are none to report */
+  envelopes?: ClipEnvelopeResult[] | string;
+}
+
+/** One automated parameter, as ppal-read-clip's `envelopes` include reports it. */
+export interface ClipEnvelopeResult {
+  parameter: string;
+  id?: string;
+  /** The device the parameter belongs to, "t3/d0"; absent for a mixer param */
+  device?: string;
+  eventCount: number;
+  truncated?: true;
+  /** The automation as envelope notation, in the clip's own meter */
+  events: string;
 }
