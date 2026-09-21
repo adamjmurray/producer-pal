@@ -81,7 +81,8 @@ def read(bridge, params):
 
 
 def write(bridge, params):
-    """Replace the envelope with `points` (raw values), stepped or linear."""
+    """Replace the envelope with `points`: raw values, each ramping to the next
+    unless the next has `jump`, which holds until its time and then jumps."""
     song = bridge.song
     track = _track(song, params.get("track"))
     param = _parameter(track, params)
@@ -90,37 +91,33 @@ def write(bridge, params):
         raise RouteError(409, "parameter is disabled or controlled by a macro")
 
     points = _points(params, param)
-    shape = params.get("shape", "linear")
-    if shape not in ("steps", "linear"):
-        raise RouteError(400, "shape must be steps or linear")
 
     song.begin_undo_step()
     try:
         if clip.automation_envelope(param) is not None:
             clip.clear_envelope(param)
         env = clip.create_automation_envelope(param)
-        if shape == "linear":
-            from Live.Envelope import EnvelopeEvent
-
-            for t, v in points:
-                env.create_event(EnvelopeEvent(t, v))
-        else:
-            for (t, v), (t2, _) in zip(points, points[1:]):
-                env.insert_step(t, t2 - t, v)
-            # A zero-length step is a no-op, so hold the last value to the end.
-            last_t, last_v = points[-1]
-            end = max(clip.end_marker, clip.loop_end, last_t + 1)
-            env.insert_step(last_t, end - last_t, last_v)
+        _write_events(env, points)
     finally:
         song.end_undo_step()
 
-    # At a step's own time value_at_time still reads the old value.
-    after = EPSILON if shape == "steps" else 0
+    # Just after each time, so a jump reads its new value.
     return {
         "parameter": _describe(param),
-        "shape": shape,
-        "samples": [{"time": t, "value": env.value_at_time(t + after)} for t, _ in points],
+        "samples": [{"time": t, "value": env.value_at_time(t + EPSILON)} for t, _, _ in points],
     }
+
+
+def _write_events(env, points):
+    """Every point as an event; a jump is two events at the same time."""
+    from Live.Envelope import EnvelopeEvent
+
+    prev = None
+    for t, v, jump in points:
+        if jump and prev is not None:
+            env.create_event(EnvelopeEvent(t, prev))
+        env.create_event(EnvelopeEvent(t, v))
+        prev = v
 
 
 def clear(bridge, params):
@@ -264,10 +261,13 @@ def _points(params, param):
     raw = params.get("points") or []
     if not 1 <= len(raw) <= MAX_EVENTS:
         raise RouteError(400, "give 1 to %d points" % MAX_EVENTS)
-    points = [(_num(p.get("time")), _num(p.get("value"))) for p in raw]
-    if points[0][0] < 0 or any(b[0] <= a[0] for a, b in zip(points, points[1:])):
-        raise RouteError(400, "times must be >= 0 and strictly increasing")
-    for _, v in points:
+    points = [
+        (_num(p.get("time")), _num(p.get("value")), bool(p.get("jump", False)))
+        for p in raw
+    ]
+    if points[0][0] < 0 or any(b[0] < a[0] for a, b in zip(points, points[1:])):
+        raise RouteError(400, "times must be >= 0 and non-decreasing")
+    for _, v, _ in points:
         if not param.min <= v <= param.max:
             raise RouteError(
                 400, "value %s is outside %s..%s" % (v, param.min, param.max)

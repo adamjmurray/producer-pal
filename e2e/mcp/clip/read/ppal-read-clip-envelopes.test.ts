@@ -84,7 +84,6 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
         slot: 0,
         parameter: "volume",
         points: POINTS,
-        shape: "linear",
       });
 
       expect(await readEnvelopes(id)).toStrictEqual([
@@ -111,7 +110,6 @@ describe.skipIf(process.env.E2E_REMOTE_SCRIPT !== "true")(
         slot: 0,
         parameter: "volume",
         points: POINTS,
-        shape: "linear",
       });
 
       expect(await readEnvelopes(id, ["*"])).toBeUndefined();

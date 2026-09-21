@@ -48,8 +48,12 @@ export interface EnvelopeReadRequest extends EnvelopeRequest {
 
 export interface EnvelopeWriteRequest extends EnvelopeRequest {
   /** Replaces the whole envelope; values are raw min..max */
-  points: EnvelopePoint[];
-  shape: "steps" | "linear";
+  points: EnvelopeWritePoint[];
+}
+
+/** A point to write: ramps from the previous one unless `jump` holds then jumps. */
+export interface EnvelopeWritePoint extends EnvelopePoint {
+  jump?: boolean;
 }
 
 /** A time in beats from the clip start, and a raw min..max value. */
@@ -110,8 +114,7 @@ export interface EnvelopeEvent {
 
 export interface EnvelopeWriteResult {
   parameter: ParameterInfo;
-  shape: "steps" | "linear";
-  /** The envelope read back at each point's time */
+  /** The envelope read back just after each point's time */
   samples: EnvelopePoint[];
 }
 

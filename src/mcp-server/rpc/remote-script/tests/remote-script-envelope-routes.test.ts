@@ -118,13 +118,13 @@ describe("remoteScript.envelope.read", () => {
 });
 
 describe("remoteScript.envelope.write", () => {
-  it("forwards the points and shape", async () => {
+  it("forwards the points", async () => {
     const points = [
       { time: 0, value: 0 },
-      { time: 4, value: 1 },
+      { time: 4, value: 1, jump: true },
     ];
     const remote = await answerWith({
-      body: { parameter: PARAMETER, shape: "linear", samples: points },
+      body: { parameter: PARAMETER, samples: points },
     });
 
     expect(
@@ -132,13 +132,12 @@ describe("remoteScript.envelope.write", () => {
         track: "mt",
         slot: 0,
         points,
-        shape: "linear",
       }),
     ).toStrictEqual({
       success: true,
       result: {
         available: true,
-        result: { parameter: PARAMETER, shape: "linear", samples: points },
+        result: { parameter: PARAMETER, samples: points },
       },
     });
     expect(remote.requests).toStrictEqual([
@@ -146,7 +145,7 @@ describe("remoteScript.envelope.write", () => {
         method: "POST",
         route: "/envelope/write",
         query: {},
-        body: { track: "mt", slot: 0, points, shape: "linear" },
+        body: { track: "mt", slot: 0, points },
       },
     ]);
   });
@@ -157,7 +156,6 @@ describe("remoteScript.envelope.write", () => {
         track: "t0",
         slot: 0,
         points: [{ time: 0, value: 0 }],
-        shape: "steps",
       }),
     ).toStrictEqual({ success: true, result: { available: false } });
   });

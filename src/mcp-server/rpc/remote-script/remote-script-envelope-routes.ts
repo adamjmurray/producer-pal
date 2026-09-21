@@ -22,7 +22,6 @@ const BODY_KEYS: Record<string, string> = {
   to: "to",
   limit: "limit",
   points: "points",
-  shape: "shape",
 };
 
 /**
