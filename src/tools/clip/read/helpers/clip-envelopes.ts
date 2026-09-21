@@ -6,25 +6,20 @@
 // Clip automation envelopes, which the Live API can't reach at all: only the
 // Producer Pal remote script can, over a round trip per envelope.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { formatEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  ARRANGEMENT_CLIP_NOTE,
+  envelopeRoute,
+} from "#src/tools/clip/envelopes/envelope-route.ts";
 import {
   ENVELOPE_ROUTES,
   type EnvelopeListResult,
   type EnvelopeReadResult,
-  type EnvelopeReply,
-  REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
 } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 
 /** How many events of one envelope a read returns before it says `truncated`. */
 const MAX_ENVELOPE_EVENTS = 32;
-
-const REMOTE_SCRIPT_MISSING =
-  "the Producer Pal remote script isn't running, so clip automation can't be read";
-
-const ARRANGEMENT_CLIP_NOTE =
-  "Live can't read an arrangement clip's envelopes: its automation lives in the track's automation lane. Automate a session clip and duplicate that to the arrangement.";
 
 /** A device segment of the remote script's device path: d0, or c1 for a chain. */
 const DEVICE_SEGMENT = /^([dc])(\d+)$/;
@@ -48,9 +43,6 @@ export interface ClipEnvelope {
 }
 
 type ListedEnvelope = EnvelopeListResult["envelopes"][number];
-
-/** What one route answered: its result, or why there isn't one. */
-type RouteOutcome<T> = { ok: true; result: T } | { ok: false; reason: string };
 
 /**
  * Read every automated parameter on a clip through the remote script.
@@ -105,36 +97,6 @@ export async function clipEnvelopes(
 }
 
 // --- Helpers below main exports ---
-
-/**
- * Call one envelope route, folding every way it can fail into one reason.
- * @param route - The Node route that forwards to the remote script
- * @param args - Which clip, and which parameter of it
- * @returns The route's result, or why there isn't one
- */
-async function envelopeRoute<T>(
-  route: string,
-  args: object,
-): Promise<RouteOutcome<T>> {
-  const response = await requestNode<EnvelopeReply<T>>(
-    route,
-    args,
-    REMOTE_SCRIPT_REQUEST_TIMEOUT_MS,
-  );
-  const reply = response.result;
-
-  if (!response.success || reply == null) {
-    return { ok: false, reason: response.error ?? "the read went unanswered" };
-  }
-
-  if (!reply.available) {
-    return { ok: false, reason: REMOTE_SCRIPT_MISSING };
-  }
-
-  return "error" in reply
-    ? { ok: false, reason: reply.error }
-    : { ok: true, result: reply.result };
-}
 
 /**
  * Name one listed envelope's parameter the way a read route takes it.

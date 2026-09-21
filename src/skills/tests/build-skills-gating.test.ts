@@ -498,3 +498,32 @@ describe("buildSkills - remote script gating", () => {
     expect(assembleSkills({ tools: ALL_TOOLS }).dropped).toStrictEqual([]);
   });
 });
+
+describe("buildSkills - clip automation gating", () => {
+  const ALL_TOOLS = [...TOOL_NAMES];
+  const HEADING = "## Clip Automation";
+
+  it("teaches envelopes only while the remote script answers", () => {
+    expect(buildSkills({ tools: ALL_TOOLS })).not.toContain(HEADING);
+    expect(buildSkills({ tools: ALL_TOOLS, remoteScript: true })).toContain(
+      HEADING,
+    );
+  });
+
+  it("still needs a clip tool that reads or writes an envelope", () => {
+    const tools = ALL_TOOLS.filter(
+      (name) => name !== "ppal-read-clip" && name !== "ppal-update-clip",
+    );
+
+    expect(buildSkills({ tools, remoteScript: true })).not.toContain(HEADING);
+    expect(
+      buildSkills({ tools: [...tools, "ppal-read-clip"], remoteScript: true }),
+    ).toContain(HEADING);
+  });
+
+  it("never teaches it in small-model mode", () => {
+    expect(
+      buildSkills({ smallModelMode: true, remoteScript: true }),
+    ).not.toContain(HEADING);
+  });
+});

@@ -38,6 +38,12 @@ export interface ClipResult {
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
   /**
+   * How many of the `envelopes` lines landed, or why none could: an arrangement
+   * clip has no envelopes of its own, and only the remote script reaches them.
+   * A line that failed on its own says so in `reason`.
+   */
+  envelopes?: number | string;
+  /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take
    * lane. Anything about a clip the call named belongs here (ADR-0042).

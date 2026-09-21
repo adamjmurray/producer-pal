@@ -109,7 +109,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "index), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation envelopes. One '[<position>]' moves every clip, each on its " +
+          "take lane drops its automation. One '[<position>]' moves every clip, each on its " +
           "own lane; anything naming a lane pairs 1:1 with id/path in order, since a lane or slot " +
           "holds one clip and the rest would land on top of it",
       ),
@@ -167,6 +167,16 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           }),
         }
       : {}),
+
+    envelopes: param(z.string().optional(), {
+      default:
+        "clip automation (session clips only), one '<target>: <notation>' line per parameter, broadcast across the clips. " +
+        "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
+        "notation: bar|beat points in the clip meter, '~' ramping to the next and '>' holding then jumping, e.g. '1|1 0 ~ 3|1 0.8 > 4|1 0.2'. " +
+        "Values are raw, not display units (ppal-read-device gives each parameter's range; most are 0..1). " +
+        "Each line REPLACES that parameter's whole envelope; a line with nothing after the colon ('472:') clears it",
+      smallModel: null,
+    }),
 
     // Quantization parameters
     quantize: z.coerce

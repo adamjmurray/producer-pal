@@ -272,7 +272,7 @@ describe("readClip - envelopes", () => {
     setupClip(true);
 
     expect(await readEnvelopes()).toBe(
-      "Live can't read an arrangement clip's envelopes: its automation lives in the track's automation lane. Automate a session clip and duplicate that to the arrangement.",
+      "Live doesn't give an arrangement clip envelopes of its own: its automation lives in the track's automation lane. Automate a session clip and duplicate that to the arrangement.",
     );
     expect(requestNode).not.toHaveBeenCalled();
   });
@@ -285,7 +285,7 @@ describe("readClip - envelopes", () => {
     });
 
     expect(await readEnvelopes()).toBe(
-      "the Producer Pal remote script isn't running, so clip automation can't be read",
+      "the Producer Pal remote script isn't running, so clip automation can't be reached",
     );
   });
 
@@ -303,7 +303,7 @@ describe("readClip - envelopes", () => {
     setupClip();
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
-    expect(await readEnvelopes()).toBe("the read went unanswered");
+    expect(await readEnvelopes()).toBe("the remote script went unanswered");
   });
 
   it("keeps reading the clip when the channel throws", async () => {

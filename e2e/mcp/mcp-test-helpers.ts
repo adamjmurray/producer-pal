@@ -632,6 +632,10 @@ export interface UpdateClipResult {
   length?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any */
   created?: string;
+  /** How many `envelopes` lines landed, or why none could */
+  envelopes?: number | string;
+  /** What the call asked for that the clip didn't get */
+  reason?: string;
 }
 
 /** Result from ppal-create-track tool */
