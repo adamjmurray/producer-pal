@@ -50,6 +50,7 @@ interface ReadDeviceResult {
 }
 
 interface UpdateDeviceResult {
+  reason?: string;
   params?: Array<{
     name: string;
     value?: unknown;
@@ -357,7 +358,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     expect(kept.type).not.toContain("Simpler");
 
-    const forced = parseToolResultWithWarnings(
+    const forced = parseToolResultWithWarnings<UpdateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
@@ -368,7 +369,9 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
       }),
     );
 
-    expect(forced.warnings.join("\n")).toContain("force:true");
+    // The swap is destructive, so the target's own entry says what it cost.
+    expect(forced.data.reason).toContain("force:true");
+    expect(forced.warnings).toStrictEqual([]);
 
     await sleep(150);
 
