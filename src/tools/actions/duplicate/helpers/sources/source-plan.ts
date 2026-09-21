@@ -40,6 +40,8 @@ export interface SourceShare {
   toSlot: string | undefined;
   /** This source's share of arrangementStart. */
   arrangementStart: string | undefined;
+  /** This source's share of arrangementLength. */
+  arrangementLength: string | undefined;
 }
 
 /** What a call needs to share its destinations out across its sources. */
@@ -50,6 +52,7 @@ interface SourcePlanArgs {
   toPath: string | undefined;
   toSlot: string | undefined;
   arrangementStart: string | undefined;
+  arrangementLength: string | undefined;
   /**
    * Whether the copies land on the arrangement, where a destination is a
    * position rather than a slot. Both spellings — a positioned `toPath`, and a
@@ -70,6 +73,7 @@ interface SourcePlanArgs {
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination clip slot(s)
  * @param args.arrangementStart - Position(s), already resolved to bar|beat
+ * @param args.arrangementLength - Span(s) each copy fills
  * @param args.onArrangement - Whether the copies land on the arrangement
  * @param args.idPerPath - Path lookup to use instead of the type's own
  * @returns One share per source, ids first, then the paths in order
@@ -81,6 +85,7 @@ export function planSources({
   toPath,
   toSlot,
   arrangementStart,
+  arrangementLength,
   onArrangement,
   idPerPath,
 }: SourcePlanArgs): SourceShare[] {
@@ -91,7 +96,13 @@ export function planSources({
   // downstream.
   if (sources.length <= 1) {
     return [
-      { ...(sources[0] as SourceTarget), toPath, toSlot, arrangementStart },
+      {
+        ...(sources[0] as SourceTarget),
+        toPath,
+        toSlot,
+        arrangementStart,
+        arrangementLength,
+      },
     ];
   }
 
@@ -103,7 +114,11 @@ export function planSources({
   // toSlot only ever named a clip slot, so a call using it lands in the session
   // however the position params read — and shares its destinations out below.
   if (onArrangement && !pathNamesSomething(toSlot)) {
-    return arrangementShares(sources, toPath, arrangementStart, named);
+    return arrangementShares(
+      sources,
+      { toPath, arrangementStart, arrangementLength },
+      named,
+    );
   }
 
   // toPath and toSlot can't both name a destination (resolveClipDestinations
@@ -116,6 +131,7 @@ export function planSources({
     toPath: paths[i],
     toSlot: slots[i],
     arrangementStart,
+    arrangementLength,
   }));
 }
 
@@ -161,28 +177,43 @@ interface SourceTarget {
   named: NamedTarget;
 }
 
+/** The arrangement params shared out across a call's sources. */
+interface ArrangementParams {
+  toPath: string | undefined;
+  arrangementStart: string | undefined;
+  arrangementLength: string | undefined;
+}
+
 /**
  * Shares an arrangement destination out across the sources: one entry covers
  * them all, a list gives one per source in order, and nothing cycles
  * (ADR-0031). Both params that can carry it pair the same way, so
- * `toPath: "t0[1|1],t0[17|1]"` matches `toPath: "t0"` with `"1|1,17|1"`.
+ * `toPath: "t0[1|1],t0[17|1]"` matches `toPath: "t0"` with `"1|1,17|1"`, and
+ * `arrangementLength` pairs with them.
  * @param sources - The sources, in call order
- * @param toPath - Destination path(s)
- * @param arrangementStart - Position(s), already resolved to bar|beat
+ * @param params - The destination, position and span params
  * @param named - The params that named the sources, for an error message
  * @returns One share per source
  */
 function arrangementShares(
   sources: SourceTarget[],
-  toPath: string | undefined,
-  arrangementStart: string | undefined,
+  params: ArrangementParams,
   named: string,
 ): SourceShare[] {
   const count = { param: named, count: sources.length };
-  const paths = perSource(pathEntries(toPath, "toPath"), "toPath", count);
+  const paths = perSource(
+    pathEntries(params.toPath, "toPath"),
+    "toPath",
+    count,
+  );
   const starts = perSource(
-    targetEntries(arrangementStart, "arrangementStart"),
+    targetEntries(params.arrangementStart, "arrangementStart"),
     "arrangementStart",
+    count,
+  );
+  const lengths = perSource(
+    targetEntries(params.arrangementLength, "arrangementLength"),
+    "arrangementLength",
     count,
   );
 
@@ -191,6 +222,7 @@ function arrangementShares(
     toPath: paths[i],
     toSlot: undefined,
     arrangementStart: starts[i],
+    arrangementLength: lengths[i],
   }));
 }
 
