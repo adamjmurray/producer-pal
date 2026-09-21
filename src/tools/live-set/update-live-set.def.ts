@@ -11,7 +11,9 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
   title: "Update Live Set",
   description: {
-    default: "Update Live Set global settings or manage locators.",
+    default:
+      "Update Live Set global settings or manage locators. Locator params with " +
+      "no list form apply to every locator.",
     smallModel: "Update Live Set global settings",
   },
   annotations: {

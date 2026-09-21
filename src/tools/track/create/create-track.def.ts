@@ -11,7 +11,8 @@ import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-fr
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
-  description: "Create track(s).",
+  description:
+    "Create track(s). Params with no list form apply to every track.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

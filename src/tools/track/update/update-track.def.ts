@@ -13,7 +13,8 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
-  description: "Update track(s).",
+  description:
+    "Update track(s). Params with no list form apply to every target.",
 
   annotations: {
     readOnlyHint: false,

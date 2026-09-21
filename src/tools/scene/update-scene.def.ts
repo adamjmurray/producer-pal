@@ -10,7 +10,8 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
-  description: "Update scene(s).",
+  description:
+    "Update scene(s). Params with no list form apply to every scene.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -38,6 +39,11 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
       smallModel: "#RRGGBB",
     }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
-    timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
+    timeSignature: z
+      .string()
+      .optional()
+      .describe(
+        'N/D (4/4) for all, or comma-separated one per scene, in order ("disabled" disables)',
+      ),
   },
 });

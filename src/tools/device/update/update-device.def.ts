@@ -12,7 +12,9 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
-  description: "Update device(s), chain(s), or drum pad(s).",
+  description:
+    "Update device(s), chain(s), or drum pad(s). Params with no list form " +
+    "apply to every target.",
 
   annotations: {
     readOnlyHint: false,

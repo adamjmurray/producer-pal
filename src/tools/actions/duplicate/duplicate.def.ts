@@ -21,7 +21,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     default:
       "Duplicate an object, or several — id takes a comma-separated list. Supports tracks, scenes, clips, devices, and drum pads. " +
       "Use count for multiple track/scene copies, and toPath for the destination: a clip slot, a spot on " +
-      "the arrangement, a track, a device chain, or a drum pad.",
+      "the arrangement, a track, a device chain, or a drum pad. " +
+      "Params with no list form apply to every copy.",
     smallModel:
       "Duplicate an object, or several (id takes a list). Supports tracks, scenes, clips, devices, and drum pads. " +
       "Use toPath for the destination: clip slot, arrangement spot, device, or pad.",
@@ -89,7 +90,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .describe(
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'); song meter. " +
-          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length. " +
+          "One for all, or comma-separated one per source, in order",
       ),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",

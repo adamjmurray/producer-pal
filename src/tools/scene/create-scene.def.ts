@@ -15,7 +15,9 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   // with capture gone, path is required outright (the handler throws without
   // it) rather than conditionally.
   description: {
-    default: "Create empty scene(s) or capture playing session clips.",
+    default:
+      "Create empty scene(s) or capture playing session clips. Params with no " +
+      "list form apply to every scene.",
     smallModel: "Create an empty scene.",
   },
   annotations: {
@@ -58,7 +60,8 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {
-      default: 'N/D (4/4) or "disabled" when capturing',
+      default:
+        'N/D (4/4) for all, or comma-separated one per scene, in order ("disabled" when capturing)',
       smallModel: null,
     }),
   },
